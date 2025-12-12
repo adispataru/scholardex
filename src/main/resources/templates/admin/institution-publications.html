@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${institution.name} + ' Publications'">Institution Publications</title>
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <!-- Sidebar -->
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="fragments :: admin-sidebar('institutions')"></div>
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="fragments :: navbar"></div>
+
+            <div class="container-fluid">
+                <!-- Institution Info -->
+                <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                    <h1 class="h3 mb-0 text-gray-800" th:text="${institution.name}">Institution Name</h1>
+                    <a th:href="@{/admin/institutions/{id}/publications/exportExcel(id=${institution.name})}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+                        <i class="fas fa-download fa-sm text-white-50"></i> Export Excel
+                    </a>
+                </div>
+                <div class="mb-4">
+                    <p th:text="${institution.description}">Institution description here.</p>
+                    <div>
+                        <span class="font-weight-bold">Total Publications: </span>
+                        <span th:text="${publications.size()}">0</span>
+                    </div>
+                </div>
+
+                <!-- Publications Table -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Publications</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Year</th>
+                                    <th>Authors</th>
+                                    <th>Type</th>
+                                    <th>Venue</th>
+                                    <th>Citations</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="publication : ${publications}">
+                                    <td>
+                                        <a th:href="@{/user/publications/citations(id=${publication.id})}" th:text="${publication.title}">Publication Title</a>
+                                    </td>
+                                    <td th:text="${publication.coverDate}">Year Published</td>
+                                    <td>
+                                        <div th:each="author, iterStat : ${publication.authors}">
+                                            <a th:if="${authorMap[publication.authors[iterStat.index]] != null}" th:text="${authorMap[publication.authors[iterStat.index]].name} + (iterStat.last ? '; ' : '')" th:href="@{/user/authors/view/{id}(id=${author})}"></a>
+                                            <span th:if="${authorMap[publication.authors[iterStat.index]] == null}" th:text="${author}"></span>
+                                        </div>
+                                    </td>
+                                    <td th:text="${publication.subtypeDescription}">Type</td>
+                                    <td>
+                                        <p th:if="${forumMap[publication.forum] != null}" th:text="${forumMap[publication.forum].publicationName}"></p>
+                                    </td>
+                                    <td th:text="${publication.citedbyCount}">0</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>Copyright &copy; ScholarDex 2024</span>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <a class="scroll-to-top rounded" href="#page-top">
+        <i class="fas fa-angle-up"></i>
+    </a>
+</div>
+
+<script src="/vendor/jquery/jquery.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/vendor/jquery-easing/jquery.easing.min.js"></script>
+<script src="/js/sb-admin-2.min.js"></script>
+<script src="/vendor/datatables/jquery.dataTables.min.js"></script>
+<script src="/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+<script src="/js/demo/datatables-demo.js"></script>
+</body>
+</html>

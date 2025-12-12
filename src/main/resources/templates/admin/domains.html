@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Domains</title>
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <!-- Sidebar -->
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="fragments :: admin-sidebar('domains')"></div>
+        <!-- Sidebar Toggler (Sidebar) -->
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <!-- Content Wrapper -->
+    <div id="content-wrapper" class="d-flex flex-column">
+        <!-- Main Content -->
+        <div id="content">
+            <!-- Topbar -->
+            <div th:replace="fragments :: navbar"></div>
+
+            <!-- Begin Page Content -->
+            <div class="container-fluid">
+                <!-- Page Heading -->
+                <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                    <h1 class="h3 mb-2 text-gray-800">Domains</h1>
+                    <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" data-toggle="modal" data-target="#createDomainModal">
+                        <i class="fas fa-plus fa-sm text-white-50"></i> Create New Domain
+                    </a>
+                </div>
+                <p class="mb-4">This is a list of all Domains currently managed by the system.</p>
+
+                <!-- DataTables Example -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Detailed View of Domains</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Description</th>
+                                    <th>WOS Categories</th>
+                                    <th>Actions</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="domain : ${domains}">
+                                    <td th:text="${domain.name}">Domain Name</td>
+                                    <td th:text="${domain.description}"></td>
+                                    <td>
+                                        <ul>
+                                            <li th:each="category : ${domain.wosCategories}" th:text="${category}"></li>
+                                        </ul>
+                                    </td>
+                                    <td>
+                                        <a th:href="@{/admin/domains/edit/{name}(name=${domain.name})}" class="btn btn-primary btn-sm">Edit</a>
+                                        <a th:href="@{/admin/domains/delete/{name}(name=${domain.name})}" class="btn btn-danger btn-sm">Delete</a>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- End of Main Content -->
+
+            <!-- Footer -->
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>Copyright &copy; ScholarDex 2024</span>
+                    </div>
+                </div>
+            </footer>
+            <!-- End of Footer -->
+        </div>
+        <!-- End of Content Wrapper -->
+    </div>
+    <!-- End of Page Wrapper -->
+
+    <!-- Scroll to Top Button-->
+    <a class="scroll-to-top rounded" href="#page-top">
+        <i class="fas fa-angle-up"></i>
+    </a>
+</div>
+
+<!-- Create Domain Modal-->
+<div class="modal fade" id="createDomainModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Create New Domain</h5>
+                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form th:action="@{/admin/domains/create}" th:object="${domain}" method="post">
+                    <div class="form-group">
+                        <label for="domainName">Name</label>
+                        <input type="text" class="form-control" id="domainName" th:field="*{name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="domainDescription">Description</label>
+                        <input type="text" class="form-control" id="domainDescription" th:field="*{description}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="wosCategories">WOS Categories</label>
+                        <div id="wosCategoriesContainer">
+                            <div class="input-group mb-2" th:each="category, iterStat : *{wosCategories}">
+                                <select class="form-control" th:field="*{wosCategories[__${iterStat.index}__]}" th:each="cat : ${allWosCategories}" th:value="${cat}" th:text="${cat}"></select>
+                                <div class="input-group-append">
+                                    <button class="btn btn-danger remove-category" type="button">Remove</button>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="addCategory" class="btn btn-primary" type="button">Add Category</button>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap core JavaScript-->
+<script src="/vendor/jquery/jquery.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+<!-- Core plugin JavaScript-->
+<script src="/vendor/jquery-easing/jquery.easing.min.js"></script>
+
+<!-- Custom scripts for all pages-->
+<script src="/js/sb-admin-2.min.js"></script>
+
+<!-- Page level plugins -->
+<script src="/vendor/datatables/jquery.dataTables.min.js"></script>
+<script src="/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+
+<!-- Page level custom scripts -->
+<script src="/js/demo/datatables-demo.js"></script>
+
+<script th:inline="javascript">
+    $(document).ready(function() {
+        // Ensure Thymeleaf processes this part correctly
+        var allWosCategories = /*[[${allWosCategories}]]*/ [];
+        let wosCategoriesContainer = $('#wosCategoriesContainer');
+
+        $('#addCategory').click(function() {
+            let index = wosCategoriesContainer.children().length;
+            let categoryTemplate = `
+                <div class="input-group mb-2">
+                    <select class="form-control" name="wosCategories[${index}]">
+                        ${allWosCategories.map(category => `<option value="${category}">${category}</option>`).join('')}
+                    </select>
+                    <div class="input-group-append">
+                        <button class="btn btn-danger remove-category" type="button">Remove</button>
+                    </div>
+                </div>`;
+            wosCategoriesContainer.append(categoryTemplate);
+        });
+
+        wosCategoriesContainer.on('click', '.remove-category', function() {
+            $(this).closest('.input-group').remove();
+            // Optionally, update the indices of the remaining elements
+            wosCategoriesContainer.children().each(function(index, element) {
+                $(element).find('select').attr('name', `wosCategories[${index}]`);
+            });
+        });
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${indicator.name}">Indicator</title>
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <style>
+        .chart-container {
+            height: 100px; /* Adjust this value as needed */
+            width: 100px;  /* Adjust this value as needed */
+        }
+    </style>
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <!-- Sidebar -->
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="fragments :: user-sidebar('indicators')"></div>
+        <!-- Sidebar Toggler (Sidebar) -->
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <!-- Content Wrapper -->
+    <div id="content-wrapper" class="d-flex flex-column">
+        <!-- Main Content -->
+        <div id="content">
+            <!-- Topbar -->
+            <div th:replace="fragments :: navbar"></div>
+
+            <!-- Begin Page Content -->
+            <div class="container-fluid">
+                <!-- Page Heading -->
+                <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                    <h1 class="h3 mb-0 text-gray-800" th:text="${indicator.name}">Indicator scores</h1>
+                    <a th:href="@{/user/indicators/export/{id}(id=${indicator.id})}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+                        <i class="fas fa-download fa-sm text-white-50"></i> Export Excel
+                    </a>
+<!--                    </button>-->
+                </div>
+<!--                <h1 class="h3 mb-2 text-gray-800"></h1>-->
+                <div class="row">
+
+                    <!-- Earnings (Monthly) Card Example -->
+                    <div class="col-xl-12 col-md-12 mb-12">
+                        <div class="card border-left-primary shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                            Total Score </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${total}"></div>
+                                    </div>
+<!--                                    <div class="col-auto">-->
+<!--                                        <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>-->
+<!--                                    </div>-->
+                                </div>
+                                <div class="row no-gutters align-items-center">
+
+                                    <div class="col mr-2">
+                                        <div class="h5 text-gray-800">Details</div>
+                                        <ul>
+
+                                            <li th:text="${indicator.outputType}"></li>
+                                            <li>
+                                                <span>Domain: </span>
+                                                <span th:text="${indicator.domain.name}"></span>
+                                            </li>
+<!--                                            <li th:if="${!indicator.domain.name.equals('ALL')}">-->
+<!--                                                <ul>-->
+<!--                                                    <li th:each="d : ${indicator.domain.wosCategories}" th:text="${d}"></li>-->
+<!--                                                </ul>-->
+<!--                                            </li>-->
+                                            <li>
+                                                <span>Scoring Strategy: </span>
+                                                <span th:text="${indicator.scoringStrategy}"></span>
+                                            </li>
+                                            <li>
+                                                <span>Formula: </span>
+                                                <span th:text="${indicator.formula}"></span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div class="col mr-1">
+                                        <div class="chart-pie">
+                                            <canvas id="myPieChart" width="64" height="64" class="chartjs-render-monitor"></canvas>
+                                        </div>
+                                    </div>
+<!--                                    <div class="col-auto">-->
+<!--                                        <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>-->
+<!--                                    </div>-->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+<!--                    <div class="col-xl-2 col-md-2 mb-2">-->
+<!--                        <div class="card border-left-primary shadow py-2">-->
+<!--&lt;!&ndash;                            <div class="card-body">&ndash;&gt;-->
+<!--                                    -->
+<!--&lt;!&ndash;                            </div>&ndash;&gt;-->
+<!--                        </div>-->
+<!--                    </div>-->
+                </div>
+
+
+                <!-- Trigger Scrape Button and display scrape result -->
+
+                <!-- DataTales Example -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Individual scores</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Type</th>
+                                    <th>Details</th>
+                                    <th>Year</th>
+                                    <th>Forum Score</th>
+                                    <th>Author Score</th>
+                                    <th>Extra Score</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="act : ${activities}">
+<!--                                <tr th:each="entry : ${scores.entrySet()}">-->
+                                    <td>
+                                        <a th:text="${act.name}">Title</a>
+                                    </td>
+                                    <td th:text="${act.activity.name}"></td>
+<!--                                    <td><span th:text="${forumMap[pub.forum].publicationName}">Venue</span></td>-->
+                                    <td>
+                                        <span th:if="${scores[act.id] != null}" th:text="${scores[act.id].details}">0</span>
+                                    </td>
+                                    <td>
+                                        <span th:if="${scores[act.id] != null}" th:text="${scores[act.id].year}">0</span>
+                                    </td>
+                                    <td>
+                                        <span th:if="${scores[act.id] != null}" th:text="${scores[act.id].getScore()}">0</span>
+                                    </td>
+                                    <td>
+                                        <span th:if="${scores[act.id] != null}" th:text="${#numbers.formatDecimal(scores[act.id].getAuthorScore(), 1, 2)}">0</span>
+                                    </td>
+                                    <td>
+                                        <ul th:if="${scores[act.id] != null && scores[act.id].extra != null}">
+                                            <li th:each="key, value : ${scores[act.id].extra.entrySet()}" th:text="${key}">0</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- End of Main Content -->
+
+            <!-- Footer -->
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>Copyright &copy; ScholarDex 2024</span>
+                    </div>
+                </div>
+            </footer>
+            <!-- End of Footer -->
+        </div>
+        <!-- End of Content Wrapper -->
+    </div>
+    <!-- End of Page Wrapper -->
+
+    <!-- Scroll to Top Button-->
+    <a class="scroll-to-top rounded" href="#page-top">
+        <i class="fas fa-angle-up"></i>
+    </a>
+</div>
+
+<!-- Bootstrap core JavaScript-->
+<script src="/vendor/jquery/jquery.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+<!-- Core plugin JavaScript-->
+<script src="/vendor/jquery-easing/jquery.easing.min.js"></script>
+
+<!-- Custom scripts for all pages-->
+<script src="/js/sb-admin-2.min.js"></script>
+
+<!-- Page level plugins -->
+<script src="/vendor/datatables/jquery.dataTables.min.js"></script>
+<script src="/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+
+<!-- Page level custom scripts -->
+<script src="/js/demo/datatables-demo.js"></script>
+<script src="/vendor/chart.js/Chart.js"></script>
+<script th:inline="javascript">
+    $(document).ready(function() {
+        // Ensure Thymeleaf processes this part correctly
+        var allLabels = /*[[${allQuarters}]]*/ [];
+        var allValues = /*[[${allValues}]]*/ [];
+        // Set new default font family and font color to mimic Bootstrap's default styling
+        Chart.defaults.global.defaultFontFamily = 'Nunito', '-apple-system,system-ui,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
+        Chart.defaults.global.defaultFontColor = '#858796';
+
+        // Pie Chart Example
+        var ctx = document.getElementById("myPieChart");
+        var myPieChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: allLabels,
+                datasets: [{
+                    data: allValues,
+                    backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#f809fc', '#e3e6f0', '#5a5c69', '#b7b9cc', '#f6b73f', '#fa7d09', '#28a745', '#17a2b8', '#ffc107', '#dc3545', '#343a40', '#6c757d', '#007bff', '#6f42c1'],
+                    hoverBackgroundColor: ['#374db6', '#12996a', '#2799a3', '#af8d2a', '#a53a2b', '#b003c0', '#a6aab8', '#3e404c', '#8989a0', '#b57b2b', '#b55c06', '#1e7535', '#12617a', '#b58a05', '#a02a35', '#24292c', '#4c535c', '#0056b3', '#4d3191'],
+
+                    hoverBorderColor: "rgba(234, 236, 244, 1)",
+                }],
+            },
+            options: {
+                maintainAspectRatio: false,
+                tooltips: {
+                    backgroundColor: "rgb(255,255,255)",
+                    bodyFontColor: "#858796",
+                    borderColor: '#dddfeb',
+                    borderWidth: 1,
+                    xPadding: 15,
+                    yPadding: 15,
+                    displayColors: false,
+                    caretPadding: 10,
+                },
+                legend: {
+                    display: false
+                },
+                cutoutPercentage: 80,
+            },
+        });
+    });
+</script>
+
+</body>
+</html>

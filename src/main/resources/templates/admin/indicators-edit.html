@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Indicators</title>
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <!-- Sidebar -->
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="fragments :: admin-sidebar('indicators')"></div>
+        <!-- Sidebar Toggler (Sidebar) -->
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <!-- Content Wrapper -->
+    <div id="content-wrapper" class="d-flex flex-column">
+        <!-- Main Content -->
+        <div id="content">
+            <!-- Topbar -->
+            <div th:replace="fragments :: navbar"></div>
+
+            <!-- Begin Page Content -->
+            <div class="container-fluid">
+                <!-- Page Heading -->
+                <h1 class="h3 mb-2 text-gray-800">Edit Indicator</h1>
+                <p class="mb-4" th:text="${indicator.name}"></p>
+
+                <!-- DataTales Example -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Update</h6>
+                    </div>
+                    <div class="card-body">
+                        <form th:action="@{/admin/indicators/update}" th:object="${indicator}" method="post">
+                            <input type="text" class="form-control" id="indicatorId" th:field="*{id}" hidden>
+                            <div class="form-group">
+                                <label for="criterionName">Name</label>
+                                <input type="text" class="form-control" id="criterionName" th:field="*{name}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="domain">Domain</label>
+                                <select class="form-control" id="domain" th:field="*{domain}" required>
+                                    <option th:each="d : ${domains}" th:value="${d.name}" th:text="${d.name}"></option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="criterionFormula">Indicator Years</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="scoringYearRange" th:field="*{yearRange}" required>
+                                    <div class="input-group-append">
+                                        <button class="btn btn-info" type="button" data-toggle="tooltip" data-html="true" title="Any Year (*) or Exact years<ul><li>2017</li><li>2017->2019,2021->2023</li></ul>" data-placement="right" data-template='<div class="tooltip custom-tooltip" role="tooltip"><div class="arrow"></div><div class="tooltip-inner"></div></div>'>
+                                            ?
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="criterionOutputType">Applies To</label>
+                                <select class="form-control" id="criterionOutputType" th:field="*{outputType}" required>
+                                    <option th:each="ctype : ${types}" th:value="${ctype}" th:text="${ctype}"></option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="activity">Activity</label>
+                                <select class="form-control" id="activity"
+                                        th:field="*{activity}">
+                                    <option th:value="${null}"
+                                            th:attr="data-description='No Activity selected'">
+                                        None
+                                    </option>
+                                    <option
+                                            th:each="act : ${activities}"
+                                            th:value="${act.id}"
+                                            th:text="${act.name}"
+                                            th:attr="data-description=${activityDescriptions[act.id]}">
+                                    </option>
+                                </select>
+                                <small id="activityDescription" class="form-text text-muted mt-1"></small>
+                            </div>
+                            <div class="form-group">
+                                <label for="scoringStrategy">Scoring Strategy</label>
+                                <select class="form-control" id="scoringStrategy" th:field="*{scoringStrategy}" required>
+                                    <option th:each="strategy : ${scoringStrategies}" th:value="${strategy}" th:text="${strategy}"></option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="criterionFormula">Scoring Years</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="yearRange" th:field="*{scoreYearRange}" required>
+                                    <div class="input-group-append">
+                                        <button class="btn btn-info" type="button" data-toggle="tooltip" data-html="true" title="Any Year (*) or Exact years<ul><li>2017</li><li>2017->2019,2021->2023</li></ul>Years related to item year (IY) <ul><li>IY</li>, <li>IY-1->IY+3,IY+5</li></ul>" data-placement="right" data-template='<div class="tooltip custom-tooltip" role="tooltip"><div class="arrow"></div><div class="tooltip-inner"></div></div>'>
+                                            ?
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="criterionFormula">Formula</label>
+                                <div class="input-group">
+                                    <textarea class="form-control" id="criterionFormula" th:field="*{formula}" required></textarea>
+                                    <div class="input-group-append">
+                                        <button class="btn btn-info" type="button" data-toggle="tooltip" data-html="true" title="Variables returned by a Scoring Service <ul><li>N: number of authors</li><li>S: score for publication</li></ul>Can be used with:<ul><li>math symbols: +, -, *, /, max(x,y), min(x,y)</li><li>conditions: (a > b) ? (3 + a) : (4 + b)</li><li>(S > 1.0) ? (3 + 3 * S) : (3 + S)</li></ul>" data-placement="right" data-template='<div class="tooltip custom-tooltip" role="tooltip"><div class="arrow"></div><div class="tooltip-inner"></div></div>'>
+                                            ?
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="selector">Final Selector</label>
+                                <select class="form-control" id="selector" th:field="*{selector}" required>
+                                    <option th:each="selector : ${selectors}" th:value="${selector}" th:text="${selector}"></option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Update</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <!-- End of Main Content -->
+
+            <!-- Footer -->
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>Copyright &copy; ScholarDex 2024-</span>
+                    </div>
+                </div>
+            </footer>
+            <!-- End of Footer -->
+        </div>
+        <!-- End of Content Wrapper -->
+    </div>
+    <!-- End of Page Wrapper -->
+
+    <!-- Scroll to Top Button-->
+    <a class="scroll-to-top rounded" href="#page-top">
+        <i class="fas fa-angle-up"></i>
+    </a>
+</div>
+
+<!-- Bootstrap core JavaScript-->
+<script src="/vendor/jquery/jquery.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+<!-- Core plugin JavaScript-->
+<script src="/vendor/jquery-easing/jquery.easing.min.js"></script>
+
+<!-- Custom scripts for all pages-->
+<script src="/js/sb-admin-2.min.js"></script>
+
+<!-- Page level plugins -->
+<script src="/vendor/datatables/jquery.dataTables.min.js"></script>
+<script src="/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+
+<!-- Page level custom scripts -->
+<script src="/js/demo/datatables-demo.js"></script>
+<script>
+    $(document).ready(function() {
+        // Enable tooltips
+        $('[data-toggle="tooltip"]').tooltip();
+    });
+</script>
+</body>
+</html>

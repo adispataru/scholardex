@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${report.title}">Individual Report</title>
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <!-- Sidebar -->
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="fragments :: user-sidebar('individualReports')"></div>
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <!-- Content Wrapper -->
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="fragments :: navbar"></div>
+            <div class="container-fluid">
+                <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                    <h1 class="h3 mb-2 text-gray-800" th:text="${report.title}">Individual Report</h1>
+                </div>
+                <p class="mb-4" th:text="${report.description}"></p>
+
+                <!-- Total Rank Card -->
+                <div class="row mb-4">
+                    <div class="col-xl-12 col-md-12">
+                        <div class="card border-left-primary shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+<!--                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Rank for All Indicators</div>-->
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Score for All Indicators</div>
+                                        <div class="text-xs text-warning mb-1"><i class="fas fa-exclamation-triangle"></i> Indicators may overlap</div>
+<!--                                        <div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${#numbers.formatDecimal(totalScore, 2, 2)}"></div>-->
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${#numbers.formatDecimal(totalScore, 1, 2)}"></div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-calculator fa-2x text-primary"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Criteria and Indicators -->
+                <div th:each="criterion, critIndex : ${report.criteria}">
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary" th:text="'Criterion ' + (${critIndex.index} + 1)"></h6>
+                        </div>
+
+
+                        <div class="card-body">
+
+                            <h6>Overall</h6>
+                            <div class="row">
+                                <div class="col-xl-4 col-md-4 mb-4">
+                                    <div class="card border-left-primary shadow">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-2">
+                                                    <div class="text-xs text-primary mb-1" >Total</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${#numbers.formatDecimal(criterionScores[critIndex.index], 1, 2)}"></div>
+                                                </div>
+                                            </div>
+                                            <div class="text-xs text-primary mb-1">Thresholds</div>
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="table-responsive">
+                                                    <table class="table table-bordered text-xs">
+                                                        <thead>
+                                                        <tr>
+                                                            <!--                                                                <td>Rank</td>-->
+                                                            <td th:each="threshold : ${criterion.thresholds}" th:text="${threshold.position}">A</td>
+                                                        </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                        <tr>
+                                                            <!--                                                                <td>Threshold</td>-->
+                                                            <td th:each="threshold : ${criterion.thresholds}" >
+                                                                <span th:text="${#numbers.formatDecimal(threshold.value, 1, 2)}"></span>
+                                                                <span th:if="${criterionScores[critIndex.index] >= threshold.value}" class="text-success"><i class="fas fa-check"></i></span>
+                                                                <span th:if="${criterionScores[critIndex.index] < threshold.value}" class="text-danger"><i class="fas fa-times"></i></span>
+                                                            </td>
+                                                        </tr>
+                                                        </tbody>
+
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <h6>Indicators</h6>
+
+                            <div class="row">
+                                <div th:each="indicatorIndex : ${criterion.indicatorIndices}" class="col-xl-2 col-md-2 col-sm-2 mb-2">
+                                    <div class="card border-left-primary shadow">
+                                        <div class="card-body">
+                                            <div class="row no-gutters align-items-center">
+                                                <div class="col mr-1">
+                                                    <div class="text-xs text-primary mb-1" th:text="${report.indicators[indicatorIndex].name}"></div>
+                                                    <div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${#numbers.formatDecimal(indicatorScores[report.indicators[indicatorIndex]], 1, 2)}"></div>
+                                                </div>
+                                                <div class="col mr-1">
+                                                    <a th:href="@{/user/indicators/apply/{id}(id=${report.indicators[indicatorIndex].id})}">
+                                                        <i class="fas fa-info fa-2x text-primary"></i>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>Copyright &copy; ScholarDex 2024</span>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap core JavaScript-->
+<script src="/vendor/jquery/jquery.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+<!-- Core plugin JavaScript-->
+<script src="/vendor/jquery-easing/jquery.easing.min.js"></script>
+
+<!-- Custom scripts for all pages-->
+<script src="/js/sb-admin-2.min.js"></script>
+
+<!-- Page level plugins -->
+<script src="/vendor/datatables/jquery.dataTables.min.js"></script>
+<script src="/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+
+<!-- Page level custom scripts -->
+<script src="/js/demo/datatables-demo.js"></script>
+
+</body>
+</html>

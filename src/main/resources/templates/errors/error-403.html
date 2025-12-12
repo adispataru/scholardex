@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Access Denied</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            padding-top: 50px;
+            padding-bottom: 50px;
+        }
+        .error-container {
+            text-align: center;
+        }
+        .error-container h1 {
+            font-size: 180px;
+            line-height: 180px;
+            font-weight: bold;
+        }
+        .error-container p {
+            font-size: 24px;
+        }
+        .img-fluid {
+            max-width: 70%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+<div class="container error-container">
+    <h2>403</h2>
+    <p class="lead">Oops! You don't have access to this page.</p>
+    <p>It seems you're trying to get somewhere you shouldn't be. Don't worry, it happens to the best of us.</p>
+    <img src="/images/403.webp" alt="Lost in space" class="img-fluid" />
+    <div class="mt-5">
+        <a href="/" class="btn btn-primary">Take Me Home</a>
+        <a href="javascript:history.back()" class="btn btn-secondary">Go Back</a>
+    </div>
+</div>
+
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.7/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Activity Instances</title>
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <style>
+        .chart-container {
+            height: 100px; /* Adjust this value as needed */
+            width: 100px;  /* Adjust this value as needed */
+        }
+    </style>
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <!-- Sidebar -->
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="fragments :: user-sidebar('activityInstances')"></div>
+        <!-- Sidebar Toggler (Sidebar) -->
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <!-- Content Wrapper -->
+    <div id="content-wrapper" class="d-flex flex-column">
+        <!-- Main Content -->
+        <div id="content">
+            <!-- Topbar -->
+            <div th:replace="fragments :: navbar"></div>
+
+            <!-- Begin Page Content -->
+            <div class="container-fluid">
+                <!-- Page Heading -->
+                <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                    <h1 class="h3 mb-2 text-gray-800">Activity Instances</h1>
+                    <button class="btn btn-primary" data-toggle="modal" data-target="#createActivityInstanceModal">
+                        <i class="fas fa-plus"></i> Create New Activity Instance
+                    </button>
+                </div>
+
+                <div class="row">
+                    <div class="col-xl-12 col-md-12 mb-12">
+                        <div class="card border-left-primary shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                            Activity Types</div>
+                                        <div class="chart-container">
+                                            <canvas id="activityTypeChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DataTales Example -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Activity Instances</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                <thead>
+                                <tr>
+                                    <th>Activity</th>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Fields</th>
+                                    <th>Actions</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="instance : ${activityInstances}">
+                                    <td th:text="${instance.name}"></td>
+                                    <td th:text="${instance.date}"></td>
+                                    <td th:text="${instance.activity.name}"></td>
+                                    <td>
+                                        <ul th:if="${instance.fields!=null}">
+                                            <li th:each="entry : ${instance.fields.entrySet()}" th:text="${entry.key + ': ' + entry.value}"></li>
+                                        </ul>
+                                        <ul th:if="${instance.referenceFields!=null}">
+                                            <li th:each="entry : ${instance.referenceFields.entrySet()}" th:text="${entry.key + ': ' + entry.value}"></li>
+                                        </ul>
+                                    </td>
+                                    <td>
+                                        <a th:href="@{/user/activityInstances/edit/{id}(id=${instance.id})}" class="btn btn-primary btn-sm">Edit</a>
+                                        <a th:href="@{/user/activityInstances/delete/{id}(id=${instance.id})}" class="btn btn-danger btn-sm">Delete</a>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- End of Main Content -->
+
+            <!-- Footer -->
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>Copyright &copy; ScholarDex 2024</span>
+                    </div>
+                </div>
+            </footer>
+            <!-- End of Footer -->
+        </div>
+        <!-- End of Content Wrapper -->
+    </div>
+    <!-- End of Page Wrapper -->
+
+    <!-- Scroll to Top Button-->
+    <a class="scroll-to-top rounded" href="#page-top">
+        <i class="fas fa-angle-up"></i>
+    </a>
+</div>
+
+<!-- Create Activity Instance Modal -->
+<div class="modal fade" id="createActivityInstanceModal" tabindex="-1" role="dialog" aria-labelledby="createActivityInstanceModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createActivityInstanceModalLabel">Create New Activity Instance</h5>
+                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form th:action="@{/user/activityInstances/create}" th:object="${newActivityInstance}" method="post">
+                    <div class="form-group">
+                        <label for="activitySelect">Activity</label>
+                        <select class="form-control" id="activitySelect" th:field="*{activity}" required>
+                            <option th:each="activity : ${activities}" th:value="${activity.id}" th:text="${activity.name}"></option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" th:field="*{researcherId}" th:value="*{researcherId}" hidden>
+                    </div>
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" class="form-control" id="name" th:field="*{name}" th:value="*{date}">
+                    </div>
+                    <div class="form-group">
+                        <label for="date">Date</label>
+                        <input type="text" id="date" class="form-control" th:field="*{date}" th:value="*{date}">
+                    </div>
+                    <div class="form-group" id="dynamicFieldsContainer">
+                        <!-- Dynamic fields will be populated here based on the selected activity -->
+                    </div>
+                    <div class="form-group" id="dynamicRefFieldsContainer">
+                        <!-- Dynamic fields will be populated here based on the selected activity -->
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap core JavaScript-->
+<script src="/vendor/jquery/jquery.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+<!-- Core plugin JavaScript-->
+<script src="/vendor/jquery-easing/jquery.easing.min.js"></script>
+
+<!-- Custom scripts for all pages-->
+<script src="/js/sb-admin-2.min.js"></script>
+
+<!-- Page level plugins -->
+<script src="/vendor/datatables/jquery.dataTables.min.js"></script>
+<script src="/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+
+<script src="/vendor/chart.js/Chart.js"></script>
+<script th:inline="javascript">
+    $(document).ready(function() {
+        // Data for the pie chart
+        var activityLabels = /*[[${activityLabels}]]*/ [];
+        var activityData = /*[[${activityData}]]*/ [];
+        var allReferences = /*[[${referenceTypes}]]*/ [];
+
+        var ctx = document.getElementById("activityTypeChart");
+        var myPieChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: activityLabels,
+                datasets: [{
+                    data: activityData,
+                    backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b'],
+                    hoverBackgroundColor: ['#2e59d9', '#17a673', '#2c9faf', '#d4a60b', '#e02d1b'],
+                    hoverBorderColor: "rgba(234, 236, 244, 1)",
+                }],
+            },
+            options: {
+                maintainAspectRatio: false,
+                tooltips: {
+                    backgroundColor: "rgb(255,255,255)",
+                    bodyFontColor: "#858796",
+                    borderColor: '#dddfeb',
+                    borderWidth: 1,
+                    xPadding: 15,
+                    yPadding: 15,
+                    displayColors: false,
+                    caretPadding: 10,
+                },
+                legend: {
+                    display: false
+                },
+                cutoutPercentage: 80,
+            },
+        });
+
+        // Dynamically populate the fields based on the selected activity
+        $('#activitySelect').change(function() {
+            // Get the selected activity ID directly
+            let selectedActivityId = $(this).val();
+
+            let dynamicFieldsContainer = $('#dynamicFieldsContainer');
+            let dynamicRefFieldsContainer = $('#dynamicRefFieldsContainer');
+            dynamicFieldsContainer.empty();
+            dynamicRefFieldsContainer.empty();
+
+            if (selectedActivityId) {
+                // Fetch the activity data
+                $.ajax({
+                    url: `/user/activityInstances/activity/${selectedActivityId}/fields`,
+                    method: 'GET',
+                    success: function(activity) {
+                        $.each(activity.fields, function(index, field) {
+                            let fieldTemplate;
+
+                            if (field.allowedValues && field.allowedValues.length > 0) {
+                                // Create a select dropdown if allowedValues are present
+                                let options = field.allowedValues.map(value => `<option value="${value}">${value}</option>`).join('');
+                                fieldTemplate = `
+                                <div class="form-group">
+                                    <label>${field.name}</label>
+                                    <select class="form-control" name="fields[${field.name}]" required>
+                                        ${options}
+                                    </select>
+                                </div>`;
+                            } else {
+                                // Create a text input if no allowedValues
+                                fieldTemplate = `
+                                <div class="form-group">
+                                    <label>${field.name}</label>
+                                    <input type="text" class="form-control" name="fields[${field.name}]" ${field.number ? 'type="number"' : 'type="text"'} required>
+                                </div>`;
+                            }
+
+                            dynamicFieldsContainer.append(fieldTemplate);
+                        });
+                        $.each(activity.referenceFields, function(index, field) {
+                            let fieldTemplate;
+
+
+                            // Create a text input if no allowedValues
+                            fieldTemplate = `
+                            <div class="form-group">
+                                <label>${field}</label>
+                                <input type="text" class="form-control" name="referenceFields[${field}]" type="text"} required>
+                            </div>`;
+
+
+                            dynamicRefFieldsContainer.append(fieldTemplate);
+                        });
+                    }
+                });
+            }
+        });
+    });
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Institutions</title>
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <!-- Sidebar -->
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="fragments :: admin-sidebar('institutions')"></div>
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <!-- Content Wrapper -->
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="fragments :: navbar"></div>
+            <div class="container-fluid">
+                <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                    <h1 class="h3 mb-2 text-gray-800">Institutions</h1>
+                    <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" data-toggle="modal" data-target="#createInstitutionModal">
+                        <i class="fas fa-plus fa-sm text-white-50"></i> Create New Institution
+                    </a>
+                </div>
+                <p class="mb-4">This is a list of all Institutions currently managed by the system.</p>
+
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Detailed View of Institutions</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Description</th>
+                                    <th>Scopus Affiliations</th>
+                                    <th>WoS Affiliations</th>
+                                    <th>Actions</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="institution : ${institutions}">
+                                    <td th:text="${institution.name}">Institution Name</td>
+                                    <td th:text="${institution.description}"></td>
+                                    <td>
+                                        <ul>
+                                            <li th:each="affiliation : ${institution.scopusAffiliations}" th:text="${affiliation.name}"></li>
+                                        </ul>
+                                    </td>
+                                    <td>
+                                        <ul>
+                                            <li th:each="wosAff : ${institution.wosAffiliations}" th:text="${wosAff}"></li>
+                                        </ul>
+                                    </td>
+                                    <td>
+                                        <a th:href="@{/admin/institutions/edit/{name}(name=${institution.name})}" class="btn btn-primary btn-sm">Edit</a>
+                                        <a th:href="@{/admin/institutions/{name}/publications(name=${institution.name})}" class="btn btn-info btn-sm">Publications</a>
+                                        <a th:href="@{/admin/institutions/delete/{name}(name=${institution.name})}" class="btn btn-danger btn-sm">Delete</a>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>Copyright &copy; ScholarDex 2024</span>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<!-- Create Institution Modal-->
+<div class="modal fade" id="createInstitutionModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Create New Institution</h5>
+                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form th:action="@{/admin/institutions/create}" th:object="${institution}" method="post">
+                    <div class="form-group">
+                        <label for="institutionName">Name</label>
+                        <input type="text" class="form-control" id="institutionName" th:field="*{name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="institutionDescription">Description</label>
+                        <textarea class="form-control" id="institutionDescription" th:field="*{description}" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="scopusAffiliations">Scopus Affiliations</label>
+                        <div id="scopusAffiliationsContainer">
+                            <div class="input-group mb-2" th:each="affiliation, iterStat : *{scopusAffiliations}">
+                                <select class="form-control" th:field="*{scopusAffiliations[__${iterStat.index}__]}" th:selected="${affiliation}">
+                                    <option th:each="affiliation : ${allAffiliations}" th:value="${affiliation.afid}" th:text="${affiliation.name}"></option>
+                                </select>
+                                <div class="input-group-append">
+                                    <button class="btn btn-danger remove-scopus-affiliation" type="button">Remove</button>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="addScopusAffiliation" class="btn btn-primary" type="button">Add Scopus Affiliation</button>
+                    </div>
+                    <div class="form-group">
+                        <label for="wosAffiliations">WoS Affiliations</label>
+                        <div id="wosAffiliationsContainer">
+                            <div class="input-group mb-2" th:each="wosAff, iterStat : *{wosAffiliations}">
+                                <input type="text" class="form-control" th:field="*{wosAffiliations[__${iterStat.index}__]}" th:value="${wosAff}">
+                                <div class="input-group-append">
+                                    <button class="btn btn-danger remove-wos-affiliation" type="button">Remove</button>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="addWosAffiliation" class="btn btn-primary" type="button">Add WoS Affiliation</button>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap core JavaScript-->
+<script src="/vendor/jquery/jquery.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/vendor/jquery-easing/jquery.easing.min.js"></script>
+<script src="/js/sb-admin-2.min.js"></script>
+<script src="/vendor/datatables/jquery.dataTables.min.js"></script>
+<script src="/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+<script src="/js/demo/datatables-demo.js"></script>
+
+<script th:inline="javascript">
+    $(document).ready(function() {
+        let allAffiliations = /*[[${allAffiliations}]]*/ [];
+        let scopusAffiliationsContainer = $('#scopusAffiliationsContainer');
+        let wosAffiliationsContainer = $('#wosAffiliationsContainer');
+
+        $('#addScopusAffiliation').click(function() {
+            let index = scopusAffiliationsContainer.children().length;
+            let scopusAffiliationTemplate = `
+                <div class="input-group mb-2">
+                    <select class="form-control" name="scopusAffiliations[${index}]">
+                        ${allAffiliations.map(affiliation => `<option value="${affiliation.afid}">${affiliation.name + ' (' + affiliation.afid + ')'}</option>`).join('')}
+                    </select>
+                    <div class="input-group-append">
+                        <button class="btn btn-danger remove-scopus-affiliation" type="button">Remove</button>
+                    </div>
+                </div>`;
+            scopusAffiliationsContainer.append(scopusAffiliationTemplate);
+        });
+
+        scopusAffiliationsContainer.on('click', '.remove-scopus-affiliation', function() {
+            $(this).closest('.input-group').remove();
+            // Optionally, update the indices of the remaining elements
+            scopusAffiliationsContainer.children().each(function(index, element) {
+                $(element).find('select').attr('name', `scopusAffiliations[${index}]`);
+            });
+        });
+
+        $('#addWosAffiliation').click(function() {
+            let index = wosAffiliationsContainer.children().length;
+            let wosAffiliationTemplate = `
+                <div class="input-group mb-2">
+                    <input type="text" class="form-control" name="wosAffiliations[${index}]">
+                    <div class="input-group-append">
+                        <button class="btn btn-danger remove-wos-affiliation" type="button">Remove</button>
+                    </div>
+                </div>`;
+            wosAffiliationsContainer.append(wosAffiliationTemplate);
+        });
+
+        wosAffiliationsContainer.on('click', '.remove-wos-affiliation', function() {
+            $(this).closest('.input-group').remove();
+            // Optionally, update the indices of the remaining elements
+            wosAffiliationsContainer.children().each(function(index, element) {
+                $(element).find('input').attr('name', `wosAffiliations[${index}]`);
+            });
+        });
+    });
+</script>
+</body>
+</html>

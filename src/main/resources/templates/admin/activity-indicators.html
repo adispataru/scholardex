@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Activity Indicators</title>
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+    <style>
+        .custom-tooltip .tooltip-inner {
+            max-width: 300px; /* Adjust the width as needed */
+            width: 300px;    /* Ensure the tooltip takes the full width */
+        }
+    </style>
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <!-- Sidebar -->
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="fragments :: admin-sidebar('activity-indicators')"></div>
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <!-- Content Wrapper -->
+    <div id="content-wrapper" class="d-flex flex-column">
+        <!-- Main Content -->
+        <div id="content">
+            <!-- Topbar -->
+            <div th:replace="fragments :: navbar"></div>
+
+            <!-- Begin Page Content -->
+            <div class="container-fluid">
+                <!-- Page Heading + Create Button -->
+                <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                    <h1 class="h3 mb-0 text-gray-800">Activity Indicators</h1>
+                    <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"
+                       data-toggle="modal" data-target="#createIndicatorModal">
+                        <i class="fas fa-plus fa-sm text-white-50"></i> Create New Activity Indicator
+                    </a>
+                </div>
+                <p class="mb-4">This is a list of all Activity Indicators currently managed by the system.</p>
+
+                <!-- DataTables Card -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Detailed View of Activity Indicators</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Formula</th>
+                                    <th>Activity</th>
+                                    <th>Actions</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="indicator : ${indicators}">
+                                    <td th:text="${indicator.name}">Indicator Name</td>
+                                    <td th:text="${indicator.formula}">Indicator Formula</td>
+                                    <td th:text="${indicator.activity.name}">Activity Name</td>
+                                    <td>
+                                        <a th:href="@{'/admin/activities/activityIndicators/edit/' + ${indicator.id}}"
+                                           class="btn btn-primary btn-sm">Edit</a>
+                                        <a th:href="@{'/admin/activities/activityIndicators/delete/' + ${indicator.id}}"
+                                           class="btn btn-danger btn-sm">Delete</a>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- End of Page Content -->
+
+            <!-- Footer -->
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>Copyright &copy; ScholarDex 2024</span>
+                    </div>
+                </div>
+            </footer>
+            <!-- End of Footer -->
+        </div>
+        <!-- End of Main Content -->
+    </div>
+    <!-- End of Content Wrapper -->
+</div>
+<!-- End of Page Wrapper -->
+
+<!-- Create Activity Indicator Modal -->
+<div class="modal fade" id="createIndicatorModal" tabindex="-1" role="dialog"
+     aria-labelledby="createIndicatorModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Activity Indicator</h5>
+                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form th:action="@{/admin/activities/activityIndicators/create}"
+                      th:object="${activityIndicator}" method="post">
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" class="form-control" id="name"
+                               th:field="*{name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="activity">Activity</label>
+                        <select class="form-control" id="activity"
+                                th:field="*{activity}" required>
+                            <option
+                                    th:each="act : ${activities}"
+                                    th:value="${act.id}"
+                                    th:text="${act.name}"
+                                    th:attr="data-description=${activityDescriptions[act.id]}">
+                            </option>
+                        </select>
+                        <small id="activityDescription" class="form-text text-muted mt-1"></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="formula">Formula</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="formula"
+                                   th:field="*{formula}" required>
+                            <div class="input-group-append">
+                                <button class="btn btn-info" type="button"
+                                        data-toggle="tooltip"
+                                        data-html="true"
+                                        title="<ol><li>N: number of authors</li><li>S: score for publication</li><li>allowed symbols: +, -, *, /, max(x,y)</li><li>conditions: (a > b) ? (3 + a) : (4 + b)</li><ul><li>(S > 1.0) ? (3 + 3 * S) : (3 + S)</li></ul></ol>"
+                                        data-placement="right"
+                                        data-template='<div class="tooltip custom-tooltip" role="tooltip"><div class="arrow"></div><div class="tooltip-inner"></div></div>'>
+                                    ?
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" type="button"
+                                data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Create</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scroll to Top Button-->
+<a class="scroll-to-top rounded" href="#page-top">
+    <i class="fas fa-angle-up"></i>
+</a>
+
+<!-- Bootstrap core & SB Admin scripts -->
+<script src="/vendor/jquery/jquery.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/vendor/jquery-easing/jquery.easing.min.js"></script>
+<script src="/js/sb-admin-2.min.js"></script>
+<!-- DataTables scripts -->
+<script src="/vendor/datatables/jquery.dataTables.min.js"></script>
+<script src="/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+<script src="/js/demo/datatables-demo.js"></script>
+
+<script>
+    $(document).ready(function() {
+        // Enable tooltips
+        $('[data-toggle="tooltip"]').tooltip();
+        // Initialize DataTable
+        $('#dataTable').DataTable();
+        // whenever the select changes, pull the `data-description` from the chosen <option>
+        $('#activity')
+            .on('change', function(){
+                const desc = $(this)
+                    .find('option:selected')
+                    .data('description') || '';
+                $('#activityDescription').text(desc);
+            })
+            // prime it on page-load so the default selection shows its description
+            .trigger('change');
+
+    });
+</script>
+</body>
+</html>

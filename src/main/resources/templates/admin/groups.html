@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Groups</title>
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <!-- Sidebar -->
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="fragments :: admin-sidebar('groups')"></div>
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <!-- Content Wrapper -->
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="fragments :: navbar"></div>
+            <div class="container-fluid">
+                <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                    <h1 class="h3 mb-2 text-gray-800">Groups</h1>
+<!--                    divs to show errorMessage or successMessage if present-->
+                    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+                    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+                    <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" data-toggle="modal" data-target="#createGroupModal">
+                        <i class="fas fa-plus fa-sm text-white-50"></i> Create New Group
+                    </a>
+                    <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" data-toggle="modal" data-target="#importGroupModal">
+                        <i class="fas fa-plus fa-sm text-white-50"></i> Import CSV
+                    </a>
+                </div>
+                <p class="mb-4">This is a list of all Groups currently managed by the system.</p>
+
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Detailed View of Groups</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Description</th>
+                                    <th>Domains</th>
+                                    <th>Affiliation</th>
+                                    <th>Researchers</th>
+                                    <th>Actions</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="group : ${groups}">
+                                    <td th:text="${group.name}">Group Name</td>
+                                    <td th:text="${group.description}"></td>
+                                    <td>
+                                        <ul>
+                                            <li th:each="domain : ${group.domains}" th:text="${domain.name}"></li>
+                                        </ul>
+                                    </td>
+                                    <td th:text="${group.institution.name}"></td>
+                                    <td>
+                                        <ul>
+                                            <li th:each="researcher : ${group.researchers}" th:text="${researcher.name}"></li>
+                                        </ul>
+                                    </td>
+                                    <td>
+                                        <a th:href="@{/admin/groups/edit/{id}(id=${group.id})}" class="btn btn-primary btn-sm">Edit</a>
+                                        <a th:href="@{/admin/groups/{id}/publications(id=${group.id})}" class="btn btn-info btn-sm">See publications</a>
+                                        <a th:href="@{/admin/groups/delete/{id}(id=${group.id})}" class="btn btn-danger btn-sm">Delete</a>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>Copyright &copy; ScholarDex 2024</span>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<!-- Create Group Modal-->
+<div class="modal fade" id="createGroupModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Create New Group</h5>
+                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form th:action="@{/admin/groups/create}" th:object="${group}" method="post">
+                    <div class="form-group">
+                        <label for="groupName">Name</label>
+                        <input type="text" class="form-control" id="groupName" th:field="*{name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="groupDescription">Description</label>
+                        <textarea class="form-control" id="groupDescription" th:field="*{description}" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="groupDomains">Domains</label>
+                        <div id="domainsContainer">
+                            <div class="input-group mb-2" th:each="domain, iterStat : *{domains}">
+                                <select class="form-control" th:field="*{domains[__${iterStat.index}__]}" th:selected="${domain}">
+                                    <option th:each="domain : ${allDomains}" th:value="${domain.id}" th:text="${domain.name}"></option>
+                                </select>
+                                <div class="input-group-append">
+                                    <button class="btn btn-danger remove-domain" type="button">Remove</button>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="addDomain" class="btn btn-primary" type="button">Add Domain</button>
+                    </div>
+                    <div class="form-group">
+                        <label for="groupAffiliation">Affiliation</label>
+                        <select class="form-control" id="groupAffiliation" th:field="*{institution}">
+                            <option th:each="affiliation : ${affiliations}" th:value="${affiliation.name}" th:text="${affiliation.name}"></option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="groupResearchers">Researchers</label>
+                        <div id="researchersContainer">
+                            <div class="input-group mb-2" th:each="researcher, iterStat : *{researchers}">
+                                <select class="form-control" th:field="*{researchers[__${iterStat.index}__]}" th:selected="${researcher}">
+                                    <option th:each="researcher : ${allResearchers}" th:value="${researcher.id}" th:text="${researcher.name}"></option>
+                                </select>
+                                <div class="input-group-append">
+                                    <button class="btn btn-danger remove-researcher" type="button">Remove</button>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="addResearcher" class="btn btn-primary" type="button">Add Researcher</button>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Group Modal-->
+<div class="modal fade" id="importGroupModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importModalLabel">Import Group from CSV</h5>
+                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form th:action="@{/admin/groups/import}" method="post" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="groupFile">CSV File</label>
+                        <input type="file" class="form-control-file" id="groupFile" name="file" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Import</button>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap core JavaScript-->
+<script src="/vendor/jquery/jquery.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/vendor/jquery-easing/jquery.easing.min.js"></script>
+<script src="/js/sb-admin-2.min.js"></script>
+<script src="/vendor/datatables/jquery.dataTables.min.js"></script>
+<script src="/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+<script src="/js/demo/datatables-demo.js"></script>
+
+<script th:inline="javascript">
+    $(document).ready(function() {
+        let allDomains = /*[[${allDomains}]]*/ [];
+        let domainsContainer = $('#domainsContainer');
+        let allResearchers = /*[[${allResearchers}]]*/ [];
+        let researchersContainer = $('#researchersContainer');
+
+        $('#addDomain').click(function() {
+            let index = domainsContainer.children().length;
+            let domainTemplate = `
+                <div class="input-group mb-2">
+                    <select class="form-control" name="domains[${index}]">
+                        ${allDomains.map(domain => `<option value="${domain.id}">${domain.name}</option>`).join('')}
+                    </select>
+                    <div class="input-group-append">
+                        <button class="btn btn-danger remove-domain" type="button">Remove</button>
+                    </div>
+                </div>`;
+            domainsContainer.append(domainTemplate);
+        });
+
+        domainsContainer.on('click', '.remove-domain', function() {
+            $(this).closest('.input-group').remove();
+            // Optionally, update the indices of the remaining elements
+            domainsContainer.children().each(function(index, element) {
+                $(element).find('select').attr('name', `domains[${index}]`);
+            });
+        });
+
+        $('#addResearcher').click(function() {
+            let index = researchersContainer.children().length;
+            let researcherTemplate = `
+                <div class="input-group mb-2">
+                    <select class="form-control" name="researchers[${index}]">
+                        ${allResearchers.map(researcher => `<option value="${researcher.id}">${researcher.name}</option>`).join('')}
+                    </select>
+                    <div class="input-group-append">
+                        <button class="btn btn-danger remove-researcher" type="button">Remove</button>
+                    </div>
+                </div>`;
+            researchersContainer.append(researcherTemplate);
+        });
+
+        researchersContainer.on('click', '.remove-researcher', function() {
+            $(this).closest('.input-group').remove();
+            // Optionally, update the indices of the remaining elements
+            researchersContainer.children().each(function(index, element) {
+                $(element).find('select').attr('name', `researchers[${index}]`);
+            });
+        });
+    });
+</script>
+</body>
+</html>

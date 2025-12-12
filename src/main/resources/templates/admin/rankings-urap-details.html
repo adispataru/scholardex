@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>URAP Ranking Details</title>
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <!-- Sidebar -->
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="fragments :: admin-sidebar('rankings-urap')"></div>
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <!-- Content Wrapper -->
+    <div id="content-wrapper" class="d-flex flex-column">
+        <!-- Main Content -->
+        <div id="content">
+            <div th:replace="fragments :: navbar"></div>
+            <div class="container-fluid">
+                <h1 class="h3 mb-2 text-gray-800">URAP University Ranking Details</h1>
+                <p class="mb-4">Detailed information about the selected university ranking.</p>
+
+                <!-- University Details -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary" th:text="${ranking.name}">University Name</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Country:</strong> <span th:text="${ranking.country}">Country</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Graphs -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Yearly Total Score</h6>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="totalScoreChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Yearly Rank</h6>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="rankChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Add more graphs for other fields -->
+                <div class="card shadow mb-4" th:each="field : ${fields}">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary" th:text="'Yearly ' + ${field}"></h6>
+                    </div>
+                    <div class="card-body">
+                        <canvas th:attr="id=${field + 'Chart'}"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>Copyright &copy; ScholarDex 2024</span>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <a class="scroll-to-top rounded" href="#page-top">
+        <i class="fas fa-angle-up"></i>
+    </a>
+</div>
+
+<script th:inline="javascript">
+    // Define the years and data
+    var yearlyScores = /*[[${ranking.scores}]]*/ '{}';
+    var labels = Object.keys(yearlyScores);
+
+    // Function to extract data for a specific field
+    function getFieldData(field) {
+        return labels.map(year => yearlyScores[year]?.[field] || 0);
+    }
+
+    // Render the Total Score chart
+    var ctxTotal = document.getElementById('totalScoreChart').getContext('2d');
+    new Chart(ctxTotal, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Total Score',
+                data: getFieldData('total'),
+                backgroundColor: "rgba(78, 115, 223, 0.05)",
+                borderColor: "rgba(78, 115, 223, 1)",
+                pointRadius: 3,
+                pointBackgroundColor: "rgba(78, 115, 223, 1)",
+                pointBorderColor: "rgba(78, 115, 223, 1)",
+                pointHoverRadius: 3,
+                pointHoverBackgroundColor: "rgba(78, 115, 223, 1)",
+                pointHoverBorderColor: "rgba(78, 115, 223, 1)",
+                pointHitRadius: 10,
+                pointBorderWidth: 2
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            scales: {
+                xAxes: [{ ticks: { maxTicksLimit: labels.length } }],
+                yAxes: [{ ticks: { beginAtZero: true } }]
+            }
+        }
+    });
+
+    // Render the Rank chart
+    var ctxRank = document.getElementById('rankChart').getContext('2d');
+    new Chart(ctxRank, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Rank',
+                data: getFieldData('rank'),
+                backgroundColor: "rgba(255, 99, 132, 0.05)",
+                borderColor: "rgba(255, 99, 132, 1)",
+                pointRadius: 3,
+                pointBackgroundColor: "rgba(255, 99, 132, 1)",
+                pointBorderColor: "rgba(255, 99, 132, 1)",
+                pointHoverRadius: 3,
+                pointHoverBackgroundColor: "rgba(255, 99, 132, 1)",
+                pointHoverBorderColor: "rgba(255, 99, 132, 1)",
+                pointHitRadius: 10,
+                pointBorderWidth: 2
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            scales: {
+                xAxes: [{ ticks: { maxTicksLimit: labels.length } }],
+                yAxes: [{ ticks: { beginAtZero: true } }]
+            }
+        }
+    });
+
+    // Render charts for other fields dynamically
+    ['article', 'citation', 'totalDocument', 'AIT', 'CIT', 'collaboration'].forEach(field => {
+        var ctx = document.getElementById(field + 'Chart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: field.charAt(0).toUpperCase() + field.slice(1),
+                    data: getFieldData(field),
+                    backgroundColor: "rgba(54, 162, 235, 0.05)",
+                    borderColor: "rgba(54, 162, 235, 1)",
+                    pointRadius: 3,
+                    pointBackgroundColor: "rgba(54, 162, 235, 1)",
+                    pointBorderColor: "rgba(54, 162, 235, 1)",
+                    pointHoverRadius: 3,
+                    pointHoverBackgroundColor: "rgba(54, 162, 235, 1)",
+                    pointHoverBorderColor: "rgba(54, 162, 235, 1)",
+                    pointHitRadius: 10,
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    xAxes: [{ ticks: { maxTicksLimit: labels.length } }],
+                    yAxes: [{ ticks: { beginAtZero: true } }]
+                }
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

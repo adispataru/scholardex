@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Publication</title>
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="fragments :: user-sidebar('publications')"></div>
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="fragments :: navbar"></div>
+            <div class="container-fluid">
+                <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                    <h1 class="h3 mb-0 text-gray-800">Edit Publication</h1>
+                </div>
+
+                <form th:action="@{/user/publications/add/step3}" th:object="${publication}" method="post">
+                    <div class="form-group">
+                        <label for="title">Title</label>
+                        <input type="text" class="form-control" id="title" th:field="*{title}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="title">DOI</label>
+                        <input type="text" class="form-control" id="doi" th:field="*{doi}" placeholder="e.g. 10.1000/182">
+                    </div>
+                    <div class="form-group">
+                        <input type="hidden" class="form-control" id="creator" th:field="*{creator}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="subTypeDescription">Type</label>
+                        <select class="form-control" id="subTypeDescription" th:selected="*{subtypeDescription}" th:field="*{subtypeDescription}" required>
+                            <option value="Article">Article</option>
+                            <option value="Book">Book</option>
+                            <option value="Book Chapter">Book Chapter</option>
+                            <option value="Conference Paper">Conference Paper</option>
+                            <option value="Data Paper">Data Paper</option>
+                            <option value="Editorial">Editorial</option>
+                            <option value="Erratum">Erratum</option>
+                            <option value="Letter">Letter</option>
+                            <option value="Note">Note</option>
+                            <option value="Review">Review</option>
+                            <option value="Short Survey">Short Survey</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+<!--                        <label for="subtype">Type</label>-->
+                        <input type="hidden" class="form-control" id="subtype" th:field="*{subtype}">
+                    </div>
+                    <div class="form-group">
+                        <label for="coverDisplayDate">Date</label>
+                        <input type="text" class="form-control" id="coverDisplayDate" th:field="*{coverDate}" placeholder="YYYY-MM-DD" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="volume">Volume (if applicable)</label>
+                        <input type="text" class="form-control" id="volume" th:field="*{volume}">
+                    </div>
+                    <div class="form-group">
+                        <label for="issueIdentifier">Issue Identifier (if applicable)</label>
+                        <input type="text" class="form-control" id="issueIdentifier" th:field="*{issueIdentifier}">
+                    </div>
+                    <div class="form-group">
+<!--                        <label for="venue">Forum</label>-->
+                        <input type="hidden" class="form-control" id="venue" th:field="*{forum}">
+                    </div>
+                    <div class="form-group">
+                        <!--                        <label for="venue">Forum</label>-->
+                        <input type="hidden" class="form-control" id="authors" th:field="*{authors}">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </form>
+            </div>
+        </div>
+
+        <footer class="sticky-footer bg-white">
+            <div class="container my-auto">
+                <div class="copyright text-center my-auto">
+                    <span>Copyright &copy; ScholarDex 2024</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+</div>
+
+<a class="scroll-to-top rounded" href="#page-top">
+    <i class="fas fa-angle-up"></i>
+</a>
+
+<script src="/vendor/jquery/jquery.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/vendor/jquery-easing/jquery.easing.min.js"></script>
+<script src="/js/sb-admin-2.min.js"></script>
+
+<script>
+    const subTypeMapping = {
+        'Article': 'ar',
+        'Book': 'bk',
+        'Book Chapter': 'ch',
+        'Conference Paper': 'cp',
+        'Data Paper': 'dp',
+        'Editorial': 'ed',
+        'Erratum': 'er',
+        'Letter': 'le',
+        'Note': 'no',
+        'Review': 're',
+        'Short Survey': 'sh'
+    };
+
+    document.getElementById('subTypeDescription').addEventListener('change', function() {
+        const subTypeDescription = this.value;
+        const subtype = subTypeMapping[subTypeDescription];
+        document.getElementById('subtype').value = subtype ? subtype : 'undefined';
+    });
+
+    // Set initial subtype value based on existing subtypeDescription
+    window.onload = function() {
+        const subTypeDescription = document.getElementById('subTypeDescription').value;
+        const subtype = subTypeMapping[subTypeDescription];
+        document.getElementById('subtype').value = subtype ? subtype : 'undefined';
+    };
+</script>
+
+</body>
+</html>

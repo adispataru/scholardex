@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Group Reports</title>
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <!-- Sidebar -->
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="fragments :: admin-sidebar('groupReports')"></div>
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <!-- Content Wrapper -->
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="fragments :: navbar"></div>
+            <div class="container-fluid">
+                <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                    <h1 class="h3 mb-2 text-gray-800">Group Reports</h1>
+                    <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" data-toggle="modal" data-target="#createGroupReportModal">
+                        <i class="fas fa-plus fa-sm text-white-50"></i> Create New Group Report
+                    </a>
+                </div>
+                <p class="mb-4">This is a list of all Group Reports currently managed by the system.</p>
+
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Detailed View of Group Reports</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Description</th>
+                                    <th>Indicators</th>
+                                    <th>Groups</th>
+                                    <th>Actions</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="report : ${groupReports}">
+                                    <td th:text="${report.title}">Report Title</td>
+                                    <td th:text="${report.description}"></td>
+                                    <td>
+                                        <ul>
+                                            <li th:each="indicator : ${report.indicators}" th:text="${indicator.name}"></li>
+                                        </ul>
+                                    </td>
+                                    <td>
+                                        <ul>
+                                            <li th:each="group : ${report.groups}" th:if="${group != null}" th:text="${group.name}"></li>
+                                        </ul>
+                                    </td>
+                                    <td>
+                                        <a th:href="@{/admin/groupReports/edit/{id}(id=${report.id})}" class="btn btn-primary btn-sm">Edit</a>
+                                        <a th:href="@{/admin/groupReports/delete/{id}(id=${report.id})}" class="btn btn-danger btn-sm">Delete</a>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>Copyright &copy; ScholarDex 2024</span>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+</div>
+<!-- Create Group Report Modal-->
+<div class="modal fade" id="createGroupReportModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Create New Group Report</h5>
+                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form th:action="@{/admin/groupReports/create}" th:object="${groupReport}" method="post">
+                    <div class="form-group">
+                        <label for="reportTitle">Title</label>
+                        <input type="text" class="form-control" id="reportTitle" th:field="*{title}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reportDescription">Description</label>
+                        <textarea class="form-control" id="reportDescription" th:field="*{description}" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="reportIndicators">Indicators</label>
+                        <div id="indicatorsContainer">
+                            <div class="input-group mb-2" th:each="indicator, iterStat : *{indicators}">
+                                <select class="form-control" th:field="*{indicators[__${iterStat.index}__]}" th:selected="${indicator}">
+                                    <option th:each="indicator : ${indicators}" th:value="${indicator.id}" th:text="${indicator.name}"></option>
+                                </select>
+                                <div class="input-group-append">
+                                    <button class="btn btn-danger remove-indicator" type="button">Remove</button>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="addIndicator" class="btn btn-primary" type="button">Add Indicator</button>
+                    </div>
+                    <div class="form-group">
+                        <label for="reportGroups">Groups</label>
+                        <div id="groupsContainer">
+                            <div class="input-group mb-2" th:each="group, iterStat : *{groups}">
+                                <select class="form-control" th:field="*{groups[__${iterStat.index}__]}" th:selected="${group}">
+                                    <option th:each="group : ${groups}" th:value="${group.id}" th:text="${group.name}"></option>
+                                </select>
+                                <div class="input-group-append">
+                                    <button class="btn btn-danger remove-group" type="button">Remove</button>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="addGroup" class="btn btn-primary" type="button">Add Group</button>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap core JavaScript-->
+<script src="/vendor/jquery/jquery.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/vendor/jquery-easing/jquery.easing.min.js"></script>
+<script src="/js/sb-admin-2.min.js"></script>
+<script src="/vendor/datatables/jquery.dataTables.min.js"></script>
+<script src="/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+<script src="/js/demo/datatables-demo.js"></script>
+
+<script th:inline="javascript">
+    $(document).ready(function() {
+        let allIndicators = /*[[${indicators}]]*/ [];
+        let indicatorsContainer = $('#indicatorsContainer');
+        let allGroups = /*[[${groups}]]*/ [];
+        let groupsContainer = $('#groupsContainer');
+
+        $('#addIndicator').click(function() {
+            let index = indicatorsContainer.children().length;
+            let indicatorTemplate = `
+                <div class="input-group mb-2">
+                    <select class="form-control" name="indicators[${index}]">
+                        ${allIndicators.map(indicator => `<option value="${indicator.id}">${indicator.name}</option>`).join('')}
+                    </select>
+                    <div class="input-group-append">
+                        <button class="btn btn-danger remove-indicator" type="button">Remove</button>
+                    </div>
+                </div>`;
+            indicatorsContainer.append(indicatorTemplate);
+        });
+
+        indicatorsContainer.on('click', '.remove-indicator', function() {
+            $(this).closest('.input-group').remove();
+            // Optionally, update the indices of the remaining elements
+            indicatorsContainer.children().each(function(index, element) {
+                $(element).find('select').attr('name', `indicators[${index}]`);
+            });
+        });
+
+        $('#addGroup').click(function() {
+            let index = groupsContainer.children().length;
+            let groupTemplate = `
+                <div class="input-group mb-2">
+                    <select class="form-control" name="groups[${index}]">
+                        ${allGroups.map(group => `<option value="${group.id}">${group.name}</option>`).join('')}
+                    </select>
+                    <div class="input-group-append">
+                        <button class="btn btn-danger remove-group" type="button">Remove</button>
+                    </div>
+                </div>`;
+            groupsContainer.append(groupTemplate);
+        });
+
+        groupsContainer.on('click', '.remove-group', function() {
+            $(this).closest('.input-group').remove();
+            // Optionally, update the indices of the remaining elements
+            groupsContainer.children().each(function(index, element) {
+                $(element).find('select').attr('name', `groups[${index}]`);
+            });
+        });
+    });
+</script>
+
+</body>
+</html>

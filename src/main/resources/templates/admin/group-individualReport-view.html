@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${report.title}">Individual Report</title>
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <!-- Sidebar -->
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="fragments :: admin-sidebar('groups')"></div>
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <!-- Content Wrapper -->
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="fragments :: navbar"></div>
+            <div class="container-fluid">
+                <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                    <h1 class="h3 mb-2 text-gray-800" th:text="${report.title}">Individual Report</h1>
+                </div>
+                <p class="mb-4" th:text="${report.description}"></p>
+
+                <div class="table-responsive mt-3">
+                    <table class="table table-bordered">
+                        <thead class="thead-light">
+                        <tr>
+                            <th>Name</th>
+                            <th>Position</th>
+                            <th th:each="crit, index : ${report.criteria}"
+                                th:text="${'C ' + index.index}">Criterion</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="researcher : ${researchers}" th:if="${researcherScores[researcher.id] != null}">
+                            <td th:text="${researcher.name}">Researcher Name</td>
+                            <td th:text="${researcher.position}">Researcher Name</td>
+                            <td th:each="crit, stat : ${report.criteria}">
+                                <span th:text="${#numbers.formatDecimal(researcherScores[researcher.id][stat.index], 1, 2)}">0</span>
+                                <i th:if="${researcher.position != null && !researcher.position.toString().equals('OTHER') && researcherScores[researcher.id][stat.index] >= criteriaThresholds.get(stat.index).get(researcher.position)}"
+                                   class="fas fa-check text-success ml-1"></i>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>Copyright &copy; ScholarDex 2024</span>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap core JavaScript-->
+<script src="/vendor/jquery/jquery.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+<!-- Core plugin JavaScript-->
+<script src="/vendor/jquery-easing/jquery.easing.min.js"></script>
+
+<!-- Custom scripts for all pages-->
+<script src="/js/sb-admin-2.min.js"></script>
+
+<!-- Page level plugins -->
+<script src="/vendor/datatables/jquery.dataTables.min.js"></script>
+<script src="/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+
+<!-- Page level custom scripts -->
+<script src="/js/demo/datatables-demo.js"></script>
+
+</body>
+</html>

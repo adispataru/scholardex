@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Profile</title>
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="fragments :: user-sidebar('profile')"></div>
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="fragments :: navbar"></div>
+            <div class="container-fluid">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h3 mb-0 text-gray-800">Profile</h1>
+                </div>
+
+                <div th:if="${researchProfile == null}">
+                    <button class="btn btn-primary" onclick="toggleEditForm()">Create Profile</button>
+                </div>
+
+                <div th:if="${researchProfile != null}">
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Researcher Profile</h6>
+                        </div>
+                        <div class="card-body">
+                            <h3 th:text="${researchProfile.name}">Researcher Name</h3>
+                            <p th:text="'Google Scholar ID: ' + ${researchProfile.scholarId}"></p>
+                            <p>
+                                <span>Scopus IDs:</span>
+                            <ul>
+                                <li th:each="scopusId : ${researchProfile.scopusId}" th:text="${scopusId}"></li>
+                            </ul>
+                            </p>
+                            <p>
+                                <span>WoS IDs:</span>
+                            <ul>
+                                <li th:each="wosId : ${researchProfile.wosId}" th:text="${wosId}"></li>
+                            </ul>
+                            </p>
+                            <button class="btn btn-primary" onclick="toggleEditForm()">Edit Profile</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="edit-form" style="display: none;">
+                    <form th:action="@{/user/profile/save}" method="post" th:object="${newProfile}">
+                        <div class="form-group">
+                            <label for="research-name">Name</label>
+                            <input type="text" class="form-control" id="research-name" th:field="*{name}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="scholar-id">Google Scholar ID</label>
+                            <input type="text" class="form-control" id="scholar-id" th:field="*{scholarId}">
+                        </div>
+                        <div class="form-group">
+                            <label for="scopus-id">Scopus IDs</label>
+                            <div id="scopus-ids">
+                                <div th:each="scopusId, iterStat : *{scopusId}">
+                                    <input type="text" class="form-control mb-2" th:field="*{scopusId[__${iterStat.index}__]}" th:value="${scopusId}">
+                                    <button type="button" class="btn btn-danger btn-sm" onclick="removeElement(this)">Remove</button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-success btn-sm" onclick="addElement('scopus-ids', 'scopusId')">Add Scopus ID</button>
+                        </div>
+                        <div class="form-group">
+                            <label for="wos-id">WoS IDs</label>
+                            <div id="wos-ids">
+                                <div th:each="wosId, iterStat : *{wosId}">
+                                    <input type="text" class="form-control mb-2" th:field="*{wosId[__${iterStat.index}__]}" th:value="${wosId}">
+                                    <button type="button" class="btn btn-danger btn-sm" onclick="removeElement(this)">Remove</button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-success btn-sm" onclick="addElement('wos-ids', 'wosId')">Add WoS ID</button>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </form>
+                </div>
+            </div>
+
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>Copyright &copy; ScholarDex 2024</span>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <a class="scroll-to-top rounded" href="#page-top">
+        <i class="fas fa-angle-up"></i>
+    </a>
+</div>
+
+<script src="/vendor/jquery/jquery.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/vendor/jquery-easing/jquery.easing.min.js"></script>
+<script src="/js/sb-admin-2.min.js"></script>
+<script>
+    function toggleEditForm() {
+        var editForm = document.getElementById('edit-form');
+        if (editForm.style.display === 'none') {
+            editForm.style.display = 'block';
+        } else {
+            editForm.style.display = 'none';
+        }
+    }
+
+    function addElement(containerId, fieldName) {
+        var container = document.getElementById(containerId);
+        var inputDiv = document.createElement('div');
+        inputDiv.classList.add('mb-2');
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.classList.add('form-control');
+        input.name = fieldName;
+        inputDiv.appendChild(input);
+
+        var removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.classList.add('btn', 'btn-danger', 'btn-sm');
+        removeButton.onclick = function() {
+            container.removeChild(inputDiv);
+        };
+        removeButton.textContent = 'Remove';
+        inputDiv.appendChild(removeButton);
+
+        container.appendChild(inputDiv);
+    }
+
+    function removeElement(element) {
+        element.parentNode.remove();
+    }
+</script>
+</body>
+</html>

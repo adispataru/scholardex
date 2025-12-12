@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Activity</title>
+  <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+  <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+  <link href="/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+  <!-- Sidebar -->
+  <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+    <div th:replace="fragments :: admin-sidebar('activities')"></div>
+    <!-- Sidebar Toggler (Sidebar) -->
+    <div class="text-center d-none d-md-inline">
+      <button class="rounded-circle border-0" id="sidebarToggle"></button>
+    </div>
+  </ul>
+
+  <!-- Content Wrapper -->
+  <div id="content-wrapper" class="d-flex flex-column">
+    <!-- Main Content -->
+    <div id="content">
+      <!-- Topbar -->
+      <div th:replace="fragments :: navbar"></div>
+
+      <!-- Begin Page Content -->
+      <div class="container-fluid">
+        <!-- Page Heading -->
+        <h1 class="h3 mb-2 text-gray-800">Edit Activity</h1>
+        <p class="mb-4" th:text="${activity.name}"></p>
+
+        <!-- DataTables Example -->
+        <div class="card shadow mb-4">
+          <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Update</h6>
+          </div>
+          <div class="card-body">
+            <form th:action="@{/admin/activities/update}" th:object="${activity}" method="post">
+              <div class="form-group">
+                <input type="text" class="form-control" id="activityId" th:field="*{id}" hidden>
+              </div>
+              <div class="form-group">
+                <label for="activityName">Name</label>
+                <input type="text" class="form-control" id="activityName" th:field="*{name}" required>
+              </div>
+              <div class="form-group">
+                <label for="fieldsContainer">Fields</label>
+                <div id="fieldsContainer">
+                  <!-- Dynamically load existing fields and allowed values -->
+                  <div class="card mb-2" th:each="field, fieldIndex : ${activity.fields}">
+                    <div class="card-body">
+                      <div class="form-group">
+                        <label>Field Name</label>
+                        <input type="text" class="form-control" th:field="*{fields[__${fieldIndex.index}__].name}" th:value="${field.name}" required>
+                      </div>
+<!--                      <div class="form-group">-->
+                        <label>Is Number
+                          <input type="checkbox" th:field="*{fields[__${fieldIndex.index}__].number}" th:checked="${field.number}">
+                        </label>
+<!--                      </div>-->
+                      <div class="form-group">
+                        <label>Allowed Values</label>
+                        <div th:id="'allowedValuesContainer'+${fieldIndex}">
+                          <div class="input-group mb-2" th:each="value, valueIndex : ${field.allowedValues}">
+                            <input type="text" class="form-control" th:field="*{fields[__${fieldIndex.index}__].allowedValues[__${valueIndex.index}__]}" th:value="${value}" required>
+                            <div class="input-group-append">
+                              <button class="btn btn-danger remove-allowed-value" type="button">Remove</button>
+                            </div>
+                          </div>
+                        </div>
+                        <button class="btn btn-secondary add-allowed-value" type="button" th:attr="data-field-index=|${fieldIndex}|">Add Allowed Value</button>
+                      </div>
+                      <button class="btn btn-danger remove-field" type="button">Remove Field</button>
+                    </div>
+                  </div>
+                </div>
+                <button id="addField" class="btn btn-primary" type="button">Add Field</button>
+              </div>
+              <div class="form-group">
+                <label for="referencedFieldsContainer">Referenced Fields</label>
+                <div id="referencedFieldsContainer">
+                  <div class="card mb-2" th:each="field, fieldIndex : ${activity.referenceFields}">
+                    <div class="card-body">
+                      <div class="form-group">
+                        <label>Reference</label>
+                        <select class="form-control" id="references" th:name="${field}" th:selected="${field}">
+                            <option th:each="ref : ${referenceTypes}" th:value="${ref}" th:text="${ref}"></option>
+                        </select>
+                      </div>
+                      <button class="btn btn-danger remove-ref-field" type="button">Remove Ref Field</button>
+                    </div>
+                  </div>
+                  <!-- Fields will be dynamically added here -->
+                </div>
+                <button id="addReferencedField" class="btn btn-primary" type="button">Add Ref. Field</button>
+              </div>
+              <button type="submit" class="btn btn-primary">Update</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      <!-- End of Main Content -->
+
+      <!-- Footer -->
+      <footer class="sticky-footer bg-white">
+        <div class="container my-auto">
+          <div class="copyright text-center my-auto">
+            <span>Copyright &copy; ScholarDex 2024</span>
+          </div>
+        </div>
+      </footer>
+      <!-- End of Footer -->
+    </div>
+    <!-- End of Content Wrapper -->
+  </div>
+  <!-- End of Page Wrapper -->
+
+  <!-- Scroll to Top Button-->
+  <a class="scroll-to-top rounded" href="#page-top">
+    <i class="fas fa-angle-up"></i>
+  </a>
+</div>
+
+<!-- Bootstrap core JavaScript-->
+<script src="/vendor/jquery/jquery.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+<!-- Core plugin JavaScript-->
+<script src="/vendor/jquery-easing/jquery.easing.min.js"></script>
+
+<!-- Custom scripts for all pages-->
+<script src="/js/sb-admin-2.min.js"></script>
+
+<!-- Page level plugins -->
+<script src="/vendor/datatables/jquery.dataTables.min.js"></script>
+<script src="/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+
+<script th:inline="javascript">
+  $(document).ready(function() {
+    let allReferences = /*[[${referenceTypes}]]*/ [];
+    let fieldsContainer = $('#fieldsContainer');
+    let refFieldsContainer = $('#referencedFieldsContainer');
+
+    $('#addField').click(function() {
+      let fieldIndex = fieldsContainer.children().length;
+      let fieldTemplate = `
+                <div class="card mb-2">
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Field Name</label>
+                            <input type="text" class="form-control" name="fields[${fieldIndex}].name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Is Number</label>
+                            <input type="checkbox" class="form-control" name="fields[${fieldIndex}].number">
+                        </div>
+                        <div class="form-group">
+                            <label>Allowed Values</label>
+                            <div id="allowedValuesContainer${fieldIndex}">
+                                <!-- This is where allowed values will be dynamically added -->
+                            </div>
+                            <button class="btn btn-secondary add-allowed-value" type="button" data-field-index="${fieldIndex}">Add Allowed Value</button>
+                        </div>
+                        <button class="btn btn-danger remove-field" type="button">Remove Field</button>
+                    </div>
+                </div>`;
+      fieldsContainer.append(fieldTemplate);
+    });
+
+    fieldsContainer.on('click', '.add-allowed-value', function() {
+      let fieldIndex = $(this).attr('data-field-index');
+      let allowedValuesContainer = $(`#allowedValuesContainer${fieldIndex}`);
+      let valueIndex = allowedValuesContainer.children().length;
+      let allowedValueTemplate = `
+                <div class="input-group mb-2">
+                    <input type="text" class="form-control" name="fields[${fieldIndex}].allowedValues[${valueIndex}]" required>
+                    <div class="input-group-append">
+                        <button class="btn btn-danger remove-allowed-value" type="button">Remove</button>
+                    </div>
+                </div>`;
+      allowedValuesContainer.append(allowedValueTemplate);
+    });
+
+    $('#addReferencedField').click(function() {
+      let fieldIndex = refFieldsContainer.children().length;
+      let options = allReferences.map(ref => `<option value="${ref}">${ref}</option>`).join('');
+      let fieldTemplate = `
+                <div class="card mb-2">
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Reference</label>
+                            <select class="form-control" id="references" name="referenceFields[${fieldIndex}]">
+                                ${options}
+                            </select>
+                        </div>
+                        <button class="btn btn-danger remove-ref-field" type="button">Remove Field</button>
+                    </div>
+                </div>`;
+      refFieldsContainer.append(fieldTemplate);
+    });
+
+    refFieldsContainer.on('click', '.remove-ref-field', function() {
+      $(this).closest('.card').remove();
+    });
+
+    fieldsContainer.on('click', '.remove-field', function() {
+      $(this).closest('.card').remove();
+    });
+
+    fieldsContainer.on('click', '.remove-allowed-value', function() {
+      $(this).closest('.input-group').remove();
+    });
+  });
+</script>
+</body>
+</html>

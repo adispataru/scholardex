@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Scopus Update Tasks History</title>
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="/vendor/dataTables/dataTables.bootstrap4.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <!-- Sidebar -->
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="fragments :: user-sidebar('scopus_tasks')"></div>
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <!-- Content Wrapper -->
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="fragments :: navbar"></div>
+            <div class="container-fluid">
+                <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                    <h1 class="h3 mb-0 text-gray-800">Scopus Update Tasks History</h1>
+
+                </div>
+                <div class="card mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Researcher Scopus IDs</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="scopusTable" width="100%" cellspacing="0">
+                                <thead>
+                                <tr>
+                                    <th>Scopus ID</th>
+                                    <th>Actions</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="entry : ${researcher.scopusId}">
+                                    <td th:text="${entry}">1234567890</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-primary"
+                                                th:attr="data-scopus-id=${entry},data-url=@{/user/tasks/scopus/update}"
+                                                onclick="sendScopusUpdate(this)">Update Publications</button>
+                                        <button type="button" class="btn btn-sm btn-primary"
+                                                th:attr="data-scopus-id=${entry},data-url=@{/user/tasks/scopus/updateCitations}"
+                                                onclick="sendScopusCitationsUpdate(this)">Update Citations</button>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Task History</h6>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="m-0 font-weight-bold text-primary">Publication Updates</h6>
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="dataTablePub" width="100%" cellspacing="0">
+                                <thead>
+                                <tr>
+                                    <th>Task ID</th>
+                                    <th>Start Time</th>
+                                    <th>End Time</th>
+                                    <th>Status</th>
+                                    <th>Message</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="task : ${tasks}">
+                                    <td th:text="${task.id}">1</td>
+                                    <td th:text="${task.getInitiatedDate()}">2024-06-01 10:00</td>
+                                    <td th:text="${task.getExecutionDate()}">2024-06-01 10:05</td>
+                                    <td th:text="${task.getStatus()}">SUCCESS</td>
+                                    <td th:text="${task.getMessage()}">Update completed</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <h6 class="m-0 font-weight-bold text-primary mt-4">Citation Updates</h6>
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="dataTableCit" width="100%" cellspacing="0">
+                                <thead>
+                                <tr>
+                                    <th>Task ID</th>
+                                    <th>Start Time</th>
+                                    <th>End Time</th>
+                                    <th>Status</th>
+                                    <th>Message</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="task : ${citationsTasks}">
+                                    <td th:text="${task.id}">1</td>
+                                    <td th:text="${task.getInitiatedDate()}">2024-06-01 10:00</td>
+                                    <td th:text="${task.getExecutionDate()}">2024-06-01 10:05</td>
+                                    <td th:text="${task.getStatus()}">SUCCESS</td>
+                                    <td th:text="${task.getMessage()}">Update completed</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>Copyright &copy; ScholarDex 2024</span>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+    <a class="scroll-to-top rounded" href="#page-top">
+        <i class="fas fa-angle-up"></i>
+    </a>
+</div>
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    function sendScopusUpdate(el){
+        const scopusId = el.getAttribute('data-scopus-id');
+        const url = el.getAttribute('data-url');
+        const headers = {'Content-Type':'application/x-www-form-urlencoded'};
+
+        const csrfHeaderMeta = document.querySelector('meta[name="_csrf_header"]');
+        const csrfTokenMeta = document.querySelector('meta[name="_csrf"]');
+        if (csrfHeaderMeta && csrfTokenMeta) {
+            headers[csrfHeaderMeta.getAttribute('content')] = csrfTokenMeta.getAttribute('content');
+        }
+
+        fetch(url, {
+            method: 'POST',
+            headers: headers,
+            body: new URLSearchParams({ scopusId })
+        }).then(response => {
+            if (!response.ok) throw new Error('Request failed: ' + response.status);
+            return response.text();
+        }).then(text => {
+            let data = null;
+            try { data = JSON.parse(text); } catch (e) { /* response not JSON, continue with defaults */ }
+
+            const id = data && data.id ? data.id : '—';
+            const initiated = data && data.initiatedDate ? data.initiatedDate : new Date().toLocaleString();
+            const execution = data && data.executionDate ? data.executionDate : '';
+            const status = data && data.status ? data.status : 'PENDING';
+            const message = data && data.message ? data.message : 'Update started';
+
+            // If dataTablePubs is initialized, use its API to add the row (keeps paging/sorting)
+            if (window.jQuery && $.fn.dataTablePub && $.fn.dataTablePub.isdataTablePub('#dataTablePub')) {
+                const table = $('#dataTablePub').dataTablePub();
+                table.row.add([id, initiated, execution, status, message]).draw(false);
+            } else {
+                // Fallback DOM insertion: prepend to tbody
+                const tbody = document.querySelector('#dataTablePub tbody');
+                if (tbody) {
+                    const tr = document.createElement('tr');
+                    [id, initiated, execution, status, message].forEach(textVal => {
+                        const td = document.createElement('td');
+                        td.textContent = textVal;
+                        tr.appendChild(td);
+                    });
+                    tbody.insertBefore(tr, tbody.firstChild);
+                }
+            }
+
+            alert('Update sent');
+        }).catch(err => {
+            alert('Error: ' + err.message);
+        });
+    }
+    function sendScopusCitationsUpdate(el){
+        const scopusId = el.getAttribute('data-scopus-id');
+        const url = el.getAttribute('data-url');
+        const headers = {'Content-Type':'application/x-www-form-urlencoded'};
+
+        const csrfHeaderMeta = document.querySelector('meta[name="_csrf_header"]');
+        const csrfTokenMeta = document.querySelector('meta[name="_csrf"]');
+        if (csrfHeaderMeta && csrfTokenMeta) {
+            headers[csrfHeaderMeta.getAttribute('content')] = csrfTokenMeta.getAttribute('content');
+        }
+
+        fetch(url, {
+            method: 'POST',
+            headers: headers,
+            body: new URLSearchParams({ scopusId })
+        }).then(response => {
+            if (!response.ok) throw new Error('Request failed: ' + response.status);
+            return response.text();
+        }).then(text => {
+            let data = null;
+            try { data = JSON.parse(text); } catch (e) { /* response not JSON, continue with defaults */ }
+
+            const id = data && data.id ? data.id : '—';
+            const initiated = data && data.initiatedDate ? data.initiatedDate : new Date().toLocaleString();
+            const execution = data && data.executionDate ? data.executionDate : '';
+            const status = data && data.status ? data.status : 'PENDING';
+            const message = data && data.message ? data.message : 'Update started';
+
+            // If dataTablePubs is initialized, use its API to add the row (keeps paging/sorting)
+            if (window.jQuery && $.fn.dataTableCit && $.fn.dataTableCit.dataTableCit('#dataTableCit')) {
+                const table = $('#dataTableCit').dataTableCit();
+                table.row.add([id, initiated, execution, status, message]).draw(false);
+            } else {
+                // Fallback DOM insertion: prepend to tbody
+                const tbody = document.querySelector('#dataTableCit tbody');
+                if (tbody) {
+                    const tr = document.createElement('tr');
+                    [id, initiated, execution, status, message].forEach(textVal => {
+                        const td = document.createElement('td');
+                        td.textContent = textVal;
+                        tr.appendChild(td);
+                    });
+                    tbody.insertBefore(tr, tbody.firstChild);
+                }
+            }
+
+            alert('Update sent');
+        }).catch(err => {
+            alert('Error: ' + err.message);
+        });
+    }
+    /*]]>*/
+</script>
+<script src="/vendor/jquery/jquery.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/vendor/jquery-easing/jquery.easing.min.js"></script>
+<script src="/js/sb-admin-2.min.js"></script>
+<script src="/vendor/dataTables/jquery.dataTables.min.js"></script>
+<script src="/vendor/dataTables/dataTables.bootstrap4.min.js"></script>
+<script src="/js/demo/dataTables-demo.js"></script>
+</body>
+</html>

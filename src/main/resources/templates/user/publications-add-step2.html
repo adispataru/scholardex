@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Publications</title>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css"/>
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <!-- Sidebar -->
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="fragments :: user-sidebar('publications')"></div>
+        <!-- Sidebar Toggler (Sidebar) -->
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <!-- Content Wrapper -->
+    <div id="content-wrapper" class="d-flex flex-column">
+        <!-- Main Content -->
+        <div id="content">
+            <!-- Topbar -->
+            <div th:replace="fragments :: navbar"></div>
+
+            <!-- Begin Page Content -->
+            <div class="container-fluid">
+                <h1 class="h3 mb-4 text-gray-800">Select Authors</h1>
+                <div class="card shadow">
+                    <div class="card-body">
+                        <form th:action="@{/user/publications/add/step2}" method="post">
+                            <div class="form-group">
+                                <input type="hidden" name="forumId" th:value="${forumId}"/>
+                            </div>
+                            <div class="form-group">
+                                <label for="author-search">Author</label>
+                                <input id="author-search" class="form-control" placeholder="Search author…"/>
+                                <input type="hidden" name="authorIds" id="author-ids"/>
+                            </div>
+                            <button type="button" class="btn btn-secondary" id="add-author-btn">Add Author</button>
+                            <ul class="list-group mt-3" id="selected-authors"></ul>
+                            <button type="submit" class="btn btn-primary mt-4">Next</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <!-- End of Main Content -->
+
+            <!-- Footer -->
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>Copyright &copy; ScholarDex 2024</span>
+                    </div>
+                </div>
+            </footer>
+            <!-- End of Footer -->
+        </div>
+        <!-- End of Content Wrapper -->
+    </div>
+    <!-- End of Page Wrapper -->
+
+    <!-- Scroll to Top Button-->
+    <a class="scroll-to-top rounded" href="#page-top">
+        <i class="fas fa-angle-up"></i>
+    </a>
+</div>
+
+<!-- Bootstrap core JavaScript-->
+<script src="/vendor/jquery/jquery.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+<!-- include jQuery UI CSS & JS after your other scripts -->
+
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+
+<script th:inline="javascript">
+
+    $(document).ready(function() {
+        var authors = /*[[${allAuthors}]]*/ [];
+        var authorMap = {};
+        authors.forEach(function (a) {
+            authorMap[a.name] = a.id;
+        });
+
+        var selected = [];
+        $("#author-search").autocomplete({
+            source: Object.keys(authorMap),
+            minLength: 2
+        });
+
+        $("#add-author-btn").click(function () {
+            var name = $("#author-search").val();
+            var id = authorMap[name];
+            if (id && !selected.includes(id)) {
+                selected.push(id);
+                $("#selected-authors")
+                    .append('<li class="list-group-item">' + name + '</li>');
+                $("#author-ids").val(selected.join(","));
+            }
+            $("#author-search").val("");
+        });
+    });
+</script>
+
+
+<!-- Core plugin JavaScript-->
+<script src="/vendor/jquery-easing/jquery.easing.min.js"></script>
+
+<!-- Custom scripts for all pages-->
+<script src="/js/sb-admin-2.min.js"></script>
+
+<!-- Page level plugins -->
+<script src="/vendor/datatables/jquery.dataTables.min.js"></script>
+<script src="/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+
+<!-- Page level custom scripts -->
+<script src="/js/demo/datatables-demo.js"></script>
+
+<script>
+
+</script>
+
+</body>
+</html>

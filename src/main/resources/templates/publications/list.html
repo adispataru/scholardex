@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Publications List</title>
+    <meta charset="UTF-8"/>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-5">
+<h1>Publications</h1>
+<table class="table table-bordered table-hover">
+    <thead class="thead-dark">
+    <tr>
+        <th>Title</th>
+        <th>Year</th>
+        <th>Authors</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="publication : ${publications}">
+        <td th:text="${publication.title}">Title</td>
+        <td th:text="${publication.year}">Year</td>
+        <td th:text="${#strings.collectionToCommaDelimitedString(publication.authorList)}">Authors</td>
+    </tr>
+    </tbody>
+</table>
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

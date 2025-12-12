@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Activities</title>
+  <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+  <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+  <link href="/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+  <!-- Sidebar -->
+  <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+    <div th:replace="fragments :: admin-sidebar('activities')"></div>
+    <!-- Sidebar Toggler (Sidebar) -->
+    <div class="text-center d-none d-md-inline">
+      <button class="rounded-circle border-0" id="sidebarToggle"></button>
+    </div>
+  </ul>
+
+  <!-- Content Wrapper -->
+  <div id="content-wrapper" class="d-flex flex-column">
+    <!-- Main Content -->
+    <div id="content">
+      <!-- Topbar -->
+      <div th:replace="fragments :: navbar"></div>
+
+      <!-- Begin Page Content -->
+      <div class="container-fluid">
+        <!-- Page Heading -->
+        <div class="d-sm-flex align-items-center justify-content-between mb-4">
+          <h1 class="h3 mb-2 text-gray-800">Activities</h1>
+          <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" data-toggle="modal" data-target="#createActivityModal">
+            <i class="fas fa-plus fa-sm text-white-50"></i> Create New Activity
+          </a>
+        </div>
+        <p class="mb-4">This is a list of all Activities currently managed by the system.</p>
+
+        <!-- DataTables Example -->
+        <div class="card shadow mb-4">
+          <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Detailed View of Activities</h6>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Fields</th>
+                  <th>Ref. Fields</th>
+                  <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="act : ${activities}">
+                  <td th:text="${act.name}"></td>
+                  <td>
+                    <ul>
+                      <li th:each="field : ${act.fields}">
+                        <span th:text="${field.name}"></span>
+                        (<span th:text="${field.isNumber ? 'Number' : 'Text'}"></span>)
+                        <span th:if="${field.allowedValues != null && !field.allowedValues.isEmpty()}">
+                                                    - Allowed Values: <span th:text="${#strings.arrayJoin(field.allowedValues.toArray(), ', ')}"></span>
+                                                </span>
+                      </li>
+                    </ul>
+                  </td>
+                  <td>
+                    <ul>
+                      <li th:each="field : ${act.referenceFields}">
+                        <span th:text="${field}"></span>
+                      </li>
+                    </ul>
+                  </td>
+                  <td>
+                    <a th:href="@{/admin/activities/edit/{id}(id=${act.id})}" class="btn btn-primary btn-sm">Edit</a>
+                    <a th:href="@{/admin/activities/duplicate/{id}(id=${act.id})}" class="btn btn-warning btn-sm">Duplicate</a>
+                    <a th:href="@{/admin/activities/delete/{id}(id=${act.id})}" class="btn btn-danger btn-sm">Delete</a>
+                  </td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- End of Main Content -->
+
+      <!-- Footer -->
+      <footer class="sticky-footer bg-white">
+        <div class="container my-auto">
+          <div class="copyright text-center my-auto">
+            <span>Copyright &copy; ScholarDex 2024</span>
+          </div>
+        </div>
+      </footer>
+      <!-- End of Footer -->
+    </div>
+    <!-- End of Content Wrapper -->
+  </div>
+  <!-- End of Page Wrapper -->
+
+  <!-- Scroll to Top Button-->
+  <a class="scroll-to-top rounded" href="#page-top">
+    <i class="fas fa-angle-up"></i>
+  </a>
+</div>
+
+<!-- Create Activity Modal-->
+<div class="modal fade" id="createActivityModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exampleModalLabel">Create New Activity</h5>
+        <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form th:action="@{/admin/activities/create}" th:object="${activity}" method="post">
+          <div class="form-group">
+            <label for="activityName">Name</label>
+            <input type="text" class="form-control" id="activityName" th:field="*{name}" required>
+          </div>
+          <div class="form-group">
+            <label for="activityFields">Fields</label>
+            <div id="fieldsContainer">
+              <!-- Fields will be dynamically added here -->
+            </div>
+            <button id="addField" class="btn btn-primary" type="button">Add Field</button>
+          </div>
+          <div class="form-group">
+            <label for="activityReferencedFields">Referenced Fields</label>
+            <div id="referencedFieldsContainer">
+              <!-- Fields will be dynamically added here -->
+            </div>
+            <button id="addReferencedField" class="btn btn-primary" type="button">Add Ref. Field</button>
+          </div>
+          <button type="submit" class="btn btn-primary">Create</button>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap core JavaScript-->
+<script src="/vendor/jquery/jquery.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+<!-- Core plugin JavaScript-->
+<script src="/vendor/jquery-easing/jquery.easing.min.js"></script>
+
+<!-- Custom scripts for all pages-->
+<script src="/js/sb-admin-2.min.js"></script>
+
+<!-- Page level plugins -->
+<script src="/vendor/datatables/jquery.dataTables.min.js"></script>
+<script src="/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+
+<!-- Page level custom scripts -->
+<script src="/js/demo/datatables-demo.js"></script>
+
+<script th:inline="javascript">
+  $(document).ready(function() {
+    let allReferences = /*[[${referenceTypes}]]*/ [];
+    let fieldsContainer = $('#fieldsContainer');
+    let refFieldsContainer = $('#referencedFieldsContainer');
+
+    $('#addField').click(function() {
+      let fieldIndex = fieldsContainer.children().length;
+      let fieldTemplate = `
+                <div class="card mb-2">
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Field Name</label>
+                            <input type="text" class="form-control" name="fields[${fieldIndex}].name" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="checkbox" class="form-control" name="fields[${fieldIndex}].isNumber">
+                            <label>Is Number</label>
+                        </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Allowed Values</label>
+                            <div id="allowedValuesContainer${fieldIndex}">
+                                <!-- This is where allowed values will be dynamically added -->
+                            </div>
+                            <button class="btn btn-secondary add-allowed-value" type="button" data-field-index="${fieldIndex}">Add Allowed Value</button>
+                        </div>
+                        <button class="btn btn-danger remove-field" type="button">Remove Field</button>
+                    </div>
+                </div>`;
+      fieldsContainer.append(fieldTemplate);
+    });
+
+    $('#addReferencedField').click(function() {
+        let fieldIndex = refFieldsContainer.children().length;
+        let options = allReferences.map(ref => `<option value="${ref}">${ref}</option>`).join('');
+        let fieldTemplate = `
+                <div class="card mb-2">
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Reference</label>
+                            <select class="form-control" id="references" name="referenceFields[${fieldIndex}]">
+                                ${options}
+                            </select>
+                        </div>
+                        <button class="btn btn-danger remove-ref-field" type="button">Remove Field</button>
+                    </div>
+                </div>`;
+        refFieldsContainer.append(fieldTemplate);
+    });
+
+    fieldsContainer.on('click', '.add-allowed-value', function() {
+      let fieldIndex = $(this).attr('data-field-index');
+      let allowedValuesContainer = $(`#allowedValuesContainer${fieldIndex}`);
+      let valueIndex = allowedValuesContainer.children().length;
+      let allowedValueTemplate = `
+                <div class="input-group mb-2">
+                    <input type="text" class="form-control" name="fields[${fieldIndex}].allowedValues[${valueIndex}]" required>
+                    <div class="input-group-append">
+                        <button class="btn btn-danger remove-allowed-value" type="button">Remove</button>
+                    </div>
+                </div>`;
+      allowedValuesContainer.append(allowedValueTemplate);
+    });
+
+    fieldsContainer.on('click', '.remove-field', function() {
+      $(this).closest('.card').remove();
+    });
+
+    refFieldsContainer.on('click', '.remove-ref-field', function() {
+      $(this).closest('.card').remove();
+    });
+
+    fieldsContainer.on('click', '.remove-allowed-value', function() {
+      $(this).closest('.input-group').remove();
+    });
+  });
+</script>
+</body>
+</html>

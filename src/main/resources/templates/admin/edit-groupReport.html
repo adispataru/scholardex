@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Individual Report</title>
+    <link href="/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="/vendor/datatables/dataTables.bootstrap4.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <!-- Sidebar -->
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="fragments :: admin-sidebar('groupReports')"></div>
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <!-- Content Wrapper -->
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="fragments :: navbar"></div>
+            <div class="container-fluid">
+                <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                    <h1 class="h3 mb-2 text-gray-800">Edit Individual Report</h1>
+                </div>
+                <p class="mb-4">Edit the details of the individual report.</p>
+
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Edit Group Report</h6>
+                    </div>
+                    <div class="card-body">
+                        <form th:action="@{/admin/groupReports/update}" th:object="${groupReport}" method="post">
+                            <div class="form-group">
+                                <input type="text" class="form-control" id="reportId" th:field="*{id}" hidden>
+                            </div>
+                            <div class="form-group">
+                                <label for="reportTitle">Title</label>
+                                <input type="text" class="form-control" id="reportTitle" th:field="*{title}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="reportDescription">Description</label>
+                                <textarea class="form-control" id="reportDescription" th:field="*{description}" required></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="reportIndicators">Indicators</label>
+                                <div id="indicatorsContainer">
+                                    <div class="input-group mb-2" th:each="indicator, iterStat : *{indicators}">
+                                        <select class="form-control" th:field="*{indicators[__${iterStat.index}__]}" th:selected="${indicator}">
+                                            <option th:each="indicator, index : ${allIndicators}" th:value="${indicator.id}" th:text="${indicator.name}"></option>
+                                        </select>
+                                        <div class="input-group-append">
+                                            <button class="btn btn-danger remove-indicator" type="button">Remove</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button id="addIndicator" class="btn btn-primary" type="button">Add Indicator</button>
+                            </div>
+
+                            <!-- Criteria Section -->
+                            <div class="form-group">
+                                <label for="criteria">Criteria</label>
+                                <div id="criteriaContainer">
+                                    <div class="card mb-2" th:each="criterion, critIndex : *{criteria}">
+                                        <div class="card-body">
+                                            <h5 class="card-title">Criterion <span th:text="${critIndex.index + 1}"></span></h5>
+                                            <div class="form-group">
+                                                <label>Indicators</label>
+                                                <div class="input-group mb-2" th:each="indicatorIndex, idx : ${criterion.indicatorIndices}">
+                                                    <select class="form-control" th:field="*{criteria[__${critIndex.index}__].indicatorIndices[__${idx.index}__]}" th:selected="${indicatorIndex}">
+                                                        <option th:each="indicator, index : ${reportIndicators}" th:value="${index.index}" th:text="${indicator.name}"></option>
+                                                    </select>
+                                                    <div class="input-group-append">
+                                                        <button class="btn btn-danger remove-indicator" type="button">Remove</button>
+                                                    </div>
+                                                </div>
+                                                <button class="btn btn-primary add-indicator" type="button" th:attr="data-criterion-index=${critIndex.index}">Add Indicator</button>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Thresholds</label>
+                                                <div class="input-group mb-2" th:each="threshold, entryIndex : ${criterion.thresholds}">
+                                                    <select class="form-control" th:field="*{criteria[__${critIndex.index}__].thresholds[__${entryIndex.index}__].position}" th:selected="${threshold.position}">
+                                                        <option th:each="position : ${allPositions}" th:value="${position}" th:text="${position}"></option>
+                                                    </select>
+                                                    <input type="number" step="0.01" class="form-control" th:field="*{criteria[__${critIndex.index}__].thresholds[__${entryIndex.index}__].value}" th:value="${threshold.value}">
+                                                    <div class="input-group-append">
+                                                        <button class="btn btn-danger remove-threshold" type="button">Remove</button>
+                                                    </div>
+                                                </div>
+                                                <button class="btn btn-primary add-threshold" type="button" th:attr="data-criterion-index=${critIndex.index}">Add Threshold</button>
+                                            </div>
+                                            <button class="btn btn-danger remove-criterion" type="button">Remove Criterion</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button id="addCriterion" class="btn btn-primary" type="button">Add Criterion</button>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">Update</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>Copyright &copy; ScholarDex 2024</span>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap core JavaScript-->
+<script src="/vendor/jquery/jquery.min.js"></script>
+<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/vendor/jquery-easing/jquery.easing.min.js"></script>
+<script src="/js/sb-admin-2.min.js"></script>
+<script src="/vendor/datatables/jquery.dataTables.min.js"></script>
+<script src="/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+<script src="/js/demo/datatables-demo.js"></script>
+
+<script th:inline="javascript">
+    $(document).ready(function() {
+        let allIndicators = /*[[${allIndicators}]]*/ [];
+        let allPositions = /*[[${allPositions}]]*/ [];
+        let reportIndicators = /*[[${reportIndicators}]]*/ [];
+        let indicatorsContainer = $('#indicatorsContainer');
+        let criteriaContainer = $('#criteriaContainer');
+
+        $('#addIndicator').click(function() {
+            let index = indicatorsContainer.children().length;
+            let indicatorTemplate = `
+                <div class="input-group mb-2">
+                    <select class="form-control" name="indicators[${index}]">
+                        ${allIndicators.map((indicator, idx) => `<option value="${indicator.id}">${indicator.name}</option>`).join('')}
+                    </select>
+                    <div class="input-group-append">
+                        <button class="btn btn-danger remove-indicator" type="button">Remove</button>
+                    </div>
+                </div>`;
+            indicatorsContainer.append(indicatorTemplate);
+        });
+
+        indicatorsContainer.on('click', '.remove-indicator', function() {
+            $(this).closest('.input-group').remove();
+            // Optionally, update the indices of the remaining elements
+            indicatorsContainer.children().each(function(index, element) {
+                $(element).find('select').attr('name', `indicators[${index}]`);
+            });
+        });
+
+        $('#addCriterion').click(function() {
+            let criterionIndex = criteriaContainer.children().length;
+            let criterionTemplate = `
+                <div class="card mb-2">
+                    <div class="card-body">
+                        <h5 class="card-title">Criterion ${criterionIndex + 1}</h5>
+                        <div class="form-group">
+                            <label>Indicators</label>
+                            <div class="input-group mb-2">
+                                <select class="form-control" name="criteria[${criterionIndex}].indicatorIndices[0]">
+                                    ${reportIndicators.map((indicator, idx) => `<option value="${idx}">${indicator.name}</option>`).join('')}
+                                </select>
+                                <div class="input-group-append">
+                                    <button class="btn btn-danger remove-indicator" type="button">Remove</button>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary add-indicator" type="button" data-criterion-index="${criterionIndex}">Add Indicator</button>
+                        </div>
+                        <div class="form-group">
+                            <label>Thresholds</label>
+                            <div class="input-group mb-2">
+                                <select class="form-control" name="criteria[${criterionIndex}].thresholds[0].position">
+                                    ${allPositions.map(position => `<option value="${position}">${position}</option>`).join('')}
+                                </select>
+                                <input type="number" step="0.01" class="form-control" name="criteria[${criterionIndex}].thresholds[0].value" value="0.0">
+                                <div class="input-group-append">
+                                    <button class="btn btn-danger remove-threshold" type="button">Remove</button>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary add-threshold" type="button" data-criterion-index="${criterionIndex}">Add Threshold</button>
+                        </div>
+                        <button class="btn btn-danger remove-criterion" type="button">Remove Criterion</button>
+                    </div>
+                </div>`;
+            criteriaContainer.append(criterionTemplate);
+        });
+
+        criteriaContainer.on('click', '.remove-criterion', function() {
+            $(this).closest('.card').remove();
+            // Optionally, update the indices of the remaining elements
+            criteriaContainer.children().each(function(index, element) {
+                $(element).find('.card-title').text(`Criterion ${index + 1}`);
+                $(element).find('select[name^="criteria"]').each(function() {
+                    let name = $(this).attr('name').replace(/\d+/, index);
+                    $(this).attr('name', name);
+                });
+                $(element).find('input[name^="criteria"]').each(function() {
+                    let name = $(this).attr('name').replace(/\d+/, index);
+                    $(this).attr('name', name);
+                });
+                $(element).find('.add-indicator, .add-threshold').attr('data-criterion-index', index);
+            });
+        });
+
+        criteriaContainer.on('click', '.add-indicator', function() {
+            let criterionIndex = $(this).attr('data-criterion-index');
+            let index = $(this).closest('.form-group').find('select').length;
+            let indicatorTemplate = `
+                <div class="input-group mb-2">
+                    <select class="form-control" name="criteria[${criterionIndex}].indicatorIndices[${index}]">
+                        ${reportIndicators.map((indicator, idx) => `<option value="${idx}">${indicator.name}</option>`).join('')}
+                    </select>
+                    <div class="input-group-append">
+                        <button class="btn btn-danger remove-indicator" type="button">Remove</button>
+                    </div>
+                </div>`;
+            $(this).before(indicatorTemplate);
+        });
+
+        criteriaContainer.on('click', '.add-threshold', function() {
+            let criterionIndex = $(this).attr('data-criterion-index');
+            let index = $(this).closest('.form-group').find('select').length;
+            let thresholdTemplate = `
+                <div class="input-group mb-2">
+                    <select class="form-control" name="criteria[${criterionIndex}].thresholds[${index}].position">
+                        ${allPositions.map(position => `<option value="${position}">${position}</option>`).join('')}
+                    </select>
+                    <input type="number" step="0.01" class="form-control" name="criteria[${criterionIndex}].thresholds[${index}].value" value="0.0">
+                    <div class="input-group-append">
+                        <button class="btn btn-danger remove-threshold" type="button">Remove</button>
+                    </div>
+                </div>`;
+            $(this).before(thresholdTemplate);
+        });
+
+        criteriaContainer.on('click', '.remove-indicator', function() {
+            $(this).closest('.input-group').remove();
+        });
+
+        criteriaContainer.on('click', '.remove-threshold', function() {
+            $(this).closest('.input-group').remove();
+        });
+    });
+</script>
+</body>
+</html>
