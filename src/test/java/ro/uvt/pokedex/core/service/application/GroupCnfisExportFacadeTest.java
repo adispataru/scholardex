@@ -234,6 +234,37 @@ class GroupCnfisExportFacadeTest {
         assertTrue(result.get().publications().stream().anyMatch(p -> "pEnd".equals(p.getId())));
     }
 
+    @Test
+    void buildGroupCnfisExportSkipsMalformedCoverDateWithoutCrash() {
+        Group group = new Group();
+        group.setResearchers(List.of(researcher("Jane", "Doe", List.of("a1"))));
+        Domain allDomain = new Domain();
+        allDomain.setName("ALL");
+
+        Publication valid = publication("pValid", "f1", "2022-01-01");
+        Publication invalid = publication("pInvalid", "f1", "20AB-99-99");
+        Forum forum = new Forum();
+        forum.setId("f1");
+
+        when(groupManagementFacade.buildGroupEditView("g1"))
+                .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of()));
+        when(groupManagementFacade.buildGroupListView())
+                .thenReturn(new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), new Group()));
+        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1")))
+                .thenReturn(List.of(valid, invalid));
+        when(woSExtractor.findPublicationWosId(any(Publication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(cnfiSScoringService2025.getReport(any(Publication.class), any(Domain.class))).thenReturn(new CNFISReport2025());
+        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum));
+
+        var result = facade.buildGroupCnfisExport("g1", 2021, 2024);
+
+        assertTrue(result.isPresent());
+        assertEquals(1, result.get().publications().size());
+        assertEquals("pValid", result.get().publications().getFirst().getId());
+        verify(scopusPublicationRepository).save(valid);
+        verify(scopusPublicationRepository, times(1)).save(any(Publication.class));
+    }
+
     private static Researcher researcher(String firstName, String lastName, List<String> scopusIds) {
         Researcher researcher = new Researcher();
         researcher.setFirstName(firstName);

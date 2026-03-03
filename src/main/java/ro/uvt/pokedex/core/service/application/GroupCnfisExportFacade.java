@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class GroupCnfisExportFacade {
     private final GroupManagementFacade groupManagementFacade;
     private final ScopusPublicationRepository scopusPublicationRepository;
@@ -110,8 +112,9 @@ public class GroupCnfisExportFacade {
 
     private List<Publication> filterPublicationsByYear(List<Publication> publications, int startYear, int endYear) {
         return publications.stream().filter(publication -> {
-            int pubYear = Integer.parseInt(publication.getCoverDate().substring(0, 4));
-            return pubYear >= startYear && pubYear <= endYear;
+            return PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)
+                    .map(pubYear -> pubYear >= startYear && pubYear <= endYear)
+                    .orElse(false);
         }).toList();
     }
 

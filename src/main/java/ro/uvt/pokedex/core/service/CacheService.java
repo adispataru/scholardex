@@ -19,6 +19,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @Data
@@ -117,7 +118,8 @@ public class CacheService {
         List<WoSRanking> all = rankingRepository.findAll();
         all.forEach(r -> {
             rankingCacheById.put(r.getId(), r);
-            rankingCacheByIssn.put(r.getId(), List.of(r));
+            cacheRankingByIssnKey(r.getIssn(), r);
+            cacheRankingByIssnKey(r.getEIssn(), r);
             r.getWebOfScienceCategoryIndex().forEach((key, val) -> {
                 wosCategories.add(key);
                 for(int year : val.getQAis().keySet()) {
@@ -142,7 +144,20 @@ public class CacheService {
     }
 
     public List<WoSRanking> getCachedRankingsByIssn(String issn) {
-        return rankingCacheByIssn.computeIfAbsent(issn, rankingRepository::findAllByIssn);
+        String normalizedIssn = normalizeIssnKey(issn);
+        if (normalizedIssn == null) {
+            return List.of();
+        }
+
+        return rankingCacheByIssn.computeIfAbsent(normalizedIssn, key -> {
+            List<WoSRanking> byIssn = rankingRepository.findAllByIssn(key);
+            List<WoSRanking> byeIssn = rankingRepository.findAllByeIssn(key);
+            return Stream.concat(byIssn.stream(), byeIssn.stream())
+                    .collect(Collectors.toMap(WoSRanking::getId, ranking -> ranking, (left, right) -> left, LinkedHashMap::new))
+                    .values()
+                    .stream()
+                    .toList();
+        });
     }
 
     public WoSRanking getCachedRankingById(String id) {
@@ -209,6 +224,28 @@ public class CacheService {
         rankingCacheByIssn.clear();
         rankingCacheById.clear();
         topRankingCache.clear();
+    }
+
+    private void cacheRankingByIssnKey(String key, WoSRanking ranking) {
+        String normalizedKey = normalizeIssnKey(key);
+        if (normalizedKey == null) {
+            return;
+        }
+
+        rankingCacheByIssn.merge(normalizedKey, new ArrayList<>(List.of(ranking)), (existing, incoming) -> {
+            Map<String, WoSRanking> merged = new LinkedHashMap<>();
+            existing.forEach(item -> merged.put(item.getId(), item));
+            incoming.forEach(item -> merged.put(item.getId(), item));
+            return new ArrayList<>(merged.values());
+        });
+    }
+
+    private String normalizeIssnKey(String key) {
+        if (key == null) {
+            return null;
+        }
+        String normalized = key.trim().toLowerCase(Locale.ROOT);
+        return normalized.isEmpty() ? null : normalized;
     }
 
     public List<WoSRanking> getAllRankings() {

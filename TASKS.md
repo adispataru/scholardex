@@ -141,29 +141,34 @@ Scope: `H06` Data and persistence consistency review.
   Exit criteria: all high-impact entities have explicit owners and primary write paths.
   Status: completed on 2026-03-03 (`docs/h06-persistence-map.md`).
 
-- [ ] `H06-S02` Inventory schema and data-shape drift risks.
+- [x] `H06-S02` Inventory schema and data-shape drift risks.
   Goal: detect inconsistent field usage, duplicated semantic fields, and optional/null drift.
   Inputs: models, repositories, import/export paths, existing data assumptions from H01/H03.
   Deliverable: `docs/h06-schema-drift-inventory.md` with risk-ranked drift clusters.
   Exit criteria: top drift candidates have concrete file evidence and impact notes.
+  Status: completed on 2026-03-03 (`docs/h06-schema-drift-inventory.md`).
 
-- [ ] `H06-S03` Review query patterns and consistency semantics.
+- [x] `H06-S03` Review query patterns and consistency semantics.
   Goal: identify risky query patterns (implicit ordering, partial filters, case sensitivity, stale assumptions).
   Inputs: repository methods, service query usage, existing integration tests.
   Deliverable: `docs/h06-query-consistency-findings.md`.
   Exit criteria: high/medium query risks have remediation direction and guard strategy.
+  Status: completed on 2026-03-03 (`docs/h06-query-consistency-findings.md`).
 
-- [ ] `H06-S04` Define canonical persistence contracts.
+- [x] `H06-S04` Define canonical persistence contracts.
   Goal: lock conventions for IDs, timestamps, subtype/source fields, enum/text normalization, and update semantics.
   Inputs: findings from S01-S03 + H02 dependency rules.
   Deliverable: `docs/h06-persistence-contracts.md`.
   Exit criteria: contributors can make persistence changes without ambiguity.
+  Status: completed on 2026-03-03 (`docs/h06-persistence-contracts.md`).
 
-- [ ] `H06-S05` Add focused persistence regression tests for highest risks.
+- [x] `H06-S05` Add focused persistence regression tests for highest risks.
   Goal: protect critical repository/service data behaviors before remediation.
   Inputs: H06 findings + H04 integration strategy (Testcontainers where needed).
   Deliverable: targeted repository/service characterization tests for selected high-risk paths.
   Exit criteria: each P0/P1 persistence risk has at least one automated guard.
+  Status: completed on 2026-03-03.
+  Note: added `PersistenceYearSupport` + CNFIS filter hardening (`skip + warn`), aligned ranking ISSN cache semantics in `CacheService`, and added regression guards (`PersistenceYearSupportTest`, `CacheServiceTest`, CNFIS facade tests, citation pair characterization in `ScopusCitationRepositoryIntegrationTest`).
 
 - [ ] `H06-S06` Define phased remediation plan and guardrails.
   Goal: sequence cleanup work by blast radius and effort; prevent reintroduction.

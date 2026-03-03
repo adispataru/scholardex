@@ -368,4 +368,52 @@ class UserReportFacadeTest {
         assertEquals("p-in", publicationCaptor.getValue().getFirst().getId());
         assertEquals(1, reportCaptor.getValue().size());
     }
+
+    @Test
+    void buildUserCnfisWorkbookExportSkipsMalformedCoverDateWithoutCrash() throws Exception {
+        User user = new User();
+        user.setEmail("user@uvt.ro");
+        user.setResearcherId("r1");
+
+        Researcher researcher = new Researcher();
+        researcher.setId("r1");
+        researcher.setScopusId(List.of("a1"));
+
+        Publication valid = new Publication();
+        valid.setId("p-valid");
+        valid.setCoverDate("2022-01-01");
+        valid.setForum("f1");
+        valid.setAuthors(List.of("a1"));
+
+        Publication invalid = new Publication();
+        invalid.setId("p-invalid");
+        invalid.setCoverDate("20AB-99-99");
+        invalid.setForum("f1");
+        invalid.setAuthors(List.of("a1"));
+
+        Domain allDomain = new Domain();
+        allDomain.setName("ALL");
+        CNFISReport2025 report = new CNFISReport2025();
+
+        when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
+        when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
+        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of(valid, invalid));
+        when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
+        when(woSExtractor.findPublicationWosId(any(Publication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(cnfiSScoringService2025.getReport(any(Publication.class), eq(allDomain))).thenReturn(report);
+        when(scopusForumRepository.findByIdIn(any())).thenReturn(List.of());
+        when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false)))
+                .thenReturn(new byte[]{7});
+
+        var result = facade.buildUserCnfisWorkbookExport("user@uvt.ro", 2021, 2024);
+
+        assertEquals(UserWorkbookExportStatus.OK, result.status());
+        verify(scopusPublicationRepository).save(valid);
+        verify(scopusPublicationRepository, org.mockito.Mockito.times(1)).save(any(Publication.class));
+
+        ArgumentCaptor<List<Publication>> publicationCaptor = ArgumentCaptor.forClass(List.class);
+        verify(exportService).generateCNFISReportWorkbook(publicationCaptor.capture(), anyList(), anyMap(), eq(List.of("a1")), eq(false));
+        assertEquals(1, publicationCaptor.getValue().size());
+        assertEquals("p-valid", publicationCaptor.getValue().getFirst().getId());
+    }
 }

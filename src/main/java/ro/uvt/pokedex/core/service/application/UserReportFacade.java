@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -51,6 +52,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserReportFacade {
     private final UserService userService;
     private final ResearcherService researcherService;
@@ -138,8 +140,9 @@ public class UserReportFacade {
         List<String> authorIds = new ArrayList<>(researcherOpt.get().getScopusId());
         List<Publication> publications = scopusPublicationRepository.findAllByAuthorsIn(authorIds);
         publications = publications.stream().filter(publication -> {
-            int pubYear = Integer.parseInt(publication.getCoverDate().substring(0, 4));
-            return pubYear >= startYear && pubYear <= endYear;
+            return PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)
+                    .map(pubYear -> pubYear >= startYear && pubYear <= endYear)
+                    .orElse(false);
         }).toList();
 
         Domain domain = domainRepository.findByName("ALL").orElse(null);
