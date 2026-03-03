@@ -11,7 +11,6 @@ import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
-import ro.uvt.pokedex.core.service.CacheService;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -19,11 +18,11 @@ import java.util.function.BiFunction;
 
 public abstract class AbstractWoSForumScoringService implements ScoringService {
 
-    protected final CacheService cacheService;
+    protected final ReportingLookupPort lookupPort;
     private static final Logger logger = LoggerFactory.getLogger(AbstractWoSForumScoringService.class);
 
-    protected AbstractWoSForumScoringService(CacheService cacheService) {
-        this.cacheService = cacheService;
+    protected AbstractWoSForumScoringService(ReportingLookupPort lookupPort) {
+        this.lookupPort = lookupPort;
     }
 
     /* ------------------------------------------------------------------ */
@@ -84,10 +83,10 @@ public abstract class AbstractWoSForumScoringService implements ScoringService {
     protected List<WoSRanking> getRankingsForForum(Forum forum) {
         List<WoSRanking> rankings = new ArrayList<>();
         if (forum.getIssn() != null) {
-            rankings = cacheService.getCachedRankingsByIssn(forum.getIssn());
+            rankings = lookupPort.getRankingsByIssn(forum.getIssn());
         }
         if (rankings.isEmpty()) {
-            rankings = cacheService.getCachedRankingsByIssn(forum.getEIssn());
+            rankings = lookupPort.getRankingsByIssn(forum.getEIssn());
         }
         return rankings;
     }

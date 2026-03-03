@@ -9,7 +9,6 @@ import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
-import ro.uvt.pokedex.core.service.CacheService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,10 +18,10 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CNFISScoringService2025 {
     private static final Logger log = LoggerFactory.getLogger(CNFISScoringService2025.class);
-    private final CacheService cacheService;
+    private final ReportingLookupPort lookupPort;
     private static final int LAST_YEAR = 2023;
     public CNFISReport2025 getReport(Publication publication, Domain domain) {
-        Forum forum = cacheService.getCachedForums(publication.getForum());
+        Forum forum = lookupPort.getForum(publication.getForum());
         CNFISReport2025 report = new CNFISReport2025();
         report.setTitlu(publication.getTitle());
         report.setDoi(publication.getDoi());
@@ -43,9 +42,9 @@ public class CNFISScoringService2025 {
             }
 
             // Fetch rankings from cache or repository
-            List<WoSRanking> allByIssn = cacheService.getCachedRankingsByIssn(issn);
+            List<WoSRanking> allByIssn = lookupPort.getRankingsByIssn(issn);
             if (allByIssn.isEmpty()) {
-                allByIssn = cacheService.getCachedRankingsByIssn(eIssn);
+                allByIssn = lookupPort.getRankingsByIssn(eIssn);
             }
 
             for (WoSRanking ranking : allByIssn) {
@@ -116,7 +115,7 @@ public class CNFISScoringService2025 {
             }
         }
         report.setNumarAutori(publication.getAuthors().size());
-        report.setNumarAutoriUniversitate((int) publication.getAuthors().stream().filter(a -> cacheService.getUniversityAuthorIds().contains(a)).count());
+        report.setNumarAutoriUniversitate((int) publication.getAuthors().stream().filter(a -> lookupPort.getUniversityAuthorIds().contains(a)).count());
 
         return report;
     }

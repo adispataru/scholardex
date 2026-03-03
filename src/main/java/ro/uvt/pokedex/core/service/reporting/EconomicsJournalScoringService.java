@@ -11,7 +11,6 @@ import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
-import ro.uvt.pokedex.core.service.CacheService;
 
 import java.util.List;
 import java.util.Optional;
@@ -49,8 +48,8 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
     private static final int OTHER_ECONOMICS_MULTIPLIER = 6;
 
     @Autowired
-    public EconomicsJournalScoringService(CacheService cacheService) {
-        super(cacheService);
+    public EconomicsJournalScoringService(ReportingLookupPort lookupPort) {
+        super(lookupPort);
     }
 
     /* ------------------------------------------------------------------ */
@@ -60,7 +59,7 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
     @Override
     public Score getScore(Publication publication, Indicator indicator) {
         Domain domain = indicator.getDomain();
-        Forum forum = cacheService.getCachedForums(publication.getForum());
+        Forum forum = lookupPort.getForum(publication.getForum());
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = getAllowedYearsForPublication(publication, indicator);

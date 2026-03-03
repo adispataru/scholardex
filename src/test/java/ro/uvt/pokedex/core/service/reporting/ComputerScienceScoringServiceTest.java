@@ -10,7 +10,7 @@ import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
-import ro.uvt.pokedex.core.service.CacheService;
+import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
@@ -25,7 +25,7 @@ class ComputerScienceScoringServiceTest {
     @Mock
     private ComputerScienceBookService bookScoringService;
     @Mock
-    private CacheService cacheService;
+    private ReportingLookupPort cacheService;
 
     @Test
     void bkSubtypeDelegatesToBookScoringService() {

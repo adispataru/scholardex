@@ -10,7 +10,7 @@ import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
-import ro.uvt.pokedex.core.service.CacheService;
+import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
 
 import java.util.HashMap;
 import java.util.List;
@@ -24,7 +24,7 @@ import static org.mockito.Mockito.when;
 class CNFISScoringService2025Test {
 
     @Mock
-    private CacheService cacheService;
+    private ReportingLookupPort cacheService;
 
     private CNFISScoringService2025 service;
     private Domain allDomain;
@@ -44,7 +44,7 @@ class CNFISScoringService2025Test {
         publication.setSubtype("cp");
 
         Forum forum = baseForum("IEEE International Conference on Something");
-        when(cacheService.getCachedForums(publication.getForum())).thenReturn(forum);
+        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
 
         CNFISReport2025 report = service.getReport(publication, allDomain);
 
@@ -61,9 +61,9 @@ class CNFISScoringService2025Test {
         publication.setSubtype("cp");
 
         Forum forum = baseForum("IEEE International Conference on Something");
-        when(cacheService.getCachedForums(publication.getForum())).thenReturn(forum);
-        when(cacheService.getCachedRankingsByIssn("1234-5678")).thenReturn(List.of());
-        when(cacheService.getCachedRankingsByIssn("8765-4321")).thenReturn(List.of());
+        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
+        when(cacheService.getRankingsByIssn("1234-5678")).thenReturn(List.of());
+        when(cacheService.getRankingsByIssn("8765-4321")).thenReturn(List.of());
 
         CNFISReport2025 report = service.getReport(publication, allDomain);
 
@@ -77,8 +77,8 @@ class CNFISScoringService2025Test {
         publication.setScopusSubtype("ar");
 
         Forum forum = baseForum("Journal of Testing");
-        when(cacheService.getCachedForums(publication.getForum())).thenReturn(forum);
-        when(cacheService.getCachedRankingsByIssn("1234-5678")).thenReturn(List.of(ranking("SCIE", WoSRanking.Quarter.Q1)));
+        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
+        when(cacheService.getRankingsByIssn("1234-5678")).thenReturn(List.of(ranking("SCIE", WoSRanking.Quarter.Q1)));
 
         CNFISReport2025 report = service.getReport(publication, allDomain);
 
@@ -92,7 +92,7 @@ class CNFISScoringService2025Test {
         publication.setWosId("WOS:123");
 
         Forum forum = baseForum("International Computing Conference");
-        when(cacheService.getCachedForums(publication.getForum())).thenReturn(forum);
+        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
 
         CNFISReport2025 report = service.getReport(publication, allDomain);
 
@@ -107,7 +107,7 @@ class CNFISScoringService2025Test {
         publication.setWosId("");
 
         Forum forum = baseForum("International Computing Conference");
-        when(cacheService.getCachedForums(publication.getForum())).thenReturn(forum);
+        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
 
         CNFISReport2025 report = service.getReport(publication, allDomain);
 
@@ -122,7 +122,7 @@ class CNFISScoringService2025Test {
         publication.setWosId("WOS:456");
 
         Forum forum = baseForum("Lecture Notes in Something");
-        when(cacheService.getCachedForums(publication.getForum())).thenReturn(forum);
+        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
 
         CNFISReport2025 report = service.getReport(publication, allDomain);
 
@@ -137,7 +137,7 @@ class CNFISScoringService2025Test {
         publication.setWosId("");
 
         Forum forum = baseForum("Lecture Notes in Something");
-        when(cacheService.getCachedForums(publication.getForum())).thenReturn(forum);
+        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
 
         CNFISReport2025 report = service.getReport(publication, allDomain);
 
@@ -151,8 +151,8 @@ class CNFISScoringService2025Test {
         publication.setCoverDate("bad-date");
 
         Forum forum = baseForum("Journal of Testing");
-        when(cacheService.getCachedForums(publication.getForum())).thenReturn(forum);
-        when(cacheService.getCachedRankingsByIssn("1234-5678")).thenReturn(List.of(ranking("SCIE", WoSRanking.Quarter.Q1)));
+        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
+        when(cacheService.getRankingsByIssn("1234-5678")).thenReturn(List.of(ranking("SCIE", WoSRanking.Quarter.Q1)));
 
         CNFISReport2025 report = assertDoesNotThrow(() -> service.getReport(publication, allDomain));
 
@@ -166,7 +166,7 @@ class CNFISScoringService2025Test {
         publication.setSubtype(null);
 
         Forum forum = baseForum("Any forum");
-        when(cacheService.getCachedForums(publication.getForum())).thenReturn(forum);
+        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
 
         CNFISReport2025 report = assertDoesNotThrow(() -> service.getReport(publication, allDomain));
 
@@ -180,8 +180,8 @@ class CNFISScoringService2025Test {
         publication.setScopusSubtype("ar");
 
         Forum forum = baseForum("Journal of Testing");
-        when(cacheService.getCachedForums(publication.getForum())).thenReturn(forum);
-        when(cacheService.getCachedRankingsByIssn("1234-5678")).thenReturn(List.of(rankingWithNullableCategory(null, WoSRanking.Quarter.Q1)));
+        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
+        when(cacheService.getRankingsByIssn("1234-5678")).thenReturn(List.of(rankingWithNullableCategory(null, WoSRanking.Quarter.Q1)));
 
         CNFISReport2025 report = assertDoesNotThrow(() -> service.getReport(publication, allDomain));
 
@@ -194,8 +194,8 @@ class CNFISScoringService2025Test {
         publication.setScopusSubtype("ar");
 
         Forum forum = baseForum("Journal of Testing");
-        when(cacheService.getCachedForums(publication.getForum())).thenReturn(forum);
-        when(cacheService.getCachedRankingsByIssn("1234-5678")).thenReturn(List.of(rankingWithNullableCategory(" ", WoSRanking.Quarter.Q1)));
+        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
+        when(cacheService.getRankingsByIssn("1234-5678")).thenReturn(List.of(rankingWithNullableCategory(" ", WoSRanking.Quarter.Q1)));
 
         CNFISReport2025 report = assertDoesNotThrow(() -> service.getReport(publication, allDomain));
 

@@ -6,7 +6,7 @@ import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.scopus.Publication;
-import ro.uvt.pokedex.core.service.CacheService;
+import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
 
 import java.util.List;
 
@@ -23,8 +23,8 @@ class CategoryDomainContractTest {
         specificDomain.setName("SPECIFIC");
         specificDomain.setWosCategories(List.of("COMPUTER SCIENCE-SCIE"));
 
-        TestForumBase forumBase = new TestForumBase(Mockito.mock(CacheService.class));
-        TestWoSBase wosBase = new TestWoSBase(Mockito.mock(CacheService.class));
+        TestForumBase forumBase = new TestForumBase(Mockito.mock(ReportingLookupPort.class));
+        TestWoSBase wosBase = new TestWoSBase(Mockito.mock(ReportingLookupPort.class));
 
         assertEquals(
                 forumBase.exposedIsCategoryInDomain(allDomain, "COMPUTER SCIENCE-SCIE"),
@@ -49,7 +49,7 @@ class CategoryDomainContractTest {
     }
 
     private static final class TestForumBase extends AbstractForumScoringService {
-        private TestForumBase(CacheService cacheService) {
+        private TestForumBase(ReportingLookupPort cacheService) {
             super(cacheService);
         }
 
@@ -74,7 +74,7 @@ class CategoryDomainContractTest {
     }
 
     private static final class TestWoSBase extends AbstractWoSForumScoringService {
-        private TestWoSBase(CacheService cacheService) {
+        private TestWoSBase(ReportingLookupPort cacheService) {
             super(cacheService);
         }
 

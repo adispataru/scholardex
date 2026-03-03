@@ -9,7 +9,7 @@ import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
-import ro.uvt.pokedex.core.service.CacheService;
+import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
 
 import java.util.List;
 
@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
 class ComputerScienceConferenceScoringServiceSubtypeTest {
 
     @Mock
-    private CacheService cacheService;
+    private ReportingLookupPort cacheService;
 
     @Test
     void usesScopusSubtypeFallbackForConferenceBranch() {
@@ -35,8 +35,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
 
         Forum forum = new Forum();
         forum.setPublicationName("Test Conference, TCONF");
-        when(cacheService.getCachedForums("forum-1")).thenReturn(forum);
-        when(cacheService.getCachedConfRankings(anyString())).thenReturn(List.of());
+        when(cacheService.getForum("forum-1")).thenReturn(forum);
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
 
         Score score = service.getScore(publication, new Indicator());
 

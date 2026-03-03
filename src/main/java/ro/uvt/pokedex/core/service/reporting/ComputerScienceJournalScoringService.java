@@ -11,7 +11,6 @@ import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
-import ro.uvt.pokedex.core.service.CacheService;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,8 +24,8 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
     private static final Logger logger = LoggerFactory.getLogger(ComputerScienceJournalScoringService.class);
 
     @Autowired
-    public ComputerScienceJournalScoringService(CacheService cacheService) {
-        super(cacheService);
+    public ComputerScienceJournalScoringService(ReportingLookupPort lookupPort) {
+        super(lookupPort);
     }
 
     /* ------------------------------------------------------------------ */
@@ -36,7 +35,7 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
     @Override
     public Score getScore(Publication publication, Indicator indicator) {
         Domain domain = indicator.getDomain();
-        Forum forum = cacheService.getCachedForums(publication.getForum());
+        Forum forum = lookupPort.getForum(publication.getForum());
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = getAllowedYearsForPublication(publication, indicator);
@@ -114,7 +113,7 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
         }
 
         //TODO Come up with a better caching mechanism
-        int top = cacheService.getCachedTopRankings(
+        int top = lookupPort.getTopRankings(
                 ranking.getWebOfScienceCategoryIndex().keySet().iterator().next(),
                 year);
         int numTop = (int) (0.2 * top);

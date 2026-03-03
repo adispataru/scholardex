@@ -10,7 +10,6 @@ import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
-import ro.uvt.pokedex.core.service.CacheService;
 
 /**
  * Combined scoring service that delegates to appropriate specialized services based on publication type.
@@ -29,8 +28,8 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
             ComputerScienceJournalScoringService journalScoringService,
             ComputerScienceConferenceScoringService conferenceScoringService,
             ComputerScienceBookService bookScoringService,
-            CacheService cacheService) {
-        super(cacheService);
+            ReportingLookupPort lookupPort) {
+        super(lookupPort);
         this.journalScoringService = journalScoringService;
         this.conferenceScoringService = conferenceScoringService;
         this.bookScoringService = bookScoringService;

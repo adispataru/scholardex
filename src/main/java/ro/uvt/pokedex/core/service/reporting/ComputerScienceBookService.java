@@ -11,7 +11,6 @@ import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.repository.reporting.SenseRankingRepository;
-import ro.uvt.pokedex.core.service.CacheService;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,8 +27,8 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
     private final ConcurrentMap<String, List<SenseBookRanking>> rankingCache = new ConcurrentHashMap<>();
 
     @Autowired
-    public ComputerScienceBookService(SenseRankingRepository senseRankingRepository, CacheService cacheService) {
-        super(cacheService);
+    public ComputerScienceBookService(SenseRankingRepository senseRankingRepository, ReportingLookupPort lookupPort) {
+        super(lookupPort);
         this.senseRankingRepository = senseRankingRepository;
     }
 
@@ -40,7 +39,7 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
     @Override
     public Score getScore(Publication publication, Indicator indicator) {
         Domain domain = indicator.getDomain();
-        Forum forum = cacheService.getCachedForums(publication.getForum());
+        Forum forum = lookupPort.getForum(publication.getForum());
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = List.of(LAST_SENSE_YEAR);

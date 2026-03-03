@@ -11,7 +11,6 @@ import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
-import ro.uvt.pokedex.core.service.CacheService;
 
 import java.util.*;
 
@@ -25,8 +24,8 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     private static final int LAST_CORE_YEAR = 2023;
 
     @Autowired
-    public ComputerScienceConferenceScoringService(CacheService cacheService) {
-        super(cacheService);
+    public ComputerScienceConferenceScoringService(ReportingLookupPort lookupPort) {
+        super(lookupPort);
     }
 
     /* ------------------------------------------------------------------ */
@@ -36,7 +35,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     @Override
     public Score getScore(Publication publication, Indicator indicator) {
         Domain domain = indicator.getDomain();
-        Forum forum = cacheService.getCachedForums(publication.getForum());
+        Forum forum = lookupPort.getForum(publication.getForum());
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = getAllowedYearsForPublication(publication, indicator);
@@ -123,7 +122,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
             return Optional.empty();
         }
 
-        List<CoreConferenceRanking> confRankings = cacheService.getCachedConfRankings(acronym);
+        List<CoreConferenceRanking> confRankings = lookupPort.getConferenceRankings(acronym);
         Score scoreResult = new Score();
         // Filter rankings by exact name match if multiple exist
         if (confRankings.size() > 1) {

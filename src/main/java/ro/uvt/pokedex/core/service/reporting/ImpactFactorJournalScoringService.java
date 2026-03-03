@@ -9,7 +9,6 @@ import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
-import ro.uvt.pokedex.core.service.CacheService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,8 +25,8 @@ public class ImpactFactorJournalScoringService extends AbstractWoSForumScoringSe
     private static final int LAST_YEAR = 2023;
 
     @Autowired
-    public ImpactFactorJournalScoringService(CacheService cacheService) {
-        super(cacheService);
+    public ImpactFactorJournalScoringService(ReportingLookupPort lookupPort) {
+        super(lookupPort);
     }
 
     /* ------------------------------------------------------------------ */
@@ -37,7 +36,7 @@ public class ImpactFactorJournalScoringService extends AbstractWoSForumScoringSe
     @Override
     public Score getScore(Publication publication, Indicator indicator) {
         Domain domain = indicator.getDomain();
-        Forum forum = cacheService.getCachedForums(publication.getForum());
+        Forum forum = lookupPort.getForum(publication.getForum());
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = getAllowedYearsForPublication(publication, indicator);

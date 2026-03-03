@@ -8,7 +8,6 @@ import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.scopus.Publication;
-import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.model.URAPUniversityRankingService;
 
 import java.util.List;
@@ -24,8 +23,8 @@ public class UniversityRankScoringService extends AbstractForumScoringService {
     private static final Logger logger = LoggerFactory.getLogger(UniversityRankScoringService.class);
     private final URAPUniversityRankingService urapRankingService;
 
-    public UniversityRankScoringService(CacheService cacheService, URAPUniversityRankingService urapRankingService) {
-        super(cacheService);
+    public UniversityRankScoringService(ReportingLookupPort lookupPort, URAPUniversityRankingService urapRankingService) {
+        super(lookupPort);
         this.urapRankingService = urapRankingService;
     }
 

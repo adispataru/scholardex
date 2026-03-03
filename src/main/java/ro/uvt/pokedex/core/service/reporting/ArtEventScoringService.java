@@ -11,7 +11,6 @@ import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.repository.ArtisticEventRepository;
-import ro.uvt.pokedex.core.service.CacheService;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,8 +27,8 @@ public class ArtEventScoringService extends AbstractForumScoringService {
     private final ConcurrentMap<String, List<ArtisticEvent>> rankingCache = new ConcurrentHashMap<>();
 
     @Autowired
-    public ArtEventScoringService(ArtisticEventRepository senseRankingRepository, CacheService cacheService) {
-        super(cacheService);
+    public ArtEventScoringService(ArtisticEventRepository senseRankingRepository, ReportingLookupPort lookupPort) {
+        super(lookupPort);
         this.artEventsRepo = senseRankingRepository;
     }
 
