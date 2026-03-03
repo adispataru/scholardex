@@ -25,6 +25,18 @@ class ScoringFactoryServiceTest {
     }
 
     @Test
+    void returnsBookServiceForCsSenseStrategy() {
+        ScoringFactoryService factory = new ScoringFactoryService();
+        ComputerScienceBookService bookService = mock(ComputerScienceBookService.class);
+
+        ReflectionTestUtils.setField(factory, "computerScienceBookService", bookService);
+
+        ScoringService resolved = factory.getScoringService(Indicator.Strategy.CS_SENSE);
+
+        assertSame(bookService, resolved);
+    }
+
+    @Test
     void throwsForUnmappedStrategy() {
         ScoringFactoryService factory = new ScoringFactoryService();
 

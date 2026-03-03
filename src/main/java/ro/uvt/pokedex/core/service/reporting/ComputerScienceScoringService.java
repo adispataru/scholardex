@@ -53,11 +53,11 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
             return createEmptyScore();
         }
 
-        // Delegate to appropriate service based on publication type.
-        // `bk` is intentionally unsupported in combined CS strategy; use CS_SENSE strategy instead.
+        // Delegate to specialized scoring services by publication subtype.
         return switch (subtype) {
             case "ar", "re" -> journalScoringService.getScore(publication, indicator);
             case "cp" -> conferenceScoringService.getScore(publication, indicator);
+            case "bk", "ch" -> bookScoringService.getScore(publication, indicator);
             default -> {
                 logger.warn("Unhandled publication subtype: {}", subtype);
                 yield createEmptyScore();
@@ -83,11 +83,11 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
             return createEmptyScore();
         }
 
-        // Delegate based on forum type.
-        // Book forum aggregation is intentionally unsupported in combined CS strategy; use CS_SENSE strategy instead.
+        // Delegate based on forum aggregation type.
         return switch (forum.getAggregationType()) {
             case "Journal" -> journalScoringService.getScore(activity, indicator);
             case "Conference Proceeding" -> conferenceScoringService.getScore(activity, indicator);
+            case "Book", "Book Series" -> bookScoringService.getScore(activity, indicator);
             default -> {
                 logger.warn("Unhandled forum type: {}", forum.getAggregationType());
                 yield createEmptyScore();

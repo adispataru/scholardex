@@ -4,14 +4,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
+import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.service.CacheService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ComputerScienceScoringServiceTest {
@@ -26,7 +28,75 @@ class ComputerScienceScoringServiceTest {
     private CacheService cacheService;
 
     @Test
-    void bkSubtypeFallsBackToEmptyScoreCurrentBehaviorGuard() {
+    void bkSubtypeDelegatesToBookScoringService() {
+        ComputerScienceScoringService service = new ComputerScienceScoringService(
+                journalScoringService,
+                conferenceScoringService,
+                bookScoringService,
+                cacheService
+        );
+        Score bookScore = score(16.0, 2023, "A", "NOT_FOUND");
+        when(bookScoringService.getScore(any(Publication.class), any(Indicator.class))).thenReturn(bookScore);
+
+        Publication publication = new Publication();
+        publication.setSubtype("bk");
+
+        Score score = service.getScore(publication, new Indicator());
+
+        assertEquals(16.0, score.getScore());
+        verify(bookScoringService, times(1)).getScore(any(Publication.class), any(Indicator.class));
+        verifyNoInteractions(journalScoringService, conferenceScoringService);
+    }
+
+    @Test
+    void chSubtypeDelegatesToBookScoringService() {
+        ComputerScienceScoringService service = new ComputerScienceScoringService(
+                journalScoringService,
+                conferenceScoringService,
+                bookScoringService,
+                cacheService
+        );
+        Score bookScore = score(8.0, 2023, "B", "NOT_FOUND");
+        when(bookScoringService.getScore(any(Publication.class), any(Indicator.class))).thenReturn(bookScore);
+
+        Publication publication = new Publication();
+        publication.setSubtype("ch");
+
+        Score score = service.getScore(publication, new Indicator());
+
+        assertEquals(8.0, score.getScore());
+        verify(bookScoringService, times(1)).getScore(any(Publication.class), any(Indicator.class));
+        verifyNoInteractions(journalScoringService, conferenceScoringService);
+    }
+
+    @Test
+    void bookAggregationDelegatesToBookScoringService() {
+        Score bookScore = score(4.0, 2023, "C", "NOT_FOUND");
+        when(bookScoringService.getScore(any(ActivityInstance.class), any(Indicator.class))).thenReturn(bookScore);
+        ComputerScienceScoringService service = activityAwareService("Book");
+
+        Score score = service.getScore(new ActivityInstance(), new Indicator());
+
+        assertEquals(4.0, score.getScore());
+        verify(bookScoringService, times(1)).getScore(any(ActivityInstance.class), any(Indicator.class));
+        verifyNoInteractions(journalScoringService, conferenceScoringService);
+    }
+
+    @Test
+    void bookSeriesAggregationDelegatesToBookScoringService() {
+        Score bookScore = score(2.0, 2023, "D", "NOT_FOUND");
+        when(bookScoringService.getScore(any(ActivityInstance.class), any(Indicator.class))).thenReturn(bookScore);
+        ComputerScienceScoringService service = activityAwareService("Book Series");
+
+        Score score = service.getScore(new ActivityInstance(), new Indicator());
+
+        assertEquals(2.0, score.getScore());
+        verify(bookScoringService, times(1)).getScore(any(ActivityInstance.class), any(Indicator.class));
+        verifyNoInteractions(journalScoringService, conferenceScoringService);
+    }
+
+    @Test
+    void unknownSubtypeFallsBackToEmptyScore() {
         ComputerScienceScoringService service = new ComputerScienceScoringService(
                 journalScoringService,
                 conferenceScoringService,
@@ -35,7 +105,7 @@ class ComputerScienceScoringServiceTest {
         );
 
         Publication publication = new Publication();
-        publication.setSubtype("bk");
+        publication.setSubtype("xx");
         publication.setId("p-1");
 
         Score score = service.getScore(publication, new Indicator());
@@ -45,5 +115,30 @@ class ComputerScienceScoringServiceTest {
         assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCategory());
         assertEquals(WoSRanking.Quarter.NOT_FOUND.toString(), score.getQuarter());
         verifyNoInteractions(journalScoringService, conferenceScoringService, bookScoringService);
+    }
+
+    private ComputerScienceScoringService activityAwareService(String aggregationType) {
+        return new ComputerScienceScoringService(
+                journalScoringService,
+                conferenceScoringService,
+                bookScoringService,
+                cacheService
+        ) {
+            @Override
+            protected Forum getForumFromActivity(ActivityInstance activity) {
+                Forum forum = new Forum();
+                forum.setAggregationType(aggregationType);
+                return forum;
+            }
+        };
+    }
+
+    private Score score(double value, int year, String category, String quarter) {
+        Score score = new Score();
+        score.setScore(value);
+        score.setYear(year);
+        score.setCategory(category);
+        score.setQuarter(quarter);
+        return score;
     }
 }

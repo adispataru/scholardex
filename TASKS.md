@@ -105,7 +105,7 @@ Scope: `H01` Duplicate code and drift audit.
   Inputs: strategy + regression guards.
   Deliverable: code changes + migration notes in PR description or `docs/h01-slice-1.md`.
   Exit criteria: reduced duplicate footprint and all relevant checks green.
-  Notes: Completed on 2026-03-03. First slice delivered for `C04` sub-cluster B: `ScoringFactoryService` now fails fast for null/unsupported strategies; `bk` path in combined CS scorer intentionally deferred and documented.
+  Notes: Completed on 2026-03-03. First slice delivered for `C04` sub-cluster B: `ScoringFactoryService` now fails fast for null/unsupported strategies; follow-up C04 Slice 2 completed dispatch alignment for books (`bk/ch`, `Book/Book Series`), so sub-cluster B is fully completed.
 
 - [ ] `H01-S08` Prevent reintroduction.
   Goal: add lightweight guardrails to detect new duplication/drift early.
