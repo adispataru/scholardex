@@ -1,6 +1,11 @@
 package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
@@ -13,22 +18,33 @@ import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
+import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndicatorRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusCitationRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
+import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorApplyViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorsViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserIndividualReportViewModel;
+import ro.uvt.pokedex.core.service.application.model.UserIndicatorWorkbookExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserReportsListViewModel;
+import ro.uvt.pokedex.core.service.application.model.UserWorkbookExportResult;
 import ro.uvt.pokedex.core.service.reporting.ActivityReportingService;
+import ro.uvt.pokedex.core.service.reporting.CNFISReportExportService;
+import ro.uvt.pokedex.core.service.reporting.CNFISScoringService2025;
 import ro.uvt.pokedex.core.service.reporting.Score;
 import ro.uvt.pokedex.core.service.reporting.ScientificProductionService;
+import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
+import ro.uvt.pokedex.core.model.reporting.Domain;
+import ro.uvt.pokedex.core.model.reporting.WoSExtractor;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -45,8 +61,13 @@ public class UserReportFacade {
     private final ScopusCitationRepository scopusCitationRepository;
     private final ScopusPublicationRepository scopusPublicationRepository;
     private final ScopusForumRepository scopusForumRepository;
+    private final DomainRepository domainRepository;
     private final ActivityReportingService activityReportingService;
     private final ScientificProductionService scientificProductionService;
+    private final CNFISScoringService2025 cnfiSScoringService2025;
+    private final WoSExtractor woSExtractor;
+    private final CNFISReportExportService exportService;
+    private final CacheService cacheService;
 
     public UserIndicatorsViewModel buildIndicatorsView(String userEmail) {
         // userEmail kept in signature to lock facade contract for later permission-aware extensions.
@@ -60,6 +81,146 @@ public class UserReportFacade {
 
     public Optional<Indicator> findIndicatorById(String indicatorId) {
         return indicatorRepository.findById(indicatorId);
+    }
+
+    public Optional<UserIndicatorWorkbookExportViewModel> buildIndicatorWorkbookExport(String userEmail, String indicatorId) throws IOException {
+        Optional<User> userOpt = userService.getUserByEmail(userEmail);
+        if (userOpt.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Optional<Researcher> researcherOpt = researcherService.findResearcherById(userOpt.get().getResearcherId());
+        Optional<Indicator> indicatorOpt = indicatorRepository.findById(indicatorId);
+        if (researcherOpt.isEmpty() || indicatorOpt.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Researcher researcher = researcherOpt.get();
+        Indicator indicator = indicatorOpt.get();
+        List<Author> authors = scopusAuthorRepository.findByIdIn(researcher.getScopusId());
+        if (authors.isEmpty()) {
+            return Optional.empty();
+        }
+
+        List<String> authorIds = authors.stream().map(Author::getId).toList();
+        List<Publication> publications = scopusPublicationRepository.findAllByAuthorsIn(authorIds);
+        Set<String> forumKeys = publications.stream().map(Publication::getForum).collect(Collectors.toSet());
+        Map<String, Forum> forumMap = scopusForumRepository.findByIdIn(forumKeys).stream()
+                .collect(Collectors.toMap(Forum::getId, forum -> forum));
+
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            if (indicator.getOutputType().toString().contains("PUBLICATIONS")) {
+                handlePublicationsWorkbook(workbook, indicator, publications, forumMap);
+            } else if (indicator.getOutputType().equals(Indicator.Type.CITATIONS) || indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF)) {
+                handleCitationsWorkbook(workbook, indicator, authors, publications, forumMap);
+            }
+
+            workbook.write(outputStream);
+            return Optional.of(new UserIndicatorWorkbookExportViewModel(
+                    outputStream.toByteArray(),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "indicator_results.xlsx"
+            ));
+        }
+    }
+
+    public UserWorkbookExportResult buildUserCnfisWorkbookExport(String userEmail, int startYear, int endYear) throws IOException {
+        Optional<User> userOpt = userService.getUserByEmail(userEmail);
+        if (userOpt.isEmpty()) {
+            return UserWorkbookExportResult.unauthorized();
+        }
+
+        Optional<Researcher> researcherOpt = researcherService.findResearcherById(userOpt.get().getResearcherId());
+        if (researcherOpt.isEmpty()) {
+            return UserWorkbookExportResult.notFound();
+        }
+
+        List<String> authorIds = new ArrayList<>(researcherOpt.get().getScopusId());
+        List<Publication> publications = scopusPublicationRepository.findAllByAuthorsIn(authorIds);
+        publications = publications.stream().filter(publication -> {
+            int pubYear = Integer.parseInt(publication.getCoverDate().substring(0, 4));
+            return pubYear >= startYear && pubYear <= endYear;
+        }).toList();
+
+        Domain domain = domainRepository.findByName("ALL").orElse(null);
+        List<CNFISReport2025> cnfisReports = new ArrayList<>();
+        for (Publication publication : publications) {
+            Publication enrichedPublication = woSExtractor.findPublicationWosId(publication);
+            scopusPublicationRepository.save(enrichedPublication);
+            cnfisReports.add(cnfiSScoringService2025.getReport(enrichedPublication, domain));
+        }
+
+        Set<String> forumKeys = publications.stream().map(Publication::getForum).collect(Collectors.toSet());
+        Map<String, Forum> forumMap = scopusForumRepository.findByIdIn(forumKeys).stream()
+                .collect(Collectors.toMap(Forum::getId, forum -> forum));
+
+        byte[] workbookBytes = exportService.generateCNFISReportWorkbook(publications, cnfisReports, forumMap, authorIds, false);
+        return UserWorkbookExportResult.ok(
+                workbookBytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "data/templates/AC2025_Anexa5-Fisa_articole_brevete-2025.xlsx"
+        );
+    }
+
+    public UserWorkbookExportResult buildLegacyUserCnfisWorkbookExport(String userEmail) throws IOException {
+        Optional<User> userOpt = userService.getUserByEmail(userEmail);
+        if (userOpt.isEmpty()) {
+            return UserWorkbookExportResult.unauthorized();
+        }
+
+        Optional<Researcher> researcherOpt = researcherService.findResearcherById(userOpt.get().getResearcherId());
+        if (researcherOpt.isEmpty()) {
+            return UserWorkbookExportResult.notFound();
+        }
+
+        Researcher researcher = researcherOpt.get();
+        List<Author> authors = scopusAuthorRepository.findByIdIn(researcher.getScopusId());
+        if (authors.isEmpty()) {
+            return UserWorkbookExportResult.notFound();
+        }
+
+        List<String> authorIds = authors.stream().map(Author::getId).toList();
+        List<Publication> publications = scopusPublicationRepository.findAllByAuthorsIn(authorIds);
+        Set<String> forumKeys = publications.stream().map(Publication::getForum).collect(Collectors.toSet());
+        Map<String, Forum> forumMap = scopusForumRepository.findByIdIn(forumKeys).stream()
+                .collect(Collectors.toMap(Forum::getId, forum -> forum));
+
+        ClassPathResource resource = new ClassPathResource("/data/templates/Anexa5-Fisa_articole_brevete.xlsx");
+        try (Workbook workbook = new XSSFWorkbook(resource.getInputStream()); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.getSheetAt(0);
+            int rowNum = 15;
+            for (Publication publication : publications) {
+                Row row = sheet.createRow(rowNum++);
+
+                String year = publication.getCoverDate() != null ? publication.getCoverDate().split("-")[0] : "";
+                String title = publication.getTitle() != null ? publication.getTitle() : "";
+                String doi = publication.getDoi() != null ? publication.getDoi() : "";
+                String forumName = forumMap.getOrDefault(publication.getForum(), new Forum()).getPublicationName();
+                String issnOnline = forumMap.getOrDefault(publication.getForum(), new Forum()).getEIssn();
+                String issnPrint = forumMap.getOrDefault(publication.getForum(), new Forum()).getIssn();
+                int totalAuthors = publication.getAuthors().size();
+                long universityAuthors = publication.getAuthors().stream().filter(authorIds::contains).count();
+
+                row.createCell(0).setCellValue(year);
+                row.createCell(1).setCellValue(title);
+                row.createCell(2).setCellValue(doi);
+                row.createCell(3).setCellValue("");
+                row.createCell(4).setCellValue("");
+                row.createCell(5).setCellValue(forumName);
+                row.createCell(6).setCellValue(issnOnline);
+                row.createCell(7).setCellValue(issnPrint);
+                row.createCell(8).setCellValue("");
+                row.createCell(13).setCellValue(totalAuthors);
+                row.createCell(14).setCellValue(universityAuthors);
+            }
+
+            workbook.write(outputStream);
+            return UserWorkbookExportResult.ok(
+                    outputStream.toByteArray(),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "Anexa5-Fisa_articole_brevete.xlsx"
+            );
+        }
     }
 
     public UserIndicatorApplyViewModel buildIndicatorApplyView(String userEmail, String indicatorId) {
@@ -336,6 +497,115 @@ public class UserReportFacade {
             }
             return t;
         }).reduce(0.0, Double::sum);
+    }
+
+    private void handlePublicationsWorkbook(Workbook workbook, Indicator indicator, List<Publication> publications, Map<String, Forum> forumMap) {
+        Map<String, Score> scores = scientificProductionService.calculateScientificProductionScore(publications, indicator);
+        Sheet sheet = workbook.getSheet("Publications");
+        if (sheet == null) {
+            sheet = workbook.createSheet("Publications");
+            Row headerRow = sheet.createRow(0);
+            headerRow.createCell(0).setCellValue("Title");
+            headerRow.createCell(1).setCellValue("Authors");
+            headerRow.createCell(2).setCellValue("Forum");
+            headerRow.createCell(3).setCellValue("Volume");
+            headerRow.createCell(4).setCellValue("Year");
+            headerRow.createCell(5).setCellValue("Workshop");
+            headerRow.createCell(6).setCellValue("Category");
+            headerRow.createCell(7).setCellValue("Forum Score");
+            headerRow.createCell(8).setCellValue("Author Score");
+        }
+
+        int rowNum = sheet.getLastRowNum();
+        for (Publication publication : publications) {
+            if (scores.get(publication.getTitle()) == null) {
+                continue;
+            }
+            Row dataRow = sheet.createRow(++rowNum);
+            dataRow.createCell(0).setCellValue(publication.getTitle());
+            String authorDetails = String.join(", ", getAuthorNames(publication.getAuthors(), cacheService.getAuthorCache()));
+            dataRow.createCell(1).setCellValue(authorDetails);
+            dataRow.createCell(2).setCellValue(forumMap.get(publication.getForum()).getPublicationName());
+            dataRow.createCell(3).setCellValue(publication.getVolume());
+            dataRow.createCell(4).setCellValue(publication.getCoverDate().substring(0, 4));
+            dataRow.createCell(5).setCellValue("No");
+            dataRow.createCell(6).setCellValue(scores.get(publication.getTitle()).getCategory());
+            dataRow.createCell(7).setCellValue(scores.get(publication.getTitle()).getScore());
+            dataRow.createCell(8).setCellValue(scores.get(publication.getTitle()).getAuthorScore());
+        }
+    }
+
+    private void handleCitationsWorkbook(Workbook workbook, Indicator indicator, List<Author> authors, List<Publication> publications, Map<String, Forum> forumMap) {
+        boolean excludeSelf = indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF);
+        Sheet sheet = workbook.getSheet("Citations");
+        if (sheet == null) {
+            sheet = workbook.createSheet("Citations");
+            Row headerRow = sheet.createRow(0);
+            headerRow.createCell(0).setCellValue("Cited Title");
+            headerRow.createCell(1).setCellValue("Citing Title");
+            headerRow.createCell(2).setCellValue("Authors");
+            headerRow.createCell(3).setCellValue("Forum");
+            headerRow.createCell(4).setCellValue("Volume");
+            headerRow.createCell(5).setCellValue("Year");
+            headerRow.createCell(6).setCellValue("Workshop");
+            headerRow.createCell(7).setCellValue("Category");
+            headerRow.createCell(8).setCellValue("Forum Score");
+            headerRow.createCell(9).setCellValue("Author Score");
+        }
+
+        int rowIdx = sheet.getLastRowNum();
+        for (Publication publication : publications) {
+            sheet.createRow(++rowIdx);
+            List<Citation> citations = scopusCitationRepository.findAllByCitedId(publication.getId());
+            List<String> citingIds = citations.stream().map(Citation::getCitingId).collect(Collectors.toList());
+            List<Publication> citingPublications = scopusPublicationRepository.findAllByIdIn(citingIds);
+
+            Set<String> forumKeys = citingPublications.stream().map(Publication::getForum).collect(Collectors.toSet());
+            Set<String> authorIds = citingPublications.stream().map(Publication::getAuthors).flatMap(Collection::stream).collect(Collectors.toSet());
+            List<Forum> forums = scopusForumRepository.findByIdIn(forumKeys);
+            scopusAuthorRepository.findByIdIn(authorIds);
+            Map<String, Forum> forumMap2 = forums.stream().collect(Collectors.toMap(Forum::getId, forum -> forum));
+            forumMap.putAll(forumMap2);
+
+            for (Publication citingPublication : citingPublications) {
+                if (excludeSelf && authors.stream().anyMatch(author -> citingPublication.getAuthors().contains(author.getId()))) {
+                    continue;
+                }
+                if (forumMap.get(citingPublication.getForum()) == null) {
+                    continue;
+                }
+
+                Map<String, Score> citScores = scientificProductionService.calculateScientificImpactScore(publication, Collections.singletonList(citingPublication), indicator);
+                Score citationScore = citScores.get(citingPublication.getTitle());
+                if (citationScore == null) {
+                    continue;
+                }
+
+                String authorDetails = String.join(", ", getAuthorNames(citingPublication.getAuthors(), cacheService.getAuthorCache()));
+
+                Row row = sheet.createRow(++rowIdx);
+                row.createCell(0).setCellValue(publication.getTitle());
+                row.createCell(1).setCellValue(citingPublication.getTitle());
+                row.createCell(2).setCellValue(authorDetails);
+                row.createCell(3).setCellValue(forumMap.get(citingPublication.getForum()).getPublicationName());
+                row.createCell(4).setCellValue(citingPublication.getVolume());
+                row.createCell(5).setCellValue(citingPublication.getCoverDate().substring(0, 4));
+                row.createCell(6).setCellValue("No");
+                row.createCell(7).setCellValue(citationScore.getCategory());
+                row.createCell(8).setCellValue(citationScore.getScore());
+                row.createCell(9).setCellValue(citationScore.getAuthorScore());
+            }
+        }
+    }
+
+    private String[] getAuthorNames(List<String> authorIds, Map<String, Author> authorMap) {
+        String[] result = new String[authorIds.size()];
+        for (int i = 0; i < authorIds.size(); i++) {
+            if (authorMap.containsKey(authorIds.get(i))) {
+                result[i] = authorMap.get(authorIds.get(i)).getName();
+            }
+        }
+        return result;
     }
 
     private void applyFinalSelector(Indicator indicator, Map<String, Map<String, Score>> scores) {

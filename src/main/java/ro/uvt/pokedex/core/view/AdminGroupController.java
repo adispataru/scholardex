@@ -16,7 +16,6 @@ import ro.uvt.pokedex.core.service.application.GroupCnfisExportFacade;
 import ro.uvt.pokedex.core.service.application.GroupExportFacade;
 import ro.uvt.pokedex.core.service.application.GroupManagementFacade;
 import ro.uvt.pokedex.core.service.application.GroupReportFacade;
-import ro.uvt.pokedex.core.service.application.model.GroupCnfisExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisZipExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupEditViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupIndividualReportViewModel;
@@ -24,8 +23,8 @@ import ro.uvt.pokedex.core.service.application.model.GroupListViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupMemberCnfisWorkbook;
 import ro.uvt.pokedex.core.service.application.model.GroupPublicationCsvExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupPublicationsViewModel;
+import ro.uvt.pokedex.core.service.application.model.GroupWorkbookExportResult;
 import ro.uvt.pokedex.core.service.importing.GroupService;
-import ro.uvt.pokedex.core.service.reporting.CNFISReportExportService;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -48,7 +47,6 @@ public class AdminGroupController {
     private final GroupExportFacade groupExportFacade;
     private final GroupCnfisExportFacade groupCnfisExportFacade;
     private final GroupService groupService;
-    private final CNFISReportExportService exportService;
 
     @GetMapping
     public String listGroups(Model model) {
@@ -155,13 +153,14 @@ public class AdminGroupController {
                                       @RequestParam(name = "end", defaultValue = "2024") String endYear) throws IOException {
         int start = Integer.parseInt(startYear);
         int end = Integer.parseInt(endYear);
-
-        Optional<GroupCnfisExportViewModel> viewModel = groupCnfisExportFacade.buildGroupCnfisExport(id, start, end);
-        if (viewModel.isEmpty()) {
+        Optional<GroupWorkbookExportResult> workbook = groupCnfisExportFacade.buildGroupCnfisWorkbookExport(id, start, end);
+        if (workbook.isEmpty()) {
             return;
         }
-        GroupCnfisExportViewModel vm = viewModel.get();
-        exportService.exportCNFISReport2025(vm.publications(), vm.cnfisReports(), vm.forumMap(), vm.authorIds(), response, true);
+        GroupWorkbookExportResult exportResult = workbook.get();
+        response.setContentType(exportResult.contentType());
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + exportResult.fileName() + "\"");
+        response.getOutputStream().write(exportResult.workbookBytes());
     }
 
     @GetMapping("/{id}/publications/exportAllReports")

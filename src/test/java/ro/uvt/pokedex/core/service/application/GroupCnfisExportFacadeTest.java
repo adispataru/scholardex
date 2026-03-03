@@ -136,6 +136,34 @@ class GroupCnfisExportFacadeTest {
                 .generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), anyList(), eq(false));
     }
 
+    @Test
+    void buildGroupCnfisWorkbookExportReturnsWorkbookMetadata() throws IOException {
+        Group group = new Group();
+        group.setResearchers(List.of(researcher("Ana", "Popescu", List.of("a1"))));
+        Domain allDomain = new Domain();
+        allDomain.setName("ALL");
+
+        when(groupManagementFacade.buildGroupEditView("g1"))
+                .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of()));
+        when(groupManagementFacade.buildGroupListView())
+                .thenReturn(new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), new Group()));
+
+        Publication publication = publication("p1", "f1", "2022-01-01");
+        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
+        when(woSExtractor.findPublicationWosId(any(Publication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(cnfiSScoringService2025.getReport(any(Publication.class), any(Domain.class))).thenReturn(new CNFISReport2025());
+        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of());
+        when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), anyList(), eq(true)))
+                .thenReturn(new byte[]{9, 9, 9});
+
+        var result = facade.buildGroupCnfisWorkbookExport("g1", 2021, 2024);
+
+        assertTrue(result.isPresent());
+        assertEquals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", result.get().contentType());
+        assertEquals("data/templates/AC2025_Anexa6-Tabel_institutional_articole_brevete-2025.xlsx", result.get().fileName());
+        assertArrayEquals(new byte[]{9, 9, 9}, result.get().workbookBytes());
+    }
+
     private static Researcher researcher(String firstName, String lastName, List<String> scopusIds) {
         Researcher researcher = new Researcher();
         researcher.setFirstName(firstName);

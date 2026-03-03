@@ -91,6 +91,8 @@ Scope: `H02` Architecture boundaries and ownership.
   Exit criteria: every violation has a file reference and a proposed remediation direction.
   Status: completed on 2026-03-03 (`docs/h02-violations.md`).
   Note: V01 follow-up slice 4 completed (`AdminGroupController` export/CNFIS via `GroupExportFacade` and `GroupCnfisExportFacade`); tracked baseline pair is now at 73.9% repository-field reduction (`23 -> 6`), and AdminGroup repository debt is closed.
+  Note: V02 baseline slice completed for the same pair (User/AdminGroup): direct controller imports of `core.service.reporting` removed; export/reporting coupling now facade-backed.
+  Note: V02 AdminView verification slice completed: no direct `Z1 -> Z3` reporting-service coupling found in `AdminViewController`; transport-layer scan baseline is clean.
 
 - [ ] `H02-S05` Define phased remediation plan for violations.
   Goal: prioritize fixes by blast radius and effort without blocking delivery.

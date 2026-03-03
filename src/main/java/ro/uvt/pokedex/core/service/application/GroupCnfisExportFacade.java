@@ -14,6 +14,7 @@ import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisZipExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupMemberCnfisWorkbook;
+import ro.uvt.pokedex.core.service.application.model.GroupWorkbookExportResult;
 import ro.uvt.pokedex.core.service.reporting.CNFISReportExportService;
 import ro.uvt.pokedex.core.service.reporting.CNFISScoringService2025;
 
@@ -76,6 +77,28 @@ public class GroupCnfisExportFacade {
         }
 
         return Optional.of(new GroupCnfisZipExportViewModel(workbooks));
+    }
+
+    public Optional<GroupWorkbookExportResult> buildGroupCnfisWorkbookExport(String groupId, int startYear, int endYear) throws IOException {
+        Optional<GroupCnfisExportViewModel> exportViewModel = buildGroupCnfisExport(groupId, startYear, endYear);
+        if (exportViewModel.isEmpty()) {
+            return Optional.empty();
+        }
+
+        GroupCnfisExportViewModel vm = exportViewModel.get();
+        byte[] workbookBytes = exportService.generateCNFISReportWorkbook(
+                vm.publications(),
+                vm.cnfisReports(),
+                vm.forumMap(),
+                vm.authorIds(),
+                true
+        );
+
+        return Optional.of(new GroupWorkbookExportResult(
+                workbookBytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "data/templates/AC2025_Anexa6-Tabel_institutional_articole_brevete-2025.xlsx"
+        ));
     }
 
     private Domain resolveAllDomain() {
