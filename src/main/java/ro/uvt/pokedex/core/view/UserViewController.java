@@ -921,7 +921,7 @@ public class UserViewController {
                     if (journals.isPresent()) {
                         WoSRanking ranking = journals.get();
                         model.addAttribute("journal", ranking);
-                        return "user/wos-rankings-view";
+                        return "admin/rankings-view";
                     }
                 }
             }

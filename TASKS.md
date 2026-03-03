@@ -77,7 +77,7 @@ Scope: `H01` Duplicate code and drift audit.
   Inputs: top clusters from `H01-S01`.
   Deliverable: `docs/h01-drift-findings.md` with drift type: harmless, intentional, risky, unknown.
   Exit criteria: each top cluster has a drift decision and evidence snippet references.
-  Notes: In progress. `C01` analyzed; template `C02` and `C03` resolved by deleting backup templates. See `docs/h01-drift-findings.md`.
+  Notes: In progress. `C01`, `C03`, `C05`, and `C06` analyzed; `C02`, `C03`, and `C05` resolved by template deletion/consolidation; C06 shared asset contract extracted (`scripts/assets-contract.js`). See `docs/h01-drift-findings.md`.
 
 - [ ] `H01-S04` Prioritize by risk and blast radius.
   Goal: rank duplicates by user impact, regression risk, and change cost.
