@@ -57,7 +57,6 @@ public class AdminGroupController {
 
     private final ScopusForumRepository scopusForumRepository;
     private final ScopusCitationRepository scopusCitationRepository;
-    private final CNFISScoringService cnfiSScoringService;
     private final CNFISScoringService2025 cnfiSScoringService2025;
     private final WoSExtractor woSExtractor;
     private final CNFISReportExportService exportService;
@@ -403,133 +402,6 @@ public class AdminGroupController {
 //    }
 
 
-//    @GetMapping("/{id}/publications/exportCNFIS")
-//    @ResponseBody
-//    public void createCNFISReport(@PathVariable("id") String id, Authentication authentication, HttpServletResponse response,
-//                                  @RequestParam(name = "start", defaultValue = "2021") String startYear,
-//                                  @RequestParam(name = "end", defaultValue = "2024") String endYear) throws IOException {
-//        Group group = groupRepository.findById(id).orElse(null);
-//        if (group == null)
-//            return;
-//
-//        List<Researcher> researchers = group.getResearchers();
-//        researchers.sort(Comparator.comparing(Researcher::getName));
-//        List<String> authorIds = new ArrayList<>();
-//        for (Researcher researcher : researchers) {
-//            authorIds.addAll(researcher.getScopusId());
-//        }
-//        List<Publication> publications = scopusPublicationRepository.findAllByAuthorsIn(authorIds);
-//        int start = Integer.parseInt(startYear);
-//        int end = Integer.parseInt(endYear);
-//        publications = publications.stream().filter( publication -> {
-//            int pubYear = Integer.parseInt(publication.getCoverDate().substring(0, 4));
-//            return pubYear >= start && pubYear <= end;
-//        }).toList();
-//        List<CNFISReport> cnfisReports = new ArrayList<>();
-//        Domain domain = domainRepository.findByName("ALL").orElse(null);
-//        for (Publication publication : publications) {
-//            CNFISReport cnfisReport = cnfiSScoringService.getReport(publication, domain);
-//            cnfisReports.add(cnfisReport);
-//        }
-//
-//        Set<String> authorKeys = new HashSet<>();
-//        Set<String> forumKeys = new HashSet<>();
-//        publications.forEach(p -> {
-//            authorKeys.addAll(p.getAuthors());
-//            forumKeys.add(p.getForum());
-//        });
-//
-//        List<Author> authors = scopusAuthorRepository.findByIdIn(authorKeys);
-//        Map<String, Author> authorMap = authors.stream().collect(Collectors.toMap(Author::getId, a -> a));
-//        List<Forum> forums = scopusForumRepository.findBySourceIdIn(forumKeys);
-//        Map<String, Forum> forumMap = forums.stream().collect(Collectors.toMap(Forum::getSourceId, f -> f));
-//
-//
-//
-//        // Load the template Excel file
-//
-//        try (FileInputStream resource = new FileInputStream("data/templates/Anexa5-Fisa_articole_brevete.xlsx");
-//             Workbook workbook = new XSSFWorkbook(resource)) {
-//            Sheet sheet = workbook.getSheetAt(0);
-//
-//            int rowNum = 16; // Start populating from row 15
-//            int i = 0;
-//            Row sample = sheet.getRow(15);
-//            int sampleRowNum = 15;
-//            for (Publication publication : publications) {
-//                Row row;
-//
-//                row = copyRow(workbook, sheet, sampleRowNum, rowNum);
-//
-//
-//                String year = publication.getCoverDate() != null ? publication.getCoverDate().split("-")[0] : "";
-//                String title = publication.getTitle() != null ? publication.getTitle() : "";
-//                String doi = publication.getDoi() != null ? publication.getDoi() : "";
-////                String wosCode = publication.getWosId() != null ? publication.getWosId() : "";
-//                String wosCode = "";
-////                String brevetCode = publication.getBrevetCode() != null ? publication.getBrevetCode() : "";
-//                String brevetCode = "";
-//                String forumName = forumMap.getOrDefault(publication.getForum(), new Forum()).getPublicationName();
-//                String issnOnline = forumMap.getOrDefault(publication.getForum(), new Forum()).getEIssn();
-//                if(issnOnline.contains("null"))
-//                    issnOnline = "";
-//                String issnPrint = forumMap.getOrDefault(publication.getForum(), new Forum()).getIssn();
-//                if(issnPrint.contains("null"))
-//                    issnPrint = "";
-////                String isbn = publication.getIsbn() != null ? publication.getIsbn() : "";
-//                String isbn = "";
-//
-////                String journalCategory = publication.getJournalCategory() != null ? publication.getJournalCategory() : "";
-////                String articleCategory = publication.getArticleCategory() != null ? publication.getArticleCategory() : "";
-////                String patentCategory = publication.getPatentCategory() != null ? publication.getPatentCategory() : "";
-//                int totalAuthors = publication.getAuthors().size();
-//                //TODO update this formula
-//                List<Institution> uvt = institutionRepository.findByNameIgnoreCase("UVT");
-//                List<String> univAffil = uvt.getFirst().getScopusAffiliations().stream().map(Affiliation::getAfid).toList();
-//                long universityAuthors = publication.getAffiliations().stream().filter(univAffil::equals).count();
-//
-//
-//                System.out.println("Row: " + rowNum + " - Title: " + title);
-//                row.getCell(1).setCellValue(year);
-//                row.getCell(2).setCellValue(title);
-//                row.getCell(3).setCellValue(doi);
-//                row.getCell(4).setCellValue(wosCode);
-//                row.getCell(5).setCellValue(brevetCode);
-//                row.getCell(6).setCellValue(forumName);
-//                row.getCell(7).setCellValue(issnOnline);
-//                row.getCell(8).setCellValue(issnPrint);
-//                row.getCell(9).setCellValue(isbn);
-//                CNFISReport cnfisReport = cnfisReports.get(i);
-//                if (cnfisReport.isIsiRosu()){
-//                    row.getCell(12).setCellValue(1);
-//                } else if (cnfisReport.isIsiGalben()) {
-//                    row.getCell(13).setCellValue(1);
-//                } else if (cnfisReport.isIsiAlb()) {
-//                    row.getCell(14).setCellValue(1);
-//                } else if (cnfisReport.isIsiArtsHumanities()) {
-//                    row.getCell(15).setCellValue(1);
-//                } else if(cnfisReport.isIsiEmergingSourcesCitationIndex()){
-//                    row.getCell(16).setCellValue(1);
-//                } else if (cnfisReport.isErihPlus()) {
-//                    row.getCell(17).setCellValue(1);
-//                } else if (cnfisReport.isIsiProceedings()) {
-//                    row.getCell(18).setCellValue(1);
-//                } else if (cnfisReport.isIeeeProceedings()) {
-//                    row.getCell(19).setCellValue(1);
-//                }
-//                row.getCell(23).setCellValue(totalAuthors);
-//                row.getCell(24).setCellValue(universityAuthors);
-//                i++;
-//            }
-//
-//            workbook.setForceFormulaRecalculation(true);
-//
-//            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-//            response.setHeader("Content-Disposition", "attachment; filename=\"Anexa5-Fisa_articole_brevete.xlsx\"");
-//            workbook.write(response.getOutputStream());
-//        }
-//    }
-
     // File: src/main/java/ro/uvt/pokedex/core/view/AdminGroupController.java
     @GetMapping("/{id}/publications/exportCNFIS2025")
     @ResponseBody
@@ -654,4 +526,3 @@ public class AdminGroupController {
         return "redirect:/admin/groups";
     }
 }
-
