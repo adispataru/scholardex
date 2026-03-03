@@ -6,10 +6,11 @@ Done history moved to `TASKS-done.md`.
 
 ## Backlog
 
-- [ ] `H01` Duplicate code and drift audit.
+- [x] `H01` Duplicate code and drift audit.
   Goal: identify copy-paste clusters (backend, frontend, templates, scripts) and detect behavior drift between near-identical implementations.
   Deliverable: duplication inventory with risk ranking and consolidation candidates.
   Exit criteria: top high-risk duplicates have an agreed merge strategy and owners.
+  Notes: Completed on 2026-03-03. C01/C03/C04 prioritized slices were executed and stabilized with regression guards and reintroduction checks.
 
 - [ ] `H02` Architecture boundaries and ownership.
   Goal: define module boundaries, responsibilities, and allowed dependencies between layers.
@@ -72,12 +73,12 @@ Scope: `H01` Duplicate code and drift audit.
   Exit criteria: at least one cluster identified per layer (Java, templates, JS if present).
   Notes: Completed. See `docs/h01-duplication-inventory.md`.
 
-- [ ] `H01-S03` Identify behavioral drift inside top clusters.
+- [x] `H01-S03` Identify behavioral drift inside top clusters.
   Goal: compare logic paths in near-copies and mark divergence that changes outcomes.
   Inputs: top clusters from `H01-S01`.
   Deliverable: `docs/h01-drift-findings.md` with drift type: harmless, intentional, risky, unknown.
   Exit criteria: each top cluster has a drift decision and evidence snippet references.
-  Notes: In progress. `C01`, `C03`, `C04`, `C05`, and `C06` analyzed; `C02`, `C03`, and `C05` resolved by template deletion/consolidation; C06 shared asset contract extracted (`scripts/assets-contract.js`); H01 open questions resolved and recorded in `docs/h01-drift-findings.md`.
+  Notes: Completed on 2026-03-03. `C01`, `C03`, `C04`, `C05`, and `C06` analyzed with decisions/evidence in `docs/h01-drift-findings.md`. C04 closure slices completed (`D01/D02/D03/D04/D05/D06/D07` resolved for C04 scope).
 
 - [x] `H01-S04` Prioritize by risk and blast radius.
   Goal: rank duplicates by user impact, regression risk, and change cost.
@@ -107,16 +108,20 @@ Scope: `H01` Duplicate code and drift audit.
   Exit criteria: reduced duplicate footprint and all relevant checks green.
   Notes: Completed on 2026-03-03. First slice delivered for `C04` sub-cluster B: `ScoringFactoryService` now fails fast for null/unsupported strategies; follow-up C04 Slice 2 completed dispatch alignment for books (`bk/ch`, `Book/Book Series`), so sub-cluster B is fully completed.
 
-- [ ] `H01-S08` Prevent reintroduction.
+- [x] `H01-S08` Prevent reintroduction.
   Goal: add lightweight guardrails to detect new duplication/drift early.
   Inputs: patterns and high-risk clusters identified in `H01-S01` and `H01-S03`.
   Deliverable: CI/local check command and contributor note in `CONTRIBUTING.md`.
   Exit criteria: duplication check is documented and runnable in standard workflow.
+  Notes: Completed on 2026-03-03. Added `npm run verify-duplication-guardrails`, wired it into Gradle `check`, and documented contributor workflow guardrails in `CONTRIBUTING.md`.
 
 ### H01 Candidate Clusters To Start With
 
-- [ ] `C01` `CNFISScoringService` vs `CNFISScoringService2025` (high drift risk in scoring rules/subtype handling).
+- [x] `C01` `CNFISScoringService` vs `CNFISScoringService2025` (high drift risk in scoring rules/subtype handling).
+  Notes: Closed on 2026-03-03: canonical spec added (`docs/c01-cnfis-rule-spec.md`), edge-case characterization tests expanded, and no-behavior cleanup applied in `CNFISScoringService2025`.
 - [x] `C02` Admin template backups (`*-bak.html`) vs active templates (stale copy risk and accidental edits).
   Notes: Resolved on 2026-03-03 by deleting `admin/researchers-bak.html`.
-- [ ] `C03` Reporting/scoring service family under `service/reporting` (parallel implementations with similar flow).
-- [ ] `C04` Controller/view handlers with overlapping admin/user logic (potential copy/paste request-response assembly).
+- [x] `C03` Admin rankings backup template pair (`rankings-view` vs `rankings-view-bak`).
+  Notes: Resolved on 2026-03-03 by deleting `admin/rankings-view-bak.html`.
+- [x] `C04` Reporting/scoring service family under `service/reporting` (parallel implementations with similar flow).
+  Notes: Resolved on 2026-03-03 by C04 slices 2-5. Shared category/subtype contracts extracted, dispatch/factory aligned, and metadata/logger drift cleaned.

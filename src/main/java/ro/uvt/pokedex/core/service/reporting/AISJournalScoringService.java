@@ -96,6 +96,6 @@ public class AISJournalScoringService extends AbstractWoSForumScoringService {
 
     @Override
     public String getDescription() {
-        return "Returns the impact factor\n";
+        return "Returns the AIS score.\n";
     }
 }

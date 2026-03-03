@@ -47,9 +47,9 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
             return createEmptyScore();
         }
 
-        String subtype = publication.getSubtype();
-        if (subtype == null) {
-            logger.warn("Publication has null subtype: {}", publication.getId());
+        String subtype = PublicationSubtypeSupport.resolveSubtype(publication);
+        if (subtype.isEmpty()) {
+            logger.warn("Publication has empty subtype: {}", publication.getId());
             return createEmptyScore();
         }
 

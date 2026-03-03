@@ -117,6 +117,30 @@ class ComputerScienceScoringServiceTest {
         verifyNoInteractions(journalScoringService, conferenceScoringService, bookScoringService);
     }
 
+    @Test
+    void scopusSubtypeConferenceDispatchWorksWhenSubtypeIsNull() {
+        ComputerScienceScoringService service = new ComputerScienceScoringService(
+                journalScoringService,
+                conferenceScoringService,
+                bookScoringService,
+                cacheService
+        );
+
+        Score conferenceScore = score(8.0, 2023, "A", "CORE");
+        when(conferenceScoringService.getScore(any(Publication.class), any(Indicator.class))).thenReturn(conferenceScore);
+
+        Publication publication = new Publication();
+        publication.setScopusSubtype("cp");
+        publication.setSubtype(null);
+        publication.setId("p-2");
+
+        Score score = service.getScore(publication, new Indicator());
+
+        assertEquals(8.0, score.getScore());
+        verify(conferenceScoringService, times(1)).getScore(any(Publication.class), any(Indicator.class));
+        verifyNoInteractions(journalScoringService, bookScoringService);
+    }
+
     private ComputerScienceScoringService activityAwareService(String aggregationType) {
         return new ComputerScienceScoringService(
                 journalScoringService,

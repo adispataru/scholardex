@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentMap;
 @Service
 public class CNCSISPublisherListService extends AbstractForumScoringService {
 
-    private static final Logger logger = LoggerFactory.getLogger(ComputerScienceConferenceScoringService.class);
+    private static final Logger logger = LoggerFactory.getLogger(CNCSISPublisherListService.class);
     private static final int LAST_SENSE_YEAR = 2023;
     private final CNCSISPublisherRepository publisherRepository;
     private final ConcurrentMap<String, List<CNCSISPublisher>> rankingCache = new ConcurrentHashMap<>();
@@ -45,7 +45,8 @@ public class CNCSISPublisherListService extends AbstractForumScoringService {
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = List.of(LAST_SENSE_YEAR);
 
-        if ("ch".equals(publication.getSubtype()) || "bk".equals(publication.getSubtype())) {
+        String subtype = PublicationSubtypeSupport.resolveSubtype(publication);
+        if ("ch".equals(subtype) || "bk".equals(subtype)) {
             computeScoresWithForum(
                     domain,
                     forum,
@@ -53,7 +54,7 @@ public class CNCSISPublisherListService extends AbstractForumScoringService {
                     scoreResult,
                     this::computeSENSEScore
             );
-            if("ch".equals(publication.getSubtype())) {
+            if("ch".equals(subtype)) {
                 scoreResult.bestPoints.set(scoreResult.bestPoints.get() / 2);
             }
         }

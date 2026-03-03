@@ -45,7 +45,8 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = List.of(LAST_SENSE_YEAR);
 
-        if ("ch".equals(publication.getSubtype()) || "bk".equals(publication.getSubtype())) {
+        String subtype = PublicationSubtypeSupport.resolveSubtype(publication);
+        if ("ch".equals(subtype) || "bk".equals(subtype)) {
             computeScoresWithForum(
                     domain,
                     forum,
@@ -53,7 +54,7 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
                     scoreResult,
                     this::computeSENSEScore
             );
-            if("ch".equals(publication.getSubtype())) {
+            if("ch".equals(subtype)) {
                 scoreResult.bestPoints.set(scoreResult.bestPoints.get() / 2);
             }
         }

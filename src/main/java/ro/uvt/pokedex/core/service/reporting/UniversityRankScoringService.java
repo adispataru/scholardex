@@ -74,6 +74,6 @@ public class UniversityRankScoringService extends AbstractForumScoringService {
 
     @Override
     public String getDescription() {
-        return "Returns the impact factor\n";
+        return "Returns URAP university rank-based score (lower rank value is better).\n";
     }
 }

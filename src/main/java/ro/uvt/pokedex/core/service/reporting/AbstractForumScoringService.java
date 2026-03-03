@@ -92,11 +92,7 @@ public abstract class AbstractForumScoringService implements ScoringService {
     }
 
     protected boolean isCategoryInDomain(Domain domain, String category) {
-        if("ALL".equals(domain.getName()) || domain.getWosCategories().contains(category)) {
-            String index = category.split("-")[1];
-            return index.contains("SCIE") || index.contains("SSCI");
-        }
-        return false;
+        return ScoringCategorySupport.isCategoryEligibleForDomain(domain, category);
     }
 
 //    /**
@@ -227,7 +223,7 @@ public abstract class AbstractForumScoringService implements ScoringService {
     }
 
     protected boolean isArticleOrReview(Publication publication) {
-        return "ar".equals(publication.getSubtype()) || "re".equals(publication.getSubtype());
+        return PublicationSubtypeSupport.isSubtype(publication, "ar", "re");
     }
 
     protected List<Integer> getAllowedYearsForPublication(Publication publication,

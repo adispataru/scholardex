@@ -41,7 +41,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = getAllowedYearsForPublication(publication, indicator);
 
-        if ("cp".equals(publication.getSubtype())) {
+        if (PublicationSubtypeSupport.isSubtype(publication, "cp")) {
             computeScoresWithForum(
                     domain,
                     forum,

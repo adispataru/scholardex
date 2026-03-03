@@ -12,6 +12,7 @@ import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.service.CacheService;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -99,6 +100,108 @@ class CNFISScoringService2025Test {
         assertTrue(report.isIsiProceedings());
     }
 
+    @Test
+    void cpNonIeeeWithoutWosIdKeepsProceedingsFlagsFalse() {
+        Publication publication = basePublication();
+        publication.setScopusSubtype("cp");
+        publication.setWosId("");
+
+        Forum forum = baseForum("International Computing Conference");
+        when(cacheService.getCachedForums(publication.getForum())).thenReturn(forum);
+
+        CNFISReport2025 report = service.getReport(publication, allDomain);
+
+        assertFalse(report.isIeeeProceedings());
+        assertFalse(report.isIsiProceedings());
+    }
+
+    @Test
+    void chLectureNotesWithWosIdMarksIsiProceedings() {
+        Publication publication = basePublication();
+        publication.setScopusSubtype("ch");
+        publication.setWosId("WOS:456");
+
+        Forum forum = baseForum("Lecture Notes in Something");
+        when(cacheService.getCachedForums(publication.getForum())).thenReturn(forum);
+
+        CNFISReport2025 report = service.getReport(publication, allDomain);
+
+        assertTrue(report.isIsiProceedings());
+        assertFalse(report.isIeeeProceedings());
+    }
+
+    @Test
+    void chLectureNotesWithoutWosIdDoesNotMarkIsiProceedings() {
+        Publication publication = basePublication();
+        publication.setScopusSubtype("ch");
+        publication.setWosId("");
+
+        Forum forum = baseForum("Lecture Notes in Something");
+        when(cacheService.getCachedForums(publication.getForum())).thenReturn(forum);
+
+        CNFISReport2025 report = service.getReport(publication, allDomain);
+
+        assertFalse(report.isIsiProceedings());
+    }
+
+    @Test
+    void malformedCoverDateFallsBackSafelyToLastYear() {
+        Publication publication = basePublication();
+        publication.setScopusSubtype("ar");
+        publication.setCoverDate("bad-date");
+
+        Forum forum = baseForum("Journal of Testing");
+        when(cacheService.getCachedForums(publication.getForum())).thenReturn(forum);
+        when(cacheService.getCachedRankingsByIssn("1234-5678")).thenReturn(List.of(ranking("SCIE", WoSRanking.Quarter.Q1)));
+
+        CNFISReport2025 report = assertDoesNotThrow(() -> service.getReport(publication, allDomain));
+
+        assertTrue(report.isIsiQ1());
+    }
+
+    @Test
+    void missingSubtypeDataDoesNotCrashAndSetsNoProceedingsFlags() {
+        Publication publication = basePublication();
+        publication.setScopusSubtype(" ");
+        publication.setSubtype(null);
+
+        Forum forum = baseForum("Any forum");
+        when(cacheService.getCachedForums(publication.getForum())).thenReturn(forum);
+
+        CNFISReport2025 report = assertDoesNotThrow(() -> service.getReport(publication, allDomain));
+
+        assertFalse(report.isIeeeProceedings());
+        assertFalse(report.isIsiProceedings());
+    }
+
+    @Test
+    void nullCategoryInRankingIsHandledSafely() {
+        Publication publication = basePublication();
+        publication.setScopusSubtype("ar");
+
+        Forum forum = baseForum("Journal of Testing");
+        when(cacheService.getCachedForums(publication.getForum())).thenReturn(forum);
+        when(cacheService.getCachedRankingsByIssn("1234-5678")).thenReturn(List.of(rankingWithNullableCategory(null, WoSRanking.Quarter.Q1)));
+
+        CNFISReport2025 report = assertDoesNotThrow(() -> service.getReport(publication, allDomain));
+
+        assertTrue(report.isErihPlus());
+    }
+
+    @Test
+    void blankCategoryInRankingIsHandledSafely() {
+        Publication publication = basePublication();
+        publication.setScopusSubtype("ar");
+
+        Forum forum = baseForum("Journal of Testing");
+        when(cacheService.getCachedForums(publication.getForum())).thenReturn(forum);
+        when(cacheService.getCachedRankingsByIssn("1234-5678")).thenReturn(List.of(rankingWithNullableCategory(" ", WoSRanking.Quarter.Q1)));
+
+        CNFISReport2025 report = assertDoesNotThrow(() -> service.getReport(publication, allDomain));
+
+        assertTrue(report.isErihPlus());
+    }
+
     private Publication basePublication() {
         Publication publication = new Publication();
         publication.setForum("forum-1");
@@ -118,10 +221,16 @@ class CNFISScoringService2025Test {
     }
 
     private WoSRanking ranking(String category, WoSRanking.Quarter quarter) {
+        return rankingWithNullableCategory(category, quarter);
+    }
+
+    private WoSRanking rankingWithNullableCategory(String category, WoSRanking.Quarter quarter) {
         WoSRanking ranking = new WoSRanking();
         WoSRanking.Rank rank = new WoSRanking.Rank();
         rank.setQAis(Map.of(2023, quarter));
-        ranking.setWebOfScienceCategoryIndex(Map.of(category, rank));
+        Map<String, WoSRanking.Rank> categories = new HashMap<>();
+        categories.put(category, rank);
+        ranking.setWebOfScienceCategoryIndex(categories);
         return ranking;
     }
 }

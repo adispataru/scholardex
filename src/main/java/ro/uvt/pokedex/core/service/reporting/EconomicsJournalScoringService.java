@@ -130,11 +130,8 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
         }
         returnScore.setScore(ranking.getScore().getAis().get(year));
 
-        String cat = category.split("-")[0].trim();
-        String index = null;
-        if(category.split("-").length > 1) {
-            index = category.split("-")[1].trim();
-        }
+        String cat = ScoringCategorySupport.extractCategoryName(category);
+        String index = ScoringCategorySupport.extractCategoryIndex(category);
         if(CORE_ECONOMICS.contains(cat)) {
             multiplier.getAndSet(CORE_ECONOMICS_MULTIPLIER);
             returnScore.setQuarter(rank.getQAis().get(year).toString());

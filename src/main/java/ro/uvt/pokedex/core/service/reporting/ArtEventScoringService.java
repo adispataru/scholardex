@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentMap;
 @Service
 public class ArtEventScoringService extends AbstractForumScoringService {
 
-    private static final Logger logger = LoggerFactory.getLogger(ComputerScienceConferenceScoringService.class);
+    private static final Logger logger = LoggerFactory.getLogger(ArtEventScoringService.class);
     private static final int LAST_ARTS_YEAR = 2024;
     private final ArtisticEventRepository artEventsRepo;
     private final ConcurrentMap<String, List<ArtisticEvent>> rankingCache = new ConcurrentHashMap<>();

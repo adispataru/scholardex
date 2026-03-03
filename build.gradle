@@ -48,7 +48,12 @@ tasks.register('verifyTemplateAssets', Exec) {
     commandLine 'sh', '-lc', 'npm run verify-template-assets'
 }
 
+tasks.register('verifyDuplicationGuardrails', Exec) {
+    commandLine 'sh', '-lc', 'npm run verify-duplication-guardrails'
+}
+
 tasks.named('check') {
     dependsOn tasks.named('verifyFrontendAssets')
     dependsOn tasks.named('verifyTemplateAssets')
+    dependsOn tasks.named('verifyDuplicationGuardrails')
 }

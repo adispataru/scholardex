@@ -24,6 +24,7 @@ Before opening a PR, run:
 npm run build
 npm run verify-assets
 npm run verify-template-assets
+npm run verify-duplication-guardrails
 ./gradlew test
 ```
 
@@ -35,6 +36,7 @@ If your change affects startup/config wiring, also verify boot task resolution:
 
 When editing templates, do not add new `/vendor/*` asset references. Use `/assets/app.css` and `/assets/app.js`.
 Do not commit backup templates (`*-bak.html`) under `src/main/resources/templates/**`; checks will fail.
+Do not reintroduce removed legacy CNFIS artifacts (`CNFISScoringService`, `CNFISReport`) or null-fallback scoring dispatch; `verify-duplication-guardrails` enforces these guardrails.
 
 ## Pull Request Checklist
 

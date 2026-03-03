@@ -5,7 +5,8 @@
   "scripts": {
     "build": "node scripts/build-assets.js",
     "verify-assets": "node scripts/verify-assets.js",
-    "verify-template-assets": "node scripts/verify-template-assets.js"
+    "verify-template-assets": "node scripts/verify-template-assets.js",
+    "verify-duplication-guardrails": "node scripts/verify-duplication-guardrails.js"
   },
   "devDependencies": {
     "esbuild": "^0.25.1"
