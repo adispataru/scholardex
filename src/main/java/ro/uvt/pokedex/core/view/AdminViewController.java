@@ -26,6 +26,13 @@ import ro.uvt.pokedex.core.repository.ArtisticEventRepository;
 import ro.uvt.pokedex.core.repository.InstitutionRepository;
 import ro.uvt.pokedex.core.repository.reporting.*;
 import ro.uvt.pokedex.core.repository.scopus.*;
+import ro.uvt.pokedex.core.service.application.AdminScopusFacade;
+import ro.uvt.pokedex.core.service.application.AdminInstitutionReportFacade;
+import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
+import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsExportViewModel;
+import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsViewModel;
+import ro.uvt.pokedex.core.service.application.model.AdminScopusCitationsViewModel;
+import ro.uvt.pokedex.core.service.application.model.AdminScopusPublicationSearchViewModel;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
@@ -57,6 +64,9 @@ public class AdminViewController {
     private final InstitutionRepository institutionRepository;
     private final ActivityRepository activityRepository;
     private final IndividualReportRepository individualReportRepository;
+    private final AdminScopusFacade adminScopusFacade;
+    private final AdminInstitutionReportFacade adminInstitutionReportFacade;
+    private final RankingMaintenanceFacade rankingMaintenanceFacade;
     private final String Country = "Romania";
 
 
@@ -112,104 +122,31 @@ public class AdminViewController {
 
     @GetMapping("/institutions/{id}/publications")
     public String viewInstitutionPublication(@PathVariable String id, Model model) {
-        Institution institution = institutionRepository.findById(id).orElse(null);
-        if(institution == null) {
+        Optional<AdminInstitutionPublicationsViewModel> viewModel = adminInstitutionReportFacade.buildInstitutionPublicationsView(id);
+        if (viewModel.isEmpty()) {
             return "redirect:/admin/institutions";
-
         }
-        List<Publication> publications = new ArrayList<>();
-        for(Affiliation affiliation : institution.getScopusAffiliations()) {
-            publications.addAll(scopusPublicationRepository.findAllByAffiliationsContaining(affiliation.getAfid()));
-        }
-
-        Set<String> authorKeys = new HashSet<>();
-        Set<String> forumKeys = new HashSet<>();
-        publications.forEach(p -> {
-            authorKeys.addAll(p.getAuthors());
-            forumKeys.add(p.getForum());
-        });
-        List<Author> byIdIn = scopusAuthorRepository.findByIdIn(authorKeys);
-        Map<String, Author> authorMap = new HashMap<>();
-        byIdIn.forEach(a -> {
-            authorMap.put(a.getId(), a);
-        });
-        model.addAttribute("authorMap", authorMap);
-        Map<String, Forum> forumMap = new HashMap<>();
-        List<Forum> forums = scopusForumRepository.findByIdIn(forumKeys);
-        forums.forEach(f -> {
-            forumMap.put(f.getId(), f);
-        });
-        Map<Integer, List<Publication>> publicationsByYear = publications.stream()
-                .collect(Collectors.groupingBy(p -> Integer.parseInt(p.getCoverDate().substring(0,4)), TreeMap::new, Collectors.toList()));
-
-        Map<Integer, Long> publicationsCountByYear = publications.stream()
-                .collect(Collectors.groupingBy(p -> Integer.parseInt(p.getCoverDate().substring(0,4)), TreeMap::new, Collectors.counting()));
-
-
-        model.addAttribute("publicationsByYear", publicationsByYear);
-        model.addAttribute("publicationsCountByYear", publicationsCountByYear);
-
-        List<IndividualReport> all = individualReportRepository.findAll();
-
-        model.addAttribute("individualReports", all);
-
-        model.addAttribute("forumMap", forumMap);
-        model.addAttribute("publications", publications);
-        model.addAttribute("institution", institution);
-        model.addAttribute("publications", publications);
+        AdminInstitutionPublicationsViewModel vm = viewModel.get();
+        model.addAttribute("authorMap", vm.authorMap());
+        model.addAttribute("publicationsByYear", vm.publicationsByYear());
+        model.addAttribute("publicationsCountByYear", vm.publicationsCountByYear());
+        model.addAttribute("individualReports", vm.individualReports());
+        model.addAttribute("forumMap", vm.forumMap());
+        model.addAttribute("publications", vm.publications());
+        model.addAttribute("institution", vm.institution());
+        model.addAttribute("publications", vm.publications());
         return "admin/institution-publications";
     }
 
     @GetMapping("/institutions/{id}/publications/exportExcel")
     @ResponseBody
     public void exportInstitutionPublicationsExcel(@PathVariable("id") String institutionId, HttpServletResponse response) throws IOException {
-        Institution institution = institutionRepository.findById(institutionId).orElse(null);
-        if (institution == null) return;
-
-        List<Publication> publications = new ArrayList<>();
-        for(Affiliation affiliation : institution.getScopusAffiliations()) {
-            publications.addAll(scopusPublicationRepository.findAllByAffiliationsContaining(affiliation.getAfid()));
+        Optional<AdminInstitutionPublicationsExportViewModel> exportViewModel =
+                adminInstitutionReportFacade.buildInstitutionPublicationsExport(institutionId);
+        if (exportViewModel.isEmpty()) {
+            return;
         }
-        // 2. Fetch citations for these publications
-
-        List<String> ids = publications.stream()
-                .map(Publication::getId)
-                .collect(Collectors.toList());
-
-        List<Citation> citations = scopusCitationRepository.findAllByCitedIdIn(ids);
-        Map<String, List<Publication>> citationMap = new HashMap<>();
-        for (Citation citation : citations) {
-            String citedId = citation.getCitedId();
-            Optional<Publication> byId = scopusPublicationRepository.findById(citation.getCitingId());
-            if (byId.isPresent()) {
-                citationMap.putIfAbsent(citedId, new ArrayList<>());
-                citationMap.get(citedId).add(byId.get());
-            }
-        }
-
-        Set<String> authorKeys = new HashSet<>();
-        Set<String> forumKeys = new HashSet<>();
-        publications.forEach(p -> {
-            authorKeys.addAll(p.getAuthors());
-            forumKeys.add(p.getForum());
-        });
-        citationMap.forEach((citedId, citingPublications) -> {
-            citingPublications.forEach(citing -> {
-                authorKeys.addAll(citing.getAuthors());
-                forumKeys.add(citing.getForum());
-            });
-        });
-        List<Author> byIdIn = scopusAuthorRepository.findByIdIn(authorKeys);
-        Map<String, Author> authorMap = new HashMap<>();
-        byIdIn.forEach(a -> {
-            authorMap.put(a.getId(), a);
-        });
-
-        Map<String, Forum> forumMap = new HashMap<>();
-        List<Forum> forums = scopusForumRepository.findByIdIn(forumKeys);
-        forums.forEach(f -> {
-            forumMap.put(f.getId(), f);
-        });
+        AdminInstitutionPublicationsExportViewModel vm = exportViewModel.get();
 
 
         // 3. Prepare Excel workbook
@@ -226,15 +163,15 @@ public class AdminViewController {
             pubHeader.createCell(6).setCellValue("Citations");
 
             int pubRowNum = 1;
-            for (Publication pub : publications) {
+            for (Publication pub : vm.publications()) {
                 System.out.println("Processing publication: " + pub.getAuthors() + " " + pub.getForum());
                 Row row = pubSheet.createRow(pubRowNum++);
                 row.createCell(0).setCellValue(pub.getEid());
                 row.createCell(1).setCellValue(pub.getDoi());
                 row.createCell(2).setCellValue(pub.getTitle());
                 row.createCell(3).setCellValue(pub.getCoverDate().substring(0,4));
-                row.createCell(4).setCellValue(pub.getAuthors().stream().map(a -> authorMap.containsKey(a)? authorMap.get(a).getName(): "").collect(Collectors.joining(",")));
-                row.createCell(5).setCellValue(forumMap.get(pub.getForum()) != null ? forumMap.get(pub.getForum()).getPublicationName() : "");
+                row.createCell(4).setCellValue(pub.getAuthors().stream().map(a -> vm.authorMap().containsKey(a)? vm.authorMap().get(a).getName(): "").collect(Collectors.joining(",")));
+                row.createCell(5).setCellValue(vm.forumMap().get(pub.getForum()) != null ? vm.forumMap().get(pub.getForum()).getPublicationName() : "");
                 row.createCell(6).setCellValue(pub.getCitedbyCount());
             }
 
@@ -253,8 +190,8 @@ public class AdminViewController {
             citHeader.createCell(9).setCellValue("Citations");
 
             int citRowNum = 1;
-            for (Publication pub : publications) {
-                for(Publication citing : citationMap.getOrDefault(pub.getId(), Collections.emptyList())) {
+            for (Publication pub : vm.publications()) {
+                for(Publication citing : vm.citationMap().getOrDefault(pub.getId(), Collections.emptyList())) {
                     Row row = citSheet.createRow(citRowNum++);
                     row.createCell(0).setCellValue(pub.getEid());
                     row.createCell(1).setCellValue(pub.getDoi());
@@ -263,8 +200,8 @@ public class AdminViewController {
                     row.createCell(4).setCellValue(citing.getDoi());
                     row.createCell(5).setCellValue(citing.getTitle());
                     row.createCell(6).setCellValue(citing.getCoverDate().substring(0,4));
-                    row.createCell(7).setCellValue(citing.getAuthors().stream().map(a -> authorMap.containsKey(a)? authorMap.get(a).getName(): "").collect(Collectors.joining(",")));
-                    row.createCell(8).setCellValue(forumMap.get(citing.getForum()) != null ? forumMap.get(citing.getForum()).getPublicationName() : "" );
+                    row.createCell(7).setCellValue(citing.getAuthors().stream().map(a -> vm.authorMap().containsKey(a)? vm.authorMap().get(a).getName(): "").collect(Collectors.joining(",")));
+                    row.createCell(8).setCellValue(vm.forumMap().get(citing.getForum()) != null ? vm.forumMap().get(citing.getForum()).getPublicationName() : "" );
                     row.createCell(9).setCellValue(citing.getCitedbyCount());
                 }
                 Row row = citSheet.createRow(citRowNum++);
@@ -525,16 +462,9 @@ public class AdminViewController {
     public String searchPublications(@RequestParam String authorName,
                                      @RequestParam String paperTitle,
                                      Model model) {
-        List<Publication> publications = scopusPublicationRepository.findByTitleContains(paperTitle);
-        Set<String> authorKeys = new HashSet<>();
-        publications.forEach(p -> {
-            authorKeys.addAll(p.getAuthors());
-        });
-//        if(authorName != null && !authorName.isEmpty()) {
-//            publications = publications.stream().filter(p -> p.getAuthors().contains(authorName)).collect(Collectors.toList());
-//        }
-        addAuthorMap(model, authorKeys);
-        model.addAttribute("publications", publications);
+        AdminScopusPublicationSearchViewModel viewModel = adminScopusFacade.buildPublicationSearchView(paperTitle);
+        model.addAttribute("authorMap", viewModel.authorMap());
+        model.addAttribute("publications", viewModel.publications());
         return "admin/scopus-publications-search";
     }
 
@@ -545,47 +475,15 @@ public class AdminViewController {
 
     @GetMapping("/scopus/publications/citations")
     public String showPublicationCitationsPage(Model model, @RequestParam("id") String id) {
-
-        Optional<Publication> publ = scopusPublicationRepository.findById(id);
-        publ.ifPresent(pub -> {
-            List<ro.uvt.pokedex.core.model.scopus.Citation> allByCited = scopusCitationRepository.findAllByCitedId(pub.getId());
-            List<String> citations = new ArrayList<>();
-            allByCited.forEach(c -> citations.add(c.getCitingId()));
-            List<Publication> citationsPub = scopusPublicationRepository.findAllByIdIn(citations);
-            model.addAttribute("citations", citationsPub);
-
-            model.addAttribute("publication", pub);
-            model.addAttribute("forum", scopusVenueRepository.findById(pub.getForum()).get());
-
-            Set<String> authorKeys = new HashSet<>(pub.getAuthors());
-            Set<String> forumKeys = new HashSet<>();
-            citationsPub.forEach(p -> {
-                authorKeys.addAll(p.getAuthors());
-                forumKeys.add(p.getForum());
-            });
-            List<Author> byIdIn = scopusAuthorRepository.findByIdIn(authorKeys);
-            List<Forum> forums = scopusVenueRepository.findByIdIn(forumKeys);
-            Map<String, Author> authorMap = new HashMap<>();
-            byIdIn.forEach(a -> {
-                authorMap.put(a.getId(), a);
-            });
-            model.addAttribute("authorMap", authorMap);
-            Map<String, Forum> forumMap = new HashMap<>();
-            forums.forEach(f -> {
-                forumMap.put(f.getId(), f);
-            });
-            model.addAttribute("forumMap", forumMap);
+        Optional<AdminScopusCitationsViewModel> viewModel = adminScopusFacade.buildPublicationCitationsView(id);
+        viewModel.ifPresent(vm -> {
+            model.addAttribute("citations", vm.citations());
+            model.addAttribute("publication", vm.publication());
+            model.addAttribute("forum", vm.publicationForum());
+            model.addAttribute("authorMap", vm.authorMap());
+            model.addAttribute("forumMap", vm.forumMap());
         });
         return "admin/scopus-citations";
-    }
-
-    private void addAuthorMap(Model model, Set<String> authorKeys) {
-        List<Author> byIdIn = scopusAuthorRepository.findByIdIn(authorKeys);
-        Map<String, Author> authorMap = new HashMap<>();
-        byIdIn.forEach(a -> {
-            authorMap.put(a.getId(), a);
-        });
-        model.addAttribute("authorMap", authorMap);
     }
 
     @GetMapping("/rankings/wos")
@@ -604,45 +502,19 @@ public class AdminViewController {
 
     @PostMapping("/rankings/wos/computePositionsForKnownQuarters")
     public String computeMissingRanks() {
-        List<WoSRanking> all = cacheService.getAllRankings();
-        System.out.println("WoSRanking by quarter");
-        WoSRanking.rankByAisWithQuarterKnown(all);
-        System.out.println("Finished ranking... Now saving...");
-        rankingRepository.saveAll(all);
-        System.out.println("Finished saving.");
+        rankingMaintenanceFacade.computePositionsForKnownQuarters();
         return "redirect:/admin/rankings/wos";
     }
 
     @PostMapping("/rankings/wos/computeQuartersAndRankingsWhereMissing")
     public String computeMissingQuartersAndRanks() {
-        List<WoSRanking> all = cacheService.getAllRankings();
-        System.out.println("Determining quarter and positions");
-        WoSRanking.rankByAisAndEstablishQuarters(all);
-        System.out.println("Finished ranking... Now saving...");
-        rankingRepository.saveAll(all);
-        System.out.println("Finished saving.");
-        cacheService.cacheRankings();
+        rankingMaintenanceFacade.computeQuartersAndRankingsWhereMissing();
         return "redirect:/admin/rankings/wos";
     }
 
     @PostMapping("/rankings/wos/mergeDuplicateRankings")
     public String mergeDuplicateRankings() {
-        List<WoSRanking> all = cacheService.getAllRankings();
-        System.out.println("Merging rankings");
-        all.stream().collect(Collectors.groupingBy(WoSRanking::getName)).forEach((issn, rankings) -> {
-            if(rankings.size() > 1){
-                WoSRanking merged = rankings.getFirst();
-                for (int i = 1; i < rankings.size(); i++) {
-                    WoSRanking toMerge = rankings.get(i);
-                    merged.merge(toMerge);
-                }
-                rankingRepository.save(merged);
-                for (int i = 1; i < rankings.size(); i++) {
-                    rankingRepository.delete(rankings.get(i));
-                }
-            }
-        });
-        cacheService.cacheRankings();
+        rankingMaintenanceFacade.mergeDuplicateRankings();
         return "redirect:/admin/rankings/wos";
     }
 
