@@ -61,6 +61,29 @@ class RankingMaintenanceFacadeTest {
         verify(cacheService).cacheRankings();
     }
 
+    @Test
+    void mergeDuplicateRankingsDoesNotDeleteWhenNoDuplicates() {
+        WoSRanking first = ranking("A");
+        WoSRanking second = ranking("B");
+        when(cacheService.getAllRankings()).thenReturn(List.of(first, second));
+
+        facade.mergeDuplicateRankings();
+
+        verify(rankingRepository, never()).delete(any(WoSRanking.class));
+        verify(cacheService).cacheRankings();
+    }
+
+    @Test
+    void computeMethodsHandleEmptyRankingsList() {
+        when(cacheService.getAllRankings()).thenReturn(List.of());
+
+        facade.computePositionsForKnownQuarters();
+        facade.computeQuartersAndRankingsWhereMissing();
+
+        verify(rankingRepository, times(2)).saveAll(anyList());
+        verify(cacheService, times(2)).cacheRankings();
+    }
+
     private static WoSRanking ranking(String name) {
         WoSRanking ranking = new WoSRanking();
         ranking.setName(name);

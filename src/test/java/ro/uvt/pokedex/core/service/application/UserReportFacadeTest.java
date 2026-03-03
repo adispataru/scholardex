@@ -138,6 +138,15 @@ class UserReportFacadeTest {
     }
 
     @Test
+    void buildUserCnfisWorkbookExportReturnsUnauthorizedWhenUserMissing() throws Exception {
+        when(userService.getUserByEmail("missing@uvt.ro")).thenReturn(Optional.empty());
+
+        var result = facade.buildUserCnfisWorkbookExport("missing@uvt.ro", 2021, 2024);
+
+        assertEquals(UserWorkbookExportStatus.UNAUTHORIZED, result.status());
+    }
+
+    @Test
     void buildUserCnfisWorkbookExportReturnsOkWhenDataAvailable() throws Exception {
         User user = new User();
         user.setEmail("user@uvt.ro");
@@ -171,6 +180,55 @@ class UserReportFacadeTest {
     }
 
     @Test
+    void buildUserCnfisWorkbookExportAppliesInclusiveYearBoundaries() throws Exception {
+        User user = new User();
+        user.setEmail("user@uvt.ro");
+        user.setResearcherId("r1");
+
+        Researcher researcher = new Researcher();
+        researcher.setId("r1");
+        researcher.setScopusId(List.of("a1"));
+
+        Publication pStart = new Publication();
+        pStart.setId("pStart");
+        pStart.setCoverDate("2021-01-01");
+        pStart.setForum("f1");
+
+        Publication pIn = new Publication();
+        pIn.setId("pIn");
+        pIn.setCoverDate("2022-06-01");
+        pIn.setForum("f1");
+
+        Publication pEnd = new Publication();
+        pEnd.setId("pEnd");
+        pEnd.setCoverDate("2024-12-01");
+        pEnd.setForum("f1");
+
+        Publication pOut = new Publication();
+        pOut.setId("pOut");
+        pOut.setCoverDate("2025-01-01");
+        pOut.setForum("f1");
+
+        Domain allDomain = new Domain();
+        allDomain.setName("ALL");
+
+        when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
+        when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
+        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of(pStart, pIn, pEnd, pOut));
+        when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
+        when(woSExtractor.findPublicationWosId(any(Publication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(scopusForumRepository.findByIdIn(any())).thenReturn(List.of());
+        when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false)))
+                .thenReturn(new byte[]{1});
+
+        var result = facade.buildUserCnfisWorkbookExport("user@uvt.ro", 2021, 2024);
+
+        assertEquals(UserWorkbookExportStatus.OK, result.status());
+        // only in-range publications should be enriched/saved (2021..2024 inclusive)
+        org.mockito.Mockito.verify(scopusPublicationRepository, org.mockito.Mockito.times(3)).save(any(Publication.class));
+    }
+
+    @Test
     void buildLegacyUserCnfisWorkbookExportReturnsNotFoundWhenNoAuthors() throws Exception {
         User user = new User();
         user.setEmail("user@uvt.ro");
@@ -187,5 +245,14 @@ class UserReportFacadeTest {
         var result = facade.buildLegacyUserCnfisWorkbookExport("user@uvt.ro");
 
         assertEquals(UserWorkbookExportStatus.NOT_FOUND, result.status());
+    }
+
+    @Test
+    void buildLegacyUserCnfisWorkbookExportReturnsUnauthorizedWhenUserMissing() throws Exception {
+        when(userService.getUserByEmail("missing@uvt.ro")).thenReturn(Optional.empty());
+
+        var result = facade.buildLegacyUserCnfisWorkbookExport("missing@uvt.ro");
+
+        assertEquals(UserWorkbookExportStatus.UNAUTHORIZED, result.status());
     }
 }

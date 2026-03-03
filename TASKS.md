@@ -8,15 +8,19 @@ Done history moved to `TASKS-done.md`.
 
 - `H01` completed and archived in `TASKS-done.md`.
 
-- [ ] `H02` Architecture boundaries and ownership.
+- [x] `H02` Architecture boundaries and ownership.
   Goal: define module boundaries, responsibilities, and allowed dependencies between layers.
   Deliverable: lightweight architecture map and dependency rules.
   Exit criteria: new code placement rules are documented and enforceable in review.
+  Status: completed on 2026-03-03.
+  Note: architecture baseline and enforcement are active via `docs/h02-*.md` and `npm run verify-architecture-boundaries`.
 
-- [ ] `H03` Contract and behavior baseline.
+- [x] `H03` Contract and behavior baseline.
   Goal: capture current expected behavior for key flows before refactors.
   Deliverable: minimal contract suite (controller/service integration + key UI/API flows).
   Exit criteria: high-impact flows have regression coverage and a known pass/fail baseline.
+  Status: completed on 2026-03-03.
+  Note: archived in `TASKS-done.md` with H03-S01..S07 completion details and adoption guidance.
 
 - [ ] `H04` Test strategy and pyramid rebalance.
   Goal: reduce fragile end-to-end reliance and improve unit/integration signal quality.
@@ -97,20 +101,25 @@ Scope: `H02` Architecture boundaries and ownership.
   Note: V03 final closure slice delivered: remaining transport assembly moved behind `AdminScopusFacade` and `ForumExportFacade` (`/admin/scopus/publications/search`, `/admin/scopus/publications/citations`, `/api/export`); V03 marked complete for current H02 scope.
   Note: V04 execution slice completed: reporting back-edge to `CacheService` removed via `ReportingLookupPort` + `CacheBackedReportingLookupFacade`; `service/reporting/**` now has zero `CacheService` references/imports.
 
-- [ ] `H02-S05` Define phased remediation plan for violations.
+- [x] `H02-S05` Define phased remediation plan for violations.
   Goal: prioritize fixes by blast radius and effort without blocking delivery.
   Inputs: violation inventory + ownership matrix.
   Deliverable: `docs/h02-remediation-plan.md` with phased slices (`R1`, `R2`, ...).
   Exit criteria: top-priority violations have actionable implementation slices and sequencing.
+  Status: completed on 2026-03-03 (`docs/h02-remediation-plan.md` with `R1..R4`).
 
-- [ ] `H02-S06` Add lightweight enforcement in workflow.
+- [x] `H02-S06` Add lightweight enforcement in workflow.
   Goal: add practical checks/review guardrails so boundaries stay intact.
   Inputs: dependency rules + remediation strategy.
   Deliverable: checks and contributor guidance updates (`CONTRIBUTING.md`, optional scripts/CI rule).
   Exit criteria: at least one automated or checklist-based gate prevents new boundary violations.
+  Status: completed on 2026-03-03.
+  Note: added `npm run verify-architecture-boundaries` (`scripts/verify-architecture-boundaries.js`) to enforce: no new `Z1 -> Z4` controller repository imports (debt-aware allowlist), no `Z1 -> Z3` reporting imports in transport, and no `CacheService` usage in `service/reporting/**`.
 
-- [ ] `H02-S07` Close H02 with adoption notes.
+- [x] `H02-S07` Close H02 with adoption notes.
   Goal: finalize architecture baseline and usage guidance for future tasks.
   Inputs: completed H02 artifacts and enforcement setup.
   Deliverable: H02 closeout note in `docs/h02-boundaries-and-ownership.md` + `TASKS.md` status updates.
   Exit criteria: H02 can be treated as reference baseline for H03+ planning and implementation.
+  Status: completed on 2026-03-03.
+  Note: H02 is now the active architecture reference baseline; reopen H02 only for boundary-rule changes or newly detected violations.

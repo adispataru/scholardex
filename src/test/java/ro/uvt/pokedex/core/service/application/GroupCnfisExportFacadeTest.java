@@ -164,6 +164,62 @@ class GroupCnfisExportFacadeTest {
         assertArrayEquals(new byte[]{9, 9, 9}, result.get().workbookBytes());
     }
 
+    @Test
+    void buildGroupCnfisZipExportHandlesResearcherWithoutPublications() throws IOException {
+        Group group = new Group();
+        group.setResearchers(List.of(researcher("Ana", "Popescu", List.of("a1"))));
+        Domain allDomain = new Domain();
+        allDomain.setName("ALL");
+
+        when(groupManagementFacade.buildGroupEditView("g1"))
+                .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of()));
+        when(groupManagementFacade.buildGroupListView())
+                .thenReturn(new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), new Group()));
+
+        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of());
+        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of());
+        when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false)))
+                .thenReturn(new byte[]{5, 5});
+
+        var result = facade.buildGroupCnfisZipExport("g1", 2021, 2024);
+
+        assertTrue(result.isPresent());
+        assertEquals(1, result.get().workbooks().size());
+        assertEquals("Popescu_A_AB.xlsx", result.get().workbooks().getFirst().entryName());
+        verify(exportService).generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false));
+    }
+
+    @Test
+    void buildGroupCnfisExportIncludesBoundaryYears() {
+        Group group = new Group();
+        group.setResearchers(List.of(researcher("Jane", "Doe", List.of("a1"))));
+        Domain allDomain = new Domain();
+        allDomain.setName("ALL");
+
+        Publication start = publication("pStart", "f1", "2021-01-01");
+        Publication end = publication("pEnd", "f1", "2024-12-31");
+        Publication out = publication("pOut", "f1", "2025-01-01");
+        Forum forum = new Forum();
+        forum.setId("f1");
+
+        when(groupManagementFacade.buildGroupEditView("g1"))
+                .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of()));
+        when(groupManagementFacade.buildGroupListView())
+                .thenReturn(new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), new Group()));
+        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1")))
+                .thenReturn(List.of(start, end, out));
+        when(woSExtractor.findPublicationWosId(any(Publication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(cnfiSScoringService2025.getReport(any(Publication.class), any(Domain.class))).thenReturn(new CNFISReport2025());
+        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum));
+
+        var result = facade.buildGroupCnfisExport("g1", 2021, 2024);
+
+        assertTrue(result.isPresent());
+        assertEquals(2, result.get().publications().size());
+        assertTrue(result.get().publications().stream().anyMatch(p -> "pStart".equals(p.getId())));
+        assertTrue(result.get().publications().stream().anyMatch(p -> "pEnd".equals(p.getId())));
+    }
+
     private static Researcher researcher(String firstName, String lastName, List<String> scopusIds) {
         Researcher researcher = new Researcher();
         researcher.setFirstName(firstName);
