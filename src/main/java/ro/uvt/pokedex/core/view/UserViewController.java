@@ -21,21 +21,23 @@ import ro.uvt.pokedex.core.model.reporting.*;
 import ro.uvt.pokedex.core.model.scopus.*;
 import ro.uvt.pokedex.core.model.tasks.ScopusCitationsUpdate;
 import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;
-import ro.uvt.pokedex.core.model.tasks.Status;
 import ro.uvt.pokedex.core.model.user.User;
-import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
-import ro.uvt.pokedex.core.repository.ActivityRepository;
-import ro.uvt.pokedex.core.repository.InstitutionRepository;
 import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
-import ro.uvt.pokedex.core.repository.reporting.IndicatorRepository;
-import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 import ro.uvt.pokedex.core.repository.reporting.RankingRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusCitationRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
-import ro.uvt.pokedex.core.repository.tasks.ScopusCitationUpdateRepository;
-import ro.uvt.pokedex.core.repository.tasks.ScopusPublicationUpdateRepository;
+import ro.uvt.pokedex.core.service.application.UserPublicationFacade;
+import ro.uvt.pokedex.core.service.application.UserReportFacade;
+import ro.uvt.pokedex.core.service.application.UserScopusTaskFacade;
+import ro.uvt.pokedex.core.service.application.model.UserIndicatorApplyViewModel;
+import ro.uvt.pokedex.core.service.application.model.UserIndividualReportViewModel;
+import ro.uvt.pokedex.core.service.application.model.UserIndicatorsViewModel;
+import ro.uvt.pokedex.core.service.application.model.UserPublicationCitationsViewModel;
+import ro.uvt.pokedex.core.service.application.model.UserPublicationsViewModel;
+import ro.uvt.pokedex.core.service.application.model.UserReportsListViewModel;
+import ro.uvt.pokedex.core.service.application.model.UserScopusTasksViewModel;
 import ro.uvt.pokedex.core.service.*;
 import ro.uvt.pokedex.core.service.reporting.*;
 
@@ -51,26 +53,23 @@ public class UserViewController {
 
     private final UserService userService;
     private final ResearcherService researcherService;
+    // H02 V01 debt: remaining Z1->Z4 dependencies for deferred endpoints.
     private final ScopusAuthorRepository scopusAuthorRepository;
     private final ScopusCitationRepository scopusCitationRepository;
     private final ScopusPublicationRepository scopusPublicationRepository;
-    private final IndicatorRepository criterionRepository;
     private final ScientificProductionService scientificProductionService;
     private final ActivityReportingService activityReportingService;
     private final ScopusForumRepository scopusVenueRepository;
-    private final IndividualReportRepository individualReportRepository;
     private final RankingRepository rankingRepository;
     private final DomainRepository domainRepository;
     private final CNFISScoringService2025 cnfiSScoringService2025;
-    private final InstitutionRepository institutionRepository;
     private final WoSExtractor woSExtractor;
     // In both AdminGroupController and UserViewController
     private final CNFISReportExportService exportService;
     private final CacheService cacheService;
-    private final ActivityInstanceRepository activityInstanceRepository;
-    private final ActivityRepository activityRepository;
-    private final ScopusPublicationUpdateRepository scopusUpdateTaskRepository;
-    private final ScopusCitationUpdateRepository scopusCitationsTaskRepository;
+    private final UserPublicationFacade userPublicationFacade;
+    private final UserScopusTaskFacade userScopusTaskFacade;
+    private final UserReportFacade userReportFacade;
 
 
     @GetMapping()
@@ -103,45 +102,14 @@ public class UserViewController {
         }
 
         String researcherId = currentUser.getResearcherId();
-
-//        List<Publication> publications = publicationService.findPublicationsByResearcherIdOrderByYearDesc(researcherId);
-        Optional<Researcher> researcherById = researcherService.findResearcherById(researcherId);
-        researcherById.ifPresent(r -> {
-            List<Author> byId = scopusAuthorRepository.findByIdIn(r.getScopusId());
-            List<ro.uvt.pokedex.core.model.scopus.Publication> publications = new ArrayList<>();
-            byId.forEach(a -> {
-                 publications.addAll(scopusPublicationRepository.findAllByAuthorsContaining(a.getId()));
-            });
-
-            int hIndex = computeHIndex(publications);
-            model.addAttribute("publications", publications);
-            model.addAttribute("hIndex", hIndex);
-
-            Set<String> authorKeys = new HashSet<>();
-            Set<String> forumKeys = new HashSet<>();
-            AtomicInteger numCitations = new AtomicInteger();
-            publications.forEach(p -> {
-                authorKeys.addAll(p.getAuthors());
-                forumKeys.add(p.getForum());
-                numCitations.addAndGet(p.getCitedbyCount());
-            });
-            List<Author> byIdIn = scopusAuthorRepository.findByIdIn(authorKeys);
-            Map<String, Author> authorMap = new HashMap<>();
-            byIdIn.forEach(a -> {
-                authorMap.put(a.getId(), a);
-            });
-            model.addAttribute("authorMap", authorMap);
-            Map<String, Forum> forumMap = new HashMap<>();
-            List<Forum> forums = scopusVenueRepository.findByIdIn(forumKeys);
-            forums.forEach(f -> {
-                forumMap.put(f.getId(), f);
-            });
-            model.addAttribute("forumMap", forumMap);
-            model.addAttribute("numCitations", numCitations.get());
-
+        Optional<UserPublicationsViewModel> viewModel = userPublicationFacade.buildUserPublicationsView(researcherId);
+        viewModel.ifPresent(vm -> {
+            model.addAttribute("publications", vm.publications());
+            model.addAttribute("hIndex", vm.hIndex());
+            model.addAttribute("authorMap", vm.authorMap());
+            model.addAttribute("forumMap", vm.forumMap());
+            model.addAttribute("numCitations", vm.numCitations());
         });
-
-        //adjust number of authors shown on page.
 
         model.addAttribute("user", currentUser);
         return "user/publications";
@@ -153,14 +121,10 @@ public class UserViewController {
             return "redirect:/login";
         }
 
-        String researcherId = currentUser.getResearcherId();
-        Optional<Researcher> researcherById = researcherService.findResearcherById(researcherId);
-        researcherById.ifPresent(r -> model.addAttribute("researcher", r));
-        List<ScopusPublicationUpdate> tasks = scopusUpdateTaskRepository.findByInitiator(currentUser.getEmail());
-        List<ScopusCitationsUpdate> citationsTasks = scopusCitationsTaskRepository.findByInitiator(currentUser.getEmail());
-
-        model.addAttribute("tasks", tasks);
-        model.addAttribute("citationsTasks", citationsTasks);
+        UserScopusTasksViewModel viewModel = userScopusTaskFacade.buildTasksView(currentUser.getEmail(), currentUser.getResearcherId());
+        model.addAttribute("researcher", viewModel.researcher());
+        model.addAttribute("tasks", viewModel.tasks());
+        model.addAttribute("citationsTasks", viewModel.citationsTasks());
         model.addAttribute("user", currentUser);
         return "user/tasks";
     }
@@ -174,14 +138,9 @@ public class UserViewController {
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
 
-        // Ensure initiator is set so tasks can be queried by user later
-        task.setInitiator(currentUser.getEmail());
-        task.setStatus(Status.PENDING);
-        task.setInitiatedDate(java.time.LocalDate.now().toString());
-        scopusUpdateTaskRepository.save(task);
-
+        ScopusPublicationUpdate created = userScopusTaskFacade.createPublicationTask(currentUser.getEmail(), task);
         redirectAttributes.addFlashAttribute("successMessage", "Scopus update task created.");
-        return new ResponseEntity<>(task, HttpStatus.CREATED);
+        return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
 
     @PostMapping("/tasks/scopus/updateCitations")
@@ -192,14 +151,9 @@ public class UserViewController {
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
 
-        // Ensure initiator is set so tasks can be queried by user later
-        task.setInitiator(currentUser.getEmail());
-        task.setStatus(Status.PENDING);
-        task.setInitiatedDate(java.time.LocalDate.now().toString());
-        scopusCitationsTaskRepository.save(task);
-
+        ScopusCitationsUpdate created = userScopusTaskFacade.createCitationTask(currentUser.getEmail(), task);
         redirectAttributes.addFlashAttribute("successMessage", "Scopus update task created.");
-        return new ResponseEntity<>(task, HttpStatus.CREATED);
+        return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
 
 
@@ -209,37 +163,14 @@ public class UserViewController {
             return "redirect:/login"; // or your login route
         }
 
-        Optional<ro.uvt.pokedex.core.model.scopus.Publication> byId = scopusPublicationRepository.findById(eid);
-        byId.ifPresent(pub -> {
-            model.addAttribute("publication", pub);
-            List<Citation> allByCited = scopusCitationRepository.findAllByCitedId(pub.getId());
-            List<String> citations = new ArrayList<>();
-            allByCited.forEach(c -> citations.add(c.getCitingId()));
-            List<Publication> citationsPub = scopusPublicationRepository.findAllByIdIn(citations);
-            model.addAttribute("citations", citationsPub);
-            model.addAttribute("forum", scopusVenueRepository.findById(pub.getForum()).get());
-            Set<String> authorKeys = new HashSet<>(pub.getAuthors());
-            Set<String> forumKeys = new HashSet<>();
-            citationsPub.forEach(p -> {
-//                authorKeys.addAll(p.getAuthors());
-                forumKeys.add(p.getForum());
-            });
-            List<Author> byIdIn = scopusAuthorRepository.findByIdIn(authorKeys);
-            List<Forum> forums = scopusVenueRepository.findByIdIn(forumKeys);
-            Map<String, Author> authorMap = new HashMap<>();
-            byIdIn.forEach(a -> {
-                authorMap.put(a.getId(), a);
-            });
-            model.addAttribute("authorMapping", authorMap);
-            Map<String, Forum> forumMap = new HashMap<>();
-            forums.forEach(f -> {
-                forumMap.put(f.getId(), f);
-            });
-            model.addAttribute("forumMap", forumMap);
-
+        Optional<UserPublicationCitationsViewModel> viewModel = userPublicationFacade.buildCitationsView(eid);
+        viewModel.ifPresent(vm -> {
+            model.addAttribute("publication", vm.publication());
+            model.addAttribute("citations", vm.citations());
+            model.addAttribute("forum", vm.forum());
+            model.addAttribute("authorMapping", vm.authorMapping());
+            model.addAttribute("forumMap", vm.forumMap());
         });
-
-        //adjust number of authors shown on page.
 
         model.addAttribute("user", currentUser);
         return "user/citations";
@@ -248,7 +179,7 @@ public class UserViewController {
 
     @GetMapping("/publications/edit/{eid}")
     public String showEditPublicationForm(@PathVariable("eid") String eid, Model model) {
-        Optional<Publication> publicationOpt = scopusPublicationRepository.findById(eid);
+        Optional<Publication> publicationOpt = userPublicationFacade.findPublicationForEdit(eid);
         if (publicationOpt.isPresent()) {
             model.addAttribute("publication", publicationOpt.get());
             return "user/publications-edit";
@@ -259,12 +190,7 @@ public class UserViewController {
 
     @PostMapping("/publications/save/{eid}")
     public String savePublication(@ModelAttribute Publication publication, RedirectAttributes redirectAttributes, @PathVariable("eid") String eid) {
-        Optional<Publication> byId = scopusPublicationRepository.findById(eid);
-        byId.ifPresent( pub -> {
-                    pub.setSubtypeDescription(publication.getSubtypeDescription());
-                    pub.setSubtype(publication.getSubtype());
-                    scopusPublicationRepository.save(pub);
-                });
+        userPublicationFacade.updatePublicationMetadata(eid, publication);
         redirectAttributes.addFlashAttribute("successMessage", "Publication updated successfully.");
         return "redirect:/user/publications";
     }
@@ -276,9 +202,8 @@ public class UserViewController {
             return "redirect:/login"; // or your login route
         }
 
-        List<Indicator> all = criterionRepository.findAll();
-
-        model.addAttribute("indicators", all);
+        UserIndicatorsViewModel viewModel = userReportFacade.buildIndicatorsView(currentUser.getEmail());
+        model.addAttribute("indicators", viewModel.indicators());
         //adjust number of authors shown on page.
 
         model.addAttribute("user", currentUser);
@@ -292,38 +217,10 @@ public class UserViewController {
             return "redirect:/login"; // or your login route
         }
 
-        String researcherId = currentUser.getResearcherId();
-        Optional<Researcher> researcherOpt = researcherService.findResearcherById(researcherId);
-        Optional<Indicator> indicatorOpt = criterionRepository.findById(id);
-
-        if (indicatorOpt.isPresent() && researcherOpt.isPresent()) {
-            Indicator indicator = indicatorOpt.get();
-            Researcher researcher = researcherOpt.get();
-            model.addAttribute("indicator", indicator);
-
-            if(indicator.getOutputType().toString().contains("ACTIVIT")){
-                List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(researcherId);
-                activities = activities.stream().filter(act -> act.getActivity().getName().equals(indicator.getActivity().getName())).toList();
-                return handleActivities(model, indicator, activities);
-            }else {
-                // Fetch all authors associated with the researcher
-                List<Author> authors = scopusAuthorRepository.findByIdIn(researcher.getScopusId());
-                List<String> authorIds = authors.stream().map(Author::getId).toList();
-                if (!authors.isEmpty()) {
-                    // Fetch all publications for these authors
-                    List<Publication> publications = scopusPublicationRepository.findAllByAuthorsIn(authorIds);
-
-                    if (indicator.getOutputType().toString().contains("PUBLICATIONS")) {
-                        return handlePublications(model, indicator, authors, publications);
-                    } else if (indicator.getOutputType().equals(Indicator.Type.CITATIONS) || indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF)) {
-                        return handleCitations(model, indicator, authors, publications);
-                    }
-                }
-            }
-        }
-
+        UserIndicatorApplyViewModel viewModel = userReportFacade.buildIndicatorApplyView(currentUser.getEmail(), id);
+        viewModel.attributes().forEach(model::addAttribute);
         model.addAttribute("user", currentUser);
-        return "user/indicators";
+        return viewModel.viewName();
     }
 
     private String handlePublications(Model model, Indicator indicator, List<Author> authors, List<Publication> publications) {
@@ -507,7 +404,7 @@ public class UserViewController {
 
         String researcherId = currentUser.getResearcherId();
         Optional<Researcher> researcherOpt = researcherService.findResearcherById(researcherId);
-        Optional<Indicator> indicatorOpt = criterionRepository.findById(id);
+        Optional<Indicator> indicatorOpt = userReportFacade.findIndicatorById(id);
 
         if (!indicatorOpt.isPresent() || !researcherOpt.isPresent()) {
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
@@ -761,9 +658,8 @@ public class UserViewController {
             return "redirect:/login";
         }
 
-        List<IndividualReport> all = individualReportRepository.findAll();
-
-        model.addAttribute("individualReports", all);
+        UserReportsListViewModel viewModel = userReportFacade.buildIndividualReportsListView(currentUser.getEmail());
+        model.addAttribute("individualReports", viewModel.individualReports());
         model.addAttribute("user", currentUser);
         return "user/individualReports";
     }
@@ -775,139 +671,14 @@ public class UserViewController {
             return "redirect:/login";
         }
 
-        long start = System.currentTimeMillis();
-        Optional<IndividualReport> reportOpt = individualReportRepository.findById(id);
-
-        if (reportOpt.isPresent()) {
-            IndividualReport report = reportOpt.get();
-            model.addAttribute("report", report);
-
-            // Fetch the researcher once
-            Researcher researcher = researcherService.findResearcherById(currentUser.getResearcherId()).orElse(null);
-            if (researcher == null) {
-                return "redirect:/error";  // or some appropriate error handling
-            }
-
-            // Fetch all authors associated with the researcher
-            List<Author> authors = scopusAuthorRepository.findByIdIn(researcher.getScopusId());
-            if (authors.isEmpty()) {
-                return "redirect:/error";  // or some appropriate error handling
-            }
-
-            // Fetch all publications for these authors
-            List<String> authorIds = authors.stream().map(Author::getId).toList();
-            List<Publication> publications = scopusPublicationRepository.findAllByAuthorsIn(authorIds);
-            if(!"ANY".equals(report.getIndividualAffiliation().getName())) {
-                publications = publications.stream().filter(p -> report.getIndividualAffiliation().getScopusAffiliations().stream().anyMatch(aff -> p.getAffiliations().contains(aff.getAfid()))).collect(Collectors.toList());
-            }
-
-            // Fetch data for each indicator
-            List<Indicator> indicators = report.getIndicators();
-
-            Map<Indicator, Double> indicatorScores = new HashMap<>();
-            double totalScore = 0;
-
-            for (Indicator indicator : indicators) {
-                long l = System.currentTimeMillis();
-                double indicatorScore = 0;
-                if(indicator.getOutputType().toString().contains("ACTIVIT")){
-                    List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(researcher.getId());
-                    activities = activities.stream().filter(act -> act.getActivity().getName().equals(indicator.getActivity().getName())).toList();
-                    indicatorScore = activityReportingService.calculateActivityScores(activities, indicator).get("total").getAuthorScore();
-                }
-                if (indicator.getOutputType().toString().contains("PUBLICATIONS")) {
-                    indicatorScore = calculatePublicationScore(indicator, authors, publications);
-                } else if (indicator.getOutputType().equals(Indicator.Type.CITATIONS) || indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF)) {
-                    indicatorScore = calculateCitationScore(indicator, authors, publications);
-                }
-
-                indicatorScores.put(indicator, indicatorScore);
-                totalScore += indicatorScore;
-                System.out.println("Computed Indicator in: " + (System.currentTimeMillis() - l) + " ms");
-            }
-            Map<Integer, Double> criterionScores = new HashMap<>();
-            for(int i = 0; i < report.getCriteria().size(); i++) {
-                AbstractReport.Criterion criterion = report.getCriteria().get(i);
-                double criterionScore = 0;
-                System.out.println(i);
-                for(Integer in : criterion.getIndicatorIndices()) {
-                    System.out.println("Indicator index: " + in);
-                    Indicator ind = report.getIndicators().get(in);
-                    if(indicatorScores.containsKey(ind)) {
-                        criterionScore += indicatorScores.get(ind);
-                    }
-                }
-                criterionScores.put(i, criterionScore);
-            }
-
-            model.addAttribute("indicatorScores", indicatorScores);
-            model.addAttribute("criterionScores", criterionScores);
-            model.addAttribute("totalScore", totalScore);
+        UserIndividualReportViewModel viewModel = userReportFacade.buildIndividualReportView(currentUser.getEmail(), id);
+        if (viewModel.redirect() != null) {
+            return viewModel.redirect();
         }
-        System.out.println("Computed Report in: " + (System.currentTimeMillis() - start) + " ms");
+        viewModel.attributes().forEach(model::addAttribute);
 
         model.addAttribute("user", currentUser);
         return "user/individualReport-view";
-    }
-
-    public double calculatePublicationScore(Indicator indicator, List<Author> authors, List<Publication> publications) {
-        List<Publication> filteredPublications = publications;
-        if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR)) {
-            filteredPublications = publications.stream().filter(p -> authors.stream().anyMatch( a -> a.getId().equals(p.getAuthors().get(0)))).collect(Collectors.toList());
-        } else if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_COAUTHOR)) {
-            filteredPublications = publications.stream().filter(p -> authors.stream().noneMatch(a -> a.getId().equals(p.getAuthors().get(0)))).collect(Collectors.toList());
-        }
-        Map<String, Score> scores = scientificProductionService.calculateScientificProductionScore(filteredPublications, indicator);
-        return scores.get("total").getAuthorScore();
-    }
-
-    public double calculateCitationScore(Indicator indicator, List<Author> authors, List<Publication> publications) {
-        double total = 0;
-        boolean excludeSelf = indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF);
-
-        long l = System.currentTimeMillis();
-        List<String> pubIds = publications.stream().map(Publication::getId).toList();
-        List<Citation> allCitations = scopusCitationRepository.findAllByCitedIdIn(pubIds);
-        System.out.println((System.currentTimeMillis() - l) + " ms Retrieved citation ids list");
-        l = System.currentTimeMillis();
-        List<String> citationIds = allCitations.stream().map(Citation::getCitingId).toList();
-        List<Publication> allCitationsPub = scopusPublicationRepository.findAllByIdIn(citationIds);
-        Map<String, List<Publication>> pubCitationsMap = allCitationsPub.stream().collect(Collectors.groupingBy(Publication::getId));
-        System.out.println((System.currentTimeMillis() - l) + " ms Retrieved full publications citation list");
-        Map<String, Map<String, Score>> scores = new HashMap<>();
-        for (Publication pub : publications) {
-
-//            List<Citation> allByCited = scopusCitationRepository.findAllByCited(pub);
-            List<Publication> citations = new ArrayList<>();
-
-            l = System.currentTimeMillis();
-            for (Citation cit : allCitations) {
-                if(cit.getCitedId().equals(pub.getId())) {
-                    Publication citing = pubCitationsMap.get(cit.getCitingId()).get(0);
-                    if (excludeSelf && authors.stream().anyMatch(a -> citing.getAuthors().contains(a.getId()))) {
-                        continue;
-                    }
-                    citations.add(citing);
-                }
-            }
-//            System.out.println((System.currentTimeMillis() - l) + " ms Computed Citation list (" + pub.getTitle() +") Citations in: ");
-            l = System.currentTimeMillis();
-            Map<String, Score> citScores = scientificProductionService.calculateScientificImpactScore(pub, citations, indicator);
-            scores.put(pub.getTitle(), citScores);
-
-//            System.out.println((System.currentTimeMillis() - l) + " ms Computed Publication (" + pub.getTitle() +") Citations in: ");
-        }
-        applyFinalSelector(indicator, scores);
-        total = scores.values().stream().map(value -> {
-            double t = 0.0;
-            value.remove("total");
-            for (Score score : value.values()) {
-                t += score.getAuthorScore();
-            }
-            return t;
-        }).reduce(0.0, Double::sum);
-
-        return total;
     }
     @GetMapping("/rankings/{id}")
     public String showRankingPage(Model model, @PathVariable  String id) {

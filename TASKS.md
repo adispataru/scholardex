@@ -6,11 +6,7 @@ Done history moved to `TASKS-done.md`.
 
 ## Backlog
 
-- [x] `H01` Duplicate code and drift audit.
-  Goal: identify copy-paste clusters (backend, frontend, templates, scripts) and detect behavior drift between near-identical implementations.
-  Deliverable: duplication inventory with risk ranking and consolidation candidates.
-  Exit criteria: top high-risk duplicates have an agreed merge strategy and owners.
-  Notes: Completed on 2026-03-03. C01/C03/C04 prioritized slices were executed and stabilized with regression guards and reintroduction checks.
+- `H01` completed and archived in `TASKS-done.md`.
 
 - [ ] `H02` Architecture boundaries and ownership.
   Goal: define module boundaries, responsibilities, and allowed dependencies between layers.
@@ -61,67 +57,55 @@ Done history moved to `TASKS-done.md`.
 
 - Each `Hxx` item is intentionally high-level and should be investigated through subtasks in planning mode.
 - Create subtasks only when starting work on one `Hxx`; keep this file stable as the top-level map.
+- Move completed `Hxx` entries and their subtasks to `TASKS-done.md`.
 
-## H01 First Subtask List (Planning Mode Seed)
+## H02 First Subtask List (Planning Mode Seed)
 
-Scope: `H01` Duplicate code and drift audit.
+Scope: `H02` Architecture boundaries and ownership.
 
-- [x] `H01-S01` Inventory likely duplicate clusters.
-  Goal: produce an initial map of near-duplicate files/areas in backend, templates, and JS.
-  Inputs: file tree, naming patterns (`*2025*`, `*-bak*`, similarly named services/controllers).
-  Deliverable: `docs/h01-duplication-inventory.md` with cluster IDs and file lists.
-  Exit criteria: at least one cluster identified per layer (Java, templates, JS if present).
-  Notes: Completed. See `docs/h01-duplication-inventory.md`.
+- [x] `H02-S01` Map current runtime architecture and dependency directions.
+  Goal: produce a factual map of layers/modules and how requests/flows travel through them.
+  Inputs: package structure, controller/service/repository wiring, frontend template/script entrypoints.
+  Deliverable: `docs/h02-architecture-map.md` (current-state diagram + dependency table).
+  Exit criteria: all major runtime paths (web -> service -> data and template/script flow) are represented.
+  Status: completed on 2026-03-03.
 
-- [x] `H01-S03` Identify behavioral drift inside top clusters.
-  Goal: compare logic paths in near-copies and mark divergence that changes outcomes.
-  Inputs: top clusters from `H01-S01`.
-  Deliverable: `docs/h01-drift-findings.md` with drift type: harmless, intentional, risky, unknown.
-  Exit criteria: each top cluster has a drift decision and evidence snippet references.
-  Notes: Completed on 2026-03-03. `C01`, `C03`, `C04`, `C05`, and `C06` analyzed with decisions/evidence in `docs/h01-drift-findings.md`. C04 closure slices completed (`D01/D02/D03/D04/D05/D06/D07` resolved for C04 scope).
+- [x] `H02-S02` Define target boundaries and ownership zones.
+  Goal: define what belongs in each layer/module and who owns cross-cutting areas.
+  Inputs: `H02-S01` map + current drift/findings from H01.
+  Deliverable: `docs/h02-boundaries-and-ownership.md` (zones, responsibilities, ownership matrix).
+  Exit criteria: each major package/area has a declared owner and allowed responsibilities.
+  Status: completed on 2026-03-03.
 
-- [x] `H01-S04` Prioritize by risk and blast radius.
-  Goal: rank duplicates by user impact, regression risk, and change cost.
-  Inputs: drift findings, runtime criticality, code ownership uncertainty.
-  Deliverable: priority table in `docs/h01-duplication-inventory.md` with `P0/P1/P2`.
-  Exit criteria: clear “start here” ordering for refactor work.
-  Notes: Completed. Ranked execution order is `C01 (P0)` -> `C04 (P1)` -> `C06 (P2)` in `docs/h01-duplication-inventory.md`.
+- [x] `H02-S03` Specify allowed dependency rules.
+  Goal: convert boundaries into explicit allow/deny dependency rules.
+  Inputs: boundary definitions and known problematic couplings.
+  Deliverable: dependency rule set in `docs/h02-boundaries-and-ownership.md` (or `docs/h02-dependency-rules.md`).
+  Exit criteria: developers can decide placement/dependencies without ambiguity.
+  Status: completed on 2026-03-03 (`docs/h02-dependency-rules.md`).
 
-- [x] `H01-S05` Define consolidation strategy per priority cluster.
-  Goal: choose consolidation pattern per cluster (extract shared service, template fragment, utility module, configuration map).
-  Inputs: prioritized cluster list.
-  Deliverable: `docs/h01-consolidation-strategy.md` with target shape and migration steps.
-  Exit criteria: every `P0/P1` cluster has an approved destination design.
-  Notes: Completed. See `docs/h01-consolidation-strategy.md` for `C01 (P0)`, `C04 (P1)`, and `C06 (P2)`.
+- [x] `H02-S04` Identify and classify current boundary violations.
+  Goal: detect concrete code locations that violate the declared dependency rules.
+  Inputs: declared rules + current codebase scan.
+  Deliverable: `docs/h02-violations.md` with severity (`high|medium|low`) and rationale.
+  Exit criteria: every violation has a file reference and a proposed remediation direction.
+  Status: completed on 2026-03-03 (`docs/h02-violations.md`).
+  Note: V01 follow-up slice 4 completed (`AdminGroupController` export/CNFIS via `GroupExportFacade` and `GroupCnfisExportFacade`); tracked baseline pair is now at 73.9% repository-field reduction (`23 -> 6`), and AdminGroup repository debt is closed.
 
-- [x] `H01-S06` Create regression guards before refactor.
-  Goal: add tests that freeze behavior for clusters selected for consolidation.
-  Inputs: selected clusters and drift notes.
-  Deliverable: focused tests (unit/integration/template rendering) and coverage notes.
-  Exit criteria: tests fail on behavior change and pass on current intended behavior.
-  Notes: Completed on 2026-03-03. Added characterization tests for `C01` and `C04` plus command-level guard coverage for `C06`; see `docs/h01-regression-guards.md`.
+- [ ] `H02-S05` Define phased remediation plan for violations.
+  Goal: prioritize fixes by blast radius and effort without blocking delivery.
+  Inputs: violation inventory + ownership matrix.
+  Deliverable: `docs/h02-remediation-plan.md` with phased slices (`R1`, `R2`, ...).
+  Exit criteria: top-priority violations have actionable implementation slices and sequencing.
 
-- [x] `H01-S07` Execute first consolidation slice (small, high-value).
-  Goal: merge one `P0` or two `P1` clusters with minimal public behavior change.
-  Inputs: strategy + regression guards.
-  Deliverable: code changes + migration notes in PR description or `docs/h01-slice-1.md`.
-  Exit criteria: reduced duplicate footprint and all relevant checks green.
-  Notes: Completed on 2026-03-03. First slice delivered for `C04` sub-cluster B: `ScoringFactoryService` now fails fast for null/unsupported strategies; follow-up C04 Slice 2 completed dispatch alignment for books (`bk/ch`, `Book/Book Series`), so sub-cluster B is fully completed.
+- [ ] `H02-S06` Add lightweight enforcement in workflow.
+  Goal: add practical checks/review guardrails so boundaries stay intact.
+  Inputs: dependency rules + remediation strategy.
+  Deliverable: checks and contributor guidance updates (`CONTRIBUTING.md`, optional scripts/CI rule).
+  Exit criteria: at least one automated or checklist-based gate prevents new boundary violations.
 
-- [x] `H01-S08` Prevent reintroduction.
-  Goal: add lightweight guardrails to detect new duplication/drift early.
-  Inputs: patterns and high-risk clusters identified in `H01-S01` and `H01-S03`.
-  Deliverable: CI/local check command and contributor note in `CONTRIBUTING.md`.
-  Exit criteria: duplication check is documented and runnable in standard workflow.
-  Notes: Completed on 2026-03-03. Added `npm run verify-duplication-guardrails`, wired it into Gradle `check`, and documented contributor workflow guardrails in `CONTRIBUTING.md`.
-
-### H01 Candidate Clusters To Start With
-
-- [x] `C01` `CNFISScoringService` vs `CNFISScoringService2025` (high drift risk in scoring rules/subtype handling).
-  Notes: Closed on 2026-03-03: canonical spec added (`docs/c01-cnfis-rule-spec.md`), edge-case characterization tests expanded, and no-behavior cleanup applied in `CNFISScoringService2025`.
-- [x] `C02` Admin template backups (`*-bak.html`) vs active templates (stale copy risk and accidental edits).
-  Notes: Resolved on 2026-03-03 by deleting `admin/researchers-bak.html`.
-- [x] `C03` Admin rankings backup template pair (`rankings-view` vs `rankings-view-bak`).
-  Notes: Resolved on 2026-03-03 by deleting `admin/rankings-view-bak.html`.
-- [x] `C04` Reporting/scoring service family under `service/reporting` (parallel implementations with similar flow).
-  Notes: Resolved on 2026-03-03 by C04 slices 2-5. Shared category/subtype contracts extracted, dispatch/factory aligned, and metadata/logger drift cleaned.
+- [ ] `H02-S07` Close H02 with adoption notes.
+  Goal: finalize architecture baseline and usage guidance for future tasks.
+  Inputs: completed H02 artifacts and enforcement setup.
+  Deliverable: H02 closeout note in `docs/h02-boundaries-and-ownership.md` + `TASKS.md` status updates.
+  Exit criteria: H02 can be treated as reference baseline for H03+ planning and implementation.
