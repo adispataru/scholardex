@@ -1,0 +1,22 @@
+{
+  "name": "scholardex-core-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build-assets.js",
+    "verify-assets": "node scripts/verify-assets.js",
+    "verify-template-assets": "node scripts/verify-template-assets.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.1"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^5.15.4",
+    "bootstrap": "^4.6.2",
+    "chart.js": "2.9.4",
+    "datatables.net": "^1.13.11",
+    "datatables.net-bs4": "^1.13.11",
+    "jquery": "^3.7.1",
+    "jquery.easing": "^1.4.1"
+  }
+}

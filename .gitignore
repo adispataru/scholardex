@@ -37,3 +37,14 @@ build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
+
+# Node/frontend
+node_modules/
+npm-debug.log*
+
+# macOS metadata
+.DS_Store
+**/.DS_Store
+
+data/*/**
+data/*

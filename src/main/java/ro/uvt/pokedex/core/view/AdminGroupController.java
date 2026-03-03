@@ -275,11 +275,13 @@ public class AdminGroupController {
             l = System.currentTimeMillis();
             for (Citation cit : allCitations) {
                 if(cit.getCitedId().equals(pub.getId())) {
-                    Publication citing = pubCitationsMap.get(cit.getCitingId()).get(0);
-                    if (excludeSelf && authors.stream().anyMatch(a -> citing.getAuthors().contains(a.getId()))) {
-                        continue;
+                    if(pubCitationsMap.get(cit.getCitingId()) != null) {
+                        Publication citing = pubCitationsMap.get(cit.getCitingId()).getFirst();
+                        if (excludeSelf && authors.stream().anyMatch(a -> citing.getAuthors().contains(a.getId()))) {
+                            continue;
+                        }
+                        citations.add(citing);
                     }
-                    citations.add(citing);
                 }
             }
 //            System.out.println((System.currentTimeMillis() - l) + " ms Computed Citation list (" + pub.getTitle() +") Citations in: ");
