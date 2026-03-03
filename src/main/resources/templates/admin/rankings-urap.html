@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>URAP Rankings</title>
-    <link href="/assets/app.css" rel="stylesheet" type="text/css">
+    <th:block th:replace="fragments :: core-styles"></th:block>
     <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
@@ -83,9 +83,8 @@
         <i class="fas fa-angle-up"></i>
     </a>
 </div>
+<th:block th:replace="fragments :: core-scripts"></th:block>
 
-<script src="/assets/app.js"></script>
-<script src="/js/sb-admin-2.min.js"></script>
 <script src="/js/demo/datatables-demo.js"></script>
 
 </body>

@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -15,7 +16,11 @@ import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.Institution;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.ArtisticEvent;
+import ro.uvt.pokedex.core.model.activities.Activity;
+import ro.uvt.pokedex.core.model.reporting.Domain;
+import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
+import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
@@ -61,6 +66,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(AdminViewController.class)
 @AutoConfigureMockMvc(addFilters = false)
+@Import(GlobalControllerAdvice.class)
 class AdminViewControllerContractTest {
 
     @Autowired
@@ -236,6 +242,81 @@ class AdminViewControllerContractTest {
             org.junit.jupiter.api.Assertions.assertEquals("2-s2.0-123", citations.getRow(1).getCell(0).getStringCellValue());
             org.junit.jupiter.api.Assertions.assertEquals("Citing Paper", citations.getRow(1).getCell(5).getStringCellValue());
         }
+    }
+
+    @Test
+    void indicatorsPageRendersExpectedTemplateAndFrontendModelContract() throws Exception {
+        Activity activity = new Activity();
+        activity.setId("act-1");
+        activity.setName("Activity One");
+        Activity.Field field = new Activity.Field();
+        field.setName("duration");
+        field.setNumber(true);
+        activity.setFields(List.of(field));
+        activity.setReferenceFields(List.of(Activity.ReferenceField.EVENT_NAME));
+
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-1");
+        indicator.setName("Indicator One");
+
+        Domain domain = new Domain();
+        domain.setName("CS");
+
+        when(indicatorRepository.findAll()).thenReturn(List.of(indicator));
+        when(activityRepository.findAll()).thenReturn(List.of(activity));
+        when(domainRepository.findAll()).thenReturn(List.of(domain));
+
+        mockMvc.perform(get("/admin/indicators")
+                        .with(authenticatedUser("admin@uvt.ro")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin/indicators"))
+                .andExpect(model().attributeExists(
+                        "indicators",
+                        "activities",
+                        "activityDescriptions",
+                        "scoringStrategies",
+                        "types",
+                        "indicator",
+                        "domains",
+                        "selectors"
+                ));
+    }
+
+    @Test
+    void editIndicatorPageRendersExpectedTemplateAndModelContract() throws Exception {
+        Activity activity = new Activity();
+        activity.setId("act-1");
+        activity.setName("Activity One");
+        Activity.Field field = new Activity.Field();
+        field.setName("duration");
+        field.setNumber(true);
+        activity.setFields(List.of(field));
+        activity.setReferenceFields(List.of(Activity.ReferenceField.EVENT_NAME));
+
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-1");
+        indicator.setName("Indicator One");
+
+        Domain domain = new Domain();
+        domain.setName("CS");
+
+        when(indicatorRepository.findById(eq("ind-1"))).thenReturn(Optional.of(indicator));
+        when(activityRepository.findAll()).thenReturn(List.of(activity));
+        when(domainRepository.findAll()).thenReturn(List.of(domain));
+
+        mockMvc.perform(get("/admin/indicators/edit/{id}", "ind-1")
+                        .with(authenticatedUser("admin@uvt.ro")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin/indicators-edit"))
+                .andExpect(model().attributeExists(
+                        "indicator",
+                        "activities",
+                        "activityDescriptions",
+                        "scoringStrategies",
+                        "types",
+                        "domains",
+                        "selectors"
+                ));
     }
 
     private static Publication publication(String id, String forumId, String coverDate) {

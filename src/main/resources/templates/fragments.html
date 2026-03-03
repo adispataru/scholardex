@@ -4,6 +4,15 @@
     <title>Fragment</title>
 </head>
 <body>
+<th:block th:fragment="core-styles">
+    <link href="/assets/app.css" rel="stylesheet" type="text/css">
+</th:block>
+
+<th:block th:fragment="core-scripts">
+    <script src="/assets/app.js"></script>
+    <script src="/js/sb-admin-2.min.js"></script>
+</th:block>
+
 <!-- Navigation Bar Fragment -->
 <div th:fragment="navbar">
     <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">

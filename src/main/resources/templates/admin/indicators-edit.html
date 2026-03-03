@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Indicators</title>
-    <link href="/assets/app.css" rel="stylesheet" type="text/css">
+    <th:block th:replace="fragments :: core-styles"></th:block>
     <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
@@ -69,6 +69,7 @@
                             <div class="form-group">
                                 <label for="activity">Activity</label>
                                 <select class="form-control" id="activity"
+                                        data-sync-selected-description-target="#activityDescription"
                                         th:field="*{activity}">
                                     <option th:value="${null}"
                                             th:attr="data-description='No Activity selected'">
@@ -145,22 +146,11 @@
 </div>
 
 <!-- Bootstrap core JavaScript-->
-<script src="/assets/app.js"></script>
-
-<!-- Core plugin JavaScript-->
-
-<!-- Custom scripts for all pages-->
-<script src="/js/sb-admin-2.min.js"></script>
+<th:block th:replace="fragments :: core-scripts"></th:block>
 
 <!-- Page level plugins -->
 
 <!-- Page level custom scripts -->
 <script src="/js/demo/datatables-demo.js"></script>
-<script>
-    $(document).ready(function() {
-        // Enable tooltips
-        $('[data-toggle="tooltip"]').tooltip();
-    });
-</script>
 </body>
 </html>

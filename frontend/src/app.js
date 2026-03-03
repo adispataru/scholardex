@@ -10,5 +10,10 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import 'jquery.easing';
 import 'datatables.net-bs4';
 import Chart from 'chart.js';
+import { initSharedDomBehaviors } from './modules/shared/domBehaviors';
+import { initPublicationSubtypeSync } from './modules/shared/publicationSubtypeSync';
 
 window.Chart = Chart;
+
+initSharedDomBehaviors();
+initPublicationSubtypeSync();

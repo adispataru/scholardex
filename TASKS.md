@@ -29,10 +29,12 @@ Done history moved to `TASKS-done.md`.
   Status: completed on 2026-03-03.
   Note: archived in `TASKS-done.md` with H04-S01..S07 completion details and adoption guidance.
 
-- [ ] `H05` Frontend structure and asset discipline.
+- [x] `H05` Frontend structure and asset discipline.
   Goal: standardize JS/CSS/template patterns to avoid divergent implementations.
   Deliverable: frontend conventions (entrypoints, shared utilities, template composition patterns).
   Exit criteria: duplicated UI logic is centralized and new pages follow the same conventions.
+  Status: completed on 2026-03-03.
+  Note: archived in `TASKS-done.md` with H05-S01..S07 completion details and adoption guidance.
 
 - [ ] `H06` Data and persistence consistency review.
   Goal: verify entity design, migrations/data files, transaction boundaries, and query patterns for inconsistencies.
@@ -126,48 +128,51 @@ Scope: `H02` Architecture boundaries and ownership.
   Status: completed on 2026-03-03.
   Note: H02 is now the active architecture reference baseline; reopen H02 only for boundary-rule changes or newly detected violations.
 
-## H05 First Subtask List (Planning Mode Seed)
+`H05` subtasks and closure details are archived in `TASKS-done.md`.
 
-Scope: `H05` Frontend structure and asset discipline.
+## H06 First Subtask List (Planning Mode Seed)
 
-- [ ] `H05-S01` Build frontend structure map and duplication baseline.
-  Goal: produce a factual map of template/page asset usage and duplicated UI/JS patterns.
-  Inputs: `frontend/src/**`, `src/main/resources/templates/**`, existing asset verification scripts.
-  Deliverable: `docs/h05-frontend-map.md` with page groups, shared fragment usage, asset entrypoints, and top duplication hotspots.
-  Exit criteria: high-risk frontend duplication areas are explicitly identified with file evidence.
+Scope: `H06` Data and persistence consistency review.
 
-- [ ] `H05-S02` Define frontend conventions and ownership rules.
-  Goal: set clear conventions for template composition, JS responsibilities, and shared asset boundaries.
-  Inputs: `H05-S01` map + H02 boundary rules + H04 test guardrails.
-  Deliverable: `docs/h05-frontend-conventions.md` with allowed patterns and explicit anti-patterns.
-  Exit criteria: contributors can place template/JS changes without ambiguity.
+- [x] `H06-S01` Build persistence architecture map and entity ownership baseline.
+  Goal: map collections/entities, repository ownership, and write/read flow boundaries.
+  Inputs: package structure, Mongo repositories/models, H02 boundary baseline.
+  Deliverable: `docs/h06-persistence-map.md` with entity-to-repository/service usage matrix.
+  Exit criteria: all high-impact entities have explicit owners and primary write paths.
+  Status: completed on 2026-03-03 (`docs/h06-persistence-map.md`).
 
-- [ ] `H05-S03` Extract shared template composition primitives.
-  Goal: reduce duplicated markup by consolidating repeated admin/user layout blocks.
-  Inputs: hotspot list from `H05-S01`.
-  Deliverable: shared fragment updates and migration plan for repeated header/table/filter/form sections.
-  Exit criteria: at least top duplication clusters have shared fragment-based composition paths.
+- [ ] `H06-S02` Inventory schema and data-shape drift risks.
+  Goal: detect inconsistent field usage, duplicated semantic fields, and optional/null drift.
+  Inputs: models, repositories, import/export paths, existing data assumptions from H01/H03.
+  Deliverable: `docs/h06-schema-drift-inventory.md` with risk-ranked drift clusters.
+  Exit criteria: top drift candidates have concrete file evidence and impact notes.
 
-- [ ] `H05-S04` Introduce frontend utility modules for repeated JS behavior.
-  Goal: centralize repeated inline/screen-specific JS patterns into reusable utilities.
-  Inputs: template inline script hotspots and current `frontend/src/app.js` structure.
-  Deliverable: utility module structure and migrated usage in selected pages.
-  Exit criteria: repeated JS logic has single-source utilities with no behavior regressions.
+- [ ] `H06-S03` Review query patterns and consistency semantics.
+  Goal: identify risky query patterns (implicit ordering, partial filters, case sensitivity, stale assumptions).
+  Inputs: repository methods, service query usage, existing integration tests.
+  Deliverable: `docs/h06-query-consistency-findings.md`.
+  Exit criteria: high/medium query risks have remediation direction and guard strategy.
 
-- [ ] `H05-S05` Add guardrails for template/asset composition drift.
-  Goal: prevent reintroduction of frontend duplication and direct legacy patterns.
-  Inputs: new conventions + existing verification scripts.
-  Deliverable: updated checks (or new lightweight verifier) and contributor notes for template/script discipline.
-  Exit criteria: at least one automated check flags new high-risk drift patterns.
+- [ ] `H06-S04` Define canonical persistence contracts.
+  Goal: lock conventions for IDs, timestamps, subtype/source fields, enum/text normalization, and update semantics.
+  Inputs: findings from S01-S03 + H02 dependency rules.
+  Deliverable: `docs/h06-persistence-contracts.md`.
+  Exit criteria: contributors can make persistence changes without ambiguity.
 
-- [ ] `H05-S06` Add focused frontend behavior regression checks.
-  Goal: protect key user/admin UI contracts while refactoring template/JS structure.
-  Inputs: prioritized flows from H03/H04 and affected templates.
-  Deliverable: targeted frontend-facing regression checks (controller model contracts/template expectations and optional JS-level tests where feasible).
-  Exit criteria: critical frontend flows retain stable behavior under refactor.
+- [ ] `H06-S05` Add focused persistence regression tests for highest risks.
+  Goal: protect critical repository/service data behaviors before remediation.
+  Inputs: H06 findings + H04 integration strategy (Testcontainers where needed).
+  Deliverable: targeted repository/service characterization tests for selected high-risk paths.
+  Exit criteria: each P0/P1 persistence risk has at least one automated guard.
 
-- [ ] `H05-S07` Close H05 with adoption notes and handoff to H06.
-  Goal: finalize frontend structure baseline and usage guidance for subsequent data/persistence review work.
-  Inputs: completed H05 docs, guardrails, and migrations.
-  Deliverable: H05 closeout note in H05 docs + `TASKS.md`/`TASKS-done.md` status updates.
-  Exit criteria: H05 is usable as source-of-truth for maintainable frontend development and future refactors.
+- [ ] `H06-S06` Define phased remediation plan and guardrails.
+  Goal: sequence cleanup work by blast radius and effort; prevent reintroduction.
+  Inputs: contracts + test baseline + risk ranking.
+  Deliverable: `docs/h06-remediation-plan.md` and lightweight verification updates (script/checklist as needed).
+  Exit criteria: remediation slices are actionable and new persistence drift can be detected early.
+
+- [ ] `H06-S07` Close H06 with adoption notes and handoff to H07.
+  Goal: finalize persistence baseline and operational usage guidance for security/validation hardening.
+  Inputs: completed H06 docs, tests, and guardrails.
+  Deliverable: H06 closeout note in H06 docs + `TASKS.md`/`TASKS-done.md` status updates.
+  Exit criteria: H06 is usable as source-of-truth for persistence changes and future audits.

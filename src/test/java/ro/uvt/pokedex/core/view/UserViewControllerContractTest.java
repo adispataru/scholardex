@@ -5,12 +5,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.test.web.servlet.MockMvc;
+import ro.uvt.pokedex.core.model.scopus.Author;
+import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.model.user.User;
+import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
 import ro.uvt.pokedex.core.repository.reporting.RankingRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
@@ -23,8 +28,11 @@ import ro.uvt.pokedex.core.service.application.UserPublicationFacade;
 import ro.uvt.pokedex.core.service.application.UserReportFacade;
 import ro.uvt.pokedex.core.service.application.UserScopusTaskFacade;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorWorkbookExportViewModel;
+import ro.uvt.pokedex.core.service.application.model.UserPublicationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserWorkbookExportResult;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.eq;
@@ -32,11 +40,14 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 @WebMvcTest(UserViewController.class)
 @AutoConfigureMockMvc(addFilters = false)
+@Import(GlobalControllerAdvice.class)
 class UserViewControllerContractTest {
 
     @Autowired
@@ -125,6 +136,53 @@ class UserViewControllerContractTest {
                 .andExpect(content().bytes(bytes));
     }
 
+    @Test
+    void publicationsPageRendersExpectedTemplateAndFrontendModelContract() throws Exception {
+        Publication publication = new Publication();
+        publication.setId("p1");
+        publication.setForum("f1");
+        publication.setAuthors(List.of("a1"));
+
+        Author author = new Author();
+        author.setId("a1");
+        author.setName("Author A");
+
+        Forum forum = new Forum();
+        forum.setId("f1");
+        forum.setPublicationName("Forum A");
+
+        when(userPublicationFacade.buildUserPublicationsView(eq("r1")))
+                .thenReturn(Optional.of(new UserPublicationsViewModel(
+                        List.of(publication),
+                        3,
+                        Map.of("a1", author),
+                        Map.of("f1", forum),
+                        8
+                )));
+
+        User user = userPrincipal("u@uvt.ro");
+        user.setResearcherId("r1");
+
+        mockMvc.perform(get("/user/publications").with(authenticatedUser(user)))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/publications"))
+                .andExpect(model().attributeExists("publications", "hIndex", "authorMap", "forumMap", "numCitations", "user"));
+    }
+
+    @Test
+    void editPublicationFormRendersPublicationEditTemplateWhenPublicationExists() throws Exception {
+        Publication publication = new Publication();
+        publication.setEid("eid-1");
+        when(userPublicationFacade.findPublicationForEdit(eq("eid-1")))
+                .thenReturn(Optional.of(publication));
+
+        mockMvc.perform(get("/user/publications/edit/{eid}", "eid-1")
+                        .with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/publications-edit"))
+                .andExpect(model().attributeExists("publication"));
+    }
+
     private User userPrincipal(String email) {
         User user = new User();
         user.setEmail(email);
@@ -132,8 +190,11 @@ class UserViewControllerContractTest {
     }
 
     private RequestPostProcessor authenticatedUser(String email) {
+        return authenticatedUser(userPrincipal(email));
+    }
+
+    private RequestPostProcessor authenticatedUser(User user) {
         return request -> {
-            User user = userPrincipal(email);
             TestingAuthenticationToken authentication = new TestingAuthenticationToken(user, null, "RESEARCHER");
             SecurityContext context = SecurityContextHolder.createEmptyContext();
             context.setAuthentication(authentication);

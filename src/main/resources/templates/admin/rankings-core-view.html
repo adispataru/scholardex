@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title th:text="${conf.acronym}">Conference Ranking</title>
-    <link href="/assets/app.css" rel="stylesheet" type="text/css">
+    <th:block th:replace="fragments :: core-styles"></th:block>
     <link href="/css/sb-admin-2.min.css" rel="stylesheet">
     <style>
         .card-spacing {
@@ -76,9 +76,8 @@
         <i class="fas fa-angle-up"></i>
     </a>
 </div>
+<th:block th:replace="fragments :: core-scripts"></th:block>
 
-<script src="/assets/app.js"></script>
-<script src="/js/sb-admin-2.min.js"></script>
 <script src="/js/demo/datatables-demo.js"></script>
 <script th:inline="javascript">
     // Define the years to iterate through

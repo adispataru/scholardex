@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Activity Indicators</title>
-    <link href="/assets/app.css" rel="stylesheet" type="text/css">
+    <th:block th:replace="fragments :: core-styles"></th:block>
     <link href="/css/sb-admin-2.min.css" rel="stylesheet">
     <style>
         .custom-tooltip .tooltip-inner {
@@ -116,6 +116,7 @@
                     <div class="form-group">
                         <label for="activity">Activity</label>
                         <select class="form-control" id="activity"
+                                data-sync-selected-description-target="#activityDescription"
                                 th:field="*{activity}" required>
                             <option
                                     th:each="act : ${activities}"
@@ -160,29 +161,9 @@
 </a>
 
 <!-- Bootstrap core & SB Admin scripts -->
-<script src="/assets/app.js"></script>
-<script src="/js/sb-admin-2.min.js"></script>
+<th:block th:replace="fragments :: core-scripts"></th:block>
+
 <!-- DataTables scripts -->
 <script src="/js/demo/datatables-demo.js"></script>
-
-<script>
-    $(document).ready(function() {
-        // Enable tooltips
-        $('[data-toggle="tooltip"]').tooltip();
-        // Initialize DataTable
-        $('#dataTable').DataTable();
-        // whenever the select changes, pull the `data-description` from the chosen <option>
-        $('#activity')
-            .on('change', function(){
-                const desc = $(this)
-                    .find('option:selected')
-                    .data('description') || '';
-                $('#activityDescription').text(desc);
-            })
-            // prime it on page-load so the default selection shows its description
-            .trigger('change');
-
-    });
-</script>
 </body>
 </html>

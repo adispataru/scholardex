@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title th:text="${indicator.name}">Indicator</title>
-    <link href="/assets/app.css" rel="stylesheet" type="text/css">
+    <th:block th:replace="fragments :: core-styles"></th:block>
     <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
@@ -251,33 +251,7 @@
 </div>
 
 <!-- Bootstrap core JavaScript-->
-<script src="/assets/app.js"></script>
-
-<!-- Ensure this script runs after the DOM is fully loaded -->
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Add smooth scrolling to all links
-        document.querySelectorAll('a[href^="#card"]').forEach(function (anchor) {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-
-                var targetId = this.getAttribute('href').substring(1);
-                var targetElement = document.getElementById(targetId);
-
-                if (targetElement) {
-                    targetElement.scrollIntoView({ behavior: 'smooth' });
-                } else {
-                    console.error('Element not found: #' + targetId);
-                }
-            });
-        });
-    });
-</script>
-
-<!-- Core plugin JavaScript-->
-
-<!-- Custom scripts for all pages-->
-<script src="/js/sb-admin-2.min.js"></script>
+<th:block th:replace="fragments :: core-scripts"></th:block>
 
 <!-- Page level plugins -->
 
