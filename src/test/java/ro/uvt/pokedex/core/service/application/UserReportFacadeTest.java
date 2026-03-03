@@ -2,15 +2,19 @@ package ro.uvt.pokedex.core.service.application;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.reporting.Domain;
+import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.reporting.WoSExtractor;
 import ro.uvt.pokedex.core.model.scopus.Author;
+import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
@@ -28,9 +32,12 @@ import ro.uvt.pokedex.core.service.application.model.UserWorkbookExportStatus;
 import ro.uvt.pokedex.core.service.reporting.ActivityReportingService;
 import ro.uvt.pokedex.core.service.reporting.CNFISReportExportService;
 import ro.uvt.pokedex.core.service.reporting.CNFISScoringService2025;
+import ro.uvt.pokedex.core.service.reporting.Score;
 import ro.uvt.pokedex.core.service.reporting.ScientificProductionService;
 
+import java.io.ByteArrayInputStream;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,6 +46,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -254,5 +262,110 @@ class UserReportFacadeTest {
         var result = facade.buildLegacyUserCnfisWorkbookExport("missing@uvt.ro");
 
         assertEquals(UserWorkbookExportStatus.UNAUTHORIZED, result.status());
+    }
+
+    @Test
+    void buildIndicatorWorkbookExportPublicationsContainsExpectedHeadersAndRow() throws Exception {
+        User user = new User();
+        user.setEmail("user@uvt.ro");
+        user.setResearcherId("r1");
+
+        Researcher researcher = new Researcher();
+        researcher.setId("r1");
+        researcher.setScopusId(List.of("a1"));
+
+        Indicator indicator = new Indicator();
+        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
+
+        Author author = new Author();
+        author.setId("a1");
+        author.setName("Author One");
+
+        Forum forum = new Forum();
+        forum.setId("f1");
+        forum.setPublicationName("Forum One");
+
+        Publication publication = new Publication();
+        publication.setId("p1");
+        publication.setTitle("Paper One");
+        publication.setAuthors(List.of("a1"));
+        publication.setForum("f1");
+        publication.setVolume("12");
+        publication.setCoverDate("2023-01-01");
+
+        Score publicationScore = new Score();
+        publicationScore.setCategory("Q1");
+        publicationScore.setScore(10.0);
+        publicationScore.setAuthorScore(5.0);
+
+        when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
+        when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
+        when(indicatorRepository.findById("i1")).thenReturn(Optional.of(indicator));
+        when(scopusAuthorRepository.findByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
+        when(scopusForumRepository.findByIdIn(any())).thenReturn(List.of(forum));
+        when(scientificProductionService.calculateScientificProductionScore(anyList(), eq(indicator)))
+                .thenReturn(Map.of("Paper One", publicationScore));
+        when(cacheService.getAuthorCache()).thenReturn(Map.of("a1", author));
+
+        var result = facade.buildIndicatorWorkbookExport("user@uvt.ro", "i1");
+
+        assertTrue(result.isPresent());
+        try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(result.get().workbookBytes()))) {
+            var sheet = workbook.getSheet("Publications");
+            assertEquals("Title", sheet.getRow(0).getCell(0).getStringCellValue());
+            assertEquals("Authors", sheet.getRow(0).getCell(1).getStringCellValue());
+            assertEquals("Paper One", sheet.getRow(1).getCell(0).getStringCellValue());
+            assertEquals("Author One", sheet.getRow(1).getCell(1).getStringCellValue());
+            assertEquals("Forum One", sheet.getRow(1).getCell(2).getStringCellValue());
+            assertEquals("2023", sheet.getRow(1).getCell(4).getStringCellValue());
+        }
+    }
+
+    @Test
+    void buildUserCnfisWorkbookExportPassesFilteredDataToWorkbookGenerator() throws Exception {
+        User user = new User();
+        user.setEmail("user@uvt.ro");
+        user.setResearcherId("r1");
+
+        Researcher researcher = new Researcher();
+        researcher.setId("r1");
+        researcher.setScopusId(List.of("a1"));
+
+        Publication pIn = new Publication();
+        pIn.setId("p-in");
+        pIn.setCoverDate("2022-03-01");
+        pIn.setForum("f1");
+        pIn.setAuthors(List.of("a1"));
+
+        Publication pOut = new Publication();
+        pOut.setId("p-out");
+        pOut.setCoverDate("2025-03-01");
+        pOut.setForum("f1");
+        pOut.setAuthors(List.of("a1"));
+
+        Domain allDomain = new Domain();
+        allDomain.setName("ALL");
+        CNFISReport2025 report = new CNFISReport2025();
+
+        when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
+        when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
+        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of(pIn, pOut));
+        when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
+        when(woSExtractor.findPublicationWosId(any(Publication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(cnfiSScoringService2025.getReport(any(Publication.class), eq(allDomain))).thenReturn(report);
+        when(scopusForumRepository.findByIdIn(any())).thenReturn(List.of());
+        when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false)))
+                .thenReturn(new byte[]{7});
+
+        var result = facade.buildUserCnfisWorkbookExport("user@uvt.ro", 2021, 2024);
+
+        assertEquals(UserWorkbookExportStatus.OK, result.status());
+        ArgumentCaptor<List<Publication>> publicationCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<CNFISReport2025>> reportCaptor = ArgumentCaptor.forClass(List.class);
+        verify(exportService).generateCNFISReportWorkbook(publicationCaptor.capture(), reportCaptor.capture(), anyMap(), eq(List.of("a1")), eq(false));
+        assertEquals(1, publicationCaptor.getValue().size());
+        assertEquals("p-in", publicationCaptor.getValue().getFirst().getId());
+        assertEquals(1, reportCaptor.getValue().size());
     }
 }

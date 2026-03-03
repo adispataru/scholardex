@@ -141,6 +141,37 @@ class ComputerScienceScoringServiceTest {
         verifyNoInteractions(journalScoringService, bookScoringService);
     }
 
+    @Test
+    void nullActivityFallsBackToEmptyScore() {
+        ComputerScienceScoringService service = new ComputerScienceScoringService(
+                journalScoringService,
+                conferenceScoringService,
+                bookScoringService,
+                cacheService
+        );
+
+        Score score = service.getScore((ActivityInstance) null, new Indicator());
+
+        assertEquals(0.0, score.getScore());
+        assertEquals(0, score.getYear());
+        assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCategory());
+        assertEquals(WoSRanking.Quarter.NOT_FOUND.toString(), score.getQuarter());
+        verifyNoInteractions(journalScoringService, conferenceScoringService, bookScoringService);
+    }
+
+    @Test
+    void unknownActivityForumTypeFallsBackToEmptyScore() {
+        ComputerScienceScoringService service = activityAwareService("Magazine");
+
+        Score score = service.getScore(new ActivityInstance(), new Indicator());
+
+        assertEquals(0.0, score.getScore());
+        assertEquals(0, score.getYear());
+        assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCategory());
+        assertEquals(WoSRanking.Quarter.NOT_FOUND.toString(), score.getQuarter());
+        verifyNoInteractions(journalScoringService, conferenceScoringService, bookScoringService);
+    }
+
     private ComputerScienceScoringService activityAwareService(String aggregationType) {
         return new ComputerScienceScoringService(
                 journalScoringService,

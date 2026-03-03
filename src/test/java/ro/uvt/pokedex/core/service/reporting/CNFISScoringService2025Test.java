@@ -202,6 +202,40 @@ class CNFISScoringService2025Test {
         assertTrue(report.isErihPlus());
     }
 
+    @Test
+    void specificDomainSkipsNonMemberCategory() {
+        Publication publication = basePublication();
+        publication.setScopusSubtype("ar");
+        Domain specificDomain = new Domain();
+        specificDomain.setName("SPECIFIC");
+        specificDomain.setWosCategories(List.of("MATHEMATICS-SCIE"));
+
+        Forum forum = baseForum("Journal of Testing");
+        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
+        when(cacheService.getRankingsByIssn("1234-5678")).thenReturn(List.of(ranking("COMPUTER SCIENCE-SCIE", WoSRanking.Quarter.Q1)));
+
+        CNFISReport2025 report = service.getReport(publication, specificDomain);
+
+        assertFalse(report.isIsiQ1());
+        assertFalse(report.isIsiQ2());
+        assertFalse(report.isIsiQ3());
+        assertFalse(report.isIsiQ4());
+    }
+
+    @Test
+    void missingForumReturnsSafeReportWithoutThrowing() {
+        Publication publication = basePublication();
+        publication.setScopusSubtype("ar");
+        when(cacheService.getForum(publication.getForum())).thenReturn(null);
+
+        CNFISReport2025 report = assertDoesNotThrow(() -> service.getReport(publication, allDomain));
+
+        assertEquals(publication.getTitle(), report.getTitlu());
+        assertEquals(publication.getDoi(), report.getDoi());
+        assertEquals(2, report.getNumarAutori());
+        assertEquals(1, report.getNumarAutoriUniversitate());
+    }
+
     private Publication basePublication() {
         Publication publication = new Publication();
         publication.setForum("forum-1");

@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.view;
 
 import org.junit.jupiter.api.Test;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -41,6 +42,7 @@ import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsViewModel;
 
+import java.io.ByteArrayInputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -195,10 +197,16 @@ class AdminViewControllerContractTest {
         forum.setId("f1");
         forum.setPublicationName("Forum A");
 
+        Publication citing = publication("p2", "f1", "2024-01-01");
+        citing.setEid("2-s2.0-999");
+        citing.setDoi("10.1000/y");
+        citing.setTitle("Citing Paper");
+        citing.setCitedbyCount(2);
+
         AdminInstitutionPublicationsExportViewModel vm = new AdminInstitutionPublicationsExportViewModel(
                 new Institution(),
                 List.of(publication),
-                Map.of(),
+                Map.of("p1", List.of(citing)),
                 Map.of("a1", author),
                 Map.of("f1", forum)
         );
@@ -213,9 +221,21 @@ class AdminViewControllerContractTest {
                 .getResponse()
                 .getContentAsByteArray();
 
-        // XLSX files are ZIP containers.
-        org.junit.jupiter.api.Assertions.assertTrue(content.length > 4);
-        org.junit.jupiter.api.Assertions.assertTrue(content[0] == 'P' && content[1] == 'K');
+        try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(content))) {
+            var publications = workbook.getSheet("Publications");
+            var citations = workbook.getSheet("Citations");
+            org.junit.jupiter.api.Assertions.assertEquals("eID", publications.getRow(0).getCell(0).getStringCellValue());
+            org.junit.jupiter.api.Assertions.assertEquals("Title", publications.getRow(0).getCell(2).getStringCellValue());
+            org.junit.jupiter.api.Assertions.assertEquals("2-s2.0-123", publications.getRow(1).getCell(0).getStringCellValue());
+            org.junit.jupiter.api.Assertions.assertEquals("Paper", publications.getRow(1).getCell(2).getStringCellValue());
+            org.junit.jupiter.api.Assertions.assertEquals("Author A", publications.getRow(1).getCell(4).getStringCellValue());
+            org.junit.jupiter.api.Assertions.assertEquals("Forum A", publications.getRow(1).getCell(5).getStringCellValue());
+
+            org.junit.jupiter.api.Assertions.assertEquals("Cited Publication eID", citations.getRow(0).getCell(0).getStringCellValue());
+            org.junit.jupiter.api.Assertions.assertEquals("Citing Publication Title", citations.getRow(0).getCell(5).getStringCellValue());
+            org.junit.jupiter.api.Assertions.assertEquals("2-s2.0-123", citations.getRow(1).getCell(0).getStringCellValue());
+            org.junit.jupiter.api.Assertions.assertEquals("Citing Paper", citations.getRow(1).getCell(5).getStringCellValue());
+        }
     }
 
     private static Publication publication(String id, String forumId, String coverDate) {

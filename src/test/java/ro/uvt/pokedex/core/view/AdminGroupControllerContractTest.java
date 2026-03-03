@@ -6,17 +6,23 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
+import ro.uvt.pokedex.core.model.scopus.Author;
+import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.service.application.GroupCnfisExportFacade;
 import ro.uvt.pokedex.core.service.application.GroupExportFacade;
 import ro.uvt.pokedex.core.service.application.GroupManagementFacade;
 import ro.uvt.pokedex.core.service.application.GroupReportFacade;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisZipExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupMemberCnfisWorkbook;
+import ro.uvt.pokedex.core.service.application.model.GroupPublicationCsvExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupWorkbookExportResult;
 import ro.uvt.pokedex.core.service.importing.GroupService;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
@@ -89,5 +95,52 @@ class AdminGroupControllerContractTest {
 
         assertTrue(responseBytes.length > 4);
         assertTrue(responseBytes[0] == 'P' && responseBytes[1] == 'K');
+    }
+
+    @Test
+    void exportIndicatorResultsReturnsExpectedCsvHeaderAndRowContract() throws Exception {
+        Publication publication = new Publication();
+        publication.setDoi("10.1000/test");
+        publication.setTitle("CSV Paper");
+        publication.setAuthors(List.of("a1"));
+        publication.setForum("f1");
+        publication.setCoverDate("2023-02-15");
+        publication.setVolume("12");
+        publication.setIssueIdentifier("3");
+        publication.setPageRange("10-20");
+
+        Author author = new Author();
+        author.setId("a1");
+        author.setName("Author One");
+
+        Forum forum = new Forum();
+        forum.setId("f1");
+        forum.setPublicationName("Forum One");
+
+        when(groupExportFacade.buildGroupPublicationCsvExport(eq("g1")))
+                .thenReturn(Optional.of(new GroupPublicationCsvExportViewModel(
+                        List.of(publication),
+                        Map.of("a1", author),
+                        Map.of("f1", forum),
+                        Set.of("a1")
+                )));
+
+        String csv = mockMvc.perform(get("/admin/groups/{id}/publications/export", "g1"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"group_publications.csv\""))
+                .andExpect(content().contentType("text/csv;charset=UTF-8"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String[] lines = csv.split("\\R");
+        assertTrue(lines[0].startsWith("DOI,Title,Authors,Affiliated Authors,Forum,Year,Volume,Page Range"));
+        assertTrue(lines[1].contains("10.1000/test"));
+        assertTrue(lines[1].contains("\"CSV Paper\""));
+        assertTrue(lines[1].contains("\"Author One\""));
+        assertTrue(lines[1].contains("\"Forum One\""));
+        assertTrue(lines[1].contains("2023"));
+        assertTrue(lines[1].contains("12(3)"));
+        assertTrue(lines[1].contains("10-20"));
     }
 }

@@ -69,6 +69,7 @@ class RankingMaintenanceFacadeTest {
 
         facade.mergeDuplicateRankings();
 
+        verify(rankingRepository, never()).save(any(WoSRanking.class));
         verify(rankingRepository, never()).delete(any(WoSRanking.class));
         verify(cacheService).cacheRankings();
     }
@@ -82,6 +83,17 @@ class RankingMaintenanceFacadeTest {
 
         verify(rankingRepository, times(2)).saveAll(anyList());
         verify(cacheService, times(2)).cacheRankings();
+    }
+
+    @Test
+    void mergeDuplicateRankingsHandlesEmptyListWithoutPersistenceMutations() {
+        when(cacheService.getAllRankings()).thenReturn(List.of());
+
+        facade.mergeDuplicateRankings();
+
+        verify(rankingRepository, never()).save(any(WoSRanking.class));
+        verify(rankingRepository, never()).delete(any(WoSRanking.class));
+        verify(cacheService).cacheRankings();
     }
 
     private static WoSRanking ranking(String name) {

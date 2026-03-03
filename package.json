@@ -8,7 +8,9 @@
     "verify-template-assets": "node scripts/verify-template-assets.js",
     "verify-duplication-guardrails": "node scripts/verify-duplication-guardrails.js",
     "verify-architecture-boundaries": "node scripts/verify-architecture-boundaries.js",
-    "verify-h03-baseline": "npm run verify-architecture-boundaries && npm run verify-assets && npm run verify-template-assets && ./gradlew test --tests \"*UserViewControllerContractTest\" --tests \"*AdminGroupControllerContractTest\" --tests \"*AdminViewControllerContractTest\" --tests \"*ExportControllerContractTest\" --tests \"*UserReportFacadeTest\" --tests \"*GroupCnfisExportFacadeTest\" --tests \"*RankingMaintenanceFacadeTest\" --tests \"*CoreApplicationTests\""
+    "verify-h03-baseline": "npm run verify-architecture-boundaries && npm run verify-assets && npm run verify-template-assets && ./gradlew test --tests \"*UserViewControllerContractTest\" --tests \"*AdminGroupControllerContractTest\" --tests \"*AdminViewControllerContractTest\" --tests \"*ExportControllerContractTest\" --tests \"*UserReportFacadeTest\" --tests \"*GroupCnfisExportFacadeTest\" --tests \"*RankingMaintenanceFacadeTest\" --tests \"*CoreApplicationTests\"",
+    "verify-h04-baseline": "npm run verify-architecture-boundaries && npm run verify-assets && npm run verify-template-assets && ./gradlew test --tests \"*UserViewControllerContractTest\" --tests \"*AdminGroupControllerContractTest\" --tests \"*AdminViewControllerContractTest\" --tests \"*ExportControllerContractTest\" --tests \"*UserReportFacadeTest\" --tests \"*GroupCnfisExportFacadeTest\" --tests \"*RankingMaintenanceFacadeTest\" --tests \"*CNFISScoringService2025Test\" --tests \"*ComputerScienceScoringServiceTest\" --tests \"*CoreApplicationTests\" && node scripts/verify-test-runtime.js",
+    "verify-h04-mongo-integration": "./gradlew test --tests \"*ScopusPublicationRepositoryIntegrationTest\" --tests \"*ScopusCitationRepositoryIntegrationTest\""
   },
   "devDependencies": {
     "esbuild": "^0.25.1"

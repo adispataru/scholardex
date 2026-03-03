@@ -35,6 +35,18 @@ For H03 contract-safety baseline checks before refactors, run:
 npm run verify-h03-baseline
 ```
 
+For H04 reliability/runtime guardrails, run:
+
+```bash
+npm run verify-h04-baseline
+```
+
+Before merging repository query/data-access changes, also run:
+
+```bash
+npm run verify-h04-mongo-integration
+```
+
 If your change affects startup/config wiring, also verify boot task resolution:
 
 ```bash

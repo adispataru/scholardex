@@ -162,6 +162,19 @@ class GroupCnfisExportFacadeTest {
         assertEquals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", result.get().contentType());
         assertEquals("data/templates/AC2025_Anexa6-Tabel_institutional_articole_brevete-2025.xlsx", result.get().fileName());
         assertArrayEquals(new byte[]{9, 9, 9}, result.get().workbookBytes());
+
+        ArgumentCaptor<List<Publication>> publicationCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<CNFISReport2025>> reportCaptor = ArgumentCaptor.forClass(List.class);
+        verify(exportService).generateCNFISReportWorkbook(
+                publicationCaptor.capture(),
+                reportCaptor.capture(),
+                anyMap(),
+                eq(List.of("a1")),
+                eq(true)
+        );
+        assertEquals(1, publicationCaptor.getValue().size());
+        assertEquals("p1", publicationCaptor.getValue().getFirst().getId());
+        assertEquals(1, reportCaptor.getValue().size());
     }
 
     @Test
@@ -186,6 +199,7 @@ class GroupCnfisExportFacadeTest {
         assertTrue(result.isPresent());
         assertEquals(1, result.get().workbooks().size());
         assertEquals("Popescu_A_AB.xlsx", result.get().workbooks().getFirst().entryName());
+        assertArrayEquals(new byte[]{5, 5}, result.get().workbooks().getFirst().workbookBytes());
         verify(exportService).generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false));
     }
 

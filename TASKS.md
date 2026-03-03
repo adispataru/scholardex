@@ -22,10 +22,12 @@ Done history moved to `TASKS-done.md`.
   Status: completed on 2026-03-03.
   Note: archived in `TASKS-done.md` with H03-S01..S07 completion details and adoption guidance.
 
-- [ ] `H04` Test strategy and pyramid rebalance.
+- [x] `H04` Test strategy and pyramid rebalance.
   Goal: reduce fragile end-to-end reliance and improve unit/integration signal quality.
   Deliverable: test taxonomy, gap matrix, and priority test additions.
   Exit criteria: each critical feature has at least one stable automated regression test.
+  Status: completed on 2026-03-03.
+  Note: archived in `TASKS-done.md` with H04-S01..S07 completion details and adoption guidance.
 
 - [ ] `H05` Frontend structure and asset discipline.
   Goal: standardize JS/CSS/template patterns to avoid divergent implementations.
@@ -123,3 +125,49 @@ Scope: `H02` Architecture boundaries and ownership.
   Exit criteria: H02 can be treated as reference baseline for H03+ planning and implementation.
   Status: completed on 2026-03-03.
   Note: H02 is now the active architecture reference baseline; reopen H02 only for boundary-rule changes or newly detected violations.
+
+## H05 First Subtask List (Planning Mode Seed)
+
+Scope: `H05` Frontend structure and asset discipline.
+
+- [ ] `H05-S01` Build frontend structure map and duplication baseline.
+  Goal: produce a factual map of template/page asset usage and duplicated UI/JS patterns.
+  Inputs: `frontend/src/**`, `src/main/resources/templates/**`, existing asset verification scripts.
+  Deliverable: `docs/h05-frontend-map.md` with page groups, shared fragment usage, asset entrypoints, and top duplication hotspots.
+  Exit criteria: high-risk frontend duplication areas are explicitly identified with file evidence.
+
+- [ ] `H05-S02` Define frontend conventions and ownership rules.
+  Goal: set clear conventions for template composition, JS responsibilities, and shared asset boundaries.
+  Inputs: `H05-S01` map + H02 boundary rules + H04 test guardrails.
+  Deliverable: `docs/h05-frontend-conventions.md` with allowed patterns and explicit anti-patterns.
+  Exit criteria: contributors can place template/JS changes without ambiguity.
+
+- [ ] `H05-S03` Extract shared template composition primitives.
+  Goal: reduce duplicated markup by consolidating repeated admin/user layout blocks.
+  Inputs: hotspot list from `H05-S01`.
+  Deliverable: shared fragment updates and migration plan for repeated header/table/filter/form sections.
+  Exit criteria: at least top duplication clusters have shared fragment-based composition paths.
+
+- [ ] `H05-S04` Introduce frontend utility modules for repeated JS behavior.
+  Goal: centralize repeated inline/screen-specific JS patterns into reusable utilities.
+  Inputs: template inline script hotspots and current `frontend/src/app.js` structure.
+  Deliverable: utility module structure and migrated usage in selected pages.
+  Exit criteria: repeated JS logic has single-source utilities with no behavior regressions.
+
+- [ ] `H05-S05` Add guardrails for template/asset composition drift.
+  Goal: prevent reintroduction of frontend duplication and direct legacy patterns.
+  Inputs: new conventions + existing verification scripts.
+  Deliverable: updated checks (or new lightweight verifier) and contributor notes for template/script discipline.
+  Exit criteria: at least one automated check flags new high-risk drift patterns.
+
+- [ ] `H05-S06` Add focused frontend behavior regression checks.
+  Goal: protect key user/admin UI contracts while refactoring template/JS structure.
+  Inputs: prioritized flows from H03/H04 and affected templates.
+  Deliverable: targeted frontend-facing regression checks (controller model contracts/template expectations and optional JS-level tests where feasible).
+  Exit criteria: critical frontend flows retain stable behavior under refactor.
+
+- [ ] `H05-S07` Close H05 with adoption notes and handoff to H06.
+  Goal: finalize frontend structure baseline and usage guidance for subsequent data/persistence review work.
+  Inputs: completed H05 docs, guardrails, and migrations.
+  Deliverable: H05 closeout note in H05 docs + `TASKS.md`/`TASKS-done.md` status updates.
+  Exit criteria: H05 is usable as source-of-truth for maintainable frontend development and future refactors.

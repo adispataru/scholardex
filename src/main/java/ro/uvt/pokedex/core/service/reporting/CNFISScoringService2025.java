@@ -11,6 +11,7 @@ import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +26,13 @@ public class CNFISScoringService2025 {
         CNFISReport2025 report = new CNFISReport2025();
         report.setTitlu(publication.getTitle());
         report.setDoi(publication.getDoi());
+        List<String> authors = publication.getAuthors() == null ? Collections.emptyList() : publication.getAuthors();
+        report.setNumarAutori(authors.size());
+        report.setNumarAutoriUniversitate((int) authors.stream().filter(a -> lookupPort.getUniversityAuthorIds().contains(a)).count());
+        if (forum == null) {
+            log.warn("Missing forum for publication {}", publication.getForum());
+            return report;
+        }
         report.setDenumireJurnal(forum.getPublicationName());
         report.setIssnOnline(forum.getEIssn());
         report.setIssnPrint(forum.getIssn());
@@ -114,9 +122,6 @@ public class CNFISScoringService2025 {
                 }
             }
         }
-        report.setNumarAutori(publication.getAuthors().size());
-        report.setNumarAutoriUniversitate((int) publication.getAuthors().stream().filter(a -> lookupPort.getUniversityAuthorIds().contains(a)).count());
-
         return report;
     }
 
