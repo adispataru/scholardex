@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.view;
 
 import org.junit.jupiter.api.Test;
+import jakarta.servlet.ServletException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -37,6 +38,7 @@ import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -118,6 +120,13 @@ class UserViewControllerContractTest {
     }
 
     @Test
+    void publicationsPageRedirectsToLoginWhenAuthenticationMissing() throws Exception {
+        mockMvc.perform(get("/user/publications"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"));
+    }
+
+    @Test
     void cnfis2025ExportReturnsWorkbookResponseContract() throws Exception {
         byte[] bytes = new byte[]{9, 8, 7};
         when(userReportFacade.buildUserCnfisWorkbookExport(eq("u@uvt.ro"), eq(2021), eq(2024)))
@@ -134,6 +143,14 @@ class UserViewControllerContractTest {
                         "attachment; filename=\"data/templates/AC2025_Anexa5-Fisa_articole_brevete-2025.xlsx\""))
                 .andExpect(content().contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .andExpect(content().bytes(bytes));
+    }
+
+    @Test
+    void cnfis2025ExportWithInvalidStartYearThrowsServletExceptionCurrentBehavior() {
+        assertThrows(ServletException.class, () -> mockMvc.perform(get("/user/publications/exportCNFIS2025")
+                .param("start", "bad")
+                .param("end", "2024")
+                .with(authenticatedUser("u@uvt.ro"))));
     }
 
     @Test

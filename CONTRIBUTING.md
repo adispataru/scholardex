@@ -47,6 +47,12 @@ Before merging repository query/data-access changes, also run:
 npm run verify-h04-mongo-integration
 ```
 
+For H07 security/validation/error hardening changes, also run:
+
+```bash
+npm run verify-h07-guardrails
+```
+
 If your change affects startup/config wiring, also verify boot task resolution:
 
 ```bash
@@ -57,6 +63,7 @@ When editing templates, do not add new `/vendor/*` asset references. Use `/asset
 Do not commit backup templates (`*-bak.html`) under `src/main/resources/templates/**`; checks will fail.
 Do not reintroduce removed legacy CNFIS artifacts (`CNFISScoringService`, `CNFISReport`) or null-fallback scoring dispatch; `verify-duplication-guardrails` enforces these guardrails.
 Do not add new controller/view imports from `core.repository` or `core.service.reporting`; `verify-architecture-boundaries` enforces these guardrails (existing debt remains allowlisted until remediated).
+Do not introduce new mutating `GET` routes, transport-layer `printStackTrace`, or unsafe `start/end` year parsing in controllers; `verify-h07-guardrails` enforces debt-aware guardrails.
 
 ## Pull Request Checklist
 

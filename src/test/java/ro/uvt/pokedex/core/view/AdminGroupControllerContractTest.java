@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.view;
 
 import org.junit.jupiter.api.Test;
+import jakarta.servlet.ServletException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -25,11 +26,16 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AdminGroupController.class)
@@ -76,6 +82,13 @@ class AdminGroupControllerContractTest {
         mockMvc.perform(get("/admin/groups/{id}/publications/exportCNFIS2025", "missing"))
                 .andExpect(status().isOk())
                 .andExpect(header().doesNotExist("Content-Disposition"));
+    }
+
+    @Test
+    void exportCnfis2025WithInvalidStartYearThrowsServletExceptionCurrentBehavior() {
+        assertThrows(ServletException.class, () -> mockMvc.perform(get("/admin/groups/{id}/publications/exportCNFIS2025", "g1")
+                .param("start", "bad")
+                .param("end", "2024")));
     }
 
     @Test
@@ -142,5 +155,23 @@ class AdminGroupControllerContractTest {
         assertTrue(lines[1].contains("2023"));
         assertTrue(lines[1].contains("12(3)"));
         assertTrue(lines[1].contains("10-20"));
+    }
+
+    @Test
+    void importGroupsWithEmptyFileRedirectsWithErrorFlash() throws Exception {
+        mockMvc.perform(multipart("/admin/groups/import")
+                        .file("file", new byte[0]))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/groups"))
+                .andExpect(flash().attributeExists("errorMessage"));
+    }
+
+    @Test
+    void deleteGroupGetRouteRedirectsCurrentBehaviorBaseline() throws Exception {
+        mockMvc.perform(get("/admin/groups/delete/{id}", "g1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/groups"));
+
+        verify(groupManagementFacade).deleteGroup("g1");
     }
 }

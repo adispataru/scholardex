@@ -36,15 +36,19 @@ Done history moved to `TASKS-done.md`.
   Status: completed on 2026-03-03.
   Note: archived in `TASKS-done.md` with H05-S01..S07 completion details and adoption guidance.
 
-- [ ] `H06` Data and persistence consistency review.
+- [x] `H06` Data and persistence consistency review.
   Goal: verify entity design, migrations/data files, transaction boundaries, and query patterns for inconsistencies.
   Deliverable: persistence risk report and remediation plan.
   Exit criteria: integrity risks and performance hotspots are tracked with clear fixes.
+  Status: completed on 2026-03-03.
+  Note: archived in `TASKS-done.md` with H06-S01..S07 completion details, guardrails, and H07 handoff guidance.
 
-- [ ] `H07` Error handling, validation, and security hardening.
+- [x] `H07` Error handling, validation, and security hardening.
   Goal: unify input validation, exception mapping, auth/authz checks, and security defaults.
   Deliverable: standardized error/validation/security checklist with implementation gaps.
   Exit criteria: critical endpoints and forms comply with one consistent policy.
+  Status: completed on 2026-03-04.
+  Note: archived in `TASKS-done.md` with H07-S01..S07 completion details, regression guards, and H08 handoff guidance.
 
 - [ ] `H08` Observability and operability foundation.
   Goal: make failures diagnosable with structured logs, metrics, and health/readiness signals.
@@ -129,55 +133,5 @@ Scope: `H02` Architecture boundaries and ownership.
   Note: H02 is now the active architecture reference baseline; reopen H02 only for boundary-rule changes or newly detected violations.
 
 `H05` subtasks and closure details are archived in `TASKS-done.md`.
-
-## H06 First Subtask List (Planning Mode Seed)
-
-Scope: `H06` Data and persistence consistency review.
-
-- [x] `H06-S01` Build persistence architecture map and entity ownership baseline.
-  Goal: map collections/entities, repository ownership, and write/read flow boundaries.
-  Inputs: package structure, Mongo repositories/models, H02 boundary baseline.
-  Deliverable: `docs/h06-persistence-map.md` with entity-to-repository/service usage matrix.
-  Exit criteria: all high-impact entities have explicit owners and primary write paths.
-  Status: completed on 2026-03-03 (`docs/h06-persistence-map.md`).
-
-- [x] `H06-S02` Inventory schema and data-shape drift risks.
-  Goal: detect inconsistent field usage, duplicated semantic fields, and optional/null drift.
-  Inputs: models, repositories, import/export paths, existing data assumptions from H01/H03.
-  Deliverable: `docs/h06-schema-drift-inventory.md` with risk-ranked drift clusters.
-  Exit criteria: top drift candidates have concrete file evidence and impact notes.
-  Status: completed on 2026-03-03 (`docs/h06-schema-drift-inventory.md`).
-
-- [x] `H06-S03` Review query patterns and consistency semantics.
-  Goal: identify risky query patterns (implicit ordering, partial filters, case sensitivity, stale assumptions).
-  Inputs: repository methods, service query usage, existing integration tests.
-  Deliverable: `docs/h06-query-consistency-findings.md`.
-  Exit criteria: high/medium query risks have remediation direction and guard strategy.
-  Status: completed on 2026-03-03 (`docs/h06-query-consistency-findings.md`).
-
-- [x] `H06-S04` Define canonical persistence contracts.
-  Goal: lock conventions for IDs, timestamps, subtype/source fields, enum/text normalization, and update semantics.
-  Inputs: findings from S01-S03 + H02 dependency rules.
-  Deliverable: `docs/h06-persistence-contracts.md`.
-  Exit criteria: contributors can make persistence changes without ambiguity.
-  Status: completed on 2026-03-03 (`docs/h06-persistence-contracts.md`).
-
-- [x] `H06-S05` Add focused persistence regression tests for highest risks.
-  Goal: protect critical repository/service data behaviors before remediation.
-  Inputs: H06 findings + H04 integration strategy (Testcontainers where needed).
-  Deliverable: targeted repository/service characterization tests for selected high-risk paths.
-  Exit criteria: each P0/P1 persistence risk has at least one automated guard.
-  Status: completed on 2026-03-03.
-  Note: added `PersistenceYearSupport` + CNFIS filter hardening (`skip + warn`), aligned ranking ISSN cache semantics in `CacheService`, and added regression guards (`PersistenceYearSupportTest`, `CacheServiceTest`, CNFIS facade tests, citation pair characterization in `ScopusCitationRepositoryIntegrationTest`).
-
-- [ ] `H06-S06` Define phased remediation plan and guardrails.
-  Goal: sequence cleanup work by blast radius and effort; prevent reintroduction.
-  Inputs: contracts + test baseline + risk ranking.
-  Deliverable: `docs/h06-remediation-plan.md` and lightweight verification updates (script/checklist as needed).
-  Exit criteria: remediation slices are actionable and new persistence drift can be detected early.
-
-- [ ] `H06-S07` Close H06 with adoption notes and handoff to H07.
-  Goal: finalize persistence baseline and operational usage guidance for security/validation hardening.
-  Inputs: completed H06 docs, tests, and guardrails.
-  Deliverable: H06 closeout note in H06 docs + `TASKS.md`/`TASKS-done.md` status updates.
-  Exit criteria: H06 is usable as source-of-truth for persistence changes and future audits.
+`H06` subtasks and closure details are archived in `TASKS-done.md`.
+`H07` subtasks and closure details are archived in `TASKS-done.md`.

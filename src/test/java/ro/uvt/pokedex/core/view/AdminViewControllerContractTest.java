@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.view;
 
 import org.junit.jupiter.api.Test;
+import jakarta.servlet.ServletException;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -56,6 +57,7 @@ import java.util.TreeMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -136,6 +138,18 @@ class AdminViewControllerContractTest {
                 .andExpect(redirectedUrl("/admin/rankings/wos"));
 
         verify(rankingMaintenanceFacade).mergeDuplicateRankings();
+    }
+
+    @Test
+    void createUserWithInvalidRoleThrowsServletExceptionCurrentBehavior() {
+        when(userService.createUser(eq("bad@uvt.ro"), eq("secret"), eq(List.of("INVALID_ROLE"))))
+                .thenThrow(new IllegalArgumentException("No enum constant"));
+
+        assertThrows(ServletException.class, () -> mockMvc.perform(post("/admin/users/create")
+                .param("email", "bad@uvt.ro")
+                .param("password", "secret")
+                .param("roles", "INVALID_ROLE")
+                .with(authenticatedUser("admin@uvt.ro"))));
     }
 
     @Test

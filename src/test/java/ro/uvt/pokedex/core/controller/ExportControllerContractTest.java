@@ -50,4 +50,17 @@ class ExportControllerContractTest {
 
         assertTrue(content.length > 0);
     }
+
+    @Test
+    void exportEndpointFacadeFailureKeepsStartedResponseCurrentBehavior() throws Exception {
+        when(forumExportFacade.buildBookAndBookSeriesExport()).thenThrow(new RuntimeException("boom"));
+
+        MvcResult asyncResult = mockMvc.perform(get("/api/export"))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        mockMvc.perform(asyncDispatch(asyncResult))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=forums.xlsx"));
+    }
 }
