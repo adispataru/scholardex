@@ -1,0 +1,109 @@
+const { execFileSync } = require('child_process');
+
+const errors = [];
+
+function runRg(pattern, paths) {
+  try {
+    const output = execFileSync(
+      'rg',
+      ['-n', pattern, ...paths],
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+    );
+    return output
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+  } catch (error) {
+    if (typeof error.status === 'number' && error.status === 1) {
+      return [];
+    }
+    throw error;
+  }
+}
+
+function pathFromRgLine(line) {
+  const firstColon = line.indexOf(':');
+  return firstColon > 0 ? line.slice(0, firstColon) : line;
+}
+
+const controllerRoots = [
+  'src/main/java/ro/uvt/pokedex/core/view',
+  'src/main/java/ro/uvt/pokedex/core/controller'
+];
+
+const allowlistedMutatingGetFiles = new Set([
+  'src/main/java/ro/uvt/pokedex/core/view/AdminActivityController.java',
+  'src/main/java/ro/uvt/pokedex/core/view/AdminGroupController.java',
+  'src/main/java/ro/uvt/pokedex/core/view/AdminGroupReportsController.java',
+  'src/main/java/ro/uvt/pokedex/core/view/AdminIndividualReportsController.java',
+  'src/main/java/ro/uvt/pokedex/core/view/AdminViewController.java',
+  'src/main/java/ro/uvt/pokedex/core/view/user/ActivityInstanceController.java'
+]);
+
+const mutatingGetMatches = runRg(
+  '@GetMapping\\(".*(delete|duplicate)/',
+  controllerRoots
+);
+const mutatingGetFiles = new Set(mutatingGetMatches.map(pathFromRgLine));
+
+for (const file of mutatingGetFiles) {
+  if (!allowlistedMutatingGetFiles.has(file)) {
+    errors.push(
+      `${file}: new mutating GET route detected (delete/duplicate). Use POST/PUT/PATCH/DELETE.`
+    );
+  }
+}
+
+const allowlistedPrintStackTraceFiles = new Set([
+  'src/main/java/ro/uvt/pokedex/core/controller/ExportController.java',
+  'src/main/java/ro/uvt/pokedex/core/view/AdminGroupController.java'
+]);
+
+const printStackTraceMatches = runRg('printStackTrace\\(', controllerRoots);
+const printStackTraceFiles = new Set(printStackTraceMatches.map(pathFromRgLine));
+for (const file of printStackTraceFiles) {
+  if (!allowlistedPrintStackTraceFiles.has(file)) {
+    errors.push(
+      `${file}: new printStackTrace usage detected in transport layer; use structured logging.`
+    );
+  }
+}
+
+const allowlistedYearParseFiles = new Set([
+  'src/main/java/ro/uvt/pokedex/core/view/AdminGroupController.java',
+  'src/main/java/ro/uvt/pokedex/core/view/UserViewController.java'
+]);
+
+const riskyYearParseMatches = runRg(
+  'Integer\\.parseInt\\((startYear|endYear)\\)',
+  controllerRoots
+);
+const riskyYearParseFiles = new Set(riskyYearParseMatches.map(pathFromRgLine));
+for (const file of riskyYearParseFiles) {
+  if (!allowlistedYearParseFiles.has(file)) {
+    errors.push(
+      `${file}: new unsafe start/end year parsing detected; add validated parsing + deterministic 400 behavior.`
+    );
+  }
+}
+
+function emitAllowlistShrinkHint(currentFiles, allowlist, label) {
+  const missingAllowlisted = [...allowlist].filter((file) => !currentFiles.has(file));
+  if (missingAllowlisted.length > 0) {
+    console.log(
+      `H07 guardrail note: ${missingAllowlisted.length} ${label} allowlisted file(s) no longer match. Consider shrinking allowlist.`
+    );
+  }
+}
+
+emitAllowlistShrinkHint(mutatingGetFiles, allowlistedMutatingGetFiles, 'mutating-GET');
+emitAllowlistShrinkHint(printStackTraceFiles, allowlistedPrintStackTraceFiles, 'printStackTrace');
+emitAllowlistShrinkHint(riskyYearParseFiles, allowlistedYearParseFiles, 'year-parse');
+
+if (errors.length > 0) {
+  console.error('H07 guardrail verification failed:');
+  errors.forEach((error) => console.error(`- ${error}`));
+  process.exit(1);
+}
+
+console.log('H07 guardrail verification passed.');
