@@ -3,7 +3,6 @@ package ro.uvt.pokedex.core.service.reporting;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.service.importing.ArtisticEventsService;
 
 @Service
 public class ScoringFactoryService {
@@ -31,6 +30,9 @@ public class ScoringFactoryService {
     private EconomicsJournalScoringService economicsJournalScoringService;
 
     public ScoringService getScoringService(Indicator.Strategy strategy) {
+        if (strategy == null) {
+            throw new IllegalArgumentException("Scoring strategy cannot be null");
+        }
         if(strategy.equals(Indicator.Strategy.CS_CONFERENCE))
             return computerScienceConferenceScoringService;
         else if(strategy.equals(Indicator.Strategy.CS_JOURNAL))
@@ -53,6 +55,6 @@ public class ScoringFactoryService {
             return impactFactorJournalScoringService;
         else if(strategy.equals(Indicator.Strategy.ECONOMICS_JOURNAL_AIS))
             return economicsJournalScoringService;
-        return null;
+        throw new IllegalArgumentException("Unsupported scoring strategy: " + strategy);
     }
 }

@@ -13,7 +13,7 @@ function listHtmlFiles(dir) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       out.push(...listHtmlFiles(full));
-    } else if (entry.isFile() && full.endsWith('.html') && !full.endsWith('-bak.html')) {
+    } else if (entry.isFile() && full.endsWith('.html')) {
       out.push(full);
     }
   }
@@ -24,6 +24,10 @@ const files = roots.flatMap(listHtmlFiles);
 const errors = [];
 
 for (const file of files) {
+  if (file.endsWith('-bak.html')) {
+    errors.push(`${file}: backup templates are forbidden in runtime template directories`);
+    continue;
+  }
   const content = fs.readFileSync(file, 'utf8');
   if (content.includes('/vendor/')) {
     errors.push(`${file}: contains forbidden /vendor/ reference`);

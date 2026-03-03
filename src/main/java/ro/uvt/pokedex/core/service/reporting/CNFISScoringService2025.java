@@ -1,6 +1,8 @@
 package ro.uvt.pokedex.core.service.reporting;
 
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.WoSRanking;
@@ -18,6 +20,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @Service
 @RequiredArgsConstructor
 public class CNFISScoringService2025 {
+    private static final Logger log = LoggerFactory.getLogger(CNFISScoringService2025.class);
     private final CacheService cacheService;
     private static final int LAST_YEAR = 2023;
     public CNFISReport2025 getReport(Publication publication, Domain domain) {
@@ -33,7 +36,8 @@ public class CNFISScoringService2025 {
         report.setIssnOnline(forum.getEIssn());
         report.setIssnPrint(forum.getIssn());
 
-        if ("ar".equals(publication.getScopusSubtype()) || "re".equals(publication.getScopusSubtype())) {
+        String subtype = resolveSubtype(publication);
+        if ("ar".equals(subtype) || "re".equals(subtype)) {
             String issn = forum.getIssn();
             String eIssn = forum.getEIssn();
             List<Integer> allowedYears = new ArrayList<>();
@@ -53,12 +57,7 @@ public class CNFISScoringService2025 {
             for (WoSRanking ranking : allByIssn) {
                 for (Map.Entry<String, WoSRanking.Rank> entry : ranking.getWebOfScienceCategoryIndex().entrySet()) {
                     String category = entry.getKey();
-                    String[] parts = category.split("-");
-                    if(parts.length < 2) {
-
-                        continue; // Invalid category format
-                    }
-                    String catIndex = parts[1];
+                    String catIndex = extractCategoryIndex(category);
                     WoSRanking.Rank score = entry.getValue();
 
                     if (!"ALL".equals(domain.getName()) && !domain.getWosCategories().contains(category)) {
@@ -107,7 +106,7 @@ public class CNFISScoringService2025 {
                     }
                 }
             }
-        }else if ("cp".equals(publication.getScopusSubtype())) {
+        }else if ("cp".equals(subtype)) {
             if(forum.getPublicationName().contains("IEEE")) {
                 report.setIeeeProceedings(true);
             }else {
@@ -115,7 +114,7 @@ public class CNFISScoringService2025 {
                     report.setIsiProceedings(true);
                 }
             }
-        }else if("ch".equals(publication.getScopusSubtype())) {
+        }else if("ch".equals(subtype)) {
             if (forum.getPublicationName().contains("Lecture Notes")) {
                 if (publication.getWosId() != null && !publication.getWosId().isEmpty()) {
                     report.setIsiProceedings(true);
@@ -126,5 +125,35 @@ public class CNFISScoringService2025 {
         report.setNumarAutoriUniversitate((int) publication.getAuthors().stream().filter(a -> cacheService.getUniversityAuthorIds().contains(a)).count());
 
         return report;
+    }
+
+    private String resolveSubtype(Publication publication) {
+        String scopusSubtype = normalize(publication.getScopusSubtype());
+        if (!scopusSubtype.isEmpty()) {
+            return scopusSubtype;
+        }
+        return normalize(publication.getSubtype());
+    }
+
+    private String extractCategoryIndex(String category) {
+        if (category == null) {
+            log.warn("Encountered null WoS category while scoring CNFIS 2025.");
+            return "";
+        }
+        String normalized = category.trim();
+        if (normalized.isEmpty()) {
+            log.warn("Encountered empty WoS category while scoring CNFIS 2025.");
+            return "";
+        }
+        int delimiterPos = normalized.indexOf('-');
+        if (delimiterPos < 0 || delimiterPos == normalized.length() - 1) {
+            log.warn("Non-standard WoS category format '{}'; using full value as category index.", category);
+            return normalized;
+        }
+        return normalized.substring(delimiterPos + 1).trim();
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim().toLowerCase();
     }
 }

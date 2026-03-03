@@ -77,31 +77,35 @@ Scope: `H01` Duplicate code and drift audit.
   Inputs: top clusters from `H01-S01`.
   Deliverable: `docs/h01-drift-findings.md` with drift type: harmless, intentional, risky, unknown.
   Exit criteria: each top cluster has a drift decision and evidence snippet references.
-  Notes: In progress. `C01`, `C03`, `C05`, and `C06` analyzed; `C02`, `C03`, and `C05` resolved by template deletion/consolidation; C06 shared asset contract extracted (`scripts/assets-contract.js`). See `docs/h01-drift-findings.md`.
+  Notes: In progress. `C01`, `C03`, `C04`, `C05`, and `C06` analyzed; `C02`, `C03`, and `C05` resolved by template deletion/consolidation; C06 shared asset contract extracted (`scripts/assets-contract.js`); H01 open questions resolved and recorded in `docs/h01-drift-findings.md`.
 
-- [ ] `H01-S04` Prioritize by risk and blast radius.
+- [x] `H01-S04` Prioritize by risk and blast radius.
   Goal: rank duplicates by user impact, regression risk, and change cost.
   Inputs: drift findings, runtime criticality, code ownership uncertainty.
   Deliverable: priority table in `docs/h01-duplication-inventory.md` with `P0/P1/P2`.
   Exit criteria: clear “start here” ordering for refactor work.
+  Notes: Completed. Ranked execution order is `C01 (P0)` -> `C04 (P1)` -> `C06 (P2)` in `docs/h01-duplication-inventory.md`.
 
-- [ ] `H01-S05` Define consolidation strategy per priority cluster.
+- [x] `H01-S05` Define consolidation strategy per priority cluster.
   Goal: choose consolidation pattern per cluster (extract shared service, template fragment, utility module, configuration map).
   Inputs: prioritized cluster list.
   Deliverable: `docs/h01-consolidation-strategy.md` with target shape and migration steps.
   Exit criteria: every `P0/P1` cluster has an approved destination design.
+  Notes: Completed. See `docs/h01-consolidation-strategy.md` for `C01 (P0)`, `C04 (P1)`, and `C06 (P2)`.
 
-- [ ] `H01-S06` Create regression guards before refactor.
+- [x] `H01-S06` Create regression guards before refactor.
   Goal: add tests that freeze behavior for clusters selected for consolidation.
   Inputs: selected clusters and drift notes.
   Deliverable: focused tests (unit/integration/template rendering) and coverage notes.
   Exit criteria: tests fail on behavior change and pass on current intended behavior.
+  Notes: Completed on 2026-03-03. Added characterization tests for `C01` and `C04` plus command-level guard coverage for `C06`; see `docs/h01-regression-guards.md`.
 
-- [ ] `H01-S07` Execute first consolidation slice (small, high-value).
+- [x] `H01-S07` Execute first consolidation slice (small, high-value).
   Goal: merge one `P0` or two `P1` clusters with minimal public behavior change.
   Inputs: strategy + regression guards.
   Deliverable: code changes + migration notes in PR description or `docs/h01-slice-1.md`.
   Exit criteria: reduced duplicate footprint and all relevant checks green.
+  Notes: Completed on 2026-03-03. First slice delivered for `C04` sub-cluster B: `ScoringFactoryService` now fails fast for null/unsupported strategies; `bk` path in combined CS scorer intentionally deferred and documented.
 
 - [ ] `H01-S08` Prevent reintroduction.
   Goal: add lightweight guardrails to detect new duplication/drift early.
