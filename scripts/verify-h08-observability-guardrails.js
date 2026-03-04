@@ -111,6 +111,58 @@ for (const pattern of schedulerCorrelationPatterns) {
   }
 }
 
+const gradleFile = ['build.gradle'];
+if (runRg('spring-boot-starter-actuator', gradleFile).length === 0) {
+  errors.push('build.gradle: actuator dependency missing for H08-P2 baseline.');
+}
+
+const propertiesFile = ['src/main/resources/application.properties'];
+const managementPatterns = [
+  '^management\\.endpoints\\.web\\.base-path=/actuator$',
+  '^management\\.endpoint\\.health\\.probes\\.enabled=true$',
+  '^management\\.endpoint\\.health\\.group\\.liveness\\.include=',
+  '^management\\.endpoint\\.health\\.group\\.readiness\\.include='
+];
+for (const pattern of managementPatterns) {
+  if (runRg(pattern, propertiesFile).length === 0) {
+    errors.push(`application.properties missing H08-P2 management config pattern: ${pattern}`);
+  }
+}
+
+const securityFile = ['src/main/java/ro/uvt/pokedex/core/config/WebSecurityConfig.java'];
+const actuatorSecurityPatterns = [
+  '"/actuator/health"',
+  '"/actuator/health/liveness"',
+  '"/actuator/health/readiness"',
+  '"/actuator/\\*\\*"'
+];
+for (const pattern of actuatorSecurityPatterns) {
+  if (runRg(pattern, securityFile).length === 0) {
+    errors.push(`WebSecurityConfig missing expected actuator policy marker: ${pattern}`);
+  }
+}
+
+const startupTrackerFile = ['src/main/java/ro/uvt/pokedex/core/observability/StartupReadinessTracker.java'];
+if (runRg('class StartupReadinessTracker', startupTrackerFile).length === 0) {
+  errors.push('StartupReadinessTracker missing for H08-P2 startup readiness baseline.');
+}
+
+const startupHealthFile = ['src/main/java/ro/uvt/pokedex/core/observability/StartupHealthIndicator.java'];
+if (runRg('class StartupHealthIndicator', startupHealthFile).length === 0) {
+  errors.push('StartupHealthIndicator missing for H08-P2 readiness health contributor.');
+}
+
+const metricsMarkers = [
+  { file: 'src/main/java/ro/uvt/pokedex/core/DataLoaderNew.java', pattern: 'core\\.startup\\.phase\\.duration' },
+  { file: 'src/main/java/ro/uvt/pokedex/core/service/scopus/ScopusUpdateScheduler.java', pattern: 'core\\.scheduler\\.scopus\\.poll\\.duration' },
+  { file: 'src/main/java/ro/uvt/pokedex/core/controller/ExportController.java', pattern: 'core\\.export\\.forum\\.requests' }
+];
+for (const marker of metricsMarkers) {
+  if (runRg(marker.pattern, [marker.file]).length === 0) {
+    errors.push(`${marker.file} missing expected metrics marker: ${marker.pattern}`);
+  }
+}
+
 if (errors.length > 0) {
   console.error('H08 observability guardrail verification failed:');
   errors.forEach((error) => console.error(`- ${error}`));

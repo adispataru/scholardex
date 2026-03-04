@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.controller;
 
 import lombok.RequiredArgsConstructor;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -24,6 +25,7 @@ import java.io.UncheckedIOException;
 public class ExportController {
 
     private final ForumExportFacade forumExportFacade;
+    private final MeterRegistry meterRegistry;
 
     @GetMapping("/export")
     public ResponseEntity<byte[]> exportToExcel() {
@@ -48,13 +50,18 @@ public class ExportController {
                 row.createCell(4).setCellValue(exportRow.aggregationType());
             }
             workbook.write(outputStream);
+            meterRegistry.counter("core.export.forum.requests", "outcome", "success").increment();
 
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=forums.xlsx")
                     .body(outputStream.toByteArray());
         } catch (IOException ex) {
+            meterRegistry.counter("core.export.forum.requests", "outcome", "failure").increment();
             throw new UncheckedIOException("Forum export generation failed.", ex);
+        } catch (RuntimeException ex) {
+            meterRegistry.counter("core.export.forum.requests", "outcome", "failure").increment();
+            throw ex;
         }
     }
 }

@@ -79,6 +79,16 @@ Exit criteria:
 - Critical hotspots have latency + outcome metrics.
 - Startup/scheduler capacity signals are externally diagnosable.
 
+Status update (2026-03-04):
+- `P2` implemented via `B12`.
+- Delivered:
+  - actuator baseline (`health`, `info`, `metrics`) with explicit liveness/readiness health groups,
+  - probe-only public exposure policy for `/actuator/health`, `/actuator/health/liveness`, `/actuator/health/readiness`,
+  - startup phase readiness tracker (`critical-only` gating) and `startup` health contributor,
+  - Scopus dependency readiness contributor (`scopusPython`) with bounded timeout,
+  - baseline metrics for startup phases, scheduler poll/task outcomes, export outcomes, and external Scopus calls,
+  - async executor queue/active/rejection diagnostics with configurable pool settings.
+
 ## 3. Lightweight Enforcement
 
 Implemented in this slice:
@@ -113,9 +123,9 @@ When touching scheduler/report/export behavior:
 
 ## 6. Residual Risks
 
-- Until P2 lands, no machine-readable readiness baseline exists.
-- Until P1 lands, multi-hop triage remains correlation-poor.
-- Until P0 allowlists are reduced, legacy diagnostics debt remains in known files.
+- Non-Scopus scheduler families may still need explicit context/metric rollout if added in future slices.
+- Current baseline does not include a Prometheus-specific exporter contract.
+- Global logging pattern centralization remains outside this slice.
 
 ## 7. H08-S07 Closeout and H09 Handoff
 

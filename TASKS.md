@@ -229,7 +229,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   Status: completed on 2026-03-04.
   Note: CSRF is re-enabled for MVC flows with explicit `/api/**` exemption; mutating `delete/duplicate` GET routes were migrated to POST across targeted controllers/templates; group CSV import now enforces strict size/type/schema validation.
 
-- [ ] `B12` H08-P2: Actuator/metrics/readiness baseline implementation.
+- [x] `B12` H08-P2: Actuator/metrics/readiness baseline implementation.
   Goal: close `O-H08-01`, `O-H08-02`, `O-H08-03`, `O-H08-04`, `O-H08-05`.
   Scope:
   - add actuator and explicit readiness/liveness policy;
@@ -238,6 +238,8 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   - define startup phase readiness semantics.
   Inputs: `docs/h08-remediation-plan.md` (`P2`), `docs/h08-operability-findings.md`, `docs/h08-observability-contracts.md`.
   Done criteria: production failure modes are machine-detectable via health and metrics endpoints.
+  Status: completed on 2026-03-04.
+  Note: actuator baseline and readiness/liveness groups are active, startup/external dependency health contributors are wired, scheduler/export/startup/external metrics are instrumented, async queue/rejection diagnostics are exposed, and H08 observability guardrails now assert P2 baseline wiring.
 
 - [ ] `B13` H02 residual V01 closure outside baseline pair.
   Goal: reduce remaining `Z1 -> Z4` controller repository debt in non-baseline controllers.

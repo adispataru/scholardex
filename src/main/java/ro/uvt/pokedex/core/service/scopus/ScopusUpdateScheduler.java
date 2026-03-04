@@ -2,11 +2,12 @@ package ro.uvt.pokedex.core.service.scopus;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -42,6 +43,7 @@ public class ScopusUpdateScheduler {
     private final ScopusDataService scopusDataService;
     private final ScopusCitationUpdateRepository citationsTaskRepo;
     private final ScopusCitationRepository citationRepo;
+    private final MeterRegistry meterRegistry;
 
     private final WebClient scopusPythonClient;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -57,6 +59,7 @@ public class ScopusUpdateScheduler {
 
     @Scheduled(fixedDelayString = "${scopus.update.poll-ms:60000}")
     public void pollQueue() {
+        Timer.Sample pollTimer = Timer.start(meterRegistry);
         String batchTaskId = "batch-" + UUID.randomUUID();
         AutoCloseable batchContext = SchedulerCorrelationSupport.withSchedulerContext(
                 "scopus.update.poll",
@@ -71,10 +74,16 @@ public class ScopusUpdateScheduler {
             publicationTasks = processPublicationTasks();
             citationTasks = processCitationTasks();
             MDC.put("phase", "complete");
+            meterRegistry.counter("core.scheduler.scopus.tasks.processed", "taskType", "publication", "outcome", "success")
+                    .increment(publicationTasks);
+            meterRegistry.counter("core.scheduler.scopus.tasks.processed", "taskType", "citation", "outcome", "success")
+                    .increment(citationTasks);
             log.info("Scopus scheduler poll completed: batchTaskId={}, publicationTasks={}, citationTasks={}, durationMs={}",
                     batchTaskId, publicationTasks, citationTasks, System.currentTimeMillis() - startedAt);
+            pollTimer.stop(meterRegistry.timer("core.scheduler.scopus.poll.duration", "outcome", "success"));
         } catch (Exception e) {
             MDC.put("phase", "failed");
+            pollTimer.stop(meterRegistry.timer("core.scheduler.scopus.poll.duration", "outcome", "failure"));
             log.error("Scopus scheduler poll failed: batchTaskId={}, durationMs={}",
                     batchTaskId, System.currentTimeMillis() - startedAt, e);
             throw e;
@@ -105,6 +114,8 @@ public class ScopusUpdateScheduler {
                 log.info("Publication task {} completed in {} ms", t.getId(), System.currentTimeMillis() - taskStartedAt);
             } catch (Exception e) {
                 MDC.put("phase", "failed");
+                meterRegistry.counter("core.scheduler.scopus.tasks.processed", "taskType", "publication", "outcome", "failure")
+                        .increment();
                 log.error("Publication task {} failed", t.getId(), e);
                 t.setStatus(Status.FAILED);
                 t.setMessage("FAILED: " + e.getMessage());
@@ -185,6 +196,8 @@ public class ScopusUpdateScheduler {
                 log.info("Citations task {} completed in {} ms", t.getId(), System.currentTimeMillis() - taskStartedAt);
             } catch (Exception e) {
                 MDC.put("phase", "failed");
+                meterRegistry.counter("core.scheduler.scopus.tasks.processed", "taskType", "citation", "outcome", "failure")
+                        .increment();
                 log.error("Citations task {} failed", t.getId(), e);
                 t.setStatus(Status.FAILED);
                 t.setMessage("FAILED: " + e.getMessage());
@@ -398,17 +411,29 @@ public class ScopusUpdateScheduler {
     }
 
     private CitationsByEidResponse callPythonCitations(CitationsByEidRequest req) {
-        return scopusPythonClient.post()
-                .uri("/v1/citations/by-eid")
-                .bodyValue(req)
-                .retrieve()
-                .bodyToMono(CitationsByEidResponse.class)
-                .onErrorResume(ex -> {
-                    String msg = "Python citations service error: " + ex.getMessage();
-                    log.error(msg);
-                    return Mono.error(new RuntimeException(msg, ex));
-                })
-                .block();
+        Timer.Sample timer = Timer.start(meterRegistry);
+        try {
+            CitationsByEidResponse response = scopusPythonClient.post()
+                    .uri("/v1/citations/by-eid")
+                    .bodyValue(req)
+                    .retrieve()
+                    .bodyToMono(CitationsByEidResponse.class)
+                    .onErrorResume(ex -> {
+                        String msg = "Python citations service error: " + ex.getMessage();
+                        log.error(msg);
+                        return Mono.error(new RuntimeException(msg, ex));
+                    })
+                    .block();
+            meterRegistry.counter("core.external.scopus_python.calls", "operation", "citationsByEid", "outcome", "success")
+                    .increment();
+            timer.stop(meterRegistry.timer("core.external.scopus_python.duration", "operation", "citationsByEid", "outcome", "success"));
+            return response;
+        } catch (RuntimeException ex) {
+            meterRegistry.counter("core.external.scopus_python.calls", "operation", "citationsByEid", "outcome", "failure")
+                    .increment();
+            timer.stop(meterRegistry.timer("core.external.scopus_python.duration", "operation", "citationsByEid", "outcome", "failure"));
+            throw ex;
+        }
     }
 
 
@@ -427,16 +452,28 @@ public class ScopusUpdateScheduler {
     }
 
     private AuthorWorksResponse callPython(AuthorWorksRequest req) {
-        return scopusPythonClient.post()
-                .uri("/v1/author-works")
-                .bodyValue(req)
-                .retrieve()
-                .bodyToMono(AuthorWorksResponse.class)
-                .onErrorResume(ex -> {
-                    String msg = "Python service error: " + ex.getMessage();
-                    log.error(msg);
-                    return Mono.error(new RuntimeException(msg, ex));
-                })
-                .block();
+        Timer.Sample timer = Timer.start(meterRegistry);
+        try {
+            AuthorWorksResponse response = scopusPythonClient.post()
+                    .uri("/v1/author-works")
+                    .bodyValue(req)
+                    .retrieve()
+                    .bodyToMono(AuthorWorksResponse.class)
+                    .onErrorResume(ex -> {
+                        String msg = "Python service error: " + ex.getMessage();
+                        log.error(msg);
+                        return Mono.error(new RuntimeException(msg, ex));
+                    })
+                    .block();
+            meterRegistry.counter("core.external.scopus_python.calls", "operation", "authorWorks", "outcome", "success")
+                    .increment();
+            timer.stop(meterRegistry.timer("core.external.scopus_python.duration", "operation", "authorWorks", "outcome", "success"));
+            return response;
+        } catch (RuntimeException ex) {
+            meterRegistry.counter("core.external.scopus_python.calls", "operation", "authorWorks", "outcome", "failure")
+                    .increment();
+            timer.stop(meterRegistry.timer("core.external.scopus_python.duration", "operation", "authorWorks", "outcome", "failure"));
+            throw ex;
+        }
     }
 }

@@ -163,3 +163,12 @@ Minimum signals per hotspot:
   - Scopus scheduler flow now emits stable scheduler MDC context (`jobType`, `taskId`, `phase`) for batch and per-task execution.
 - `C5` error diagnostics compatibility was aligned:
   - centralized API/MVC exception handlers include correlation-aware log context (`requestId`) while preserving H07 response mappings.
+
+## 9. B12 Adoption Update (2026-03-04)
+
+- `C6..C10` are now operationalized for the H08 baseline:
+  - actuator health/readiness/liveness baseline is active with probe-only public exposure and restricted non-probe actuator endpoints,
+  - startup readiness semantics are phase-explicit with critical-vs-optional status tracking (`startup` health contributor),
+  - external dependency readiness coverage is active for Scopus Python service with bounded timeout checks (`scopusPython`),
+  - minimum hotspot metric coverage is active for startup, scheduler, export, and external Scopus integration paths,
+  - async executor capacity/rejection diagnostics are exposed via queue/active/rejection signals.

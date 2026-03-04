@@ -46,6 +46,9 @@ public class WebSecurityConfig {
                             "/login",
                             "/error",
                             "/custom-error",
+                            "/actuator/health",
+                            "/actuator/health/liveness",
+                            "/actuator/health/readiness",
                             "/css/**",
                             "/js/**",
                             "/images/**",
@@ -53,6 +56,7 @@ public class WebSecurityConfig {
                             "/assets/**",
                             "/favicon.ico"
                     ).permitAll();
+                    ahr.requestMatchers("/actuator/**").hasAuthority("PLATFORM_ADMIN");
                     ahr.requestMatchers("/admin/**").hasAuthority("PLATFORM_ADMIN");
                     ahr.requestMatchers("/api/admin/**").hasAuthority("PLATFORM_ADMIN");
                     ahr.requestMatchers("/api/export", "/api/export/**").hasAuthority("PLATFORM_ADMIN");

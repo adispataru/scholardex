@@ -1,5 +1,7 @@
 package ro.uvt.pokedex.core.controller;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -45,6 +47,10 @@ class ApiSecurityContractTest {
     private UserService userService;
     @MockBean
     private PasswordEncoder passwordEncoder;
+    @MockBean
+    private MeterRegistry meterRegistry;
+    @MockBean
+    private Counter counter;
 
     @Test
     void unauthenticatedApiExportReturns401JsonEnvelope() throws Exception {
@@ -74,6 +80,7 @@ class ApiSecurityContractTest {
     @Test
     void adminCanAccessPrivilegedApiEndpoints() throws Exception {
         when(userService.getAllUsers()).thenReturn(Collections.emptyList());
+        when(meterRegistry.counter("core.export.forum.requests", "outcome", "success")).thenReturn(counter);
         when(forumExportFacade.buildBookAndBookSeriesExport()).thenReturn(new ForumExportViewModel(
                 List.of(new ForumExportRow("Book A", "1234-5678", "8765-4321", "src-1", "Book"))
         ));

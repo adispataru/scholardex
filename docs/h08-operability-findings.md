@@ -52,3 +52,12 @@ Current blind spots:
 
 - Major operational blind spots are identified and prioritized.
 - Findings are ready to feed `H08-S04` observability contracts and `H08-S06` phased remediation planning.
+
+## 6. B12 Adoption Update (2026-03-04)
+
+- `B12 / H08-P2` implemented baseline operability controls for `O-H08-01..05`:
+  - Actuator enabled with explicit probe exposure (`/actuator/health`, `/actuator/health/liveness`, `/actuator/health/readiness`) and restricted non-probe actuator surface.
+  - Startup readiness is phase-tracked with critical-vs-optional semantics and readiness-aware health contributor (`startup`).
+  - External dependency readiness contributor added for Scopus Python integration (`scopusPython`) with bounded timeout.
+  - Baseline metrics added for startup phases, scheduler poll/task outcomes, forum export outcomes, and external Scopus Python calls.
+  - Async executor queue/active/rejection diagnostics are now exported via metrics with rejection warning signal.
