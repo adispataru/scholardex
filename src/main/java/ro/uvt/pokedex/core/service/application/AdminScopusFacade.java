@@ -25,7 +25,8 @@ public class AdminScopusFacade {
     private final ScopusForumRepository scopusForumRepository;
 
     public AdminScopusPublicationSearchViewModel buildPublicationSearchView(String paperTitle) {
-        List<Publication> publications = scopusPublicationRepository.findByTitleContains(paperTitle);
+        List<Publication> publications = new ArrayList<>(scopusPublicationRepository.findByTitleContainsOrderByCoverDateDesc(paperTitle));
+        publications.sort(PublicationOrderingSupport.publicationComparator());
         Set<String> authorKeys = new HashSet<>();
         publications.forEach(publication -> authorKeys.addAll(publication.getAuthors()));
         Map<String, Author> authorMap = scopusAuthorRepository.findByIdIn(authorKeys).stream()
@@ -42,7 +43,8 @@ public class AdminScopusFacade {
 
         List<Citation> allByCited = scopusCitationRepository.findAllByCitedId(publication.getId());
         List<String> citingIds = allByCited.stream().map(Citation::getCitingId).toList();
-        List<Publication> citations = scopusPublicationRepository.findAllByIdIn(citingIds);
+        List<Publication> citations = new ArrayList<>(scopusPublicationRepository.findAllByIdIn(citingIds));
+        PublicationOrderingSupport.sortPublicationsInPlace(citations);
 
         Set<String> authorKeys = new HashSet<>(publication.getAuthors());
         Set<String> forumKeys = new HashSet<>();

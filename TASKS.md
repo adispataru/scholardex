@@ -128,7 +128,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   Status: completed on 2026-03-04.
   Note: rolled out helper-based year parsing across scoring/grouping/export hotspots; added `PersistenceYearSupport.extractYearString(...)` and `ActivityInstance#getYearOptional()`; expanded `verify-h06-persistence` to enforce no raw year parsing regression on remediated files.
 
-- [ ] `B05` H06-R3: Identity/order/dedupe consistency.
+- [x] `B05` H06-R3: Identity/order/dedupe consistency.
   Goal: close `Q-H06-04`, `Q-H06-06`, `Q-H06-07`.
   Scope:
   - normalize `id`/`eid`/`doi` lookup usage per contract;
@@ -136,6 +136,8 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   - remove author-aggregation duplicate amplification.
   Inputs: `docs/h06-remediation-plan.md` (`R3`), `docs/h06-query-consistency-findings.md`.
   Done criteria: stable ordering and deduped outputs are covered by tests.
+  Status: completed on 2026-03-04.
+  Note: user publication aggregation now dedupes by publication ID; deterministic publication/citation ordering contract applied across user/admin/group hotspots; user edit/save flow naming normalized to canonical DB `id`; `verify-h06-persistence` extended with `R3` guard checks.
 
 - [ ] `B06` H07-R2: Validation boundary hardening.
   Goal: close `V-H07-01`, `V-H07-02`, `V-H07-03`, `V-H07-06`.

@@ -52,6 +52,7 @@ public class AdminInstitutionReportFacade {
                         TreeMap::new,
                         Collectors.mapping(Map.Entry::getKey, Collectors.toList())
                 ));
+        publicationsByYear.values().forEach(PublicationOrderingSupport::sortPublicationsInPlace);
         Map<Integer, Long> publicationsCountByYear = publications.stream()
                 .map(publication -> PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log))
                 .filter(Optional::isPresent)
@@ -91,10 +92,13 @@ public class AdminInstitutionReportFacade {
     }
 
     private List<Publication> loadInstitutionPublications(Institution institution) {
-        List<Publication> publications = new ArrayList<>();
+        Map<String, Publication> publicationsById = new LinkedHashMap<>();
         for (Affiliation affiliation : institution.getScopusAffiliations()) {
-            publications.addAll(scopusPublicationRepository.findAllByAffiliationsContaining(affiliation.getAfid()));
+            scopusPublicationRepository.findAllByAffiliationsContaining(affiliation.getAfid())
+                    .forEach(publication -> publicationsById.putIfAbsent(publication.getId(), publication));
         }
+        List<Publication> publications = new ArrayList<>(publicationsById.values());
+        PublicationOrderingSupport.sortPublicationsInPlace(publications);
         return publications;
     }
 
@@ -109,6 +113,7 @@ public class AdminInstitutionReportFacade {
                 citationMap.get(citation.getCitedId()).add(citingPublication.get());
             }
         }
+        citationMap.values().forEach(PublicationOrderingSupport::sortPublicationsInPlace);
         return citationMap;
     }
 

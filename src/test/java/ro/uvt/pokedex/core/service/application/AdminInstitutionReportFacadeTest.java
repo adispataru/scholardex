@@ -57,7 +57,7 @@ class AdminInstitutionReportFacadeTest {
     @Test
     void buildInstitutionPublicationsViewBuildsMapsAndCounts() {
         Institution institution = institution("inst", "af1");
-        Publication publication = publication("p1", "e1", "f1", "2023-02-01", List.of("a1"));
+        Publication publication = publication("p1", "e1", "f1", "2023-02-01", List.of("a1"), "Paper");
         Author author = author("a1", "Author One");
         Forum forum = forum("f1", "Forum One");
         IndividualReport report = new IndividualReport();
@@ -83,8 +83,8 @@ class AdminInstitutionReportFacadeTest {
     @Test
     void buildInstitutionPublicationsViewSkipsMalformedPublicationDatesInYearMaps() {
         Institution institution = institution("inst", "af1");
-        Publication validPublication = publication("p1", "e1", "f1", "2023-02-01", List.of("a1"));
-        Publication invalidPublication = publication("p2", "e2", "f1", "bad-date", List.of("a1"));
+        Publication validPublication = publication("p1", "e1", "f1", "2023-02-01", List.of("a1"), "Valid");
+        Publication invalidPublication = publication("p2", "e2", "f1", "bad-date", List.of("a1"), "Invalid");
         Author author = author("a1", "Author One");
         Forum forum = forum("f1", "Forum One");
 
@@ -106,8 +106,8 @@ class AdminInstitutionReportFacadeTest {
     @Test
     void buildInstitutionPublicationsExportBuildsCitationAuthorAndForumMaps() {
         Institution institution = institution("inst", "af1");
-        Publication cited = publication("p1", "e1", "f1", "2023-02-01", List.of("a1"));
-        Publication citing = publication("p2", "e2", "f2", "2024-03-01", List.of("a2"));
+        Publication cited = publication("p1", "e1", "f1", "2023-02-01", List.of("a1"), "Cited");
+        Publication citing = publication("p2", "e2", "f2", "2024-03-01", List.of("a2"), "Citing");
         Citation citation = new Citation();
         citation.setCitedId("p1");
         citation.setCitingId("p2");
@@ -129,6 +129,51 @@ class AdminInstitutionReportFacadeTest {
         assertEquals(1, result.get().citationMap().get("p1").size());
     }
 
+    @Test
+    void buildInstitutionPublicationsViewReturnsDeterministicPublicationOrderAndYearBucketOrder() {
+        Institution institution = institution("inst", "af1");
+        Publication p1 = publication("p1", "e1", "f1", "2024-01-10", List.of("a1"), "Beta");
+        Publication p2 = publication("p2", "e2", "f1", "2024-01-10", List.of("a1"), "Alpha");
+        Publication p3 = publication("p3", "e3", "f1", "bad-date", List.of("a1"), "Zeta");
+        Author author = author("a1", "Author One");
+        Forum forum = forum("f1", "Forum One");
+
+        when(institutionRepository.findById("inst")).thenReturn(Optional.of(institution));
+        when(scopusPublicationRepository.findAllByAffiliationsContaining("af1")).thenReturn(List.of(p1, p3, p2));
+        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author));
+        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum));
+        when(individualReportRepository.findAll()).thenReturn(List.of());
+
+        var result = facade.buildInstitutionPublicationsView("inst");
+
+        assertTrue(result.isPresent());
+        assertEquals(List.of("p2", "p1", "p3"), result.get().publications().stream().map(Publication::getId).toList());
+        assertEquals(List.of("p2", "p1"), result.get().publicationsByYear().get(2024).stream().map(Publication::getId).toList());
+    }
+
+    @Test
+    void buildInstitutionPublicationsViewDedupesPublicationsAcrossAffiliations() {
+        Institution institution = new Institution();
+        Affiliation af1 = new Affiliation();
+        af1.setAfid("af1");
+        Affiliation af2 = new Affiliation();
+        af2.setAfid("af2");
+        institution.setScopusAffiliations(List.of(af1, af2));
+
+        Publication shared = publication("p-shared", "e1", "f1", "2023-01-01", List.of("a1"), "Shared");
+        when(institutionRepository.findById("inst")).thenReturn(Optional.of(institution));
+        when(scopusPublicationRepository.findAllByAffiliationsContaining("af1")).thenReturn(List.of(shared));
+        when(scopusPublicationRepository.findAllByAffiliationsContaining("af2")).thenReturn(List.of(shared));
+        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author("a1", "A1")));
+        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum("f1", "F1")));
+        when(individualReportRepository.findAll()).thenReturn(List.of());
+
+        var result = facade.buildInstitutionPublicationsView("inst");
+
+        assertTrue(result.isPresent());
+        assertEquals(1, result.get().publications().size());
+    }
+
     private static Institution institution(String id, String afid) {
         Institution institution = new Institution();
         institution.setName(id);
@@ -138,14 +183,14 @@ class AdminInstitutionReportFacadeTest {
         return institution;
     }
 
-    private static Publication publication(String id, String eid, String forumId, String coverDate, List<String> authors) {
+    private static Publication publication(String id, String eid, String forumId, String coverDate, List<String> authors, String title) {
         Publication publication = new Publication();
         publication.setId(id);
         publication.setEid(eid);
         publication.setForum(forumId);
         publication.setCoverDate(coverDate);
         publication.setAuthors(authors);
-        publication.setTitle(id);
+        publication.setTitle(title);
         return publication;
     }
 

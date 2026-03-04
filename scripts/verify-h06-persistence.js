@@ -45,6 +45,10 @@ const groupCnfisFacadePath =
   'src/main/java/ro/uvt/pokedex/core/service/application/GroupCnfisExportFacade.java';
 const cacheServicePath =
   'src/main/java/ro/uvt/pokedex/core/service/CacheService.java';
+const userPublicationFacadePath =
+  'src/main/java/ro/uvt/pokedex/core/service/application/UserPublicationFacade.java';
+const adminScopusFacadePath =
+  'src/main/java/ro/uvt/pokedex/core/service/application/AdminScopusFacade.java';
 const yearParsingGuardFiles = [
   'src/main/java/ro/uvt/pokedex/core/service/reporting/AbstractForumScoringService.java',
   'src/main/java/ro/uvt/pokedex/core/service/reporting/AbstractWoSForumScoringService.java',
@@ -60,6 +64,8 @@ const yearParsingGuardFiles = [
 const userReportContent = readFile(userReportFacadePath);
 const groupCnfisContent = readFile(groupCnfisFacadePath);
 const cacheServiceContent = readFile(cacheServicePath);
+const userPublicationFacadeContent = readFile(userPublicationFacadePath);
+const adminScopusFacadeContent = readFile(adminScopusFacadePath);
 const rawYearPattern = /(substring\(\s*0\s*,\s*4\s*\))|(split\(\s*"-"\s*\)\s*\[\s*0\s*\])/;
 
 const userCnfisMethod = extractMethodSlice(
@@ -126,6 +132,27 @@ assertContains(
   cacheServiceContent,
   'rankingRepository.findAllByeIssn(key)',
   `${cacheServicePath}: getCachedRankingsByIssn must query findAllByeIssn on cache miss.`
+);
+
+assertContains(
+  userPublicationFacadeContent,
+  'putIfAbsent(publication.getId(), publication)',
+  `${userPublicationFacadePath}: buildUserPublicationsView must dedupe by publication id.`
+);
+assertContains(
+  userPublicationFacadeContent,
+  'findById(publicationId)',
+  `${userPublicationFacadePath}: edit/update flow must use canonical findById(publicationId).`
+);
+assertNotContains(
+  userPublicationFacadeContent,
+  'findByEid(',
+  `${userPublicationFacadePath}: user edit/update flow must not use findByEid.`
+);
+assertContains(
+  adminScopusFacadeContent,
+  'findByTitleContainsOrderByCoverDateDesc',
+  `${adminScopusFacadePath}: publication search must use ordered repository method.`
 );
 
 for (const filePath of yearParsingGuardFiles) {

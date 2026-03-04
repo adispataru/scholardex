@@ -36,7 +36,11 @@ public class GroupExportFacade {
             authorIds.addAll(researcher.getScopusId());
         }
 
-        List<Publication> publications = scopusPublicationRepository.findAllByAuthorsIn(authorIds);
+        Map<String, Publication> publicationsById = new LinkedHashMap<>();
+        scopusPublicationRepository.findAllByAuthorsIn(authorIds)
+                .forEach(publication -> publicationsById.putIfAbsent(publication.getId(), publication));
+        List<Publication> publications = new ArrayList<>(publicationsById.values());
+        PublicationOrderingSupport.sortPublicationsInPlace(publications);
 
         Set<String> authorKeys = new HashSet<>();
         Set<String> forumKeys = new HashSet<>();

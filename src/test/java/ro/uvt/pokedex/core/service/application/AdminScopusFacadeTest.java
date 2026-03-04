@@ -38,9 +38,9 @@ class AdminScopusFacadeTest {
 
     @Test
     void buildPublicationSearchViewReturnsPublicationsAndAuthorMap() {
-        Publication publication = publication("p1", "f1", List.of("a1"));
+        Publication publication = publication("p1", "f1", List.of("a1"), "2024-01-01", "Paper");
         Author author = author("a1", "Author One");
-        when(scopusPublicationRepository.findByTitleContains("paper")).thenReturn(List.of(publication));
+        when(scopusPublicationRepository.findByTitleContainsOrderByCoverDateDesc("paper")).thenReturn(List.of(publication));
         when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author));
 
         var vm = facade.buildPublicationSearchView("paper");
@@ -48,6 +48,19 @@ class AdminScopusFacadeTest {
         assertEquals(1, vm.publications().size());
         assertEquals(1, vm.authorMap().size());
         assertEquals("Author One", vm.authorMap().get("a1").getName());
+    }
+
+    @Test
+    void buildPublicationSearchViewAppliesDeterministicOrderingTieBreaks() {
+        Publication p1 = publication("p1", "f1", List.of("a1"), "2024-01-01", "Beta");
+        Publication p2 = publication("p2", "f1", List.of("a1"), "2024-01-01", "Alpha");
+        Publication p3 = publication("p3", "f1", List.of("a1"), "bad-date", "Zeta");
+        when(scopusPublicationRepository.findByTitleContainsOrderByCoverDateDesc("paper")).thenReturn(List.of(p1, p3, p2));
+        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author("a1", "Author One")));
+
+        var vm = facade.buildPublicationSearchView("paper");
+
+        assertEquals(List.of("p2", "p1", "p3"), vm.publications().stream().map(Publication::getId).toList());
     }
 
     @Test
@@ -61,8 +74,8 @@ class AdminScopusFacadeTest {
 
     @Test
     void buildPublicationCitationsViewBuildsCitationsAndLookupMaps() {
-        Publication publication = publication("p1", "f1", List.of("a1"));
-        Publication citing = publication("p2", "f2", List.of("a2"));
+        Publication publication = publication("p1", "f1", List.of("a1"), "2023-01-01", "Main");
+        Publication citing = publication("p2", "f2", List.of("a2"), "2024-01-01", "Citing");
         Citation citation = new Citation();
         citation.setCitedId("p1");
         citation.setCitingId("p2");
@@ -86,12 +99,43 @@ class AdminScopusFacadeTest {
         assertEquals(1, vm.get().forumMap().size());
     }
 
-    private static Publication publication(String id, String forumId, List<String> authors) {
+    @Test
+    void buildPublicationCitationsViewSortsCitationsDeterministically() {
+        Publication publication = publication("p1", "f1", List.of("a1"), "2023-01-01", "Main");
+        Publication c1 = publication("c1", "f2", List.of("a2"), "bad-date", "Zeta");
+        Publication c2 = publication("c2", "f2", List.of("a3"), "2024-01-01", "Alpha");
+        Publication c3 = publication("c3", "f2", List.of("a4"), "2024-01-01", "Beta");
+        Citation cit1 = new Citation();
+        cit1.setCitedId("p1");
+        cit1.setCitingId("c1");
+        Citation cit2 = new Citation();
+        cit2.setCitedId("p1");
+        cit2.setCitingId("c2");
+        Citation cit3 = new Citation();
+        cit3.setCitedId("p1");
+        cit3.setCitingId("c3");
+
+        when(scopusPublicationRepository.findById("p1")).thenReturn(Optional.of(publication));
+        when(scopusCitationRepository.findAllByCitedId("p1")).thenReturn(List.of(cit1, cit2, cit3));
+        when(scopusPublicationRepository.findAllByIdIn(List.of("c1", "c2", "c3"))).thenReturn(List.of(c1, c3, c2));
+        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(
+                author("a1", "A1"), author("a2", "A2"), author("a3", "A3"), author("a4", "A4")));
+        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum("f2", "Forum Two")));
+        when(scopusForumRepository.findById("f1")).thenReturn(Optional.of(forum("f1", "Forum One")));
+
+        var vm = facade.buildPublicationCitationsView("p1");
+
+        assertTrue(vm.isPresent());
+        assertEquals(List.of("c2", "c3", "c1"), vm.get().citations().stream().map(Publication::getId).toList());
+    }
+
+    private static Publication publication(String id, String forumId, List<String> authors, String coverDate, String title) {
         Publication publication = new Publication();
         publication.setId(id);
         publication.setForum(forumId);
         publication.setAuthors(authors);
-        publication.setTitle(id);
+        publication.setCoverDate(coverDate);
+        publication.setTitle(title);
         return publication;
     }
 

@@ -35,8 +35,11 @@ public class UserPublicationFacade {
 
         Researcher researcher = researcherById.get();
         List<Author> byId = scopusAuthorRepository.findByIdIn(researcher.getScopusId());
-        List<Publication> publications = new ArrayList<>();
-        byId.forEach(a -> publications.addAll(scopusPublicationRepository.findAllByAuthorsContaining(a.getId())));
+        Map<String, Publication> publicationsById = new LinkedHashMap<>();
+        byId.forEach(author -> scopusPublicationRepository.findAllByAuthorsContaining(author.getId())
+                .forEach(publication -> publicationsById.putIfAbsent(publication.getId(), publication)));
+        List<Publication> publications = new ArrayList<>(publicationsById.values());
+        PublicationOrderingSupport.sortPublicationsInPlace(publications);
 
         int hIndex = computeHIndex(publications);
 
@@ -76,7 +79,8 @@ public class UserPublicationFacade {
         List<Citation> allByCited = scopusCitationRepository.findAllByCitedId(publication.getId());
         List<String> citations = new ArrayList<>();
         allByCited.forEach(c -> citations.add(c.getCitingId()));
-        List<Publication> citationsPub = scopusPublicationRepository.findAllByIdIn(citations);
+        List<Publication> citationsPub = new ArrayList<>(scopusPublicationRepository.findAllByIdIn(citations));
+        PublicationOrderingSupport.sortPublicationsInPlace(citationsPub);
 
         Optional<Forum> forumOpt = scopusForumRepository.findById(publication.getForum());
         if (forumOpt.isEmpty()) {
@@ -105,12 +109,14 @@ public class UserPublicationFacade {
         ));
     }
 
-    public Optional<Publication> findPublicationForEdit(String eid) {
-        return scopusPublicationRepository.findById(eid);
+    // Uses canonical Mongo `id`; EID-based lookup belongs to importer/scopus integration paths.
+    public Optional<Publication> findPublicationForEdit(String publicationId) {
+        return scopusPublicationRepository.findById(publicationId);
     }
 
-    public void updatePublicationMetadata(String eid, Publication patch) {
-        Optional<Publication> byId = scopusPublicationRepository.findById(eid);
+    // Uses canonical Mongo `id`; EID-based lookup belongs to importer/scopus integration paths.
+    public void updatePublicationMetadata(String publicationId, Publication patch) {
+        Optional<Publication> byId = scopusPublicationRepository.findById(publicationId);
         byId.ifPresent(pub -> {
             pub.setSubtypeDescription(patch.getSubtypeDescription());
             pub.setSubtype(patch.getSubtype());

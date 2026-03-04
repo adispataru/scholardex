@@ -46,13 +46,17 @@ public class GroupReportFacade {
             return Optional.empty();
         }
 
-        List<Researcher> researchers = group.getResearchers();
+        List<Researcher> researchers = new ArrayList<>(group.getResearchers());
         researchers.sort(Comparator.comparing(Researcher::getName));
         List<String> authorIds = new ArrayList<>();
         for (Researcher researcher : researchers) {
             authorIds.addAll(researcher.getScopusId());
         }
-        List<Publication> publications = scopusPublicationRepository.findAllByAuthorsIn(authorIds);
+        Map<String, Publication> publicationsById = new LinkedHashMap<>();
+        scopusPublicationRepository.findAllByAuthorsIn(authorIds)
+                .forEach(publication -> publicationsById.putIfAbsent(publication.getId(), publication));
+        List<Publication> publications = new ArrayList<>(publicationsById.values());
+        PublicationOrderingSupport.sortPublicationsInPlace(publications);
 
         Set<String> authorKeys = new HashSet<>();
         Set<String> forumKeys = new HashSet<>();
@@ -79,6 +83,7 @@ public class GroupReportFacade {
                         TreeMap::new,
                         Collectors.mapping(Map.Entry::getKey, Collectors.toList())
                 ));
+        publicationsByYear.values().forEach(PublicationOrderingSupport::sortPublicationsInPlace);
 
         Map<Integer, Long> publicationsCountByYear = publications.stream()
                 .map(publication -> PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log))
@@ -106,7 +111,7 @@ public class GroupReportFacade {
             return new GroupIndividualReportViewModel("redirect:/admin/groups", Map.of());
         }
 
-        List<Researcher> researchers = group.getResearchers();
+        List<Researcher> researchers = new ArrayList<>(group.getResearchers());
         researchers.sort(Comparator.comparing(Researcher::getName));
 
         Optional<IndividualReport> reportOpt = individualReportRepository.findById(reportId);

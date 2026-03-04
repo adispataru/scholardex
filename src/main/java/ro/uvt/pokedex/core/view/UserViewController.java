@@ -149,12 +149,12 @@ public class UserViewController {
 
 
     @GetMapping("/publications/citations")
-    public String showPublicationCitationsPage(Model model, Authentication authentication, @RequestParam("id") String eid) {
+    public String showPublicationCitationsPage(Model model, Authentication authentication, @RequestParam("id") String publicationId) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
             return "redirect:/login"; // or your login route
         }
 
-        Optional<UserPublicationCitationsViewModel> viewModel = userPublicationFacade.buildCitationsView(eid);
+        Optional<UserPublicationCitationsViewModel> viewModel = userPublicationFacade.buildCitationsView(publicationId);
         viewModel.ifPresent(vm -> {
             model.addAttribute("publication", vm.publication());
             model.addAttribute("citations", vm.citations());
@@ -169,8 +169,8 @@ public class UserViewController {
 
 
     @GetMapping("/publications/edit/{eid}")
-    public String showEditPublicationForm(@PathVariable("eid") String eid, Model model) {
-        Optional<Publication> publicationOpt = userPublicationFacade.findPublicationForEdit(eid);
+    public String showEditPublicationForm(@PathVariable("eid") String publicationId, Model model) {
+        Optional<Publication> publicationOpt = userPublicationFacade.findPublicationForEdit(publicationId);
         if (publicationOpt.isPresent()) {
             model.addAttribute("publication", publicationOpt.get());
             return "user/publications-edit";
@@ -180,8 +180,8 @@ public class UserViewController {
     }
 
     @PostMapping("/publications/save/{eid}")
-    public String savePublication(@ModelAttribute Publication publication, RedirectAttributes redirectAttributes, @PathVariable("eid") String eid) {
-        userPublicationFacade.updatePublicationMetadata(eid, publication);
+    public String savePublication(@ModelAttribute Publication publication, RedirectAttributes redirectAttributes, @PathVariable("eid") String publicationId) {
+        userPublicationFacade.updatePublicationMetadata(publicationId, publication);
         redirectAttributes.addFlashAttribute("successMessage", "Publication updated successfully.");
         return "redirect:/user/publications";
     }
