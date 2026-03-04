@@ -13,10 +13,12 @@ Done history moved to `TASKS-done.md`.
   Status: completed on 2026-03-04.
   Note: migrated core nullable contracts in-scope (`UserService#createUser` overloads, `GlobalControllerAdvice#currentUser`, `CacheService#getCachedTopRankings`, `PublicationWizardFacade#resolveForumId`), added API `409` duplicate-user mapping and MVC redirect+flash wizard failure contract, and extended regression/guardrail coverage.
 
-- [ ] `H12` External integration and import correctness uplift.
+- [x] `H12` External integration and import correctness uplift.
   Goal: harden external data acquisition/import flows so parser, mapping, and partial-failure behavior are explicit and reliable.
   Deliverable: completed/parity-checked Scopus/import processing paths, strict mapping validation, and robust retry/error contracts for scheduler/import jobs.
   Exit criteria: external-data and import workflows have deterministic outcomes (including degraded/failure paths), with integration tests covering critical mapping and error scenarios.
+  Status: completed on 2026-03-04.
+  Note: added bounded retry/backoff metadata and transitions for Scopus tasks, removed scheduler forced reimport/date hack paths, hardened Scopus JSON mapping with skip+warn partial ingest behavior, added deterministic importer summary accounting (Ranking/CORE/URAP), and introduced `npm run verify-h12-integrations`.
 
 - [ ] `H13` Workflow-level functional confidence suite.
   Goal: move beyond slice-level guardrails and prove critical user/admin business workflows end-to-end under realistic conditions.

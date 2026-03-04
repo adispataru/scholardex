@@ -10,6 +10,8 @@ import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import ro.uvt.pokedex.core.model.scopus.Citation;
@@ -21,12 +23,15 @@ import ro.uvt.pokedex.core.repository.scopus.ScopusCitationRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.repository.tasks.ScopusCitationUpdateRepository;
 import ro.uvt.pokedex.core.repository.tasks.ScopusPublicationUpdateRepository;
+import ro.uvt.pokedex.core.service.integration.IntegrationErrorCode;
+import ro.uvt.pokedex.core.service.integration.IntegrationException;
 import ro.uvt.pokedex.core.service.importing.ScopusDataService;
 import ro.uvt.pokedex.core.service.scopus.dto.AuthorWorksRequest;
 import ro.uvt.pokedex.core.service.scopus.dto.AuthorWorksResponse;
 import ro.uvt.pokedex.core.service.scopus.dto.CitationsByEidRequest;
 import ro.uvt.pokedex.core.service.scopus.dto.CitationsByEidResponse;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -51,6 +56,12 @@ public class ScopusUpdateScheduler {
 
     @Value("${scopus.update.page-size:100}")
     private int pageSize;
+    @Value("${scopus.update.max-attempts:3}")
+    private int defaultMaxAttempts;
+    @Value("${scopus.update.retry.initial-backoff-seconds:60}")
+    private long initialBackoffSeconds;
+    @Value("${scopus.update.retry.max-backoff-seconds:3600}")
+    private long maxBackoffSeconds;
 
     private static final DateTimeFormatter ISO = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final ZoneId Z = ZoneId.systemDefault();
@@ -101,6 +112,9 @@ public class ScopusUpdateScheduler {
         int processedTasks = 0;
 
         for (ScopusPublicationUpdate t : tasks) {
+            if (!isReadyForAttempt(t.getNextAttemptAt())) {
+                continue;
+            }
             AutoCloseable taskContext = SchedulerCorrelationSupport.withSchedulerContext(
                     "scopus.publication.update",
                     String.valueOf(t.getId()),
@@ -116,11 +130,7 @@ public class ScopusUpdateScheduler {
                 MDC.put("phase", "failed");
                 meterRegistry.counter("core.scheduler.scopus.tasks.processed", "taskType", "publication", "outcome", "failure")
                         .increment();
-                log.error("Publication task {} failed", t.getId(), e);
-                t.setStatus(Status.FAILED);
-                t.setMessage("FAILED: " + e.getMessage());
-                t.setExecutionDate(LocalDate.now(Z).toString());
-                taskRepo.save(t);
+                handlePublicationTaskFailure(t, e);
             } finally {
                 closeContext(taskContext);
             }
@@ -130,8 +140,13 @@ public class ScopusUpdateScheduler {
 
     private void runOnePublicationUpdate(ScopusPublicationUpdate task) {
         MDC.put("phase", "progress");
+        task.setAttemptCount(task.getAttemptCount() + 1);
+        if (task.getMaxAttempts() <= 0) {
+            task.setMaxAttempts(defaultMaxAttempts);
+        }
         task.setStatus(Status.IN_PROGRESS);
         task.setMessage("Starting");
+        task.setNextAttemptAt(null);
         taskRepo.save(task);
 
         final String authorScopusId = task.getScopusId();
@@ -169,6 +184,9 @@ public class ScopusUpdateScheduler {
         task.setStatus(Status.COMPLETED);
         task.setMessage("Imported " + imported + " items since " + fromDate);
         task.setExecutionDate(LocalDate.now(Z).toString());
+        task.setLastErrorCode(null);
+        task.setLastErrorMessage(null);
+        task.setNextAttemptAt(null);
         taskRepo.save(task);
     }
 
@@ -183,6 +201,9 @@ public class ScopusUpdateScheduler {
         int processedTasks = 0;
 
         for (ScopusCitationsUpdate t : tasks) {
+            if (!isReadyForAttempt(t.getNextAttemptAt())) {
+                continue;
+            }
             AutoCloseable taskContext = SchedulerCorrelationSupport.withSchedulerContext(
                     "scopus.citation.update",
                     String.valueOf(t.getId()),
@@ -198,11 +219,7 @@ public class ScopusUpdateScheduler {
                 MDC.put("phase", "failed");
                 meterRegistry.counter("core.scheduler.scopus.tasks.processed", "taskType", "citation", "outcome", "failure")
                         .increment();
-                log.error("Citations task {} failed", t.getId(), e);
-                t.setStatus(Status.FAILED);
-                t.setMessage("FAILED: " + e.getMessage());
-                t.setExecutionDate(LocalDate.now(Z).toString());
-                citationsTaskRepo.save(t);
+                handleCitationTaskFailure(t, e);
             } finally {
                 closeContext(taskContext);
             }
@@ -212,8 +229,13 @@ public class ScopusUpdateScheduler {
 
     private void runOneCitationsUpdate(ScopusCitationsUpdate task) {
         MDC.put("phase", "progress");
+        task.setAttemptCount(task.getAttemptCount() + 1);
+        if (task.getMaxAttempts() <= 0) {
+            task.setMaxAttempts(defaultMaxAttempts);
+        }
         task.setStatus(Status.IN_PROGRESS);
         task.setMessage("Starting citations update");
+        task.setNextAttemptAt(null);
         citationsTaskRepo.save(task);
 
         final String authorScopusId = task.getScopusId();
@@ -224,6 +246,9 @@ public class ScopusUpdateScheduler {
             task.setStatus(Status.COMPLETED);
             task.setMessage("No publications found for author " + authorScopusId + ", nothing to update.");
             task.setExecutionDate(LocalDate.now(Z).toString());
+            task.setLastErrorCode(null);
+            task.setLastErrorMessage(null);
+            task.setNextAttemptAt(null);
             citationsTaskRepo.save(task);
             return;
         }
@@ -294,6 +319,9 @@ public class ScopusUpdateScheduler {
         task.setMessage("Author " + authorScopusId + ": imported/updated " +
                 importedPublications + " citing publications and " + createdCitations + " citation links.");
         task.setExecutionDate(LocalDate.now(Z).toString());
+        task.setLastErrorCode(null);
+        task.setLastErrorMessage(null);
+        task.setNextAttemptAt(null);
         citationsTaskRepo.save(task);
     }
 
@@ -367,12 +395,17 @@ public class ScopusUpdateScheduler {
             }
 
 //            LocalDate citingDate = parseCoverDate(citingCover);
-            LocalDate citingDate = parseCoverDate("1970-01-01"); // treat missing dates as very old
+            Optional<LocalDate> citingDateOpt = parseCoverDate(citingCover);
+            if (citingDateOpt.isEmpty()) {
+                continue;
+            }
+            LocalDate citingDate = citingDateOpt.get();
             String citedEid = cited.getEid();
             if (citedEid == null) continue;
 
             String existing = lastDateByEid.get(citedEid);
-            if (existing == null || parseCoverDate(existing).isBefore(citingDate)) {
+            Optional<LocalDate> existingDate = parseCoverDate(existing);
+            if (existingDate.isEmpty() || existingDate.get().isBefore(citingDate)) {
                 lastDateByEid.put(citedEid, citingDate.format(ISO));
             }
         }
@@ -389,24 +422,23 @@ public class ScopusUpdateScheduler {
         LocalDate base;
         if (latest.isPresent()) {
             String cd = latest.get().getCoverDate(); // expected "yyyy-MM-dd" or "yyyy-MM"
-            base = parseCoverDate(cd);
+            base = parseCoverDate(cd).orElse(LocalDate.now(Z).minusYears(5));
         } else {
             // If no prior data, go back 5 years as a sane default
             base = LocalDate.now(Z).minusYears(5);
         }
-        base = LocalDate.now(Z).minusYears(50); // TEMPORARY OVERRIDE TO REIMPORT ALL DATA
         return base.minusYears(1).format(ISO);
     }
 
-    private LocalDate parseCoverDate(String s) {
+    private Optional<LocalDate> parseCoverDate(String s) {
         try {
-            if (s == null || s.isBlank()) return LocalDate.now(Z);
-            if (s.length() == 10) return LocalDate.parse(s);
-            if (s.length() == 7)  return LocalDate.parse(s + "-01");
-            if (s.length() == 4)  return LocalDate.parse(s + "-01-01");
-            return LocalDate.now(Z);
+            if (s == null || s.isBlank()) return Optional.empty();
+            if (s.length() == 10) return Optional.of(LocalDate.parse(s));
+            if (s.length() == 7)  return Optional.of(LocalDate.parse(s + "-01"));
+            if (s.length() == 4)  return Optional.of(LocalDate.parse(s + "-01-01"));
+            return Optional.empty();
         } catch (Exception e) {
-            return LocalDate.now(Z);
+            return Optional.empty();
         }
     }
 
@@ -419,11 +451,19 @@ public class ScopusUpdateScheduler {
                     .retrieve()
                     .bodyToMono(CitationsByEidResponse.class)
                     .onErrorResume(ex -> {
-                        String msg = "Python citations service error: " + ex.getMessage();
-                        log.error(msg);
-                        return Mono.error(new RuntimeException(msg, ex));
+                        IntegrationException mapped = mapIntegrationException("citationsByEid", ex);
+                        log.error("Python citations service call failed: code={}, retryable={}, message={}",
+                                mapped.getErrorCode(), mapped.isRetryable(), mapped.getMessage());
+                        return Mono.error(mapped);
                     })
                     .block();
+            if (response == null) {
+                throw new IntegrationException(
+                        IntegrationErrorCode.EXTERNAL_BAD_PAYLOAD,
+                        false,
+                        "Python citations service returned empty response"
+                );
+            }
             meterRegistry.counter("core.external.scopus_python.calls", "operation", "citationsByEid", "outcome", "success")
                     .increment();
             timer.stop(meterRegistry.timer("core.external.scopus_python.duration", "operation", "citationsByEid", "outcome", "success"));
@@ -460,11 +500,19 @@ public class ScopusUpdateScheduler {
                     .retrieve()
                     .bodyToMono(AuthorWorksResponse.class)
                     .onErrorResume(ex -> {
-                        String msg = "Python service error: " + ex.getMessage();
-                        log.error(msg);
-                        return Mono.error(new RuntimeException(msg, ex));
+                        IntegrationException mapped = mapIntegrationException("authorWorks", ex);
+                        log.error("Python service call failed: code={}, retryable={}, message={}",
+                                mapped.getErrorCode(), mapped.isRetryable(), mapped.getMessage());
+                        return Mono.error(mapped);
                     })
                     .block();
+            if (response == null) {
+                throw new IntegrationException(
+                        IntegrationErrorCode.EXTERNAL_BAD_PAYLOAD,
+                        false,
+                        "Python author works service returned empty response"
+                );
+            }
             meterRegistry.counter("core.external.scopus_python.calls", "operation", "authorWorks", "outcome", "success")
                     .increment();
             timer.stop(meterRegistry.timer("core.external.scopus_python.duration", "operation", "authorWorks", "outcome", "success"));
@@ -475,5 +523,111 @@ public class ScopusUpdateScheduler {
             timer.stop(meterRegistry.timer("core.external.scopus_python.duration", "operation", "authorWorks", "outcome", "failure"));
             throw ex;
         }
+    }
+
+    private boolean isReadyForAttempt(String nextAttemptAt) {
+        if (nextAttemptAt == null || nextAttemptAt.isBlank()) {
+            return true;
+        }
+        try {
+            return !Instant.parse(nextAttemptAt).isAfter(Instant.now());
+        } catch (Exception ex) {
+            return true;
+        }
+    }
+
+    private long computeBackoffSeconds(int attemptCount) {
+        long exponent = Math.max(0, attemptCount - 1);
+        long backoff = initialBackoffSeconds * (1L << Math.min(exponent, 10));
+        return Math.min(backoff, maxBackoffSeconds);
+    }
+
+    private void handlePublicationTaskFailure(ScopusPublicationUpdate task, Exception exception) {
+        IntegrationException mapped = mapRuntimeException(exception);
+        int maxAttempts = task.getMaxAttempts() > 0 ? task.getMaxAttempts() : defaultMaxAttempts;
+        if (mapped.isRetryable() && task.getAttemptCount() < maxAttempts) {
+            long backoff = computeBackoffSeconds(task.getAttemptCount());
+            task.setStatus(Status.PENDING);
+            task.setNextAttemptAt(Instant.now().plusSeconds(backoff).toString());
+            task.setMessage("RETRY_SCHEDULED: " + mapped.getMessage());
+        } else {
+            task.setStatus(Status.FAILED);
+            task.setExecutionDate(LocalDate.now(Z).toString());
+            task.setMessage("FAILED: " + mapped.getMessage());
+        }
+        task.setLastErrorCode(mapped.getErrorCode().name());
+        task.setLastErrorMessage(mapped.getMessage());
+        taskRepo.save(task);
+        log.error("Publication task {} failed: code={}, retryable={}, attempt={}/{}",
+                task.getId(), mapped.getErrorCode(), mapped.isRetryable(), task.getAttemptCount(), maxAttempts, mapped);
+    }
+
+    private void handleCitationTaskFailure(ScopusCitationsUpdate task, Exception exception) {
+        IntegrationException mapped = mapRuntimeException(exception);
+        int maxAttempts = task.getMaxAttempts() > 0 ? task.getMaxAttempts() : defaultMaxAttempts;
+        if (mapped.isRetryable() && task.getAttemptCount() < maxAttempts) {
+            long backoff = computeBackoffSeconds(task.getAttemptCount());
+            task.setStatus(Status.PENDING);
+            task.setNextAttemptAt(Instant.now().plusSeconds(backoff).toString());
+            task.setMessage("RETRY_SCHEDULED: " + mapped.getMessage());
+        } else {
+            task.setStatus(Status.FAILED);
+            task.setExecutionDate(LocalDate.now(Z).toString());
+            task.setMessage("FAILED: " + mapped.getMessage());
+        }
+        task.setLastErrorCode(mapped.getErrorCode().name());
+        task.setLastErrorMessage(mapped.getMessage());
+        citationsTaskRepo.save(task);
+        log.error("Citations task {} failed: code={}, retryable={}, attempt={}/{}",
+                task.getId(), mapped.getErrorCode(), mapped.isRetryable(), task.getAttemptCount(), maxAttempts, mapped);
+    }
+
+    private IntegrationException mapRuntimeException(Throwable exception) {
+        if (exception instanceof IntegrationException ie) {
+            return ie;
+        }
+        return new IntegrationException(
+                IntegrationErrorCode.PERSISTENCE_ERROR,
+                false,
+                exception.getMessage() == null ? "Unexpected failure" : exception.getMessage(),
+                exception
+        );
+    }
+
+    private IntegrationException mapIntegrationException(String operation, Throwable exception) {
+        if (exception instanceof IntegrationException ie) {
+            return ie;
+        }
+        if (exception instanceof WebClientResponseException responseException) {
+            int status = responseException.getStatusCode().value();
+            if (status >= 500) {
+                return new IntegrationException(
+                        IntegrationErrorCode.EXTERNAL_5XX,
+                        true,
+                        operation + " failed with HTTP " + status,
+                        exception
+                );
+            }
+            return new IntegrationException(
+                    IntegrationErrorCode.EXTERNAL_BAD_PAYLOAD,
+                    false,
+                    operation + " failed with HTTP " + status,
+                    exception
+            );
+        }
+        if (exception instanceof WebClientRequestException) {
+            return new IntegrationException(
+                    IntegrationErrorCode.EXTERNAL_TIMEOUT,
+                    true,
+                    operation + " failed to reach external service",
+                    exception
+            );
+        }
+        return new IntegrationException(
+                IntegrationErrorCode.EXTERNAL_BAD_PAYLOAD,
+                false,
+                operation + " failed with unexpected integration error",
+                exception
+        );
     }
 }

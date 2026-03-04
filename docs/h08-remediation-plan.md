@@ -150,3 +150,6 @@ H09 hard-gate adoption update (2026-03-04):
 - H09 completion includes enforced quality/security gate expansion:
   - `quality-full` (`verify-assets`, `verify-template-assets`, `./gradlew check`) in `.github/workflows/h09-quality-gates.yml`,
   - `dependency-review` + `codeql-analysis` in `.github/workflows/h09-security-gates.yml`.
+
+Cross-slice note (2026-03-04):
+- H12 now provides deterministic Scopus/import correctness contracts (retry/backoff + mapping validation + partial-import summaries); see `docs/h12-integration-contracts.md`.

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.service.CacheService;
+import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.io.File;
 import java.io.FileReader;
@@ -32,6 +33,7 @@ public class CoreConferenceRankingService {
     public void loadRankingsFromCSV(String directoryPath) {
         File dir = new File(directoryPath);
         File[] files = dir.listFiles((d, name) -> name.matches("CORE\\d{4}-all\\.csv"));
+        ImportProcessingResult totalResult = new ImportProcessingResult(20);
 
         if (files == null) {
             logger.error("Directory not found or is empty: {}", directoryPath);
@@ -41,6 +43,7 @@ public class CoreConferenceRankingService {
         for (File file : files) {
             String fileName = file.getName();
             logger.info("Parsing file: {}", fileName);
+            ImportProcessingResult fileResult = new ImportProcessingResult(20);
 
             int year = Integer.parseInt(fileName.substring(4, 8));
 
@@ -48,18 +51,41 @@ public class CoreConferenceRankingService {
                 List<String[]> rows = reader.readAll();
 
                 for (int i = 1; i < rows.size(); i++) { // Start from row 1 to skip headers
-                    updateRankingFromRow(rows.get(i), year);
+                    fileResult.markProcessed();
+                    totalResult.markProcessed();
+                    try {
+                        updateRankingFromRow(rows.get(i), year);
+                        fileResult.markImported();
+                        totalResult.markImported();
+                    } catch (RuntimeException ex) {
+                        fileResult.markSkipped("file=" + fileName + ", row=" + i + ", error=" + ex.getMessage());
+                        totalResult.markSkipped("file=" + fileName + ", row=" + i + ", error=" + ex.getMessage());
+                        logger.warn("Skipping malformed CORE row: file={}, row={}, message={}", fileName, i, ex.getMessage());
+                    }
                 }
 
-                logger.info("Successfully loaded and saved rankings from the file {}.", fileName);
+                logger.info("CORE import summary for {}: processed={}, imported={}, skipped={}, errors={}, sample={}",
+                        fileName,
+                        fileResult.getProcessedCount(),
+                        fileResult.getImportedCount(),
+                        fileResult.getSkippedCount(),
+                        fileResult.getErrorCount(),
+                        fileResult.getErrorsSample());
 
                 logger.info("Syncing cache...");
                 cacheService.syncCoreConferenceRankingCacheToDb(); // Sync the caches to the database at the end
                 logger.info("Cache synced...");
             } catch (IOException | CsvException e) {
+                totalResult.markError("file=" + fileName + ", error=" + e.getMessage());
                 logger.error("Error reading the CSV file: {}", e);
             }
         }
+        logger.info("Total CORE import summary: processed={}, imported={}, skipped={}, errors={}, sample={}",
+                totalResult.getProcessedCount(),
+                totalResult.getImportedCount(),
+                totalResult.getSkippedCount(),
+                totalResult.getErrorCount(),
+                totalResult.getErrorsSample());
     }
 
     private void updateRankingFromRow(String[] row, int year) {

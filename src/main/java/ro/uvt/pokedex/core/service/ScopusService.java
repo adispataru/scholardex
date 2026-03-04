@@ -13,14 +13,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 import ro.uvt.pokedex.core.model.Researcher;
+import ro.uvt.pokedex.core.service.integration.IntegrationErrorCode;
+import ro.uvt.pokedex.core.service.integration.IntegrationException;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class ScopusService {
     private static final Logger log = LoggerFactory.getLogger(ScopusService.class);
+    private static final Pattern XML_TOKEN_PATTERN = Pattern.compile("<token>(.*?)</token>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
     private final RestTemplate restTemplate;
     private final String apiKey;
     private final String apiUrl;
@@ -49,7 +54,26 @@ public class ScopusService {
 
     private String parseToken(String body) {
         log.debug("Scopus auth response received: bodyPresent={}, bodyLength={}", body != null, body != null ? body.length() : 0);
-        return null;
+        if (body == null || body.isBlank()) {
+            throw new IntegrationException(IntegrationErrorCode.EXTERNAL_BAD_PAYLOAD, false, "Scopus auth response body is empty");
+        }
+        try {
+            JSONObject json = new JSONObject(body);
+            String token = json.optString("token", "").trim();
+            if (!token.isBlank()) {
+                return token;
+            }
+        } catch (Exception ignored) {
+            // Fallback to XML parsing.
+        }
+        Matcher matcher = XML_TOKEN_PATTERN.matcher(body);
+        if (matcher.find()) {
+            String token = matcher.group(1) == null ? "" : matcher.group(1).trim();
+            if (!token.isBlank()) {
+                return token;
+            }
+        }
+        throw new IntegrationException(IntegrationErrorCode.EXTERNAL_BAD_PAYLOAD, false, "Scopus auth token could not be parsed");
     }
 
     public void getCitingWorks(Researcher researcher) {
@@ -88,8 +112,18 @@ public class ScopusService {
     }
 
     private List<Map<String, String>> parseCitingWorks(String jsonResponse) {
+        if (jsonResponse == null || jsonResponse.isBlank()) {
+            return List.of();
+        }
         JSONObject json = new JSONObject(jsonResponse);
-        JSONArray works = json.getJSONObject("search-results").getJSONArray("entry");
+        JSONObject searchResults = json.optJSONObject("search-results");
+        if (searchResults == null) {
+            return List.of();
+        }
+        JSONArray works = searchResults.optJSONArray("entry");
+        if (works == null) {
+            return List.of();
+        }
         List<Map<String, String>> detailsList = new ArrayList<>();
 
 //        for (int i = 0; i < works.length(); i++) {

@@ -38,5 +38,7 @@ class UserScopusTaskFacadeTest {
         assertEquals("user@uvt.ro", saved.getInitiator());
         assertEquals(Status.PENDING, saved.getStatus());
         assertNotNull(saved.getInitiatedDate());
+        assertEquals(0, saved.getAttemptCount());
+        assertEquals(3, saved.getMaxAttempts());
     }
 }

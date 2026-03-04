@@ -32,6 +32,13 @@ public class UserScopusTaskFacade {
         draft.setInitiator(userEmail);
         draft.setStatus(Status.PENDING);
         draft.setInitiatedDate(LocalDate.now().toString());
+        if (draft.getMaxAttempts() <= 0) {
+            draft.setMaxAttempts(3);
+        }
+        draft.setAttemptCount(0);
+        draft.setNextAttemptAt(null);
+        draft.setLastErrorCode(null);
+        draft.setLastErrorMessage(null);
         return scopusPublicationUpdateRepository.save(draft);
     }
 
@@ -39,6 +46,13 @@ public class UserScopusTaskFacade {
         draft.setInitiator(userEmail);
         draft.setStatus(Status.PENDING);
         draft.setInitiatedDate(LocalDate.now().toString());
+        if (draft.getMaxAttempts() <= 0) {
+            draft.setMaxAttempts(3);
+        }
+        draft.setAttemptCount(0);
+        draft.setNextAttemptAt(null);
+        draft.setLastErrorCode(null);
+        draft.setLastErrorMessage(null);
         return scopusCitationUpdateRepository.save(draft);
     }
 }

@@ -11,6 +11,9 @@ import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.scopus.*;
 import ro.uvt.pokedex.core.repository.scopus.*;
 import ro.uvt.pokedex.core.service.CacheService;
+import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
+import ro.uvt.pokedex.core.service.integration.IntegrationErrorCode;
+import ro.uvt.pokedex.core.service.integration.IntegrationException;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,6 +23,7 @@ import java.util.*;
 public class ScopusDataService {
 
     private static final Logger logger = LoggerFactory.getLogger(ScopusDataService.class);
+    private static final int DEFAULT_ERROR_SAMPLE_SIZE = 20;
 
     @Autowired
     private ScopusPublicationRepository publicationRepository;
@@ -62,20 +66,29 @@ public class ScopusDataService {
     @Async("taskExecutor")
     public void importScopusData(String jsonFilePath, long count, boolean checkExisting) {
         ObjectMapper mapper = new ObjectMapper();
+        ImportProcessingResult result = new ImportProcessingResult(DEFAULT_ERROR_SAMPLE_SIZE);
         try {
             JsonNode rootNode = mapper.readTree(new File(jsonFilePath));
             int dataSize = rootNode.get("eid").size();
             logger.info("Processing starting at {} of {} publications from JSON file.", count, dataSize);
             List<Publication> publications = new ArrayList<>();
             for (int i = (int) count; i < dataSize; i++) {
-                Publication publication = createPublicationFromJson(rootNode, i);
-                publication.setApproved(true);
-                handleAffiliations(publication, rootNode, i);
-                handleAuthors(publication, rootNode, i);
-                handleVenue(publication, rootNode, i);
-                handleFunding(publication, rootNode, i);
-                publications.add(publication);
-                if(i % (dataSize / 10) == 0)
+                result.markProcessed();
+                try {
+                    Publication publication = createPublicationFromJson(rootNode, i);
+                    publication.setApproved(true);
+                    handleAffiliations(publication, rootNode, i);
+                    handleAuthors(publication, rootNode, i);
+                    handleVenue(publication, rootNode, i);
+                    handleFunding(publication, rootNode, i);
+                    publications.add(publication);
+                    result.markImported();
+                } catch (IntegrationException ex) {
+                    result.markSkipped("index=" + i + ", code=" + ex.getErrorCode() + ", msg=" + ex.getMessage());
+                } catch (RuntimeException ex) {
+                    result.markSkipped("index=" + i + ", code=" + IntegrationErrorCode.PERSISTENCE_ERROR + ", msg=" + ex.getMessage());
+                }
+                if(dataSize >= 10 && i % (dataSize / 10) == 0)
                     logger.info("Processed {}% publications.", (i* 100.0)/dataSize );
             }
             logger.info("Processed all publications. Saving to database.");
@@ -99,11 +112,18 @@ public class ScopusDataService {
                     if (existingPublication.isEmpty()) {
                         publicationRepository.insert(publication);
                     } else {
+                        result.markUpdated();
                         logger.info("Publication with EID {} already exists, skipping.", publication.getEid());
                     }
                 }
             }
-            logger.info("Successfully loaded and saved {} publications.", dataSize);
+            logger.info("Scopus publication import finished: processed={}, imported={}, updated={}, skipped={}, errors={}, sample={}",
+                    result.getProcessedCount(),
+                    result.getImportedCount(),
+                    result.getUpdatedCount(),
+                    result.getSkippedCount(),
+                    result.getErrorCount(),
+                    result.getErrorsSample());
         } catch (IOException e) {
             logger.error("Error reading the JSON file: ", e);
         }
@@ -112,14 +132,20 @@ public class ScopusDataService {
     @Async("taskExecutor")
     public void importScopusDataCitations(String jsonFilePath) {
         ObjectMapper mapper = new ObjectMapper();
+        ImportProcessingResult result = new ImportProcessingResult(DEFAULT_ERROR_SAMPLE_SIZE);
         try {
             JsonNode rootNode = mapper.readTree(new File(jsonFilePath));
             int dataSize = rootNode.get("eid").size();
             logger.info("Processing citations from {} publications from JSON file.", dataSize);
 
             Map<String, List<JsonNode>> citations = extractCitationsFromJson(rootNode, dataSize);
-            processCitations(citations);
-            logger.info("Successfully processed citations.");
+            processCitations(citations, result);
+            logger.info("Scopus citation import finished: processed={}, imported={}, skipped={}, errors={}, sample={}",
+                    result.getProcessedCount(),
+                    result.getImportedCount(),
+                    result.getSkippedCount(),
+                    result.getErrorCount(),
+                    result.getErrorsSample());
         } catch (IOException e) {
             logger.error("Error reading the JSON file: ", e);
         }
@@ -128,8 +154,11 @@ public class ScopusDataService {
     private Map<String, List<JsonNode>> extractCitationsFromJson(JsonNode rootNode, int dataSize) {
         Map<String, List<JsonNode>> citations = new HashMap<>();
         for (int i = 0; i < dataSize; i++) {
-            String id = rootNode.get("eid").get(String.valueOf(i)).asText();
-            JsonNode citingArticles = rootNode.get("citing articles").get(String.valueOf(i));
+            String id = readOptionalIndexedText(rootNode, "eid", i);
+            if (id.isBlank()) {
+                continue;
+            }
+            JsonNode citingArticles = rootNode.path("citing articles").path(String.valueOf(i));
             if (citingArticles != null && citingArticles.getNodeType() != JsonNodeType.NUMBER) {
                 citations.putIfAbsent(id, new ArrayList<>());
                 for (JsonNode article : citingArticles) {
@@ -142,13 +171,21 @@ public class ScopusDataService {
         return citations;
     }
 
-    private void processCitations(Map<String, List<JsonNode>> citations) {
+    private void processCitations(Map<String, List<JsonNode>> citations, ImportProcessingResult result) {
         citations.forEach((key, citationNodes) -> {
             Optional<Publication> citedPublicationOpt = publicationRepository.findByEid(key);
             if (citedPublicationOpt.isPresent()) {
                 Publication citedPublication = citedPublicationOpt.get();
                 for (JsonNode citationNode : citationNodes) {
-                    processSingleCitation(citedPublication, citationNode);
+                    result.markProcessed();
+                    try {
+                        processSingleCitation(citedPublication, citationNode);
+                        result.markImported();
+                    } catch (IntegrationException ex) {
+                        result.markSkipped("citedEid=" + key + ", code=" + ex.getErrorCode() + ", msg=" + ex.getMessage());
+                    } catch (RuntimeException ex) {
+                        result.markSkipped("citedEid=" + key + ", code=" + IntegrationErrorCode.PERSISTENCE_ERROR + ", msg=" + ex.getMessage());
+                    }
                 }
             }
         });
@@ -156,8 +193,11 @@ public class ScopusDataService {
 
     private void processSingleCitation(Publication cited, JsonNode rootNode) {
         if(rootNode.get("eid") == null) {
-            logger.warn("Citation has no eid: {}, {}", rootNode, rootNode.get("eid"));
-            return;
+            throw new IntegrationException(
+                    IntegrationErrorCode.VALIDATION_ERROR,
+                    false,
+                    "Citation payload missing required field: eid"
+            );
         }
         String citingEid = rootNode.get("eid").asText();
         Publication citing = publicationRepository.findByEid(citingEid).orElseGet(() -> createAndSaveCitingPublication(rootNode));
@@ -209,63 +249,65 @@ public class ScopusDataService {
 
     private Publication createPublicationFromJson(JsonNode rootNode, int i) {
         Publication publication = new Publication();
-        publication.setEid(rootNode.get("eid").get(String.valueOf(i)).asText());
+        String ctx = "scopus-import-index-" + i;
+        publication.setEid(readRequiredIndexedText(rootNode, "eid", i, ctx));
         publication.setImportId(i);
-        publication.setDoi(rootNode.get("doi").get(String.valueOf(i)).asText());
-        publication.setPii(rootNode.get("pii").get(String.valueOf(i)).asText());
-        publication.setPubmedId(rootNode.get("pubmed_id").get(String.valueOf(i)).asText());
-        publication.setTitle(rootNode.get("title").get(String.valueOf(i)).asText());
-        publication.setSubtype(rootNode.get("subtype").get(String.valueOf(i)).asText());
+        publication.setDoi(readOptionalIndexedText(rootNode, "doi", i));
+        publication.setPii(readOptionalIndexedText(rootNode, "pii", i));
+        publication.setPubmedId(readOptionalIndexedText(rootNode, "pubmed_id", i));
+        publication.setTitle(readRequiredIndexedText(rootNode, "title", i, ctx));
+        publication.setSubtype(readOptionalIndexedText(rootNode, "subtype", i));
         publication.setScopusSubtype(publication.getSubtype());
-        publication.setSubtypeDescription(rootNode.get("subtypeDescription").get(String.valueOf(i)).asText());
+        publication.setSubtypeDescription(readOptionalIndexedText(rootNode, "subtypeDescription", i));
         publication.setScopusSubtypeDescription(publication.getSubtypeDescription());
-        publication.setCreator(rootNode.get("creator").get(String.valueOf(i)).asText());
-        publication.setAuthorCount(rootNode.get("author_count").get(String.valueOf(i)).asInt());
-        publication.setDescription(rootNode.get("description").get(String.valueOf(i)).asText());
-        publication.setCitedbyCount(rootNode.get("citedby_count").get(String.valueOf(i)).asInt());
-        publication.setOpenAccess(rootNode.get("openaccess").get(String.valueOf(i)).asInt() == 1);
-        publication.setFreetoread(rootNode.get("freetoread").get(String.valueOf(i)).asText());
-        publication.setFreetoreadLabel(rootNode.get("freetoreadLabel").get(String.valueOf(i)).asText());
-        publication.setArticleNumber(rootNode.get("article_number").get(String.valueOf(i)).asText());
-        publication.setPageRange(rootNode.get("pageRange").get(String.valueOf(i)).asText());
-        publication.setCoverDate(rootNode.get("coverDate").get(String.valueOf(i)).asText());
-        publication.setCoverDisplayDate(rootNode.get("coverDisplayDate").get(String.valueOf(i)).asText());
-        publication.setVolume(rootNode.get("volume").get(String.valueOf(i)).asText());
-        publication.setIssueIdentifier(rootNode.get("issueIdentifier").get(String.valueOf(i)).asText());
+        publication.setCreator(readOptionalIndexedText(rootNode, "creator", i));
+        publication.setAuthorCount(readIndexedInt(rootNode, "author_count", i));
+        publication.setDescription(readOptionalIndexedText(rootNode, "description", i));
+        publication.setCitedbyCount(readIndexedInt(rootNode, "citedby_count", i));
+        publication.setOpenAccess(readIndexedInt(rootNode, "openaccess", i) == 1);
+        publication.setFreetoread(readOptionalIndexedText(rootNode, "freetoread", i));
+        publication.setFreetoreadLabel(readOptionalIndexedText(rootNode, "freetoreadLabel", i));
+        publication.setArticleNumber(readOptionalIndexedText(rootNode, "article_number", i));
+        publication.setPageRange(readOptionalIndexedText(rootNode, "pageRange", i));
+        publication.setCoverDate(readOptionalIndexedText(rootNode, "coverDate", i));
+        publication.setCoverDisplayDate(readOptionalIndexedText(rootNode, "coverDisplayDate", i));
+        publication.setVolume(readOptionalIndexedText(rootNode, "volume", i));
+        publication.setIssueIdentifier(readOptionalIndexedText(rootNode, "issueIdentifier", i));
         return publication;
     }
 
     public Publication createPublicationFromJson(JsonNode rootNode) {
         Publication publication = new Publication();
-        publication.setEid(rootNode.get("eid").asText());
+        String ctx = "scopus-runtime-item";
+        publication.setEid(readRequiredText(rootNode, "eid", ctx));
 //        publication.setImportId(i);
-        publication.setDoi(rootNode.get("doi").asText());
-        publication.setTitle(rootNode.get("title").asText());
-        publication.setSubtype(rootNode.get("subtype").asText());
+        publication.setDoi(readOptionalText(rootNode, "doi"));
+        publication.setTitle(readRequiredText(rootNode, "title", ctx));
+        publication.setSubtype(readOptionalText(rootNode, "subtype"));
         publication.setScopusSubtype(publication.getSubtype());
-        publication.setCreator(rootNode.get("creator").asText());
-        publication.setAuthorCount(rootNode.get("author_count").asInt());
-        publication.setDescription(rootNode.get("description").asText());
-        publication.setCitedbyCount(rootNode.get("citedby_count").asInt());
-        publication.setOpenAccess(rootNode.get("openaccess").asInt() == 1);
-        publication.setArticleNumber(rootNode.get("article_number").asText());
-        publication.setPageRange(rootNode.get("pageRange").asText());
-        publication.setCoverDate(rootNode.get("coverDate").asText());
-        publication.setVolume(rootNode.get("volume").asText());
-        publication.setIssueIdentifier(rootNode.get("issueIdentifier").asText());
+        publication.setCreator(readOptionalText(rootNode, "creator"));
+        publication.setAuthorCount(readInt(rootNode, "author_count"));
+        publication.setDescription(readOptionalText(rootNode, "description"));
+        publication.setCitedbyCount(readInt(rootNode, "citedby_count"));
+        publication.setOpenAccess(readInt(rootNode, "openaccess") == 1);
+        publication.setArticleNumber(readOptionalText(rootNode, "article_number"));
+        publication.setPageRange(readOptionalText(rootNode, "pageRange"));
+        publication.setCoverDate(readOptionalText(rootNode, "coverDate"));
+        publication.setVolume(readOptionalText(rootNode, "volume"));
+        publication.setIssueIdentifier(readOptionalText(rootNode, "issueIdentifier"));
         return publication;
     }
 
     private void handleAffiliations(Publication publication, JsonNode rootNode, int i) {
         List<String> affiliations = new ArrayList<>();
-        String[] afids = rootNode.get("afid").get(String.valueOf(i)).asText().split(";");
-        String[] affilnames = rootNode.get("affilname").get(String.valueOf(i)).asText().split(";");
-        String[] affilCities = rootNode.get("affiliation_city").get(String.valueOf(i)).asText().split(";");
-        String[] affilCountries = rootNode.get("affiliation_country").get(String.valueOf(i)).asText().split(";");
+        String[] afids = splitSemicolon(readOptionalIndexedText(rootNode, "afid", i));
+        String[] affilnames = splitSemicolon(readOptionalIndexedText(rootNode, "affilname", i));
+        String[] affilCities = splitSemicolon(readOptionalIndexedText(rootNode, "affiliation_city", i));
+        String[] affilCountries = splitSemicolon(readOptionalIndexedText(rootNode, "affiliation_country", i));
         for (int j = 0; j < afids.length; j++) {
             Affiliation affiliation = new Affiliation();
             affiliation.setAfid(afids[j]);
-            affiliation.setName(affilnames[j]);
+            affiliation.setName(getValueSafely(affilnames, j));
             affiliation.setCity(getValueSafely(affilCities, j));
             affiliation.setCountry(getValueSafely(affilCountries, j));
             saveAffiliationIfNotExist(affiliation);
@@ -276,14 +318,14 @@ public class ScopusDataService {
 
     public void handleAffiliations(Publication publication, JsonNode rootNode) {
         List<String> affiliations = new ArrayList<>();
-        String[] afids = rootNode.get("afid").asText().split(";");
-        String[] affilnames = rootNode.get("affilname").asText().split(";");
-        String[] affilCities = rootNode.get("affiliation_city").asText().split(";");
-        String[] affilCountries = rootNode.get("affiliation_country").asText().split(";");
+        String[] afids = splitSemicolon(readOptionalText(rootNode, "afid"));
+        String[] affilnames = splitSemicolon(readOptionalText(rootNode, "affilname"));
+        String[] affilCities = splitSemicolon(readOptionalText(rootNode, "affiliation_city"));
+        String[] affilCountries = splitSemicolon(readOptionalText(rootNode, "affiliation_country"));
         for (int j = 0; j < afids.length; j++) {
             Affiliation affiliation = new Affiliation();
             affiliation.setAfid(afids[j]);
-            affiliation.setName(affilnames[j]);
+            affiliation.setName(getValueSafely(affilnames, j));
             affiliation.setCity(getValueSafely(affilCities, j));
             affiliation.setCountry(getValueSafely(affilCountries, j));
             saveAffiliationIfNotExist(affiliation);
@@ -324,12 +366,12 @@ public class ScopusDataService {
 
     private void handleAuthors(Publication publication, JsonNode rootNode, int i) {
         List<String> authors = new ArrayList<>();
-        String[] authorIds = rootNode.get("author_ids").get(String.valueOf(i)).asText().split(";");
-        String[] authorNames = rootNode.get("author_names").get(String.valueOf(i)).asText().split(";");
-        String[] authorAfids = rootNode.get("author_afids").get(String.valueOf(i)).asText().split(";");
+        String[] authorIds = splitSemicolon(readOptionalIndexedText(rootNode, "author_ids", i));
+        String[] authorNames = splitSemicolon(readOptionalIndexedText(rootNode, "author_names", i));
+        String[] authorAfids = splitSemicolon(readOptionalIndexedText(rootNode, "author_afids", i));
         int N = Math.min(authorIds.length, Math.min(authorNames.length, authorAfids.length));
         for (int j = 0; j < N; j++) {
-            Author author = createAuthor(authorIds[j], authorNames[j], authorAfids[j]);
+            Author author = createAuthor(getValueSafely(authorIds, j), getValueSafely(authorNames, j), getValueSafely(authorAfids, j));
             saveAuthorIfNotExist(author);
             authors.add(author.getId());
         }
@@ -337,12 +379,12 @@ public class ScopusDataService {
     }
     public void handleAuthors(Publication publication, JsonNode rootNode) {
         List<String> authors = new ArrayList<>();
-        String[] authorIds = rootNode.get("author_ids").asText().split(";");
-        String[] authorNames = rootNode.get("author_names").asText().split(";");
-        String[] authorAfids = rootNode.get("author_afids").asText().split(";");
+        String[] authorIds = splitSemicolon(readOptionalText(rootNode, "author_ids"));
+        String[] authorNames = splitSemicolon(readOptionalText(rootNode, "author_names"));
+        String[] authorAfids = splitSemicolon(readOptionalText(rootNode, "author_afids"));
         int N = Math.min(authorIds.length, Math.min(authorNames.length, authorAfids.length));
         for (int j = 0; j < N; j++) {
-            Author author = createAuthor(authorIds[j], authorNames[j], authorAfids[j]);
+            Author author = createAuthor(getValueSafely(authorIds, j), getValueSafely(authorNames, j), getValueSafely(authorAfids, j));
             saveAuthorIfNotExist(author);
             authors.add(author.getId());
         }
@@ -387,30 +429,32 @@ public class ScopusDataService {
     private void handleVenue(Publication publication, JsonNode rootNode, int i) {
         Forum forum = new Forum();
         forum.setApproved(true);
-        forum.setPublicationName(rootNode.get("publicationName").get(String.valueOf(i)).asText());
-        forum.setIssn(formatIssn(rootNode.get("issn").get(String.valueOf(i)).asText()));
-        forum.setScopusId(rootNode.get("source_id").get(String.valueOf(i)).asText());
-        forum.setId(rootNode.get("source_id").get(String.valueOf(i)).asText());
-        forum.setEIssn(formatIssn(rootNode.get("eIssn").get(String.valueOf(i)).asText()));
+        String sourceId = readRequiredIndexedText(rootNode, "source_id", i, "forum-source-id-" + i);
+        forum.setPublicationName(readOptionalIndexedText(rootNode, "publicationName", i));
+        forum.setIssn(formatIssn(readOptionalIndexedText(rootNode, "issn", i)));
+        forum.setScopusId(sourceId);
+        forum.setId(sourceId);
+        forum.setEIssn(formatIssn(readOptionalIndexedText(rootNode, "eIssn", i)));
         if(rootNode.get("isbn") != null) {
-            forum.setIsbn(rootNode.get("isbn").get(String.valueOf(i)).asText());
+            forum.setIsbn(readOptionalIndexedText(rootNode, "isbn", i));
         }
-        forum.setAggregationType(rootNode.get("aggregationType").get(String.valueOf(i)).asText());
+        forum.setAggregationType(readOptionalIndexedText(rootNode, "aggregationType", i));
         saveForumIfNotExist(forum);
         publication.setForum(forum.getId());
     }
 
     public void handleVenue(Publication publication, JsonNode rootNode) {
         Forum forum = new Forum();
-        forum.setPublicationName(rootNode.get("publicationName").asText());
-        forum.setIssn(formatIssn(rootNode.get("issn").asText()));
-        forum.setScopusId(rootNode.get("source_id").asText());
-        forum.setId(rootNode.get("source_id").asText());
-        forum.setEIssn(formatIssn(rootNode.get("eIssn").asText()));
+        String sourceId = readRequiredText(rootNode, "source_id", "forum-source-id");
+        forum.setPublicationName(readOptionalText(rootNode, "publicationName"));
+        forum.setIssn(formatIssn(readOptionalText(rootNode, "issn")));
+        forum.setScopusId(sourceId);
+        forum.setId(sourceId);
+        forum.setEIssn(formatIssn(readOptionalText(rootNode, "eIssn")));
         if(rootNode.get("isbn") != null) {
-            forum.setIsbn(rootNode.get("isbn").asText());
+            forum.setIsbn(readOptionalText(rootNode, "isbn"));
         }
-        forum.setAggregationType(rootNode.get("aggregationType").asText());
+        forum.setAggregationType(readOptionalText(rootNode, "aggregationType"));
         saveForumIfNotExist(forum);
         publication.setForum(forum.getId());
     }
@@ -428,10 +472,10 @@ public class ScopusDataService {
 
     private void handleFunding(Publication publication, JsonNode rootNode, int i) {
         Funding funding = new Funding();
-        funding.setAcronym(rootNode.get("fund_acr").get(String.valueOf(i)).asText());
-        funding.setNumber(rootNode.get("fund_no").get(String.valueOf(i)).asText());
-        funding.setSponsor(rootNode.get("fund_sponsor").get(String.valueOf(i)).asText());
-        if (funding.getAcronym() != null) {
+        funding.setAcronym(readOptionalIndexedText(rootNode, "fund_acr", i));
+        funding.setNumber(readOptionalIndexedText(rootNode, "fund_no", i));
+        funding.setSponsor(readOptionalIndexedText(rootNode, "fund_sponsor", i));
+        if (funding.getAcronym() != null && !funding.getAcronym().isBlank()) {
             funding = saveFundingIfNotExist(funding);
             publication.setFundingId(funding.getId());
         }
@@ -439,10 +483,10 @@ public class ScopusDataService {
 
     public void handleFunding(Publication publication, JsonNode rootNode) {
         Funding funding = new Funding();
-        funding.setAcronym(rootNode.get("fund_acr").asText());
-        funding.setNumber(rootNode.get("fund_no").asText());
-        funding.setSponsor(rootNode.get("fund_sponsor").asText());
-        if (funding.getAcronym() != null) {
+        funding.setAcronym(readOptionalText(rootNode, "fund_acr"));
+        funding.setNumber(readOptionalText(rootNode, "fund_no"));
+        funding.setSponsor(readOptionalText(rootNode, "fund_sponsor"));
+        if (funding.getAcronym() != null && !funding.getAcronym().isBlank()) {
             funding = saveFundingIfNotExist(funding);
             publication.setFundingId(funding.getId());
         }
@@ -456,5 +500,105 @@ public class ScopusDataService {
         }
         return funding;
     }
-}
 
+    private String readRequiredIndexedText(JsonNode node, String field, int index, String contextId) {
+        JsonNode fieldNode = node.path(field).path(String.valueOf(index));
+        if (fieldNode.isMissingNode() || fieldNode.isNull()) {
+            throw new IntegrationException(
+                    IntegrationErrorCode.VALIDATION_ERROR,
+                    false,
+                    "Missing required field '" + field + "' at index " + index + " (" + contextId + ")"
+            );
+        }
+        String value = fieldNode.asText("").trim();
+        if (value.isBlank()) {
+            throw new IntegrationException(
+                    IntegrationErrorCode.VALIDATION_ERROR,
+                    false,
+                    "Blank required field '" + field + "' at index " + index + " (" + contextId + ")"
+            );
+        }
+        return value;
+    }
+
+    private String readRequiredText(JsonNode node, String field, String contextId) {
+        JsonNode fieldNode = node.path(field);
+        if (fieldNode.isMissingNode() || fieldNode.isNull()) {
+            throw new IntegrationException(
+                    IntegrationErrorCode.VALIDATION_ERROR,
+                    false,
+                    "Missing required field '" + field + "' (" + contextId + ")"
+            );
+        }
+        String value = fieldNode.asText("").trim();
+        if (value.isBlank()) {
+            throw new IntegrationException(
+                    IntegrationErrorCode.VALIDATION_ERROR,
+                    false,
+                    "Blank required field '" + field + "' (" + contextId + ")"
+            );
+        }
+        return value;
+    }
+
+    private String readOptionalIndexedText(JsonNode node, String field, int index) {
+        JsonNode fieldNode = node.path(field).path(String.valueOf(index));
+        if (fieldNode.isMissingNode() || fieldNode.isNull()) {
+            return "";
+        }
+        return normalizeOptionalValue(fieldNode.asText(""));
+    }
+
+    private String readOptionalText(JsonNode node, String field) {
+        JsonNode fieldNode = node.path(field);
+        if (fieldNode.isMissingNode() || fieldNode.isNull()) {
+            return "";
+        }
+        return normalizeOptionalValue(fieldNode.asText(""));
+    }
+
+    private int readIndexedInt(JsonNode node, String field, int index) {
+        JsonNode fieldNode = node.path(field).path(String.valueOf(index));
+        if (fieldNode.isMissingNode() || fieldNode.isNull()) {
+            return 0;
+        }
+        if (fieldNode.canConvertToInt()) {
+            return fieldNode.asInt();
+        }
+        try {
+            return Integer.parseInt(fieldNode.asText("").trim());
+        } catch (Exception ex) {
+            return 0;
+        }
+    }
+
+    private int readInt(JsonNode node, String field) {
+        JsonNode fieldNode = node.path(field);
+        if (fieldNode.isMissingNode() || fieldNode.isNull()) {
+            return 0;
+        }
+        if (fieldNode.canConvertToInt()) {
+            return fieldNode.asInt();
+        }
+        try {
+            return Integer.parseInt(fieldNode.asText("").trim());
+        } catch (Exception ex) {
+            return 0;
+        }
+    }
+
+    private String[] splitSemicolon(String value) {
+        if (value == null || value.isBlank()) {
+            return new String[0];
+        }
+        return value.split(";");
+    }
+
+    private String normalizeOptionalValue(String value) {
+        String normalized = value == null ? "" : value.trim();
+        if (normalized.equalsIgnoreCase("null") || normalized.equalsIgnoreCase("n/a")) {
+            return "";
+        }
+        return normalized;
+    }
+}

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.repository.reporting.RankingRepository;
 import ro.uvt.pokedex.core.service.CacheService;
+import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -89,6 +90,7 @@ public class RankingService {
     @Async("taskExecutor")
     public void loadRankingsFromExcel(String directoryPath, String excelPassword) {
         cacheService.cacheRankings();
+        ImportProcessingResult totalResult = new ImportProcessingResult(20);
         File dir = new File(directoryPath);
         File[] files = dir.listFiles((d, name) -> name.matches("AIS_\\d{4}\\.xlsx*") || name.matches("RIS_\\d{4}\\.xlsx*") || name.matches("JIF_\\d{4}\\.xlsx*"));
 
@@ -104,6 +106,7 @@ public class RankingService {
         for (File file : files) {
             String fileName = file.getName();
             logger.info("Parsing file: {}", fileName);
+            ImportProcessingResult fileResult = new ImportProcessingResult(20);
 
             int year = Integer.parseInt(fileName.substring(4, 8));
             String metricType = fileName.substring(0, 3);
@@ -119,6 +122,8 @@ public class RankingService {
                 for (int i = 1; i < numRows; i++) { // Start from row 1 to skip headers
                     Row row = sheet.getRow(i);
                     if (row != null) {
+                        fileResult.markProcessed();
+                        totalResult.markProcessed();
                         WoSRanking.Quarter currentQuarter = null;
                         if (metricType.equals("AIS") && (year >= 2018 && year <= 2019)) {
                             currentQuarter = parseQuarter(row.getCell(5, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK).getNumericCellValue());
@@ -133,21 +138,38 @@ public class RankingService {
                         prevQuarter = currentQuarter;
                         boolean success = updateRankingFromRow(row, year, metricType);
                         if(!success){
+                            fileResult.markSkipped("file=" + fileName + ", row=" + i);
+                            totalResult.markSkipped("file=" + fileName + ", row=" + i);
                             logger.error("Error in row {} of file {}", i, fileName);
+                        } else {
+                            fileResult.markImported();
+                            totalResult.markImported();
                         }
                     }
                 }
-                logger.info("Successfully loaded and saved {} rankings from the file {}.", metricType, fileName);
+                logger.info("Ranking import summary for {}: processed={}, imported={}, skipped={}, errors={}, sample={}",
+                        fileName,
+                        fileResult.getProcessedCount(),
+                        fileResult.getImportedCount(),
+                        fileResult.getSkippedCount(),
+                        fileResult.getErrorCount(),
+                        fileResult.getErrorsSample());
 
                 logger.info("Syncing cash...");
                 cacheService.syncRankingCacheToDb(); // Sync the caches to the database at the end
                 cacheService.cacheRankings();
                 logger.info("Cached synced...");
             } catch (IOException | EncryptedDocumentException e) {
+                totalResult.markError("file=" + fileName + ", error=" + e.getMessage());
                 logger.error("Error reading the Excel file: {}", file.getName(), e);
             }
         }
-        logger.info("Successfully loaded all rankings from the Excel files.");
+        logger.info("Total ranking import summary: processed={}, imported={}, skipped={}, errors={}, sample={}",
+                totalResult.getProcessedCount(),
+                totalResult.getImportedCount(),
+                totalResult.getSkippedCount(),
+                totalResult.getErrorCount(),
+                totalResult.getErrorsSample());
     }
 
     private boolean updateRankingFromRow(Row row, int year, String metricType) {

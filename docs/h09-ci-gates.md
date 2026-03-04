@@ -83,6 +83,7 @@ Run before pushing CI-sensitive changes:
 
 1. `npm run verify-h09-baseline`
 2. `./gradlew test --tests "*CoreApplicationTests"` (quick smoke sanity)
+3. `npm run verify-h12-integrations` when touching Scopus/import integration paths
 
 `verify-h09-baseline` contract:
 

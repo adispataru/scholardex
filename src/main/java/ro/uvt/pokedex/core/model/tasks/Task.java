@@ -9,4 +9,9 @@ public abstract class Task  {
     protected String executionDate;
     protected Status status;
     protected String message;
+    protected int attemptCount;
+    protected int maxAttempts = 3;
+    protected String nextAttemptAt;
+    protected String lastErrorCode;
+    protected String lastErrorMessage;
 }

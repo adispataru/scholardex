@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ro.uvt.pokedex.core.model.URAPUniversityRanking;
 import ro.uvt.pokedex.core.repository.URAPUniversityRankingRepository;
+import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -33,6 +34,7 @@ public class URAPRankingService {
         if(urapUniversityRankingRepository.count() > 0)
             return ;
         Map<String, URAPUniversityRanking> rankingsMap = new HashMap<>();
+        ImportProcessingResult totalResult = new ImportProcessingResult(20);
 
         try (Stream<Path> paths = Files.walk(Paths.get(folderPath))) {
             paths.filter(Files::isRegularFile)
@@ -42,7 +44,7 @@ public class URAPRankingService {
                     .forEach(fileName -> {
                         int year = extractYear(fileName);
                         String fullPath = Paths.get(folderPath, fileName).toString();
-                        processExcelFile(fullPath, year, rankingsMap);
+                        processExcelFile(fullPath, year, rankingsMap, totalResult);
                     });
         } catch (IOException e) {
             log.error("Error while scanning directory: {}", folderPath, e);
@@ -52,6 +54,13 @@ public class URAPRankingService {
         // Save all rankings to repository
         List<URAPUniversityRanking> rankings = new ArrayList<>(rankingsMap.values());
         urapUniversityRankingRepository.saveAll(rankings);
+        log.info("URAP import summary for {}: processed={}, imported={}, skipped={}, errors={}, sample={}",
+                folderPath,
+                totalResult.getProcessedCount(),
+                totalResult.getImportedCount(),
+                totalResult.getSkippedCount(),
+                totalResult.getErrorCount(),
+                totalResult.getErrorsSample());
         log.info("Successfully loaded {} URAP rankings from folder: {}", rankings.size(), folderPath);
     }
 
@@ -59,7 +68,7 @@ public class URAPRankingService {
         return Integer.parseInt(fileName.substring(8, 12));
     }
 
-    private void processExcelFile(String filePath, int year, Map<String, URAPUniversityRanking> rankingsMap) {
+    private void processExcelFile(String filePath, int year, Map<String, URAPUniversityRanking> rankingsMap, ImportProcessingResult result) {
         try (FileInputStream fis = new FileInputStream(new File(filePath));
              Workbook workbook = new XSSFWorkbook(fis)) {
 
@@ -72,16 +81,22 @@ public class URAPRankingService {
                     continue; // Skip header row
                 }
 
-                processRow(row, year, rankingsMap);
+                result.markProcessed();
+                if (processRow(row, year, rankingsMap)) {
+                    result.markImported();
+                } else {
+                    result.markSkipped("file=" + filePath + ", year=" + year + ", row=" + row.getRowNum());
+                }
             }
 
         } catch (IOException e) {
+            result.markError("file=" + filePath + ", error=" + e.getMessage());
             log.error("Error reading Excel file: {}", filePath, e);
             throw new RuntimeException("Failed to read Excel file: " + filePath, e);
         }
     }
 
-    private void processRow(Row row, int year, Map<String, URAPUniversityRanking> rankingsMap) {
+    private boolean processRow(Row row, int year, Map<String, URAPUniversityRanking> rankingsMap) {
         try {
             String universityName = getStringValue(row.getCell(1));
 
@@ -110,9 +125,11 @@ public class URAPRankingService {
             score.setTotal(getDoubleValue(row.getCell(9)));
 
             ranking.getScores().put(year, score);
+            return true;
 
         } catch (Exception e) {
             log.warn("Error parsing row in year {}: {}", year, e.getMessage());
+            return false;
         }
     }
 

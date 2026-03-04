@@ -11,6 +11,7 @@
     "verify-h06-persistence": "node scripts/verify-h06-persistence.js",
     "verify-h07-guardrails": "node scripts/verify-h07-guardrails.js",
     "verify-h08-observability-guardrails": "node scripts/verify-h08-observability-guardrails.js",
+    "verify-h12-integrations": "node scripts/verify-h12-integrations.js",
     "verify-h08-baseline": "npm run verify-architecture-boundaries && npm run verify-assets && npm run verify-template-assets && npm run verify-h08-observability-guardrails",
     "verify-h09-baseline": "npm run verify-architecture-boundaries && npm run verify-h06-persistence && npm run verify-h07-guardrails && npm run verify-h08-baseline && npm run verify-assets && npm run verify-template-assets && ./gradlew check",
     "verify-h03-baseline": "npm run verify-architecture-boundaries && npm run verify-assets && npm run verify-template-assets && ./gradlew test --tests \"*UserViewControllerContractTest\" --tests \"*AdminGroupControllerContractTest\" --tests \"*AdminViewControllerContractTest\" --tests \"*ExportControllerContractTest\" --tests \"*UserReportFacadeTest\" --tests \"*GroupCnfisExportFacadeTest\" --tests \"*RankingMaintenanceFacadeTest\" --tests \"*CoreApplicationTests\"",
