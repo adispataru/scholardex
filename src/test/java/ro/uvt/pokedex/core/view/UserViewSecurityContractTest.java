@@ -71,4 +71,5 @@ class UserViewSecurityContractTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrlPattern("**/login"));
     }
+
 }

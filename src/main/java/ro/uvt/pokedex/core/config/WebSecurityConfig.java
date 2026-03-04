@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -43,6 +42,17 @@ public class WebSecurityConfig {
 
         http.csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(ahr -> {
+                    ahr.requestMatchers(
+                            "/login",
+                            "/error",
+                            "/custom-error",
+                            "/css/**",
+                            "/js/**",
+                            "/images/**",
+                            "/webjars/**",
+                            "/assets/**",
+                            "/favicon.ico"
+                    ).permitAll();
                     ahr.requestMatchers("/admin/**").hasAuthority("PLATFORM_ADMIN");
                     ahr.requestMatchers("/api/admin/**").hasAuthority("PLATFORM_ADMIN");
                     ahr.requestMatchers("/api/export", "/api/export/**").hasAuthority("PLATFORM_ADMIN");
@@ -53,7 +63,7 @@ public class WebSecurityConfig {
                 }).exceptionHandling(e -> e
                         .authenticationEntryPoint(delegatingAuthenticationEntryPoint())
                         .accessDeniedHandler(delegatingAccessDeniedHandler()))
-                .formLogin(Customizer.withDefaults())
+                .formLogin(form -> form.permitAll())
                 .httpBasic(AbstractHttpConfigurer::disable);
 
         return http.build();
