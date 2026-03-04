@@ -12,6 +12,7 @@ import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.service.UserService;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -104,7 +105,7 @@ class UserControllerValidationTest {
         existing.setPassword("encoded");
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(java.util.Optional.of(existing));
         when(userService.parseRoles(anyList())).thenReturn(java.util.Set.of(ro.uvt.pokedex.core.model.user.UserRole.PLATFORM_ADMIN));
-        when(userService.updateUser(anyString(), org.mockito.ArgumentMatchers.any(User.class))).thenReturn(existing);
+        when(userService.updateUser(anyString(), org.mockito.ArgumentMatchers.any(User.class))).thenReturn(Optional.of(existing));
 
         String body = """
                 {
@@ -118,5 +119,23 @@ class UserControllerValidationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void updateUserWithMissingTargetReturnsNotFound() throws Exception {
+        when(userService.getUserByEmail("missing@uvt.ro")).thenReturn(Optional.empty());
+
+        String body = """
+                {
+                  "email":"missing@uvt.ro",
+                  "password":"secret",
+                  "roles":["PLATFORM_ADMIN"]
+                }
+                """;
+
+        mockMvc.perform(put("/api/admin/users/{email}", "missing@uvt.ro")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isNotFound());
     }
 }

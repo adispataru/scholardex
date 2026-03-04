@@ -6,7 +6,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import ro.uvt.pokedex.core.service.application.ForumExportFacade;
 import ro.uvt.pokedex.core.service.application.model.ForumExportRow;
 import ro.uvt.pokedex.core.service.application.model.ForumExportViewModel;
@@ -15,10 +14,9 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ExportController.class)
@@ -37,11 +35,7 @@ class ExportControllerContractTest {
                 List.of(new ForumExportRow("Book A", "1234-5678", "8765-4321", "src-1", "Book"))
         ));
 
-        MvcResult asyncResult = mockMvc.perform(get("/api/export"))
-                .andExpect(request().asyncStarted())
-                .andReturn();
-
-        byte[] content = mockMvc.perform(asyncDispatch(asyncResult))
+        byte[] content = mockMvc.perform(get("/api/export"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", "attachment; filename=forums.xlsx"))
                 .andReturn()
@@ -52,15 +46,13 @@ class ExportControllerContractTest {
     }
 
     @Test
-    void exportEndpointFacadeFailureKeepsStartedResponseCurrentBehavior() throws Exception {
+    void exportEndpointFacadeFailureReturnsDeterministicServerError() throws Exception {
         when(forumExportFacade.buildBookAndBookSeriesExport()).thenThrow(new RuntimeException("boom"));
 
-        MvcResult asyncResult = mockMvc.perform(get("/api/export"))
-                .andExpect(request().asyncStarted())
-                .andReturn();
-
-        mockMvc.perform(asyncDispatch(asyncResult))
-                .andExpect(status().isOk())
-                .andExpect(header().string("Content-Disposition", "attachment; filename=forums.xlsx"));
+        mockMvc.perform(get("/api/export"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.error").value("internal_server_error"))
+                .andExpect(jsonPath("$.path").value("/api/export"));
     }
 }

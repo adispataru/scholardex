@@ -4,7 +4,6 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import ro.uvt.pokedex.core.controller.dto.AdminUserUpsertRequest;
 import ro.uvt.pokedex.core.model.user.User;
@@ -13,7 +12,7 @@ import ro.uvt.pokedex.core.service.UserService;
 import java.util.List;
 import java.util.Optional;
 
-@Controller
+@RestController
 @RequestMapping("/api/admin/users")
 public class UserController {
 
@@ -63,8 +62,9 @@ public class UserController {
         updated.setLocked(request.locked() != null ? request.locked() : existing.isLocked());
         updated.setRoles(userService.parseRoles(request.roles()));
 
-        User updatedUser = userService.updateUser(email, updated);
-        return ResponseEntity.ok(updatedUser);
+        return userService.updateUser(email, updated)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{email}")

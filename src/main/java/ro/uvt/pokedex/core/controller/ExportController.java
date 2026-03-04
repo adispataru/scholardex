@@ -1,60 +1,60 @@
 package ro.uvt.pokedex.core.controller;
 
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import ro.uvt.pokedex.core.service.application.ForumExportFacade;
 import ro.uvt.pokedex.core.service.application.model.ForumExportViewModel;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
 public class ExportController {
 
-    private static final Logger log = LoggerFactory.getLogger(ExportController.class);
     private final ForumExportFacade forumExportFacade;
 
     @GetMapping("/export")
-    public StreamingResponseBody exportToExcel(HttpServletResponse response) {
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition", "attachment; filename=forums.xlsx");
+    public ResponseEntity<byte[]> exportToExcel() {
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Forums");
 
-        return outputStream -> {
-            try (Workbook workbook = new XSSFWorkbook()) {
-                Sheet sheet = workbook.createSheet("Forums");
+            Row headerRow = sheet.createRow(0);
+            headerRow.createCell(0).setCellValue("Publication Name");
+            headerRow.createCell(1).setCellValue("ISSN");
+            headerRow.createCell(2).setCellValue("eISSN");
+            headerRow.createCell(3).setCellValue("sourceId");
+            headerRow.createCell(4).setCellValue("Aggregation Type");
 
-                // Create header row
-                Row headerRow = sheet.createRow(0);
-                headerRow.createCell(0).setCellValue("Publication Name");
-                headerRow.createCell(1).setCellValue("ISSN");
-                headerRow.createCell(2).setCellValue("eISSN");
-                headerRow.createCell(2).setCellValue("sourceId");
-                headerRow.createCell(3).setCellValue("Aggregation Type");
-
-                ForumExportViewModel viewModel = forumExportFacade.buildBookAndBookSeriesExport();
-                int rowNum = 1;
-                for (var exportRow : viewModel.rows()) {
-                    Row row = sheet.createRow(rowNum++);
-                    row.createCell(0).setCellValue(exportRow.publicationName());
-                    row.createCell(1).setCellValue(exportRow.issn());
-                    row.createCell(2).setCellValue(exportRow.eIssn());
-                    row.createCell(2).setCellValue(exportRow.sourceId());
-                    row.createCell(3).setCellValue(exportRow.aggregationType());
-                }
-
-                workbook.write(outputStream);
-            } catch (Exception e) {
-                log.error("Forum export streaming failed for route /api/export", e);
+            ForumExportViewModel viewModel = forumExportFacade.buildBookAndBookSeriesExport();
+            int rowNum = 1;
+            for (var exportRow : viewModel.rows()) {
+                Row row = sheet.createRow(rowNum++);
+                row.createCell(0).setCellValue(exportRow.publicationName());
+                row.createCell(1).setCellValue(exportRow.issn());
+                row.createCell(2).setCellValue(exportRow.eIssn());
+                row.createCell(3).setCellValue(exportRow.sourceId());
+                row.createCell(4).setCellValue(exportRow.aggregationType());
             }
-        };
+            workbook.write(outputStream);
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=forums.xlsx")
+                    .body(outputStream.toByteArray());
+        } catch (IOException ex) {
+            throw new UncheckedIOException("Forum export generation failed.", ex);
+        }
     }
 }

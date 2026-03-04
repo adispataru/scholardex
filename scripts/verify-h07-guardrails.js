@@ -1,4 +1,5 @@
 const { execFileSync } = require('child_process');
+const fs = require('fs');
 
 const errors = [];
 
@@ -54,10 +55,7 @@ for (const file of mutatingGetFiles) {
   }
 }
 
-const allowlistedPrintStackTraceFiles = new Set([
-  'src/main/java/ro/uvt/pokedex/core/controller/ExportController.java',
-  'src/main/java/ro/uvt/pokedex/core/view/AdminGroupController.java'
-]);
+const allowlistedPrintStackTraceFiles = new Set([]);
 
 const printStackTraceMatches = runRg('printStackTrace\\(', controllerRoots);
 const printStackTraceFiles = new Set(printStackTraceMatches.map(pathFromRgLine));
@@ -109,6 +107,29 @@ if (requestBodyWithoutValidMatches.length > 0) {
   requestBodyWithoutValidMatches.forEach((line) => {
     errors.push(`${line}: @RequestBody in targeted admin API controllers must use @Valid.`);
   });
+}
+
+const exportControllerPath = 'src/main/java/ro/uvt/pokedex/core/controller/ExportController.java';
+const exportGenericCatch = runRg('catch \\(Exception', [exportControllerPath]);
+if (exportGenericCatch.length > 0) {
+  errors.push(
+    `${exportControllerPath}: generic exception catch is forbidden in export endpoint logic; rely on centralized mapping.`
+  );
+}
+
+const loginTemplatePath = 'src/main/resources/templates/login.html';
+const loginTemplate = fs.readFileSync(loginTemplatePath, 'utf8');
+if (!/name="username"/.test(loginTemplate)) {
+  errors.push(`${loginTemplatePath}: login form must keep name=\"username\" for Spring form-login compatibility.`);
+}
+if (!/autocomplete="username"/.test(loginTemplate)) {
+  errors.push(`${loginTemplatePath}: login username/email input must declare autocomplete=\"username\".`);
+}
+if (!/name="password"/.test(loginTemplate)) {
+  errors.push(`${loginTemplatePath}: login form must keep name=\"password\" for Spring form-login compatibility.`);
+}
+if (!/autocomplete="current-password"/.test(loginTemplate)) {
+  errors.push(`${loginTemplatePath}: login password input must declare autocomplete=\"current-password\".`);
 }
 
 if (errors.length > 0) {

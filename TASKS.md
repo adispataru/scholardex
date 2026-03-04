@@ -150,7 +150,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   Status: completed on 2026-03-04.
   Note: migrated `/api/admin/users` + `/api/admin/researchers` create/update to DTO + `@Valid`; replaced CNFIS start/end `Integer.parseInt` with bounded year-range validation returning `400`; added role allowlist validation in `/admin/users/create` with redirect+flash fallback; updated H07 guardrails and regression tests.
 
-- [ ] `B07` H07-R3: Centralized exception mapping and transport logging cleanup.
+- [x] `B07` H07-R3: Centralized exception mapping and transport logging cleanup.
   Goal: close `E-H07-01`, `E-H07-03`, `E-H07-05`, `E-H07-06`, `E-H07-07`.
   Scope:
   - introduce `@ControllerAdvice` mappings for common failure classes;
@@ -158,6 +158,20 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   - align API/MVC error envelopes/views.
   Inputs: `docs/h07-remediation-plan.md` (`R3`), `docs/h07-error-handling-findings.md`.
   Done criteria: consistent mapped error behavior with structured diagnostics.
+  Status: completed on 2026-03-04.
+  Note: added split centralized exception mapping (`ApiExceptionHandler` + `MvcExceptionHandler`), switched `UserService.updateUser` to `Optional` with deterministic `404` in controller, tightened `/api/export` to deterministic failure behavior, and extended `verify-h07-guardrails` to block generic export swallow-catch regressions.
+
+- [x] `B07A` H07 login flow practical standards alignment.
+  Goal: align login flow with modern browser/password-manager and explicit form-login contracts.
+  Scope:
+  - login template semantic/autocomplete metadata;
+  - explicit Spring form-login + logout endpoints/redirects;
+  - security regression tests for login success/failure/logout;
+  - H07 guardrail checks for login input naming/autocomplete contract.
+  Inputs: login baseline plan (practical scope), `docs/h07-security-validation-contracts.md`.
+  Done criteria: deterministic login/logout contract + test/guardrail coverage.
+  Status: completed on 2026-03-04.
+  Note: `/login` GET/POST contract is explicit; invalid credentials redirect to `/login?error`, logout redirects to `/login?logout`; login template now uses `name=\"username\"/\"password\"` with `autocomplete=\"username\"/\"current-password\"`; guardrails enforce these attributes.
 
 - [ ] `B08` H08-P1: Correlation context propagation.
   Goal: close `L-H08-02`, `L-H08-06`, `L-H08-07`, `O-H08-07`.

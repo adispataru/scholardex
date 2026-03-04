@@ -39,11 +39,9 @@ public class UserService {
         return userRepository.findById(email);
     }
 
-    public User updateUser(String email, User updatedUser) {
+    public Optional<User> updateUser(String email, User updatedUser) {
         return userRepository.findById(email)
-                .map(user -> {
-                    return userRepository.save(updatedUser);
-                }).orElseGet(null);
+                .map(user -> userRepository.save(updatedUser));
     }
 
     public void deleteUser(String email) {
