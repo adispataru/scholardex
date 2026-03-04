@@ -34,8 +34,12 @@ public class PublicationWizardController {
     public String processStep1(@ModelAttribute("newForum") Forum newForum,
                                @RequestParam(value="selectedForumId", required=false) String selectedId,
                                RedirectAttributes ra) {
-        String forumId = publicationWizardFacade.resolveForumId(newForum, selectedId);
-        ra.addAttribute("forumId", forumId);
+        java.util.Optional<String> forumId = publicationWizardFacade.resolveForumId(newForum, selectedId);
+        if (forumId.isEmpty()) {
+            ra.addFlashAttribute("errorMessage", "Please select an existing forum or provide a valid new forum.");
+            return "redirect:/user/publications/add";
+        }
+        ra.addAttribute("forumId", forumId.get());
         return "redirect:/user/publications/add/step2";
     }
 

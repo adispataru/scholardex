@@ -112,6 +112,12 @@ class CacheServiceTest {
         verify(rankingRepository).findAllByEIssn("ranking-id");
     }
 
+    @Test
+    void getCachedTopRankingsReturnsZeroWhenCategoryYearMissing() {
+        int result = cacheService.getCachedTopRankings("cs", 2024);
+        assertEquals(0, result);
+    }
+
     private static WoSRanking ranking(String id, String issn, String eIssn) {
         WoSRanking ranking = new WoSRanking();
         ranking.setId(id);

@@ -5,16 +5,22 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import ro.uvt.pokedex.core.model.user.User;
 
+import java.util.Optional;
+
 @ControllerAdvice
 public class GlobalControllerAdvice {
 
-    @ModelAttribute("user")
-    public User currentUser() {
+    @ModelAttribute("currentUser")
+    public Optional<User> currentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof User) {
-            return (User) authentication.getPrincipal();
+            return Optional.of((User) authentication.getPrincipal());
         }
-        return null; // or a default MyUserDetails instance
+        return Optional.empty();
+    }
+
+    @ModelAttribute("user")
+    public User legacyUserModel() {
+        return currentUser().orElseGet(User::new);
     }
 }
-

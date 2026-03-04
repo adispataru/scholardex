@@ -24,11 +24,11 @@ public class UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    public User createUser(User user) {
+    public Optional<User> createUser(User user) {
         if(!userExists(user.getEmail())) {
-            return userRepository.save(user);
+            return Optional.of(userRepository.save(user));
         }
-        return null;
+        return Optional.empty();
     }
 
     public List<User> getAllUsers() {
@@ -65,15 +65,15 @@ public class UserService {
         });
     }
 
-    public User createUser(String email, String password, List<String> roles) {
+    public Optional<User> createUser(String email, String password, List<String> roles) {
         if(!userExists(email)) {
             User user = new User();
             user.setEmail(email);
             user.setPassword(passwordEncoder.encode(password));
             user.setRoles(parseRoles(roles));
-            return userRepository.save(user);
+            return Optional.of(userRepository.save(user));
         }
-        return null;
+        return Optional.empty();
     }
 
     public boolean areValidRoleNames(List<String> roles) {

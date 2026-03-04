@@ -172,7 +172,7 @@ public class CacheService {
 
     public int getCachedTopRankings(String webOfScienceCategoryIndex, Integer year) {
         String cacheKey = webOfScienceCategoryIndex + "-" + year;
-        return topRankingCache.get(cacheKey);
+        return topRankingCache.getOrDefault(cacheKey, 0);
     }
 
     public Affiliation getAffiliation(String id) {

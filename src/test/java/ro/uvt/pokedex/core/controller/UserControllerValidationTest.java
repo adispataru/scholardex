@@ -83,6 +83,44 @@ class UserControllerValidationTest {
     }
 
     @Test
+    void createUserWithValidPayloadReturnsOk() throws Exception {
+        User created = new User();
+        created.setEmail("new@uvt.ro");
+        when(userService.createUser("new@uvt.ro", "secret", List.of("PLATFORM_ADMIN"))).thenReturn(Optional.of(created));
+
+        String body = """
+                {
+                  "email":"new@uvt.ro",
+                  "password":"secret",
+                  "roles":["PLATFORM_ADMIN"]
+                }
+                """;
+
+        mockMvc.perform(post("/api/admin/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void createUserWithDuplicateEmailReturnsConflict() throws Exception {
+        when(userService.createUser("existing@uvt.ro", "secret", List.of("PLATFORM_ADMIN"))).thenReturn(Optional.empty());
+
+        String body = """
+                {
+                  "email":"existing@uvt.ro",
+                  "password":"secret",
+                  "roles":["PLATFORM_ADMIN"]
+                }
+                """;
+
+        mockMvc.perform(post("/api/admin/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     void updateUserWithInvalidPayloadReturnsBadRequest() throws Exception {
         String body = """
                 {

@@ -21,6 +21,7 @@ import ro.uvt.pokedex.core.service.application.model.ForumExportViewModel;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -101,7 +102,7 @@ class ApiSecurityContractTest {
     void apiPostWithoutCsrfStillWorksForAdminWhenPayloadIsValid() throws Exception {
         User adminUser = new User();
         adminUser.setEmail("new@uvt.ro");
-        when(userService.createUser("new@uvt.ro", "secret", List.of("RESEARCHER"))).thenReturn(adminUser);
+        when(userService.createUser("new@uvt.ro", "secret", List.of("RESEARCHER"))).thenReturn(Optional.of(adminUser));
 
         mockMvc.perform(post("/api/admin/users")
                         .with(user("admin@uvt.ro")

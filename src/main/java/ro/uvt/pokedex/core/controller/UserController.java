@@ -2,6 +2,7 @@ package ro.uvt.pokedex.core.controller;
 
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -30,8 +31,9 @@ public class UserController {
         if (request.password() == null || request.password().isBlank()) {
             return ResponseEntity.badRequest().build();
         }
-        User savedUser = userService.createUser(request.email(), request.password(), request.roles());
-        return ResponseEntity.ok(savedUser);
+        return userService.createUser(request.email(), request.password(), request.roles())
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.CONFLICT).build());
     }
 
     @GetMapping

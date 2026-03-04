@@ -91,7 +91,7 @@ class GroupServiceTest {
         when(passwordEncoder.encode(any())).thenReturn("encoded");
         when(researcherService.saveResearcher(any())).thenReturn(savedResearcher);
         when(userService.getUserByEmail("john@uvt.ro")).thenReturn(Optional.empty());
-        when(userService.createUser(any(User.class))).thenReturn(new User());
+        when(userService.createUser(any(User.class))).thenReturn(Optional.of(new User()));
 
         groupService.importGroupsFromCsv(file);
 

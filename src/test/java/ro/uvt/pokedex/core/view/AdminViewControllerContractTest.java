@@ -119,6 +119,21 @@ class AdminViewControllerContractTest {
     }
 
     @Test
+    void createUserWithDuplicateEmailRedirectsWithFlashError() throws Exception {
+        when(userService.areValidRoleNames(List.of("RESEARCHER"))).thenReturn(true);
+        when(userService.createUser("existing@uvt.ro", "secret", List.of("RESEARCHER"))).thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/admin/users/create")
+                        .param("email", "existing@uvt.ro")
+                        .param("password", "secret")
+                        .param("roles", "RESEARCHER")
+                        .with(authenticatedUser("admin@uvt.ro")))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/users"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash().attributeExists("errorMessage"));
+    }
+
+    @Test
     void indicatorMutationsUsePostRoutes() throws Exception {
         Indicator indicator = new Indicator();
         indicator.setId("ind-1");

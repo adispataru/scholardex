@@ -41,7 +41,14 @@ class PublicationWizardFacadeTest {
         existing.setId("f1");
         when(forumRepository.findById("f1")).thenReturn(Optional.of(existing));
 
-        assertEquals("f1", facade.resolveForumId(new Forum(), "f1"));
+        assertEquals(Optional.of("f1"), facade.resolveForumId(new Forum(), "f1"));
+    }
+
+    @Test
+    void resolveForumIdReturnsEmptyWhenSelectionIsInvalidAndNoNewForumProvided() {
+        when(forumRepository.findById("missing")).thenReturn(Optional.empty());
+
+        assertTrue(facade.resolveForumId(new Forum(), "missing").isEmpty());
     }
 
     @Test

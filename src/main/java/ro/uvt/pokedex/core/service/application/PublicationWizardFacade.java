@@ -29,16 +29,16 @@ public class PublicationWizardFacade {
         return forumRepository.findAll();
     }
 
-    public String resolveForumId(Forum newForum, String selectedId) {
+    public Optional<String> resolveForumId(Forum newForum, String selectedId) {
         if (selectedId != null && !selectedId.isEmpty()) {
             Forum existingForum = forumRepository.findById(selectedId).orElse(null);
             if (existingForum != null) {
-                return existingForum.getId();
+                return Optional.of(existingForum.getId());
             }
         } else if (newForum.getPublicationName() != null && !newForum.getPublicationName().isEmpty()) {
-            return forumRepository.save(newForum).getId();
+            return Optional.of(forumRepository.save(newForum).getId());
         }
-        return null;
+        return Optional.empty();
     }
 
     public List<Author> findAuthorsForAffiliation(String affiliationId) {

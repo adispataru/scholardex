@@ -171,3 +171,15 @@ These contracts lock policy decisions derived from:
   - UI actions now submit POST forms for those operations.
 - `C7` upload validation contract: adopted for group CSV import.
   - `/admin/groups/import` now validates file size, extension/content-type, and CSV schema/row requirements before persistence effects.
+
+## 10. H11 Contract Hardening Notes (2026-03-04)
+
+- Duplicate-user API semantics were tightened:
+  - `POST /api/admin/users` now returns `409 Conflict` when user already exists (instead of ambiguous success with null body risk).
+- Null-safety contracts were hardened in targeted core paths:
+  - `UserService#createUser(...)` overloads now return `Optional<User>`.
+  - `CacheService#getCachedTopRankings(...)` now returns deterministic `0` on cache miss.
+  - `GlobalControllerAdvice#currentUser` now exposes `Optional<User>` (`currentUser`) and no longer returns nullable contract state.
+  - `PublicationWizardFacade#resolveForumId(...)` now returns `Optional<String>`.
+- MVC wizard failure behavior was normalized:
+  - invalid step-1 forum selection in publication wizard now redirects back with flash error instead of propagating null forum ID.

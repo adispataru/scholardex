@@ -154,6 +154,33 @@ if (!/parseAndValidateCsv\(/.test(groupService) || !/SIMPLE_EMAIL_PATTERN/.test(
   errors.push(`${groupServicePath}: strict CSV schema/row validation must be implemented.`);
 }
 
+const userServicePath = 'src/main/java/ro/uvt/pokedex/core/service/UserService.java';
+const userService = fs.readFileSync(userServicePath, 'utf8');
+if (/public Optional<User> createUser\(User user\)[\s\S]*?return null;/.test(userService)) {
+  errors.push(`${userServicePath}: createUser(User) must not return null; use Optional.empty().`);
+}
+if (/public Optional<User> createUser\(String email, String password, List<String> roles\)[\s\S]*?return null;/.test(userService)) {
+  errors.push(`${userServicePath}: createUser(email,password,roles) must not return null; use Optional.empty().`);
+}
+
+const publicationWizardFacadePath = 'src/main/java/ro/uvt/pokedex/core/service/application/PublicationWizardFacade.java';
+const publicationWizardFacade = fs.readFileSync(publicationWizardFacadePath, 'utf8');
+if (/public Optional<String> resolveForumId\([\s\S]*?return null;/.test(publicationWizardFacade)) {
+  errors.push(`${publicationWizardFacadePath}: resolveForumId must not return null; use Optional.empty().`);
+}
+
+const globalControllerAdvicePath = 'src/main/java/ro/uvt/pokedex/core/config/GlobalControllerAdvice.java';
+const globalControllerAdvice = fs.readFileSync(globalControllerAdvicePath, 'utf8');
+if (/@ModelAttribute\("currentUser"\)[\s\S]*?return null;/.test(globalControllerAdvice)) {
+  errors.push(`${globalControllerAdvicePath}: currentUser model attribute must not return null.`);
+}
+
+const userControllerApiPath = 'src/main/java/ro/uvt/pokedex/core/controller/UserController.java';
+const userController = fs.readFileSync(userControllerApiPath, 'utf8');
+if (!/ResponseEntity\.status\(HttpStatus\.CONFLICT\)/.test(userController)) {
+  errors.push(`${userControllerApiPath}: duplicate user create path must map to HTTP 409.`);
+}
+
 if (errors.length > 0) {
   console.error('H07 guardrail verification failed:');
   errors.forEach((error) => console.error(`- ${error}`));
