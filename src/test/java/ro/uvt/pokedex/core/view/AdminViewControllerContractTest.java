@@ -25,22 +25,10 @@ import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.model.user.User;
-import ro.uvt.pokedex.core.repository.ActivityRepository;
-import ro.uvt.pokedex.core.repository.ArtisticEventRepository;
-import ro.uvt.pokedex.core.repository.InstitutionRepository;
-import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
-import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
-import ro.uvt.pokedex.core.repository.reporting.IndicatorRepository;
-import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
-import ro.uvt.pokedex.core.repository.reporting.RankingRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAffiliationRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusCitationRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
+import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.AdminInstitutionReportFacade;
 import ro.uvt.pokedex.core.service.application.AdminScopusFacade;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
@@ -79,33 +67,9 @@ class AdminViewControllerContractTest {
     @MockBean
     private ResearcherService researcherService;
     @MockBean
-    private ScopusAuthorRepository scopusAuthorRepository;
-    @MockBean
-    private ScopusAffiliationRepository scopusAffiliationRepository;
-    @MockBean
-    private ScopusPublicationRepository scopusPublicationRepository;
-    @MockBean
-    private ScopusForumRepository scopusForumRepository;
-    @MockBean
-    private ScopusCitationRepository scopusCitationRepository;
-    @MockBean
-    private ArtisticEventRepository artisticEventRepository;
-    @MockBean
-    private RankingRepository rankingRepository;
-    @MockBean
-    private CoreConferenceRankingRepository coreConferenceRankingRepository;
-    @MockBean
     private CacheService cacheService;
     @MockBean
-    private IndicatorRepository indicatorRepository;
-    @MockBean
-    private DomainRepository domainRepository;
-    @MockBean
-    private InstitutionRepository institutionRepository;
-    @MockBean
-    private ActivityRepository activityRepository;
-    @MockBean
-    private IndividualReportRepository individualReportRepository;
+    private AdminCatalogFacade adminCatalogFacade;
     @MockBean
     private AdminScopusFacade adminScopusFacade;
     @MockBean
@@ -162,8 +126,7 @@ class AdminViewControllerContractTest {
         Indicator duplicated = new Indicator();
         duplicated.setId("ind-2");
         duplicated.setName("Indicator One (copy)");
-        when(indicatorRepository.findById("ind-1")).thenReturn(Optional.of(indicator));
-        when(indicatorRepository.save(any(Indicator.class))).thenReturn(duplicated);
+        when(adminCatalogFacade.duplicateIndicator("ind-1")).thenReturn(Optional.of(duplicated));
 
         mockMvc.perform(post("/admin/indicators/duplicate/{id}", "ind-1"))
                 .andExpect(status().is3xxRedirection())
@@ -173,7 +136,7 @@ class AdminViewControllerContractTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/indicators"));
 
-        verify(indicatorRepository).deleteById("ind-1");
+        verify(adminCatalogFacade).deleteIndicator("ind-1");
     }
 
     @Test
@@ -186,8 +149,8 @@ class AdminViewControllerContractTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/institutions"));
 
-        verify(domainRepository).deleteById("CS");
-        verify(institutionRepository).deleteById("UVT");
+        verify(adminCatalogFacade).deleteDomain("CS");
+        verify(adminCatalogFacade).deleteInstitution("UVT");
     }
 
     @Test
@@ -320,9 +283,9 @@ class AdminViewControllerContractTest {
         Domain domain = new Domain();
         domain.setName("CS");
 
-        when(indicatorRepository.findAll()).thenReturn(List.of(indicator));
-        when(activityRepository.findAll()).thenReturn(List.of(activity));
-        when(domainRepository.findAll()).thenReturn(List.of(domain));
+        when(adminCatalogFacade.listIndicators()).thenReturn(List.of(indicator));
+        when(adminCatalogFacade.listActivities()).thenReturn(List.of(activity));
+        when(adminCatalogFacade.listDomains()).thenReturn(List.of(domain));
 
         mockMvc.perform(get("/admin/indicators")
                         .with(authenticatedUser("admin@uvt.ro")))
@@ -358,9 +321,9 @@ class AdminViewControllerContractTest {
         Domain domain = new Domain();
         domain.setName("CS");
 
-        when(indicatorRepository.findById(eq("ind-1"))).thenReturn(Optional.of(indicator));
-        when(activityRepository.findAll()).thenReturn(List.of(activity));
-        when(domainRepository.findAll()).thenReturn(List.of(domain));
+        when(adminCatalogFacade.findIndicatorById(eq("ind-1"))).thenReturn(Optional.of(indicator));
+        when(adminCatalogFacade.listActivities()).thenReturn(List.of(activity));
+        when(adminCatalogFacade.listDomains()).thenReturn(List.of(domain));
 
         mockMvc.perform(get("/admin/indicators/edit/{id}", "ind-1")
                         .with(authenticatedUser("admin@uvt.ro")))

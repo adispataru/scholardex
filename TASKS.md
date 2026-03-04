@@ -241,10 +241,12 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   Status: completed on 2026-03-04.
   Note: actuator baseline and readiness/liveness groups are active, startup/external dependency health contributors are wired, scheduler/export/startup/external metrics are instrumented, async queue/rejection diagnostics are exposed, and H08 observability guardrails now assert P2 baseline wiring.
 
-- [ ] `B13` H02 residual V01 closure outside baseline pair.
+- [x] `B13` H02 residual V01 closure outside baseline pair.
   Goal: reduce remaining `Z1 -> Z4` controller repository debt in non-baseline controllers.
   Scope:
   - prioritize `AdminViewController` and smaller controllers still directly importing repositories;
   - migrate residual orchestration to Z2 facades while preserving behavior.
   Inputs: `docs/h02-remediation-plan.md` (`R1 residual`), `docs/h02-violations.md`.
   Done criteria: repository-import allowlist in `verify-architecture-boundaries` is materially reduced.
+  Status: completed on 2026-03-04.
+  Note: residual controllers were migrated to Z2 facades (`AdminCatalogFacade`, `UserRankingFacade`, `ActivityManagementFacade`, `GroupReportsManagementFacade`, `IndividualReportsManagementFacade`, `UrapRankingFacade`, `UserActivityInstanceFacade`, `PublicationWizardFacade`); controller/view repository imports are now zero and architecture allowlist is empty.

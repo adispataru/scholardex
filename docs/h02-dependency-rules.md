@@ -39,6 +39,7 @@ Interpretation:
 - Allow: call Z2 orchestration services and return view/API responses.
 - Deny: introducing new direct repository dependencies (`core/repository/**`) from controllers/views.
 - Temporary exception policy: existing direct repository usage may remain until planned remediation, but new usage is not allowed.
+- Adoption update (2026-03-04): V01 repository-debt allowlist in transport layer was retired; controller/view repository imports are now expected to remain at zero.
 
 ## R2. Service Layer Is the Only Workflow Composition Layer
 

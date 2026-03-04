@@ -9,23 +9,17 @@ import org.springframework.web.bind.annotation.*;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.user.User;
-import ro.uvt.pokedex.core.repository.ActivityIndicatorRepository;
-import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
-import ro.uvt.pokedex.core.repository.ActivityRepository;
-import ro.uvt.pokedex.core.service.ResearcherService;
+import ro.uvt.pokedex.core.service.application.UserActivityInstanceFacade;
+import ro.uvt.pokedex.core.service.application.model.UserActivityInstancesViewModel;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Controller
 @RequestMapping("/user/activityInstances")
 @RequiredArgsConstructor
 public class ActivityInstanceController {
 
-    private final ActivityInstanceRepository activityInstanceRepository;
-    private final ActivityRepository activityRepository;
-    private final ResearcherService researcherService;
-    private final ActivityIndicatorRepository activityIndicatorRepository;
+    private final UserActivityInstanceFacade userActivityInstanceFacade;
 
     @GetMapping
     public String getActivityInstances(Model model, Authentication authentication) {
@@ -35,33 +29,13 @@ public class ActivityInstanceController {
 
         String researcherId = currentUser.getResearcherId();
 
-//        List<Publication> publications = publicationService.findPublicationsByResearcherIdOrderByYearDesc(researcherId);
-
-        List<Activity> activities = activityRepository.findAll();
-        model.addAttribute("activities", activities);
-        model.addAttribute("referenceTypes", Activity.ReferenceField.values());
-        ActivityInstance newInstance = new ActivityInstance();
-        if(researcherId != null) {
-            newInstance.setResearcherId(researcherId);
-            List<ActivityInstance> all = activityInstanceRepository.findAllByResearcherId(researcherId);
-            model.addAttribute("activityInstances", all);
-
-            Iterator<ActivityInstance> iterator = all.iterator();
-            while(iterator.hasNext()) {
-                ActivityInstance instance = iterator.next();
-                if(instance.getActivity() == null) {
-                    activityInstanceRepository.deleteById(instance.getId());
-                    iterator.remove();
-                }
-            }
-            Map<String, List<ActivityInstance>> collect = all.stream().collect(Collectors.groupingBy(x -> x.getActivity().getName()));
-            List<String> activityLabels = collect.keySet().stream().toList();
-
-            List<Integer> activityData = activityLabels.stream().map(x -> collect.get(x).size()).collect(Collectors.toList()); // Fetch or compute data
-            model.addAttribute("activityLabels", activityLabels);
-            model.addAttribute("activityData", activityData);
-        }
-        model.addAttribute("newActivityInstance", newInstance);
+        UserActivityInstancesViewModel viewModel = userActivityInstanceFacade.buildActivityInstancesView(researcherId);
+        model.addAttribute("activities", viewModel.activities());
+        model.addAttribute("referenceTypes", viewModel.referenceTypes());
+        model.addAttribute("activityInstances", viewModel.activityInstances());
+        model.addAttribute("activityLabels", viewModel.activityLabels());
+        model.addAttribute("activityData", viewModel.activityData());
+        model.addAttribute("newActivityInstance", viewModel.newActivityInstance());
         return "user/activity-instances";
 
     }
@@ -69,25 +43,19 @@ public class ActivityInstanceController {
     @PostMapping("/create")
     public String createActivityInstance(@ModelAttribute ActivityInstance activityInstance) {
 
-        activityInstanceRepository.save(activityInstance);
+        userActivityInstanceFacade.saveActivityInstance(activityInstance);
         return "redirect:/user/activityInstances";
     }
 
     @PostMapping("/update")
     public String updateActivityInstance(@ModelAttribute ActivityInstance activityInstance) {
-        Optional<ActivityInstance> byId = activityInstanceRepository.findById(activityInstance.getId());
-        if (byId.isPresent()) {
-            ActivityInstance existingInstance = byId.get();
-            existingInstance.setFields(activityInstance.getFields());
-            existingInstance.setReferenceFields(activityInstance.getReferenceFields());
-            activityInstanceRepository.save(existingInstance);
-        }
+        userActivityInstanceFacade.updateActivityInstance(activityInstance);
         return "redirect:/user/activityInstances";
     }
 
     @GetMapping("/edit/{id}")
     public String editActivityInstance(@PathVariable String id, Model model) {
-        Optional<ActivityInstance> byId = activityInstanceRepository.findById(id);
+        Optional<ActivityInstance> byId = userActivityInstanceFacade.findActivityInstance(id);
         if (byId.isPresent()) {
             model.addAttribute("activityInstance", byId.get());
             return "user/activity-instances-edit";
@@ -98,14 +66,14 @@ public class ActivityInstanceController {
 
     @PostMapping("/delete/{id}")
     public String deleteActivityInstance(@PathVariable String id) {
-        activityInstanceRepository.deleteById(id);
+        userActivityInstanceFacade.deleteActivityInstance(id);
         return "redirect:/user/activityInstances";
     }
 
     @GetMapping("/activity/{id}/fields")
     @ResponseBody
     public ResponseEntity<Activity> getActivityFields(@PathVariable String id) {
-        Optional<Activity> activity = activityRepository.findById(id);
+        Optional<Activity> activity = userActivityInstanceFacade.findActivity(id);
         return activity.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 

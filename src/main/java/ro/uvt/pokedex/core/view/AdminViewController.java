@@ -23,12 +23,8 @@ import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.scopus.*;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.user.UserRole;
-import ro.uvt.pokedex.core.repository.ActivityRepository;
-import ro.uvt.pokedex.core.repository.ArtisticEventRepository;
-import ro.uvt.pokedex.core.repository.InstitutionRepository;
-import ro.uvt.pokedex.core.repository.reporting.*;
-import ro.uvt.pokedex.core.repository.scopus.*;
 import ro.uvt.pokedex.core.service.application.AdminScopusFacade;
+import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.AdminInstitutionReportFacade;
 import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
@@ -53,21 +49,8 @@ public class AdminViewController {
 
     private final UserService userService;
     private final ResearcherService researcherService;
-    private final ScopusForumRepository scopusVenueRepository;
-    private final ScopusAuthorRepository scopusAuthorRepository;
-    private final ScopusAffiliationRepository scopusAffiliationRepository;
-    private final ScopusPublicationRepository scopusPublicationRepository;
-    private final ScopusForumRepository scopusForumRepository;
-    private final ScopusCitationRepository scopusCitationRepository;
-    private final ArtisticEventRepository artisticEventRepository;
-    private final RankingRepository rankingRepository;
-    private final CoreConferenceRankingRepository coreConferenceRankingRepository;
     private final CacheService cacheService;
-    private final IndicatorRepository indicatorRepository;
-    private final DomainRepository domainRepository;
-    private final InstitutionRepository institutionRepository;
-    private final ActivityRepository activityRepository;
-    private final IndividualReportRepository individualReportRepository;
+    private final AdminCatalogFacade adminCatalogFacade;
     private final AdminScopusFacade adminScopusFacade;
     private final AdminInstitutionReportFacade adminInstitutionReportFacade;
     private final RankingMaintenanceFacade rankingMaintenanceFacade;
@@ -99,10 +82,9 @@ public class AdminViewController {
 
     @GetMapping("/institutions")
     public String showInstitutionsPage(Model model, @RequestParam(value = "afname", defaultValue = "vest") String afname) {
-        List<Institution> institutions = institutionRepository.findAll();
+        List<Institution> institutions = adminCatalogFacade.listInstitutions();
         model.addAttribute("institutions", institutions);
-        List<Affiliation> allByCountry = scopusAffiliationRepository.findAllByNameContains(afname);
-        allByCountry.sort(Comparator.comparing(Affiliation::getName));
+        List<Affiliation> allByCountry = adminCatalogFacade.listAffiliationsByNameContains(afname);
         model.addAttribute("allAffiliations", allByCountry);
         model.addAttribute("institution", new Institution());
         return "admin/institutions";
@@ -110,16 +92,16 @@ public class AdminViewController {
 
     @PostMapping("/institutions/create")
     public String createIndividualReport(@ModelAttribute Institution institution, RedirectAttributes redirectAttributes) {
-        institutionRepository.save(institution);
+        adminCatalogFacade.saveInstitution(institution);
         redirectAttributes.addFlashAttribute("successMessage", "Individual Report created successfully.");
         return "redirect:/admin/institutions";
     }
 
     @GetMapping("/institutions/edit/{id}")
     public String editInstitution(@PathVariable String id, Model model) {
-        Institution institution = institutionRepository.findById(id).orElse(null);
-        model.addAttribute("institution", institution);List<Affiliation> allByCountry = scopusAffiliationRepository.findAllByCountry(Country);
-        allByCountry.sort(Comparator.comparing(Affiliation::getName));
+        Institution institution = adminCatalogFacade.findInstitutionById(id).orElse(null);
+        model.addAttribute("institution", institution);
+        List<Affiliation> allByCountry = adminCatalogFacade.listAffiliationsByCountry(Country);
         model.addAttribute("allAffiliations", allByCountry);
         return "admin/edit-institutions";
     }
@@ -223,15 +205,15 @@ public class AdminViewController {
 
     @PostMapping("/institutions/update")
     public String updateInstitution(@ModelAttribute Institution institution, RedirectAttributes redirectAttributes) {
-        institutionRepository.save(institution);
+        adminCatalogFacade.saveInstitution(institution);
         redirectAttributes.addFlashAttribute("successMessage", "Individual Report updated successfully.");
         return "redirect:/admin/institutions";
     }
 
     @GetMapping("/indicators")
     public String getCriterion(Model model) {
-        List<Indicator> all = indicatorRepository.findAll();
-        List<Activity> activities = activityRepository.findAll();
+        List<Indicator> all = adminCatalogFacade.listIndicators();
+        List<Activity> activities = adminCatalogFacade.listActivities();
         model.addAttribute("indicators", all);
 
         List<Indicator.Strategy> scoringStrategies =  Arrays.asList(
@@ -239,7 +221,7 @@ public class AdminViewController {
         );
 
         List<Indicator.Type> types = List.of(Indicator.Type.values());
-        List<Domain> domains = domainRepository.findAll();
+        List<Domain> domains = adminCatalogFacade.listDomains();
 
         Map<String, String> activityDescriptions = getActivityDescriptions(activities);
 
@@ -283,29 +265,29 @@ public class AdminViewController {
 
     @PostMapping("/indicators/create")
     public String createIndicator(@ModelAttribute Indicator indicator) {
-        indicatorRepository.save(indicator);
+        adminCatalogFacade.saveIndicator(indicator);
         return "redirect:/admin/indicators";
     }
 
     @PostMapping("/indicators/update")
     public String updateCriterion(@ModelAttribute Indicator indicator) {
-        indicatorRepository.save(indicator);
+        adminCatalogFacade.saveIndicator(indicator);
         return "redirect:/admin/indicators";
     }
 
     @GetMapping("/indicators/edit/{id}")
     public String editIndicator(@PathVariable String id, Model model) {
 
-        Optional<Indicator> byId = indicatorRepository.findById(id);
+        Optional<Indicator> byId = adminCatalogFacade.findIndicatorById(id);
         if(byId.isPresent()) {
             model.addAttribute("indicator", byId.get());
             List<Indicator.Strategy> scoringStrategies =  Arrays.asList(
                     Indicator.Strategy.values()
             );
-            List<Activity> activities = activityRepository.findAll();
+            List<Activity> activities = adminCatalogFacade.listActivities();
 
             List<Indicator.Type> types = List.of(Indicator.Type.values());
-            List<Domain> domains = domainRepository.findAll();
+            List<Domain> domains = adminCatalogFacade.listDomains();
 
             Map<String, String> activityDescriptions = getActivityDescriptions(activities);
 
@@ -324,14 +306,9 @@ public class AdminViewController {
     @PostMapping("/indicators/duplicate/{id}")
     public String duplicateIndicator(@PathVariable String id, Model model) {
 
-        Optional<Indicator> byId = indicatorRepository.findById(id);
+        Optional<Indicator> byId = adminCatalogFacade.duplicateIndicator(id);
         if(byId.isPresent()) {
-            Indicator indicator = byId.get();
-            indicator.setId(null);
-            indicator.setName(indicator.getName() + " (copy)");
-            indicator = indicatorRepository.save(indicator);
-
-            return "redirect:/admin/indicators/edit/" + indicator.getId();
+            return "redirect:/admin/indicators/edit/" + byId.get().getId();
         }else {
             return "redirect:/admin/indicators";
         }
@@ -339,15 +316,14 @@ public class AdminViewController {
 
     @PostMapping("/indicators/delete/{id}")
     public String deleteIndicator(@PathVariable String id) {
-        indicatorRepository.deleteById(id);
+        adminCatalogFacade.deleteIndicator(id);
         return "redirect:/admin/indicators";
     }
 
     @GetMapping("/domains")
     public String getDomains(Model model) {
-        List<Domain> domains = domainRepository.findAll();
-        List<String> allWosCategories = new ArrayList<>(cacheService.getWosCategories());
-        Collections.sort(allWosCategories);
+        List<Domain> domains = adminCatalogFacade.listDomains();
+        List<String> allWosCategories = adminCatalogFacade.listWosCategories();
         model.addAttribute("domains", domains);
         model.addAttribute("allWosCategories", allWosCategories);
         model.addAttribute("domain", new Domain());
@@ -356,10 +332,9 @@ public class AdminViewController {
 
     @GetMapping("/domains/edit/{id}")
     public String editDomain(@PathVariable String id, Model model) {
-        Optional<Domain> byId = domainRepository.findById(id);
+        Optional<Domain> byId = adminCatalogFacade.findDomainById(id);
         if(byId.isPresent()) {
-            List<String> allWosCategories = new ArrayList<>(cacheService.getWosCategories());
-            Collections.sort(allWosCategories);
+            List<String> allWosCategories = adminCatalogFacade.listWosCategories();
             model.addAttribute("domain", byId.get());
             model.addAttribute("allWosCategories", allWosCategories);
             return "admin/domains-edit";
@@ -371,67 +346,64 @@ public class AdminViewController {
 
     @PostMapping("/domains/create")
     public String createDomain(@ModelAttribute Domain domain) {
-        domainRepository.save(domain);
+        adminCatalogFacade.saveDomain(domain);
         return "redirect:/admin/domains";
     }
 
     @PostMapping("/domains/update")
     public String updateDomain(@ModelAttribute Domain domain) {
-        domainRepository.save(domain);
+        adminCatalogFacade.saveDomain(domain);
         return "redirect:/admin/domains";
     }
 
     @PostMapping("/domains/delete/{name}")
     public String deleteDomain(@PathVariable String name) {
-        domainRepository.deleteById(name);
+        adminCatalogFacade.deleteDomain(name);
         return "redirect:/admin/domains";
     }
 
     @PostMapping("/institutions/delete/{name}")
     public String deleteInstitution(@PathVariable String name) {
-        institutionRepository.deleteById(name);
+        adminCatalogFacade.deleteInstitution(name);
         return "redirect:/admin/institutions";
     }
 
     @GetMapping("/scopus/venues")
     public String showScopusVenuesPage(Model model) {
-        List<Forum> researchers = scopusVenueRepository.findAll();
+        List<Forum> researchers = adminCatalogFacade.listScopusVenues();
         model.addAttribute("venues", researchers);
         return "admin/scopus-venues";
     }
 
     @GetMapping("/scopus/venues/edit/{id}")
     public String editScopusVenuePage(Model model, @PathVariable String id) {
-        Optional<Forum> venue = scopusVenueRepository.findById(id);
+        Optional<Forum> venue = adminCatalogFacade.findScopusVenueById(id);
         venue.ifPresent(v-> model.addAttribute("forum", v));
         return "admin/scopus-editVenues";
     }
 
     @PostMapping("/scopus/venues/edit/{id}")
     public String updateScopusVenue(@ModelAttribute("venue") Forum forum, RedirectAttributes redirectAttributes) {
-        scopusVenueRepository.save(forum);
+        adminCatalogFacade.saveScopusVenue(forum);
         redirectAttributes.addFlashAttribute("message", "Venue updated successfully!");
         return "redirect:/admin/scopus/venues/edit/"+forum.getId();
     }
 
     @GetMapping("/scopus/authors")
     public String showScopusAuthorsPage(Model model, @RequestParam(value = "afid", defaultValue = "60000434") String afid) {
-        Optional<Affiliation> byId = scopusAffiliationRepository.findById(afid);
-        byId.ifPresent(af -> {
-            List<Author> all = scopusAuthorRepository.findAllByAffiliationsContaining(af);
-            model.addAttribute("authors", all);
-        });
+        List<Author> all = adminCatalogFacade.listScopusAuthorsByAffiliation(afid);
+        model.addAttribute("authors", all);
 
         return "admin/scopus-authors";
     }
 
     @GetMapping("/scopus/authors/edit/{id}")
     public String editScopusAuthorsPage(Model model, @PathVariable String id) {
-        Optional<Author> byId = scopusAuthorRepository.findById(id);
+        Optional<Author> byId = adminCatalogFacade.findScopusAuthorById(id);
         byId.ifPresent(a-> {
             AtomicInteger numCitations = new AtomicInteger();
             model.addAttribute("author", a);
-            List<Publication> pubs = scopusPublicationRepository.findAllByAuthorsContaining(a.getId());
+            List<Publication> pubs = adminCatalogFacade.listPublicationsByAuthorId(a.getId());
             pubs.forEach(p-> numCitations.addAndGet(p.getCitedbyCount()));
             model.addAttribute("publications", pubs);
             model.addAttribute("citationCount", numCitations.get());
@@ -442,28 +414,28 @@ public class AdminViewController {
 
     @PostMapping("/scopus/authors/edit/{id}")
     public String updateScopusAuthor(@ModelAttribute("author") Author author, RedirectAttributes redirectAttributes) {
-        scopusAuthorRepository.save(author);
+        adminCatalogFacade.saveScopusAuthor(author);
         redirectAttributes.addFlashAttribute("message", "Author updated successfully!");
         return "redirect:/admin/scopus-venues";
     }
 
     @GetMapping("/scopus/affiliations")
     public String showScopusAffiliationsPage(Model model) {
-        List<Affiliation> all = scopusAffiliationRepository.findAll();
+        List<Affiliation> all = adminCatalogFacade.listScopusAffiliations();
         model.addAttribute("affiliations", all);
         return "admin/scopus-affiliations";
     }
 
     @GetMapping("/scopus/affiliations/edit/{id}")
     public String editScopusAffiliationsPage(Model model, @PathVariable String id) {
-        Optional<Affiliation> byId = scopusAffiliationRepository.findById(id);
+        Optional<Affiliation> byId = adminCatalogFacade.findScopusAffiliationById(id);
         byId.ifPresent(v-> model.addAttribute("affiliation", v));
         return "admin/scopus-editAffiliations";
     }
 
     @PostMapping("/scopus/affiliations/edit/{id}")
     public String updateScopusAffiliations(@ModelAttribute("affiliation") Affiliation affiliation, RedirectAttributes redirectAttributes, @PathVariable String id) {
-        scopusAffiliationRepository.save(affiliation);
+        adminCatalogFacade.saveScopusAffiliation(affiliation);
         redirectAttributes.addFlashAttribute("message", "Affiliation updated successfully!");
         return "redirect:/admin/scopus-affiliations";
     }
@@ -505,7 +477,7 @@ public class AdminViewController {
 
     @GetMapping("/rankings/events")
     public String showArtsRankingsPage(Model model) {
-        List<ArtisticEvent> all = artisticEventRepository.findAll();
+        List<ArtisticEvent> all = adminCatalogFacade.listArtisticEvents();
         model.addAttribute("artisticEvents", all);
         return "admin/events";
     }
@@ -530,14 +502,14 @@ public class AdminViewController {
 
     @GetMapping("/rankings/core")
     public String showCoreRankingsPage(Model model) {
-        List<CoreConferenceRanking> all = coreConferenceRankingRepository.findAll();
+        List<CoreConferenceRanking> all = adminCatalogFacade.listCoreRankings();
         model.addAttribute("confs", all);
         return "admin/rankings-core";
     }
 
     @GetMapping("/rankings/wos/{id}")
     public String showRankingPage(Model model, @PathVariable  String id) {
-        Optional<WoSRanking> journals = rankingRepository.findById(id);
+        Optional<WoSRanking> journals = adminCatalogFacade.findWosRankingById(id);
         if(journals.isPresent()) {
             WoSRanking ranking = journals.get();
             model.addAttribute("journal", ranking);
@@ -548,7 +520,7 @@ public class AdminViewController {
 
     @GetMapping("/rankings/core/{id}")
     public String showCoreRankingPage(Model model, @PathVariable  String id) {
-        Optional<CoreConferenceRanking> byId = coreConferenceRankingRepository.findById(id);
+        Optional<CoreConferenceRanking> byId = adminCatalogFacade.findCoreRankingById(id);
         if(byId.isPresent()) {
             CoreConferenceRanking ranking = byId.get();
             model.addAttribute("conf", ranking);

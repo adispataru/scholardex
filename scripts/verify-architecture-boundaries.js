@@ -31,16 +31,7 @@ const controllerRoots = [
 ];
 const reportingRoot = ['src/main/java/ro/uvt/pokedex/core/service/reporting'];
 
-const allowedControllerRepositoryImports = new Set([
-  'src/main/java/ro/uvt/pokedex/core/view/AdminActivityController.java',
-  'src/main/java/ro/uvt/pokedex/core/view/AdminGroupReportsController.java',
-  'src/main/java/ro/uvt/pokedex/core/view/AdminIndividualReportsController.java',
-  'src/main/java/ro/uvt/pokedex/core/view/AdminURAPController.java',
-  'src/main/java/ro/uvt/pokedex/core/view/AdminViewController.java',
-  'src/main/java/ro/uvt/pokedex/core/view/UserViewController.java',
-  'src/main/java/ro/uvt/pokedex/core/view/user/ActivityInstanceController.java',
-  'src/main/java/ro/uvt/pokedex/core/view/user/PublicationWizardController.java'
-]);
+const allowedControllerRepositoryImports = new Set([]);
 
 const controllerRepositoryMatches = runRg(
   '^import ro\\.uvt\\.pokedex\\.core\\.repository',

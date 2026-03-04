@@ -18,16 +18,11 @@ import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.model.tasks.ScopusCitationsUpdate;
 import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;
 import ro.uvt.pokedex.core.model.user.User;
-import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
-import ro.uvt.pokedex.core.repository.reporting.RankingRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusCitationRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.service.application.UserPublicationFacade;
 import ro.uvt.pokedex.core.service.application.UserReportFacade;
 import ro.uvt.pokedex.core.service.application.UserScopusTaskFacade;
 import ro.uvt.pokedex.core.service.application.RequestYearRangeSupport;
+import ro.uvt.pokedex.core.service.application.UserRankingFacade;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorApplyViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserIndividualReportViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorsViewModel;
@@ -53,15 +48,10 @@ public class UserViewController {
     private final UserService userService;
     private final ResearcherService researcherService;
     // H02 V01 debt: remaining Z1->Z4 dependencies for deferred endpoints.
-    private final ScopusAuthorRepository scopusAuthorRepository;
-    private final ScopusCitationRepository scopusCitationRepository;
-    private final ScopusPublicationRepository scopusPublicationRepository;
-    private final ScopusForumRepository scopusVenueRepository;
-    private final RankingRepository rankingRepository;
-    private final DomainRepository domainRepository;
     private final UserPublicationFacade userPublicationFacade;
     private final UserScopusTaskFacade userScopusTaskFacade;
     private final UserReportFacade userReportFacade;
+    private final UserRankingFacade userRankingFacade;
 
 
     @GetMapping()
@@ -284,20 +274,10 @@ public class UserViewController {
     }
     @GetMapping("/rankings/{id}")
     public String showRankingPage(Model model, @PathVariable  String id) {
-        Optional<Forum> byId = scopusVenueRepository.findById(id);
-        if(byId.isPresent()) {
-            Forum forum = byId.get();
-            if(forum.getAggregationType().equals("Journal")) {
-                String generatedId = WoSRanking.getGeneratedId(forum.getIssn(), forum.getEIssn());
-                if(generatedId != null){
-                    Optional<WoSRanking> journals = rankingRepository.findById(generatedId);
-                    if (journals.isPresent()) {
-                        WoSRanking ranking = journals.get();
-                        model.addAttribute("journal", ranking);
-                        return "admin/rankings-view";
-                    }
-                }
-            }
+        Optional<WoSRanking> ranking = userRankingFacade.resolveJournalRankingForForum(id);
+        if (ranking.isPresent()) {
+            model.addAttribute("journal", ranking.get());
+            return "admin/rankings-view";
         }
         return "user/ranking-not-found";
     }

@@ -4,7 +4,7 @@ Date: 2026-03-03
 
 ## R1 - V01 Baseline Slice (Controller Repository Dependency Reduction)
 
-Status: target achieved for baseline pair; residual debt remains.
+Status: completed (full closure across baseline pair and residual controllers).
 
 Delivered in this slice:
 - Added Z2 use-case facades under `src/main/java/ro/uvt/pokedex/core/service/application/**`.
@@ -51,7 +51,16 @@ Slice 4 closeout (2026-03-03):
   - Before V01: `23`
   - After slice 4: `6`
 - Net reduction: `73.9%`
-- R1/V01 is closed for the AdminGroup+User baseline pair; remaining V01 cleanup is outside this pair (for example `AdminViewController` and smaller controllers).
+- R1/V01 is closed for the AdminGroup+User baseline pair; remaining V01 cleanup moved to `B13`.
+
+B13 residual closure (2026-03-04):
+- Added residual facades and removed direct repository dependencies from all remaining controllers/views in scope:
+  - `UserRankingFacade`, `ActivityManagementFacade`, `GroupReportsManagementFacade`,
+  - `IndividualReportsManagementFacade`, `UrapRankingFacade`,
+  - `UserActivityInstanceFacade`, `PublicationWizardFacade`, `AdminCatalogFacade`.
+- `core/view/**` + `core/controller/**` now have zero `core.repository` imports.
+- `verify-architecture-boundaries` controller repository allowlist was reduced to empty set.
+- R1/V01 is fully closed for current H02 scope.
 
 ## R2 - V02 Baseline Slice (`Z1 -> Z3` Reporting Coupling Reduction)
 

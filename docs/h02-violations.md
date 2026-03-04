@@ -73,6 +73,20 @@ V01 implementation status:
 - Policy enforcement in code comments: remaining controller repository injections are marked as H02 V01 deferred debt.
 - V01 acceptance target for the tracked baseline pair remains achieved and improved (`<=13` combined fields, now `73.9%` reduction). `AdminGroupController` repository debt is closed; residual V01 debt remains in other deferred controllers.
 
+B13 residual closure status (2026-03-04):
+- All residual controller/view repository imports were migrated behind Z2 facades:
+  - `AdminViewController`, `UserViewController`,
+  - `AdminActivityController`, `AdminGroupReportsController`, `AdminIndividualReportsController`, `AdminURAPController`,
+  - `ActivityInstanceController`, `PublicationWizardController`.
+- Static evidence:
+  - `rg -n "^import ro\\.uvt\\.pokedex\\.core\\.repository" src/main/java/ro/uvt/pokedex/core/view src/main/java/ro/uvt/pokedex/core/controller`
+  - Result: no matches.
+- Controller/view repository import count:
+  - Before B13: `24`
+  - After B13: `0`
+- `verify-architecture-boundaries` controller repository allowlist is now empty.
+- V01 is fully resolved for current H02 scope.
+
 ## V02 - Controllers/Views directly depend on reporting rule services (`Z1 -> Z3`)
 
 Severity: `high` (partially remediated)  

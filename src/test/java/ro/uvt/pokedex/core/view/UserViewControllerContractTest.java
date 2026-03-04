@@ -15,16 +15,12 @@ import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.model.user.User;
+import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
-import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
-import ro.uvt.pokedex.core.repository.reporting.RankingRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusCitationRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.UserPublicationFacade;
+import ro.uvt.pokedex.core.service.application.UserRankingFacade;
 import ro.uvt.pokedex.core.service.application.UserReportFacade;
 import ro.uvt.pokedex.core.service.application.UserScopusTaskFacade;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorWorkbookExportViewModel;
@@ -58,23 +54,13 @@ class UserViewControllerContractTest {
     @MockBean
     private ResearcherService researcherService;
     @MockBean
-    private ScopusAuthorRepository scopusAuthorRepository;
-    @MockBean
-    private ScopusCitationRepository scopusCitationRepository;
-    @MockBean
-    private ScopusPublicationRepository scopusPublicationRepository;
-    @MockBean
-    private ScopusForumRepository scopusVenueRepository;
-    @MockBean
-    private RankingRepository rankingRepository;
-    @MockBean
-    private DomainRepository domainRepository;
-    @MockBean
     private UserPublicationFacade userPublicationFacade;
     @MockBean
     private UserScopusTaskFacade userScopusTaskFacade;
     @MockBean
     private UserReportFacade userReportFacade;
+    @MockBean
+    private UserRankingFacade userRankingFacade;
 
     @Test
     void indicatorExportRedirectsToLoginWhenAuthenticationMissing() throws Exception {
@@ -225,6 +211,19 @@ class UserViewControllerContractTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("user/publications-edit"))
                 .andExpect(model().attributeExists("publication"));
+    }
+
+    @Test
+    void rankingPageUsesFacadeAndRendersRankingViewWhenFound() throws Exception {
+        WoSRanking ranking = new WoSRanking();
+        ranking.setId("rank-1");
+        when(userRankingFacade.resolveJournalRankingForForum(eq("forum-1"))).thenReturn(Optional.of(ranking));
+
+        mockMvc.perform(get("/user/rankings/{id}", "forum-1")
+                        .with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin/rankings-view"))
+                .andExpect(model().attributeExists("journal"));
     }
 
     private User userPrincipal(String email) {
