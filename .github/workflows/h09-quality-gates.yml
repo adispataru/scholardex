@@ -1,0 +1,119 @@
+name: H09 Quality Gates
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: h09-quality-gates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guardrails:
+    name: guardrails
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+
+      - name: verify-architecture-boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .ci-logs
+          npm run verify-architecture-boundaries 2>&1 | tee .ci-logs/verify-architecture-boundaries.log
+
+      - name: verify-h06-persistence
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run verify-h06-persistence 2>&1 | tee .ci-logs/verify-h06-persistence.log
+
+      - name: verify-h07-guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run verify-h07-guardrails 2>&1 | tee .ci-logs/verify-h07-guardrails.log
+
+      - name: verify-h08-baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run verify-h08-baseline 2>&1 | tee .ci-logs/verify-h08-baseline.log
+
+      - name: Upload guardrail logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: guardrails-logs
+          path: .ci-logs/
+
+  java-smoke:
+    name: java-smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: compileJava
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          ./gradlew compileJava
+
+      - name: CoreApplicationTests
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew test --tests "*CoreApplicationTests"
+
+      - name: Upload test report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: java-smoke-test-report
+          path: build/reports/tests/test/
+
+  summary:
+    name: summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [guardrails, java-smoke]
+    steps:
+      - name: Publish rollout summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "## H09 Quality Gates Summary"
+            echo ""
+            echo "- guardrails: ${{ needs.guardrails.result }}"
+            echo "- java-smoke: ${{ needs.java-smoke.result }}"
+            echo ""
+            echo "Stage 1 rollout policy: workflow is active and visible; branch protection required checks are enabled in Stage 2 after stability criteria in docs/h09-ci-gates.md are met."
+          } >> "$GITHUB_STEP_SUMMARY"

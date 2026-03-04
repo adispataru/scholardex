@@ -184,13 +184,15 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   Status: completed on 2026-03-04.
   Note: implemented `X-Request-Id` adopt-and-propagate filter + request MDC (`requestId`, `route`, `userId`); added Scopus scheduler context helper and phase-aware MDC (`jobType`, `taskId`, `phase`) for batch/per-task logs; centralized exception handlers now include request correlation context; `verify-h08-observability-guardrails` extended with B08 checks.
 
-- [ ] `B09` H09 bootstrap: Promote local guardrails to required CI checks.
+- [x] `B09` H09 bootstrap: Promote local guardrails to required CI checks.
   Goal: operationalize H02/H06/H07/H08 enforcement in pipeline.
   Scope:
   - include `verify-architecture-boundaries`, `verify-h06-persistence`, `verify-h07-guardrails`, `verify-h08-baseline` as required CI checks;
   - document policy for tightening/allowlist shrink.
   Inputs: `docs/h08-remediation-plan.md` (H09 handoff), remediation guardrail docs.
   Done criteria: CI blocks merges on guardrail failure.
+  Status: completed on 2026-03-04.
+  Note: added GitHub Actions workflow `.github/workflows/h09-quality-gates.yml` with `guardrails` and `java-smoke` jobs plus failure artifact upload; documented Stage 1 soft rollout and Stage 2 required-check transition in `docs/h09-ci-gates.md`; included H08 baseline handoff confirmation.
 
 ### P2 (Planned / Structural)
 
