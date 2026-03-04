@@ -7,7 +7,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
-@Document(collection = "schodardex.tasks.scopusCitationsUpdate")
+@Document(collection = "scholardex.tasks.scopusCitationsUpdate")
 public class ScopusCitationsUpdate extends Task {
     @Id
     private String id;

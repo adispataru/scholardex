@@ -47,6 +47,19 @@ class ScopusPublicationRepositoryIntegrationTest extends MongoIntegrationTestBas
     }
 
     @Test
+    void findByTitleContainingIgnoreCaseOrderByCoverDateDescMatchesCaseInsensitively() {
+        repository.save(publication("p1", "Deep Learning Systems", "2023-01-01", List.of("a1")));
+        repository.save(publication("p2", "DEEP Space Exploration", "2024-01-01", List.of("a2")));
+        repository.save(publication("p3", "Compiler Design", "2025-01-01", List.of("a1")));
+
+        List<Publication> results = repository.findByTitleContainingIgnoreCaseOrderByCoverDateDesc("deep");
+
+        assertEquals(2, results.size());
+        assertEquals("p2", results.get(0).getId());
+        assertEquals("p1", results.get(1).getId());
+    }
+
+    @Test
     void findTopByAuthorsContainsOrderByCoverDateDescReturnsLatestCoverDate() {
         repository.save(publication("p1", "Old", "2021-02-01", List.of("a1")));
         repository.save(publication("p2", "New", "2024-05-01", List.of("a1")));

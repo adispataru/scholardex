@@ -16,24 +16,53 @@ public class ForumExportFacade {
 
     public ForumExportViewModel buildBookAndBookSeriesExport() {
         List<Forum> forums = forumRepository.findAllByAggregationTypeIn(List.of("Book", "Book Series"));
-        Set<String> uniqueIssns = new HashSet<>();
+        Set<String> dedupeKeys = new HashSet<>();
         List<ForumExportRow> rows = new ArrayList<>();
 
         for (Forum forum : forums) {
-            if (!uniqueIssns.contains(forum.getIssn())) {
-                if (!"null-".equals(forum.getIssn())) {
-                    uniqueIssns.add(forum.getIssn());
-                }
-                rows.add(new ForumExportRow(
-                        forum.getPublicationName(),
-                        forum.getIssn(),
-                        forum.getEIssn(),
-                        forum.getId(),
-                        forum.getAggregationType()
-                ));
+            String dedupeKey = dedupeKey(forum);
+            if (dedupeKeys.add(dedupeKey)) {
+                rows.add(mapRow(forum));
             }
         }
 
         return new ForumExportViewModel(rows);
+    }
+
+    private ForumExportRow mapRow(Forum forum) {
+        return new ForumExportRow(
+                forum.getPublicationName(),
+                forum.getIssn(),
+                forum.getEIssn(),
+                forum.getId(),
+                forum.getAggregationType()
+        );
+    }
+
+    private String dedupeKey(Forum forum) {
+        String issn = normalizeIssn(forum.getIssn());
+        if (!issn.isEmpty()) {
+            return "issn:" + issn;
+        }
+        String eIssn = normalizeIssn(forum.getEIssn());
+        if (!eIssn.isEmpty()) {
+            return "eissn:" + eIssn;
+        }
+        return "sourceId:" + forum.getId();
+    }
+
+    private String normalizeIssn(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String normalized = raw.trim();
+        if (normalized.isEmpty()) {
+            return "";
+        }
+        String alphaOnly = normalized.replace("-", "");
+        if ("null".equalsIgnoreCase(alphaOnly) || "n/a".equalsIgnoreCase(normalized)) {
+            return "";
+        }
+        return normalized.toLowerCase(Locale.ROOT);
     }
 }

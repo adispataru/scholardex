@@ -60,21 +60,21 @@ class CacheServiceTest {
     void getCachedRankingsByIssnUsesRepositoryIssnLookup() {
         WoSRanking ranking = ranking("r1", "1234-5678", null);
         when(rankingRepository.findAllByIssn("1234-5678")).thenReturn(List.of(ranking));
-        when(rankingRepository.findAllByeIssn("1234-5678")).thenReturn(List.of());
+        when(rankingRepository.findAllByEIssn("1234-5678")).thenReturn(List.of());
 
         List<WoSRanking> results = cacheService.getCachedRankingsByIssn("1234-5678");
 
         assertEquals(1, results.size());
         assertEquals("r1", results.getFirst().getId());
         verify(rankingRepository).findAllByIssn("1234-5678");
-        verify(rankingRepository).findAllByeIssn("1234-5678");
+        verify(rankingRepository).findAllByEIssn("1234-5678");
     }
 
     @Test
     void getCachedRankingsByIssnIncludesEIssnFallbackAndDeduplicatesById() {
         WoSRanking ranking = ranking("same", null, "8765-4321");
         when(rankingRepository.findAllByIssn("8765-4321")).thenReturn(List.of(ranking));
-        when(rankingRepository.findAllByeIssn("8765-4321")).thenReturn(List.of(ranking));
+        when(rankingRepository.findAllByEIssn("8765-4321")).thenReturn(List.of(ranking));
 
         List<WoSRanking> results = cacheService.getCachedRankingsByIssn("8765-4321");
 
@@ -86,7 +86,7 @@ class CacheServiceTest {
     void getCachedRankingsByIssnUsesNormalizedKeyForCacheAndRepositoryQueries() {
         WoSRanking ranking = ranking("r1", "abcd-1234", null);
         when(rankingRepository.findAllByIssn("abcd-1234")).thenReturn(List.of(ranking));
-        when(rankingRepository.findAllByeIssn("abcd-1234")).thenReturn(List.of());
+        when(rankingRepository.findAllByEIssn("abcd-1234")).thenReturn(List.of());
 
         List<WoSRanking> first = cacheService.getCachedRankingsByIssn("  ABCD-1234 ");
         List<WoSRanking> second = cacheService.getCachedRankingsByIssn("abcd-1234");
@@ -94,7 +94,7 @@ class CacheServiceTest {
         assertEquals(1, first.size());
         assertEquals(1, second.size());
         verify(rankingRepository, times(1)).findAllByIssn("abcd-1234");
-        verify(rankingRepository, times(1)).findAllByeIssn("abcd-1234");
+        verify(rankingRepository, times(1)).findAllByEIssn("abcd-1234");
     }
 
     @Test
@@ -102,14 +102,14 @@ class CacheServiceTest {
         WoSRanking ranking = ranking("ranking-id", "1111-2222", null);
         when(rankingRepository.findAll()).thenReturn(List.of(ranking));
         when(rankingRepository.findAllByIssn("ranking-id")).thenReturn(List.of());
-        when(rankingRepository.findAllByeIssn("ranking-id")).thenReturn(List.of());
+        when(rankingRepository.findAllByEIssn("ranking-id")).thenReturn(List.of());
 
         cacheService.cacheRankings();
         List<WoSRanking> results = cacheService.getCachedRankingsByIssn("ranking-id");
 
         assertEquals(0, results.size());
         verify(rankingRepository).findAllByIssn("ranking-id");
-        verify(rankingRepository).findAllByeIssn("ranking-id");
+        verify(rankingRepository).findAllByEIssn("ranking-id");
     }
 
     private static WoSRanking ranking(String id, String issn, String eIssn) {

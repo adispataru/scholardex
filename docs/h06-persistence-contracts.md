@@ -137,3 +137,12 @@ Define explicit persistence contracts for data identity, date/time shape, query 
     - service-level sorting for aggregated multi-query flows.
 - Duplicate amplification control for author-iterative publication aggregation is implemented:
   - user publication aggregation dedupes by publication ID before downstream metrics (h-index, citation totals, lookup maps).
+
+## 9. B10 API Naming Hygiene Notes (2026-03-04)
+
+- Canonical eISSN repository query API is now `findAllByEIssn`.
+- Canonical method is explicitly query-annotated (`@Query("{ 'eIssn': ?0 }")`) to avoid Spring Data derived-name ambiguity on `eIssn`.
+- Legacy typo method `findAllByeIssn` is retired (`B10A` complete).
+- New usage policy:
+  - service/test call sites must use `findAllByEIssn`;
+  - any `findAllByeIssn` usage is guardrail-blocked.

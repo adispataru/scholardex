@@ -57,8 +57,8 @@ Scope: Mongo-backed model/repository/service/write-read ownership baseline.
 | `URAPUniversityRanking` | `urap.rankings` | `URAPUniversityRankingRepository` |
 | `CNCSISPublisher` | `scholardex.cncsisList` | `CNCSISPublisherRepository` |
 | `ArtisticEvent` | `scholardex.artisticEvent` | `ArtisticEventRepository` |
-| `ScopusPublicationUpdate` | `schodardex.tasks.scopusPublicationUpdate` | `ScopusPublicationUpdateRepository` |
-| `ScopusCitationsUpdate` | `schodardex.tasks.scopusCitationsUpdate` | `ScopusCitationUpdateRepository` |
+| `ScopusPublicationUpdate` | `scholardex.tasks.scopusPublicationUpdate` | `ScopusPublicationUpdateRepository` |
+| `ScopusCitationsUpdate` | `scholardex.tasks.scopusCitationsUpdate` | `ScopusCitationUpdateRepository` |
 
 ## 3.2 Non-persisted/support models (no repository)
 
@@ -78,7 +78,7 @@ Scope: Mongo-backed model/repository/service/write-read ownership baseline.
 - `ScopusForumRepository`:
   - `findByIdIn`, `findByScopusIdIn`, `findAllByAggregationTypeIn`
 - `RankingRepository`:
-  - `findAllByIssn`, `findAllByeIssn`, `findAllByWebOfScienceCategoryIndex`
+  - `findAllByIssn`, `findAllByEIssn`, `findAllByWebOfScienceCategoryIndex`
 - Task repositories:
   - ordered task dequeue by `findByStatusOrderByInitiatedDate(...)`
 
@@ -125,7 +125,7 @@ These methods are currently the highest-impact persistence contract surface for 
 
 - Collection naming consistency drift candidates exist:
   - mixed prefixes (`scopus.*`, `scholardex.*`, plain names like `domains`, `institutions`)
-  - task collections use `schodardex.*` (typo-like prefix) while user/group collections use `scholardex.*`
+  - task collections were migrated from `schodardex.*` to `scholardex.*` under H06-R4.
 - Write ownership is not yet uniformly service/facade-owned:
   - several controllers still write directly to repositories (known baseline debt for H06 planning).
 - No explicit migration/versioning mechanism is present:

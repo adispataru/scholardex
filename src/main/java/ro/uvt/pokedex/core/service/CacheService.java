@@ -154,8 +154,8 @@ public class CacheService {
 
         return rankingCacheByIssn.computeIfAbsent(normalizedIssn, key -> {
             List<WoSRanking> byIssn = rankingRepository.findAllByIssn(key);
-            List<WoSRanking> byeIssn = rankingRepository.findAllByeIssn(key);
-            return Stream.concat(byIssn.stream(), byeIssn.stream())
+            List<WoSRanking> byEIssn = rankingRepository.findAllByEIssn(key);
+            return Stream.concat(byIssn.stream(), byEIssn.stream())
                     .collect(Collectors.toMap(WoSRanking::getId, ranking -> ranking, (left, right) -> left, LinkedHashMap::new))
                     .values()
                     .stream()

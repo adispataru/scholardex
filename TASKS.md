@@ -196,7 +196,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
 
 ### P2 (Planned / Structural)
 
-- [ ] `B10` H06-R4: Persistence consistency cleanup and namespace hygiene.
+- [x] `B10` H06-R4: Persistence consistency cleanup and namespace hygiene.
   Goal: close `Q-H06-05`, `Q-H06-08`, `Q-H06-09`, `D-H06-03`.
   Scope:
   - text-search normalization policy rollout;
@@ -205,6 +205,18 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   - plan and execute collection naming migration (`schodardex` -> `scholardex`).
   Inputs: `docs/h06-remediation-plan.md` (`R4`), `docs/h06-schema-drift-inventory.md`.
   Done criteria: API naming and data-shape drift items have closed implementation path.
+  Status: completed on 2026-03-04.
+  Note: delivered case-insensitive admin title search normalization, forum export dedupe normalization (`issn -> eIssn -> sourceId`), and single-step task namespace cutover to `scholardex.tasks.*` with startup-gated migration runner (`off|report|apply`) and integration coverage.
+
+- [x] `B10A` H06-R4 follow-up: remove `findAllByeIssn` compatibility alias.
+  Goal: complete typo-method retirement after stabilization window.
+  Scope:
+  - remove deprecated `findAllByeIssn` from `RankingRepository`;
+  - tighten `verify-h06-persistence` to zero allowlist for typo method.
+  Inputs: `B10` compatibility bridge completion evidence.
+  Done criteria: no `findAllByeIssn` references remain in codebase.
+  Status: completed on 2026-03-04.
+  Note: deprecated alias removed from `RankingRepository`; compatibility test scaffolding removed; `verify-h06-persistence` now enforces zero-allowlist for typo method usage.
 
 - [ ] `B11` H07-R4: CSRF, mutating-GET migration, and upload hardening.
   Goal: close `C3`, `C4`, `V-H07-04`.

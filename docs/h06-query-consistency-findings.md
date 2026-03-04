@@ -49,7 +49,7 @@ Scope: repository query semantics, callsite assumptions, and consistency risks i
 
 - `Q-H06-01`: addressed in `H06-S05`.
   - `CacheService.cacheRankings()` now keys ISSN cache using normalized `issn`/`eIssn` values instead of ranking IDs.
-  - `getCachedRankingsByIssn` now normalizes input and merges repository fallback from both `findAllByIssn` and `findAllByeIssn`, deduped by ranking ID.
+  - `getCachedRankingsByIssn` now normalizes input and merges repository fallback from both `findAllByIssn` and `findAllByEIssn`, deduped by ranking ID.
 - `Q-H06-03`: partially addressed in `H06-S05`.
   - CNFIS year-filter paths now use shared safe parsing (`PersistenceYearSupport`) in:
     - `UserReportFacade#buildUserCnfisWorkbookExport`
@@ -79,3 +79,7 @@ Scope: repository query semantics, callsite assumptions, and consistency risks i
     - `GroupReportFacade` (publication list + year buckets)
     - `GroupExportFacade` (CSV publication rows)
   - Author-based publication aggregation in `UserPublicationFacade` now dedupes by publication ID before h-index/citation/map assembly.
+- `Q-H06-05`, `Q-H06-08`, `Q-H06-09`: resolved in `B10/B10A` (2026-03-04).
+  - Admin publication title search now uses case-insensitive contains semantics via ordered repository path.
+  - Forum export dedupe no longer relies on sentinel-string checks; it uses normalized ISSN/eISSN with source-id fallback.
+  - Typo’d ranking repository API (`findAllByeIssn`) was retired; canonical API is `findAllByEIssn`.

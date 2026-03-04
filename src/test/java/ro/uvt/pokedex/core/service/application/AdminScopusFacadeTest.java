@@ -40,7 +40,7 @@ class AdminScopusFacadeTest {
     void buildPublicationSearchViewReturnsPublicationsAndAuthorMap() {
         Publication publication = publication("p1", "f1", List.of("a1"), "2024-01-01", "Paper");
         Author author = author("a1", "Author One");
-        when(scopusPublicationRepository.findByTitleContainsOrderByCoverDateDesc("paper")).thenReturn(List.of(publication));
+        when(scopusPublicationRepository.findByTitleContainingIgnoreCaseOrderByCoverDateDesc("paper")).thenReturn(List.of(publication));
         when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author));
 
         var vm = facade.buildPublicationSearchView("paper");
@@ -55,7 +55,7 @@ class AdminScopusFacadeTest {
         Publication p1 = publication("p1", "f1", List.of("a1"), "2024-01-01", "Beta");
         Publication p2 = publication("p2", "f1", List.of("a1"), "2024-01-01", "Alpha");
         Publication p3 = publication("p3", "f1", List.of("a1"), "bad-date", "Zeta");
-        when(scopusPublicationRepository.findByTitleContainsOrderByCoverDateDesc("paper")).thenReturn(List.of(p1, p3, p2));
+        when(scopusPublicationRepository.findByTitleContainingIgnoreCaseOrderByCoverDateDesc("paper")).thenReturn(List.of(p1, p3, p2));
         when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author("a1", "Author One")));
 
         var vm = facade.buildPublicationSearchView("paper");

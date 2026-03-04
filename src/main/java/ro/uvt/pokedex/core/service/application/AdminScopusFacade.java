@@ -25,7 +25,7 @@ public class AdminScopusFacade {
     private final ScopusForumRepository scopusForumRepository;
 
     public AdminScopusPublicationSearchViewModel buildPublicationSearchView(String paperTitle) {
-        List<Publication> publications = new ArrayList<>(scopusPublicationRepository.findByTitleContainsOrderByCoverDateDesc(paperTitle));
+        List<Publication> publications = new ArrayList<>(scopusPublicationRepository.findByTitleContainingIgnoreCaseOrderByCoverDateDesc(paperTitle));
         publications.sort(PublicationOrderingSupport.publicationComparator());
         Set<String> authorKeys = new HashSet<>();
         publications.forEach(publication -> authorKeys.addAll(publication.getAuthors()));

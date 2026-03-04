@@ -96,6 +96,13 @@ Status update (2026-03-04):
 Exit criteria:
 - query API and naming drift items have concrete closure path and implementation evidence.
 
+Status update (2026-03-04):
+- `R4` completed via `B10 + B10A`:
+  - admin publication title search normalized to case-insensitive contains (`ContainingIgnoreCase`);
+  - forum export dedupe normalized (ISSN -> eISSN -> sourceId fallback), sentinel-string reliance removed;
+  - task collection namespace cut over from `schodardex.tasks.*` to `scholardex.tasks.*` with startup-gated report/apply migration support;
+  - typo’d repository method `findAllByeIssn` retired; canonical query API is `findAllByEIssn` with explicit `@Query` mapping.
+
 ## 4. Guardrails (S06)
 
 ### 4.1 Automated lightweight verification
@@ -105,7 +112,8 @@ Exit criteria:
   - CNFIS year-filter paths must keep `PersistenceYearSupport.extractYear(...)`.
   - CNFIS year-filter methods must not regress to `substring(0, 4)` parsing.
   - `CacheService` ISSN cache must not be polluted by ranking id keys.
-  - `getCachedRankingsByIssn` must keep dual fallback (`findAllByIssn` + `findAllByeIssn`) in this transitional phase.
+  - `getCachedRankingsByIssn` must keep dual fallback (`findAllByIssn` + `findAllByEIssn`) with dedupe semantics.
+  - `findAllByeIssn` is retired: any usage is blocked.
 
 ### 4.2 Review checklist addition
 

@@ -17,6 +17,7 @@ public interface ScopusPublicationRepository extends MongoRepository<Publication
     List<Publication> findAllByAuthorsIn(List<String> author);
     List<Publication> findByTitleContains(String title);
     List<Publication> findByTitleContainsOrderByCoverDateDesc(String title);
+    List<Publication> findByTitleContainingIgnoreCaseOrderByCoverDateDesc(String title);
 
     List<Publication> findAllByAuthorsInAndTitleContains(List<String> authorIds, String paperTitle);
 

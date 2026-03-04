@@ -38,6 +38,40 @@ class ForumExportFacadeTest {
     }
 
     @Test
+    void buildBookAndBookSeriesExportDedupesByEIssnWhenIssnMissing() {
+        Forum f1 = forum("A", "", "id-a", "Book");
+        f1.setEIssn("1111-1111");
+        Forum f2 = forum("B", "  ", "id-b", "Book Series");
+        f2.setEIssn("1111-1111");
+        Forum f3 = forum("C", null, "id-c", "Book");
+        f3.setEIssn("2222-2222");
+        when(forumRepository.findAllByAggregationTypeIn(List.of("Book", "Book Series")))
+                .thenReturn(List.of(f1, f2, f3));
+
+        var result = facade.buildBookAndBookSeriesExport();
+
+        assertEquals(2, result.rows().size());
+        assertEquals("A", result.rows().get(0).publicationName());
+        assertEquals("C", result.rows().get(1).publicationName());
+    }
+
+    @Test
+    void buildBookAndBookSeriesExportFallsBackToSourceIdWhenIssnAndEIssnMissing() {
+        Forum f1 = forum("A", "null-", "id-a", "Book");
+        f1.setEIssn("N/A");
+        Forum f2 = forum("B", "null", "id-b", "Book Series");
+        f2.setEIssn("");
+        when(forumRepository.findAllByAggregationTypeIn(List.of("Book", "Book Series")))
+                .thenReturn(List.of(f1, f2));
+
+        var result = facade.buildBookAndBookSeriesExport();
+
+        assertEquals(2, result.rows().size());
+        assertEquals("A", result.rows().get(0).publicationName());
+        assertEquals("B", result.rows().get(1).publicationName());
+    }
+
+    @Test
     void buildBookAndBookSeriesExportIncludesBothAggregationTypes() {
         Forum f1 = forum("A", "1111-1111", "e1", "Book");
         Forum f2 = forum("B", "2222-2222", "e2", "Book Series");
@@ -57,7 +91,7 @@ class ForumExportFacadeTest {
         forum.setIssn(issn);
         forum.setId(id);
         forum.setAggregationType(aggType);
-        forum.setEIssn("e");
+        forum.setEIssn("e-" + id);
         return forum;
     }
 }

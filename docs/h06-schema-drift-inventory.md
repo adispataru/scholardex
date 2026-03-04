@@ -38,3 +38,9 @@ Scope: model field semantics, collection naming, shape assumptions, and runtime/
 - Should task collections be migrated/aliased to a canonical prefix, and if yes, how to preserve running queue compatibility?
 - Which date fields remain free-form strings vs normalized date types (or validated ISO string contracts)?
 - Should citation uniqueness be guaranteed by Mongo compound unique index in addition to application checks?
+
+## 5. Status Updates
+
+- `D-H06-03` resolved in `B10` (2026-03-04):
+  - task collections were cut over to `scholardex.tasks.*`;
+  - startup-gated migration tooling was added for `schodardex -> scholardex` namespace copy/report/apply flows.

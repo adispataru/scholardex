@@ -1,4 +1,5 @@
 const fs = require('fs');
+const { execFileSync } = require('child_process');
 
 const errors = [];
 
@@ -49,6 +50,14 @@ const userPublicationFacadePath =
   'src/main/java/ro/uvt/pokedex/core/service/application/UserPublicationFacade.java';
 const adminScopusFacadePath =
   'src/main/java/ro/uvt/pokedex/core/service/application/AdminScopusFacade.java';
+const rankingRepositoryPath =
+  'src/main/java/ro/uvt/pokedex/core/repository/reporting/RankingRepository.java';
+const forumExportFacadePath =
+  'src/main/java/ro/uvt/pokedex/core/service/application/ForumExportFacade.java';
+const scopusPublicationUpdateModelPath =
+  'src/main/java/ro/uvt/pokedex/core/model/tasks/ScopusPublicationUpdate.java';
+const scopusCitationsUpdateModelPath =
+  'src/main/java/ro/uvt/pokedex/core/model/tasks/ScopusCitationsUpdate.java';
 const yearParsingGuardFiles = [
   'src/main/java/ro/uvt/pokedex/core/service/reporting/AbstractForumScoringService.java',
   'src/main/java/ro/uvt/pokedex/core/service/reporting/AbstractWoSForumScoringService.java',
@@ -66,6 +75,10 @@ const groupCnfisContent = readFile(groupCnfisFacadePath);
 const cacheServiceContent = readFile(cacheServicePath);
 const userPublicationFacadeContent = readFile(userPublicationFacadePath);
 const adminScopusFacadeContent = readFile(adminScopusFacadePath);
+const rankingRepositoryContent = readFile(rankingRepositoryPath);
+const forumExportFacadeContent = readFile(forumExportFacadePath);
+const scopusPublicationUpdateModelContent = readFile(scopusPublicationUpdateModelPath);
+const scopusCitationsUpdateModelContent = readFile(scopusCitationsUpdateModelPath);
 const rawYearPattern = /(substring\(\s*0\s*,\s*4\s*\))|(split\(\s*"-"\s*\)\s*\[\s*0\s*\])/;
 
 const userCnfisMethod = extractMethodSlice(
@@ -130,8 +143,13 @@ assertContains(
 );
 assertContains(
   cacheServiceContent,
-  'rankingRepository.findAllByeIssn(key)',
-  `${cacheServicePath}: getCachedRankingsByIssn must query findAllByeIssn on cache miss.`
+  'rankingRepository.findAllByEIssn(key)',
+  `${cacheServicePath}: getCachedRankingsByIssn must query findAllByEIssn on cache miss.`
+);
+assertContains(
+  rankingRepositoryContent,
+  '@Query("{ \'eIssn\': ?0 }")',
+  `${rankingRepositoryPath}: findAllByEIssn must be query-annotated to avoid Spring derived-property parsing ambiguity.`
 );
 
 assertContains(
@@ -151,8 +169,38 @@ assertNotContains(
 );
 assertContains(
   adminScopusFacadeContent,
+  'findByTitleContainingIgnoreCaseOrderByCoverDateDesc',
+  `${adminScopusFacadePath}: publication search must use case-insensitive ordered repository method.`
+);
+assertNotContains(
+  adminScopusFacadeContent,
   'findByTitleContainsOrderByCoverDateDesc',
-  `${adminScopusFacadePath}: publication search must use ordered repository method.`
+  `${adminScopusFacadePath}: publication search must not use case-sensitive title contains query path.`
+);
+assertNotContains(
+  forumExportFacadeContent,
+  '"null-"',
+  `${forumExportFacadePath}: export dedupe must not rely on sentinel literal checks.`
+);
+assertContains(
+  scopusPublicationUpdateModelContent,
+  '@Document(collection = "scholardex.tasks.scopusPublicationUpdate")',
+  `${scopusPublicationUpdateModelPath}: task collection namespace must be scholardex.tasks.*`
+);
+assertContains(
+  scopusCitationsUpdateModelContent,
+  '@Document(collection = "scholardex.tasks.scopusCitationsUpdate")',
+  `${scopusCitationsUpdateModelPath}: task collection namespace must be scholardex.tasks.*`
+);
+assertNotContains(
+  scopusPublicationUpdateModelContent,
+  'schodardex.tasks.',
+  `${scopusPublicationUpdateModelPath}: schodardex namespace must be retired.`
+);
+assertNotContains(
+  scopusCitationsUpdateModelContent,
+  'schodardex.tasks.',
+  `${scopusCitationsUpdateModelPath}: schodardex namespace must be retired.`
 );
 
 for (const filePath of yearParsingGuardFiles) {
@@ -162,6 +210,32 @@ for (const filePath of yearParsingGuardFiles) {
     rawYearPattern,
     `${filePath}: raw year parsing via substring/split is forbidden; use PersistenceYearSupport.`
   );
+}
+
+function runRg(pattern, paths) {
+  try {
+    const output = execFileSync(
+      'rg',
+      ['-n', pattern, ...paths],
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+    );
+    return output
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+  } catch (error) {
+    if (typeof error.status === 'number' && error.status === 1) {
+      return [];
+    }
+    throw error;
+  }
+}
+
+const typoMatches = runRg('findAllByeIssn\\(', ['src/main/java', 'src/test/java']);
+if (typoMatches.length > 0) {
+  typoMatches.forEach((line) => {
+    errors.push(`${line}: Use findAllByEIssn instead; findAllByeIssn is retired.`);
+  });
 }
 
 if (errors.length > 0) {
