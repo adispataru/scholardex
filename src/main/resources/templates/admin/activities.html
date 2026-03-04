@@ -75,8 +75,12 @@
                   </td>
                   <td>
                     <a th:href="@{/admin/activities/edit/{id}(id=${act.id})}" class="btn btn-primary btn-sm">Edit</a>
-                    <a th:href="@{/admin/activities/duplicate/{id}(id=${act.id})}" class="btn btn-warning btn-sm">Duplicate</a>
-                    <a th:href="@{/admin/activities/delete/{id}(id=${act.id})}" class="btn btn-danger btn-sm">Delete</a>
+                    <form th:action="@{/admin/activities/duplicate/{id}(id=${act.id})}" method="post" style="display:inline;">
+                        <button type="submit" class="btn btn-warning btn-sm">Duplicate</button>
+                    </form>
+                    <form th:action="@{/admin/activities/delete/{id}(id=${act.id})}" method="post" style="display:inline;">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                    </form>
                   </td>
                 </tr>
                 </tbody>

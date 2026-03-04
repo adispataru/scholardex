@@ -6,6 +6,8 @@
 <body>
 <th:block th:fragment="core-styles">
     <link href="/assets/app.css" rel="stylesheet" type="text/css">
+    <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}">
 </th:block>
 
 <th:block th:fragment="core-scripts">

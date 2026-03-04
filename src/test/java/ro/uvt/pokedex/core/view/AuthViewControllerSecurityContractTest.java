@@ -16,6 +16,7 @@ import ro.uvt.pokedex.core.service.CustomUserDetailsService;
 import java.util.Set;
 
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -59,6 +60,7 @@ class AuthViewControllerSecurityContractTest {
                 .thenReturn(validPlatformAdmin("admin@uvt.ro", "secret"));
 
         mockMvc.perform(post("/login")
+                        .with(csrf())
                         .param("username", "admin@uvt.ro")
                         .param("password", "secret"))
                 .andExpect(status().is3xxRedirection())
@@ -71,6 +73,7 @@ class AuthViewControllerSecurityContractTest {
                 .thenReturn(validPlatformAdmin("admin@uvt.ro", "secret"));
 
         mockMvc.perform(post("/login")
+                        .with(csrf())
                         .param("username", "admin@uvt.ro")
                         .param("password", "wrong"))
                 .andExpect(status().is3xxRedirection())
@@ -79,7 +82,7 @@ class AuthViewControllerSecurityContractTest {
 
     @Test
     void logoutRedirectsToLoginLogout() throws Exception {
-        mockMvc.perform(post("/logout"))
+        mockMvc.perform(post("/logout").with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login?logout"));
     }

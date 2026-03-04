@@ -38,7 +38,7 @@ public class WebSecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf(AbstractHttpConfigurer::disable)
+        http.csrf(csrf -> csrf.ignoringRequestMatchers(new AntPathRequestMatcher("/api/**")))
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(requestCorrelationFilter(), UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(ahr -> {

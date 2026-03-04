@@ -66,8 +66,10 @@
                                     <td>
                                         <a th:href="@{'/admin/activities/activityIndicators/edit/' + ${indicator.id}}"
                                            class="btn btn-primary btn-sm">Edit</a>
-                                        <a th:href="@{'/admin/activities/activityIndicators/delete/' + ${indicator.id}}"
-                                           class="btn btn-danger btn-sm">Delete</a>
+                                        <form th:action="@{/admin/activities/activityIndicators/delete/{id}(id=${indicator.id})}"
+                                              method="post" style="display:inline;">
+                                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                        </form>
                                     </td>
                                 </tr>
                                 </tbody>

@@ -10,6 +10,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.beans.factory.annotation.Value;
 import ro.uvt.pokedex.core.model.reporting.Group;
 import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
@@ -33,8 +34,11 @@ import ro.uvt.pokedex.core.service.importing.GroupService;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Arrays;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -52,6 +56,10 @@ public class AdminGroupController {
     private final GroupExportFacade groupExportFacade;
     private final GroupCnfisExportFacade groupCnfisExportFacade;
     private final GroupService groupService;
+    @Value("${h07.groups.import.max-bytes:2097152}")
+    private long maxImportBytes;
+    @Value("${h07.groups.import.allowed-content-types:text/csv,application/vnd.ms-excel}")
+    private String allowedContentTypes;
 
     @GetMapping
     public String listGroups(Model model) {
@@ -205,7 +213,7 @@ public class AdminGroupController {
         return "redirect:/admin/groups";
     }
 
-    @GetMapping("/delete/{id}")
+    @PostMapping("/delete/{id}")
     public String deleteGroup(@PathVariable String id, RedirectAttributes redirectAttributes) {
         groupManagementFacade.deleteGroup(id);
         redirectAttributes.addFlashAttribute("successMessage", "Group deleted successfully.");
@@ -218,15 +226,44 @@ public class AdminGroupController {
             redirectAttributes.addFlashAttribute("errorMessage", "Please select a CSV file to upload.");
             return "redirect:/admin/groups";
         }
+        if (file.getSize() > maxImportBytes) {
+            redirectAttributes.addFlashAttribute("errorMessage", "CSV file is too large.");
+            return "redirect:/admin/groups";
+        }
+        if (!hasCsvExtension(file.getOriginalFilename())) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Only .csv files are allowed.");
+            return "redirect:/admin/groups";
+        }
+        if (!isAllowedContentType(file.getContentType())) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Unsupported CSV content type.");
+            return "redirect:/admin/groups";
+        }
 
         try {
             groupService.importGroupsFromCsv(file);
             redirectAttributes.addFlashAttribute("successMessage", "Groups imported successfully.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "An error occurred while importing the groups: " + e.getMessage());
             log.error("Group import failed: fileName={}, size={}", file.getOriginalFilename(), file.getSize(), e);
         }
 
         return "redirect:/admin/groups";
+    }
+
+    private boolean hasCsvExtension(String filename) {
+        return filename != null && filename.toLowerCase(Locale.ROOT).endsWith(".csv");
+    }
+
+    private boolean isAllowedContentType(String contentType) {
+        if (contentType == null || contentType.isBlank()) {
+            return false;
+        }
+        Set<String> allowed = Arrays.stream(allowedContentTypes.split(","))
+                .map(String::trim)
+                .map(s -> s.toLowerCase(Locale.ROOT))
+                .collect(Collectors.toSet());
+        return allowed.contains(contentType.toLowerCase(Locale.ROOT));
     }
 }

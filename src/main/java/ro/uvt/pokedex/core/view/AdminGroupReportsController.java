@@ -69,7 +69,7 @@ public class AdminGroupReportsController {
         return "redirect:/admin/groupReports";
     }
 
-    @GetMapping("/delete/{id}")
+    @PostMapping("/delete/{id}")
     public String deleteGroupReport(@PathVariable String id, RedirectAttributes redirectAttributes) {
         groupReportRepository.deleteById(id);
         redirectAttributes.addFlashAttribute("successMessage", "Group Report deleted successfully.");

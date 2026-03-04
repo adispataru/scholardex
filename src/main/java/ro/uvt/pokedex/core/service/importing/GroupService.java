@@ -18,10 +18,14 @@ import ro.uvt.pokedex.core.service.UserService;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.regex.Pattern;
 
 @Service
 public class GroupService {
+    private static final Pattern SIMPLE_EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+
     @Autowired
     private GroupRepository groupRepository;
     @Autowired
@@ -34,76 +38,71 @@ public class GroupService {
     private UserService userService;
     @Value("${user.default.password}")
     private String defaultPassword;
+    @Value("${h07.groups.import.required-column-count:5}")
+    private int requiredColumnCount;
 
     public void importGroupsFromCsv(MultipartFile file) throws Exception {
         List<Institution> uvt = institutionRepository.findByNameIgnoreCase("UVT");
         if(uvt.isEmpty())
             return;
         Map<String, Group> groups = new HashMap<>();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
-            reader.lines()
-                    .skip(1) // Skip header row
-                    .forEach(line -> {
-                        String[] fields = line.split(",");
-                        String groupName = fields[0];
-                        User user = new User();
-                        user.setEmail(fields[1]);
-                        user.setPassword(passwordEncoder.encode(defaultPassword));
+        List<CsvRow> rows = parseAndValidateCsv(file);
+        for (CsvRow row : rows) {
+            String groupName = row.groupName();
+            User user = new User();
+            user.setEmail(row.email());
+            user.setPassword(passwordEncoder.encode(defaultPassword));
 
+            Group group = groups.get(groupName);
+            if(group == null) {
+                group = new Group();
+                group.setName(groupName);
+                group.setDescription("Imported from CSV");
+                group.setInstitution(uvt.getFirst());
+            }
 
-                        Group group = groups.get(groupName);
-                        if(group == null) {
-                            group = new Group();
-                            group.setName(groupName);
-                            group.setDescription("Imported from CSV");
-                            group.setInstitution(uvt.getFirst());
-                        }
-
-                        Researcher researcher = null;
-                        Optional<User> userByEmail = userService.getUserByEmail(user.getEmail());
-                        if(userByEmail.isEmpty()){
-                            researcher = new Researcher();
-                            populateResearcher(fields, researcher);
-                            Researcher savedResearcher = researcherService.saveResearcher(researcher);
-                            user.setResearcherId(savedResearcher.getId());
-                            user.getRoles().add(UserRole.RESEARCHER);
-                            userService.createUser(user);
-                        }else{
-                            User savedUser = userByEmail.get();
-                            boolean found = false;
-                            if(savedUser.getResearcherId() != null){
-                                Optional<Researcher> researcherById = researcherService.findResearcherById(savedUser.getResearcherId());
-                                if (researcherById.isPresent()) {
-                                    researcher = researcherById.get();
-                                    populateResearcher(fields, researcher);
-                                    researcherService.saveResearcher(researcher);
-                                    found = true;
-                                }
-                            }
-                            if(!found){
-                                researcher = new Researcher();
-                                populateResearcher(fields, researcher);
-                                Researcher savedResearcher = researcherService.saveResearcher(researcher);
-                                savedUser.setResearcherId(savedResearcher.getId());
-                            }
-                            user.getRoles().add(UserRole.RESEARCHER);
-                            userService.updateUser(user.getEmail(), savedUser);
-                        }
-                        group.getResearchers().add(researcher);
-                        groups.put(groupName, group);
-                    });
-            groupRepository.saveAll(groups.values());
+            Researcher researcher = null;
+            Optional<User> userByEmail = userService.getUserByEmail(user.getEmail());
+            if(userByEmail.isEmpty()){
+                researcher = new Researcher();
+                populateResearcher(row, researcher);
+                Researcher savedResearcher = researcherService.saveResearcher(researcher);
+                user.setResearcherId(savedResearcher.getId());
+                user.getRoles().add(UserRole.RESEARCHER);
+                userService.createUser(user);
+            }else{
+                User savedUser = userByEmail.get();
+                boolean found = false;
+                if(savedUser.getResearcherId() != null){
+                    Optional<Researcher> researcherById = researcherService.findResearcherById(savedUser.getResearcherId());
+                    if (researcherById.isPresent()) {
+                        researcher = researcherById.get();
+                        populateResearcher(row, researcher);
+                        researcherService.saveResearcher(researcher);
+                        found = true;
+                    }
+                }
+                if(!found){
+                    researcher = new Researcher();
+                    populateResearcher(row, researcher);
+                    Researcher savedResearcher = researcherService.saveResearcher(researcher);
+                    savedUser.setResearcherId(savedResearcher.getId());
+                }
+                user.getRoles().add(UserRole.RESEARCHER);
+                userService.updateUser(user.getEmail(), savedUser);
+            }
+            group.getResearchers().add(researcher);
+            groups.put(groupName, group);
         }
+        groupRepository.saveAll(groups.values());
     }
 
-    private void populateResearcher(String[] fields, Researcher researcher) {
-        researcher.setFirstName(fields[3]);
-        researcher.setLastName(fields[2]);
-        researcher.setPosition(parsePosition(fields[4]));
-        String[] scopusIds = new String[0];
-        if(fields.length > 5){
-            scopusIds = fields[5].split(";");
-            for(String scopusId : scopusIds){
+    private void populateResearcher(CsvRow row, Researcher researcher) {
+        researcher.setFirstName(row.firstName());
+        researcher.setLastName(row.lastName());
+        researcher.setPosition(parsePosition(row.position()));
+        if(row.scopusIds().length > 0){
+            for(String scopusId : row.scopusIds()){
                 researcher.getScopusId().add(scopusId);
             }
         }
@@ -128,6 +127,72 @@ public class GroupService {
             return Position.CS_III;
         return Position.OTHER;
     }
+
+    private List<CsvRow> parseAndValidateCsv(MultipartFile file) throws Exception {
+        List<CsvRow> rows = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
+            String header = reader.readLine();
+            if (header == null || header.isBlank()) {
+                throw new IllegalArgumentException("CSV header is missing.");
+            }
+
+            String[] headerFields = header.split(",", -1);
+            if (headerFields.length < requiredColumnCount) {
+                throw new IllegalArgumentException("CSV schema is invalid. Expected at least " + requiredColumnCount + " columns.");
+            }
+
+            String line;
+            int rowNumber = 1;
+            while ((line = reader.readLine()) != null) {
+                rowNumber++;
+                if (line.isBlank()) {
+                    continue;
+                }
+
+                String[] fields = line.split(",", -1);
+                if (fields.length < requiredColumnCount) {
+                    errors.add("Row " + rowNumber + ": expected at least " + requiredColumnCount + " columns.");
+                    continue;
+                }
+
+                String groupName = fields[0].trim();
+                String email = fields[1].trim();
+                String lastName = fields[2].trim();
+                String firstName = fields[3].trim();
+                String position = fields[4].trim();
+                String[] scopusIds = fields.length > 5
+                        ? Arrays.stream(fields[5].split(";"))
+                        .map(String::trim)
+                        .filter(v -> !v.isBlank())
+                        .toArray(String[]::new)
+                        : new String[0];
+
+                if (groupName.isBlank() || email.isBlank() || lastName.isBlank() || firstName.isBlank() || position.isBlank()) {
+                    errors.add("Row " + rowNumber + ": required fields are missing.");
+                    continue;
+                }
+                if (!SIMPLE_EMAIL_PATTERN.matcher(email).matches()) {
+                    errors.add("Row " + rowNumber + ": invalid email format.");
+                    continue;
+                }
+
+                rows.add(new CsvRow(groupName, email, lastName, firstName, position, scopusIds));
+            }
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("CSV parsing failed. Ensure file is valid UTF-8 CSV.");
+        }
+
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException("CSV validation failed: " + String.join(" ", errors));
+        }
+        return rows;
+    }
+
+    private record CsvRow(String groupName, String email, String lastName, String firstName, String position, String[] scopusIds) {}
 
 
 }

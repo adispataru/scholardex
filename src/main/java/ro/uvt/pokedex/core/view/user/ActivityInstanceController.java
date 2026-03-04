@@ -96,7 +96,7 @@ public class ActivityInstanceController {
         }
     }
 
-    @GetMapping("/delete/{id}")
+    @PostMapping("/delete/{id}")
     public String deleteActivityInstance(@PathVariable String id) {
         activityInstanceRepository.deleteById(id);
         return "redirect:/user/activityInstances";

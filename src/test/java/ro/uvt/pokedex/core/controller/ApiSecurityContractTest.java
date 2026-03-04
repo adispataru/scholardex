@@ -10,6 +10,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.WebSecurityConfig;
+import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.service.CustomUserDetailsService;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.ForumExportFacade;
@@ -22,6 +23,7 @@ import java.util.List;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -86,5 +88,21 @@ class ApiSecurityContractTest {
                                 .authorities(new SimpleGrantedAuthority("PLATFORM_ADMIN"))))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", "attachment; filename=forums.xlsx"));
+    }
+
+    @Test
+    void apiPostWithoutCsrfStillWorksForAdminWhenPayloadIsValid() throws Exception {
+        User adminUser = new User();
+        adminUser.setEmail("new@uvt.ro");
+        when(userService.createUser("new@uvt.ro", "secret", List.of("RESEARCHER"))).thenReturn(adminUser);
+
+        mockMvc.perform(post("/api/admin/users")
+                        .with(user("admin@uvt.ro")
+                                .authorities(new SimpleGrantedAuthority("PLATFORM_ADMIN")))
+                        .contentType("application/json")
+                        .content("""
+                                {"email":"new@uvt.ro","password":"secret","roles":["RESEARCHER"]}
+                                """))
+                .andExpect(status().isOk());
     }
 }

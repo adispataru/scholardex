@@ -218,7 +218,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   Status: completed on 2026-03-04.
   Note: deprecated alias removed from `RankingRepository`; compatibility test scaffolding removed; `verify-h06-persistence` now enforces zero-allowlist for typo method usage.
 
-- [ ] `B11` H07-R4: CSRF, mutating-GET migration, and upload hardening.
+- [x] `B11` H07-R4: CSRF, mutating-GET migration, and upload hardening.
   Goal: close `C3`, `C4`, `V-H07-04`.
   Scope:
   - re-enable CSRF for browser form flows with explicit exemptions only when justified;
@@ -226,6 +226,8 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   - enforce upload size/type/schema validation in group import.
   Inputs: `docs/h07-remediation-plan.md` (`R4`), `docs/h07-security-validation-contracts.md`.
   Done criteria: browser mutation routes are CSRF-protected and non-GET; upload policy enforced.
+  Status: completed on 2026-03-04.
+  Note: CSRF is re-enabled for MVC flows with explicit `/api/**` exemption; mutating `delete/duplicate` GET routes were migrated to POST across targeted controllers/templates; group CSV import now enforces strict size/type/schema validation.
 
 - [ ] `B12` H08-P2: Actuator/metrics/readiness baseline implementation.
   Goal: close `O-H08-01`, `O-H08-02`, `O-H08-03`, `O-H08-04`, `O-H08-05`.

@@ -58,7 +58,7 @@ public class AdminActivityController {
         }
     }
 
-    @GetMapping("/duplicate/{id}")
+    @PostMapping("/duplicate/{id}")
     public String duplicateActivity(@PathVariable String id, Model model) {
         Optional<Activity> byId = activityRepository.findById(id);
         if (byId.isPresent()) {
@@ -72,7 +72,7 @@ public class AdminActivityController {
         }
     }
 
-    @GetMapping("/delete/{id}")
+    @PostMapping("/delete/{id}")
     public String deleteActivity(@PathVariable String id) {
         activityRepository.deleteById(id);
         return "redirect:/admin/activities";
@@ -130,7 +130,7 @@ public class AdminActivityController {
         }
     }
 
-    @GetMapping("/activityIndicators/delete/{id}")
+    @PostMapping("/activityIndicators/delete/{id}")
     public String deleteActivityIndicator(@PathVariable String id) {
         activityIndicatorRepository.deleteById(id);
         return "redirect:/admin/activityIndicators";

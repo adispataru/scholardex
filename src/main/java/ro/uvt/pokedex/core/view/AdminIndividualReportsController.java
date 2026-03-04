@@ -68,14 +68,14 @@ public class AdminIndividualReportsController {
         return "redirect:/admin/individualReports";
     }
 
-    @GetMapping("/delete/{id}")
+    @PostMapping("/delete/{id}")
     public String deleteIndividualReport(@PathVariable String id, RedirectAttributes redirectAttributes) {
         individualReportRepository.deleteById(id);
         redirectAttributes.addFlashAttribute("successMessage", "Individual Report deleted successfully.");
         return "redirect:/admin/individualReports";
     }
 
-    @GetMapping("/duplicate/{id}")
+    @PostMapping("/duplicate/{id}")
     public String duplicateIndividualReport(@PathVariable String id, RedirectAttributes redirectAttributes) {
         Optional<IndividualReport> byId = individualReportRepository.findById(id);
         if (byId.isPresent()){

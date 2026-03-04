@@ -62,7 +62,9 @@
                                     </td>
                                     <td>
                                         <a th:href="@{/admin/groupReports/edit/{id}(id=${report.id})}" class="btn btn-primary btn-sm">Edit</a>
-                                        <a th:href="@{/admin/groupReports/delete/{id}(id=${report.id})}" class="btn btn-danger btn-sm">Delete</a>
+                                        <form th:action="@{/admin/groupReports/delete/{id}(id=${report.id})}" method="post" style="display:inline;">
+                                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                        </form>
                                     </td>
                                 </tr>
                                 </tbody>

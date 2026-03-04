@@ -54,6 +54,7 @@ import java.util.Optional;
 import java.util.TreeMap;
 
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
@@ -151,6 +152,48 @@ class AdminViewControllerContractTest {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash().attributeExists("errorMessage"));
 
         verify(userService, never()).createUser(eq("bad@uvt.ro"), eq("secret"), eq(List.of("INVALID_ROLE")));
+    }
+
+    @Test
+    void indicatorMutationsUsePostRoutes() throws Exception {
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-1");
+        indicator.setName("Indicator One");
+        Indicator duplicated = new Indicator();
+        duplicated.setId("ind-2");
+        duplicated.setName("Indicator One (copy)");
+        when(indicatorRepository.findById("ind-1")).thenReturn(Optional.of(indicator));
+        when(indicatorRepository.save(any(Indicator.class))).thenReturn(duplicated);
+
+        mockMvc.perform(post("/admin/indicators/duplicate/{id}", "ind-1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl("/admin/indicators/edit/ind-2"));
+
+        mockMvc.perform(post("/admin/indicators/delete/{id}", "ind-1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/indicators"));
+
+        verify(indicatorRepository).deleteById("ind-1");
+    }
+
+    @Test
+    void domainAndInstitutionDeleteUsePostRoutes() throws Exception {
+        mockMvc.perform(post("/admin/domains/delete/{name}", "CS"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/domains"));
+
+        mockMvc.perform(post("/admin/institutions/delete/{name}", "UVT"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/institutions"));
+
+        verify(domainRepository).deleteById("CS");
+        verify(institutionRepository).deleteById("UVT");
+    }
+
+    @Test
+    void oldIndicatorDeleteGetRouteIsNoLongerMapped() throws Exception {
+        mockMvc.perform(get("/admin/indicators/delete/{id}", "ind-1"))
+                .andExpect(status().is4xxClientError());
     }
 
     @Test

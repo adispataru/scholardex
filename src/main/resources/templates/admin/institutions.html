@@ -63,7 +63,9 @@
                                     <td>
                                         <a th:href="@{/admin/institutions/edit/{name}(name=${institution.name})}" class="btn btn-primary btn-sm">Edit</a>
                                         <a th:href="@{/admin/institutions/{name}/publications(name=${institution.name})}" class="btn btn-info btn-sm">Publications</a>
-                                        <a th:href="@{/admin/institutions/delete/{name}(name=${institution.name})}" class="btn btn-danger btn-sm">Delete</a>
+                                        <form th:action="@{/admin/institutions/delete/{name}(name=${institution.name})}" method="post" style="display:inline;">
+                                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                        </form>
                                     </td>
                                 </tr>
                                 </tbody>

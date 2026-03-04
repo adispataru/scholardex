@@ -160,3 +160,14 @@ These contracts lock policy decisions derived from:
   - login form semantics now include browser/password-manager-compatible metadata (`email` input + autocomplete hints).
   - form-login/logout behavior is explicitly configured in `WebSecurityConfig` (`/login` processing, `/login?error` failure, `/login?logout` logout success).
 - Scope intentionally excludes remember-me and CSRF policy changes in this slice.
+
+## 9. R4 Status Notes (2026-03-04)
+
+- `C3` CSRF contract: adopted for MVC browser flows.
+  - global CSRF disable removed from security config.
+  - explicit CSRF exemption is limited to `/api/**`.
+- `C4` HTTP verb safety contract: adopted.
+  - mutating `delete/duplicate` transport routes were migrated from `GET` to `POST`.
+  - UI actions now submit POST forms for those operations.
+- `C7` upload validation contract: adopted for group CSV import.
+  - `/admin/groups/import` now validates file size, extension/content-type, and CSV schema/row requirements before persistence effects.

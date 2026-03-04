@@ -63,3 +63,9 @@ Scope: input validation, request binding safety, and parameter parsing resilienc
 - `V-H07-06`: resolved in `B06`.
   - Added explicit role allowlist validation at `AdminViewController#createUser`.
   - Invalid role input now follows deterministic MVC contract (redirect + flash error), no exception escape.
+
+## 7. B11 Status Update (2026-03-04)
+
+- `V-H07-04`: resolved in `B11`.
+  - `/admin/groups/import` now enforces strict upload validation at boundary (size + extension + content-type).
+  - CSV parsing now applies schema and row-level validation (required columns/fields and email format), with deterministic reject behavior and no partial persistence on malformed input.

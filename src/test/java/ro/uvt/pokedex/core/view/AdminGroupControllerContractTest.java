@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
@@ -26,10 +27,12 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -190,11 +193,50 @@ class AdminGroupControllerContractTest {
     }
 
     @Test
-    void deleteGroupGetRouteRedirectsCurrentBehaviorBaseline() throws Exception {
-        mockMvc.perform(get("/admin/groups/delete/{id}", "g1"))
+    void deleteGroupPostRouteRedirectsAndDelegates() throws Exception {
+        mockMvc.perform(post("/admin/groups/delete/{id}", "g1"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/groups"));
 
         verify(groupManagementFacade).deleteGroup("g1");
+    }
+
+    @Test
+    void importGroupsWithWrongExtensionRedirectsWithErrorFlash() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "groups.txt",
+                "text/csv",
+                "x".getBytes()
+        );
+        mockMvc.perform(multipart("/admin/groups/import")
+                        .file(file))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/groups"))
+                .andExpect(flash().attributeExists("errorMessage"));
+
+        verify(groupService, never()).importGroupsFromCsv(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void importGroupsWithUnsupportedContentTypeRedirectsWithErrorFlash() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "groups.csv",
+                "application/json",
+                "x".getBytes()
+        );
+        mockMvc.perform(multipart("/admin/groups/import").file(file))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/groups"))
+                .andExpect(flash().attributeExists("errorMessage"));
+
+        verify(groupService, never()).importGroupsFromCsv(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void deleteGroupGetRouteIsNoLongerMapped() throws Exception {
+        mockMvc.perform(get("/admin/groups/delete/{id}", "g1"))
+                .andExpect(status().is4xxClientError());
     }
 }

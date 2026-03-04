@@ -33,12 +33,6 @@ const controllerRoots = [
 ];
 
 const allowlistedMutatingGetFiles = new Set([
-  'src/main/java/ro/uvt/pokedex/core/view/AdminActivityController.java',
-  'src/main/java/ro/uvt/pokedex/core/view/AdminGroupController.java',
-  'src/main/java/ro/uvt/pokedex/core/view/AdminGroupReportsController.java',
-  'src/main/java/ro/uvt/pokedex/core/view/AdminIndividualReportsController.java',
-  'src/main/java/ro/uvt/pokedex/core/view/AdminViewController.java',
-  'src/main/java/ro/uvt/pokedex/core/view/user/ActivityInstanceController.java'
 ]);
 
 const mutatingGetMatches = runRg(
@@ -130,6 +124,34 @@ if (!/name="password"/.test(loginTemplate)) {
 }
 if (!/autocomplete="current-password"/.test(loginTemplate)) {
   errors.push(`${loginTemplatePath}: login password input must declare autocomplete=\"current-password\".`);
+}
+
+const securityConfigPath = 'src/main/java/ro/uvt/pokedex/core/config/WebSecurityConfig.java';
+const securityConfig = fs.readFileSync(securityConfigPath, 'utf8');
+if (/csrf\(AbstractHttpConfigurer::disable\)/.test(securityConfig)) {
+  errors.push(`${securityConfigPath}: global CSRF disable is forbidden in H07-R4.`);
+}
+if (!/ignoringRequestMatchers\(new AntPathRequestMatcher\("\/api\/\*\*"\)\)/.test(securityConfig)) {
+  errors.push(`${securityConfigPath}: CSRF config must explicitly ignore /api/** only.`);
+}
+
+const adminGroupControllerPath = 'src/main/java/ro/uvt/pokedex/core/view/AdminGroupController.java';
+const adminGroupController = fs.readFileSync(adminGroupControllerPath, 'utf8');
+if (!/h07\.groups\.import\.max-bytes/.test(adminGroupController)
+    || !/h07\.groups\.import\.allowed-content-types/.test(adminGroupController)) {
+  errors.push(`${adminGroupControllerPath}: import boundary validation properties must be wired.`);
+}
+if (!/hasCsvExtension\(/.test(adminGroupController) || !/isAllowedContentType\(/.test(adminGroupController)) {
+  errors.push(`${adminGroupControllerPath}: import endpoint must enforce extension and content-type validation.`);
+}
+
+const groupServicePath = 'src/main/java/ro/uvt/pokedex/core/service/importing/GroupService.java';
+const groupService = fs.readFileSync(groupServicePath, 'utf8');
+if (!/h07\.groups\.import\.required-column-count/.test(groupService)) {
+  errors.push(`${groupServicePath}: CSV schema required-column-count property must be wired.`);
+}
+if (!/parseAndValidateCsv\(/.test(groupService) || !/SIMPLE_EMAIL_PATTERN/.test(groupService)) {
+  errors.push(`${groupServicePath}: strict CSV schema/row validation must be implemented.`);
 }
 
 if (errors.length > 0) {

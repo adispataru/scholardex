@@ -77,8 +77,12 @@
 
                                     <td>
                                         <a th:href="@{/admin/indicators/edit/{id}(id=${ind.id})}" class="btn btn-primary btn-sm">Edit</a>
-                                        <a th:href="@{/admin/indicators/duplicate/{id}(id=${ind.id})}" class="btn btn-warning btn-sm">Duplicate</a>
-                                        <a th:href="@{/admin/indicators/delete/{id}(id=${ind.id})}" class="btn btn-danger btn-sm">Delete</a>
+                                        <form th:action="@{/admin/indicators/duplicate/{id}(id=${ind.id})}" method="post" style="display:inline;">
+                                            <button type="submit" class="btn btn-warning btn-sm">Duplicate</button>
+                                        </form>
+                                        <form th:action="@{/admin/indicators/delete/{id}(id=${ind.id})}" method="post" style="display:inline;">
+                                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                        </form>
                                     </td>
                                 </tr>
                                 </tbody>

@@ -321,7 +321,7 @@ public class AdminViewController {
         }
     }
 
-    @GetMapping("/indicators/duplicate/{id}")
+    @PostMapping("/indicators/duplicate/{id}")
     public String duplicateIndicator(@PathVariable String id, Model model) {
 
         Optional<Indicator> byId = indicatorRepository.findById(id);
@@ -337,7 +337,7 @@ public class AdminViewController {
         }
     }
 
-    @GetMapping("/indicators/delete/{id}")
+    @PostMapping("/indicators/delete/{id}")
     public String deleteIndicator(@PathVariable String id) {
         indicatorRepository.deleteById(id);
         return "redirect:/admin/indicators";
@@ -381,10 +381,16 @@ public class AdminViewController {
         return "redirect:/admin/domains";
     }
 
-    @GetMapping("/domains/delete/{name}")
+    @PostMapping("/domains/delete/{name}")
     public String deleteDomain(@PathVariable String name) {
         domainRepository.deleteById(name);
         return "redirect:/admin/domains";
+    }
+
+    @PostMapping("/institutions/delete/{name}")
+    public String deleteInstitution(@PathVariable String name) {
+        institutionRepository.deleteById(name);
+        return "redirect:/admin/institutions";
     }
 
     @GetMapping("/scopus/venues")

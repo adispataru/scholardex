@@ -58,8 +58,12 @@
                                     <td th:text="${report.individualAffiliation != null ? report.individualAffiliation.name : 'No affiliation'}"></td>
                                     <td>
                                         <a th:href="@{/admin/individualReports/edit/{id}(id=${report.id})}" class="btn btn-primary btn-sm">Edit</a>
-                                        <a th:href="@{/admin/individualReports/duplicate/{id}(id=${report.id})}" class="btn btn-warning btn-sm">Duplicate</a>
-                                        <a th:href="@{/admin/individualReports/delete/{id}(id=${report.id})}" class="btn btn-danger btn-sm">Delete</a>
+                                        <form th:action="@{/admin/individualReports/duplicate/{id}(id=${report.id})}" method="post" style="display:inline;">
+                                            <button type="submit" class="btn btn-warning btn-sm">Duplicate</button>
+                                        </form>
+                                        <form th:action="@{/admin/individualReports/delete/{id}(id=${report.id})}" method="post" style="display:inline;">
+                                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                        </form>
                                     </td>
                                 </tr>
                                 </tbody>

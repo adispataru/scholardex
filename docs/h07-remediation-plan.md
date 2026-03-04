@@ -109,7 +109,7 @@ Exit criteria:
 
 - New command: `npm run verify-h07-guardrails`
 - Enforcement scope (debt-aware):
-  - blocks new mutating `GET` routes (`delete/duplicate`) outside current allowlist,
+  - blocks any mutating `GET` routes (`delete/duplicate`) in transport layer,
   - blocks new `printStackTrace` usage in transport layer outside current allowlist,
   - blocks new unsafe `Integer.parseInt(startYear/endYear)` transport parsing outside current allowlist.
 
@@ -169,3 +169,16 @@ Status date: 2026-03-04
 - Scope remains practical baseline only:
   - remember-me deferred,
   - CSRF policy unchanged (still tracked under `R4`).
+
+## 9. R4 Status Update (2026-03-04)
+
+- `R4` implemented via `B11`.
+- CSRF policy:
+  - CSRF is enabled for MVC browser flows.
+  - `/api/**` is explicitly exempted to preserve API client behavior.
+- Verb safety:
+  - all previously allowlisted mutating `GET` routes (`delete/duplicate`) were migrated to `POST`.
+  - corresponding template actions were migrated from link-based GET to form POST submissions.
+- Upload hardening:
+  - `/admin/groups/import` now enforces size, extension, content-type, and strict CSV schema/row validation.
+  - invalid inputs return deterministic redirect + flash error behavior.
