@@ -1,7 +1,6 @@
 package ro.uvt.pokedex.core.view;
 
 import org.junit.jupiter.api.Test;
-import jakarta.servlet.ServletException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -38,7 +37,6 @@ import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -147,11 +145,39 @@ class UserViewControllerContractTest {
     }
 
     @Test
-    void cnfis2025ExportWithInvalidStartYearThrowsServletExceptionCurrentBehavior() {
-        assertThrows(ServletException.class, () -> mockMvc.perform(get("/user/publications/exportCNFIS2025")
-                .param("start", "bad")
-                .param("end", "2024")
-                .with(authenticatedUser("u@uvt.ro"))));
+    void cnfis2025ExportWithInvalidStartYearReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/user/publications/exportCNFIS2025")
+                        .param("start", "bad")
+                        .param("end", "2024")
+                        .with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void cnfis2025ExportWithInvalidEndYearReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/user/publications/exportCNFIS2025")
+                        .param("start", "2021")
+                        .param("end", "bad")
+                        .with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void cnfis2025ExportWithStartGreaterThanEndReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/user/publications/exportCNFIS2025")
+                        .param("start", "2024")
+                        .param("end", "2021")
+                        .with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void cnfis2025ExportWithOutOfRangeYearReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/user/publications/exportCNFIS2025")
+                        .param("start", "1899")
+                        .param("end", "2024")
+                        .with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

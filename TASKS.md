@@ -139,7 +139,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   Status: completed on 2026-03-04.
   Note: user publication aggregation now dedupes by publication ID; deterministic publication/citation ordering contract applied across user/admin/group hotspots; user edit/save flow naming normalized to canonical DB `id`; `verify-h06-persistence` extended with `R3` guard checks.
 
-- [ ] `B06` H07-R2: Validation boundary hardening.
+- [x] `B06` H07-R2: Validation boundary hardening.
   Goal: close `V-H07-01`, `V-H07-02`, `V-H07-03`, `V-H07-06`.
   Scope:
   - DTO + `@Valid` rollout for top-risk write and import endpoints;
@@ -147,6 +147,8 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   - deterministic 4xx behavior for malformed input.
   Inputs: `docs/h07-remediation-plan.md` (`R2`), `docs/h07-validation-drift-inventory.md`.
   Done criteria: boundary validation enforced on targeted endpoints; invalid input no longer escapes as 5xx.
+  Status: completed on 2026-03-04.
+  Note: migrated `/api/admin/users` + `/api/admin/researchers` create/update to DTO + `@Valid`; replaced CNFIS start/end `Integer.parseInt` with bounded year-range validation returning `400`; added role allowlist validation in `/admin/users/create` with redirect+flash fallback; updated H07 guardrails and regression tests.
 
 - [ ] `B07` H07-R3: Centralized exception mapping and transport logging cleanup.
   Goal: close `E-H07-01`, `E-H07-03`, `E-H07-05`, `E-H07-06`, `E-H07-07`.

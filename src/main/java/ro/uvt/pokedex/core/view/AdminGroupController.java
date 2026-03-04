@@ -18,6 +18,7 @@ import ro.uvt.pokedex.core.service.application.GroupCnfisExportFacade;
 import ro.uvt.pokedex.core.service.application.GroupExportFacade;
 import ro.uvt.pokedex.core.service.application.GroupManagementFacade;
 import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
+import ro.uvt.pokedex.core.service.application.RequestYearRangeSupport;
 import ro.uvt.pokedex.core.service.application.GroupReportFacade;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisZipExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupEditViewModel;
@@ -155,8 +156,16 @@ public class AdminGroupController {
                                       HttpServletResponse response,
                                       @RequestParam(name = "start", defaultValue = "2021") String startYear,
                                       @RequestParam(name = "end", defaultValue = "2024") String endYear) throws IOException {
-        int start = Integer.parseInt(startYear);
-        int end = Integer.parseInt(endYear);
+        RequestYearRangeSupport.YearRange yearRange;
+        try {
+            yearRange = RequestYearRangeSupport.parseAndValidate(startYear, endYear);
+        } catch (IllegalArgumentException ex) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, ex.getMessage());
+            return;
+        }
+
+        int start = yearRange.start();
+        int end = yearRange.end();
         Optional<GroupWorkbookExportResult> workbook = groupCnfisExportFacade.buildGroupCnfisWorkbookExport(id, start, end);
         if (workbook.isEmpty()) {
             return;

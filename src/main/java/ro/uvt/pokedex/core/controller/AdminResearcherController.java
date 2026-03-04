@@ -1,8 +1,10 @@
 package ro.uvt.pokedex.core.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ro.uvt.pokedex.core.controller.dto.AdminResearcherUpsertRequest;
 import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.service.ResearcherService;
 
@@ -20,7 +22,8 @@ public class AdminResearcherController {
     }
 
     @PostMapping
-    public ResponseEntity<Researcher> addResearcher(@RequestBody Researcher researcher) {
+    public ResponseEntity<Researcher> addResearcher(@Valid @RequestBody AdminResearcherUpsertRequest request) {
+        Researcher researcher = mapRequestToResearcher(request);
         Researcher savedResearcher = researcherService.saveResearcher(researcher);
         return ResponseEntity.ok(savedResearcher);
     }
@@ -39,7 +42,8 @@ public class AdminResearcherController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Researcher> updateResearcher(@PathVariable String id, @RequestBody Researcher researcher) {
+    public ResponseEntity<Researcher> updateResearcher(@PathVariable String id, @Valid @RequestBody AdminResearcherUpsertRequest request) {
+        Researcher researcher = mapRequestToResearcher(request);
         Researcher updatedResearcher = researcherService.updateResearcher(id, researcher);
         return ResponseEntity.ok(updatedResearcher);
     }
@@ -48,5 +52,16 @@ public class AdminResearcherController {
     public ResponseEntity<Void> deleteResearcher(@PathVariable String id) {
         researcherService.deleteResearcher(id);
         return ResponseEntity.ok().build();
+    }
+
+    private Researcher mapRequestToResearcher(AdminResearcherUpsertRequest request) {
+        Researcher researcher = new Researcher();
+        researcher.setFirstName(request.firstName());
+        researcher.setLastName(request.lastName());
+        researcher.setScholarId(request.scholarId());
+        researcher.setScopusId(request.normalizedScopusId());
+        researcher.setWosId(request.normalizedWosId());
+        researcher.setPosition(request.position());
+        return researcher;
     }
 }

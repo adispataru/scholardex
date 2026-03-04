@@ -70,8 +70,6 @@ for (const file of printStackTraceFiles) {
 }
 
 const allowlistedYearParseFiles = new Set([
-  'src/main/java/ro/uvt/pokedex/core/view/AdminGroupController.java',
-  'src/main/java/ro/uvt/pokedex/core/view/UserViewController.java'
 ]);
 
 const riskyYearParseMatches = runRg(
@@ -99,6 +97,19 @@ function emitAllowlistShrinkHint(currentFiles, allowlist, label) {
 emitAllowlistShrinkHint(mutatingGetFiles, allowlistedMutatingGetFiles, 'mutating-GET');
 emitAllowlistShrinkHint(printStackTraceFiles, allowlistedPrintStackTraceFiles, 'printStackTrace');
 emitAllowlistShrinkHint(riskyYearParseFiles, allowlistedYearParseFiles, 'year-parse');
+
+const userControllerPath = 'src/main/java/ro/uvt/pokedex/core/controller/UserController.java';
+const adminResearcherControllerPath = 'src/main/java/ro/uvt/pokedex/core/controller/AdminResearcherController.java';
+const requestBodyWithoutValidMatches = runRg(
+  '@RequestBody',
+  [userControllerPath, adminResearcherControllerPath]
+).filter((line) => !line.includes('@Valid'));
+
+if (requestBodyWithoutValidMatches.length > 0) {
+  requestBodyWithoutValidMatches.forEach((line) => {
+    errors.push(`${line}: @RequestBody in targeted admin API controllers must use @Valid.`);
+  });
+}
 
 if (errors.length > 0) {
   console.error('H07 guardrail verification failed:');

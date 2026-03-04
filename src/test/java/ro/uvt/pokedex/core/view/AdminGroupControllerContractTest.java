@@ -1,7 +1,6 @@
 package ro.uvt.pokedex.core.view;
 
 import org.junit.jupiter.api.Test;
-import jakarta.servlet.ServletException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -26,7 +25,6 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -85,10 +83,35 @@ class AdminGroupControllerContractTest {
     }
 
     @Test
-    void exportCnfis2025WithInvalidStartYearThrowsServletExceptionCurrentBehavior() {
-        assertThrows(ServletException.class, () -> mockMvc.perform(get("/admin/groups/{id}/publications/exportCNFIS2025", "g1")
-                .param("start", "bad")
-                .param("end", "2024")));
+    void exportCnfis2025WithInvalidStartYearReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/admin/groups/{id}/publications/exportCNFIS2025", "g1")
+                        .param("start", "bad")
+                        .param("end", "2024"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void exportCnfis2025WithInvalidEndYearReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/admin/groups/{id}/publications/exportCNFIS2025", "g1")
+                        .param("start", "2021")
+                        .param("end", "bad"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void exportCnfis2025WithStartGreaterThanEndReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/admin/groups/{id}/publications/exportCNFIS2025", "g1")
+                        .param("start", "2024")
+                        .param("end", "2021"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void exportCnfis2025WithOutOfRangeYearReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/admin/groups/{id}/publications/exportCNFIS2025", "g1")
+                        .param("start", "1899")
+                        .param("end", "2024"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

@@ -27,6 +27,7 @@ import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.service.application.UserPublicationFacade;
 import ro.uvt.pokedex.core.service.application.UserReportFacade;
 import ro.uvt.pokedex.core.service.application.UserScopusTaskFacade;
+import ro.uvt.pokedex.core.service.application.RequestYearRangeSupport;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorApplyViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserIndividualReportViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorsViewModel;
@@ -359,8 +360,16 @@ public class UserViewController {
             response.sendRedirect("/login");
             return;
         }
-        int start = Integer.parseInt(startYear);
-        int end = Integer.parseInt(endYear);
+        RequestYearRangeSupport.YearRange yearRange;
+        try {
+            yearRange = RequestYearRangeSupport.parseAndValidate(startYear, endYear);
+        } catch (IllegalArgumentException ex) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, ex.getMessage());
+            return;
+        }
+
+        int start = yearRange.start();
+        int end = yearRange.end();
         UserWorkbookExportResult exportResult = userReportFacade.buildUserCnfisWorkbookExport(currentUser.getEmail(), start, end);
         if (exportResult.status() == UserWorkbookExportStatus.UNAUTHORIZED) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

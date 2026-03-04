@@ -7,8 +7,10 @@ import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.user.UserRole;
 import ro.uvt.pokedex.core.repository.UserRepository;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class UserService {
@@ -59,9 +61,7 @@ public class UserService {
         userRepository.findById(email).ifPresent(user -> {
             if(newRoles != null) {
                 user.getRoles().removeIf(role -> !newRoles.contains(role.name()));
-                for(String r : newRoles){
-                    user.getRoles().add(UserRole.valueOf(r));
-                }
+                user.getRoles().addAll(parseRoles(newRoles));
                 userRepository.save(user);
             }
         });
@@ -72,16 +72,37 @@ public class UserService {
             User user = new User();
             user.setEmail(email);
             user.setPassword(passwordEncoder.encode(password));
-            for(String r : roles){
-                user.getRoles().add(UserRole.valueOf(r));
-            }
+            user.setRoles(parseRoles(roles));
             return userRepository.save(user);
         }
         return null;
+    }
+
+    public boolean areValidRoleNames(List<String> roles) {
+        if (roles == null || roles.isEmpty()) {
+            return false;
+        }
+        try {
+            parseRoles(roles);
+            return true;
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
+    }
+
+    public Set<UserRole> parseRoles(List<String> roles) {
+        Set<UserRole> resolvedRoles = new HashSet<>();
+        for (String roleName : roles) {
+            resolvedRoles.add(parseRoleOrThrow(roleName));
+        }
+        return resolvedRoles;
+    }
+
+    public UserRole parseRoleOrThrow(String roleName) {
+        return UserRole.valueOf(roleName);
     }
 
     public boolean userExists(String email){
         return userRepository.findById(email).isPresent();
     }
 }
-

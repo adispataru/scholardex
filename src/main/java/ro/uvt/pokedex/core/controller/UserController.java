@@ -1,18 +1,17 @@
 package ro.uvt.pokedex.core.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import ro.uvt.pokedex.core.controller.dto.AdminUserUpsertRequest;
 import ro.uvt.pokedex.core.model.user.User;
-import ro.uvt.pokedex.core.model.user.UserRole;
 import ro.uvt.pokedex.core.service.UserService;
 
-import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 @Controller
 @RequestMapping("/api/admin/users")
@@ -28,8 +27,11 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<User> createUser(@RequestBody User user) {
-        User savedUser = userService.createUser(user);
+    public ResponseEntity<User> createUser(@Valid @RequestBody AdminUserUpsertRequest request) {
+        if (request.password() == null || request.password().isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        User savedUser = userService.createUser(request.email(), request.password(), request.roles());
         return ResponseEntity.ok(savedUser);
     }
 
@@ -47,8 +49,21 @@ public class UserController {
     }
 
     @PutMapping("/{email}")
-    public ResponseEntity<User> updateUser(@PathVariable String email, @RequestBody User user) {
-        User updatedUser = userService.updateUser(email, user);
+    public ResponseEntity<User> updateUser(@PathVariable String email, @Valid @RequestBody AdminUserUpsertRequest request) {
+        Optional<User> existingOpt = userService.getUserByEmail(email);
+        if (existingOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        User existing = existingOpt.get();
+        User updated = new User();
+        updated.setEmail(email);
+        updated.setPassword((request.password() == null || request.password().isBlank()) ? existing.getPassword() : request.password());
+        updated.setResearcherId(existing.getResearcherId());
+        updated.setLocked(request.locked() != null ? request.locked() : existing.isLocked());
+        updated.setRoles(userService.parseRoles(request.roles()));
+
+        User updatedUser = userService.updateUser(email, updated);
         return ResponseEntity.ok(updatedUser);
     }
 

@@ -562,6 +562,10 @@ public class AdminViewController {
     public String createUser(@RequestParam String email,
                              @RequestParam String password,
                              @RequestParam List<String> roles, RedirectAttributes redirectAttributes) {
+        if (!userService.areValidRoleNames(roles)) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Invalid role selection.");
+            return "redirect:/admin/users";
+        }
         User user = userService.createUser(email, password, roles);
         if(user != null){
             // Add a success message to redirect attributes
