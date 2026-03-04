@@ -9,6 +9,7 @@ import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -42,12 +43,8 @@ public class CNFISScoringService2025 {
             String issn = forum.getIssn();
             String eIssn = forum.getEIssn();
             List<Integer> allowedYears = new ArrayList<>();
-            try{
-                Integer pubYear = Integer.parseInt(publication.getCoverDate().substring(0, 4));
-                allowedYears.add(pubYear);
-            }catch (Exception e){
-                log.warn("Exception retrieving year for publication: {}", publication.getCoverDate());
-            }
+            PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)
+                    .ifPresent(allowedYears::add);
 
             // Fetch rankings from cache or repository
             List<WoSRanking> allByIssn = lookupPort.getRankingsByIssn(issn);

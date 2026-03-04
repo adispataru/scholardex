@@ -323,6 +323,59 @@ class UserReportFacadeTest {
     }
 
     @Test
+    void buildIndicatorWorkbookExportPublicationsUsesBlankYearForMalformedCoverDate() throws Exception {
+        User user = new User();
+        user.setEmail("user@uvt.ro");
+        user.setResearcherId("r1");
+
+        Researcher researcher = new Researcher();
+        researcher.setId("r1");
+        researcher.setScopusId(List.of("a1"));
+
+        Indicator indicator = new Indicator();
+        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
+
+        Author author = new Author();
+        author.setId("a1");
+        author.setName("Author One");
+
+        Forum forum = new Forum();
+        forum.setId("f1");
+        forum.setPublicationName("Forum One");
+
+        Publication publication = new Publication();
+        publication.setId("p1");
+        publication.setTitle("Paper One");
+        publication.setAuthors(List.of("a1"));
+        publication.setForum("f1");
+        publication.setVolume("12");
+        publication.setCoverDate("bad-date");
+
+        Score publicationScore = new Score();
+        publicationScore.setCategory("Q1");
+        publicationScore.setScore(10.0);
+        publicationScore.setAuthorScore(5.0);
+
+        when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
+        when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
+        when(indicatorRepository.findById("i1")).thenReturn(Optional.of(indicator));
+        when(scopusAuthorRepository.findByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
+        when(scopusForumRepository.findByIdIn(any())).thenReturn(List.of(forum));
+        when(scientificProductionService.calculateScientificProductionScore(anyList(), eq(indicator)))
+                .thenReturn(Map.of("Paper One", publicationScore));
+        when(cacheService.getAuthorCache()).thenReturn(Map.of("a1", author));
+
+        var result = facade.buildIndicatorWorkbookExport("user@uvt.ro", "i1");
+
+        assertTrue(result.isPresent());
+        try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(result.get().workbookBytes()))) {
+            var sheet = workbook.getSheet("Publications");
+            assertEquals("", sheet.getRow(1).getCell(4).getStringCellValue());
+        }
+    }
+
+    @Test
     void buildUserCnfisWorkbookExportPassesFilteredDataToWorkbookGenerator() throws Exception {
         User user = new User();
         user.setEmail("user@uvt.ro");

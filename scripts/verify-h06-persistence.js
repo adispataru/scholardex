@@ -33,16 +33,34 @@ function assertNotContains(haystack, needle, message) {
   }
 }
 
+function assertNotRegex(haystack, regex, message) {
+  if (regex.test(haystack)) {
+    errors.push(message);
+  }
+}
+
 const userReportFacadePath =
   'src/main/java/ro/uvt/pokedex/core/service/application/UserReportFacade.java';
 const groupCnfisFacadePath =
   'src/main/java/ro/uvt/pokedex/core/service/application/GroupCnfisExportFacade.java';
 const cacheServicePath =
   'src/main/java/ro/uvt/pokedex/core/service/CacheService.java';
+const yearParsingGuardFiles = [
+  'src/main/java/ro/uvt/pokedex/core/service/reporting/AbstractForumScoringService.java',
+  'src/main/java/ro/uvt/pokedex/core/service/reporting/AbstractWoSForumScoringService.java',
+  'src/main/java/ro/uvt/pokedex/core/service/reporting/CNFISScoringService2025.java',
+  'src/main/java/ro/uvt/pokedex/core/service/application/GroupReportFacade.java',
+  'src/main/java/ro/uvt/pokedex/core/service/application/AdminInstitutionReportFacade.java',
+  'src/main/java/ro/uvt/pokedex/core/service/application/UserReportFacade.java',
+  'src/main/java/ro/uvt/pokedex/core/service/reporting/CNFISReportExportService.java',
+  'src/main/java/ro/uvt/pokedex/core/view/AdminGroupController.java',
+  'src/main/java/ro/uvt/pokedex/core/view/AdminViewController.java'
+];
 
 const userReportContent = readFile(userReportFacadePath);
 const groupCnfisContent = readFile(groupCnfisFacadePath);
 const cacheServiceContent = readFile(cacheServicePath);
+const rawYearPattern = /(substring\(\s*0\s*,\s*4\s*\))|(split\(\s*"-"\s*\)\s*\[\s*0\s*\])/;
 
 const userCnfisMethod = extractMethodSlice(
   userReportContent,
@@ -109,6 +127,15 @@ assertContains(
   'rankingRepository.findAllByeIssn(key)',
   `${cacheServicePath}: getCachedRankingsByIssn must query findAllByeIssn on cache miss.`
 );
+
+for (const filePath of yearParsingGuardFiles) {
+  const content = readFile(filePath);
+  assertNotRegex(
+    content,
+    rawYearPattern,
+    `${filePath}: raw year parsing via substring/split is forbidden; use PersistenceYearSupport.`
+  );
+}
 
 if (errors.length > 0) {
   console.error('H06 persistence verification failed:');

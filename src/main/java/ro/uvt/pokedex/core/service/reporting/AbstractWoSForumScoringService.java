@@ -11,6 +11,7 @@ import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -193,12 +194,8 @@ public abstract class AbstractWoSForumScoringService implements ScoringService {
     protected List<Integer> getAllowedYearsForPublication(Publication publication,
                                                         Indicator indicator) {
         List<Integer> allowedYears = new ArrayList<>();
-        try {
-            int pubYear = Integer.parseInt(publication.getCoverDate().substring(0, 4));
-            allowedYears.addAll(Indicator.parseYearRange(indicator.getScoreYearRange(), pubYear));
-        } catch (Exception e) {
-            logger.error("Could not parse year for publication: {}", publication.getCoverDate(), e);
-        }
+        PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), logger)
+                .ifPresent(pubYear -> allowedYears.addAll(Indicator.parseYearRange(indicator.getScoreYearRange(), pubYear)));
         if(allowedYears.isEmpty() || (allowedYears.stream().min(Integer::compareTo).get() > LAST_YEAR))
             allowedYears.add(LAST_YEAR);
         return allowedYears;

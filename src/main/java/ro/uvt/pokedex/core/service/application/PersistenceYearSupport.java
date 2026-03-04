@@ -28,4 +28,10 @@ public final class PersistenceYearSupport {
             return Optional.empty();
         }
     }
+
+    public static String extractYearString(String rawDate, String contextId, Logger log) {
+        return extractYear(rawDate, contextId, log)
+                .map(String::valueOf)
+                .orElse("");
+    }
 }

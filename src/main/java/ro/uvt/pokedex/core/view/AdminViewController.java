@@ -30,6 +30,7 @@ import ro.uvt.pokedex.core.repository.reporting.*;
 import ro.uvt.pokedex.core.repository.scopus.*;
 import ro.uvt.pokedex.core.service.application.AdminScopusFacade;
 import ro.uvt.pokedex.core.service.application.AdminInstitutionReportFacade;
+import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsViewModel;
@@ -172,7 +173,7 @@ public class AdminViewController {
                 row.createCell(0).setCellValue(pub.getEid());
                 row.createCell(1).setCellValue(pub.getDoi());
                 row.createCell(2).setCellValue(pub.getTitle());
-                row.createCell(3).setCellValue(pub.getCoverDate().substring(0,4));
+                row.createCell(3).setCellValue(PersistenceYearSupport.extractYearString(pub.getCoverDate(), pub.getId(), log));
                 row.createCell(4).setCellValue(pub.getAuthors().stream().map(a -> vm.authorMap().containsKey(a)? vm.authorMap().get(a).getName(): "").collect(Collectors.joining(",")));
                 row.createCell(5).setCellValue(vm.forumMap().get(pub.getForum()) != null ? vm.forumMap().get(pub.getForum()).getPublicationName() : "");
                 row.createCell(6).setCellValue(pub.getCitedbyCount());
@@ -202,7 +203,7 @@ public class AdminViewController {
                     row.createCell(3).setCellValue(citing.getEid());
                     row.createCell(4).setCellValue(citing.getDoi());
                     row.createCell(5).setCellValue(citing.getTitle());
-                    row.createCell(6).setCellValue(citing.getCoverDate().substring(0,4));
+                    row.createCell(6).setCellValue(PersistenceYearSupport.extractYearString(citing.getCoverDate(), citing.getId(), log));
                     row.createCell(7).setCellValue(citing.getAuthors().stream().map(a -> vm.authorMap().containsKey(a)? vm.authorMap().get(a).getName(): "").collect(Collectors.joining(",")));
                     row.createCell(8).setCellValue(vm.forumMap().get(citing.getForum()) != null ? vm.forumMap().get(citing.getForum()).getPublicationName() : "" );
                     row.createCell(9).setCellValue(citing.getCitedbyCount());

@@ -195,7 +195,7 @@ public class UserReportFacade {
             for (Publication publication : publications) {
                 Row row = sheet.createRow(rowNum++);
 
-                String year = publication.getCoverDate() != null ? publication.getCoverDate().split("-")[0] : "";
+                String year = PersistenceYearSupport.extractYearString(publication.getCoverDate(), publication.getId(), log);
                 String title = publication.getTitle() != null ? publication.getTitle() : "";
                 String doi = publication.getDoi() != null ? publication.getDoi() : "";
                 String forumName = forumMap.getOrDefault(publication.getForum(), new Forum()).getPublicationName();
@@ -530,7 +530,7 @@ public class UserReportFacade {
             dataRow.createCell(1).setCellValue(authorDetails);
             dataRow.createCell(2).setCellValue(forumMap.get(publication.getForum()).getPublicationName());
             dataRow.createCell(3).setCellValue(publication.getVolume());
-            dataRow.createCell(4).setCellValue(publication.getCoverDate().substring(0, 4));
+            dataRow.createCell(4).setCellValue(PersistenceYearSupport.extractYearString(publication.getCoverDate(), publication.getId(), log));
             dataRow.createCell(5).setCellValue("No");
             dataRow.createCell(6).setCellValue(scores.get(publication.getTitle()).getCategory());
             dataRow.createCell(7).setCellValue(scores.get(publication.getTitle()).getScore());
@@ -592,7 +592,7 @@ public class UserReportFacade {
                 row.createCell(2).setCellValue(authorDetails);
                 row.createCell(3).setCellValue(forumMap.get(citingPublication.getForum()).getPublicationName());
                 row.createCell(4).setCellValue(citingPublication.getVolume());
-                row.createCell(5).setCellValue(citingPublication.getCoverDate().substring(0, 4));
+                row.createCell(5).setCellValue(PersistenceYearSupport.extractYearString(citingPublication.getCoverDate(), citingPublication.getId(), log));
                 row.createCell(6).setCellValue("No");
                 row.createCell(7).setCellValue(citationScore.getCategory());
                 row.createCell(8).setCellValue(citationScore.getScore());

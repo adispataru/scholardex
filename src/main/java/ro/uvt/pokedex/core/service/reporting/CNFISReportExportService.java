@@ -4,10 +4,13 @@ package ro.uvt.pokedex.core.service.reporting;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -17,6 +20,7 @@ import java.util.Map;
 
 @Service
 public class CNFISReportExportService {
+    private static final Logger log = LoggerFactory.getLogger(CNFISReportExportService.class);
 
 
     public void exportCNFISReport2025(List<Publication> publications,
@@ -57,7 +61,7 @@ public class CNFISReportExportService {
                     i--;
                     continue;
                 }
-                String year = publication.getCoverDate() != null ? publication.getCoverDate().split("-")[0] : "";
+                String year = PersistenceYearSupport.extractYearString(publication.getCoverDate(), publication.getId(), log);
                 String title = publication.getTitle() != null ? publication.getTitle() : "";
                 String doi = publication.getDoi() != null ? publication.getDoi() : "";
                 String wosCode = publication.getWosId() != null && !publication.getWosId().equals(Publication.NON_WOS_ID)
@@ -205,7 +209,7 @@ public class CNFISReportExportService {
                     i--;
                     continue;
                 }
-                String year = publication.getCoverDate() != null ? publication.getCoverDate().split("-")[0] : "";
+                String year = PersistenceYearSupport.extractYearString(publication.getCoverDate(), publication.getId(), log);
                 String title = publication.getTitle() != null ? publication.getTitle() : "";
                 String doi = publication.getDoi() != null ? publication.getDoi() : "";
                 String wosCode = publication.getWosId() != null && !publication.getWosId().equals(Publication.NON_WOS_ID)

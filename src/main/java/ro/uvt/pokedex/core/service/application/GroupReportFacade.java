@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class GroupReportFacade {
     private final GroupRepository groupRepository;
     private final IndividualReportRepository individualReportRepository;
@@ -68,10 +70,21 @@ public class GroupReportFacade {
         forums.forEach(f -> forumMap.put(f.getId(), f));
 
         Map<Integer, List<Publication>> publicationsByYear = publications.stream()
-                .collect(Collectors.groupingBy(p -> Integer.parseInt(p.getCoverDate().substring(0, 4)), TreeMap::new, Collectors.toList()));
+                .map(publication -> new AbstractMap.SimpleEntry<>(
+                        publication,
+                        PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)))
+                .filter(entry -> entry.getValue().isPresent())
+                .collect(Collectors.groupingBy(
+                        entry -> entry.getValue().get(),
+                        TreeMap::new,
+                        Collectors.mapping(Map.Entry::getKey, Collectors.toList())
+                ));
 
         Map<Integer, Long> publicationsCountByYear = publications.stream()
-                .collect(Collectors.groupingBy(p -> Integer.parseInt(p.getCoverDate().substring(0, 4)), TreeMap::new, Collectors.counting()));
+                .map(publication -> PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.groupingBy(year -> year, TreeMap::new, Collectors.counting()));
 
         List<IndividualReport> all = individualReportRepository.findAll();
 

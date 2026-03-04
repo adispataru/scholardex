@@ -118,13 +118,15 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
 
 ### P1 (Medium-High Priority)
 
-- [ ] `B04` H06-R2: Complete year-parsing safety rollout.
+- [x] `B04` H06-R2: Complete year-parsing safety rollout.
   Goal: close remaining `Q-H06-03` paths under contract `C3`.
   Scope:
   - replace remaining raw year parsing in high-impact report/export/search/grouping flows with `PersistenceYearSupport`;
   - finalize policy for `ActivityInstance#getYear`.
   Inputs: `docs/h06-remediation-plan.md` (`R2`), `docs/h06-persistence-contracts.md`.
   Done criteria: no raw `substring(0,4)` year filtering/grouping remains in targeted high-impact flows.
+  Status: completed on 2026-03-04.
+  Note: rolled out helper-based year parsing across scoring/grouping/export hotspots; added `PersistenceYearSupport.extractYearString(...)` and `ActivityInstance#getYearOptional()`; expanded `verify-h06-persistence` to enforce no raw year parsing regression on remediated files.
 
 - [ ] `B05` H06-R3: Identity/order/dedupe consistency.
   Goal: close `Q-H06-04`, `Q-H06-06`, `Q-H06-07`.

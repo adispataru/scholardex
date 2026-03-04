@@ -81,6 +81,29 @@ class AdminInstitutionReportFacadeTest {
     }
 
     @Test
+    void buildInstitutionPublicationsViewSkipsMalformedPublicationDatesInYearMaps() {
+        Institution institution = institution("inst", "af1");
+        Publication validPublication = publication("p1", "e1", "f1", "2023-02-01", List.of("a1"));
+        Publication invalidPublication = publication("p2", "e2", "f1", "bad-date", List.of("a1"));
+        Author author = author("a1", "Author One");
+        Forum forum = forum("f1", "Forum One");
+
+        when(institutionRepository.findById("inst")).thenReturn(Optional.of(institution));
+        when(scopusPublicationRepository.findAllByAffiliationsContaining("af1")).thenReturn(List.of(validPublication, invalidPublication));
+        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author));
+        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum));
+        when(individualReportRepository.findAll()).thenReturn(List.of());
+
+        var result = facade.buildInstitutionPublicationsView("inst");
+
+        assertTrue(result.isPresent());
+        assertTrue(result.get().publicationsByYear().containsKey(2023));
+        assertEquals(1, result.get().publicationsByYear().get(2023).size());
+        assertEquals(1L, result.get().publicationsCountByYear().get(2023));
+        assertEquals(2, result.get().publications().size());
+    }
+
+    @Test
     void buildInstitutionPublicationsExportBuildsCitationAuthorAndForumMaps() {
         Institution institution = institution("inst", "af1");
         Publication cited = publication("p1", "e1", "f1", "2023-02-01", List.of("a1"));

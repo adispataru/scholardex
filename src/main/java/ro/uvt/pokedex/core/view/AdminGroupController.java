@@ -17,6 +17,7 @@ import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.service.application.GroupCnfisExportFacade;
 import ro.uvt.pokedex.core.service.application.GroupExportFacade;
 import ro.uvt.pokedex.core.service.application.GroupManagementFacade;
+import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 import ro.uvt.pokedex.core.service.application.GroupReportFacade;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisZipExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupEditViewModel;
@@ -136,7 +137,7 @@ public class AdminGroupController {
                         .map(Author::getName)
                         .collect(Collectors.joining(";"));
                 String forumName = vm.forumMap().getOrDefault(publication.getForum(), new Forum()).getPublicationName();
-                String year = publication.getCoverDate() != null ? publication.getCoverDate().split("-")[0] : "";
+                String year = PersistenceYearSupport.extractYearString(publication.getCoverDate(), publication.getId(), log);
                 String volume = publication.getVolume() != null ? publication.getVolume() : "";
                 if (publication.getIssueIdentifier() != null && !publication.getIssueIdentifier().equals("null")) {
                     volume += "(" + publication.getIssueIdentifier() + ")";
