@@ -1,7 +1,7 @@
-# H09 CI Gates Bootstrap
+# H09 CI Gates Enforcement Baseline
 
 Date: 2026-03-04  
-Status: active rollout for CI-required quality gates.
+Status: enforced baseline for CI-required quality and security gates.
 
 ## 1. Objective
 
@@ -9,7 +9,7 @@ Operationalize existing local guardrails as CI gates so regressions are visible 
 
 ## 2. Scope
 
-This bootstrap slice adds GitHub Actions coverage for:
+H09 baseline now enforces GitHub Actions coverage for:
 
 1. `npm run verify-architecture-boundaries`
 2. `npm run verify-h06-persistence`
@@ -17,77 +17,99 @@ This bootstrap slice adds GitHub Actions coverage for:
 4. `npm run verify-h08-baseline`
 5. `./gradlew compileJava`
 6. `./gradlew test --tests "*CoreApplicationTests"`
+7. `npm run verify-assets`
+8. `npm run verify-template-assets`
+9. `./gradlew check`
+10. dependency review gate on pull requests
+11. CodeQL analysis gate on pull requests and pushes to `main`
 
-Out of scope in this bootstrap:
+Still out of scope:
 
-- full `./gradlew check`,
 - SAST/container scanning,
 - non-GitHub CI providers.
 
 ## 3. Workflow Contract
 
-Workflow file: `.github/workflows/h09-quality-gates.yml`
+Workflow files:
+
+1. `.github/workflows/h09-quality-gates.yml`
+2. `.github/workflows/h09-security-gates.yml`
 
 Jobs:
 
 1. `guardrails`
 2. `java-smoke`
-3. `summary` (informational, non-required)
+3. `quality-full`
+4. `summary` (informational, non-required)
+5. `dependency-review`
+6. `codeql-analysis`
 
-Branch-protection required checks (Stage 2 target):
+Branch-protection required checks (enforced target):
 
 1. `guardrails`
 2. `java-smoke`
+3. `quality-full`
+4. `dependency-review`
+5. `codeql-analysis`
 
-## 4. Rollout Policy
+## 4. Enforcement Policy
 
-## Stage 1 (soft visibility)
-
-- Workflow runs on `pull_request` and `push` to `main`.
-- Checks are visible, but branch protection required checks are not yet switched on.
-- Default Stage 1 window:
-  - 3–5 business days or
-  - at least 10 PR runs.
-
-Monitor during Stage 1:
-
-1. failure rate by job,
-2. flaky behavior,
-3. runtime/cost trend.
-
-Exit criteria for Stage 2:
-
-1. at least 5 consecutive green runs on default branch,
-2. no unresolved flaky failures for `guardrails`/`java-smoke`.
-
-## Stage 2 (hard required checks)
-
-- In GitHub branch protection for `main`, set required status checks:
-  - `guardrails`
-  - `java-smoke`
-- `summary` remains informational.
+- Required checks are configured in GitHub branch protection for `main`.
+- `summary` remains informational and non-blocking.
+- Any temporary downgrade of required checks must have:
+  1. linked tracking issue,
+  2. named owner,
+  3. expiry date,
+  4. explicit restore criteria.
 
 ## 5. Flake Handling Policy
 
-If the same check flakes twice within 7 days:
+If the same required check flakes twice within 7 days:
 
 1. open a tracking issue with owner and expiry date,
 2. document scope and rollback criteria,
 3. temporary non-blocking mode is allowed only with explicit expiry and follow-up task,
 4. restore required mode immediately after fix.
 
+Rerun policy limits:
+
+1. max one manual rerun per failing required check per PR;
+2. if rerun still fails, treat as real failure and open/attach flake issue if non-deterministic;
+3. do not merge with bypass unless approved by repository admins and tracked with expiry.
+
 ## 6. Local Parity Commands
 
 Run before pushing CI-sensitive changes:
 
-1. `npm run verify-architecture-boundaries`
-2. `npm run verify-h06-persistence`
-3. `npm run verify-h07-guardrails`
-4. `npm run verify-h08-baseline`
-5. `./gradlew compileJava`
-6. `./gradlew test --tests "*CoreApplicationTests"`
+1. `npm run verify-h09-baseline`
+2. `./gradlew test --tests "*CoreApplicationTests"` (quick smoke sanity)
+
+`verify-h09-baseline` contract:
+
+1. `verify-architecture-boundaries`
+2. `verify-h06-persistence`
+3. `verify-h07-guardrails`
+4. `verify-h08-baseline`
+5. `verify-assets`
+6. `verify-template-assets`
+7. `./gradlew check`
+
+Expected runtime profile:
+
+1. local developer machine: typically slower than CI smoke jobs due to full `check`;
+2. run before PR when touching build/security/test infrastructure;
+3. use targeted commands during inner-loop development and run full baseline before push.
+
+Troubleshooting:
+
+1. inspect uploaded workflow artifacts (`guardrails-logs`, `quality-full-artifacts`, `java-smoke-test-report`);
+2. rerun failed job once;
+3. if flaky, open issue with owner + expiry and link in PR.
 
 ## 7. Notes
 
 - CI logs and test report artifacts are uploaded on failure for faster triage.
-- This bootstrap keeps strictness moderate for speed/stability; expanded H09 checks can be added in follow-up slices.
+- Required-check pass-rate should be tracked manually in weekly engineering notes for the first 2 weeks after enforcement.
+- H09 baseline evidence (2026-03-04):
+  - quality workflow includes `guardrails`, `java-smoke`, `quality-full`;
+  - security workflow includes `dependency-review`, `codeql-analysis`.

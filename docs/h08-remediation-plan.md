@@ -145,3 +145,8 @@ H09 handoff constraints:
 
 H09 adoption status (2026-03-04):
 - CI bootstrap (`B09`) now includes `verify-h08-baseline` in GitHub Actions quality gates (`.github/workflows/h09-quality-gates.yml`).
+
+H09 hard-gate adoption update (2026-03-04):
+- H09 completion includes enforced quality/security gate expansion:
+  - `quality-full` (`verify-assets`, `verify-template-assets`, `./gradlew check`) in `.github/workflows/h09-quality-gates.yml`,
+  - `dependency-review` + `codeql-analysis` in `.github/workflows/h09-security-gates.yml`.

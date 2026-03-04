@@ -99,11 +99,66 @@ jobs:
           name: java-smoke-test-report
           path: build/reports/tests/test/
 
+  quality-full:
+    name: quality-full
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+
+      - name: verify-assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .ci-logs
+          npm run verify-assets 2>&1 | tee .ci-logs/verify-assets.log
+
+      - name: verify-template-assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run verify-template-assets 2>&1 | tee .ci-logs/verify-template-assets.log
+
+      - name: gradle-check
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          ./gradlew check 2>&1 | tee .ci-logs/gradle-check.log
+
+      - name: Upload quality logs and test report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-full-artifacts
+          path: |
+            .ci-logs/
+            build/reports/tests/test/
+
   summary:
     name: summary
     runs-on: ubuntu-latest
     if: always()
-    needs: [guardrails, java-smoke]
+    needs: [guardrails, java-smoke, quality-full]
     steps:
       - name: Publish rollout summary
         shell: bash
@@ -114,6 +169,7 @@ jobs:
             echo ""
             echo "- guardrails: ${{ needs.guardrails.result }}"
             echo "- java-smoke: ${{ needs.java-smoke.result }}"
+            echo "- quality-full: ${{ needs.quality-full.result }}"
             echo ""
-            echo "Stage 1 rollout policy: workflow is active and visible; branch protection required checks are enabled in Stage 2 after stability criteria in docs/h09-ci-gates.md are met."
+            echo "Stage 2 policy: required checks include guardrails, java-smoke, quality-full, dependency-review, and codeql-analysis."
           } >> "$GITHUB_STEP_SUMMARY"

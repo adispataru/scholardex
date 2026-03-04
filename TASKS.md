@@ -57,10 +57,12 @@ Done history moved to `TASKS-done.md`.
   Status: completed on 2026-03-04.
   Note: archived in `TASKS-done.md` with H08-S01..S07 completion details, guardrails, and H09 handoff guidance.
 
-- [ ] `H09` Build, CI, and quality gates.
+- [x] `H09` Build, CI, and quality gates.
   Goal: ensure every change passes reproducible checks and prevents regressions from merging.
   Deliverable: CI pipeline definition with lint/test/build/security gates.
   Exit criteria: required checks are automated and block broken changes.
+  Status: completed on 2026-03-04.
+  Note: CI hardening is enforced via `.github/workflows/h09-quality-gates.yml` (`guardrails`, `java-smoke`, `quality-full`) and `.github/workflows/h09-security-gates.yml` (`dependency-review`, `codeql-analysis`), with local parity command `npm run verify-h09-baseline`.
 
 - [ ] `H10` Documentation and contribution workflow.
   Goal: align README/CONTRIBUTING with actual architecture, setup, and delivery flow.

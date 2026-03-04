@@ -59,6 +59,12 @@ For H08 observability/operability hardening changes, also run:
 npm run verify-h08-baseline
 ```
 
+For H09 CI parity before opening PRs that affect build/test/security gates, run:
+
+```bash
+npm run verify-h09-baseline
+```
+
 If your change affects startup/config wiring, also verify boot task resolution:
 
 ```bash
@@ -68,7 +74,7 @@ If your change affects startup/config wiring, also verify boot task resolution:
 When editing templates, do not add new `/vendor/*` asset references. Use `/assets/app.css` and `/assets/app.js`.
 Do not commit backup templates (`*-bak.html`) under `src/main/resources/templates/**`; checks will fail.
 Do not reintroduce removed legacy CNFIS artifacts (`CNFISScoringService`, `CNFISReport`) or null-fallback scoring dispatch; `verify-duplication-guardrails` enforces these guardrails.
-Do not add new controller/view imports from `core.repository` or `core.service.reporting`; `verify-architecture-boundaries` enforces these guardrails (existing debt remains allowlisted until remediated).
+Do not add new controller/view imports from `core.repository` or `core.service.reporting`; `verify-architecture-boundaries` enforces these guardrails.
 Do not introduce new mutating `GET` routes, transport-layer `printStackTrace`, or unsafe `start/end` year parsing in controllers; `verify-h07-guardrails` enforces debt-aware guardrails.
 
 ## Pull Request Checklist
