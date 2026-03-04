@@ -3,6 +3,7 @@ package ro.uvt.pokedex.core.config;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -16,7 +17,7 @@ public class MvcExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public String handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request, Model model) {
-        log.warn("MVC bad request for path {}: {}", request.getRequestURI(), ex.getMessage());
+        log.warn("MVC bad request: requestId={}, path={}, message={}", requestId(), request.getRequestURI(), ex.getMessage());
         model.addAttribute("error", "400");
         return "errors/error";
     }
@@ -24,8 +25,13 @@ public class MvcExceptionHandler {
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public String handleUnexpected(Exception ex, HttpServletRequest request, Model model) {
-        log.error("Unhandled MVC exception for path {}", request.getRequestURI(), ex);
+        log.error("Unhandled MVC exception: requestId={}, path={}", requestId(), request.getRequestURI(), ex);
         model.addAttribute("error", "500");
         return "errors/error-500";
+    }
+
+    private String requestId() {
+        String requestId = MDC.get("requestId");
+        return (requestId == null || requestId.isBlank()) ? "unknown" : requestId;
     }
 }

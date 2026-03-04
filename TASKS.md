@@ -173,7 +173,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   Status: completed on 2026-03-04.
   Note: `/login` GET/POST contract is explicit; invalid credentials redirect to `/login?error`, logout redirects to `/login?logout`; login template now uses `name=\"username\"/\"password\"` with `autocomplete=\"username\"/\"current-password\"`; guardrails enforce these attributes.
 
-- [ ] `B08` H08-P1: Correlation context propagation.
+- [x] `B08` H08-P1: Correlation context propagation.
   Goal: close `L-H08-02`, `L-H08-06`, `L-H08-07`, `O-H08-07`.
   Scope:
   - add request correlation IDs for HTTP flows;
@@ -181,6 +181,8 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   - ensure error logs include correlation context and align with H07 mappings.
   Inputs: `docs/h08-remediation-plan.md` (`P1`), `docs/h08-observability-contracts.md`.
   Done criteria: request/job traces are diagnosable end-to-end.
+  Status: completed on 2026-03-04.
+  Note: implemented `X-Request-Id` adopt-and-propagate filter + request MDC (`requestId`, `route`, `userId`); added Scopus scheduler context helper and phase-aware MDC (`jobType`, `taskId`, `phase`) for batch/per-task logs; centralized exception handlers now include request correlation context; `verify-h08-observability-guardrails` extended with B08 checks.
 
 - [ ] `B09` H09 bootstrap: Promote local guardrails to required CI checks.
   Goal: operationalize H02/H06/H07/H08 enforcement in pipeline.

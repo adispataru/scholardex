@@ -79,6 +79,38 @@ for (const pattern of schedulerSignalPatterns) {
   }
 }
 
+const requestCorrelationFilterFile = ['src/main/java/ro/uvt/pokedex/core/config/RequestCorrelationFilter.java'];
+const requestCorrelationPatterns = [
+  'class RequestCorrelationFilter',
+  'X-Request-Id',
+  'MDC\\.put\\(\"requestId\"',
+  'response\\.setHeader\\((\"X-Request-Id\"|REQUEST_ID_HEADER)'
+];
+
+for (const pattern of requestCorrelationPatterns) {
+  const matches = runRg(pattern, requestCorrelationFilterFile);
+  if (matches.length === 0) {
+    errors.push(
+      `RequestCorrelationFilter missing expected B08 correlation pattern: ${pattern}`
+    );
+  }
+}
+
+const schedulerCorrelationPatterns = [
+  'MDC\\.put\\(\"jobType\"|SchedulerCorrelationSupport\\.withSchedulerContext',
+  'MDC\\.put\\(\"taskId\"|SchedulerCorrelationSupport\\.withSchedulerContext',
+  'MDC\\.put\\(\"phase\"|SchedulerCorrelationSupport\\.withSchedulerContext'
+];
+
+for (const pattern of schedulerCorrelationPatterns) {
+  const matches = runRg(pattern, schedulerFile);
+  if (matches.length === 0) {
+    errors.push(
+      `ScopusUpdateScheduler missing expected B08 correlation context pattern: ${pattern}`
+    );
+  }
+}
+
 if (errors.length > 0) {
   console.error('H08 observability guardrail verification failed:');
   errors.forEach((error) => console.error(`- ${error}`));

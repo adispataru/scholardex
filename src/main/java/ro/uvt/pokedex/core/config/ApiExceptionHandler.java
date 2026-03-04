@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
@@ -22,22 +23,25 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class, ConstraintViolationException.class})
     public ResponseEntity<ApiErrorResponse> handleValidation(Exception ex, HttpServletRequest request) {
+        log.warn("API validation failure: requestId={}, path={}", requestId(), request.getRequestURI());
         return build(HttpStatus.BAD_REQUEST, "bad_request", "Validation failed.", request);
     }
 
     @ExceptionHandler({MethodArgumentTypeMismatchException.class, IllegalArgumentException.class})
     public ResponseEntity<ApiErrorResponse> handleBadRequest(Exception ex, HttpServletRequest request) {
+        log.warn("API bad request: requestId={}, path={}, message={}", requestId(), request.getRequestURI(), ex.getMessage());
         return build(HttpStatus.BAD_REQUEST, "bad_request", ex.getMessage(), request);
     }
 
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<ApiErrorResponse> handleNotFound(NoSuchElementException ex, HttpServletRequest request) {
+        log.warn("API not found: requestId={}, path={}", requestId(), request.getRequestURI());
         return build(HttpStatus.NOT_FOUND, "not_found", "Resource not found.", request);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpected(Exception ex, HttpServletRequest request) {
-        log.error("Unhandled API exception for path {}", request.getRequestURI(), ex);
+        log.error("Unhandled API exception: requestId={}, path={}", requestId(), request.getRequestURI(), ex);
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "internal_server_error", "Unexpected server error.", request);
     }
 
@@ -50,5 +54,10 @@ public class ApiExceptionHandler {
                 message
         );
         return ResponseEntity.status(status).body(body);
+    }
+
+    private String requestId() {
+        String requestId = MDC.get("requestId");
+        return (requestId == null || requestId.isBlank()) ? "unknown" : requestId;
     }
 }

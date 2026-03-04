@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -56,32 +57,68 @@ public class ScopusUpdateScheduler {
 
     @Scheduled(fixedDelayString = "${scopus.update.poll-ms:60000}")
     public void pollQueue() {
-
-        processPublicationTasks();
-        processCitationTasks();
-
+        String batchTaskId = "batch-" + UUID.randomUUID();
+        AutoCloseable batchContext = SchedulerCorrelationSupport.withSchedulerContext(
+                "scopus.update.poll",
+                batchTaskId,
+                "start"
+        );
+        long startedAt = System.currentTimeMillis();
+        int publicationTasks = 0;
+        int citationTasks = 0;
+        log.info("Scopus scheduler poll started: batchTaskId={}", batchTaskId);
+        try {
+            publicationTasks = processPublicationTasks();
+            citationTasks = processCitationTasks();
+            MDC.put("phase", "complete");
+            log.info("Scopus scheduler poll completed: batchTaskId={}, publicationTasks={}, citationTasks={}, durationMs={}",
+                    batchTaskId, publicationTasks, citationTasks, System.currentTimeMillis() - startedAt);
+        } catch (Exception e) {
+            MDC.put("phase", "failed");
+            log.error("Scopus scheduler poll failed: batchTaskId={}, durationMs={}",
+                    batchTaskId, System.currentTimeMillis() - startedAt, e);
+            throw e;
+        } finally {
+            closeContext(batchContext);
+        }
     }
 
-    private void processPublicationTasks() {
+    private int processPublicationTasks() {
         List<ScopusPublicationUpdate> tasks =
                 taskRepo.findByStatusOrderByInitiatedDate(Status.PENDING);
 
-        if (tasks.isEmpty()) return;
+        if (tasks.isEmpty()) return 0;
+
+        int processedTasks = 0;
 
         for (ScopusPublicationUpdate t : tasks) {
+            AutoCloseable taskContext = SchedulerCorrelationSupport.withSchedulerContext(
+                    "scopus.publication.update",
+                    String.valueOf(t.getId()),
+                    "start"
+            );
+            long taskStartedAt = System.currentTimeMillis();
             try {
                 runOnePublicationUpdate(t);
+                processedTasks++;
+                MDC.put("phase", "complete");
+                log.info("Publication task {} completed in {} ms", t.getId(), System.currentTimeMillis() - taskStartedAt);
             } catch (Exception e) {
+                MDC.put("phase", "failed");
                 log.error("Publication task {} failed", t.getId(), e);
                 t.setStatus(Status.FAILED);
                 t.setMessage("FAILED: " + e.getMessage());
                 t.setExecutionDate(LocalDate.now(Z).toString());
                 taskRepo.save(t);
+            } finally {
+                closeContext(taskContext);
             }
         }
+        return processedTasks;
     }
 
     private void runOnePublicationUpdate(ScopusPublicationUpdate task) {
+        MDC.put("phase", "progress");
         task.setStatus(Status.IN_PROGRESS);
         task.setMessage("Starting");
         taskRepo.save(task);
@@ -113,8 +150,11 @@ public class ScopusUpdateScheduler {
             }
 
             cursor = resp.getNext_cursor();
+            log.debug("Publication task {} progress: imported={}, nextCursorPresent={}",
+                    task.getId(), imported, cursor != null && !cursor.isBlank());
         } while (cursor != null && !cursor.isBlank());
 
+        MDC.put("phase", "complete");
         task.setStatus(Status.COMPLETED);
         task.setMessage("Imported " + imported + " items since " + fromDate);
         task.setExecutionDate(LocalDate.now(Z).toString());
@@ -123,26 +163,42 @@ public class ScopusUpdateScheduler {
 
 
 
-    private void processCitationTasks() {
+    private int processCitationTasks() {
         List<ScopusCitationsUpdate> tasks =
                 citationsTaskRepo.findByStatusOrderByInitiatedDate(Status.PENDING);
 
-        if (tasks.isEmpty()) return;
+        if (tasks.isEmpty()) return 0;
+
+        int processedTasks = 0;
 
         for (ScopusCitationsUpdate t : tasks) {
+            AutoCloseable taskContext = SchedulerCorrelationSupport.withSchedulerContext(
+                    "scopus.citation.update",
+                    String.valueOf(t.getId()),
+                    "start"
+            );
+            long taskStartedAt = System.currentTimeMillis();
             try {
                 runOneCitationsUpdate(t);
+                processedTasks++;
+                MDC.put("phase", "complete");
+                log.info("Citations task {} completed in {} ms", t.getId(), System.currentTimeMillis() - taskStartedAt);
             } catch (Exception e) {
+                MDC.put("phase", "failed");
                 log.error("Citations task {} failed", t.getId(), e);
                 t.setStatus(Status.FAILED);
                 t.setMessage("FAILED: " + e.getMessage());
                 t.setExecutionDate(LocalDate.now(Z).toString());
                 citationsTaskRepo.save(t);
+            } finally {
+                closeContext(taskContext);
             }
         }
+        return processedTasks;
     }
 
     private void runOneCitationsUpdate(ScopusCitationsUpdate task) {
+        MDC.put("phase", "progress");
         task.setStatus(Status.IN_PROGRESS);
         task.setMessage("Starting citations update");
         citationsTaskRepo.save(task);
@@ -168,6 +224,8 @@ public class ScopusUpdateScheduler {
 
         // 3) call Python service
         CitationsByEidResponse resp = callPythonCitations(req);
+        log.debug("Citations task {} progress: requestId={}, eids={}",
+                task.getId(), req.getRequestId(), req.getEidLastDate().size());
 
         int importedPublications = 0;
         int createdCitations = 0;
@@ -224,6 +282,14 @@ public class ScopusUpdateScheduler {
                 importedPublications + " citing publications and " + createdCitations + " citation links.");
         task.setExecutionDate(LocalDate.now(Z).toString());
         citationsTaskRepo.save(task);
+    }
+
+    private void closeContext(AutoCloseable context) {
+        try {
+            context.close();
+        } catch (Exception e) {
+            log.warn("Failed to close scheduler correlation context cleanly", e);
+        }
     }
 
     private Map<String, String> computeEidLastCitationDatesForAuthor(String authorScopusId) {
@@ -374,4 +440,3 @@ public class ScopusUpdateScheduler {
                 .block();
     }
 }
-

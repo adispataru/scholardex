@@ -48,6 +48,7 @@ class ApiSecurityContractTest {
     void unauthenticatedApiExportReturns401JsonEnvelope() throws Exception {
         mockMvc.perform(get("/api/export"))
                 .andExpect(status().isUnauthorized())
+                .andExpect(header().exists("X-Request-Id"))
                 .andExpect(content().contentType("application/json"))
                 .andExpect(jsonPath("$.status").value(401))
                 .andExpect(jsonPath("$.error").value("unauthorized"))
