@@ -53,6 +53,12 @@ For H07 security/validation/error hardening changes, also run:
 npm run verify-h07-guardrails
 ```
 
+For H08 observability/operability hardening changes, also run:
+
+```bash
+npm run verify-h08-baseline
+```
+
 If your change affects startup/config wiring, also verify boot task resolution:
 
 ```bash

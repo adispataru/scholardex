@@ -1,6 +1,8 @@
 package ro.uvt.pokedex.core.service;
 
 import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
@@ -24,6 +26,7 @@ import java.util.stream.Stream;
 @Service
 @Data
 public class CacheService {
+    private static final Logger log = LoggerFactory.getLogger(CacheService.class);
     private final boolean resetIF2022 = false;
     private final ScopusAuthorRepository scopusAuthorRepository;
     private final ScopusAffiliationRepository scopusAffiliationRepository;
@@ -80,7 +83,7 @@ public class CacheService {
         });
 
         if(resetIF2022){
-            System.out.println("Resetting impact factor");
+            log.info("Resetting impact factor");
             List<WoSRanking> toDelete = new ArrayList<>();
             for (WoSRanking r : rankingCacheById.values()) {
                 HashSet<String> categories = new HashSet<>(r.getWebOfScienceCategoryIndex().keySet());
@@ -102,11 +105,11 @@ public class CacheService {
                 }
             }
 
-            System.out.println("Successfully reset impact factor. Saving cache...");
+            log.info("Successfully reset impact factor. Saving cache...");
             syncRankingCacheToDb();
-            System.out.println("Successfully saved cache. Deleting empty rankings...");
+            log.info("Successfully saved cache. Deleting empty rankings...");
             rankingRepository.deleteAll(toDelete);
-            System.out.println("Successfully deleted empty rankings...");
+            log.info("Successfully deleted empty rankings...");
         }
 
 
@@ -210,7 +213,7 @@ public class CacheService {
 
     public void putCachedRankingById(String id, WoSRanking ranking) {
         if(id == null){
-            System.out.println("Null id on ranking " + ranking);
+            log.warn("Null id on ranking {}", ranking);
             return;
         }
         rankingCacheById.put(id, ranking);

@@ -50,10 +50,12 @@ Done history moved to `TASKS-done.md`.
   Status: completed on 2026-03-04.
   Note: archived in `TASKS-done.md` with H07-S01..S07 completion details, regression guards, and H08 handoff guidance.
 
-- [ ] `H08` Observability and operability foundation.
+- [x] `H08` Observability and operability foundation.
   Goal: make failures diagnosable with structured logs, metrics, and health/readiness signals.
   Deliverable: minimum observability baseline and runbook starter.
   Exit criteria: common production failure modes are detectable and actionable.
+  Status: completed on 2026-03-04.
+  Note: archived in `TASKS-done.md` with H08-S01..S07 completion details, guardrails, and H09 handoff guidance.
 
 - [ ] `H09` Build, CI, and quality gates.
   Goal: ensure every change passes reproducible checks and prevents regressions from merging.
@@ -71,67 +73,138 @@ Done history moved to `TASKS-done.md`.
 - Create subtasks only when starting work on one `Hxx`; keep this file stable as the top-level map.
 - Move completed `Hxx` entries and their subtasks to `TASKS-done.md`.
 
-## H02 First Subtask List (Planning Mode Seed)
 
-Scope: `H02` Architecture boundaries and ownership.
 
-- [x] `H02-S01` Map current runtime architecture and dependency directions.
-  Goal: produce a factual map of layers/modules and how requests/flows travel through them.
-  Inputs: package structure, controller/service/repository wiring, frontend template/script entrypoints.
-  Deliverable: `docs/h02-architecture-map.md` (current-state diagram + dependency table).
-  Exit criteria: all major runtime paths (web -> service -> data and template/script flow) are represented.
-  Status: completed on 2026-03-03.
+`H01`-`H02` subtasks and closure details are archived in `TASKS-done.md`.
 
-- [x] `H02-S02` Define target boundaries and ownership zones.
-  Goal: define what belongs in each layer/module and who owns cross-cutting areas.
-  Inputs: `H02-S01` map + current drift/findings from H01.
-  Deliverable: `docs/h02-boundaries-and-ownership.md` (zones, responsibilities, ownership matrix).
-  Exit criteria: each major package/area has a declared owner and allowed responsibilities.
-  Status: completed on 2026-03-03.
+## Remediation Execution Backlog (Actionable)
 
-- [x] `H02-S03` Specify allowed dependency rules.
-  Goal: convert boundaries into explicit allow/deny dependency rules.
-  Inputs: boundary definitions and known problematic couplings.
-  Deliverable: dependency rule set in `docs/h02-boundaries-and-ownership.md` (or `docs/h02-dependency-rules.md`).
-  Exit criteria: developers can decide placement/dependencies without ambiguity.
-  Status: completed on 2026-03-03 (`docs/h02-dependency-rules.md`).
+Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.md`, `docs/h07-remediation-plan.md`, `docs/h08-remediation-plan.md` and linked findings/contracts inventories.
 
-- [x] `H02-S04` Identify and classify current boundary violations.
-  Goal: detect concrete code locations that violate the declared dependency rules.
-  Inputs: declared rules + current codebase scan.
-  Deliverable: `docs/h02-violations.md` with severity (`high|medium|low`) and rationale.
-  Exit criteria: every violation has a file reference and a proposed remediation direction.
-  Status: completed on 2026-03-03 (`docs/h02-violations.md`).
-  Note: V01 follow-up slice 4 completed (`AdminGroupController` export/CNFIS via `GroupExportFacade` and `GroupCnfisExportFacade`); tracked baseline pair is now at 73.9% repository-field reduction (`23 -> 6`), and AdminGroup repository debt is closed.
-  Note: V02 baseline slice completed for the same pair (User/AdminGroup): direct controller imports of `core.service.reporting` removed; export/reporting coupling now facade-backed.
-  Note: V02 AdminView verification slice completed: no direct `Z1 -> Z3` reporting-service coupling found in `AdminViewController`; transport-layer scan baseline is clean.
-  Note: V03 focused AdminView slice delivered: institution publications/export data assembly and ranking compute/merge flows moved behind `AdminInstitutionReportFacade` and `RankingMaintenanceFacade`.
-  Note: V03 final closure slice delivered: remaining transport assembly moved behind `AdminScopusFacade` and `ForumExportFacade` (`/admin/scopus/publications/search`, `/admin/scopus/publications/citations`, `/api/export`); V03 marked complete for current H02 scope.
-  Note: V04 execution slice completed: reporting back-edge to `CacheService` removed via `ReportingLookupPort` + `CacheBackedReportingLookupFacade`; `service/reporting/**` now has zero `CacheService` references/imports.
+### P0 (High Priority)
 
-- [x] `H02-S05` Define phased remediation plan for violations.
-  Goal: prioritize fixes by blast radius and effort without blocking delivery.
-  Inputs: violation inventory + ownership matrix.
-  Deliverable: `docs/h02-remediation-plan.md` with phased slices (`R1`, `R2`, ...).
-  Exit criteria: top-priority violations have actionable implementation slices and sequencing.
-  Status: completed on 2026-03-03 (`docs/h02-remediation-plan.md` with `R1..R4`).
+- [x] `B01` H06-R1: Enforce citation pair uniqueness at DB level.
+  Goal: close `Q-H06-02` with persistence-layer guarantees.
+  Scope:
+  - add compound unique index for citation (`citedId`, `citingId`);
+  - implement one-time safe dedupe migration for existing duplicates;
+  - keep app-level duplicate guard as defense in depth.
+  Inputs: `docs/h06-remediation-plan.md` (`R1`), `docs/h06-query-consistency-findings.md`.
+  Done criteria: duplicate citation writes are rejected by DB; migration is reproducible and documented.
+  Status: completed on 2026-03-04.
+  Note: added `CitationUniquenessMigrationService` + gated runner (`off|report|apply`) with keep-lowest-id dedupe and runtime unique index `uniq_cited_citing`; added unit + integration coverage.
 
-- [x] `H02-S06` Add lightweight enforcement in workflow.
-  Goal: add practical checks/review guardrails so boundaries stay intact.
-  Inputs: dependency rules + remediation strategy.
-  Deliverable: checks and contributor guidance updates (`CONTRIBUTING.md`, optional scripts/CI rule).
-  Exit criteria: at least one automated or checklist-based gate prevents new boundary violations.
-  Status: completed on 2026-03-03.
-  Note: added `npm run verify-architecture-boundaries` (`scripts/verify-architecture-boundaries.js`) to enforce: no new `Z1 -> Z4` controller repository imports (debt-aware allowlist), no `Z1 -> Z3` reporting imports in transport, and no `CacheService` usage in `service/reporting/**`.
+- [x] `B02` H07-R1: Authorization scope and 401/403 semantics alignment.
+  Goal: close `S-H07-01`, `E-H07-02`, `E-H07-04`.
+  Scope:
+  - explicitly scope privileged MVC/API routes;
+  - enforce zone contract (MVC redirect-to-login, API 401 JSON; denied -> MVC 403 view/API 403 JSON).
+  Inputs: `docs/h07-remediation-plan.md` (`R1`), `docs/h07-security-validation-contracts.md`.
+  Done criteria: no privileged route depends only on `anyRequest().authenticated()`; behavior is consistent by zone.
+  Status: completed on 2026-03-04.
+  Note: added explicit `/admin/**`, `/api/admin/**`, `/api/export/**`, `/api/scrape/**` authority scoping and API-aware JSON `401/403` handlers; normalized `/user/**` unauthenticated flow to login redirect with filter-enabled security contract tests.
 
-- [x] `H02-S07` Close H02 with adoption notes.
-  Goal: finalize architecture baseline and usage guidance for future tasks.
-  Inputs: completed H02 artifacts and enforcement setup.
-  Deliverable: H02 closeout note in `docs/h02-boundaries-and-ownership.md` + `TASKS.md` status updates.
-  Exit criteria: H02 can be treated as reference baseline for H03+ planning and implementation.
-  Status: completed on 2026-03-03.
-  Note: H02 is now the active architecture reference baseline; reopen H02 only for boundary-rule changes or newly detected violations.
+- [x] `B03` H08-P0: Logging hygiene and disclosure cleanup.
+  Goal: close `L-H08-01`, `L-H08-04`, `L-H08-08`, `L-H08-05`, `O-H08-06`.
+  Scope:
+  - remove runtime `printStackTrace` and `System.out/System.err` in active paths;
+  - fix logger owner drift (`ComputerScienceBookService`);
+  - remove raw external payload logging in `ScopusService#parseToken`;
+  - preserve endpoint behavior while improving diagnostics.
+  Inputs: `docs/h08-remediation-plan.md` (`P0`), `docs/h08-logging-drift-inventory.md`.
+  Done criteria: H08 allowlists shrink accordingly; failures are logged with structured context.
+  Status: completed on 2026-03-04.
+  Note: replaced active runtime `printStackTrace` and targeted `System.out/System.err` in transport/service/importing/reporting paths; fixed `ComputerScienceBookService` logger owner drift; removed raw payload print in `ScopusService#parseToken`; tightened `verify-h08-observability-guardrails` allowlists.
 
-`H05` subtasks and closure details are archived in `TASKS-done.md`.
-`H06` subtasks and closure details are archived in `TASKS-done.md`.
-`H07` subtasks and closure details are archived in `TASKS-done.md`.
+### P1 (Medium-High Priority)
+
+- [ ] `B04` H06-R2: Complete year-parsing safety rollout.
+  Goal: close remaining `Q-H06-03` paths under contract `C3`.
+  Scope:
+  - replace remaining raw year parsing in high-impact report/export/search/grouping flows with `PersistenceYearSupport`;
+  - finalize policy for `ActivityInstance#getYear`.
+  Inputs: `docs/h06-remediation-plan.md` (`R2`), `docs/h06-persistence-contracts.md`.
+  Done criteria: no raw `substring(0,4)` year filtering/grouping remains in targeted high-impact flows.
+
+- [ ] `B05` H06-R3: Identity/order/dedupe consistency.
+  Goal: close `Q-H06-04`, `Q-H06-06`, `Q-H06-07`.
+  Scope:
+  - normalize `id`/`eid`/`doi` lookup usage per contract;
+  - enforce deterministic sorting for user-visible lists/exports;
+  - remove author-aggregation duplicate amplification.
+  Inputs: `docs/h06-remediation-plan.md` (`R3`), `docs/h06-query-consistency-findings.md`.
+  Done criteria: stable ordering and deduped outputs are covered by tests.
+
+- [ ] `B06` H07-R2: Validation boundary hardening.
+  Goal: close `V-H07-01`, `V-H07-02`, `V-H07-03`, `V-H07-06`.
+  Scope:
+  - DTO + `@Valid` rollout for top-risk write and import endpoints;
+  - safe/bounded parsing for `start/end` and role conversion;
+  - deterministic 4xx behavior for malformed input.
+  Inputs: `docs/h07-remediation-plan.md` (`R2`), `docs/h07-validation-drift-inventory.md`.
+  Done criteria: boundary validation enforced on targeted endpoints; invalid input no longer escapes as 5xx.
+
+- [ ] `B07` H07-R3: Centralized exception mapping and transport logging cleanup.
+  Goal: close `E-H07-01`, `E-H07-03`, `E-H07-05`, `E-H07-06`, `E-H07-07`.
+  Scope:
+  - introduce `@ControllerAdvice` mappings for common failure classes;
+  - remove catch-and-print/swallowed exceptions on transport paths;
+  - align API/MVC error envelopes/views.
+  Inputs: `docs/h07-remediation-plan.md` (`R3`), `docs/h07-error-handling-findings.md`.
+  Done criteria: consistent mapped error behavior with structured diagnostics.
+
+- [ ] `B08` H08-P1: Correlation context propagation.
+  Goal: close `L-H08-02`, `L-H08-06`, `L-H08-07`, `O-H08-07`.
+  Scope:
+  - add request correlation IDs for HTTP flows;
+  - standardize scheduler context (`jobType`, `taskId`, phase);
+  - ensure error logs include correlation context and align with H07 mappings.
+  Inputs: `docs/h08-remediation-plan.md` (`P1`), `docs/h08-observability-contracts.md`.
+  Done criteria: request/job traces are diagnosable end-to-end.
+
+- [ ] `B09` H09 bootstrap: Promote local guardrails to required CI checks.
+  Goal: operationalize H02/H06/H07/H08 enforcement in pipeline.
+  Scope:
+  - include `verify-architecture-boundaries`, `verify-h06-persistence`, `verify-h07-guardrails`, `verify-h08-baseline` as required CI checks;
+  - document policy for tightening/allowlist shrink.
+  Inputs: `docs/h08-remediation-plan.md` (H09 handoff), remediation guardrail docs.
+  Done criteria: CI blocks merges on guardrail failure.
+
+### P2 (Planned / Structural)
+
+- [ ] `B10` H06-R4: Persistence consistency cleanup and namespace hygiene.
+  Goal: close `Q-H06-05`, `Q-H06-08`, `Q-H06-09`, `D-H06-03`.
+  Scope:
+  - text-search normalization policy rollout;
+  - retire typo’d repo API (`findAllByeIssn`) via compatibility step;
+  - forum export dedupe normalization (remove sentinel checks);
+  - plan and execute collection naming migration (`schodardex` -> `scholardex`).
+  Inputs: `docs/h06-remediation-plan.md` (`R4`), `docs/h06-schema-drift-inventory.md`.
+  Done criteria: API naming and data-shape drift items have closed implementation path.
+
+- [ ] `B11` H07-R4: CSRF, mutating-GET migration, and upload hardening.
+  Goal: close `C3`, `C4`, `V-H07-04`.
+  Scope:
+  - re-enable CSRF for browser form flows with explicit exemptions only when justified;
+  - migrate `delete/duplicate` mutating GET routes to safe verbs;
+  - enforce upload size/type/schema validation in group import.
+  Inputs: `docs/h07-remediation-plan.md` (`R4`), `docs/h07-security-validation-contracts.md`.
+  Done criteria: browser mutation routes are CSRF-protected and non-GET; upload policy enforced.
+
+- [ ] `B12` H08-P2: Actuator/metrics/readiness baseline implementation.
+  Goal: close `O-H08-01`, `O-H08-02`, `O-H08-03`, `O-H08-04`, `O-H08-05`.
+  Scope:
+  - add actuator and explicit readiness/liveness policy;
+  - add minimum metrics coverage for startup/scheduler/export/external dependency calls;
+  - add async executor saturation/queue diagnostics;
+  - define startup phase readiness semantics.
+  Inputs: `docs/h08-remediation-plan.md` (`P2`), `docs/h08-operability-findings.md`, `docs/h08-observability-contracts.md`.
+  Done criteria: production failure modes are machine-detectable via health and metrics endpoints.
+
+- [ ] `B13` H02 residual V01 closure outside baseline pair.
+  Goal: reduce remaining `Z1 -> Z4` controller repository debt in non-baseline controllers.
+  Scope:
+  - prioritize `AdminViewController` and smaller controllers still directly importing repositories;
+  - migrate residual orchestration to Z2 facades while preserving behavior.
+  Inputs: `docs/h02-remediation-plan.md` (`R1 residual`), `docs/h02-violations.md`.
+  Done criteria: repository-import allowlist in `verify-architecture-boundaries` is materially reduced.

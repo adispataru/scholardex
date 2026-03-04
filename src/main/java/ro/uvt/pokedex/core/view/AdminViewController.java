@@ -6,6 +6,8 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -46,6 +48,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/admin")
 @RequiredArgsConstructor
 public class AdminViewController {
+    private static final Logger log = LoggerFactory.getLogger(AdminViewController.class);
 
     private final UserService userService;
     private final ResearcherService researcherService;
@@ -164,7 +167,7 @@ public class AdminViewController {
 
             int pubRowNum = 1;
             for (Publication pub : vm.publications()) {
-                System.out.println("Processing publication: " + pub.getAuthors() + " " + pub.getForum());
+                log.debug("Processing publication for institution export: authors={}, forum={}", pub.getAuthors(), pub.getForum());
                 Row row = pubSheet.createRow(pubRowNum++);
                 row.createCell(0).setCellValue(pub.getEid());
                 row.createCell(1).setCellValue(pub.getDoi());

@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentMap;
 @Service
 public class ComputerScienceBookService extends AbstractForumScoringService {
 
-    private static final Logger logger = LoggerFactory.getLogger(ro.uvt.pokedex.core.service.reporting.ComputerScienceConferenceScoringService.class);
+    private static final Logger logger = LoggerFactory.getLogger(ComputerScienceBookService.class);
     private static final int LAST_SENSE_YEAR = 2023;
     private final SenseRankingRepository senseRankingRepository;
     private final ConcurrentMap<String, List<SenseBookRanking>> rankingCache = new ConcurrentHashMap<>();

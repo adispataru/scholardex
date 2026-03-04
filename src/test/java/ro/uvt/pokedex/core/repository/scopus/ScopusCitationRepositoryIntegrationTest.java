@@ -4,6 +4,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.data.mongo.DataMongoTest;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.index.Index;
 import ro.uvt.pokedex.core.model.scopus.Citation;
 import ro.uvt.pokedex.core.repository.support.MongoIntegrationTestBase;
 
@@ -11,6 +15,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DataMongoTest
@@ -19,9 +24,13 @@ class ScopusCitationRepositoryIntegrationTest extends MongoIntegrationTestBase {
     @Autowired
     private ScopusCitationRepository repository;
 
+    @Autowired
+    private MongoTemplate mongoTemplate;
+
     @BeforeEach
     void cleanAndSeed() {
         repository.deleteAll();
+        mongoTemplate.indexOps(Citation.class).dropAllIndexes();
     }
 
     @Test
@@ -70,6 +79,20 @@ class ScopusCitationRepositoryIntegrationTest extends MongoIntegrationTestBase {
         assertEquals("c1", existing.get().getId());
         assertFalse(missing.isPresent());
         assertEquals(2, repository.countAllByCitedId("p1"));
+    }
+
+    @Test
+    void uniqueIndexRejectsDuplicateCitationPairs() {
+        mongoTemplate.indexOps(Citation.class).ensureIndex(
+                new Index()
+                        .on("citedId", Sort.Direction.ASC)
+                        .on("citingId", Sort.Direction.ASC)
+                        .unique()
+                        .named("uniq_cited_citing")
+        );
+
+        repository.save(citation("c1", "p1", "p2"));
+        assertThrows(DuplicateKeyException.class, () -> repository.save(citation("c2", "p1", "p2")));
     }
 
     private static Citation citation(String id, String citedId, String citingId) {

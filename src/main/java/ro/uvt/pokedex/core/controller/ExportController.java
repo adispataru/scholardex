@@ -6,6 +6,8 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,6 +20,7 @@ import ro.uvt.pokedex.core.service.application.model.ForumExportViewModel;
 @RequiredArgsConstructor
 public class ExportController {
 
+    private static final Logger log = LoggerFactory.getLogger(ExportController.class);
     private final ForumExportFacade forumExportFacade;
 
     @GetMapping("/export")
@@ -50,7 +53,7 @@ public class ExportController {
 
                 workbook.write(outputStream);
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("Forum export streaming failed for route /api/export", e);
             }
         };
     }

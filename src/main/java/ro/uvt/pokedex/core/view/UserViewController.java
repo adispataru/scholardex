@@ -356,7 +356,7 @@ public class UserViewController {
                                       @RequestParam(name = "start", defaultValue = "2021") String startYear,
                                       @RequestParam(name = "end", defaultValue = "2024") String endYear) throws IOException {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.sendRedirect("/login");
             return;
         }
         int start = Integer.parseInt(startYear);

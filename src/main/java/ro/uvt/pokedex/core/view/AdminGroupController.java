@@ -2,6 +2,8 @@ package ro.uvt.pokedex.core.view;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -39,6 +41,7 @@ import java.util.zip.ZipOutputStream;
 @RequestMapping("/admin/groups")
 @RequiredArgsConstructor
 public class AdminGroupController {
+    private static final Logger log = LoggerFactory.getLogger(AdminGroupController.class);
 
     // V01 closed: controller repository debt removed for AdminGroupController.
     // Remaining H02 debt is cross-layer coupling (V02+).
@@ -211,7 +214,7 @@ public class AdminGroupController {
             redirectAttributes.addFlashAttribute("successMessage", "Groups imported successfully.");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "An error occurred while importing the groups: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Group import failed: fileName={}, size={}", file.getOriginalFilename(), file.getSize(), e);
         }
 
         return "redirect:/admin/groups";

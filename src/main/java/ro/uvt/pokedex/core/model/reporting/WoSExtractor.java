@@ -1,5 +1,7 @@
 package ro.uvt.pokedex.core.model.reporting;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 
@@ -9,6 +11,7 @@ import java.util.Optional;
 
 @Component
 public class WoSExtractor {
+    private static final Logger log = LoggerFactory.getLogger(WoSExtractor.class);
 
     public Optional<String> extractData(String doi) {
         try {
@@ -40,7 +43,7 @@ public class WoSExtractor {
             // Wait for the process to complete
             process.waitFor();
         } catch (Exception e) {
-            System.err.println("Error during WoS data extraction: " + e.getMessage());
+            log.error("Error during WoS data extraction for DOI {}", doi, e);
         }
 
         return Optional.empty();

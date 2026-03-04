@@ -3,6 +3,8 @@ package ro.uvt.pokedex.core.service.reporting;
 import lombok.RequiredArgsConstructor;
 import org.mvel2.MVEL;
 import org.mvel2.PropertyAccessException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
@@ -17,6 +19,7 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class ActivityReportingService {
+    private static final Logger log = LoggerFactory.getLogger(ActivityReportingService.class);
     private final ScoringFactoryService scoringFactoryService;
 
     public Map<String, Score> calculateActivityScores(List<ActivityInstance> activities, Indicator indicator) {
@@ -101,7 +104,7 @@ public class ActivityReportingService {
                 double finalScore = MVEL.eval(formula, variables, Double.class);
                 result.setAuthorScore(finalScore);
             } catch (PropertyAccessException ex) {
-                System.err.println("Error evaluating formula: " + ex.getMessage());
+                log.error("Error evaluating formula for indicator {} and activity {}", indicator.getId(), activity.getId(), ex);
                 result.setAuthorScore(0.0);
             }
         }
@@ -110,4 +113,3 @@ public class ActivityReportingService {
 
 
 }
-

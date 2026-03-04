@@ -3,6 +3,8 @@ package ro.uvt.pokedex.core.service.importing;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.ArtisticEvent;
 import ro.uvt.pokedex.core.model.reporting.Domain;
@@ -19,6 +21,7 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class ArtisticEventsService {
+    private static final Logger log = LoggerFactory.getLogger(ArtisticEventsService.class);
 
     private final ArtisticEventRepository artisticEventRepository;
     private final DomainRepository domainRepository;
@@ -63,16 +66,16 @@ public class ArtisticEventsService {
                             artisticEvent.setRank(ArtisticEvent.Rank.NATIONAL);
                             break;
                         default:
-                            System.err.println("Unknown level: " + level);
+                            log.warn("Unknown artistic event level '{}'", level);
                             continue; // Skip this event if the level is unknown
                     }
 
                     // Save the ArtisticEvent
                     artisticEventRepository.save(artisticEvent);
-                    System.out.println("Imported artistic event: " + name + " with level: " + artisticEvent.getRank());
+                    log.info("Imported artistic event: {} with level: {}", name, artisticEvent.getRank());
                 }
             } catch (IOException e) {
-                System.err.println("Error reading or parsing the JSON file: " + e.getMessage());
+                log.error("Error reading or parsing artistic events JSON file", e);
             }
         }
 

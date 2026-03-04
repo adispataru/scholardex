@@ -114,9 +114,10 @@ class UserViewControllerContractTest {
     }
 
     @Test
-    void cnfis2025ExportReturnsUnauthorizedWithoutAuthentication() throws Exception {
+    void cnfis2025ExportRedirectsToLoginWithoutAuthentication() throws Exception {
         mockMvc.perform(get("/user/publications/exportCNFIS2025"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"));
     }
 
     @Test

@@ -31,7 +31,7 @@ public class RankingService {
     public void initializeCategoriesFromExcel(String filePath, String excelPassword) {
         if(rankingRepository.count() != 0)
             return;
-        System.out.println("Initializing ranking data from excel " + filePath);
+        logger.info("Initializing ranking data from excel {}", filePath);
         try (FileInputStream fis = new FileInputStream(filePath);
              Workbook workbook = WorkbookFactory.create(fis, excelPassword)) {
 

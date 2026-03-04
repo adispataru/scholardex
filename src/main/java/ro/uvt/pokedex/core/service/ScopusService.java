@@ -1,6 +1,8 @@
 package ro.uvt.pokedex.core.service;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -18,6 +20,7 @@ import java.util.Map;
 
 @Service
 public class ScopusService {
+    private static final Logger log = LoggerFactory.getLogger(ScopusService.class);
     private final RestTemplate restTemplate;
     private final String apiKey;
     private final String apiUrl;
@@ -45,7 +48,7 @@ public class ScopusService {
     }
 
     private String parseToken(String body) {
-        System.out.println(body);
+        log.debug("Scopus auth response received: bodyPresent={}, bodyLength={}", body != null, body != null ? body.length() : 0);
         return null;
     }
 
@@ -104,4 +107,3 @@ public class ScopusService {
         return detailsList;
     }
 }
-
