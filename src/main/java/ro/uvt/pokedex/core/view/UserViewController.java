@@ -273,13 +273,8 @@ public class UserViewController {
         return "user/individualReport-view";
     }
     @GetMapping("/rankings/{id}")
-    public String showRankingPage(Model model, @PathVariable  String id) {
-        Optional<WoSRanking> ranking = userRankingFacade.resolveJournalRankingForForum(id);
-        if (ranking.isPresent()) {
-            model.addAttribute("journal", ranking.get());
-            return "admin/rankings-view";
-        }
-        return "user/ranking-not-found";
+    public String showRankingPage(@PathVariable String id) {
+        return "redirect:/rankings/wos/" + id;
     }
 
     @PostMapping("/profile/save")

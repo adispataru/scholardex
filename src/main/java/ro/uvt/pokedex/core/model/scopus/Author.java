@@ -3,6 +3,7 @@ import java.util.List;
 
 import lombok.Data;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import java.util.List;
@@ -14,6 +15,7 @@ public class Author {
 
     @Id
     private String id;
+    @Indexed
     private String name;
     @DBRef(lazy = true)
     private List<Affiliation> affiliations;
@@ -31,5 +33,4 @@ public class Author {
         return Objects.hash(id);
     }
 }
-
 

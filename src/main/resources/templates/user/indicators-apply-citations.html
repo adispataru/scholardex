@@ -128,7 +128,7 @@
                                     </div>
                                     <div class="card-body">
                                         <div class="table-responsive">
-                                            <table class="table table-bordered" th:id="dataTableCitations" width="100%" cellspacing="0">
+                                            <table class="table table-bordered js-datatable" th:id="dataTableCitations" width="100%" cellspacing="0">
                                                 <thead>
                                                 <tr>
                                                     <th>Title</th>
@@ -168,7 +168,7 @@
                                     </div>
                                     <div class="card-body">
                                         <div class="table-responsive">
-                                            <table class="table table-bordered" th:id="'dataTable'+${publication.importId}" width="100%" cellspacing="0">
+                                            <table class="table table-bordered js-datatable" th:id="'dataTable'+${publication.importId}" width="100%" cellspacing="0">
                                                 <thead>
                                                 <tr>
                                                     <th width="60%">Title</th>
@@ -205,7 +205,7 @@
 
                                                         <td>
             <!--                                                <a th:if="${citationMap[e.key] != null && citationMap[e.key].venue != null}" th:text="${citationMap[e.key].venue.publicationName}" th:href="@{/user/scopus/venues/edit/{id}(id=${citationMap[e.key].venue.id})}">Venue</a>-->
-                                                            <a th:if="${citationMap[e.key] != null && forumMap[citationMap[e.key].forum] != null}" th:text="${forumMap[citationMap[e.key].forum].publicationName}" th:href="@{/user/rankings/{id}(id=${forumMap[citationMap[e.key].forum].id})}">Venue</a>
+                                                            <a th:if="${citationMap[e.key] != null && forumMap[citationMap[e.key].forum] != null}" th:text="${forumMap[citationMap[e.key].forum].publicationName}" th:href="@{/rankings/wos/{id}(id=${forumMap[citationMap[e.key].forum].id})}">Venue</a>
                                                         </td>
                                                         <td th:text="${e.value.getCategory()}">0</td>
                                                         <td th:text="${e.value.getQuarter()}">0</td>

@@ -56,8 +56,13 @@ tasks.register('verifyDuplicationGuardrails', Exec) {
     commandLine 'sh', '-lc', 'npm run verify-duplication-guardrails'
 }
 
+tasks.register('verifyDatatablesOptin', Exec) {
+    commandLine 'sh', '-lc', 'npm run verify-datatables-optin'
+}
+
 tasks.named('check') {
     dependsOn tasks.named('verifyFrontendAssets')
     dependsOn tasks.named('verifyTemplateAssets')
     dependsOn tasks.named('verifyDuplicationGuardrails')
+    dependsOn tasks.named('verifyDatatablesOptin')
 }

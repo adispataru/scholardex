@@ -57,8 +57,11 @@ public class WebSecurityConfig {
                             "/favicon.ico"
                     ).permitAll();
                     ahr.requestMatchers("/actuator/**").hasAuthority("PLATFORM_ADMIN");
+                    ahr.requestMatchers("/rankings/**").authenticated();
                     ahr.requestMatchers("/admin/**").hasAuthority("PLATFORM_ADMIN");
                     ahr.requestMatchers("/api/admin/**").hasAuthority("PLATFORM_ADMIN");
+                    ahr.requestMatchers("/api/scopus/forums/**").authenticated();
+                    ahr.requestMatchers("/api/scopus/authors/**", "/api/scopus/affiliations/**").authenticated();
                     ahr.requestMatchers("/api/export", "/api/export/**").hasAuthority("PLATFORM_ADMIN");
                     ahr.requestMatchers("/api/scrape", "/api/scrape/**").hasAuthority("PLATFORM_ADMIN");
                     ahr.requestMatchers("/researcher/**").hasAuthority("RESEARCHER");

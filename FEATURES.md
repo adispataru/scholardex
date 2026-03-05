@@ -1,4 +1,8 @@
 # Features
 
-- WoS rankings must be visible to all roles.
-- Core rankings must be visible to all roles.
+- [x] All authenticated users can view WoS rankings.
+- [x] All authenticated users can view CORE rankings.
+- [x] All authenticated users can view URAP rankings.
+- [x] All authenticated users can view artistic events rankings.
+
+Implementation details are tracked in `IMPROVEMENTS.md`.

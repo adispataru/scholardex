@@ -2,6 +2,7 @@ package ro.uvt.pokedex.core.model.scopus;
 
 import lombok.Data;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Objects;
@@ -12,8 +13,11 @@ public class Affiliation {
 
     @Id
     private String afid;
+    @Indexed
     private String name;
+    @Indexed
     private String city;
+    @Indexed
     private String country;
 
     @Override
@@ -29,5 +33,4 @@ public class Affiliation {
         return Objects.hash(afid);
     }
 }
-
 

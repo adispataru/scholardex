@@ -106,8 +106,8 @@
         Scopus
     </div>
 
-    <li class="nav-item" th:classappend="${activeSection} == 'scopus-venues' ? 'active' : ''">
-        <a class="nav-link" th:href="@{/admin/scopus/venues}">
+    <li class="nav-item" th:classappend="${activeSection == 'scopus-forums' or activeSection == 'scopus-venues'} ? 'active' : ''">
+        <a class="nav-link" th:href="@{/admin/scopus/forums}">
             <i class="fas fa-fw fa-chart-area"></i>
             <span>Forums</span>
         </a>
@@ -239,6 +239,36 @@
         <a class="nav-link" th:href="@{/user/activityInstances}">
             <i class="fas fa-fw fa-pen-fancy"></i>
             <span>Activities</span>
+        </a>
+    </li>
+
+    <hr class="sidebar-divider">
+
+    <div class="sidebar-heading">
+        Rankings
+    </div>
+    <li class="nav-item" th:classappend="${activeSection} == 'rankings' ? 'active' : ''">
+        <a class="nav-link" th:href="@{/rankings/wos}">
+            <i class="fas fa-fw fa-medal"></i>
+            <span>WoS</span>
+        </a>
+    </li>
+    <li class="nav-item" th:classappend="${activeSection} == 'rankings-core' ? 'active' : ''">
+        <a class="nav-link" th:href="@{/rankings/core}">
+            <i class="fas fa-fw fa-atom"></i>
+            <span>CORE</span>
+        </a>
+    </li>
+    <li class="nav-item" th:classappend="${activeSection} == 'rankings-urap' ? 'active' : ''">
+        <a class="nav-link" th:href="@{/rankings/urap}">
+            <i class="fas fa-fw fa-university"></i>
+            <span>URAP</span>
+        </a>
+    </li>
+    <li class="nav-item" th:classappend="${activeSection} == 'rankings-events' ? 'active' : ''">
+        <a class="nav-link" th:href="@{/rankings/events}">
+            <i class="fas fa-fw fa-theater-masks"></i>
+            <span>Events</span>
         </a>
     </li>
 

@@ -15,7 +15,6 @@ import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.model.user.User;
-import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
@@ -214,16 +213,11 @@ class UserViewControllerContractTest {
     }
 
     @Test
-    void rankingPageUsesFacadeAndRendersRankingViewWhenFound() throws Exception {
-        WoSRanking ranking = new WoSRanking();
-        ranking.setId("rank-1");
-        when(userRankingFacade.resolveJournalRankingForForum(eq("forum-1"))).thenReturn(Optional.of(ranking));
-
+    void rankingPageRedirectsToNewSharedRankingsRoute() throws Exception {
         mockMvc.perform(get("/user/rankings/{id}", "forum-1")
                         .with(authenticatedUser("u@uvt.ro")))
-                .andExpect(status().isOk())
-                .andExpect(view().name("admin/rankings-view"))
-                .andExpect(model().attributeExists("journal"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/rankings/wos/forum-1"));
     }
 
     private User userPrincipal(String email) {

@@ -32,7 +32,6 @@ import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublication
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminScopusCitationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminScopusPublicationSearchViewModel;
-import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
 
@@ -49,7 +48,6 @@ public class AdminViewController {
 
     private final UserService userService;
     private final ResearcherService researcherService;
-    private final CacheService cacheService;
     private final AdminCatalogFacade adminCatalogFacade;
     private final AdminScopusFacade adminScopusFacade;
     private final AdminInstitutionReportFacade adminInstitutionReportFacade;
@@ -368,32 +366,38 @@ public class AdminViewController {
         return "redirect:/admin/institutions";
     }
 
-    @GetMapping("/scopus/venues")
-    public String showScopusVenuesPage(Model model) {
-        List<Forum> researchers = adminCatalogFacade.listScopusVenues();
-        model.addAttribute("venues", researchers);
+    @GetMapping("/scopus/forums")
+    public String showScopusForumsPage() {
         return "admin/scopus-venues";
     }
 
-    @GetMapping("/scopus/venues/edit/{id}")
-    public String editScopusVenuePage(Model model, @PathVariable String id) {
+    @GetMapping("/scopus/venues")
+    public String showScopusVenuesPageCompatibilityRedirect() {
+        return "redirect:/admin/scopus/forums";
+    }
+
+    @GetMapping("/scopus/forums/edit/{id}")
+    public String editScopusForumPage(Model model, @PathVariable String id) {
         Optional<Forum> venue = adminCatalogFacade.findScopusVenueById(id);
         venue.ifPresent(v-> model.addAttribute("forum", v));
         return "admin/scopus-editVenues";
     }
 
-    @PostMapping("/scopus/venues/edit/{id}")
-    public String updateScopusVenue(@ModelAttribute("venue") Forum forum, RedirectAttributes redirectAttributes) {
+    @GetMapping("/scopus/venues/edit/{id}")
+    public String editScopusVenuePageCompatibilityRedirect(@PathVariable String id) {
+        return "redirect:/admin/scopus/forums/edit/" + id;
+    }
+
+    @PostMapping({"/scopus/forums/edit/{id}", "/scopus/venues/edit/{id}"})
+    public String updateScopusForum(@ModelAttribute("forum") Forum forum, RedirectAttributes redirectAttributes) {
         adminCatalogFacade.saveScopusVenue(forum);
-        redirectAttributes.addFlashAttribute("message", "Venue updated successfully!");
-        return "redirect:/admin/scopus/venues/edit/"+forum.getId();
+        redirectAttributes.addFlashAttribute("message", "Forum updated successfully!");
+        return "redirect:/admin/scopus/forums/edit/" + forum.getId();
     }
 
     @GetMapping("/scopus/authors")
     public String showScopusAuthorsPage(Model model, @RequestParam(value = "afid", defaultValue = "60000434") String afid) {
-        List<Author> all = adminCatalogFacade.listScopusAuthorsByAffiliation(afid);
-        model.addAttribute("authors", all);
-
+        model.addAttribute("defaultAfid", afid);
         return "admin/scopus-authors";
     }
 
@@ -416,13 +420,11 @@ public class AdminViewController {
     public String updateScopusAuthor(@ModelAttribute("author") Author author, RedirectAttributes redirectAttributes) {
         adminCatalogFacade.saveScopusAuthor(author);
         redirectAttributes.addFlashAttribute("message", "Author updated successfully!");
-        return "redirect:/admin/scopus-venues";
+        return "redirect:/admin/scopus/forums";
     }
 
     @GetMapping("/scopus/affiliations")
-    public String showScopusAffiliationsPage(Model model) {
-        List<Affiliation> all = adminCatalogFacade.listScopusAffiliations();
-        model.addAttribute("affiliations", all);
+    public String showScopusAffiliationsPage() {
         return "admin/scopus-affiliations";
     }
 
@@ -469,9 +471,7 @@ public class AdminViewController {
     }
 
     @GetMapping("/rankings/wos")
-    public String showRankingsPage(Model model) {
-        List<WoSRanking> journals = cacheService.getAllRankings();
-        model.addAttribute("journals", journals);
+    public String showRankingsPage() {
         return "admin/rankings";
     }
 
