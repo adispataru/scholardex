@@ -38,7 +38,9 @@ const datatablesFreePages = new Set([
   path.join('src', 'main', 'resources', 'templates', 'admin', 'scopus-venues.html'),
   path.join('src', 'main', 'resources', 'templates', 'admin', 'scopus-authors.html'),
   path.join('src', 'main', 'resources', 'templates', 'admin', 'scopus-affiliations.html'),
-  path.join('src', 'main', 'resources', 'templates', 'admin', 'scopus-editAuthor.html')
+  path.join('src', 'main', 'resources', 'templates', 'admin', 'scopus-editAuthor.html'),
+  path.join('src', 'main', 'resources', 'templates', 'user', 'indicators-apply-publications.html'),
+  path.join('src', 'main', 'resources', 'templates', 'user', 'indicators-apply-activities.html')
 ]);
 for (const file of htmlFiles) {
   const content = fs.readFileSync(file, 'utf8');

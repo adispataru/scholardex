@@ -5,35 +5,23 @@
     <title th:text="${indicator.name}">Indicator</title>
     <th:block th:replace="fragments :: core-styles"></th:block>
     <link href="/css/sb-admin-2.min.css" rel="stylesheet">
-    <style>
-        .chart-container {
-            height: 100px; /* Adjust this value as needed */
-            width: 100px;  /* Adjust this value as needed */
-        }
-    </style>
+    <link href="/css/indicator-citations-dashboard.css" rel="stylesheet">
 </head>
 <body id="page-top">
-
 <div id="wrapper">
-    <!-- Sidebar -->
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
         <div th:replace="fragments :: user-sidebar('indicators')"></div>
-        <!-- Sidebar Toggler (Sidebar) -->
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
         </div>
     </ul>
 
-    <!-- Content Wrapper -->
     <div id="content-wrapper" class="d-flex flex-column">
-        <!-- Main Content -->
         <div id="content">
-            <!-- Topbar -->
             <div th:replace="fragments :: navbar"></div>
 
-            <!-- Begin Page Content -->
-            <div class="container-fluid">
-                <!-- Page Heading -->
+            <div class="container-fluid" id="publications-dashboard-v2"
+                 th:attr="data-quarter-labels=${#strings.listJoin(allQuarters, '|')},data-quarter-values=${#strings.listJoin(allValues, '|')}">
                 <div class="d-sm-flex align-items-center justify-content-between mb-4">
                     <h1 class="h3 mb-0 text-gray-800" th:text="${indicator.name}">Indicator scores</h1>
                     <div class="d-flex">
@@ -44,83 +32,90 @@
                             <button type="submit" class="btn btn-sm btn-outline-primary shadow-sm">Refresh Scores</button>
                         </form>
                     </div>
-<!--                    </button>-->
                 </div>
-<!--                <h1 class="h3 mb-2 text-gray-800"></h1>-->
-                <div class="row">
 
-                    <!-- Earnings (Monthly) Card Example -->
-                    <div class="col-xl-12 col-md-12 mb-12">
-                        <div class="card border-left-primary shadow h-100 py-2">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                            Total Score </div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${total}"></div>
-                                    </div>
-<!--                                    <div class="col-auto">-->
-<!--                                        <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>-->
-<!--                                    </div>-->
-                                </div>
-                                <div class="row no-gutters align-items-center">
-
-                                    <div class="col mr-2">
-                                        <div class="h5 text-gray-800">Details</div>
-                                        <ul>
-
-                                            <li th:text="${indicator.outputType}"></li>
-                                            <li>
-                                                <span>Domain: </span>
-                                                <span th:text="${indicator.domain.name}"></span>
-                                            </li>
-<!--                                            <li th:if="${!indicator.domain.name.equals('ALL')}">-->
-<!--                                                <ul>-->
-<!--                                                    <li th:each="d : ${indicator.domain.wosCategories}" th:text="${d}"></li>-->
-<!--                                                </ul>-->
-<!--                                            </li>-->
-                                            <li>
-                                                <span>Scoring Strategy: </span>
-                                                <span th:text="${indicator.scoringStrategy}"></span>
-                                            </li>
-                                            <li>
-                                                <span>Formula: </span>
-                                                <span th:text="${indicator.formula}"></span>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                    <div class="col mr-1">
-                                        <div class="chart-pie">
-                                            <canvas id="myPieChart" width="64" height="64" class="chartjs-render-monitor"></canvas>
-                                        </div>
-                                    </div>
-<!--                                    <div class="col-auto">-->
-<!--                                        <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>-->
-<!--                                    </div>-->
+                <div class="card shadow mb-3">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Indicator Overview</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
+                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Score</div>
+                                <div class="h4 mb-0 font-weight-bold text-gray-800" th:text="${total}">0</div>
+                            </div>
+                            <div class="col-lg-6 col-md-12">
+                                <div class="chart-cell">
+                                    <canvas id="publications-quarter-chart" aria-label="Quarter distribution"></canvas>
                                 </div>
                             </div>
                         </div>
+                        <hr class="my-4">
+                        <div>
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-2">Indicator Context</div>
+                            <dl class="row mb-0 small">
+                                <dt class="col-sm-3">Output Type</dt>
+                                <dd class="col-sm-9" th:text="${indicator.outputType}"></dd>
+                                <dt class="col-sm-3">Domain</dt>
+                                <dd class="col-sm-9" th:text="${indicator.domain.name}"></dd>
+                                <dt class="col-sm-3">Scoring Strategy</dt>
+                                <dd class="col-sm-9" th:text="${indicator.scoringStrategy}"></dd>
+                                <dt class="col-sm-3">Formula</dt>
+                                <dd class="col-sm-9" th:text="${indicator.formula}"></dd>
+                            </dl>
+                        </div>
                     </div>
-<!--                    <div class="col-xl-2 col-md-2 mb-2">-->
-<!--                        <div class="card border-left-primary shadow py-2">-->
-<!--&lt;!&ndash;                            <div class="card-body">&ndash;&gt;-->
-<!--                                    -->
-<!--&lt;!&ndash;                            </div>&ndash;&gt;-->
-<!--                        </div>-->
-<!--                    </div>-->
                 </div>
 
+                <div class="card shadow mb-3">
+                    <div class="card-body">
+                        <div class="form-row align-items-end">
+                            <div class="col-md-4 mb-2">
+                                <label for="publications-search" class="small text-muted">Search</label>
+                                <input id="publications-search" class="form-control" type="search" placeholder="Title, type, venue...">
+                            </div>
+                            <div class="col-md-2 mb-2">
+                                <label for="publications-min-score" class="small text-muted">Min Author Score</label>
+                                <input id="publications-min-score" class="form-control" type="number" min="0" step="0.01" value="0">
+                            </div>
+                            <div class="col-md-2 mb-2">
+                                <label for="publications-quarter" class="small text-muted">Quarter</label>
+                                <select id="publications-quarter" class="form-control">
+                                    <option value="">All</option>
+                                    <option th:each="q : ${allQuarters}" th:value="${q}" th:text="${q}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 mb-2">
+                                <label for="publications-type" class="small text-muted">Type</label>
+                                <select id="publications-type" class="form-control">
+                                    <option value="">All</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 mb-2">
+                                <label for="publications-sort" class="small text-muted">Sort</label>
+                                <select id="publications-sort" class="form-control">
+                                    <option value="score_desc">Score desc</option>
+                                    <option value="score_asc">Score asc</option>
+                                    <option value="title_asc">Title A-Z</option>
+                                    <option value="title_desc">Title Z-A</option>
+                                    <option value="year_desc">Year desc</option>
+                                    <option value="year_asc">Year asc</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button id="publications-clear" type="button" class="btn btn-link btn-sm px-0">Clear filters</button>
+                    </div>
+                </div>
 
-                <!-- Trigger Scrape Button and display scrape result -->
-
-                <!-- DataTales Example -->
                 <div class="card shadow mb-4">
-                    <div class="card-header py-3">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
                         <h6 class="m-0 font-weight-bold text-primary">Individual scores</h6>
+                        <span id="publications-count" class="small text-muted"></span>
                     </div>
                     <div class="card-body">
+                        <div id="publications-empty-state" class="alert alert-light d-none mb-3">No publications match current filters.</div>
                         <div class="table-responsive">
-                            <table class="table table-bordered js-datatable" id="dataTable" width="100%" cellspacing="0">
+                            <table class="table table-bordered table-hover" id="publications-main-table" width="100%" cellspacing="0">
                                 <thead>
                                 <tr>
                                     <th>Title</th>
@@ -134,32 +129,28 @@
                                     <th>Extra Score</th>
                                 </tr>
                                 </thead>
-                                <tbody>
-                                <tr th:each="pub : ${publications}">
-<!--                                <tr th:each="entry : ${scores.entrySet()}">-->
+                                <tbody id="publications-main-body">
+                                <tr th:each="pub : ${publications}"
+                                    class="js-publication-row"
+                                    th:attr="data-search=${(pub.title ?: '') + ' ' + (pub.subtypeDescription ?: '') + ' ' + (forumMap[pub.forum] != null ? forumMap[pub.forum].publicationName : '')},
+                                             data-type=${pub.subtypeDescription ?: ''},
+                                             data-quarter=${scores[pub.title] != null ? scores[pub.title].quarter : ''},
+                                             data-author-score=${scores[pub.title] != null ? scores[pub.title].authorScore : 0},
+                                             data-forum-score=${scores[pub.title] != null ? scores[pub.title].score : 0},
+                                             data-year=${scores[pub.title] != null ? scores[pub.title].year : 0}">
                                     <td>
-                                        <a th:text="${pub.title}" th:href="@{/user/publications/citations(id=${pub.id})}">Publication Title</a>
+                                        <a th:text="${pub.title}" th:href="@{/user/publications/citations(eid=${pub.eid})}">Publication Title</a>
                                     </td>
                                     <td th:text="${pub.subtypeDescription}"></td>
-                                    <td><span th:text="${forumMap[pub.forum].publicationName}">Venue</span></td>
+                                    <td><span th:text="${forumMap[pub.forum] != null ? forumMap[pub.forum].publicationName : ''}">Venue</span></td>
+                                    <td><span th:text="${scores[pub.title] != null ? scores[pub.title].category : ''}">0</span></td>
+                                    <td><span th:text="${scores[pub.title] != null ? scores[pub.title].quarter : ''}">0</span></td>
+                                    <td><span th:text="${scores[pub.title] != null ? scores[pub.title].year : ''}">0</span></td>
+                                    <td><span th:text="${scores[pub.title] != null ? scores[pub.title].score : ''}">0</span></td>
+                                    <td><span th:text="${scores[pub.title] != null ? #numbers.formatDecimal(scores[pub.title].authorScore, 1, 2) : ''}">0</span></td>
                                     <td>
-                                        <span th:if="${scores[pub.title] != null}" th:text="${scores[pub.title].category}">0</span>
-                                    </td>
-                                    <td>
-                                        <span th:if="${scores[pub.title] != null}" th:text="${scores[pub.title].quarter}">0</span>
-                                    </td>
-                                    <td>
-                                        <span th:if="${scores[pub.title] != null}" th:text="${scores[pub.title].year}">0</span>
-                                    </td>
-                                    <td>
-                                        <span th:if="${scores[pub.title] != null}" th:text="${scores[pub.title].score}">0</span>
-                                    </td>
-                                    <td>
-                                        <span th:if="${scores[pub.title] != null}" th:text="${#numbers.formatDecimal(scores[pub.title].authorScore, 1, 2)}">0</span>
-                                    </td>
-                                    <td>
-                                        <ul th:if="${scores[pub.title] != null && scores[pub.title].extra != null}">
-                                            <li th:each="key, value : ${scores[pub.title].extra.entrySet()}" th:text="${key}">0</li>
+                                        <ul class="mb-0 pl-3" th:if="${scores[pub.title] != null && scores[pub.title].extra != null}">
+                                            <li th:each="entry : ${scores[pub.title].extra.entrySet()}" th:text="${entry.key + ': ' + entry.value}"></li>
                                         </ul>
                                     </td>
                                 </tr>
@@ -169,9 +160,7 @@
                     </div>
                 </div>
             </div>
-            <!-- End of Main Content -->
 
-            <!-- Footer -->
             <footer class="sticky-footer bg-white">
                 <div class="container my-auto">
                     <div class="copyright text-center my-auto">
@@ -179,68 +168,11 @@
                     </div>
                 </div>
             </footer>
-            <!-- End of Footer -->
         </div>
-        <!-- End of Content Wrapper -->
     </div>
-    <!-- End of Page Wrapper -->
-
-    <!-- Scroll to Top Button-->
-    <a class="scroll-to-top rounded" href="#page-top">
-        <i class="fas fa-angle-up"></i>
-    </a>
 </div>
 
-<!-- Bootstrap core JavaScript-->
 <th:block th:replace="fragments :: core-scripts"></th:block>
-
-<!-- Page level plugins -->
-
-<!-- Page level custom scripts -->
-<script src="/js/demo/datatables-demo.js"></script>
-<script th:inline="javascript">
-    $(document).ready(function() {
-        // Ensure Thymeleaf processes this part correctly
-        var allLabels = /*[[${allQuarters}]]*/ [];
-        var allValues = /*[[${allValues}]]*/ [];
-        // Set new default font family and font color to mimic Bootstrap's default styling
-        Chart.defaults.global.defaultFontFamily = 'Nunito', '-apple-system,system-ui,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
-        Chart.defaults.global.defaultFontColor = '#858796';
-
-        // Pie Chart Example
-        var ctx = document.getElementById("myPieChart");
-        var myPieChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: allLabels,
-                datasets: [{
-                    data: allValues,
-                    backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#f809fc', '#e3e6f0', '#5a5c69', '#b7b9cc', '#f6b73f', '#fa7d09', '#28a745', '#17a2b8', '#ffc107', '#dc3545', '#343a40', '#6c757d', '#007bff', '#6f42c1'],
-                    hoverBackgroundColor: ['#374db6', '#12996a', '#2799a3', '#af8d2a', '#a53a2b', '#b003c0', '#a6aab8', '#3e404c', '#8989a0', '#b57b2b', '#b55c06', '#1e7535', '#12617a', '#b58a05', '#a02a35', '#24292c', '#4c535c', '#0056b3', '#4d3191'],
-
-                    hoverBorderColor: "rgba(234, 236, 244, 1)",
-                }],
-            },
-            options: {
-                maintainAspectRatio: false,
-                tooltips: {
-                    backgroundColor: "rgb(255,255,255)",
-                    bodyFontColor: "#858796",
-                    borderColor: '#dddfeb',
-                    borderWidth: 1,
-                    xPadding: 15,
-                    yPadding: 15,
-                    displayColors: false,
-                    caretPadding: 10,
-                },
-                legend: {
-                    display: false
-                },
-                cutoutPercentage: 80,
-            },
-        });
-    });
-</script>
-
+<script src="/js/indicator-publications-dashboard.js"></script>
 </body>
 </html>

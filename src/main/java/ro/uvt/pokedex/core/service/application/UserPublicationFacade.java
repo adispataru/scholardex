@@ -70,7 +70,8 @@ public class UserPublicationFacade {
     }
 
     public Optional<UserPublicationCitationsViewModel> buildCitationsView(String publicationId) {
-        Optional<Publication> byId = scopusPublicationRepository.findById(publicationId);
+        Optional<Publication> byId = scopusPublicationRepository.findById(publicationId)
+                .or(() -> scopusPublicationRepository.findByEid(publicationId));
         if (byId.isEmpty()) {
             return Optional.empty();
         }

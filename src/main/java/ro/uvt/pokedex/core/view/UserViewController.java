@@ -2,6 +2,7 @@ package ro.uvt.pokedex.core.view;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -56,6 +57,8 @@ public class UserViewController {
     private final UserRankingFacade userRankingFacade;
     private final UserIndicatorResultService userIndicatorResultService;
     private final UserIndividualReportRunService userIndividualReportRunService;
+    @Value("${features.userIndicators.citationsDashboardV2:true}")
+    private boolean citationsDashboardV2;
 
 
     @GetMapping()
@@ -144,12 +147,23 @@ public class UserViewController {
 
 
     @GetMapping("/publications/citations")
-    public String showPublicationCitationsPage(Model model, Authentication authentication, @RequestParam("id") String publicationId) {
+    public String showPublicationCitationsPage(Model model,
+                                               Authentication authentication,
+                                               @RequestParam(value = "id", required = false) String publicationId,
+                                               @RequestParam(value = "eid", required = false) String publicationEid) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
             return "redirect:/login"; // or your login route
         }
 
-        Optional<UserPublicationCitationsViewModel> viewModel = userPublicationFacade.buildCitationsView(publicationId);
+        String publicationLookup = publicationId;
+        if (publicationLookup == null || publicationLookup.isBlank()) {
+            publicationLookup = publicationEid;
+        }
+        if (publicationLookup == null || publicationLookup.isBlank()) {
+            return "redirect:/user/publications";
+        }
+
+        Optional<UserPublicationCitationsViewModel> viewModel = userPublicationFacade.buildCitationsView(publicationLookup);
         viewModel.ifPresent(vm -> {
             model.addAttribute("publication", vm.publication());
             model.addAttribute("citations", vm.citations());
@@ -205,6 +219,7 @@ public class UserViewController {
 
         IndicatorApplyResultDto result = userIndicatorResultService.getOrCreateLatest(currentUser.getEmail(), id);
         result.rawGraph().forEach(model::addAttribute);
+        model.addAttribute("citationsDashboardV2", citationsDashboardV2);
         model.addAttribute("resultMetaSource", result.source());
         model.addAttribute("resultMetaUpdatedAt", result.updatedAt());
         model.addAttribute("resultMetaRefreshVersion", result.refreshVersion());

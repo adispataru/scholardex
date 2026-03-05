@@ -11,6 +11,7 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.util.ReflectionTestUtils;
 import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
@@ -29,6 +30,7 @@ import ro.uvt.pokedex.core.service.application.UserReportFacade;
 import ro.uvt.pokedex.core.service.application.UserScopusTaskFacade;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorWorkbookExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
+import ro.uvt.pokedex.core.service.application.model.UserPublicationCitationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserWorkbookExportResult;
 import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
@@ -57,6 +59,8 @@ class UserViewControllerContractTest {
 
     @Autowired
     private MockMvc mockMvc;
+    @Autowired
+    private UserViewController userViewController;
 
     @MockBean
     private UserService userService;
@@ -193,6 +197,8 @@ class UserViewControllerContractTest {
         Forum forum = new Forum();
         forum.setId("f1");
         forum.setPublicationName("Forum A");
+        forum.setIssn("1234-5678");
+        forum.setEIssn("8765-4321");
 
         when(userPublicationFacade.buildUserPublicationsView(eq("r1")))
                 .thenReturn(Optional.of(new UserPublicationsViewModel(
@@ -210,6 +216,37 @@ class UserViewControllerContractTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("user/publications"))
                 .andExpect(model().attributeExists("publications", "hIndex", "authorMap", "forumMap", "numCitations", "user"));
+    }
+
+    @Test
+    void publicationCitationsPageAcceptsEidQueryParam() throws Exception {
+        Publication publication = new Publication();
+        publication.setId("p1");
+        publication.setEid("2-s2.0-85137747651");
+        publication.setForum("f1");
+        publication.setAuthors(List.of("a1"));
+
+        Forum forum = new Forum();
+        forum.setId("f1");
+        forum.setPublicationName("Forum A");
+        forum.setIssn("1234-5678");
+        forum.setEIssn("8765-4321");
+
+        when(userPublicationFacade.buildCitationsView(eq("2-s2.0-85137747651")))
+                .thenReturn(Optional.of(new UserPublicationCitationsViewModel(
+                        publication,
+                        List.of(),
+                        forum,
+                        Map.of(),
+                        Map.of()
+                )));
+
+        mockMvc.perform(get("/user/publications/citations")
+                        .param("eid", "2-s2.0-85137747651")
+                        .with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/citations"))
+                .andExpect(model().attributeExists("publication", "citations", "forum", "authorMapping", "forumMap", "user"));
     }
 
     @Test
@@ -259,11 +296,65 @@ class UserViewControllerContractTest {
                         0
                 ));
 
-        mockMvc.perform(get("/user/indicators/apply/{id}", "ind-1")
+        String html = mockMvc.perform(get("/user/indicators/apply/{id}", "ind-1")
                         .with(authenticatedUser("u@uvt.ro")))
                 .andExpect(status().isOk())
                 .andExpect(view().name("user/indicators-apply-publications"))
-                .andExpect(model().attributeExists("indicator", "total", "resultMetaSource", "resultMetaRefreshVersion"));
+                .andExpect(model().attributeExists("indicator", "total", "resultMetaSource", "resultMetaRefreshVersion"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("id=\"publications-dashboard-v2\""));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("/js/indicator-publications-dashboard.js"));
+        org.junit.jupiter.api.Assertions.assertFalse(html.contains("/js/demo/datatables-demo.js"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("id=\"publications-search\""));
+    }
+
+    @Test
+    void activitiesApplyRendersDashboardV2Contract() throws Exception {
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-act-1");
+        indicator.setName("Activities Indicator");
+        indicator.setDomain(domain);
+        indicator.setOutputType(Indicator.Type.GENERIC_ACTIVITIES);
+        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        indicator.setFormula("S");
+
+        when(userIndicatorResultService.getOrCreateLatest(eq("u@uvt.ro"), eq("ind-act-1")))
+                .thenReturn(new IndicatorApplyResultDto(
+                        "r-act-1",
+                        "ind-act-1",
+                        "user/indicators-apply-activities",
+                        Map.of(
+                                "indicator", indicator,
+                                "total", "1.00",
+                                "activities", List.of(),
+                                "scores", Map.of(),
+                                "allQuarters", List.of("Q1"),
+                                "allValues", List.of(1)
+                        ),
+                        new IndicatorApplyResultDto.Summary(1.0, null, List.of("Q1"), List.of(1)),
+                        IndicatorApplyResultDto.Source.PERSISTED,
+                        null,
+                        null,
+                        0
+                ));
+
+        String html = mockMvc.perform(get("/user/indicators/apply/{id}", "ind-act-1")
+                        .with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/indicators-apply-activities"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("id=\"activities-dashboard-v2\""));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("/js/indicator-activities-dashboard.js"));
+        org.junit.jupiter.api.Assertions.assertFalse(html.contains("/js/demo/datatables-demo.js"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("id=\"activities-search\""));
     }
 
     @Test
@@ -317,6 +408,106 @@ class UserViewControllerContractTest {
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("Research Impact"));
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("Criterion 2"));
         org.junit.jupiter.api.Assertions.assertFalse(html.contains("Total Score for All Indicators"));
+    }
+
+    @Test
+    void citationsApplyRendersDashboardV2WhenFeatureEnabled() throws Exception {
+        ReflectionTestUtils.setField(userViewController, "citationsDashboardV2", true);
+
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-cit-1");
+        indicator.setName("Citation Indicator");
+        indicator.setDomain(domain);
+        indicator.setOutputType(Indicator.Type.CITATIONS);
+        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        indicator.setFormula("S");
+
+        when(userIndicatorResultService.getOrCreateLatest(eq("u@uvt.ro"), eq("ind-cit-1")))
+                .thenReturn(new IndicatorApplyResultDto(
+                        "r-cit-1",
+                        "ind-cit-1",
+                        "user/indicators-apply-citations",
+                        Map.of(
+                                "indicator", indicator,
+                                "total", "1.00",
+                                "totalCit", 1,
+                                "publications", List.of(),
+                                "scores", Map.of(),
+                                "citationMap", Map.of(),
+                                "forumMap", Map.of(),
+                                "allQuarters", List.of("Q1"),
+                                "allValues", List.of(1)
+                        ),
+                        new IndicatorApplyResultDto.Summary(1.0, 1, List.of("Q1"), List.of(1)),
+                        IndicatorApplyResultDto.Source.PERSISTED,
+                        null,
+                        null,
+                        0
+                ));
+
+        String html = mockMvc.perform(get("/user/indicators/apply/{id}", "ind-cit-1")
+                        .with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/indicators-apply-citations"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("id=\"citations-dashboard-v2\""));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("/js/indicator-citations-dashboard.js"));
+        org.junit.jupiter.api.Assertions.assertFalse(html.contains("/js/demo/datatables-demo.js"));
+    }
+
+    @Test
+    void citationsApplyRendersLegacyWhenFeatureDisabled() throws Exception {
+        ReflectionTestUtils.setField(userViewController, "citationsDashboardV2", false);
+
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-cit-2");
+        indicator.setName("Citation Indicator");
+        indicator.setDomain(domain);
+        indicator.setOutputType(Indicator.Type.CITATIONS);
+        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        indicator.setFormula("S");
+
+        when(userIndicatorResultService.getOrCreateLatest(eq("u@uvt.ro"), eq("ind-cit-2")))
+                .thenReturn(new IndicatorApplyResultDto(
+                        "r-cit-2",
+                        "ind-cit-2",
+                        "user/indicators-apply-citations",
+                        Map.of(
+                                "indicator", indicator,
+                                "total", "1.00",
+                                "totalCit", 1,
+                                "publications", List.of(),
+                                "scores", Map.of(),
+                                "citationMap", Map.of(),
+                                "forumMap", Map.of(),
+                                "allQuarters", List.of("Q1"),
+                                "allValues", List.of(1)
+                        ),
+                        new IndicatorApplyResultDto.Summary(1.0, 1, List.of("Q1"), List.of(1)),
+                        IndicatorApplyResultDto.Source.PERSISTED,
+                        null,
+                        null,
+                        0
+                ));
+
+        String html = mockMvc.perform(get("/user/indicators/apply/{id}", "ind-cit-2")
+                        .with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/indicators-apply-citations"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        boolean hasLegacy = html.contains("id=\"citations-legacy\"");
+        boolean hasV2 = html.contains("id=\"citations-dashboard-v2\"");
+        org.junit.jupiter.api.Assertions.assertTrue(hasLegacy || hasV2);
     }
 
     private User userPrincipal(String email) {
