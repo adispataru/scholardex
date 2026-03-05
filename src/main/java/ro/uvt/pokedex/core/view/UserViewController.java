@@ -19,12 +19,14 @@ import ro.uvt.pokedex.core.model.tasks.ScopusCitationsUpdate;
 import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.service.application.UserPublicationFacade;
+import ro.uvt.pokedex.core.service.application.UserIndividualReportRunService;
+import ro.uvt.pokedex.core.service.application.UserIndicatorResultService;
 import ro.uvt.pokedex.core.service.application.UserReportFacade;
 import ro.uvt.pokedex.core.service.application.UserScopusTaskFacade;
 import ro.uvt.pokedex.core.service.application.RequestYearRangeSupport;
 import ro.uvt.pokedex.core.service.application.UserRankingFacade;
-import ro.uvt.pokedex.core.service.application.model.UserIndicatorApplyViewModel;
-import ro.uvt.pokedex.core.service.application.model.UserIndividualReportViewModel;
+import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
+import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorsViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorWorkbookExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationCitationsViewModel;
@@ -52,6 +54,8 @@ public class UserViewController {
     private final UserScopusTaskFacade userScopusTaskFacade;
     private final UserReportFacade userReportFacade;
     private final UserRankingFacade userRankingFacade;
+    private final UserIndicatorResultService userIndicatorResultService;
+    private final UserIndividualReportRunService userIndividualReportRunService;
 
 
     @GetMapping()
@@ -199,10 +203,22 @@ public class UserViewController {
             return "redirect:/login"; // or your login route
         }
 
-        UserIndicatorApplyViewModel viewModel = userReportFacade.buildIndicatorApplyView(currentUser.getEmail(), id);
-        viewModel.attributes().forEach(model::addAttribute);
+        IndicatorApplyResultDto result = userIndicatorResultService.getOrCreateLatest(currentUser.getEmail(), id);
+        result.rawGraph().forEach(model::addAttribute);
+        model.addAttribute("resultMetaSource", result.source());
+        model.addAttribute("resultMetaUpdatedAt", result.updatedAt());
+        model.addAttribute("resultMetaRefreshVersion", result.refreshVersion());
         model.addAttribute("user", currentUser);
-        return viewModel.viewName();
+        return result.viewName();
+    }
+
+    @PostMapping("/indicators/apply/{id}/refresh")
+    public String refreshCriteriaResultsPage(Authentication authentication, @PathVariable("id") String id) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
+            return "redirect:/login";
+        }
+        userIndicatorResultService.refreshLatest(currentUser.getEmail(), id);
+        return "redirect:/user/indicators/apply/" + id;
     }
 
     @GetMapping("indicators/export/{id}")
@@ -263,14 +279,37 @@ public class UserViewController {
             return "redirect:/login";
         }
 
-        UserIndividualReportViewModel viewModel = userReportFacade.buildIndividualReportView(currentUser.getEmail(), id);
-        if (viewModel.redirect() != null) {
-            return viewModel.redirect();
+        Optional<IndividualReportRunDto> runOpt = userIndividualReportRunService.getOrCreateLatestRun(currentUser.getEmail(), id);
+        Optional<ro.uvt.pokedex.core.model.reporting.IndividualReport> reportOpt = userReportFacade.findIndividualReportById(id);
+        if (runOpt.isEmpty() || reportOpt.isEmpty()) {
+            return "redirect:/error";
         }
-        viewModel.attributes().forEach(model::addAttribute);
+
+        IndividualReportRunDto run = runOpt.get();
+        ro.uvt.pokedex.core.model.reporting.IndividualReport report = reportOpt.get();
+        Map<ro.uvt.pokedex.core.model.reporting.Indicator, Double> indicatorScores = new HashMap<>();
+        for (ro.uvt.pokedex.core.model.reporting.Indicator indicator : report.getIndicators()) {
+            indicatorScores.put(indicator, run.indicatorScoresByIndicatorId().getOrDefault(indicator.getId(), 0.0));
+        }
+
+        model.addAttribute("report", report);
+        model.addAttribute("indicatorScores", indicatorScores);
+        model.addAttribute("criterionScores", run.criteriaScores());
+        model.addAttribute("runMetaId", run.runId());
+        model.addAttribute("runMetaCreatedAt", run.createdAt());
+        model.addAttribute("runMetaSource", run.source());
 
         model.addAttribute("user", currentUser);
         return "user/individualReport-view";
+    }
+
+    @PostMapping("/individualReports/view/{id}/refresh")
+    public String refreshIndividualReport(Model model, Authentication authentication, @PathVariable("id") String id) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
+            return "redirect:/login";
+        }
+        userIndividualReportRunService.refreshRun(currentUser.getEmail(), id);
+        return "redirect:/user/individualReports/view/" + id;
     }
     @GetMapping("/rankings/{id}")
     public String showRankingPage(@PathVariable String id) {

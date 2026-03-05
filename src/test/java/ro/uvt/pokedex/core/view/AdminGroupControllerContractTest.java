@@ -7,6 +7,10 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
+import ro.uvt.pokedex.core.model.Researcher;
+import ro.uvt.pokedex.core.model.reporting.Group;
+import ro.uvt.pokedex.core.model.reporting.IndividualReport;
+import ro.uvt.pokedex.core.model.reporting.Position;
 import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
@@ -17,9 +21,11 @@ import ro.uvt.pokedex.core.service.application.GroupReportFacade;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisZipExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupMemberCnfisWorkbook;
 import ro.uvt.pokedex.core.service.application.model.GroupPublicationCsvExportViewModel;
+import ro.uvt.pokedex.core.service.application.model.GroupIndividualReportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupWorkbookExportResult;
 import ro.uvt.pokedex.core.service.importing.GroupService;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -238,5 +244,101 @@ class AdminGroupControllerContractTest {
     void deleteGroupGetRouteIsNoLongerMapped() throws Exception {
         mockMvc.perform(get("/admin/groups/delete/{id}", "g1"))
                 .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    void refreshIndividualReportRedirectsToViewRoute() throws Exception {
+        when(groupReportFacade.refreshGroupIndividualReportView("g1", "rep1"))
+                .thenReturn(new GroupIndividualReportViewModel(null, Map.of()));
+
+        mockMvc.perform(post("/admin/groups/{gid}/reports/view/{id}/refresh", "g1", "rep1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/groups/g1/reports/view/rep1"));
+    }
+
+    @Test
+    void groupIndividualReportViewDisplaysCriterionNameOrFallback() throws Exception {
+        Group group = new Group();
+        group.setId("g1");
+        group.setName("G");
+
+        Researcher researcher = new Researcher();
+        researcher.setId("r1");
+        researcher.setFirstName("A");
+        researcher.setLastName("B");
+        researcher.setPosition(Position.OTHER);
+
+        IndividualReport report = new IndividualReport();
+        report.setId("rep1");
+        report.setTitle("Group Report");
+        report.setDescription("Desc");
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion named = new ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion();
+        named.setName("Citations");
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion unnamed = new ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion();
+        unnamed.setName(" ");
+        report.setCriteria(List.of(named, unnamed));
+
+        when(groupReportFacade.buildGroupIndividualReportView("g1", "rep1"))
+                .thenReturn(new GroupIndividualReportViewModel(
+                        null,
+                        Map.of(
+                                "report", report,
+                                "group", group,
+                                "researchers", List.of(researcher),
+                                "researcherScores", Map.of("r1", Map.of(0, 1.0, 1, 2.0)),
+                                "criteriaThresholds", Map.of(),
+                                "runCreatedAt", Instant.parse("2026-03-05T10:00:00Z"),
+                                "runStatus", "READY",
+                                "runBuildErrors", List.of()
+                        )
+                ));
+
+        String html = mockMvc.perform(get("/admin/groups/{gid}/reports/view/{id}", "g1", "rep1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertTrue(html.contains("Citations"));
+        assertTrue(html.contains("Criterion 2"));
+    }
+
+    @Test
+    void groupIndividualReportViewDoesNotFailWhenThresholdForPositionIsMissing() throws Exception {
+        Group group = new Group();
+        group.setId("g1");
+        group.setName("G");
+
+        Researcher researcher = new Researcher();
+        researcher.setId("r1");
+        researcher.setFirstName("A");
+        researcher.setLastName("B");
+        researcher.setPosition(Position.ASIST_UNIV);
+
+        IndividualReport report = new IndividualReport();
+        report.setId("rep1");
+        report.setTitle("Group Report");
+        report.setDescription("Desc");
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion criterion = new ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion();
+        criterion.setName("Citations");
+        report.setCriteria(List.of(criterion));
+
+        when(groupReportFacade.buildGroupIndividualReportView("g1", "rep1"))
+                .thenReturn(new GroupIndividualReportViewModel(
+                        null,
+                        Map.of(
+                                "report", report,
+                                "group", group,
+                                "researchers", List.of(researcher),
+                                "researcherScores", Map.of("r1", Map.of(0, 1.0)),
+                                "criteriaThresholds", Map.of(0, Map.of()),
+                                "runCreatedAt", Instant.parse("2026-03-05T10:00:00Z"),
+                                "runStatus", "READY",
+                                "runBuildErrors", List.of()
+                        )
+                ));
+
+        mockMvc.perform(get("/admin/groups/{gid}/reports/view/{id}", "g1", "rep1"))
+                .andExpect(status().isOk());
     }
 }

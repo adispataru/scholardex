@@ -116,6 +116,16 @@ public class AdminGroupController {
         return "admin/group-individualReport-view";
     }
 
+    @PostMapping("{gid}/reports/view/{id}/refresh")
+    public String refreshIndividualReport(@PathVariable("gid") String gid,
+                                          @PathVariable("id") String id) {
+        GroupIndividualReportViewModel viewModel = groupReportFacade.refreshGroupIndividualReportView(gid, id);
+        if (viewModel.redirect() != null) {
+            return viewModel.redirect();
+        }
+        return "redirect:/admin/groups/" + gid + "/reports/view/" + id;
+    }
+
     @GetMapping("/{id}/publications/export")
     @ResponseBody
     public void exportIndicatorResults(@PathVariable("id") String id, Authentication authentication, HttpServletResponse response) throws IOException {

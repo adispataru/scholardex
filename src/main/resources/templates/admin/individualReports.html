@@ -42,6 +42,7 @@
                                     <th>Title</th>
                                     <th>Description</th>
                                     <th>Indicators</th>
+                                    <th>Criteria</th>
                                     <th>Institution</th>
                                     <th>Actions</th>
                                 </tr>
@@ -53,6 +54,12 @@
                                     <td>
                                         <ul>
                                             <li th:each="indicator : ${report.indicators}" th:text="${indicator.name}"></li>
+                                        </ul>
+                                    </td>
+                                    <td>
+                                        <ul>
+                                            <li th:each="criterion, critStat : ${report.criteria}"
+                                                th:text="${criterion.name != null && !#strings.isEmpty(#strings.trim(criterion.name)) ? criterion.name : 'Criterion ' + (critStat.index + 1)}"></li>
                                         </ul>
                                     </td>
                                     <td th:text="${report.individualAffiliation != null ? report.individualAffiliation.name : 'No affiliation'}"></td>

@@ -12,6 +12,8 @@ import ro.uvt.pokedex.core.service.CustomUserDetailsService;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.UserPublicationFacade;
+import ro.uvt.pokedex.core.service.application.UserIndividualReportRunService;
+import ro.uvt.pokedex.core.service.application.UserIndicatorResultService;
 import ro.uvt.pokedex.core.service.application.UserRankingFacade;
 import ro.uvt.pokedex.core.service.application.UserReportFacade;
 import ro.uvt.pokedex.core.service.application.UserScopusTaskFacade;
@@ -42,6 +44,10 @@ class UserViewSecurityContractTest {
     private UserReportFacade userReportFacade;
     @MockBean
     private UserRankingFacade userRankingFacade;
+    @MockBean
+    private UserIndicatorResultService userIndicatorResultService;
+    @MockBean
+    private UserIndividualReportRunService userIndividualReportRunService;
 
     @Test
     void unauthenticatedUserPublicationsRedirectsToLogin() throws Exception {

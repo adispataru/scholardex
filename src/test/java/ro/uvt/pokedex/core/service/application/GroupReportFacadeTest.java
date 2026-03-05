@@ -6,11 +6,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.Researcher;
+import ro.uvt.pokedex.core.model.Institution;
 import ro.uvt.pokedex.core.model.reporting.Group;
+import ro.uvt.pokedex.core.model.reporting.GroupIndividualReportRun;
+import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
+import ro.uvt.pokedex.core.repository.reporting.GroupIndividualReportRunRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
@@ -27,7 +31,9 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class GroupReportFacadeTest {
@@ -50,6 +56,8 @@ class GroupReportFacadeTest {
     private ScopusForumRepository scopusForumRepository;
     @Mock
     private ScopusCitationRepository scopusCitationRepository;
+    @Mock
+    private GroupIndividualReportRunRepository groupIndividualReportRunRepository;
 
     @InjectMocks
     private GroupReportFacade facade;
@@ -192,5 +200,70 @@ class GroupReportFacadeTest {
 
         assertTrue(result.isPresent());
         assertEquals(1, result.get().publications().size());
+    }
+
+    @Test
+    void buildGroupIndividualReportViewUsesPersistedRunWithoutRecomputing() {
+        Group group = new Group();
+        group.setId("g1");
+        Researcher researcher = new Researcher();
+        researcher.setId("r1");
+        researcher.setFirstName("A");
+        researcher.setLastName("B");
+        group.setResearchers(new ArrayList<>(List.of(researcher)));
+
+        IndividualReport report = new IndividualReport();
+        report.setId("rep1");
+        report.setCriteria(List.of());
+
+        GroupIndividualReportRun run = new GroupIndividualReportRun();
+        run.setResearcherScores(java.util.Map.of("r1", java.util.Map.of(0, 4.0)));
+        run.setCriteriaThresholds(java.util.Map.of(0, java.util.Map.of("ASSISTANT", 2.0)));
+        run.setStatus(GroupIndividualReportRun.Status.READY);
+        run.setBuildErrors(List.of());
+
+        when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
+        when(individualReportRepository.findById("rep1")).thenReturn(Optional.of(report));
+        when(groupIndividualReportRunRepository.findTopByGroupIdAndReportDefinitionIdOrderByCreatedAtDesc("g1", "rep1"))
+                .thenReturn(Optional.of(run));
+
+        var result = facade.buildGroupIndividualReportView("g1", "rep1");
+
+        assertEquals(null, result.redirect());
+        assertEquals("g1", ((Group) result.attributes().get("group")).getId());
+        verifyNoInteractions(scopusAuthorRepository, scopusPublicationRepository, activityInstanceRepository, scopusCitationRepository);
+    }
+
+    @Test
+    void refreshGroupIndividualReportViewComputesAndPersistsNewRun() {
+        Group group = new Group();
+        group.setId("g1");
+        Researcher researcher = new Researcher();
+        researcher.setId("r1");
+        researcher.setFirstName("A");
+        researcher.setLastName("B");
+        researcher.setScopusId(List.of("a1"));
+        group.setResearchers(new ArrayList<>(List.of(researcher)));
+
+        IndividualReport report = new IndividualReport();
+        report.setId("rep1");
+        report.setCriteria(List.of());
+        report.setIndicators(List.of());
+        Institution affiliation = new Institution();
+        affiliation.setName("ANY");
+        report.setIndividualAffiliation(affiliation);
+
+        when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
+        when(individualReportRepository.findById("rep1")).thenReturn(Optional.of(report));
+        Author author = new Author();
+        author.setId("a1");
+        when(scopusAuthorRepository.findByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of());
+        when(groupIndividualReportRunRepository.save(any(GroupIndividualReportRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = facade.refreshGroupIndividualReportView("g1", "rep1");
+
+        assertEquals(null, result.redirect());
+        assertTrue(result.attributes().containsKey("runStatus"));
     }
 }

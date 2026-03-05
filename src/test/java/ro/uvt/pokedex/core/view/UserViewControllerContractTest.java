@@ -14,18 +14,27 @@ import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.Domain;
+import ro.uvt.pokedex.core.model.reporting.Indicator;
+import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.UserPublicationFacade;
+import ro.uvt.pokedex.core.service.application.UserIndividualReportRunService;
+import ro.uvt.pokedex.core.service.application.UserIndicatorResultService;
 import ro.uvt.pokedex.core.service.application.UserRankingFacade;
 import ro.uvt.pokedex.core.service.application.UserReportFacade;
 import ro.uvt.pokedex.core.service.application.UserScopusTaskFacade;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorWorkbookExportViewModel;
+import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserWorkbookExportResult;
+import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
 
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -33,6 +42,7 @@ import java.util.Optional;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
@@ -60,6 +70,10 @@ class UserViewControllerContractTest {
     private UserReportFacade userReportFacade;
     @MockBean
     private UserRankingFacade userRankingFacade;
+    @MockBean
+    private UserIndicatorResultService userIndicatorResultService;
+    @MockBean
+    private UserIndividualReportRunService userIndividualReportRunService;
 
     @Test
     void indicatorExportRedirectsToLoginWhenAuthenticationMissing() throws Exception {
@@ -218,6 +232,91 @@ class UserViewControllerContractTest {
                         .with(authenticatedUser("u@uvt.ro")))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/rankings/wos/forum-1"));
+    }
+
+    @Test
+    void indicatorApplyUsesPersistedResultPayload() throws Exception {
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-1");
+        indicator.setName("Indicator 1");
+        indicator.setDomain(domain);
+        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
+        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        indicator.setFormula("S");
+
+        when(userIndicatorResultService.getOrCreateLatest(eq("u@uvt.ro"), eq("ind-1")))
+                .thenReturn(new IndicatorApplyResultDto(
+                        "r1",
+                        "ind-1",
+                        "user/indicators-apply-publications",
+                        Map.of("indicator", indicator, "total", "1.00", "publications", List.of(), "scores", Map.of(), "forumMap", Map.of(), "allQuarters", List.of(), "allValues", List.of()),
+                        new IndicatorApplyResultDto.Summary(1.0, null, List.of(), List.of()),
+                        IndicatorApplyResultDto.Source.PERSISTED,
+                        null,
+                        null,
+                        0
+                ));
+
+        mockMvc.perform(get("/user/indicators/apply/{id}", "ind-1")
+                        .with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/indicators-apply-publications"))
+                .andExpect(model().attributeExists("indicator", "total", "resultMetaSource", "resultMetaRefreshVersion"));
+    }
+
+    @Test
+    void indicatorApplyRefreshRedirectsToApplyPage() throws Exception {
+        mockMvc.perform(post("/user/indicators/apply/{id}/refresh", "ind-1")
+                        .with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/user/indicators/apply/ind-1"));
+    }
+
+    @Test
+    void individualReportViewDisplaysCriterionNameOrFallback() throws Exception {
+        IndividualReport report = new IndividualReport();
+        report.setId("rep-1");
+        report.setTitle("My Report");
+        report.setDescription("Desc");
+        report.setIndicators(List.of());
+
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion named = new ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion();
+        named.setName("Research Impact");
+        named.setIndicatorIndices(new ArrayList<>());
+        named.setThresholds(new ArrayList<>());
+
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion unnamed = new ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion();
+        unnamed.setName("  ");
+        unnamed.setIndicatorIndices(new ArrayList<>());
+        unnamed.setThresholds(new ArrayList<>());
+
+        report.setCriteria(List.of(named, unnamed));
+
+        when(userReportFacade.findIndividualReportById("rep-1")).thenReturn(Optional.of(report));
+        when(userIndividualReportRunService.getOrCreateLatestRun("u@uvt.ro", "rep-1"))
+                .thenReturn(Optional.of(new IndividualReportRunDto(
+                        "run-1",
+                        "rep-1",
+                        List.of(),
+                        Map.of(),
+                        Map.of(0, 1.0, 1, 2.0),
+                        Instant.parse("2026-03-05T10:00:00Z"),
+                        IndividualReportRunDto.Source.PERSISTED
+                )));
+
+        String html = mockMvc.perform(get("/user/individualReports/view/{id}", "rep-1")
+                        .with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/individualReport-view"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("Research Impact"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("Criterion 2"));
+        org.junit.jupiter.api.Assertions.assertFalse(html.contains("Total Score for All Indicators"));
     }
 
     private User userPrincipal(String email) {

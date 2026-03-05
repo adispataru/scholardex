@@ -68,6 +68,10 @@
                                         <div class="card-body">
                                             <h5 class="card-title">Criterion <span th:text="${critIndex.index + 1}"></span></h5>
                                             <div class="form-group">
+                                                <label>Name</label>
+                                                <input type="text" class="form-control" th:field="*{criteria[__${critIndex.index}__].name}">
+                                            </div>
+                                            <div class="form-group">
                                                 <label>Indicators</label>
                                                 <div class="input-group mb-2" th:each="indicatorIndex, idx : ${criterion.indicatorIndices}">
                                                     <select class="form-control" th:field="*{criteria[__${critIndex.index}__].indicatorIndices[__${idx.index}__]}" th:selected="${indicatorIndex}">
@@ -157,6 +161,10 @@
                 <div class="card mb-2">
                     <div class="card-body">
                         <h5 class="card-title">Criterion ${criterionIndex + 1}</h5>
+                        <div class="form-group">
+                            <label>Name</label>
+                            <input type="text" class="form-control" name="criteria[${criterionIndex}].name">
+                        </div>
                         <div class="form-group">
                             <label>Indicators</label>
                             <div class="input-group mb-2">

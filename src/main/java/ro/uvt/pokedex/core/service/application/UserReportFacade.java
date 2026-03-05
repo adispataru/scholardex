@@ -85,6 +85,10 @@ public class UserReportFacade {
         return indicatorRepository.findById(indicatorId);
     }
 
+    public Optional<IndividualReport> findIndividualReportById(String reportId) {
+        return individualReportRepository.findById(reportId);
+    }
+
     public Optional<UserIndicatorWorkbookExportViewModel> buildIndicatorWorkbookExport(String userEmail, String indicatorId) throws IOException {
         Optional<User> userOpt = userService.getUserByEmail(userEmail);
         if (userOpt.isEmpty()) {
@@ -304,7 +308,6 @@ public class UserReportFacade {
 
         List<Indicator> indicators = report.getIndicators();
         Map<Indicator, Double> indicatorScores = new HashMap<>();
-        double totalScore = 0;
 
         for (Indicator indicator : indicators) {
             double indicatorScore = 0;
@@ -320,7 +323,6 @@ public class UserReportFacade {
             }
 
             indicatorScores.put(indicator, indicatorScore);
-            totalScore += indicatorScore;
         }
 
         Map<Integer, Double> criterionScores = new HashMap<>();
@@ -338,7 +340,6 @@ public class UserReportFacade {
 
         attrs.put("indicatorScores", indicatorScores);
         attrs.put("criterionScores", criterionScores);
-        attrs.put("totalScore", totalScore);
 
         return new UserIndividualReportViewModel(null, attrs);
     }

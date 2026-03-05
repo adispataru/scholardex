@@ -18,6 +18,7 @@ public abstract class AbstractReport {
 
     @Data
     public static class Criterion {
+        private String name;
         private List<Integer> indicatorIndices = new ArrayList<>();
         private List<Threshold> thresholds = new ArrayList<>();
     }

@@ -2,6 +2,7 @@ package ro.uvt.pokedex.core.service.reporting;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ro.uvt.pokedex.core.model.ArtisticEvent;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.URAPUniversityRanking;
 import ro.uvt.pokedex.core.model.WoSRanking;
@@ -123,6 +124,9 @@ public abstract class AbstractWoSForumScoringService implements ScoringService {
                         Optional<Score> points = scoreExtractor.apply(ranking, year, category, rank);
                         if (points.isPresent() && compareFunction.apply(points.get(), result)) {
                             result.bestPoints.set(points.get().getScore());
+                            if (points.get().getCategory() != null) {
+                                result.bestCategory.set(CoreConferenceRanking.Rank.valueOf(points.get().getCategory()));
+                            }
 //                            result.bestQuarter.set(getBestQuarter(ranking));
                             result.bestQuarter.set(WoSRanking.Quarter.valueOf(points.get().getQuarter()));
                             result.bestYear.set(year);

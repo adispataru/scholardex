@@ -30,9 +30,14 @@
                 <!-- Page Heading -->
                 <div class="d-sm-flex align-items-center justify-content-between mb-4">
                     <h1 class="h3 mb-0 text-gray-800" th:text="${indicator.name}">Indicator scores</h1>
-                    <a th:href="@{/user/indicators/export/{id}(id=${indicator.id})}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-                        <i class="fas fa-download fa-sm text-white-50"></i> Export Excel
-                    </a>
+                    <div class="d-flex">
+                        <a th:href="@{/user/indicators/export/{id}(id=${indicator.id})}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm mr-2">
+                            <i class="fas fa-download fa-sm text-white-50"></i> Export Excel
+                        </a>
+                        <form th:action="@{/user/indicators/apply/{id}/refresh(id=${indicator.id})}" method="post">
+                            <button type="submit" class="btn btn-sm btn-outline-primary shadow-sm">Refresh Scores</button>
+                        </form>
+                    </div>
                 </div>
 
                 <div class="row">
@@ -139,14 +144,14 @@
                                                 </tr>
                                                 </thead>
                                                 <tbody>
-                                                <tr th:each="publication : ${publications}" th:if="${scores[publication.title]['total'].getAuthorScore() > 0.0}">
+                                                <tr th:each="publication : ${publications}" th:if="${scores[publication.title]['total'].authorScore > 0.0}">
                                                     <td>
                                                         <a th:text="${publication.title}" th:href="'#card'+${publication.eid}">Title</a>
                                                     </td>
                                                     <td th:text="${publication.subtypeDescription}"></td>
-                                                    <td th:text="${scores[publication.title]['total'].getScore()}">Total Score</td>
+                                                    <td th:text="${scores[publication.title]['total'].score}">Total Score</td>
                                                     <td th:text="${publication.authors.size()}">0</td>
-                                                    <td th:text="${#numbers.formatDecimal(scores[publication.title]['total'].getAuthorScore(), 1, 2)}">Author Score</td>
+                                                    <td th:text="${#numbers.formatDecimal(scores[publication.title]['total'].authorScore, 1, 2)}">Author Score</td>
                                                 </tr>
                                                 </tbody>
                                             </table>
@@ -162,7 +167,7 @@
                     <!-- DataTales Example -->
                     <div th:each="publication : ${publications}">
                         <div class="row">
-                                <div class="card shadow mb-4" th:if="${scores[publication.title]['total'].getScore() > 0}" th:id="'card'+${publication.eid}">
+                                <div class="card shadow mb-4" th:if="${scores[publication.title]['total'].score > 0}" th:id="'card'+${publication.eid}">
                                     <div class="card-header py-3">
                                         <h6 class="m-0 font-weight-bold text-primary" th:text="${publication.title}">Individual scores</h6>
                                     </div>
@@ -188,12 +193,12 @@
                                                     <td></td>
                                                     <td></td>
                                                     <td></td>
-                                                    <td th:text="${scores[publication.title]['total'].getScore()}">Forum Score</td>
-                                                    <td th:text="${scores[publication.title]['total'].getAuthorScore()}">Author Score</td>
+                                                    <td th:text="${scores[publication.title]['total'].score}">Forum Score</td>
+                                                    <td th:text="${scores[publication.title]['total'].authorScore}">Author Score</td>
                                                     <td></td>
                                                 </tr>
-                                                <tr th:each="e : ${scores[publication.title]}">
-                                                    <div th:if="${!e.key.equals('total') && e.value.getAuthorScore() > 0.0}">
+                                                <tr th:each="e : ${scores[publication.title]}"
+                                                    th:if="${!e.key.equals('total') && e.value.authorScore > 0.0}">
                                                         <td>
                                                             <a th:if="${citationMap[e.key] != null}" th:text="${e.key}" th:href="@{/user/publications/citations(eid=${citationMap[e.key].eid})}">Publication Title</a>
                                                             <a th:if="${citationMap[e.key] == null}" th:text="${e.key}">Publication Title</a>
@@ -207,16 +212,15 @@
             <!--                                                <a th:if="${citationMap[e.key] != null && citationMap[e.key].venue != null}" th:text="${citationMap[e.key].venue.publicationName}" th:href="@{/user/scopus/venues/edit/{id}(id=${citationMap[e.key].venue.id})}">Venue</a>-->
                                                             <a th:if="${citationMap[e.key] != null && forumMap[citationMap[e.key].forum] != null}" th:text="${forumMap[citationMap[e.key].forum].publicationName}" th:href="@{/rankings/wos/{id}(id=${forumMap[citationMap[e.key].forum].id})}">Venue</a>
                                                         </td>
-                                                        <td th:text="${e.value.getCategory()}">0</td>
-                                                        <td th:text="${e.value.getQuarter()}">0</td>
-                                                        <td th:text="${e.value.getScore()}">0</td>
-                                                        <td th:text="${#numbers.formatDecimal(e.value.getAuthorScore(), 1, 2)}">0</td>
+                                                        <td th:text="${e.value.category}">0</td>
+                                                        <td th:text="${e.value.quarter}">0</td>
+                                                        <td th:text="${e.value.score}">0</td>
+                                                        <td th:text="${#numbers.formatDecimal(e.value.authorScore, 1, 2)}">0</td>
                                                         <td>
-                                                            <ul th:if="${e.value.getExtra() != null}">
-                                                                <li th:each="key, value : ${e.value.getExtra().entrySet()}" th:text="${key}">0</li>
+                                                            <ul th:if="${e.value.extra != null}">
+                                                                <li th:each="key, value : ${e.value.extra.entrySet()}" th:text="${key}">0</li>
                                                             </ul>
                                                         </td>
-                                                    </div>
                                                 </tr>
                                                 </tbody>
                                             </table>

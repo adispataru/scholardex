@@ -11,6 +11,7 @@ import ro.uvt.pokedex.core.model.scopus.Citation;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
+import ro.uvt.pokedex.core.repository.reporting.GroupIndividualReportRunRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
@@ -39,6 +40,7 @@ public class GroupReportFacade {
     private final ScopusAuthorRepository scopusAuthorRepository;
     private final ScopusForumRepository scopusForumRepository;
     private final ScopusCitationRepository scopusCitationRepository;
+    private final GroupIndividualReportRunRepository groupIndividualReportRunRepository;
 
     public Optional<GroupPublicationsViewModel> buildGroupPublicationsView(String groupId) {
         Group group = groupRepository.findById(groupId).orElse(null);
@@ -111,41 +113,80 @@ public class GroupReportFacade {
             return new GroupIndividualReportViewModel("redirect:/admin/groups", Map.of());
         }
 
-        List<Researcher> researchers = new ArrayList<>(group.getResearchers());
-        researchers.sort(Comparator.comparing(Researcher::getName));
+        Optional<IndividualReport> reportOpt = individualReportRepository.findById(reportId);
+        if (reportOpt.isEmpty()) {
+            return new GroupIndividualReportViewModel("redirect:/admin/groups", Map.of());
+        }
+        IndividualReport report = reportOpt.get();
+
+        GroupIndividualReportRun run = groupIndividualReportRunRepository
+                .findTopByGroupIdAndReportDefinitionIdOrderByCreatedAtDesc(groupId, reportId)
+                .orElseGet(() -> computeAndPersistGroupRun(group, report));
+
+        return toViewModel(group, report, run);
+    }
+
+    public GroupIndividualReportViewModel refreshGroupIndividualReportView(String groupId, String reportId) {
+        Group group = groupRepository.findById(groupId).orElse(null);
+        if (group == null) {
+            return new GroupIndividualReportViewModel("redirect:/admin/groups", Map.of());
+        }
 
         Optional<IndividualReport> reportOpt = individualReportRepository.findById(reportId);
         if (reportOpt.isEmpty()) {
             return new GroupIndividualReportViewModel("redirect:/admin/groups", Map.of());
         }
 
-        IndividualReport report = reportOpt.get();
+        GroupIndividualReportRun run = computeAndPersistGroupRun(group, reportOpt.get());
+        return toViewModel(group, reportOpt.get(), run);
+    }
+
+    private GroupIndividualReportRun computeAndPersistGroupRun(Group group, IndividualReport report) {
+        List<Researcher> researchers = new ArrayList<>(group.getResearchers());
+        researchers.sort(Comparator.comparing(Researcher::getName));
+
         Map<String, Map<Integer, Double>> researcherScores = new HashMap<>();
+        List<String> errors = new ArrayList<>();
+
         for (Researcher researcher : researchers) {
             List<Author> authors = scopusAuthorRepository.findByIdIn(researcher.getScopusId());
             if (authors.isEmpty()) {
+                errors.add("No authors found for researcher " + researcherDisplayName(researcher));
                 continue;
             }
 
             List<String> authorIds = authors.stream().map(Author::getId).toList();
             List<Publication> publications = scopusPublicationRepository.findAllByAuthorsIn(authorIds);
             if (!"ANY".equals(report.getIndividualAffiliation().getName())) {
-                publications = publications.stream().filter(p -> report.getIndividualAffiliation().getScopusAffiliations().stream().anyMatch(aff -> p.getAffiliations().contains(aff.getAfid()))).collect(Collectors.toList());
+                publications = publications.stream()
+                        .filter(p -> report.getIndividualAffiliation().getScopusAffiliations().stream()
+                                .anyMatch(aff -> p.getAffiliations().contains(aff.getAfid())))
+                        .collect(Collectors.toList());
             }
 
             List<Indicator> indicators = report.getIndicators();
             Map<Indicator, Double> indicatorScores = new HashMap<>();
 
             for (Indicator indicator : indicators) {
+                if (indicator == null) {
+                    errors.add("Null indicator in report " + report.getId());
+                    continue;
+                }
+
                 double indicatorScore = 0;
                 if (indicator.getOutputType().toString().contains("ACTIVIT")) {
                     List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(researcher.getId());
-                    activities = activities.stream().filter(act -> act.getActivity().getName().equals(indicator.getActivity().getName())).toList();
-                    indicatorScore = activityReportingService.calculateActivityScores(activities, indicator).get("total").getAuthorScore();
+                    activities = activities.stream()
+                            .filter(act -> act.getActivity().getName().equals(indicator.getActivity().getName()))
+                            .toList();
+                    indicatorScore = activityReportingService.calculateActivityScores(activities, indicator)
+                            .get("total")
+                            .getAuthorScore();
                 }
                 if (indicator.getOutputType().toString().contains("PUBLICATIONS")) {
                     indicatorScore = calculatePublicationScore(indicator, authors, publications);
-                } else if (indicator.getOutputType().equals(Indicator.Type.CITATIONS) || indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF)) {
+                } else if (indicator.getOutputType().equals(Indicator.Type.CITATIONS)
+                        || indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF)) {
                     indicatorScore = calculateCitationScore(indicator, authors, publications);
                 }
 
@@ -156,8 +197,12 @@ public class GroupReportFacade {
             for (int i = 0; i < report.getCriteria().size(); i++) {
                 AbstractReport.Criterion criterion = report.getCriteria().get(i);
                 double criterionScore = 0;
-                for (Integer in : criterion.getIndicatorIndices()) {
-                    Indicator ind = report.getIndicators().get(in);
+                for (Integer indicatorIndex : criterion.getIndicatorIndices()) {
+                    if (indicatorIndex == null || indicatorIndex < 0 || indicatorIndex >= report.getIndicators().size()) {
+                        errors.add("Invalid indicator index " + indicatorIndex + " in criterion " + i);
+                        continue;
+                    }
+                    Indicator ind = report.getIndicators().get(indicatorIndex);
                     if (indicatorScores.containsKey(ind)) {
                         criterionScore += indicatorScores.get(ind);
                     }
@@ -167,23 +212,44 @@ public class GroupReportFacade {
             researcherScores.put(researcher.getId(), criterionScores);
         }
 
-        Map<Integer, Map<Position, Double>> criteriaThresholds = new HashMap<>();
+        Map<Integer, Map<String, Double>> criteriaThresholds = new HashMap<>();
         for (int i = 0; i < report.getCriteria().size(); i++) {
             AbstractReport.Criterion criterion = report.getCriteria().get(i);
-            Map<Position, Double> thresholds = new HashMap<>();
+            Map<String, Double> thresholds = new HashMap<>();
             for (AbstractReport.Threshold threshold : criterion.getThresholds()) {
-                thresholds.put(threshold.getPosition(), threshold.getValue());
+                thresholds.put(threshold.getPosition().name(), threshold.getValue());
             }
             criteriaThresholds.put(i, thresholds);
         }
+
+        GroupIndividualReportRun run = new GroupIndividualReportRun();
+        run.setGroupId(group.getId());
+        run.setReportDefinitionId(report.getId());
+        run.setResearcherScores(researcherScores);
+        run.setCriteriaThresholds(criteriaThresholds);
+        run.setCreatedAt(java.time.Instant.now());
+        run.setBuildErrors(errors);
+        if (!errors.isEmpty()) {
+            run.setStatus(researcherScores.isEmpty() ? GroupIndividualReportRun.Status.FAILED : GroupIndividualReportRun.Status.PARTIAL);
+        } else {
+            run.setStatus(GroupIndividualReportRun.Status.READY);
+        }
+        return groupIndividualReportRunRepository.save(run);
+    }
+
+    private GroupIndividualReportViewModel toViewModel(Group group, IndividualReport report, GroupIndividualReportRun run) {
+        List<Researcher> researchers = new ArrayList<>(group.getResearchers());
+        researchers.sort(Comparator.comparing(Researcher::getName));
 
         Map<String, Object> attrs = new HashMap<>();
         attrs.put("report", report);
         attrs.put("group", group);
         attrs.put("researchers", researchers);
-        attrs.put("researcherScores", researcherScores);
-        attrs.put("criteriaThresholds", criteriaThresholds);
-
+        attrs.put("researcherScores", run.getResearcherScores() == null ? Map.of() : run.getResearcherScores());
+        attrs.put("criteriaThresholds", run.getCriteriaThresholds() == null ? Map.of() : run.getCriteriaThresholds());
+        attrs.put("runCreatedAt", run.getCreatedAt());
+        attrs.put("runStatus", run.getStatus());
+        attrs.put("runBuildErrors", run.getBuildErrors() == null ? List.of() : run.getBuildErrors());
         return new GroupIndividualReportViewModel(null, attrs);
     }
 
@@ -277,5 +343,12 @@ public class GroupReportFacade {
                 scores.get(key).put("total", score);
             }
         }
+    }
+
+    private String researcherDisplayName(Researcher researcher) {
+        String first = researcher.getFirstName() == null ? "" : researcher.getFirstName().trim();
+        String last = researcher.getLastName() == null ? "" : researcher.getLastName().trim();
+        String full = (first + " " + last).trim();
+        return full.isBlank() ? researcher.getId() : full;
     }
 }
