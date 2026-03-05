@@ -18,9 +18,7 @@ public class AdminURAPController {
     private final UrapRankingFacade urapRankingFacade;
 
     @GetMapping
-    public String getRankings(Model model) {
-        List<URAPUniversityRanking> rankings = urapRankingFacade.listRankings();
-        model.addAttribute("rankings", rankings);
+    public String getRankings() {
         return "admin/rankings-urap";
     }
 

@@ -30,7 +30,11 @@ if (!bootstrap.includes('table.js-datatable')) {
 const htmlFiles = listHtmlFiles(templatesRoot);
 const datatablesFreePages = new Set([
   path.join('src', 'main', 'resources', 'templates', 'rankings', 'wos.html'),
+  path.join('src', 'main', 'resources', 'templates', 'rankings', 'core.html'),
+  path.join('src', 'main', 'resources', 'templates', 'rankings', 'urap.html'),
   path.join('src', 'main', 'resources', 'templates', 'admin', 'rankings.html'),
+  path.join('src', 'main', 'resources', 'templates', 'admin', 'rankings-core.html'),
+  path.join('src', 'main', 'resources', 'templates', 'admin', 'rankings-urap.html'),
   path.join('src', 'main', 'resources', 'templates', 'admin', 'scopus-venues.html'),
   path.join('src', 'main', 'resources', 'templates', 'admin', 'scopus-authors.html'),
   path.join('src', 'main', 'resources', 'templates', 'admin', 'scopus-affiliations.html'),

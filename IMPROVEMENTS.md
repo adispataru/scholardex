@@ -300,3 +300,50 @@ Acceptance criteria:
   - JS behavior tests:
     - `scripts/test-admin-scopus-authors.js`
     - `scripts/test-admin-scopus-affiliations.js`
+
+## CORE + URAP Public/Admin Incremental Loading (Done)
+
+- Added paged read APIs:
+  - `GET /api/rankings/core`
+    - params: `page`, `size`, `sort` (`name|acronym`), `direction`, `q`
+    - search fields: `name`, `acronym`, `sourceId`
+    - response: `items` (`id`, `name`, `acronym`, `category2023`) + paging envelope
+  - `GET /api/rankings/urap`
+    - params: `page`, `size`, `sort` (`name|country`), `direction`, `q`
+    - search fields: `name`, `country`
+    - response: `items` (`id`, `name`, `country`, `year`, `rank`, `article`, `citation`, `totalDocument`, `ait`, `cit`, `collaboration`, `total`) + paging envelope
+- API security:
+  - `/api/rankings/core/**` and `/api/rankings/urap/**` are available to all authenticated roles (`PLATFORM_ADMIN`, `RESEARCHER`, `SUPERVISOR`).
+- Backend query path:
+  - Implemented `CoreRankingQueryService` and `UrapRankingQueryService` with `MongoTemplate` paging/sorting/search.
+  - URAP rows expose the latest available score-year snapshot per university.
+  - Added indexes:
+    - `CoreConferenceRanking`: `name`, `acronym`, `sourceId`
+    - `URAPUniversityRanking`: `country` (`name` remains `_id`)
+- Public/admin list pages migrated to incremental loading:
+  - `/rankings/core`
+  - `/rankings/urap`
+  - `/admin/rankings/core`
+  - `/admin/rankings/urap`
+  - all now render shell-only tables with custom controls/states and API-backed pagination
+  - no DataTables bootstrap on these pages
+  - shared scripts:
+    - `src/main/resources/static/js/rankings-core.js`
+    - `src/main/resources/static/js/rankings-urap.js`
+- Detail routes unchanged and still linked from list rows:
+  - public: `/rankings/core/{id}`, `/rankings/urap/{id}`
+  - admin: `/admin/rankings/core/{id}`, `/admin/rankings/urap/{id}`
+- Tests added/updated:
+  - `CoreRankingApiControllerContractTest`
+  - `UrapRankingApiControllerContractTest`
+  - `CoreRankingQueryServiceTest`
+  - `UrapRankingQueryServiceTest`
+  - `ApiSecurityContractTest` (new core/urap API auth checks)
+  - `RankingViewControllerContractTest` (public shell contract)
+  - `AdminViewControllerContractTest` (admin core shell contract)
+  - `AdminURAPControllerContractTest` (admin urap shell contract)
+  - JS behavior tests:
+    - `scripts/test-rankings-core.js`
+    - `scripts/test-rankings-urap.js`
+- Guardrails updated:
+  - `scripts/verify-datatables-optin.js` now enforces DataTables-free status for the 4 CORE/URAP list templates.

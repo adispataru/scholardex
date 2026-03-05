@@ -121,6 +121,23 @@ class AdminViewControllerContractTest {
     }
 
     @Test
+    void coreRankingsPageRendersExpectedTemplateAndClientControls() throws Exception {
+        mockMvc.perform(get("/admin/rankings/core"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin/rankings-core"))
+                .andExpect(model().attributeDoesNotExist("confs"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"core-search\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"core-sort\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"core-direction\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"core-size\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"core-table-body\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"core-prev\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"core-next\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/js/rankings-core.js")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
+    }
+
+    @Test
     void scopusForumsPageRendersExpectedTemplateAndClientControls() throws Exception {
         mockMvc.perform(get("/admin/scopus/forums"))
                 .andExpect(status().isOk())

@@ -15,16 +15,20 @@ import ro.uvt.pokedex.core.config.WebSecurityConfig;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.service.CustomUserDetailsService;
 import ro.uvt.pokedex.core.service.UserService;
+import ro.uvt.pokedex.core.service.application.CoreRankingQueryService;
 import ro.uvt.pokedex.core.service.application.ForumExportFacade;
 import ro.uvt.pokedex.core.service.application.ScopusAffiliationQueryService;
 import ro.uvt.pokedex.core.service.application.ScopusAuthorQueryService;
 import ro.uvt.pokedex.core.service.application.ScopusForumQueryService;
+import ro.uvt.pokedex.core.service.application.UrapRankingQueryService;
 import ro.uvt.pokedex.core.service.application.WosRankingQueryService;
+import ro.uvt.pokedex.core.controller.dto.CoreRankingPageResponse;
 import ro.uvt.pokedex.core.service.application.model.ForumExportRow;
 import ro.uvt.pokedex.core.service.application.model.ForumExportViewModel;
 import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationPageResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusAuthorPageResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusForumPageResponse;
+import ro.uvt.pokedex.core.controller.dto.UrapRankingPageResponse;
 import ro.uvt.pokedex.core.controller.dto.WosRankingPageResponse;
 
 import java.util.Collections;
@@ -40,7 +44,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest({ExportController.class, UserController.class, WosRankingApiController.class, ScopusForumApiController.class, ScopusAuthorApiController.class, ScopusAffiliationApiController.class})
+@WebMvcTest({
+        ExportController.class,
+        UserController.class,
+        WosRankingApiController.class,
+        CoreRankingApiController.class,
+        UrapRankingApiController.class,
+        ScopusForumApiController.class,
+        ScopusAuthorApiController.class,
+        ScopusAffiliationApiController.class
+})
 @AutoConfigureMockMvc
 @Import(WebSecurityConfig.class)
 class ApiSecurityContractTest {
@@ -56,6 +69,10 @@ class ApiSecurityContractTest {
     private UserService userService;
     @MockBean
     private WosRankingQueryService wosRankingQueryService;
+    @MockBean
+    private CoreRankingQueryService coreRankingQueryService;
+    @MockBean
+    private UrapRankingQueryService urapRankingQueryService;
     @MockBean
     private ScopusForumQueryService scopusForumQueryService;
     @MockBean
@@ -152,6 +169,76 @@ class ApiSecurityContractTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isArray())
                 .andExpect(jsonPath("$.totalItems").value(0));
+    }
+
+    @Test
+    void unauthenticatedCoreRankingsApiReturns401JsonEnvelope() throws Exception {
+        mockMvc.perform(get("/api/rankings/core"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentType("application/json"))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").value("unauthorized"))
+                .andExpect(jsonPath("$.path").value("/api/rankings/core"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void authenticatedRolesCanAccessCoreRankingsApi() throws Exception {
+        when(coreRankingQueryService.search(0, 25, "name", "asc", null))
+                .thenReturn(new CoreRankingPageResponse(Collections.emptyList(), 0, 25, 0, 0));
+
+        mockMvc.perform(get("/api/rankings/core")
+                        .with(user("researcher@uvt.ro")
+                                .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray());
+
+        mockMvc.perform(get("/api/rankings/core")
+                        .with(user("supervisor@uvt.ro")
+                                .authorities(new SimpleGrantedAuthority("SUPERVISOR"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray());
+
+        mockMvc.perform(get("/api/rankings/core")
+                        .with(user("admin@uvt.ro")
+                                .authorities(new SimpleGrantedAuthority("PLATFORM_ADMIN"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray());
+    }
+
+    @Test
+    void unauthenticatedUrapRankingsApiReturns401JsonEnvelope() throws Exception {
+        mockMvc.perform(get("/api/rankings/urap"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentType("application/json"))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").value("unauthorized"))
+                .andExpect(jsonPath("$.path").value("/api/rankings/urap"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void authenticatedRolesCanAccessUrapRankingsApi() throws Exception {
+        when(urapRankingQueryService.search(0, 25, "name", "asc", null))
+                .thenReturn(new UrapRankingPageResponse(Collections.emptyList(), 0, 25, 0, 0));
+
+        mockMvc.perform(get("/api/rankings/urap")
+                        .with(user("researcher@uvt.ro")
+                                .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray());
+
+        mockMvc.perform(get("/api/rankings/urap")
+                        .with(user("supervisor@uvt.ro")
+                                .authorities(new SimpleGrantedAuthority("SUPERVISOR"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray());
+
+        mockMvc.perform(get("/api/rankings/urap")
+                        .with(user("admin@uvt.ro")
+                                .authorities(new SimpleGrantedAuthority("PLATFORM_ADMIN"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray());
     }
 
     @Test

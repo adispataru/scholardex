@@ -501,9 +501,7 @@ public class AdminViewController {
     }
 
     @GetMapping("/rankings/core")
-    public String showCoreRankingsPage(Model model) {
-        List<CoreConferenceRanking> all = adminCatalogFacade.listCoreRankings();
-        model.addAttribute("confs", all);
+    public String showCoreRankingsPage() {
         return "admin/rankings-core";
     }
 

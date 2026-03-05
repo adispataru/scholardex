@@ -9,8 +9,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.model.ArtisticEvent;
-import ro.uvt.pokedex.core.model.CoreConferenceRanking;
-import ro.uvt.pokedex.core.model.URAPUniversityRanking;
 import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.UrapRankingFacade;
 
@@ -56,23 +54,37 @@ class RankingViewControllerContractTest {
     }
 
     @Test
-    void coreRankingsPageRendersExpectedTemplateAndModel() throws Exception {
-        when(adminCatalogFacade.listCoreRankings()).thenReturn(List.of());
-
+    void coreRankingsPageRendersExpectedTemplateAndClientControls() throws Exception {
         mockMvc.perform(get("/rankings/core"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("rankings/core"))
-                .andExpect(model().attributeExists("confs"));
+                .andExpect(model().attributeDoesNotExist("confs"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"core-search\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"core-sort\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"core-direction\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"core-size\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"core-table-body\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"core-prev\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"core-next\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/rankings-core.js")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
     }
 
     @Test
-    void urapRankingsPageRendersExpectedTemplateAndModel() throws Exception {
-        when(urapRankingFacade.listRankings()).thenReturn(List.of(new URAPUniversityRanking()));
-
+    void urapRankingsPageRendersExpectedTemplateAndClientControls() throws Exception {
         mockMvc.perform(get("/rankings/urap"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("rankings/urap"))
-                .andExpect(model().attributeExists("rankings"));
+                .andExpect(model().attributeDoesNotExist("rankings"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"urap-search\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"urap-sort\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"urap-direction\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"urap-size\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"urap-table-body\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"urap-prev\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"urap-next\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/rankings-urap.js")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
     }
 
     @Test

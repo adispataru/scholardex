@@ -2,6 +2,7 @@ package ro.uvt.pokedex.core.model;
 
 import lombok.Data;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Map;
@@ -12,8 +13,11 @@ public class CoreConferenceRanking {
     @Id
     private String id;
     private String source;
+    @Indexed
     private String sourceId;
+    @Indexed
     private String name;
+    @Indexed
     private String acronym;
     private Map<Integer, YearlyRanking> yearlyRankings;
 
