@@ -5,7 +5,7 @@ Scholardex Core is a Spring Boot application for managing and reporting academic
 ## Tech Stack
 
 - Java 25
-- Spring Boot 3.2.4
+- Spring Boot 4.0.2
 - Gradle (wrapper included)
 - MongoDB
 

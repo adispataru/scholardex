@@ -143,3 +143,32 @@ Operational baseline after H16.2 execution:
   - `./gradlew --version`
   - `./gradlew help --stacktrace`
   - `./gradlew compileJava --stacktrace`
+
+## H16.3 Status Update (2026-03-06)
+
+Plugin and dependency compatibility remediation executed:
+
+- Spring Boot plugin upgraded `3.2.4 -> 4.0.2`.
+- Kept `io.spring.dependency-management` at `1.1.7` (verified compatible on Gradle 9.1.0).
+- Added explicit Testcontainers pins:
+  - `org.testcontainers:junit-jupiter:1.19.7`
+  - `org.testcontainers:mongodb:1.19.7`
+- Added Boot 4 test slice modules required by migrated test annotations:
+  - `org.springframework.boot:spring-boot-webmvc-test`
+  - `org.springframework.boot:spring-boot-data-mongodb-test`
+- Boot 4/Security 7 API migrations applied in code:
+  - security matcher migration (`AntPathRequestMatcher -> PathPatternRequestMatcher`)
+  - health API import migration (`org.springframework.boot.actuate.health.* -> org.springframework.boot.health.contributor.*`)
+  - error controller import migration (`org.springframework.boot.webmvc.error.ErrorController`)
+  - authentication provider constructor migration (`DaoAuthenticationProvider(UserDetailsService)`)
+  - URI builder API migration (`fromHttpUrl -> fromUriString`)
+- Test framework migration applied:
+  - `@MockBean -> @MockitoBean`
+  - Boot test-slice import namespace updates for Web MVC and Mongo slices
+  - redirect assertions normalized to exact `"/login"` where pattern matching semantics changed
+
+Validation pass set:
+
+- `./gradlew compileJava --stacktrace`
+- `./gradlew test --stacktrace`
+- `./gradlew check --stacktrace`

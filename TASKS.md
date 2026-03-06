@@ -34,9 +34,10 @@ Done history moved to `TASKS-done.md`.
     Deliverable: upgraded Gradle wrapper and required build script/property updates to match the target Java/toolchain baseline.
     Exit criteria: `./gradlew --version`, configuration phase, and core build lifecycle start cleanly on the new wrapper.
     Status note (2026-03-06): completed with wrapper `9.1.0`, Java toolchain/launchers moved to `25`, macOS wrapper guard updated for JDK 25, and dependency-management plugin bumped to `1.1.7` for Gradle 9 compatibility (`--version`, `help`, `compileJava` all pass).
-  - [ ] `H16.3` Plugin and dependency compatibility remediation.
+  - [x] `H16.3` Plugin and dependency compatibility remediation.
     Deliverable: minimal set of plugin/dependency upgrades or config changes required to restore compile/test/check behavior.
     Exit criteria: no deprecated/broken build integrations remain on critical paths (`compileJava`, `test`, `check`).
+    Status note (2026-03-06): completed by upgrading Spring Boot to `4.0.2`, adding Boot 4 test-slice modules (`spring-boot-webmvc-test`, `spring-boot-data-mongodb-test`), pinning Testcontainers to `1.19.7`, migrating security/health/error APIs to Boot 4/Security 7 namespaces, and updating affected tests (`@MockBean -> @MockitoBean`, Boot 4 test annotation imports, redirect expectations); `compileJava`, `test`, and `check` pass.
   - [ ] `H16.4` CI parity and deterministic execution hardening.
     Deliverable: workflow and environment alignment updates so local and CI use the same Java/Gradle assumptions.
     Exit criteria: `java-smoke` and `quality-full` run with identical toolchain intent across local and CI.

@@ -4,7 +4,7 @@ package ro.uvt.pokedex.core.controller;
 //import javax.servlet.http.HttpServletRequest;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.boot.web.servlet.error.ErrorController;
+import org.springframework.boot.webmvc.error.ErrorController;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -42,4 +42,3 @@ public class CustomErrorController implements ErrorController {
         return "errors/error-403"; // View name for the error page
     }
 }
-

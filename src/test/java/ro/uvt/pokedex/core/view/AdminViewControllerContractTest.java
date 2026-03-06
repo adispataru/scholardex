@@ -3,9 +3,9 @@ package ro.uvt.pokedex.core.view;
 import org.junit.jupiter.api.Test;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContext;
@@ -67,19 +67,19 @@ class AdminViewControllerContractTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private UserService userService;
-    @MockBean
+    @MockitoBean
     private ResearcherService researcherService;
-    @MockBean
+    @MockitoBean
     private AdminCatalogFacade adminCatalogFacade;
-    @MockBean
+    @MockitoBean
     private AdminScopusFacade adminScopusFacade;
-    @MockBean
+    @MockitoBean
     private AdminInstitutionReportFacade adminInstitutionReportFacade;
-    @MockBean
+    @MockitoBean
     private RankingMaintenanceFacade rankingMaintenanceFacade;
-    @MockBean
+    @MockitoBean
     private WosRankingDetailsReadService wosRankingDetailsReadService;
 
     @Test

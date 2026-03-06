@@ -98,7 +98,7 @@ public class ScopusService {
 //        headers.set("Authorization", "Bearer " + authToken);  // Use the auth token
         headers.set("Accept", "application/json");
 
-        String url = UriComponentsBuilder.fromHttpUrl(apiUrl)
+        String url = UriComponentsBuilder.fromUriString(apiUrl)
                 .buildAndExpand(doi)
                 .toUriString();
 //        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(apiUrl)

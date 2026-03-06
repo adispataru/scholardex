@@ -16,7 +16,7 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.access.RequestMatcherDelegatingAccessDeniedHandler;
 import org.springframework.security.web.authentication.DelegatingAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import ro.uvt.pokedex.core.handlers.ApiAccessDeniedHandler;
 import ro.uvt.pokedex.core.handlers.ApiAuthenticationEntryPoint;
@@ -38,7 +38,7 @@ public class WebSecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.ignoringRequestMatchers(new AntPathRequestMatcher("/api/**")))
+        http.csrf(csrf -> csrf.ignoringRequestMatchers(PathPatternRequestMatcher.pathPattern("/api/**")))
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(requestCorrelationFilter(), UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(ahr -> {
@@ -90,8 +90,7 @@ public class WebSecurityConfig {
 
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService);
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }
@@ -119,7 +118,7 @@ public class WebSecurityConfig {
     @Bean
     public AuthenticationEntryPoint delegatingAuthenticationEntryPoint() {
         LinkedHashMap<RequestMatcher, AuthenticationEntryPoint> entryPoints = new LinkedHashMap<>();
-        entryPoints.put(new AntPathRequestMatcher("/api/**"), apiAuthenticationEntryPoint());
+        entryPoints.put(PathPatternRequestMatcher.pathPattern("/api/**"), apiAuthenticationEntryPoint());
         DelegatingAuthenticationEntryPoint delegating = new DelegatingAuthenticationEntryPoint(entryPoints);
         delegating.setDefaultEntryPoint(new LoginUrlAuthenticationEntryPoint("/login"));
         return delegating;
@@ -128,7 +127,7 @@ public class WebSecurityConfig {
     @Bean
     public AccessDeniedHandler delegatingAccessDeniedHandler() {
         LinkedHashMap<RequestMatcher, AccessDeniedHandler> handlers = new LinkedHashMap<>();
-        handlers.put(new AntPathRequestMatcher("/api/**"), apiAccessDeniedHandler());
+        handlers.put(PathPatternRequestMatcher.pathPattern("/api/**"), apiAccessDeniedHandler());
         return new RequestMatcherDelegatingAccessDeniedHandler(handlers, accessDeniedHandler());
     }
 

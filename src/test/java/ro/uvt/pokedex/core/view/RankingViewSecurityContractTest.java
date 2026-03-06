@@ -3,9 +3,9 @@ package ro.uvt.pokedex.core.view;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
@@ -30,7 +30,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest({RankingViewController.class, AdminViewController.class})
@@ -41,25 +41,25 @@ class RankingViewSecurityContractTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private CustomUserDetailsService userDetailsService;
-    @MockBean
+    @MockitoBean
     private CacheService cacheService;
-    @MockBean
+    @MockitoBean
     private AdminCatalogFacade adminCatalogFacade;
-    @MockBean
+    @MockitoBean
     private UrapRankingFacade urapRankingFacade;
-    @MockBean
+    @MockitoBean
     private WosRankingDetailsReadService wosRankingDetailsReadService;
-    @MockBean
+    @MockitoBean
     private UserService userService;
-    @MockBean
+    @MockitoBean
     private ResearcherService researcherService;
-    @MockBean
+    @MockitoBean
     private AdminScopusFacade adminScopusFacade;
-    @MockBean
+    @MockitoBean
     private AdminInstitutionReportFacade adminInstitutionReportFacade;
-    @MockBean
+    @MockitoBean
     private RankingMaintenanceFacade rankingMaintenanceFacade;
 
     @BeforeEach
@@ -72,7 +72,7 @@ class RankingViewSecurityContractTest {
     void unauthenticatedRankingsWosRedirectsToLogin() throws Exception {
         mockMvc.perform(get("/rankings/wos"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrlPattern("**/login"));
+                .andExpect(redirectedUrl("/login"));
     }
 
     @Test
