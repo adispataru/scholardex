@@ -56,9 +56,8 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
         return switch (subtype) {
             case "ar", "re" -> journalScoringService.getScore(publication, indicator);
             case "cp" -> conferenceScoringService.getScore(publication, indicator);
-            case "bk", "ch" -> bookScoringService.getScore(publication, indicator);
             default -> {
-                logger.warn("Unhandled publication subtype: {}", subtype);
+                logger.warn("Unhandled publication subtype for CS combined scoring: {}", subtype);
                 yield createEmptyScore();
             }
         };
@@ -118,8 +117,8 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
                Delegates to appropriate specialized services:
                - Journal articles: Uses WoS quartile-based scoring
                - Conference papers: Uses CORE ranking-based scoring
-               - Books: Uses SENSE publisher-based scoring
-               
+               - Other publication types are ignored in combined CS publication scoring
+                
                For detailed scoring rules, see individual services.
                """;
     }

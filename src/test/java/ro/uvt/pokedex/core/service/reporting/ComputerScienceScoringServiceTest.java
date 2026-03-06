@@ -28,45 +28,47 @@ class ComputerScienceScoringServiceTest {
     private ReportingLookupPort cacheService;
 
     @Test
-    void bkSubtypeDelegatesToBookScoringService() {
+    void bkSubtypeFallsBackToEmptyScore() {
         ComputerScienceScoringService service = new ComputerScienceScoringService(
                 journalScoringService,
                 conferenceScoringService,
                 bookScoringService,
                 cacheService
         );
-        Score bookScore = score(16.0, 2023, "A", "NOT_FOUND");
-        when(bookScoringService.getScore(any(Publication.class), any(Indicator.class))).thenReturn(bookScore);
 
         Publication publication = new Publication();
         publication.setSubtype("bk");
 
         Score score = service.getScore(publication, new Indicator());
 
-        assertEquals(16.0, score.getScore());
-        verify(bookScoringService, times(1)).getScore(any(Publication.class), any(Indicator.class));
+        assertEquals(0.0, score.getScore());
+        assertEquals(0, score.getYear());
+        assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCategory());
+        assertEquals(WoSRanking.Quarter.NOT_FOUND.toString(), score.getQuarter());
         verifyNoInteractions(journalScoringService, conferenceScoringService);
+        verifyNoInteractions(bookScoringService);
     }
 
     @Test
-    void chSubtypeDelegatesToBookScoringService() {
+    void chSubtypeFallsBackToEmptyScore() {
         ComputerScienceScoringService service = new ComputerScienceScoringService(
                 journalScoringService,
                 conferenceScoringService,
                 bookScoringService,
                 cacheService
         );
-        Score bookScore = score(8.0, 2023, "B", "NOT_FOUND");
-        when(bookScoringService.getScore(any(Publication.class), any(Indicator.class))).thenReturn(bookScore);
 
         Publication publication = new Publication();
         publication.setSubtype("ch");
 
         Score score = service.getScore(publication, new Indicator());
 
-        assertEquals(8.0, score.getScore());
-        verify(bookScoringService, times(1)).getScore(any(Publication.class), any(Indicator.class));
+        assertEquals(0.0, score.getScore());
+        assertEquals(0, score.getYear());
+        assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCategory());
+        assertEquals(WoSRanking.Quarter.NOT_FOUND.toString(), score.getQuarter());
         verifyNoInteractions(journalScoringService, conferenceScoringService);
+        verifyNoInteractions(bookScoringService);
     }
 
     @Test

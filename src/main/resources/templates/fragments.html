@@ -19,7 +19,7 @@
 <div th:fragment="navbar">
     <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
         <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
-            <i class="fa fa-bars"></i>
+            <i class="fa-solid fa-bars"></i>
         </button>
 
         <ul class="navbar-nav ml-auto">
@@ -28,20 +28,20 @@
                 <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     <span class="mr-2 d-none d-lg-inline text-gray-600 small">Access Control</span>
-                    <i class="fas fa-users-cog"></i>
+                    <i class="fa-solid fa-users-cog"></i>
                 </a>
                 <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
                      aria-labelledby="userDropdown">
                     <a class="dropdown-item" th:if="${user.hasRole('PLATFORM_ADMIN')}" href="/admin">
-                        <i class="fas fa-user-shield fa-sm fa-fw mr-2 text-gray-400"></i>
+                        <i class="fa-solid fa-user-shield fa-sm fa-fw mr-2 text-gray-400"></i>
                         Admin Panel
                     </a>
                     <a class="dropdown-item" th:if="${user.hasRole('SUPERVISOR')}" href="/supervisor">
-                        <i class="fas fa-user-tie fa-sm fa-fw mr-2 text-gray-400"></i>
+                        <i class="fa-solid fa-user-tie fa-sm fa-fw mr-2 text-gray-400"></i>
                         Supervisor Panel
                     </a>
                     <a class="dropdown-item" href="/user">
-                        <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
+                        <i class="fa-solid fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
                         User Panel
                     </a>
                 </div>
@@ -67,33 +67,33 @@
         <hr class="sidebar-divider my-0">
         <li class="nav-item" th:classappend="${activeSection} == 'users' ? 'active' : ''">
             <a class="nav-link" th:href="@{/admin/users}">
-                <i class="fas fa-fw fa-users"></i>
+                <i class="fa-solid fa-fw fa-users"></i>
                 <span>Users</span>
             </a>
         </li>
 <!--        <li class="nav-item" th:classappend="${activeSection} == 'venues' ? 'active' : ''">-->
 <!--            <a class="nav-link" th:href="@{/admin/venues}">-->
-<!--                <i class="fas fa-fw fa-chart-area"></i>-->
+<!--                <i class="fa-solid fa-fw fa-chart-area"></i>-->
 <!--                <span>Venues</span>-->
 <!--            </a>-->
 <!--        </li>-->
         <li class="nav-item" th:classappend="${activeSection} == 'researchers' ? 'active' : ''">
             <a class="nav-link" th:href="@{/admin/researchers}">
-                <i class="fas fa-fw fa-user-graduate"></i>
+                <i class="fa-solid fa-fw fa-user-graduate"></i>
                 <span>Researchers</span>
             </a>
         </li>
 
         <li class="nav-item" th:classappend="${activeSection} == 'institutions' ? 'active' : ''">
             <a class="nav-link" th:href="@{/admin/institutions}">
-                <i class="fas fa-fw fa-university"></i>
+                <i class="fa-solid fa-fw fa-university"></i>
                 <span>Institutions</span>
             </a>
         </li>
 
         <li class="nav-item" th:classappend="${activeSection} == 'groups' ? 'active' : ''">
             <a class="nav-link" th:href="@{/admin/groups}">
-                <i class="fas fa-fw fa-object-group"></i>
+                <i class="fa-solid fa-fw fa-object-group"></i>
                 <span>Groups</span>
             </a>
         </li>
@@ -108,25 +108,25 @@
 
     <li class="nav-item" th:classappend="${activeSection == 'scopus-forums' or activeSection == 'scopus-venues'} ? 'active' : ''">
         <a class="nav-link" th:href="@{/admin/scopus/forums}">
-            <i class="fas fa-fw fa-chart-area"></i>
+            <i class="fa-solid fa-fw fa-chart-area"></i>
             <span>Forums</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'scopus-authors' ? 'active' : ''">
         <a class="nav-link" th:href="@{/admin/scopus/authors}">
-            <i class="fas fa-fw fa-user-graduate"></i>
+            <i class="fa-solid fa-fw fa-user-graduate"></i>
             <span>Authors</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'scopus-affiliations' ? 'active' : ''">
         <a class="nav-link" th:href="@{/admin/scopus/affiliations}">
-            <i class="fas fa-fw fa-building"></i>
+            <i class="fa-solid fa-fw fa-building"></i>
             <span>Affiliations</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'scopus-publications' ? 'active' : ''">
         <a class="nav-link" th:href="@{/admin/scopus/publications}">
-            <i class="fas fa-fw fa-file"></i>
+            <i class="fa-solid fa-fw fa-file"></i>
             <span>Publications</span>
         </a>
     </li>
@@ -139,25 +139,25 @@
     </div>
     <li class="nav-item" th:classappend="${activeSection} == 'rankings' ? 'active' : ''">
         <a class="nav-link" th:href="@{/admin/rankings/wos}">
-            <i class="fas fa-fw fa-medal"></i>
+            <i class="fa-solid fa-fw fa-medal"></i>
             <span>WoS</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'rankings-core' ? 'active' : ''">
         <a class="nav-link" th:href="@{/admin/rankings/core}">
-            <i class="fas fa-fw fa-atom"></i>
+            <i class="fa-solid fa-fw fa-atom"></i>
             <span>CORE</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'rankings-urap' ? 'active' : ''">
         <a class="nav-link" th:href="@{/admin/rankings/urap}">
-            <i class="fas fa-fw fa-university"></i>
+            <i class="fa-solid fa-fw fa-university"></i>
             <span>URAP</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'rankings-events' ? 'active' : ''">
         <a class="nav-link" th:href="@{/admin/rankings/events}">
-            <i class="fas fa-fw fa-theater-masks"></i>
+            <i class="fa-solid fa-fw fa-theater-masks"></i>
             <span>Events</span>
         </a>
     </li>
@@ -170,35 +170,35 @@
     </div>
     <li class="nav-item" th:classappend="${activeSection} == 'activities' ? 'active' : ''">
         <a class="nav-link" th:href="@{/admin/activities}">
-            <i class="fas fa-fw fa-pen-fancy"></i>
+            <i class="fa-solid fa-fw fa-pen-fancy"></i>
             <span>Activities</span>
         </a>
     </li>
 
     <li class="nav-item" th:classappend="${activeSection} == 'indicators' ? 'active' : ''">
         <a class="nav-link" th:href="@{/admin/indicators}">
-            <i class="fas fa-fw fa-info"></i>
+            <i class="fa-solid fa-fw fa-info"></i>
             <span>Indicators</span>
         </a>
     </li>
 
     <li class="nav-item" th:classappend="${activeSection} == 'domains' ? 'active' : ''">
         <a class="nav-link" th:href="@{/admin/domains}">
-            <i class="fas fa-fw fa-umbrella"></i>
+            <i class="fa-solid fa-fw fa-umbrella"></i>
             <span>Domains</span>
         </a>
     </li>
 
     <li class="nav-item" th:classappend="${activeSection} == 'individualReports' ? 'active' : ''">
         <a class="nav-link" th:href="@{/admin/individualReports}">
-            <i class="fas fa-fw fa-clipboard"></i>
+            <i class="fa-solid fa-fw fa-clipboard"></i>
             <span>Reports</span>
         </a>
     </li>
 
     <li class="nav-item" th:classappend="${activeSection} == 'groupReports' ? 'active' : ''">
         <a class="nav-link" th:href="@{/admin/groupReports}">
-            <i class="fas fa-fw fa-layer-group"></i>
+            <i class="fa-solid fa-fw fa-layer-group"></i>
             <span>Group Reports</span>
         </a>
     </li>
@@ -224,20 +224,20 @@
     <hr class="sidebar-divider my-0">
     <li class="nav-item" th:classappend="${activeSection} == 'profile' ? 'active' : ''">
         <a th:href="@{/user/profile}" class="nav-link">
-            <i class="fas fa-fw fa-user-graduate"></i>
+            <i class="fa-solid fa-fw fa-user-graduate"></i>
             <span>Profile</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'publications' ? 'active' : ''">
         <a class="nav-link" th:href="@{/user/publications}">
-            <i class="fas fa-fw fa-chart-area"></i>
+            <i class="fa-solid fa-fw fa-chart-area"></i>
             <span>Publications</span>
         </a>
     </li>
 
     <li class="nav-item" th:classappend="${activeSection} == 'activityInstances' ? 'active' : ''">
         <a class="nav-link" th:href="@{/user/activityInstances}">
-            <i class="fas fa-fw fa-pen-fancy"></i>
+            <i class="fa-solid fa-fw fa-pen-fancy"></i>
             <span>Activities</span>
         </a>
     </li>
@@ -249,25 +249,25 @@
     </div>
     <li class="nav-item" th:classappend="${activeSection} == 'rankings' ? 'active' : ''">
         <a class="nav-link" th:href="@{/rankings/wos}">
-            <i class="fas fa-fw fa-medal"></i>
+            <i class="fa-solid fa-fw fa-medal"></i>
             <span>WoS</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'rankings-core' ? 'active' : ''">
         <a class="nav-link" th:href="@{/rankings/core}">
-            <i class="fas fa-fw fa-atom"></i>
+            <i class="fa-solid fa-fw fa-atom"></i>
             <span>CORE</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'rankings-urap' ? 'active' : ''">
         <a class="nav-link" th:href="@{/rankings/urap}">
-            <i class="fas fa-fw fa-university"></i>
+            <i class="fa-solid fa-fw fa-university"></i>
             <span>URAP</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'rankings-events' ? 'active' : ''">
         <a class="nav-link" th:href="@{/rankings/events}">
-            <i class="fas fa-fw fa-theater-masks"></i>
+            <i class="fa-solid fa-fw fa-theater-masks"></i>
             <span>Events</span>
         </a>
     </li>
@@ -280,13 +280,13 @@
     </div>
     <li class="nav-item" th:classappend="${activeSection} == 'indicators' ? 'active' : ''">
         <a class="nav-link" th:href="@{/user/indicators}">
-            <i class="fas fa-fw fa-info"></i>
+            <i class="fa-solid fa-fw fa-info"></i>
             <span>Indicators</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'individualReports' ? 'active' : ''">
         <a class="nav-link" th:href="@{/user/individualReports}">
-            <i class="fas fa-fw fa-clipboard-list"></i>
+            <i class="fa-solid fa-fw fa-clipboard-list"></i>
             <span>Reports</span>
         </a>
     </li>

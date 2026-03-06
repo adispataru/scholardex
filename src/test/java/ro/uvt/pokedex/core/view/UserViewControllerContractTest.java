@@ -18,6 +18,7 @@ import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
+import ro.uvt.pokedex.core.model.reporting.Position;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.service.ResearcherService;
@@ -408,6 +409,75 @@ class UserViewControllerContractTest {
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("Research Impact"));
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("Criterion 2"));
         org.junit.jupiter.api.Assertions.assertFalse(html.contains("Total Score for All Indicators"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("criterion-main"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("/css/individual-report-dashboard.css"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("/js/individual-report-dashboard.js"));
+        org.junit.jupiter.api.Assertions.assertFalse(html.contains("/js/demo/datatables-demo.js"));
+    }
+
+    @Test
+    void individualReportViewRendersThresholdBadgesAndCompactIndicatorLinks() throws Exception {
+        IndividualReport report = new IndividualReport();
+        report.setId("rep-2");
+        report.setTitle("Compact Report");
+        report.setDescription("Desc");
+
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-compact-1");
+        indicator.setName("Info_B");
+        report.setIndicators(List.of(indicator));
+
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Threshold t1 = new ro.uvt.pokedex.core.model.reporting.AbstractReport.Threshold();
+        t1.setPosition(Position.ASIST_UNIV);
+        t1.setValue(10.0);
+
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Threshold t2 = new ro.uvt.pokedex.core.model.reporting.AbstractReport.Threshold();
+        t2.setPosition(Position.PROF_UNIV);
+        t2.setValue(56.0);
+
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion criterion = new ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion();
+        criterion.setName("Perspectiva B");
+        criterion.setIndicatorIndices(List.of(0));
+        criterion.setThresholds(List.of(t1, t2));
+        report.setCriteria(List.of(criterion));
+
+        when(userReportFacade.findIndividualReportById("rep-2")).thenReturn(Optional.of(report));
+        when(userIndividualReportRunService.getOrCreateLatestRun("u@uvt.ro", "rep-2"))
+                .thenReturn(Optional.of(new IndividualReportRunDto(
+                        "run-2",
+                        "rep-2",
+                        List.of(),
+                        Map.of("ind-compact-1", 39.39),
+                        Map.of(0, 39.39),
+                        Instant.parse("2026-03-05T10:00:00Z"),
+                        IndividualReportRunDto.Source.PERSISTED
+                )));
+
+        String html = mockMvc.perform(get("/user/individualReports/view/{id}", "rep-2")
+                        .with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/individualReport-view"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("threshold-icon-rail"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("threshold-icon"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("fa-leaf"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("fa-clover"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("ASIST_UNIV"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("PROF_UNIV"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("data-position=\"ASIST_UNIV\""));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("data-position=\"PROF_UNIV\""));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("data-threshold-value=\"10.00\""));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("data-threshold-value=\"56.00\""));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("criterion-selected-position"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("criterion-score-ratio"));
+        org.junit.jupiter.api.Assertions.assertFalse(html.contains("data-toggle=\"tooltip\""));
+        org.junit.jupiter.api.Assertions.assertFalse(html.contains("View details"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("indicator-link"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("Info_B"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("/user/indicators/apply/ind-compact-1"));
     }
 
     @Test

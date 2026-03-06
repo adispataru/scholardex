@@ -310,6 +310,12 @@ public class UserViewController {
         model.addAttribute("report", report);
         model.addAttribute("indicatorScores", indicatorScores);
         model.addAttribute("criterionScores", run.criteriaScores());
+        String researcherPosition = Optional.ofNullable(currentUser.getResearcherId())
+                .flatMap(researcherService::findResearcherById)
+                .map(Researcher::getPosition)
+                .map(Enum::name)
+                .orElse("");
+        model.addAttribute("researcherPosition", researcherPosition);
         model.addAttribute("runMetaId", run.runId());
         model.addAttribute("runMetaCreatedAt", run.createdAt());
         model.addAttribute("runMetaSource", run.source());

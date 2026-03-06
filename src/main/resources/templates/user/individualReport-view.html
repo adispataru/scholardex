@@ -5,11 +5,11 @@
     <title th:text="${report.title}">Individual Report</title>
     <th:block th:replace="fragments :: core-styles"></th:block>
     <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+    <link href="/css/individual-report-dashboard.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
 <div id="wrapper">
-    <!-- Sidebar -->
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
         <div th:replace="fragments :: user-sidebar('individualReports')"></div>
         <div class="text-center d-none d-md-inline">
@@ -17,11 +17,11 @@
         </div>
     </ul>
 
-    <!-- Content Wrapper -->
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
             <div th:replace="fragments :: navbar"></div>
-            <div class="container-fluid">
+            <div class="container-fluid individual-report-dashboard"
+                 th:attr="data-researcher-position=${researcherPosition}">
                 <div class="d-sm-flex align-items-center justify-content-between mb-4">
                     <h1 class="h3 mb-2 text-gray-800" th:text="${report.title}">Individual Report</h1>
                     <form th:action="@{/user/individualReports/view/{id}/refresh(id=${report.id})}" method="post">
@@ -30,73 +30,64 @@
                 </div>
                 <p class="mb-4" th:text="${report.description}"></p>
 
-                <!-- Criteria and Indicators -->
-                <div th:each="criterion, critIndex : ${report.criteria}">
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary"
-                                th:text="${criterion.name != null && !#strings.isEmpty(#strings.trim(criterion.name)) ? criterion.name : 'Criterion ' + (critIndex.index + 1)}"></h6>
-                        </div>
+                <div class="row">
+                    <div th:each="criterion, critIndex : ${report.criteria}" class="criterion-wrapper col-12 col-lg-6 col-xl-4">
+                        <div class="card shadow mb-4 criterion-card">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary"
+                                    th:text="${criterion.name != null && !#strings.isEmpty(#strings.trim(criterion.name)) ? criterion.name : 'Criterion ' + (critIndex.index + 1)}"></h6>
+                            </div>
 
-
-                        <div class="card-body">
-
-                            <h6>Overall</h6>
-                            <div class="row">
-                                <div class="col-xl-4 col-md-4 mb-4">
-                                    <div class="card border-left-primary shadow">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-2">
-                                                    <div class="text-xs text-primary mb-1" >Total</div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${#numbers.formatDecimal(criterionScores[critIndex.index], 1, 2)}"></div>
+                            <div class="card-body">
+                                <div class="criterion-main">
+                                    <div class="criterion-total-block mb-3">
+                                        <div class="criterion-score-row"
+                                             th:attr="data-criterion-index=${critIndex.index},data-criterion-score=${#numbers.formatDecimal(criterionScores[critIndex.index], 1, 2)}">
+                                            <div class="threshold-inline-wrap"
+                                                 th:if="${criterion.thresholds != null && !criterion.thresholds.isEmpty()}">
+                                                <div class="threshold-icon-rail">
+                                                    <button type="button"
+                                                            th:each="threshold : ${criterion.thresholds}"
+                                                            class="threshold-icon-btn"
+                                                            th:attr="data-position=${threshold.position != null ? threshold.position.toString() : ''},data-threshold-value=${#numbers.formatDecimal(threshold.value, 1, 2)},data-criterion-index=${critIndex.index}"
+                                                            aria-label="Threshold">
+                                                        <i class="threshold-icon"
+                                                           th:classappend="${((threshold.position != null && (threshold.position.toString().equals('ASIST_UNIV') || threshold.position.toString().equals('ASIST_C'))) ? ' fa-solid fa-leaf' :
+                                                                           (threshold.position != null && (threshold.position.toString().equals('LECT_UNIV') || threshold.position.toString().equals('CS_III'))) ? ' fa-solid fa-seedling' :
+                                                                           (threshold.position != null && (threshold.position.toString().equals('CONF_UNIV') || threshold.position.toString().equals('CS_II'))) ? ' fa-solid fa-tree' :
+                                                                           (threshold.position != null && (threshold.position.toString().equals('PROF_UNIV') || threshold.position.toString().equals('CS_I'))) ? ' fa-solid fa-clover' :
+                                                                           ' fa-solid fa-circle')}"
+                                                           aria-hidden="true"></i>
+                                                    </button>
                                                 </div>
                                             </div>
-                                            <div class="text-xs text-primary mb-1">Thresholds</div>
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="table-responsive">
-                                                    <table class="table table-bordered text-xs">
-                                                        <thead>
-                                                        <tr>
-                                                            <!--                                                                <td>Rank</td>-->
-                                                            <td th:each="threshold : ${criterion.thresholds}" th:text="${threshold.position}">A</td>
-                                                        </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                        <tr>
-                                                            <!--                                                                <td>Threshold</td>-->
-                                                            <td th:each="threshold : ${criterion.thresholds}" >
-                                                                <span th:text="${#numbers.formatDecimal(threshold.value, 1, 2)}"></span>
-                                                                <span th:if="${criterionScores[critIndex.index] >= threshold.value}" class="text-success"><i class="fas fa-check"></i></span>
-                                                                <span th:if="${criterionScores[critIndex.index] < threshold.value}" class="text-danger"><i class="fas fa-times"></i></span>
-                                                            </td>
-                                                        </tr>
-                                                        </tbody>
-
-                                                    </table>
-                                                </div>
+                                            <div class="criterion-score-display">
+                                                <div class="text-xs text-primary text-uppercase mb-1 criterion-selected-position">Position</div>
+                                                <div class="criterion-score-ratio"
+                                                     th:text="${#numbers.formatDecimal(criterionScores[critIndex.index], 1, 2)} + ' / 0.00'">0.00 / 0.00</div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                            <h6>Indicators</h6>
 
-                            <div class="row">
-                                <div th:each="indicatorIndex : ${criterion.indicatorIndices}" class="col-xl-2 col-md-2 col-sm-2 mb-2">
-                                    <div class="card border-left-primary shadow">
-                                        <div class="card-body">
-                                            <div class="row no-gutters align-items-center">
-                                                <div class="col mr-1">
-                                                    <div class="text-xs text-primary mb-1" th:text="${report.indicators[indicatorIndex].name}"></div>
-                                                    <div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${#numbers.formatDecimal(indicatorScores[report.indicators[indicatorIndex]], 1, 2)}"></div>
-                                                </div>
-                                                <div class="col mr-1">
-                                                    <a th:href="@{/user/indicators/apply/{id}(id=${report.indicators[indicatorIndex].id})}">
-                                                        <i class="fas fa-info fa-2x text-primary"></i>
-                                                    </a>
-                                                </div>
-                                            </div>
+                                    <button type="button"
+                                            class="indicator-toggle collapsed"
+                                            th:attr="data-target=${'indicator-list-' + critIndex.index},aria-controls=${'indicator-list-' + critIndex.index}"
+                                            aria-expanded="false">
+                                        <span class="text-xs text-primary text-uppercase">Indicators</span>
+                                        <i class="fa-solid fa-chevron-down indicator-toggle-icon" aria-hidden="true"></i>
+                                    </button>
+                                    <div class="indicator-list is-collapsed"
+                                         th:attr="id=${'indicator-list-' + critIndex.index}"
+                                         hidden>
+                                        <div th:each="indicatorIndex : ${criterion.indicatorIndices}" class="indicator-row mb-2">
+                                            <a class="indicator-link"
+                                               th:href="@{/user/indicators/apply/{id}(id=${report.indicators[indicatorIndex].id})}"
+                                               th:text="${report.indicators[indicatorIndex].name}"></a>
+                                            <div class="indicator-row-score"
+                                                 th:text="${#numbers.formatDecimal(indicatorScores[report.indicators[indicatorIndex]], 1, 2)}"></div>
+                                        </div>
+                                        <div th:if="${criterion.indicatorIndices == null || criterion.indicatorIndices.isEmpty()}">
+                                            <div class="text-muted small">No indicators in this criterion.</div>
                                         </div>
                                     </div>
                                 </div>
@@ -117,13 +108,8 @@
     </div>
 </div>
 
-<!-- Bootstrap core JavaScript-->
 <th:block th:replace="fragments :: core-scripts"></th:block>
-
-<!-- Page level plugins -->
-
-<!-- Page level custom scripts -->
-<script src="/js/demo/datatables-demo.js"></script>
+<script src="/js/individual-report-dashboard.js"></script>
 
 </body>
 </html>

@@ -1,0 +1,187 @@
+.individual-report-dashboard .criterion-card {
+  border: 1px solid #e8edf4;
+}
+
+.individual-report-dashboard .criterion-total-block {
+  border-left: 4px solid #4e73df;
+  background: #f9fbff;
+  border-radius: 0.5rem;
+  padding: 0.85rem 1rem;
+}
+
+.individual-report-dashboard .criterion-score-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: nowrap;
+}
+
+.individual-report-dashboard .threshold-inline-wrap {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow-x: auto;
+  flex: 1 1 auto;
+}
+
+.individual-report-dashboard .threshold-icon-rail {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.individual-report-dashboard .threshold-icon-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #d8deea;
+  border-radius: 999px;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.individual-report-dashboard .threshold-icon-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.2);
+}
+
+.individual-report-dashboard .threshold-icon {
+  font-size: 0.95rem;
+  color: #a3adbc;
+  line-height: 1;
+}
+
+.individual-report-dashboard .threshold-icon-btn.is-passed .threshold-icon {
+  color: #1cc88a;
+}
+
+.individual-report-dashboard .threshold-icon-btn.is-passed {
+  border-color: #b7ebd4;
+}
+
+.individual-report-dashboard .threshold-icon-btn.is-failed .threshold-icon {
+  color: #a3adbc;
+}
+
+.individual-report-dashboard .threshold-icon-btn.is-selected-pass {
+  border-color: #4e73df;
+  background: #eef3ff;
+}
+
+.individual-report-dashboard .threshold-icon-btn.is-selected-pass .threshold-icon {
+  color: #4e73df;
+}
+
+.individual-report-dashboard .threshold-icon-btn.is-selected-fail {
+  border-color: #e74a3b;
+  background: #fff1f0;
+}
+
+.individual-report-dashboard .threshold-icon-btn.is-selected-fail .threshold-icon {
+  color: #e74a3b;
+}
+
+.individual-report-dashboard .criterion-score-display {
+  text-align: right;
+  flex: 0 0 auto;
+}
+
+.individual-report-dashboard .criterion-selected-position {
+  white-space: nowrap;
+}
+
+.individual-report-dashboard .criterion-score-ratio {
+  font-size: 1.25rem;
+  line-height: 1.1;
+  font-weight: 700;
+  color: #2d3748;
+  white-space: nowrap;
+}
+
+.individual-report-dashboard .indicator-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.individual-report-dashboard .indicator-list.is-collapsed {
+  display: none;
+}
+
+.individual-report-dashboard .indicator-toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0 0 0.5rem 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  cursor: pointer;
+}
+
+.individual-report-dashboard .indicator-toggle-icon {
+  color: #4e73df;
+  font-size: 0.8rem;
+  transition: transform 0.15s ease-in-out;
+}
+
+.individual-report-dashboard .indicator-toggle[aria-expanded="true"] .indicator-toggle-icon {
+  transform: rotate(180deg);
+}
+
+.individual-report-dashboard .indicator-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 1.35rem;
+}
+
+.individual-report-dashboard .indicator-link {
+  font-size: 0.82rem;
+  color: #4e73df;
+  font-weight: 600;
+  text-decoration: none;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.individual-report-dashboard .indicator-link:hover,
+.individual-report-dashboard .indicator-link:focus {
+  color: #2e59d9;
+  text-decoration: underline;
+}
+
+.individual-report-dashboard .indicator-row-score {
+  font-size: 0.88rem;
+  color: #3a3f51;
+  font-weight: 700;
+  text-align: right;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 991.98px) {
+  .individual-report-dashboard .criterion-score-ratio {
+    font-size: 1.05rem;
+  }
+
+  .individual-report-dashboard .indicator-row {
+    align-items: baseline;
+  }
+
+  .individual-report-dashboard .threshold-icon-btn {
+    width: 28px;
+    height: 28px;
+  }
+}
