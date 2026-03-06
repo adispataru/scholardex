@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Activity Indicators</title>
-    <th:block th:replace="fragments :: core-styles"></th:block>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
     <link href="/css/sb-admin-2.min.css" rel="stylesheet">
     <style>
         .custom-tooltip .tooltip-inner {
@@ -17,7 +17,7 @@
 <div id="wrapper">
     <!-- Sidebar -->
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="fragments :: admin-sidebar('activity-indicators')"></div>
+        <div th:replace="~{fragments :: admin-sidebar('activity-indicators')}"></div>
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
         </div>
@@ -28,7 +28,7 @@
         <!-- Main Content -->
         <div id="content">
             <!-- Topbar -->
-            <div th:replace="fragments :: navbar"></div>
+            <div th:replace="~{fragments :: navbar}"></div>
 
             <!-- Begin Page Content -->
             <div class="container-fluid">
@@ -81,13 +81,7 @@
             <!-- End of Page Content -->
 
             <!-- Footer -->
-            <footer class="sticky-footer bg-white">
-                <div class="container my-auto">
-                    <div class="copyright text-center my-auto">
-                        <span>Copyright &copy; ScholarDex 2024</span>
-                    </div>
-                </div>
-            </footer>
+            <div th:replace="~{fragments :: app-footer}"></div>
             <!-- End of Footer -->
         </div>
         <!-- End of Main Content -->
@@ -163,7 +157,7 @@
 </a>
 
 <!-- Bootstrap core & SB Admin scripts -->
-<th:block th:replace="fragments :: core-scripts"></th:block>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
 
 <!-- DataTables scripts -->
 <script src="/js/demo/datatables-demo.js"></script>

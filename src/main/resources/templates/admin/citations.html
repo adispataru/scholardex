@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title th:text="${publication.title}"></title>
-    <th:block th:replace="fragments :: core-styles"></th:block>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
     <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
@@ -11,7 +11,7 @@
 <div id="wrapper">
     <!-- Sidebar -->
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="fragments :: admin-sidebar('publications')"></div>
+        <div th:replace="~{fragments :: admin-sidebar('publications')}"></div>
         <!-- Sidebar Toggler (Sidebar) -->
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
@@ -23,7 +23,7 @@
         <!-- Main Content -->
         <div id="content">
             <!-- Topbar -->
-            <div th:replace="fragments :: navbar"></div>
+            <div th:replace="~{fragments :: navbar}"></div>
 
             <!-- Begin Page Content -->
             <div class="container-fluid">
@@ -113,13 +113,7 @@
             <!-- End of Main Content -->
 
             <!-- Footer -->
-            <footer class="sticky-footer bg-white">
-                <div class="container my-auto">
-                    <div class="copyright text-center my-auto">
-                        <span>Copyright &copy; ScholarDex 2024</span>
-                    </div>
-                </div>
-            </footer>
+            <div th:replace="~{fragments :: app-footer}"></div>
             <!-- End of Footer -->
         </div>
         <!-- End of Content Wrapper -->
@@ -133,7 +127,7 @@
 </div>
 
 <!-- Bootstrap core JavaScript-->
-<th:block th:replace="fragments :: core-scripts"></th:block>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
 
 <!-- Page level plugins -->
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title th:text="${report.title}">Individual Report</title>
-    <th:block th:replace="fragments :: core-styles"></th:block>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
     <link href="/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="/css/individual-report-dashboard.css" rel="stylesheet">
 </head>
@@ -11,7 +11,7 @@
 
 <div id="wrapper">
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="fragments :: user-sidebar('individualReports')"></div>
+        <div th:replace="~{fragments :: user-sidebar('individualReports')}"></div>
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
         </div>
@@ -19,7 +19,7 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="fragments :: navbar"></div>
+            <div th:replace="~{fragments :: navbar}"></div>
             <div class="container-fluid individual-report-dashboard"
                  th:attr="data-researcher-position=${researcherPosition}">
                 <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -97,18 +97,12 @@
                 </div>
 
             </div>
-            <footer class="sticky-footer bg-white">
-                <div class="container my-auto">
-                    <div class="copyright text-center my-auto">
-                        <span>Copyright &copy; ScholarDex 2024</span>
-                    </div>
-                </div>
-            </footer>
+            <div th:replace="~{fragments :: app-footer}"></div>
         </div>
     </div>
 </div>
 
-<th:block th:replace="fragments :: core-scripts"></th:block>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
 <script src="/js/individual-report-dashboard.js"></script>
 
 </body>

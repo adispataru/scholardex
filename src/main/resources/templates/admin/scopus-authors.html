@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <title>Authors</title>
-    <th:block th:replace="fragments :: core-styles"></th:block>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
     <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
 <div id="wrapper">
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="fragments :: admin-sidebar('scopus-authors')"></div>
+        <div th:replace="~{fragments :: admin-sidebar('scopus-authors')}"></div>
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
         </div>
@@ -18,7 +18,7 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="fragments :: navbar"></div>
+            <div th:replace="~{fragments :: navbar}"></div>
 
             <div class="container-fluid">
                 <h1 class="h3 mb-2 text-gray-800">Authors</h1>
@@ -95,13 +95,7 @@
                 </div>
             </div>
 
-            <footer class="sticky-footer bg-white">
-                <div class="container my-auto">
-                    <div class="copyright text-center my-auto">
-                        <span>Copyright &copy; ScholarDex 2024</span>
-                    </div>
-                </div>
-            </footer>
+            <div th:replace="~{fragments :: app-footer}"></div>
         </div>
     </div>
 
@@ -110,7 +104,7 @@
     </a>
 </div>
 
-<th:block th:replace="fragments :: core-scripts"></th:block>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
 <script src="/js/admin-scopus-authors.js"></script>
 
 </body>

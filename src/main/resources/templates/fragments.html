@@ -6,8 +6,19 @@
 <body>
 <th:block th:fragment="core-styles">
     <link href="/assets/app.css" rel="stylesheet" type="text/css">
+    <link href="/css/footer-layout.css" rel="stylesheet" type="text/css">
     <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
     <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}">
+</th:block>
+
+<th:block th:fragment="app-footer">
+    <footer class="sticky-footer bg-white">
+        <div class="container my-auto">
+            <div class="copyright text-center my-auto">
+                <span th:text="${@environment.getProperty('app.footer.message')}">Copyright \u00a9 ScholarDex 2024</span>
+            </div>
+        </div>
+    </footer>
 </th:block>
 
 <th:block th:fragment="core-scripts">

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Rankings</title>
-    <th:block th:replace="fragments :: core-styles"></th:block>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
     <link href="/css/sb-admin-2.min.css" rel="stylesheet">
     <style>
         .card-spacing {
@@ -16,7 +16,7 @@
 <div id="wrapper">
     <!-- Sidebar -->
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="fragments :: user-sidebar('rankings')"></div>
+        <div th:replace="~{fragments :: user-sidebar('rankings')}"></div>
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
         </div>
@@ -26,7 +26,7 @@
     <div id="content-wrapper" class="d-flex flex-column">
         <!-- Main Content -->
         <div id="content">
-            <div th:replace="fragments :: navbar"></div>
+            <div th:replace="~{fragments :: navbar}"></div>
             <div class="container-fluid">
                 <h1 class="h3 mb-2 text-gray-800">Rankings</h1>
                 <!--                <p class="mb-4">This page displays the rankings of journals.</p>-->
@@ -43,13 +43,7 @@
                 </div>
             </div>
 
-            <footer class="sticky-footer bg-white">
-                <div class="container my-auto">
-                    <div class="copyright text-center my-auto">
-                        <span>Copyright &copy; ScholarDex 2024</span>
-                    </div>
-                </div>
-            </footer>
+            <div th:replace="~{fragments :: app-footer}"></div>
         </div>
     </div>
 
@@ -57,7 +51,7 @@
         <i class="fa-solid fa-angle-up"></i>
     </a>
 </div>
-<th:block th:replace="fragments :: core-scripts"></th:block>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
 
 <script src="/js/demo/datatables-demo.js"></script>
 </body>

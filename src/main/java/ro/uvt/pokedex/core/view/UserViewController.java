@@ -2,7 +2,6 @@ package ro.uvt.pokedex.core.view;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -57,10 +56,6 @@ public class UserViewController {
     private final UserRankingFacade userRankingFacade;
     private final UserIndicatorResultService userIndicatorResultService;
     private final UserIndividualReportRunService userIndividualReportRunService;
-    @Value("${features.userIndicators.citationsDashboardV2:true}")
-    private boolean citationsDashboardV2;
-
-
     @GetMapping()
     public String showDashboard(Model model) {
 
@@ -219,7 +214,6 @@ public class UserViewController {
 
         IndicatorApplyResultDto result = userIndicatorResultService.getOrCreateLatest(currentUser.getEmail(), id);
         result.rawGraph().forEach(model::addAttribute);
-        model.addAttribute("citationsDashboardV2", citationsDashboardV2);
         model.addAttribute("resultMetaSource", result.source());
         model.addAttribute("resultMetaUpdatedAt", result.updatedAt());
         model.addAttribute("resultMetaRefreshVersion", result.refreshVersion());

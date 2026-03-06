@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <title th:text="${indicator.name}">Indicator</title>
-    <th:block th:replace="fragments :: core-styles"></th:block>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
     <link href="/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="/css/indicator-citations-dashboard.css" rel="stylesheet">
 </head>
 <body id="page-top">
 <div id="wrapper">
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="fragments :: user-sidebar('indicators')"></div>
+        <div th:replace="~{fragments :: user-sidebar('indicators')}"></div>
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
         </div>
@@ -18,7 +18,7 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="fragments :: navbar"></div>
+            <div th:replace="~{fragments :: navbar}"></div>
 
             <div class="container-fluid" id="activities-dashboard-v2"
                  th:attr="data-quarter-labels=${#strings.listJoin(allQuarters, '|')},data-quarter-values=${#strings.listJoin(allValues, '|')}">
@@ -155,18 +155,12 @@
                 </div>
             </div>
 
-            <footer class="sticky-footer bg-white">
-                <div class="container my-auto">
-                    <div class="copyright text-center my-auto">
-                        <span>Copyright &copy; ScholarDex 2024</span>
-                    </div>
-                </div>
-            </footer>
+            <div th:replace="~{fragments :: app-footer}"></div>
         </div>
     </div>
 </div>
 
-<th:block th:replace="fragments :: core-scripts"></th:block>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
 <script src="/js/indicator-activities-dashboard.js"></script>
 </body>
 </html>

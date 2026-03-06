@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Edit Affiliation</title>
-    <th:block th:replace="fragments :: core-styles"></th:block>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
     <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
@@ -11,7 +11,7 @@
 <div id="wrapper">
     <!-- Sidebar -->
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="fragments :: admin-sidebar('scopus-affiliations')"></div>
+        <div th:replace="~{fragments :: admin-sidebar('scopus-affiliations')}"></div>
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
         </div>
@@ -20,7 +20,7 @@
     <!-- Content Wrapper -->
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="fragments :: navbar"></div>
+            <div th:replace="~{fragments :: navbar}"></div>
             <div class="container-fluid">
                 <h1 class="h3 mb-2 text-gray-800">Edit Affiliation</h1>
                 <p class="mb-4" th:text="${affiliation.name}"></p>
@@ -50,13 +50,7 @@
                 </div>
             </div>
 
-            <footer class="sticky-footer bg-white">
-                <div class="container my-auto">
-                    <div class="copyright text-center my-auto">
-                        <span>Copyright &copy; ScholarDex 2024</span>
-                    </div>
-                </div>
-            </footer>
+            <div th:replace="~{fragments :: app-footer}"></div>
         </div>
     </div>
 
@@ -64,7 +58,7 @@
         <i class="fa-solid fa-angle-up"></i>
     </a>
 </div>
-<th:block th:replace="fragments :: core-scripts"></th:block>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
 
 
 </body>

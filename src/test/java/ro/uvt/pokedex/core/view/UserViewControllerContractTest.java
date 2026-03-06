@@ -11,7 +11,6 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.util.ReflectionTestUtils;
 import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
@@ -60,8 +59,6 @@ class UserViewControllerContractTest {
 
     @Autowired
     private MockMvc mockMvc;
-    @Autowired
-    private UserViewController userViewController;
 
     @MockBean
     private UserService userService;
@@ -481,9 +478,7 @@ class UserViewControllerContractTest {
     }
 
     @Test
-    void citationsApplyRendersDashboardV2WhenFeatureEnabled() throws Exception {
-        ReflectionTestUtils.setField(userViewController, "citationsDashboardV2", true);
-
+    void citationsApplyRendersDashboardV2Contract() throws Exception {
         Domain domain = new Domain();
         domain.setName("ALL");
         Indicator indicator = new Indicator();
@@ -526,58 +521,9 @@ class UserViewControllerContractTest {
                 .getContentAsString();
 
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("id=\"citations-dashboard-v2\""));
+        org.junit.jupiter.api.Assertions.assertFalse(html.contains("id=\"citations-legacy\""));
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("/js/indicator-citations-dashboard.js"));
         org.junit.jupiter.api.Assertions.assertFalse(html.contains("/js/demo/datatables-demo.js"));
-    }
-
-    @Test
-    void citationsApplyRendersLegacyWhenFeatureDisabled() throws Exception {
-        ReflectionTestUtils.setField(userViewController, "citationsDashboardV2", false);
-
-        Domain domain = new Domain();
-        domain.setName("ALL");
-        Indicator indicator = new Indicator();
-        indicator.setId("ind-cit-2");
-        indicator.setName("Citation Indicator");
-        indicator.setDomain(domain);
-        indicator.setOutputType(Indicator.Type.CITATIONS);
-        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
-        indicator.setFormula("S");
-
-        when(userIndicatorResultService.getOrCreateLatest(eq("u@uvt.ro"), eq("ind-cit-2")))
-                .thenReturn(new IndicatorApplyResultDto(
-                        "r-cit-2",
-                        "ind-cit-2",
-                        "user/indicators-apply-citations",
-                        Map.of(
-                                "indicator", indicator,
-                                "total", "1.00",
-                                "totalCit", 1,
-                                "publications", List.of(),
-                                "scores", Map.of(),
-                                "citationMap", Map.of(),
-                                "forumMap", Map.of(),
-                                "allQuarters", List.of("Q1"),
-                                "allValues", List.of(1)
-                        ),
-                        new IndicatorApplyResultDto.Summary(1.0, 1, List.of("Q1"), List.of(1)),
-                        IndicatorApplyResultDto.Source.PERSISTED,
-                        null,
-                        null,
-                        0
-                ));
-
-        String html = mockMvc.perform(get("/user/indicators/apply/{id}", "ind-cit-2")
-                        .with(authenticatedUser("u@uvt.ro")))
-                .andExpect(status().isOk())
-                .andExpect(view().name("user/indicators-apply-citations"))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        boolean hasLegacy = html.contains("id=\"citations-legacy\"");
-        boolean hasV2 = html.contains("id=\"citations-dashboard-v2\"");
-        org.junit.jupiter.api.Assertions.assertTrue(hasLegacy || hasV2);
     }
 
     private User userPrincipal(String email) {

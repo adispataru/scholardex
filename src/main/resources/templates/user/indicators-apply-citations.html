@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <title th:text="${indicator.name}">Indicator</title>
-    <th:block th:replace="fragments :: core-styles"></th:block>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
     <link href="/css/sb-admin-2.min.css" rel="stylesheet">
-    <link th:if="${citationsDashboardV2}" href="/css/indicator-citations-dashboard.css" rel="stylesheet">
+    <link href="/css/indicator-citations-dashboard.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
 <div id="wrapper">
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="fragments :: user-sidebar('indicators')"></div>
+        <div th:replace="~{fragments :: user-sidebar('indicators')}"></div>
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
         </div>
@@ -19,9 +19,9 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="fragments :: navbar"></div>
+            <div th:replace="~{fragments :: navbar}"></div>
 
-            <div class="container-fluid" th:if="${citationsDashboardV2}" id="citations-dashboard-v2"
+            <div class="container-fluid" id="citations-dashboard-v2"
                  th:attr="data-quarter-labels=${#strings.listJoin(allQuarters, '|')},data-quarter-values=${#strings.listJoin(allValues, '|')}">
                 <div class="d-sm-flex align-items-center justify-content-between mb-4">
                     <h1 class="h3 mb-0 text-gray-800" th:text="${indicator.name}">Indicator scores</h1>
@@ -220,62 +220,12 @@
                 </div>
             </div>
 
-            <div class="container-fluid" th:if="${!citationsDashboardV2}" id="citations-legacy">
-                <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                    <h1 class="h3 mb-0 text-gray-800" th:text="${indicator.name}">Indicator scores</h1>
-                    <div class="d-flex">
-                        <a th:href="@{/user/indicators/export/{id}(id=${indicator.id})}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm mr-2">
-                            <i class="fa-solid fa-download fa-sm text-white-50"></i> Export Excel
-                        </a>
-                        <form th:action="@{/user/indicators/apply/{id}/refresh(id=${indicator.id})}" method="post">
-                            <button type="submit" class="btn btn-sm btn-outline-primary shadow-sm">Refresh Scores</button>
-                        </form>
-                    </div>
-                </div>
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Citations (Legacy)</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered js-datatable" id="dataTableCitations" width="100%" cellspacing="0">
-                                <thead>
-                                <tr>
-                                    <th>Title</th>
-                                    <th>Type</th>
-                                    <th>Forum Score</th>
-                                    <th># Authors</th>
-                                    <th>Author Score</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <tr th:each="publication : ${publications}" th:if="${scores[publication.title]['total'].authorScore > 0.0}">
-                                    <td><a th:text="${publication.title}" th:href="@{/user/publications/citations(eid=${publication.eid})}">Title</a></td>
-                                    <td th:text="${publication.subtypeDescription}"></td>
-                                    <td th:text="${scores[publication.title]['total'].score}"></td>
-                                    <td th:text="${publication.authors.size()}"></td>
-                                    <td th:text="${#numbers.formatDecimal(scores[publication.title]['total'].authorScore, 1, 2)}"></td>
-                                </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <footer class="sticky-footer bg-white">
-                <div class="container my-auto">
-                    <div class="copyright text-center my-auto">
-                        <span>Copyright &copy; ScholarDex 2024</span>
-                    </div>
-                </div>
-            </footer>
+            <div th:replace="~{fragments :: app-footer}"></div>
         </div>
     </div>
 </div>
 
-<th:block th:replace="fragments :: core-scripts"></th:block>
-<script th:if="${citationsDashboardV2}" src="/js/indicator-citations-dashboard.js"></script>
-<script th:if="${!citationsDashboardV2}" src="/js/demo/datatables-demo.js"></script>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+<script src="/js/indicator-citations-dashboard.js"></script>
 </body>
 </html>
