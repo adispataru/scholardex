@@ -21,10 +21,12 @@ Done history moved to `TASKS-done.md`.
     Deliverable: at least one full workflow-level degraded/failure scenario with deterministic error handling assertions.
     Exit criteria: failure mode is reproducible and blocks regressions.
 
-- [ ] `H15` CI guardrail realignment and quality-gate restoration.
+- [x] `H15` CI guardrail realignment and quality-gate restoration.
   Goal: restore trust in CI by aligning guardrail rules with the current post-H14 architecture and enforcing the complete guardrail set in GitHub workflows.
   Deliverable: updated guardrail scripts/workflows and a green full validation baseline (`verify-h09-baseline` + `gradlew check`) on compliant code.
   Exit criteria: CI fails only on real regressions (not stale policy checks), and required guardrails are consistently enforced on PR/push.
+  Status: completed on 2026-03-06.
+  Note: H15.1-H15.4 completed; guardrail scripts and quality workflows now align with post-H14 behavior and pass on rerun.
   Subtasks:
   - [x] `H15.1` Guardrail policy audit for stale assumptions.
     Deliverable: inventory of guardrails that still encode pre-H14 behavior (WoS cache and old CS dispatch assumptions).
@@ -44,9 +46,11 @@ Done history moved to `TASKS-done.md`.
     Exit criteria: PR/push pipelines consistently run and enforce the updated guardrails.
     Status: completed on 2026-03-06.
     Note: `h09-quality-gates.yml` guardrails job now runs a single explicit guardrail suite (`verify-architecture-boundaries`, `verify-h06-persistence`, `verify-h07-guardrails`, `verify-h08-baseline`, `verify-h12-integrations`, `verify-duplication-guardrails`, `verify-wos-parity-baseline`) with per-check CI logs and failure artifact upload.
-  - [ ] `H15.4` Full quality-gate recovery.
+  - [x] `H15.4` Full quality-gate recovery.
     Deliverable: restore green status for `npm run verify-h09-baseline` and `./gradlew check`.
     Exit criteria: both gates pass end-to-end and remain stable across reruns.
+    Status: completed on 2026-03-06.
+    Note: validated with repeated local runs of `npm run verify-h09-baseline` and `./gradlew check`; all checks passed consistently.
 
 ## How To Use This File
 
