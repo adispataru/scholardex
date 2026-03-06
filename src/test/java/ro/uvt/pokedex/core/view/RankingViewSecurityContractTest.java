@@ -105,4 +105,14 @@ class RankingViewSecurityContractTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/custom-error?error=403"));
     }
+
+    @Test
+    void nonAdminCannotInvokeProjectionRebuildOperation() throws Exception {
+        mockMvc.perform(post("/admin/rankings/wos/rebuildProjections")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro")
+                                .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+    }
 }

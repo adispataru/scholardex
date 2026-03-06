@@ -8,6 +8,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.repository.reporting.RankingRepository;
 import ro.uvt.pokedex.core.service.CacheService;
+import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
+import ro.uvt.pokedex.core.service.importing.wos.WosProjectionBuilderService;
 
 import java.util.List;
 
@@ -20,6 +22,8 @@ class RankingMaintenanceFacadeTest {
     private CacheService cacheService;
     @Mock
     private RankingRepository rankingRepository;
+    @Mock
+    private WosProjectionBuilderService wosProjectionBuilderService;
 
     @InjectMocks
     private RankingMaintenanceFacade facade;
@@ -94,6 +98,18 @@ class RankingMaintenanceFacadeTest {
         verify(rankingRepository, never()).save(any(WoSRanking.class));
         verify(rankingRepository, never()).delete(any(WoSRanking.class));
         verify(cacheService).cacheRankings();
+    }
+
+    @Test
+    void rebuildWosProjectionsDelegatesToBuilder() {
+        ImportProcessingResult expected = new ImportProcessingResult(5);
+        when(wosProjectionBuilderService.rebuildWosProjections()).thenReturn(expected);
+
+        ImportProcessingResult result = facade.rebuildWosProjections();
+
+        verify(wosProjectionBuilderService).rebuildWosProjections();
+        verifyNoInteractions(cacheService, rankingRepository);
+        org.junit.jupiter.api.Assertions.assertSame(expected, result);
     }
 
     private static WoSRanking ranking(String name) {

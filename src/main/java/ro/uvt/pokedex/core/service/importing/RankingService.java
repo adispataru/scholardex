@@ -11,6 +11,10 @@ import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.repository.reporting.RankingRepository;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
+import ro.uvt.pokedex.core.service.importing.wos.WosFactBuilderService;
+import ro.uvt.pokedex.core.service.importing.wos.WosImportEventIngestionService;
+import ro.uvt.pokedex.core.service.importing.wos.WosIdentityResolutionService;
+import ro.uvt.pokedex.core.service.importing.wos.model.WosIdentitySourceContext;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -27,6 +31,12 @@ public class RankingService {
 
     @Autowired
     private CacheService cacheService;
+    @Autowired(required = false)
+    private WosImportEventIngestionService wosImportEventIngestionService;
+    @Autowired(required = false)
+    private WosFactBuilderService wosFactBuilderService;
+    @Autowired(required = false)
+    private WosIdentityResolutionService wosIdentityResolutionService;
 
     private Map<Integer, Map<WoSRanking.Quarter, Integer>> yearCounters = new HashMap<>();
     public void initializeCategoriesFromExcel(String filePath, String excelPassword) {
@@ -89,10 +99,12 @@ public class RankingService {
 
     @Async("taskExecutor")
     public void loadRankingsFromExcel(String directoryPath, String excelPassword) {
+        ingestWosEventsIfConfigured(directoryPath);
+        buildWosFactsIfConfigured();
         cacheService.cacheRankings();
         ImportProcessingResult totalResult = new ImportProcessingResult(20);
         File dir = new File(directoryPath);
-        File[] files = dir.listFiles((d, name) -> name.matches("AIS_\\d{4}\\.xlsx*") || name.matches("RIS_\\d{4}\\.xlsx*") || name.matches("JIF_\\d{4}\\.xlsx*"));
+        File[] files = dir.listFiles((d, name) -> name.matches("AIS_\\d{4}\\.xlsx*") || name.matches("RIS_\\d{4}\\.xlsx*"));
 
         if (files == null) {
             logger.error("Directory not found or is empty: {}", directoryPath);
@@ -173,16 +185,19 @@ public class RankingService {
     }
 
     private boolean updateRankingFromRow(Row row, int year, String metricType) {
+        // TODO(H14.2/H14.4/H14.5): route parsed source rows through wos.import_events and
+        // WosCanonicalContractSupport normalization before writing canonical facts/projections.
         String issn = "";
         String eIssn = "";
         String category = "general";
         Double value = null;
         WoSRanking.Quarter quarter = null;
-        Integer position = null;
         String name = "";
 
         switch (metricType) {
             case "AIS":
+                // TODO(H14.4): normalize edition/index tokens with explicit SCIE/SSCI rules
+                // (including SCIENCE -> SCIE and bundled SCIE+SSCI split handling).
                 if(year >= 2011 && year <= 2013){
                     name = row.getCell(0, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK).getStringCellValue();
                     issn = row.getCell(1, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK).getStringCellValue();
@@ -254,23 +269,6 @@ public class RankingService {
                     value = parseDoubleSafely(row.getCell(3, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK));
                 }
                 break;
-            case "JIF":
-                if (year == 2023) {
-                    name = row.getCell(0, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK).getStringCellValue();
-                    issn = row.getCell(2, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK).getStringCellValue();
-                    eIssn = row.getCell(3, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK).getStringCellValue();
-                    value = parseDoubleSafely(row.getCell(4, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK));
-                    String data = row.getCell(6, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK).getStringCellValue();
-                    String[] tokens = data.split("\\|");
-                    category = tokens[0];
-                    quarter = parseQuarter(tokens[1]);
-                    try {
-                        position = Integer.parseInt(tokens[2].split("/")[0]);
-                    } catch (Exception e) {
-                        logger.error("Exception when retrieving rank value: {}", e.getMessage());
-                    }
-                }
-                break;
         }
 
         String compositeId = WoSRanking.getGeneratedId(issn, eIssn);
@@ -278,6 +276,7 @@ public class RankingService {
             logger.error("Composite ID is null for journal {} with issn {} and eIssn {}", name, issn, eIssn);
             return false;
         }
+        resolveIdentityIfConfigured(issn, eIssn, name, year);
         WoSRanking ranking = cacheService.getCachedRankingById(compositeId);
 
         if (ranking == null) {
@@ -295,7 +294,6 @@ public class RankingService {
         switch (metricType) {
             case "AIS" -> score.getAis().put(year, value);
             case "RIS" -> score.getRis().put(year, value);
-            case "JIF" -> score.getIF().put(year, value);
         }
         ranking.setScore(score);
 
@@ -313,14 +311,6 @@ public class RankingService {
                         rank.getQAis().put(year, quarter);
                     }
                     break;
-                case "JIF":
-                    if(quarter != null){
-                        rank.getQIF().put(year, quarter);
-                    }
-                    if(position != null) {
-                        rank.getRankIF().put(year, position);
-                    }
-                    break;
             }
             ranking.getWebOfScienceCategoryIndex().put(category, rank);
         }
@@ -328,6 +318,50 @@ public class RankingService {
         cacheService.putCachedRankingById(ranking.getId(), ranking);
         logger.debug("Updated ranking for journal {}", ranking.getName());
         return true;
+    }
+
+    private void resolveIdentityIfConfigured(String issn, String eIssn, String title, int year) {
+        if (wosIdentityResolutionService == null) {
+            return;
+        }
+        try {
+            wosIdentityResolutionService.resolveIdentity(
+                    issn,
+                    eIssn,
+                    title,
+                    new WosIdentitySourceContext(year, null, null, null, null, null)
+            );
+        } catch (Exception e) {
+            logger.warn("WoS identity resolution hook failed for title='{}': {}", title, e.getMessage());
+        }
+    }
+
+    private void ingestWosEventsIfConfigured(String directoryPath) {
+        if (wosImportEventIngestionService == null) {
+            return;
+        }
+        try {
+            ImportProcessingResult result = wosImportEventIngestionService.ingestDirectory(directoryPath, null);
+            logger.info("WoS import-events ledger synced before legacy ranking import: processed={}, imported={}, updated={}, skipped={}, errors={}",
+                    result.getProcessedCount(), result.getImportedCount(), result.getUpdatedCount(),
+                    result.getSkippedCount(), result.getErrorCount());
+        } catch (Exception e) {
+            logger.warn("WoS import-events ingestion failed before legacy ranking import: {}", e.getMessage());
+        }
+    }
+
+    private void buildWosFactsIfConfigured() {
+        if (wosFactBuilderService == null) {
+            return;
+        }
+        try {
+            ImportProcessingResult result = wosFactBuilderService.buildFactsFromImportEvents();
+            logger.info("WoS facts built from ledger: processed={}, imported={}, updated={}, skipped={}, errors={}",
+                    result.getProcessedCount(), result.getImportedCount(), result.getUpdatedCount(),
+                    result.getSkippedCount(), result.getErrorCount());
+        } catch (Exception e) {
+            logger.warn("WoS fact-builder failed: {}", e.getMessage());
+        }
     }
 
     private WoSRanking.Rank retrieveCategory(Map<String, WoSRanking.Rank> webOfScienceCategoryIndex, String category) {
@@ -390,61 +424,9 @@ public class RankingService {
         rankCounters.put(year, currentRank);
     }
 
+    @Deprecated(forRemoval = false)
     public void updateImpactFactorsFromExcel(String fileName, int year) {
-        logger.info("Updating impact factor from {}", fileName);
-        try (FileInputStream fis = new FileInputStream(fileName);
-             Workbook workbook = WorkbookFactory.create(fis)) {
-
-            Sheet sheet = workbook.getSheetAt(0); // Assuming the first sheet
-            int numRows = sheet.getPhysicalNumberOfRows();
-
-            for (int i = 1; i < numRows; i++) { // Start from row 1 to skip headers
-                Row row = sheet.getRow(i);
-                if (row != null) {
-                    String name = row.getCell(0, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK).getStringCellValue();
-                    String issn = row.getCell(1, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK).getStringCellValue();
-                    String eIssn = row.getCell(2, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK).getStringCellValue();
-                    String categoryWithQuartile = row.getCell(3, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK).getStringCellValue();
-                    Double citations = parseDoubleSafely(row.getCell(4, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK));
-                    Double impactFactor = parseDoubleSafely(row.getCell(5, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK));
-                    Double jci = parseDoubleSafely(row.getCell(6, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK));
-                    Double percentageOAGold = parseDoubleSafely(row.getCell(7, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK));
-
-                    String compositeId = WoSRanking.getGeneratedId(issn, eIssn);
-                    WoSRanking ranking = cacheService.getCachedRankingById(compositeId);
-
-                    if (ranking == null) {
-                        ranking = new WoSRanking();
-                        ranking.setName(name);
-                        ranking.setIssn(issn);
-                        ranking.setEIssn(eIssn);
-                        ranking.generateId();
-                    }
-                    WoSRanking.Score score = ranking.getScore();
-
-                    String[] categories = categoryWithQuartile.split(";");
-                    for (String categoryWithQ : categories) {
-                        categoryWithQ = categoryWithQ.trim();
-                        String category = categoryWithQ.replaceAll("\\s*\\(Q\\d+\\)", "").trim();
-                        String quartile = "Q" + categoryWithQ.replaceAll(".*\\(Q(\\d+)\\).*", "$1");
-
-                        WoSRanking.Rank rank = ranking.getWebOfScienceCategoryIndex().getOrDefault(category, new WoSRanking.Rank());
-                        score.getIF().put(year, impactFactor);
-                        rank.getQIF().put(year, parseQuarter(quartile));
-                        ranking.getWebOfScienceCategoryIndex().put(category, rank);
-                    }
-                    rankingRepository.save(ranking);
-                    cacheService.putCachedRankingById(ranking.getId(), ranking);
-                    logger.debug("Updated ranking for journal {}", ranking.getName());
-                }
-            }
-            logger.info("Successfully updated impact factors from the Excel file. Saving cache...");
-            cacheService.syncRankingCacheToDb();
-            logger.info("Successfully saved cache");
-
-        } catch (IOException | EncryptedDocumentException e) {
-            logger.error("Error reading the Excel file: {}", e);
-        }
+        logger.warn("Ignoring deprecated JIF gov ingestion path for file {} and year {}. IF is accepted only from official WoS extracted data.", fileName, year);
     }
 
 

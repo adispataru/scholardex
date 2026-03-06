@@ -500,6 +500,16 @@ public class AdminViewController {
         return "redirect:/admin/rankings/wos";
     }
 
+    @PostMapping("/rankings/wos/rebuildProjections")
+    public String rebuildWosProjections(RedirectAttributes redirectAttributes) {
+        var result = rankingMaintenanceFacade.rebuildWosProjections();
+        redirectAttributes.addFlashAttribute("successMessage",
+                "WoS projections rebuilt. Imported=" + result.getImportedCount()
+                        + ", Skipped=" + result.getSkippedCount()
+                        + ", Errors=" + result.getErrorCount());
+        return "redirect:/admin/rankings/wos";
+    }
+
     @GetMapping("/rankings/core")
     public String showCoreRankingsPage() {
         return "admin/rankings-core";

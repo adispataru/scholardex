@@ -5,6 +5,8 @@ import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.repository.reporting.RankingRepository;
 import ro.uvt.pokedex.core.service.CacheService;
+import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
+import ro.uvt.pokedex.core.service.importing.wos.WosProjectionBuilderService;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -14,6 +16,7 @@ import java.util.stream.Collectors;
 public class RankingMaintenanceFacade {
     private final CacheService cacheService;
     private final RankingRepository rankingRepository;
+    private final WosProjectionBuilderService wosProjectionBuilderService;
 
     public void computePositionsForKnownQuarters() {
         List<WoSRanking> rankings = cacheService.getAllRankings();
@@ -44,5 +47,9 @@ public class RankingMaintenanceFacade {
             }
         });
         cacheService.cacheRankings();
+    }
+
+    public ImportProcessingResult rebuildWosProjections() {
+        return wosProjectionBuilderService.rebuildWosProjections();
     }
 }

@@ -32,6 +32,7 @@ import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.AdminInstitutionReportFacade;
 import ro.uvt.pokedex.core.service.application.AdminScopusFacade;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
+import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsViewModel;
 
@@ -104,6 +105,17 @@ class AdminViewControllerContractTest {
     }
 
     @Test
+    void rebuildWosProjectionsRedirectsAndDelegates() throws Exception {
+        when(rankingMaintenanceFacade.rebuildWosProjections()).thenReturn(new ImportProcessingResult(10));
+
+        mockMvc.perform(post("/admin/rankings/wos/rebuildProjections"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/rankings/wos"));
+
+        verify(rankingMaintenanceFacade).rebuildWosProjections();
+    }
+
+    @Test
     void wosRankingsPageRendersExpectedTemplateAndClientControls() throws Exception {
         mockMvc.perform(get("/admin/rankings/wos"))
                 .andExpect(status().isOk())
@@ -116,6 +128,7 @@ class AdminViewControllerContractTest {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-wos-table-body\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-wos-prev\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-wos-next\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/admin/rankings/wos/rebuildProjections")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/js/admin-rankings-wos.js")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
     }
