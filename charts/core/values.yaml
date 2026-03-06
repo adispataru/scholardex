@@ -1,0 +1,93 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/owner/repo
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: false
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: core.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+app:
+  springProfilesActive: ""
+  appFooterMessage: "Copyright ScholarDex 2026"
+  scopusApiUrl: "https://api.elsevier.com/content/search/scopus?query=DOI({doi})&field=citedby-count"
+  scopusApiCiteUrl: "https://api.elsevier.com/content/abstract/citations"
+  scopusAuthUrl: "https://api.elsevier.com/authenticate?platform=SCOPUS"
+  h14WosOfficialJsonDir: "data/wos-json-1997-2019"
+  h14WosMigrationDataDir: "data/loaded"
+
+secrets:
+  create: false
+  existingSecretName: core-app-secrets
+  data:
+    springDataMongodbUri: ""
+    adminEmail: ""
+    adminPassword: ""
+    scopusApiKey: ""
+    h14WosGovAisPassword: ""
+
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /actuator/health/liveness
+    port: http
+  initialDelaySeconds: 60
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 6
+
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /actuator/health/readiness
+    port: http
+  initialDelaySeconds: 45
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6

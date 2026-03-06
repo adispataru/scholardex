@@ -6,6 +6,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 import ro.uvt.pokedex.core.model.reporting.wos.WosImportEvent;
 import ro.uvt.pokedex.core.model.reporting.wos.WosSourceType;
 import ro.uvt.pokedex.core.repository.reporting.WosImportEventRepository;
@@ -14,13 +15,14 @@ import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -73,7 +75,7 @@ class WosImportEventIngestionServiceTest {
         assertEquals(0, second.getImportedCount());
         assertEquals(0, second.getUpdatedCount());
         assertTrue(second.getSkippedCount() > 0);
-        assertEquals(second.getSkippedCount(), second.getErrorCount());
+        assertEquals(0, second.getErrorCount());
 
         createSampleExcel(ais, 9.9);
         ImportProcessingResult third = service.ingestDirectory(dir.toString(), "batch-1");
@@ -81,8 +83,27 @@ class WosImportEventIngestionServiceTest {
         assertEquals(sizeAfterFirst, store.size());
         assertTrue(third.getUpdatedCount() > 0);
         assertEquals(0, third.getImportedCount());
-        assertEquals(third.getSkippedCount(), third.getErrorCount());
+        assertEquals(0, third.getErrorCount());
         assertTrue(first.getImportedCount() > 0);
+    }
+
+    @Test
+    void ingestDirectoryUsesConfiguredOfficialJsonDirectoryWhenMissingUnderLoadedDir() throws Exception {
+        Path loadedDir = Files.createTempDirectory("wos-events-loaded");
+        Path externalJsonDir = Files.createTempDirectory("wos-events-external-json");
+        createSampleExcel(loadedDir.resolve("AIS_2024.xlsx"), 1.1);
+        createSampleJson(externalJsonDir, "journals-SCIE-year-2019.json");
+
+        EventStore store = new EventStore();
+        WosImportEventRepository repository = repositoryMock(store);
+        WosImportEventIngestionService service = new WosImportEventIngestionService(repository, new ObjectMapper());
+        ReflectionTestUtils.setField(service, "officialWosJsonDirectory", externalJsonDir.toString());
+
+        ImportProcessingResult result = service.ingestDirectory(loadedDir.toString(), null);
+
+        assertTrue(result.getImportedCount() > 0);
+        assertTrue(store.containsSourceType(WosSourceType.GOV_AIS_RIS));
+        assertTrue(store.containsSourceType(WosSourceType.OFFICIAL_WOS_EXTRACT));
     }
 
     private WosImportEventRepository repositoryMock(EventStore store) {
@@ -94,6 +115,12 @@ class WosImportEventIngestionServiceTest {
                         invocation.getArgument(2, String.class),
                         invocation.getArgument(3, String.class)
                 )));
+        when(repository.findAllBySourceTypeAndSourceFileAndSourceVersion(any(), any(), any()))
+                .thenAnswer(invocation -> store.list(
+                        invocation.getArgument(0, WosSourceType.class),
+                        invocation.getArgument(1, String.class),
+                        invocation.getArgument(2, String.class)
+                ));
         when(repository.save(any(WosImportEvent.class)))
                 .thenAnswer(invocation -> {
                     WosImportEvent event = invocation.getArgument(0, WosImportEvent.class);
@@ -102,6 +129,17 @@ class WosImportEventIngestionServiceTest {
                     }
                     store.put(event);
                     return event;
+                });
+        when(repository.saveAll(any()))
+                .thenAnswer(invocation -> {
+                    Iterable<WosImportEvent> iterable = invocation.getArgument(0);
+                    for (WosImportEvent event : iterable) {
+                        if (event.getId() == null) {
+                            event.setId("event-" + store.size() + "-" + event.getSourceRowItem());
+                        }
+                        store.put(event);
+                    }
+                    return iterable;
                 });
         return repository;
     }
@@ -167,6 +205,14 @@ class WosImportEventIngestionServiceTest {
 
         int size() {
             return events.size();
+        }
+
+        List<WosImportEvent> list(WosSourceType sourceType, String sourceFile, String sourceVersion) {
+            return events.values().stream()
+                    .filter(e -> e.getSourceType() == sourceType)
+                    .filter(e -> sourceFile.equals(e.getSourceFile()))
+                    .filter(e -> sourceVersion.equals(e.getSourceVersion()))
+                    .toList();
         }
     }
 }

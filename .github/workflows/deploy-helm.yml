@@ -1,0 +1,191 @@
+name: Deploy Helm
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      image_tag:
+        description: Container image tag (defaults to commit SHA)
+        required: false
+        type: string
+      namespace:
+        description: Kubernetes namespace (defaults by environment)
+        required: false
+        type: string
+      dry_run:
+        description: Run helm in dry-run mode
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: deploy-helm-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set deploy vars
+        id: vars
+        shell: bash
+        run: |
+          set -euo pipefail
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          REPO_NAME="${REPO_NAME,,}"
+          IMAGE_REPOSITORY="ghcr.io/${OWNER}/${REPO_NAME}"
+
+          if [[ -n "${{ inputs.image_tag }}" ]]; then
+            IMAGE_TAG="${{ inputs.image_tag }}"
+          else
+            IMAGE_TAG="${GITHUB_SHA}"
+          fi
+
+          if [[ -n "${{ inputs.namespace }}" ]]; then
+            NAMESPACE="${{ inputs.namespace }}"
+          elif [[ "${{ inputs.environment }}" == "production" ]]; then
+            NAMESPACE="core-production"
+          else
+            NAMESPACE="core-staging"
+          fi
+
+          if [[ "${{ inputs.environment }}" == "production" ]]; then
+            VALUES_FILE="charts/core/values-production.yaml"
+            KUBECONFIG_B64='${{ secrets.KUBE_CONFIG_PRODUCTION }}'
+          else
+            VALUES_FILE="charts/core/values-staging.yaml"
+            KUBECONFIG_B64='${{ secrets.KUBE_CONFIG_STAGING }}'
+          fi
+
+          RELEASE_NAME="core-${{ inputs.environment }}"
+
+          echo "image_repository=${IMAGE_REPOSITORY}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "namespace=${NAMESPACE}" >> "$GITHUB_OUTPUT"
+          echo "values_file=${VALUES_FILE}" >> "$GITHUB_OUTPUT"
+          echo "release_name=${RELEASE_NAME}" >> "$GITHUB_OUTPUT"
+          {
+            echo "kubeconfig_b64<<EOF"
+            echo "$KUBECONFIG_B64"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Build jar
+        run: ./gradlew clean bootJar -x test
+
+      - name: Log in to GHCR
+        if: ${{ !inputs.dry_run }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ !inputs.dry_run }}
+          tags: |
+            ${{ steps.vars.outputs.image_repository }}:${{ steps.vars.outputs.image_tag }}
+            ${{ steps.vars.outputs.image_repository }}:sha-${{ github.sha }}
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.30.0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.2
+
+      - name: Write kubeconfig
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${{ steps.vars.outputs.kubeconfig_b64 }}" ]]; then
+            echo "Kubeconfig secret is empty for selected environment" >&2
+            exit 1
+          fi
+          mkdir -p "$HOME/.kube"
+          echo "${{ steps.vars.outputs.kubeconfig_b64 }}" | base64 --decode > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Helm lint
+        run: helm lint charts/core -f ${{ steps.vars.outputs.values_file }}
+
+      - name: Helm template
+        run: |
+          helm template "${{ steps.vars.outputs.release_name }}" charts/core \
+            -f "${{ steps.vars.outputs.values_file }}" \
+            --set image.repository="${{ steps.vars.outputs.image_repository }}" \
+            --set image.tag="${{ steps.vars.outputs.image_tag }}" \
+            --set-string app.buildSha="${{ github.sha }}" > /tmp/helm-rendered.yaml
+
+      - name: Helm deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          DRY_RUN_FLAG=""
+          if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+            DRY_RUN_FLAG="--dry-run --debug"
+          fi
+
+          helm upgrade --install "${{ steps.vars.outputs.release_name }}" charts/core \
+            --namespace "${{ steps.vars.outputs.namespace }}" \
+            --create-namespace \
+            -f "${{ steps.vars.outputs.values_file }}" \
+            --set image.repository="${{ steps.vars.outputs.image_repository }}" \
+            --set image.tag="${{ steps.vars.outputs.image_tag }}" \
+            --set-string app.buildSha="${{ github.sha }}" \
+            ${DRY_RUN_FLAG}
+
+      - name: Rollout status
+        if: ${{ !inputs.dry_run }}
+        run: |
+          kubectl -n "${{ steps.vars.outputs.namespace }}" rollout status deployment \
+            -l app.kubernetes.io/instance=${{ steps.vars.outputs.release_name }} --timeout=5m
+
+      - name: Deployment summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Helm deploy summary"
+            echo "- Environment: ${{ inputs.environment }}"
+            echo "- Namespace: ${{ steps.vars.outputs.namespace }}"
+            echo "- Release: ${{ steps.vars.outputs.release_name }}"
+            echo "- Image: ${{ steps.vars.outputs.image_repository }}:${{ steps.vars.outputs.image_tag }}"
+            echo "- Dry run: ${{ inputs.dry_run }}"
+            echo ""
+            echo "Rollback helpers:"
+            echo "\`helm -n ${{ steps.vars.outputs.namespace }} rollback ${{ steps.vars.outputs.release_name }} <revision>\`"
+            echo "\`kubectl -n ${{ steps.vars.outputs.namespace }} rollout history deployment/${{ steps.vars.outputs.release_name }}-core\`"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "core.fullname" . }}-config
+  labels:
+    {{- include "core.labels" . | nindent 4 }}
+data:
+  APP_FOOTER_MESSAGE: {{ .Values.app.appFooterMessage | quote }}
+  SCOPUS_API_URL: {{ .Values.app.scopusApiUrl | quote }}
+  SCOPUS_API_CITEURL: {{ .Values.app.scopusApiCiteUrl | quote }}
+  SCOPUS_AUTH_URL: {{ .Values.app.scopusAuthUrl | quote }}
+  H14_WOS_OFFICIAL_JSON_DIR: {{ .Values.app.h14WosOfficialJsonDir | quote }}
+  H14_WOS_MIGRATION_DATA_DIR: {{ .Values.app.h14WosMigrationDataDir | quote }}
+  {{- if .Values.app.springProfilesActive }}
+  SPRING_PROFILES_ACTIVE: {{ .Values.app.springProfilesActive | quote }}
+  {{- end }}

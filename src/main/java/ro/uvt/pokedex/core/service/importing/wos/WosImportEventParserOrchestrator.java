@@ -1,5 +1,7 @@
 package ro.uvt.pokedex.core.service.importing.wos;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.wos.WosImportEvent;
 import ro.uvt.pokedex.core.repository.reporting.WosImportEventRepository;
@@ -15,6 +17,9 @@ import java.util.List;
 
 @Service
 public class WosImportEventParserOrchestrator {
+    private static final Logger log = LoggerFactory.getLogger(WosImportEventParserOrchestrator.class);
+    private static final int PARSER_HEARTBEAT_INTERVAL = 10_000;
+
     private final WosImportEventRepository importEventRepository;
     private final List<WosImportEventParser> parsers;
 
@@ -41,6 +46,11 @@ public class WosImportEventParserOrchestrator {
         List<WosParsedRecord> records = new ArrayList<>();
         for (WosImportEvent event : events) {
             summary.markProcessed();
+            if (summary.getProcessedCount() % PARSER_HEARTBEAT_INTERVAL == 0) {
+                log.info("WoS parser progress: processed={} parsed={} skipped={} errors={}",
+                        summary.getProcessedCount(), summary.getParsedCount(),
+                        summary.getSkippedCount(), summary.getErrorCount());
+            }
             WosParsedEventResult result = parseEvent(event);
             if (result.status() == WosParsedEventStatus.PARSED) {
                 summary.markParsed();
@@ -53,6 +63,9 @@ public class WosImportEventParserOrchestrator {
             }
             summary.markError(sample(event, result.message()));
         }
+        log.info("WoS parser summary: processed={} parsed={} skipped={} errors={} sample={}",
+                summary.getProcessedCount(), summary.getParsedCount(), summary.getSkippedCount(),
+                summary.getErrorCount(), summary.getSamples());
         return new WosParserRunResult(summary, records);
     }
 

@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
 import ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized;
 import ro.uvt.pokedex.core.model.reporting.wos.MetricType;
 import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
@@ -30,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,6 +49,8 @@ class WosFactBuilderServiceTest {
     private WosCategoryFactRepository categoryFactRepository;
     @Mock
     private WosFactConflictRepository factConflictRepository;
+    @Mock
+    private MongoTemplate mongoTemplate;
 
     private final List<WosMetricFact> metricStore = new ArrayList<>();
     private final List<WosCategoryFact> categoryStore = new ArrayList<>();
@@ -61,40 +66,40 @@ class WosFactBuilderServiceTest {
                 identityResolutionService,
                 metricFactRepository,
                 categoryFactRepository,
-                factConflictRepository
+                factConflictRepository,
+                mongoTemplate
         );
         lenient().when(identityResolutionService.resolveIdentity(anyString(), anyString(), anyString(), any()))
                 .thenReturn(new IdentityResolutionResult("jid-1", "key", WosIdentityResolutionStatus.MATCHED, null));
-        lenient().when(metricFactRepository.findByJournalIdAndYearAndMetricTypeAndEditionNormalized(anyString(), anyInt(), any(), any()))
-                .thenAnswer(invocation -> metricStore.stream().filter(f ->
-                        f.getJournalId().equals(invocation.getArgument(0))
-                                && f.getYear().equals(invocation.getArgument(1))
-                                && f.getMetricType().equals(invocation.getArgument(2))
-                                && f.getEditionNormalized().equals(invocation.getArgument(3))
-                ).findFirst());
-        lenient().when(categoryFactRepository.findByJournalIdAndYearAndCategoryNameCanonicalAndEditionNormalizedAndMetricType(anyString(), anyInt(), anyString(), any(), any()))
-                .thenAnswer(invocation -> categoryStore.stream().filter(f ->
-                        f.getJournalId().equals(invocation.getArgument(0))
-                                && f.getYear().equals(invocation.getArgument(1))
-                                && f.getCategoryNameCanonical().equals(invocation.getArgument(2))
-                                && f.getEditionNormalized().equals(invocation.getArgument(3))
-                                && f.getMetricType().equals(invocation.getArgument(4))
-                ).findFirst());
-        lenient().when(metricFactRepository.save(any(WosMetricFact.class))).thenAnswer(invocation -> {
-            WosMetricFact fact = invocation.getArgument(0);
-            if (fact.getId() == null) {
-                fact.setId("m-" + idSeq.getAndIncrement());
-                metricStore.add(fact);
+        lenient().when(mongoTemplate.find(any(Query.class), eq(WosMetricFact.class)))
+                .thenAnswer(invocation -> new ArrayList<>(metricStore));
+        lenient().when(mongoTemplate.find(any(Query.class), eq(WosCategoryFact.class)))
+                .thenAnswer(invocation -> new ArrayList<>(categoryStore));
+        lenient().when(metricFactRepository.saveAll(any())).thenAnswer(invocation -> {
+            @SuppressWarnings("unchecked")
+            Iterable<WosMetricFact> iterable = (Iterable<WosMetricFact>) invocation.getArgument(0);
+            List<WosMetricFact> saved = new ArrayList<>();
+            for (WosMetricFact fact : iterable) {
+                if (fact.getId() == null) {
+                    fact.setId("m-" + idSeq.getAndIncrement());
+                    metricStore.add(fact);
+                }
+                saved.add(fact);
             }
-            return fact;
+            return saved;
         });
-        lenient().when(categoryFactRepository.save(any(WosCategoryFact.class))).thenAnswer(invocation -> {
-            WosCategoryFact fact = invocation.getArgument(0);
-            if (fact.getId() == null) {
-                fact.setId("c-" + idSeq.getAndIncrement());
-                categoryStore.add(fact);
+        lenient().when(categoryFactRepository.saveAll(any())).thenAnswer(invocation -> {
+            @SuppressWarnings("unchecked")
+            Iterable<WosCategoryFact> iterable = (Iterable<WosCategoryFact>) invocation.getArgument(0);
+            List<WosCategoryFact> saved = new ArrayList<>();
+            for (WosCategoryFact fact : iterable) {
+                if (fact.getId() == null) {
+                    fact.setId("c-" + idSeq.getAndIncrement());
+                    categoryStore.add(fact);
+                }
+                saved.add(fact);
             }
-            return fact;
+            return saved;
         });
         lenient().when(factConflictRepository.save(any(WosFactConflict.class))).thenAnswer(invocation -> {
             WosFactConflict c = invocation.getArgument(0);

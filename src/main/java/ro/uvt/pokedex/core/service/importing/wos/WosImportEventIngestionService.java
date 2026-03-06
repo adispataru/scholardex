@@ -11,6 +11,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.wos.WosImportEvent;
 import ro.uvt.pokedex.core.model.reporting.wos.WosSourceType;
@@ -18,7 +19,6 @@ import ro.uvt.pokedex.core.repository.reporting.WosImportEventRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -31,7 +31,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -39,11 +38,19 @@ import java.util.regex.Pattern;
 public class WosImportEventIngestionService {
     private static final Logger log = LoggerFactory.getLogger(WosImportEventIngestionService.class);
     private static final Pattern YEAR_FROM_FILENAME = Pattern.compile(".*?(\\d{4}).*");
+    private static final int PERSIST_BATCH_SIZE = 1_000;
 
     private final WosImportEventRepository importEventRepository;
     private final ObjectMapper objectMapper;
+    @Value("${h14.wos.official-json-dir:data/wos-json-1997-2019}")
+    private String officialWosJsonDirectory;
+    @Value("${h14.wos.gov-ais.password:uefiscdi}")
+    private String govAisPassword;
 
-    public WosImportEventIngestionService(WosImportEventRepository importEventRepository, ObjectMapper objectMapper) {
+    public WosImportEventIngestionService(
+            WosImportEventRepository importEventRepository,
+            ObjectMapper objectMapper
+    ) {
         this.importEventRepository = importEventRepository;
         this.objectMapper = objectMapper;
     }
@@ -73,7 +80,7 @@ public class WosImportEventIngestionService {
                 String sourceVersion = sourceVersionOverride != null && !sourceVersionOverride.isBlank()
                         ? sourceVersionOverride
                         : inferSourceVersion(file.getName());
-                try (FileInputStream fis = new FileInputStream(file); Workbook workbook = WorkbookFactory.create(fis)) {
+                try (Workbook workbook = openWorkbook(file, "AIS")) {
                     Sheet sheet = workbook.getSheetAt(0);
                     int rowCount = Math.max(0, sheet.getPhysicalNumberOfRows() - 1);
                     plannedEvents += rowCount;
@@ -89,7 +96,7 @@ public class WosImportEventIngestionService {
             }
         }
 
-        File jsonDir = new File(dataDir, "wos-json-1997-2019");
+        File jsonDir = resolveOfficialWosJsonDir(dataDir);
         if (jsonDir.exists() && jsonDir.isDirectory()) {
             File[] jsonFiles = jsonDir.listFiles((d, name) -> name.endsWith(".json"));
             if (jsonFiles != null) {
@@ -103,13 +110,13 @@ public class WosImportEventIngestionService {
                         int itemCount = root.isArray() ? root.size() : 0;
                         plannedEvents += itemCount;
                         if (samples.size() < 20) {
-                            samples.add("json-file=wos-json-1997-2019/" + file.getName()
+                            samples.add("json-file=" + jsonRelativeName(jsonDir, file)
                                     + ", sourceVersion=" + sourceVersion + ", items=" + itemCount);
                         }
                     } catch (Exception e) {
                         errors++;
                         if (samples.size() < 20) {
-                            samples.add("json-file=wos-json-1997-2019/" + file.getName() + ", preview-error=" + e.getMessage());
+                            samples.add("json-file=" + jsonRelativeName(jsonDir, file) + ", preview-error=" + e.getMessage());
                         }
                     }
                 }
@@ -132,9 +139,12 @@ public class WosImportEventIngestionService {
                     : inferSourceVersion(fileName);
             String metricType = fileName.substring(0, 3);
             String year = extractYear(fileName);
-            try (FileInputStream fis = new FileInputStream(file); Workbook workbook = WorkbookFactory.create(fis)) {
+            try (Workbook workbook = openWorkbook(file, metricType)) {
                 Sheet sheet = workbook.getSheetAt(0);
                 int numRows = sheet.getPhysicalNumberOfRows();
+                Map<String, WosImportEvent> existingByRowItem =
+                        loadExistingByRowItem(WosSourceType.GOV_AIS_RIS, fileName, sourceVersion);
+                List<WosImportEvent> toPersist = new ArrayList<>();
                 for (int i = 1; i < numRows; i++) {
                     Row row = sheet.getRow(i);
                     if (row == null) {
@@ -144,17 +154,21 @@ public class WosImportEventIngestionService {
                     payload.put("metricType", metricType);
                     payload.put("year", year);
                     payload.put("cells", extractCells(row));
-                    processEvent(
+                    processEventFast(
                             WosSourceType.GOV_AIS_RIS,
                             fileName,
                             sourceVersion,
                             Integer.toString(i),
                             "excel-row",
                             payload,
+                            existingByRowItem,
+                            toPersist,
                             fileResult,
                             total
                     );
+                    flushBatchIfNeeded(toPersist);
                 }
+                flushBatch(toPersist);
             } catch (Exception e) {
                 fileResult.markError("file=" + fileName + ", error=" + e.getMessage());
                 total.markError("file=" + fileName + ", error=" + e.getMessage());
@@ -171,7 +185,7 @@ public class WosImportEventIngestionService {
     }
 
     private void ingestOfficialWosJson(File dataDir, String sourceVersionOverride, ImportProcessingResult total) {
-        File jsonDir = new File(dataDir, "wos-json-1997-2019");
+        File jsonDir = resolveOfficialWosJsonDir(dataDir);
         if (!jsonDir.exists() || !jsonDir.isDirectory()) {
             return;
         }
@@ -181,11 +195,14 @@ public class WosImportEventIngestionService {
         }
         for (File file : files) {
             ImportProcessingResult fileResult = new ImportProcessingResult(10);
-            String fileName = "wos-json-1997-2019/" + file.getName();
+            String fileName = jsonRelativeName(jsonDir, file);
             String sourceVersion = sourceVersionOverride != null && !sourceVersionOverride.isBlank()
                     ? sourceVersionOverride
                     : inferSourceVersion(file.getName());
             try {
+                Map<String, WosImportEvent> existingByRowItem =
+                        loadExistingByRowItem(WosSourceType.OFFICIAL_WOS_EXTRACT, fileName, sourceVersion);
+                List<WosImportEvent> toPersist = new ArrayList<>();
                 byte[] bytes = Files.readAllBytes(file.toPath());
                 JsonNode root = objectMapper.readTree(bytes);
                 if (!root.isArray()) {
@@ -197,18 +214,22 @@ public class WosImportEventIngestionService {
                 int idx = 0;
                 while (iterator.hasNext()) {
                     JsonNode item = iterator.next();
-                    processEvent(
+                    processEventFast(
                             WosSourceType.OFFICIAL_WOS_EXTRACT,
                             fileName,
                             sourceVersion,
                             Integer.toString(idx),
                             "json-item",
                             item,
+                            existingByRowItem,
+                            toPersist,
                             fileResult,
                             total
                     );
+                    flushBatchIfNeeded(toPersist);
                     idx++;
                 }
+                flushBatch(toPersist);
             } catch (Exception e) {
                 fileResult.markError("file=" + fileName + ", error=" + e.getMessage());
                 total.markError("file=" + fileName + ", error=" + e.getMessage());
@@ -224,13 +245,15 @@ public class WosImportEventIngestionService {
         }
     }
 
-    private void processEvent(
+    private void processEventFast(
             WosSourceType sourceType,
             String sourceFile,
             String sourceVersion,
             String sourceRowItem,
             String payloadFormat,
             Object payloadObject,
+            Map<String, WosImportEvent> existingByRowItem,
+            List<WosImportEvent> toPersist,
             ImportProcessingResult fileResult,
             ImportProcessingResult total
     ) {
@@ -239,11 +262,9 @@ public class WosImportEventIngestionService {
         try {
             String payload = normalizePayload(payloadObject);
             String checksum = sha256Hex(payload);
-            Optional<WosImportEvent> existing = importEventRepository.findBySourceTypeAndSourceFileAndSourceVersionAndSourceRowItem(
-                    sourceType, sourceFile, sourceVersion, sourceRowItem
-            );
-            if (existing.isPresent()) {
-                WosImportEvent event = existing.get();
+            WosImportEvent existing = existingByRowItem.get(sourceRowItem);
+            if (existing != null) {
+                WosImportEvent event = existing;
                 if (checksum.equals(event.getChecksum()) && payload.equals(event.getPayload())) {
                     fileResult.markSkipped("unchanged=" + sourceFile + "#" + sourceRowItem);
                     total.markSkipped("unchanged=" + sourceFile + "#" + sourceRowItem);
@@ -253,7 +274,7 @@ public class WosImportEventIngestionService {
                 event.setPayload(payload);
                 event.setChecksum(checksum);
                 event.setIngestedAt(Instant.now());
-                importEventRepository.save(event);
+                toPersist.add(event);
                 fileResult.markUpdated();
                 total.markUpdated();
                 return;
@@ -267,7 +288,7 @@ public class WosImportEventIngestionService {
             event.setPayload(payload);
             event.setChecksum(checksum);
             event.setIngestedAt(Instant.now());
-            importEventRepository.save(event);
+            toPersist.add(event);
             fileResult.markImported();
             total.markImported();
         } catch (Exception e) {
@@ -278,6 +299,38 @@ public class WosImportEventIngestionService {
 
     private String normalizePayload(Object payload) throws JsonProcessingException {
         return objectMapper.writeValueAsString(payload);
+    }
+
+    private void flushBatchIfNeeded(List<WosImportEvent> toPersist) {
+        if (toPersist.size() >= PERSIST_BATCH_SIZE) {
+            flushBatch(toPersist);
+        }
+    }
+
+    private void flushBatch(List<WosImportEvent> toPersist) {
+        if (toPersist.isEmpty()) {
+            return;
+        }
+        importEventRepository.saveAll(toPersist);
+        toPersist.clear();
+    }
+
+    private Map<String, WosImportEvent> loadExistingByRowItem(
+            WosSourceType sourceType,
+            String sourceFile,
+            String sourceVersion
+    ) {
+        List<WosImportEvent> existing = importEventRepository.findAllBySourceTypeAndSourceFileAndSourceVersion(
+                sourceType, sourceFile, sourceVersion
+        );
+        Map<String, WosImportEvent> byRowItem = new LinkedHashMap<>();
+        for (WosImportEvent event : existing) {
+            if (event.getSourceRowItem() == null) {
+                continue;
+            }
+            byRowItem.put(event.getSourceRowItem(), event);
+        }
+        return byRowItem;
     }
 
     static String buildEventKey(WosSourceType sourceType, String sourceFile, String sourceVersion, String sourceRowItem) {
@@ -338,6 +391,39 @@ public class WosImportEventIngestionService {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 not available", e);
         }
+    }
+
+    private File resolveOfficialWosJsonDir(File dataDir) {
+        File localCandidate = new File(dataDir, "wos-json-1997-2019");
+        if (localCandidate.exists() && localCandidate.isDirectory()) {
+            return localCandidate;
+        }
+        if (officialWosJsonDirectory == null || officialWosJsonDirectory.isBlank()) {
+            return localCandidate;
+        }
+        return new File(officialWosJsonDirectory);
+    }
+
+    private String jsonRelativeName(File jsonDir, File file) {
+        if (jsonDir == null || file == null) {
+            return "wos-json-1997-2019/unknown";
+        }
+        String dirName = jsonDir.getName();
+        if (dirName == null || dirName.isBlank()) {
+            dirName = "wos-json-1997-2019";
+        }
+        return dirName + "/" + file.getName();
+    }
+
+    private Workbook openWorkbook(File file, String metricType) throws IOException {
+        if ("AIS".equals(metricType) && govAisPassword != null && !govAisPassword.isBlank()) {
+            try {
+                return WorkbookFactory.create(file, govAisPassword, true);
+            } catch (Exception ignored) {
+                // Fallback for unencrypted AIS fixtures in tests/local.
+            }
+        }
+        return WorkbookFactory.create(file, null, true);
     }
 
     public record WosIngestionPreview(

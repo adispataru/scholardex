@@ -571,6 +571,9 @@ public class AdminViewController {
                             + ", scoringRows=" + result.verification().scoringViewRows()
                             + ", parserErrors=" + result.verification().parserErrors()
                             + "].";
+            if (result.dryRun() && result.ingest().note() != null && !result.ingest().note().isBlank()) {
+                successMessage = successMessage + " " + result.ingest().note() + ".";
+            }
             redirectAttributes.addFlashAttribute("successMessage", successMessage);
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "WoS big-bang migration failed: " + e.getMessage());

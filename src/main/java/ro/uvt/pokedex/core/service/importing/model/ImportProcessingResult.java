@@ -29,9 +29,8 @@ public class ImportProcessingResult {
         updatedCount++;
     }
 
-    public void markSkipped(String errorMessage) {
+    public void markSkipped(String reason) {
         skippedCount++;
-        markError(errorMessage);
     }
 
     public void markError(String errorMessage) {

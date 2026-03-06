@@ -52,10 +52,12 @@ public class WosBigBangMigrationService {
                     "dry-run preview: files=" + preview.filesScanned()
                             + ", plannedEvents=" + preview.plannedEvents()
                             + ", errors=" + preview.errorCount(),
-                    preview.samples()
+                    preview.samples(),
+                    preview.plannedEvents(),
+                    preview.errorCount()
             );
-            factStep = MigrationStepResult.dryRun("build-facts", "dry-run: canonical fact build skipped", List.of());
-            projectionStep = MigrationStepResult.dryRun("build-projections", "dry-run: projection rebuild skipped", List.of());
+            factStep = MigrationStepResult.dryRun("build-facts", "dry-run: canonical fact build skipped", List.of(), 0, 0);
+            projectionStep = MigrationStepResult.dryRun("build-projections", "dry-run: projection rebuild skipped", List.of(), 0, 0);
         } else {
             ImportProcessingResult ingestionResult = ingestionService.ingestDirectory(
                     migrationDataDirectory,
@@ -156,8 +158,8 @@ public class WosBigBangMigrationService {
             );
         }
 
-        static MigrationStepResult dryRun(String stepName, String note, List<String> samples) {
-            return new MigrationStepResult(stepName, false, 0, 0, 0, 0, 0, note, samples);
+        static MigrationStepResult dryRun(String stepName, String note, List<String> samples, int processed, int errors) {
+            return new MigrationStepResult(stepName, false, processed, 0, 0, 0, errors, note, samples);
         }
     }
 
@@ -178,4 +180,3 @@ public class WosBigBangMigrationService {
     ) {
     }
 }
-
