@@ -1,17 +1,55 @@
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const errors = [];
 
-function runRg(pattern, paths) {
-  try {
-    const output = execSync(
-      `rg -n "${pattern}" ${paths.join(' ')}`,
-      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
-    );
+function runSearch(pattern, paths) {
+  const runners = [
+    { cmd: 'rg', args: ['-n', pattern, ...paths] },
+    { cmd: 'grep', args: ['-R', '-n', '-E', pattern, ...paths] }
+  ];
+
+  let lastError = null;
+
+  for (const runner of runners) {
+    let output = '';
+    try {
+      output = execFileSync(runner.cmd, runner.args, {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        lastError = error;
+        continue;
+      }
+      if (typeof error.status === 'number' && error.status === 1) {
+        return [];
+      }
+      throw error;
+    }
+
     return output
       .split('\n')
       .map((line) => line.trim())
       .filter(Boolean);
+  }
+
+  try {
+    throw lastError ?? new Error('No search backend available (rg/grep).');
+  } catch (error) {
+    if (error && error.code === 'ENOENT') {
+      errors.push(
+        'Architecture guardrail requires either `rg` (ripgrep) or `grep` to be available in PATH.'
+      );
+      process.exit(1);
+    }
+    throw error;
+  }
+}
+
+function runRg(pattern, paths) {
+  try {
+    return runSearch(pattern, paths);
   } catch (error) {
     if (typeof error.status === 'number' && error.status === 1) {
       return [];

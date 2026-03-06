@@ -8,7 +8,9 @@ group = 'ro.uvt.pokedex'
 version = '0.0.1-SNAPSHOT'
 
 java {
-    sourceCompatibility = '21'
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
 repositories {
@@ -41,7 +43,16 @@ dependencies {
 }
 
 tasks.named('test') {
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
     useJUnitPlatform()
+}
+
+tasks.named('bootRun') {
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
 tasks.register('verifyFrontendAssets', Exec) {
