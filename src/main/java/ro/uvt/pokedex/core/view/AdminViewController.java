@@ -28,6 +28,7 @@ import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.AdminInstitutionReportFacade;
 import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
+import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminScopusCitationsViewModel;
@@ -52,6 +53,7 @@ public class AdminViewController {
     private final AdminScopusFacade adminScopusFacade;
     private final AdminInstitutionReportFacade adminInstitutionReportFacade;
     private final RankingMaintenanceFacade rankingMaintenanceFacade;
+    private final WosRankingDetailsReadService wosRankingDetailsReadService;
     private final String Country = "Romania";
 
 
@@ -528,7 +530,7 @@ public class AdminViewController {
 
     @GetMapping("/rankings/wos/{id}")
     public String showRankingPage(Model model, @PathVariable  String id) {
-        Optional<WoSRanking> journals = adminCatalogFacade.findWosRankingById(id);
+        Optional<WoSRanking> journals = wosRankingDetailsReadService.findByJournalId(id);
         if(journals.isPresent()) {
             WoSRanking ranking = journals.get();
             model.addAttribute("journal", ranking);

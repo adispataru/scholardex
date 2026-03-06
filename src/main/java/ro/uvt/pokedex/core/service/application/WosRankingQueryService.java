@@ -9,8 +9,9 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.controller.dto.WosRankingListItemResponse;
 import ro.uvt.pokedex.core.controller.dto.WosRankingPageResponse;
-import ro.uvt.pokedex.core.model.WoSRanking;
+import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
@@ -30,17 +31,11 @@ public class WosRankingQueryService {
 
         Query query = new Query().with(PageRequest.of(page, size, Sort.by(normalizedDirection, normalizedSort)));
         if (normalizedQuery != null) {
-            String pattern = ".*" + Pattern.quote(normalizedQuery) + ".*";
-            query.addCriteria(new Criteria().orOperator(
-                    Criteria.where("name").regex(pattern, "i"),
-                    Criteria.where("issn").regex(pattern, "i"),
-                    Criteria.where("eIssn").regex(pattern, "i"),
-                    Criteria.where("alternativeIssns").regex(pattern, "i")
-            ));
+            query.addCriteria(prefixSearchCriteria(normalizedQuery));
         }
 
-        List<WoSRanking> rows = mongoTemplate.find(query, WoSRanking.class);
-        long totalItems = mongoTemplate.count(Query.of(query).limit(-1).skip(-1), WoSRanking.class);
+        List<WosRankingView> rows = mongoTemplate.find(query, WosRankingView.class);
+        long totalItems = mongoTemplate.count(Query.of(query).limit(-1).skip(-1), WosRankingView.class);
         int totalPages = (int) Math.ceil(totalItems / (double) size);
 
         List<WosRankingListItemResponse> items = rows.stream()
@@ -49,14 +44,58 @@ public class WosRankingQueryService {
         return new WosRankingPageResponse(items, page, size, totalItems, totalPages);
     }
 
-    private WosRankingListItemResponse toListItem(WoSRanking ranking) {
+    private WosRankingListItemResponse toListItem(WosRankingView view) {
         return new WosRankingListItemResponse(
-                ranking.getId(),
-                ranking.getName(),
-                ranking.getIssn(),
-                ranking.getEIssn(),
-                ranking.getAlternativeIssns() == null ? List.of() : ranking.getAlternativeIssns()
+                view.getId(),
+                view.getName(),
+                view.getIssn(),
+                view.getEIssn(),
+                view.getAlternativeIssns() == null ? List.of() : view.getAlternativeIssns()
         );
+    }
+
+    private Criteria prefixSearchCriteria(String rawQuery) {
+        String nameQuery = normalizeText(rawQuery);
+        String issnQuery = normalizeIssn(rawQuery);
+        List<Criteria> criteria = new ArrayList<>();
+        if (nameQuery != null) {
+            criteria.add(Criteria.where("nameNorm").regex(prefixPattern(nameQuery)));
+        }
+        if (issnQuery != null) {
+            criteria.add(Criteria.where("issnNorm").regex(prefixPattern(issnQuery)));
+            criteria.add(Criteria.where("eIssnNorm").regex(prefixPattern(issnQuery)));
+            criteria.add(Criteria.where("alternativeIssnsNorm").regex(prefixPattern(issnQuery)));
+        }
+        if (criteria.isEmpty()) {
+            return new Criteria();
+        }
+        if (criteria.size() == 1) {
+            return criteria.getFirst();
+        }
+        return new Criteria().orOperator(criteria.toArray(Criteria[]::new));
+    }
+
+    private String prefixPattern(String value) {
+        return "^" + Pattern.quote(value);
+    }
+
+    private String normalizeText(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String normalized = raw.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+        return normalized.isBlank() ? null : normalized;
+    }
+
+    private String normalizeIssn(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String normalized = raw.trim()
+                .toUpperCase(Locale.ROOT)
+                .replace("-", "")
+                .replace(" ", "");
+        return normalized.isBlank() ? null : normalized;
     }
 
     private String normalizeSort(String sort) {

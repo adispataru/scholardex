@@ -10,7 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import ro.uvt.pokedex.core.controller.dto.WosRankingPageResponse;
-import ro.uvt.pokedex.core.model.WoSRanking;
+import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 
 import java.util.List;
 
@@ -35,12 +35,12 @@ class WosRankingQueryServiceTest {
 
     @Test
     void searchBuildsPagedSortedQueryAndMapsResponse() {
-        WoSRanking a = ranking("1", "A Journal", "1111", "2222", List.of("3333"));
-        WoSRanking b = ranking("2", "B Journal", "4444", "5555", List.of());
+        WosRankingView a = ranking("1", "A Journal", "1111", "2222", List.of("3333"));
+        WosRankingView b = ranking("2", "B Journal", "4444", "5555", List.of());
 
-        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(WoSRanking.class)))
+        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(WosRankingView.class)))
                 .thenReturn(List.of(a, b));
-        when(mongoTemplate.count(org.mockito.ArgumentMatchers.any(Query.class), eq(WoSRanking.class)))
+        when(mongoTemplate.count(org.mockito.ArgumentMatchers.any(Query.class), eq(WosRankingView.class)))
                 .thenReturn(11L);
 
         WosRankingPageResponse result = service.search(1, 5, "name", "asc", null);
@@ -53,7 +53,7 @@ class WosRankingQueryServiceTest {
         assertEquals("1", result.items().get(0).id());
 
         ArgumentCaptor<Query> findQueryCaptor = ArgumentCaptor.forClass(Query.class);
-        verify(mongoTemplate).find(findQueryCaptor.capture(), eq(WoSRanking.class));
+        verify(mongoTemplate).find(findQueryCaptor.capture(), eq(WosRankingView.class));
         Query findQuery = findQueryCaptor.getValue();
         assertEquals(5, findQuery.getLimit());
         assertEquals(5L, findQuery.getSkip());
@@ -62,23 +62,25 @@ class WosRankingQueryServiceTest {
     }
 
     @Test
-    void searchWithQueryAddsOrRegexCriteria() {
-        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(WoSRanking.class)))
+    void searchWithQueryAddsPrefixRegexCriteriaOnNormalizedFields() {
+        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(WosRankingView.class)))
                 .thenReturn(List.of());
-        when(mongoTemplate.count(org.mockito.ArgumentMatchers.any(Query.class), eq(WoSRanking.class)))
+        when(mongoTemplate.count(org.mockito.ArgumentMatchers.any(Query.class), eq(WosRankingView.class)))
                 .thenReturn(0L);
 
-        service.search(0, 25, "issn", "desc", "abc");
+        service.search(0, 25, "issn", "desc", "ab cd");
 
         ArgumentCaptor<Query> findQueryCaptor = ArgumentCaptor.forClass(Query.class);
-        verify(mongoTemplate).find(findQueryCaptor.capture(), eq(WoSRanking.class));
+        verify(mongoTemplate).find(findQueryCaptor.capture(), eq(WosRankingView.class));
         Query findQuery = findQueryCaptor.getValue();
         String queryJson = findQuery.getQueryObject().toJson();
         assertEquals(-1, findQuery.getSortObject().getInteger("issn"));
-        org.junit.jupiter.api.Assertions.assertTrue(queryJson.contains("name"));
-        org.junit.jupiter.api.Assertions.assertTrue(queryJson.contains("issn"));
-        org.junit.jupiter.api.Assertions.assertTrue(queryJson.contains("eIssn"));
-        org.junit.jupiter.api.Assertions.assertTrue(queryJson.contains("alternativeIssns"));
+        org.junit.jupiter.api.Assertions.assertTrue(queryJson.contains("nameNorm"));
+        org.junit.jupiter.api.Assertions.assertTrue(queryJson.contains("issnNorm"));
+        org.junit.jupiter.api.Assertions.assertTrue(queryJson.contains("eIssnNorm"));
+        org.junit.jupiter.api.Assertions.assertTrue(queryJson.contains("alternativeIssnsNorm"));
+        org.junit.jupiter.api.Assertions.assertTrue(queryJson.contains("^\\\\Qab cd\\\\E"));
+        org.junit.jupiter.api.Assertions.assertTrue(queryJson.contains("^\\\\QABCD\\\\E"));
     }
 
     @Test
@@ -96,13 +98,13 @@ class WosRankingQueryServiceTest {
         assertThrows(IllegalArgumentException.class, () -> service.search(0, 25, "name", "asc", "x".repeat(101)));
     }
 
-    private WoSRanking ranking(String id, String name, String issn, String eIssn, List<String> altIssns) {
-        WoSRanking ranking = new WoSRanking();
-        ranking.setId(id);
-        ranking.setName(name);
-        ranking.setIssn(issn);
-        ranking.setEIssn(eIssn);
-        ranking.setAlternativeIssns(altIssns);
-        return ranking;
+    private WosRankingView ranking(String id, String name, String issn, String eIssn, List<String> altIssns) {
+        WosRankingView view = new WosRankingView();
+        view.setId(id);
+        view.setName(name);
+        view.setIssn(issn);
+        view.setEIssn(eIssn);
+        view.setAlternativeIssns(altIssns);
+        return view;
     }
 }

@@ -6,8 +6,11 @@ import ro.uvt.pokedex.core.model.reporting.wos.MetricType;
 import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 
 import java.util.Optional;
+import java.util.List;
 
 public interface WosCategoryFactRepository extends MongoRepository<WosCategoryFact, String> {
+    List<WosCategoryFact> findAllByJournalId(String journalId);
+
     Optional<WosCategoryFact> findByJournalIdAndYearAndCategoryNameCanonicalAndEditionNormalizedAndMetricType(
             String journalId,
             Integer year,

@@ -20,6 +20,7 @@ import ro.uvt.pokedex.core.service.application.AdminInstitutionReportFacade;
 import ro.uvt.pokedex.core.service.application.AdminScopusFacade;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.UrapRankingFacade;
+import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
 
 import java.util.Collections;
 
@@ -48,6 +49,8 @@ class RankingViewSecurityContractTest {
     private AdminCatalogFacade adminCatalogFacade;
     @MockBean
     private UrapRankingFacade urapRankingFacade;
+    @MockBean
+    private WosRankingDetailsReadService wosRankingDetailsReadService;
     @MockBean
     private UserService userService;
     @MockBean

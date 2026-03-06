@@ -9,8 +9,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.model.ArtisticEvent;
+import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.UrapRankingFacade;
+import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
 
 import java.util.List;
 import java.util.Optional;
@@ -36,6 +38,8 @@ class RankingViewControllerContractTest {
     private AdminCatalogFacade adminCatalogFacade;
     @MockBean
     private UrapRankingFacade urapRankingFacade;
+    @MockBean
+    private WosRankingDetailsReadService wosRankingDetailsReadService;
 
     @Test
     void wosRankingsPageRendersExpectedTemplateAndClientControls() throws Exception {
@@ -99,11 +103,24 @@ class RankingViewControllerContractTest {
 
     @Test
     void missingWosRankingRendersNotFoundPage() throws Exception {
-        when(adminCatalogFacade.findWosRankingById(eq("missing"))).thenReturn(Optional.empty());
+        when(wosRankingDetailsReadService.findByJournalId(eq("missing"))).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/rankings/wos/{id}", "missing"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("user/ranking-not-found"));
+    }
+
+    @Test
+    void existingWosRankingRendersDetailsFromProjectionBackedService() throws Exception {
+        WoSRanking ranking = new WoSRanking();
+        ranking.setId("w1");
+        ranking.setName("Test Journal");
+        when(wosRankingDetailsReadService.findByJournalId(eq("w1"))).thenReturn(Optional.of(ranking));
+
+        mockMvc.perform(get("/rankings/wos/{id}", "w1"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("rankings/wos-detail"))
+                .andExpect(model().attributeExists("journal"));
     }
 
     @Test

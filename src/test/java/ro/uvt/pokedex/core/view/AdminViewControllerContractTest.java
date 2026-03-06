@@ -32,6 +32,7 @@ import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.AdminInstitutionReportFacade;
 import ro.uvt.pokedex.core.service.application.AdminScopusFacade;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
+import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsViewModel;
@@ -76,6 +77,8 @@ class AdminViewControllerContractTest {
     private AdminInstitutionReportFacade adminInstitutionReportFacade;
     @MockBean
     private RankingMaintenanceFacade rankingMaintenanceFacade;
+    @MockBean
+    private WosRankingDetailsReadService wosRankingDetailsReadService;
 
     @Test
     void computePositionsRedirectsAndDelegates() throws Exception {
@@ -147,6 +150,28 @@ class AdminViewControllerContractTest {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/admin/rankings/wos/ensureIndexes")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/js/admin-rankings-wos.js")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
+    }
+
+    @Test
+    void missingWosRankingDetailsRedirectsToAdminWosList() throws Exception {
+        when(wosRankingDetailsReadService.findByJournalId(eq("missing"))).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/admin/rankings/wos/{id}", "missing"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/rankings/wos"));
+    }
+
+    @Test
+    void existingWosRankingDetailsRendersProjectionBackedView() throws Exception {
+        WoSRanking ranking = new WoSRanking();
+        ranking.setId("w1");
+        ranking.setName("Journal One");
+        when(wosRankingDetailsReadService.findByJournalId(eq("w1"))).thenReturn(Optional.of(ranking));
+
+        mockMvc.perform(get("/admin/rankings/wos/{id}", "w1"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin/rankings-view"))
+                .andExpect(model().attributeExists("journal"));
     }
 
     @Test

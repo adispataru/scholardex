@@ -12,6 +12,7 @@ import ro.uvt.pokedex.core.model.URAPUniversityRanking;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.UrapRankingFacade;
+import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +24,7 @@ public class RankingViewController {
 
     private final AdminCatalogFacade adminCatalogFacade;
     private final UrapRankingFacade urapRankingFacade;
+    private final WosRankingDetailsReadService wosRankingDetailsReadService;
 
     @GetMapping("/wos")
     public String showWosRankingsPage() {
@@ -31,7 +33,7 @@ public class RankingViewController {
 
     @GetMapping("/wos/{id}")
     public String showWosRankingDetailsPage(Model model, @PathVariable String id) {
-        Optional<WoSRanking> ranking = adminCatalogFacade.findWosRankingById(id);
+        Optional<WoSRanking> ranking = wosRankingDetailsReadService.findByJournalId(id);
         if (ranking.isPresent()) {
             model.addAttribute("journal", ranking.get());
             return "rankings/wos-detail";
