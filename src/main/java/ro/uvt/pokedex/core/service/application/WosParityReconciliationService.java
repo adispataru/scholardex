@@ -107,6 +107,9 @@ public class WosParityReconciliationService {
         allowlistedMismatchCount += checkScoringViewTopCounts(baseline.root().path("scoringChecks"), scoringRows, allowlist, mismatches);
         allowlistedMismatchCount += checkIfMissing(baseline.root().path("ifMissingChecks"), metricFacts, allowlist, mismatches);
 
+        executedChecks.add("replay-determinism");
+        allowlistedMismatchCount += checkReplayDeterminism(baseline.root().path("replayChecks"), metricFacts, categoryFacts, allowlist, mismatches);
+
         List<String> normalized = capAndSort(mismatches);
         return new ParityReconciliationResult(
                 normalized.isEmpty(),
@@ -424,6 +427,85 @@ public class WosParityReconciliationService {
             }
         }
         return allowlisted;
+    }
+
+    private int checkReplayDeterminism(
+            JsonNode replayChecksNode,
+            List<WosMetricFact> metricFacts,
+            List<WosCategoryFact> categoryFacts,
+            Set<String> allowlist,
+            List<String> mismatches
+    ) {
+        if (replayChecksNode == null || replayChecksNode.isMissingNode() || !replayChecksNode.isObject()) {
+            return 0;
+        }
+        int allowlisted = 0;
+
+        Integer expectedDuplicateImportEventKeys = intOrNull(replayChecksNode, "expectedDuplicateImportEventKeys");
+        Integer expectedDuplicateMetricFactKeys = intOrNull(replayChecksNode, "expectedDuplicateMetricFactKeys");
+        Integer expectedDuplicateCategoryFactKeys = intOrNull(replayChecksNode, "expectedDuplicateCategoryFactKeys");
+
+        if (expectedDuplicateImportEventKeys != null) {
+            Set<String> seen = new HashSet<>();
+            int duplicates = 0;
+            for (var event : importEventRepository.findAll()) {
+                String key = String.join("|",
+                        String.valueOf(event.getSourceType()),
+                        String.valueOf(event.getSourceFile()),
+                        String.valueOf(event.getSourceVersion()),
+                        String.valueOf(event.getSourceRowItem()));
+                if (!seen.add(key)) {
+                    duplicates++;
+                }
+            }
+            allowlisted += mismatchInt("replay.duplicateImportEventKeys", expectedDuplicateImportEventKeys, duplicates, allowlist, mismatches);
+        }
+
+        if (expectedDuplicateMetricFactKeys != null) {
+            Set<String> seen = new HashSet<>();
+            int duplicates = 0;
+            for (WosMetricFact fact : metricFacts) {
+                String key = String.join("|",
+                        String.valueOf(fact.getJournalId()),
+                        String.valueOf(fact.getYear()),
+                        String.valueOf(fact.getMetricType()),
+                        String.valueOf(fact.getEditionNormalized()));
+                if (!seen.add(key)) {
+                    duplicates++;
+                }
+            }
+            allowlisted += mismatchInt("replay.duplicateMetricFactKeys", expectedDuplicateMetricFactKeys, duplicates, allowlist, mismatches);
+        }
+
+        if (expectedDuplicateCategoryFactKeys != null) {
+            Set<String> seen = new HashSet<>();
+            int duplicates = 0;
+            for (WosCategoryFact fact : categoryFacts) {
+                String key = String.join("|",
+                        String.valueOf(fact.getJournalId()),
+                        String.valueOf(fact.getYear()),
+                        String.valueOf(fact.getCategoryNameCanonical()),
+                        String.valueOf(fact.getEditionNormalized()),
+                        String.valueOf(fact.getMetricType()));
+                if (!seen.add(key)) {
+                    duplicates++;
+                }
+            }
+            allowlisted += mismatchInt("replay.duplicateCategoryFactKeys", expectedDuplicateCategoryFactKeys, duplicates, allowlist, mismatches);
+        }
+
+        return allowlisted;
+    }
+
+    private int mismatchInt(String key, int expected, int actual, Set<String> allowlist, List<String> mismatches) {
+        if (expected == actual) {
+            return 0;
+        }
+        if (allowlist.contains(key)) {
+            return 1;
+        }
+        mismatches.add(key + " expected=" + expected + " actual=" + actual);
+        return 0;
     }
 
     private List<String> capAndSort(List<String> input) {

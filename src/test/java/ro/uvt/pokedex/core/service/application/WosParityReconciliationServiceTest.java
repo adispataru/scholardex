@@ -8,10 +8,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.test.util.ReflectionTestUtils;
 import ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized;
+import ro.uvt.pokedex.core.model.reporting.wos.WosImportEvent;
 import ro.uvt.pokedex.core.model.reporting.wos.MetricType;
 import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosScoringView;
+import ro.uvt.pokedex.core.model.reporting.wos.WosSourceType;
 import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosImportEventRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
@@ -72,6 +74,12 @@ class WosParityReconciliationServiceTest {
         scoringView.setQuarter("Q1");
 
         when(importEventRepository.count()).thenReturn(1L);
+        WosImportEvent importEvent = new WosImportEvent();
+        importEvent.setSourceType(WosSourceType.GOV_AIS_RIS);
+        importEvent.setSourceFile("AIS_2023.xlsx");
+        importEvent.setSourceVersion("v2023");
+        importEvent.setSourceRowItem("1");
+        when(importEventRepository.findAll()).thenReturn(List.of(importEvent));
         when(metricFactRepository.count()).thenReturn(1L);
         when(categoryFactRepository.count()).thenReturn(1L);
         when(rankingViewRepository.count()).thenReturn(1L);
@@ -101,6 +109,7 @@ class WosParityReconciliationServiceTest {
         ReflectionTestUtils.setField(service, "baselineLocation", "classpath:wos/parity/baseline-test-fail.json");
 
         when(importEventRepository.count()).thenReturn(0L);
+        when(importEventRepository.findAll()).thenReturn(List.of());
         when(metricFactRepository.count()).thenReturn(0L);
         when(categoryFactRepository.count()).thenReturn(0L);
         when(rankingViewRepository.count()).thenReturn(0L);

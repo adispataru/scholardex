@@ -16,5 +16,10 @@
   "categoryChecks": [],
   "scoringChecks": [],
   "ifMissingChecks": [],
+  "replayChecks": {
+    "expectedDuplicateImportEventKeys": 0,
+    "expectedDuplicateMetricFactKeys": 0,
+    "expectedDuplicateCategoryFactKeys": 0
+  },
   "allowlistedMismatches": []
 }

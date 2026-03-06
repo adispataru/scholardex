@@ -2,6 +2,28 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H11-H14 Recovery Wave
+
+Archived from `TASKS.md` on 2026-03-06 after closure and cleanup.
+
+- [x] `H11` Functional contract hardening and null-safety normalization.
+  Status: completed on 2026-03-04.
+  Notes: core nullable contracts normalized to deterministic behavior and guarded with regression checks.
+
+- [x] `H12` External integration and import correctness uplift.
+  Status: completed on 2026-03-04.
+  Notes: importer/scheduler behavior hardened with deterministic error accounting and integration guardrails.
+
+- [x] `H14` WoS Approach 3 implementation (immutable ingestion ledger + rebuildable views).
+  Status: completed on 2026-03-06.
+  Notes: H14.1-H14.16 resolved; H14.14 and H14.15 were explicitly dropped by decision.
+  Highlights:
+  - canonical WoS schema + identity + immutable import events + parser adapters + fact builders delivered,
+  - IF source-policy enforced (`OFFICIAL_WOS_EXTRACT` only) while `IMPACT_FACTOR` remains operational,
+  - projections/indexes/read-path/reporting cutover completed with cache-independent WoS lookup paths,
+  - admin-triggered big-bang migration and parity reconciliation gates delivered,
+  - residual H14 checks converted to automated tests (bundled SCIE/SSCI split, replay determinism, AIS/RIS/CNFIS parity stability).
+
 ## Vendor Asset Migration Tasks
 
 Tracking migration from `/vendor/*` assets to bundled `/assets/*` assets.

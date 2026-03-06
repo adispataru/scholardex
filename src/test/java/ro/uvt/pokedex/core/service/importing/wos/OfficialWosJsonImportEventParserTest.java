@@ -78,6 +78,27 @@ class OfficialWosJsonImportEventParserTest {
         assertEquals(WosParsedEventStatus.SKIPPED, result.status());
     }
 
+    @Test
+    void bundledEditionValueSplitsIntoScieAndSsciRecords() throws Exception {
+        WosImportEvent event = event(Map.of(
+                "journalTitle", "Bundled Journal",
+                "year", 2023,
+                "edition", "SCIE + SSCI",
+                "issn", "1234-5678",
+                "articleInfluenceScore", 1.23,
+                "categoryName", "ECONOMICS",
+                "rank", 5
+        ));
+
+        WosParsedEventResult result = parser.parse(event);
+
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        assertEquals(2, result.records().size());
+        assertTrue(result.records().stream().anyMatch(r -> r.editionNormalized() == EditionNormalized.SCIE));
+        assertTrue(result.records().stream().anyMatch(r -> r.editionNormalized() == EditionNormalized.SSCI));
+        assertTrue(result.records().stream().allMatch(r -> r.metricType() == MetricType.AIS));
+    }
+
     private WosImportEvent event(Map<String, Object> payload) throws Exception {
         WosImportEvent event = new WosImportEvent();
         event.setId("ev-json");

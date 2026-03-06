@@ -236,6 +236,26 @@ class CNFISScoringService2025Test {
         assertEquals(1, report.getNumarAutoriUniversitate());
     }
 
+    @Test
+    void repeatedEvaluationReturnsStableReport() {
+        Publication publication = basePublication();
+        publication.setScopusSubtype("ar");
+
+        Forum forum = baseForum("Journal of Testing");
+        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
+        when(cacheService.getRankingsByIssn("1234-5678")).thenReturn(List.of(ranking("SCIE", WoSRanking.Quarter.Q1)));
+
+        CNFISReport2025 first = service.getReport(publication, allDomain);
+        CNFISReport2025 second = service.getReport(publication, allDomain);
+
+        assertEquals(first.isIsiQ1(), second.isIsiQ1());
+        assertEquals(first.isIsiQ2(), second.isIsiQ2());
+        assertEquals(first.isIsiQ3(), second.isIsiQ3());
+        assertEquals(first.isIsiQ4(), second.isIsiQ4());
+        assertEquals(first.isIeeeProceedings(), second.isIeeeProceedings());
+        assertEquals(first.isIsiProceedings(), second.isIsiProceedings());
+    }
+
     private Publication basePublication() {
         Publication publication = new Publication();
         publication.setForum("forum-1");
