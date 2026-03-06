@@ -14,10 +14,6 @@ import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupIndividualReportRunRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusCitationRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.service.application.model.GroupIndividualReportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupPublicationsViewModel;
 import ro.uvt.pokedex.core.service.reporting.ActivityReportingService;
@@ -36,10 +32,7 @@ public class GroupReportFacade {
     private final ActivityInstanceRepository activityInstanceRepository;
     private final ActivityReportingService activityReportingService;
     private final ScientificProductionService scientificProductionService;
-    private final ScopusPublicationRepository scopusPublicationRepository;
-    private final ScopusAuthorRepository scopusAuthorRepository;
-    private final ScopusForumRepository scopusForumRepository;
-    private final ScopusCitationRepository scopusCitationRepository;
+    private final ScopusProjectionReadService scopusProjectionReadService;
     private final GroupIndividualReportRunRepository groupIndividualReportRunRepository;
 
     public Optional<GroupPublicationsViewModel> buildGroupPublicationsView(String groupId) {
@@ -55,7 +48,7 @@ public class GroupReportFacade {
             authorIds.addAll(researcher.getScopusId());
         }
         Map<String, Publication> publicationsById = new LinkedHashMap<>();
-        scopusPublicationRepository.findAllByAuthorsIn(authorIds)
+        scopusProjectionReadService.findAllPublicationsByAuthorsIn(authorIds)
                 .forEach(publication -> publicationsById.putIfAbsent(publication.getId(), publication));
         List<Publication> publications = new ArrayList<>(publicationsById.values());
         PublicationOrderingSupport.sortPublicationsInPlace(publications);
@@ -67,12 +60,12 @@ public class GroupReportFacade {
             forumKeys.add(p.getForum());
         });
 
-        List<Author> byIdIn = scopusAuthorRepository.findByIdIn(authorKeys);
+        List<Author> byIdIn = scopusProjectionReadService.findAuthorsByIdIn(authorKeys);
         Map<String, Author> authorMap = new HashMap<>();
         byIdIn.forEach(a -> authorMap.put(a.getId(), a));
 
         Map<String, Forum> forumMap = new HashMap<>();
-        List<Forum> forums = scopusForumRepository.findByIdIn(forumKeys);
+        List<Forum> forums = scopusProjectionReadService.findForumsByIdIn(forumKeys);
         forums.forEach(f -> forumMap.put(f.getId(), f));
 
         Map<Integer, List<Publication>> publicationsByYear = publications.stream()
@@ -149,14 +142,14 @@ public class GroupReportFacade {
         List<String> errors = new ArrayList<>();
 
         for (Researcher researcher : researchers) {
-            List<Author> authors = scopusAuthorRepository.findByIdIn(researcher.getScopusId());
+            List<Author> authors = scopusProjectionReadService.findAuthorsByIdIn(researcher.getScopusId());
             if (authors.isEmpty()) {
                 errors.add("No authors found for researcher " + researcherDisplayName(researcher));
                 continue;
             }
 
             List<String> authorIds = authors.stream().map(Author::getId).toList();
-            List<Publication> publications = scopusPublicationRepository.findAllByAuthorsIn(authorIds);
+            List<Publication> publications = scopusProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
             if (!"ANY".equals(report.getIndividualAffiliation().getName())) {
                 publications = publications.stream()
                         .filter(p -> report.getIndividualAffiliation().getScopusAffiliations().stream()
@@ -268,9 +261,9 @@ public class GroupReportFacade {
         boolean excludeSelf = indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF);
 
         List<String> pubIds = publications.stream().map(Publication::getId).toList();
-        List<Citation> allCitations = scopusCitationRepository.findAllByCitedIdIn(pubIds);
+        List<Citation> allCitations = scopusProjectionReadService.findAllCitationsByCitedIdIn(pubIds);
         List<String> citationIds = allCitations.stream().map(Citation::getCitingId).toList();
-        List<Publication> allCitationsPub = scopusPublicationRepository.findAllByIdIn(citationIds);
+        List<Publication> allCitationsPub = scopusProjectionReadService.findAllPublicationsByIdIn(citationIds);
         Map<String, List<Publication>> pubCitationsMap = allCitationsPub.stream().collect(Collectors.groupingBy(Publication::getId));
         Map<String, Map<String, Score>> scores = new HashMap<>();
 
@@ -351,4 +344,5 @@ public class GroupReportFacade {
         String full = (first + " " + last).trim();
         return full.isBlank() ? researcher.getId() : full;
     }
+
 }

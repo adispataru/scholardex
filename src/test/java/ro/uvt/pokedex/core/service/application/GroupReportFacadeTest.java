@@ -17,10 +17,6 @@ import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupIndividualReportRunRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusCitationRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.service.reporting.ActivityReportingService;
 import ro.uvt.pokedex.core.service.reporting.ScientificProductionService;
 
@@ -49,13 +45,7 @@ class GroupReportFacadeTest {
     @Mock
     private ScientificProductionService scientificProductionService;
     @Mock
-    private ScopusPublicationRepository scopusPublicationRepository;
-    @Mock
-    private ScopusAuthorRepository scopusAuthorRepository;
-    @Mock
-    private ScopusForumRepository scopusForumRepository;
-    @Mock
-    private ScopusCitationRepository scopusCitationRepository;
+    private ScopusProjectionReadService scopusProjectionReadService;
     @Mock
     private GroupIndividualReportRunRepository groupIndividualReportRunRepository;
 
@@ -99,9 +89,9 @@ class GroupReportFacadeTest {
         forum.setPublicationName("Forum One");
 
         when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
-        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of(validPublication, invalidPublication));
-        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author));
-        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(validPublication, invalidPublication));
+        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
         when(individualReportRepository.findAll()).thenReturn(List.of());
 
         var result = facade.buildGroupPublicationsView("g1");
@@ -153,9 +143,9 @@ class GroupReportFacadeTest {
         forum.setPublicationName("Forum One");
 
         when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
-        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of(p1, p3, p2));
-        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author));
-        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(p1, p3, p2));
+        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
         when(individualReportRepository.findAll()).thenReturn(List.of());
 
         var result = facade.buildGroupPublicationsView("g1");
@@ -191,9 +181,9 @@ class GroupReportFacadeTest {
         forum.setPublicationName("Forum One");
 
         when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
-        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of(shared, shared));
-        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author));
-        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(shared, shared));
+        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
         when(individualReportRepository.findAll()).thenReturn(List.of());
 
         var result = facade.buildGroupPublicationsView("g1");
@@ -231,7 +221,7 @@ class GroupReportFacadeTest {
 
         assertEquals(null, result.redirect());
         assertEquals("g1", ((Group) result.attributes().get("group")).getId());
-        verifyNoInteractions(scopusAuthorRepository, scopusPublicationRepository, activityInstanceRepository, scopusCitationRepository);
+        verifyNoInteractions(scopusProjectionReadService, activityInstanceRepository);
     }
 
     @Test
@@ -257,8 +247,8 @@ class GroupReportFacadeTest {
         when(individualReportRepository.findById("rep1")).thenReturn(Optional.of(report));
         Author author = new Author();
         author.setId("a1");
-        when(scopusAuthorRepository.findByIdIn(List.of("a1"))).thenReturn(List.of(author));
-        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of());
+        when(scopusProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of());
         when(groupIndividualReportRunRepository.save(any(GroupIndividualReportRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var result = facade.refreshGroupIndividualReportView("g1", "rep1");

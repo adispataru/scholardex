@@ -7,9 +7,6 @@ import ro.uvt.pokedex.core.model.reporting.Group;
 import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.service.application.model.GroupPublicationCsvExportViewModel;
 
 import java.util.*;
@@ -19,9 +16,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class GroupExportFacade {
     private final GroupManagementFacade groupManagementFacade;
-    private final ScopusPublicationRepository scopusPublicationRepository;
-    private final ScopusAuthorRepository scopusAuthorRepository;
-    private final ScopusForumRepository scopusForumRepository;
+    private final ScopusProjectionReadService scopusProjectionReadService;
 
     public Optional<GroupPublicationCsvExportViewModel> buildGroupPublicationCsvExport(String groupId) {
         Group group = groupManagementFacade.buildGroupEditView(groupId).group();
@@ -37,7 +32,7 @@ public class GroupExportFacade {
         }
 
         Map<String, Publication> publicationsById = new LinkedHashMap<>();
-        scopusPublicationRepository.findAllByAuthorsIn(authorIds)
+        scopusProjectionReadService.findAllPublicationsByAuthorsIn(authorIds)
                 .forEach(publication -> publicationsById.putIfAbsent(publication.getId(), publication));
         List<Publication> publications = new ArrayList<>(publicationsById.values());
         PublicationOrderingSupport.sortPublicationsInPlace(publications);
@@ -49,9 +44,9 @@ public class GroupExportFacade {
             forumKeys.add(publication.getForum());
         });
 
-        Map<String, Author> authorMap = scopusAuthorRepository.findByIdIn(authorKeys).stream()
+        Map<String, Author> authorMap = scopusProjectionReadService.findAuthorsByIdIn(authorKeys).stream()
                 .collect(Collectors.toMap(Author::getId, author -> author));
-        Map<String, Forum> forumMap = scopusForumRepository.findByIdIn(forumKeys).stream()
+        Map<String, Forum> forumMap = scopusProjectionReadService.findForumsByIdIn(forumKeys).stream()
                 .collect(Collectors.toMap(Forum::getId, forum -> forum));
 
         return Optional.of(new GroupPublicationCsvExportViewModel(

@@ -8,10 +8,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEntityType;
 import ro.uvt.pokedex.core.model.scopus.*;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusImportEventRepository;
 import ro.uvt.pokedex.core.repository.scopus.*;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
+import ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScopusImportEventIngestionService;
 import ro.uvt.pokedex.core.service.integration.IntegrationErrorCode;
 import ro.uvt.pokedex.core.service.integration.IntegrationException;
 
@@ -24,6 +28,8 @@ public class ScopusDataService {
 
     private static final Logger logger = LoggerFactory.getLogger(ScopusDataService.class);
     private static final int DEFAULT_ERROR_SAMPLE_SIZE = 20;
+    private static final String PAYLOAD_FORMAT_JSON_OBJECT = "json-object";
+    private static final String SOURCE_SCOPUS_JSON_BOOTSTRAP = "SCOPUS_JSON_BOOTSTRAP";
 
     @Autowired
     private ScopusPublicationRepository publicationRepository;
@@ -44,45 +50,67 @@ public class ScopusDataService {
     private ScopusFundingRepository fundingRepository;
     @Autowired
     private CacheService cacheService;
+    @Autowired
+    private ScopusImportEventRepository importEventRepository;
+    @Autowired
+    private ScopusImportEventIngestionService importEventIngestionService;
+    @Autowired
+    private ScopusCanonicalMaterializationService canonicalMaterializationService;
 
     @Async("taskExecutor")
     public void loadScopusDataIfEmpty(String scopusDataFile) {
-        if (publicationRepository.count() == 0) {
-            importScopusData(scopusDataFile, 0, false);
+        loadScopusDataIfEmptySync(scopusDataFile);
+    }
+
+    public boolean loadScopusDataIfEmptySync(String scopusDataFile) {
+        if (importEventRepository.count() == 0) {
+            importScopusDataSync(scopusDataFile, 0, false);
+            importScopusDataCitationsSync(scopusDataFile);
+            canonicalMaterializationService.rebuildFactsAndViews("bootstrap-empty-load");
+            return true;
         }
-        if (citationRepository.count() == 0) {
-            importScopusDataCitations(scopusDataFile);
-        }
+        return false;
     }
 
     @Async("taskExecutor")
     public void loadAdditionalScopusData(String scopusDataFile) {
+        loadAdditionalScopusDataSync(scopusDataFile);
+    }
 
-        importScopusData(scopusDataFile, 0, true);
-        importScopusDataCitations(scopusDataFile);
-
+    public void loadAdditionalScopusDataSync(String scopusDataFile) {
+        importScopusDataSync(scopusDataFile, 0, true);
+        importScopusDataCitationsSync(scopusDataFile);
+        canonicalMaterializationService.rebuildFactsAndViews("bootstrap-additional-load");
     }
 
     @Async("taskExecutor")
     public void importScopusData(String jsonFilePath, long count, boolean checkExisting) {
+        importScopusDataSync(jsonFilePath, count, checkExisting);
+    }
+
+    public ImportProcessingResult importScopusDataSync(String jsonFilePath, long count, boolean checkExisting) {
         ObjectMapper mapper = new ObjectMapper();
         ImportProcessingResult result = new ImportProcessingResult(DEFAULT_ERROR_SAMPLE_SIZE);
         try {
             JsonNode rootNode = mapper.readTree(new File(jsonFilePath));
             int dataSize = rootNode.get("eid").size();
+            String batchId = "bootstrap-publications-" + new File(jsonFilePath).getName() + "-" + System.currentTimeMillis();
             logger.info("Processing starting at {} of {} publications from JSON file.", count, dataSize);
-            List<Publication> publications = new ArrayList<>();
             for (int i = (int) count; i < dataSize; i++) {
                 result.markProcessed();
                 try {
-                    Publication publication = createPublicationFromJson(rootNode, i);
-                    publication.setApproved(true);
-                    handleAffiliations(publication, rootNode, i);
-                    handleAuthors(publication, rootNode, i);
-                    handleVenue(publication, rootNode, i);
-                    handleFunding(publication, rootNode, i);
-                    publications.add(publication);
-                    result.markImported();
+                    String eid = readRequiredIndexedText(rootNode, "eid", i, "scopus-import-index-" + i);
+                    Map<String, Object> payload = extractIndexedPublicationPayload(rootNode, i);
+                    ScopusImportEventIngestionService.EventIngestionOutcome outcome = importEventIngestionService.ingest(
+                            ScopusImportEntityType.PUBLICATION,
+                            SOURCE_SCOPUS_JSON_BOOTSTRAP,
+                            eid,
+                            batchId,
+                            "bootstrap-publication-" + i,
+                            PAYLOAD_FORMAT_JSON_OBJECT,
+                            payload
+                    );
+                    applyIngestionOutcome(result, outcome, "publication index=" + i + ", eid=" + eid);
                 } catch (IntegrationException ex) {
                     result.markSkipped("index=" + i + ", code=" + ex.getErrorCode() + ", msg=" + ex.getMessage());
                 } catch (RuntimeException ex) {
@@ -90,32 +118,6 @@ public class ScopusDataService {
                 }
                 if(dataSize >= 10 && i % (dataSize / 10) == 0)
                     logger.info("Processed {}% publications.", (i* 100.0)/dataSize );
-            }
-            logger.info("Processed all publications. Saving to database.");
-            cacheService.saveAllAffiliations();
-            logger.info("Saved all affiliations.");
-//            cacheService.saveAllAuthors();
-//            logger.info("Saved all authors.");
-//            cacheService.saveAllForums();
-//            logger.info("Saved all forums.");
-//            for(Publication p : publications){
-//                if(p.getDoi() != null && !p.getDoi().isEmpty())
-//                    p.setId(p.getDoi());
-//                else if(p.getEid() != null && !p.getEid().isEmpty())
-//                    p.setId(p.getEid());
-//            }
-            if(!checkExisting) {
-                publicationRepository.saveAll(publications);
-            }else{
-                for (Publication publication : publications) {
-                    Optional<Publication> existingPublication = publicationRepository.findByEid(publication.getEid());
-                    if (existingPublication.isEmpty()) {
-                        publicationRepository.insert(publication);
-                    } else {
-                        result.markUpdated();
-                        logger.info("Publication with EID {} already exists, skipping.", publication.getEid());
-                    }
-                }
             }
             logger.info("Scopus publication import finished: processed={}, imported={}, updated={}, skipped={}, errors={}, sample={}",
                     result.getProcessedCount(),
@@ -126,20 +128,27 @@ public class ScopusDataService {
                     result.getErrorsSample());
         } catch (IOException e) {
             logger.error("Error reading the JSON file: ", e);
+            result.markError("scopus-publication-import-io-error=" + e.getMessage());
         }
+        return result;
     }
 
     @Async("taskExecutor")
     public void importScopusDataCitations(String jsonFilePath) {
+        importScopusDataCitationsSync(jsonFilePath);
+    }
+
+    public ImportProcessingResult importScopusDataCitationsSync(String jsonFilePath) {
         ObjectMapper mapper = new ObjectMapper();
         ImportProcessingResult result = new ImportProcessingResult(DEFAULT_ERROR_SAMPLE_SIZE);
         try {
             JsonNode rootNode = mapper.readTree(new File(jsonFilePath));
             int dataSize = rootNode.get("eid").size();
+            String batchId = "bootstrap-citations-" + new File(jsonFilePath).getName() + "-" + System.currentTimeMillis();
             logger.info("Processing citations from {} publications from JSON file.", dataSize);
 
             Map<String, List<JsonNode>> citations = extractCitationsFromJson(rootNode, dataSize);
-            processCitations(citations, result);
+            processCitations(citations, batchId, result);
             logger.info("Scopus citation import finished: processed={}, imported={}, skipped={}, errors={}, sample={}",
                     result.getProcessedCount(),
                     result.getImportedCount(),
@@ -148,7 +157,9 @@ public class ScopusDataService {
                     result.getErrorsSample());
         } catch (IOException e) {
             logger.error("Error reading the JSON file: ", e);
+            result.markError("scopus-citation-import-io-error=" + e.getMessage());
         }
+        return result;
     }
 
     private Map<String, List<JsonNode>> extractCitationsFromJson(JsonNode rootNode, int dataSize) {
@@ -171,24 +182,89 @@ public class ScopusDataService {
         return citations;
     }
 
-    private void processCitations(Map<String, List<JsonNode>> citations, ImportProcessingResult result) {
+    private void processCitations(Map<String, List<JsonNode>> citations, String batchId, ImportProcessingResult result) {
         citations.forEach((key, citationNodes) -> {
-            Optional<Publication> citedPublicationOpt = publicationRepository.findByEid(key);
-            if (citedPublicationOpt.isPresent()) {
-                Publication citedPublication = citedPublicationOpt.get();
-                for (JsonNode citationNode : citationNodes) {
-                    result.markProcessed();
-                    try {
-                        processSingleCitation(citedPublication, citationNode);
-                        result.markImported();
-                    } catch (IntegrationException ex) {
-                        result.markSkipped("citedEid=" + key + ", code=" + ex.getErrorCode() + ", msg=" + ex.getMessage());
-                    } catch (RuntimeException ex) {
-                        result.markSkipped("citedEid=" + key + ", code=" + IntegrationErrorCode.PERSISTENCE_ERROR + ", msg=" + ex.getMessage());
-                    }
+            for (int i = 0; i < citationNodes.size(); i++) {
+                JsonNode citationNode = citationNodes.get(i);
+                result.markProcessed();
+                try {
+                    String citingEid = readRequiredText(citationNode, "eid", "citation-citing-eid");
+                    Map<String, Object> payload = new LinkedHashMap<>();
+                    payload.put("citedEid", key);
+                    payload.put("citingEid", citingEid);
+                    payload.put("citingItem", citationNode);
+                    ScopusImportEventIngestionService.EventIngestionOutcome outcome = importEventIngestionService.ingest(
+                            ScopusImportEntityType.CITATION,
+                            SOURCE_SCOPUS_JSON_BOOTSTRAP,
+                            key + "->" + citingEid,
+                            batchId,
+                            "bootstrap-citation-" + key + "-" + i,
+                            PAYLOAD_FORMAT_JSON_OBJECT,
+                            payload
+                    );
+                    applyIngestionOutcome(result, outcome, "citation citedEid=" + key + ", citingEid=" + citingEid);
+                } catch (IntegrationException ex) {
+                    result.markSkipped("citedEid=" + key + ", code=" + ex.getErrorCode() + ", msg=" + ex.getMessage());
+                } catch (RuntimeException ex) {
+                    result.markSkipped("citedEid=" + key + ", code=" + IntegrationErrorCode.PERSISTENCE_ERROR + ", msg=" + ex.getMessage());
                 }
             }
         });
+    }
+
+    private void applyIngestionOutcome(ImportProcessingResult result,
+                                       ScopusImportEventIngestionService.EventIngestionOutcome outcome,
+                                       String context) {
+        if (outcome.error()) {
+            result.markError(context + ", msg=" + outcome.message());
+            return;
+        }
+        if (outcome.imported()) {
+            result.markImported();
+            return;
+        }
+        result.markSkipped(context + ", reason=duplicate");
+    }
+
+    private Map<String, Object> extractIndexedPublicationPayload(JsonNode rootNode, int i) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("eid", readOptionalIndexedText(rootNode, "eid", i));
+        payload.put("doi", readOptionalIndexedText(rootNode, "doi", i));
+        payload.put("pii", readOptionalIndexedText(rootNode, "pii", i));
+        payload.put("pubmed_id", readOptionalIndexedText(rootNode, "pubmed_id", i));
+        payload.put("title", readOptionalIndexedText(rootNode, "title", i));
+        payload.put("subtype", readOptionalIndexedText(rootNode, "subtype", i));
+        payload.put("subtypeDescription", readOptionalIndexedText(rootNode, "subtypeDescription", i));
+        payload.put("creator", readOptionalIndexedText(rootNode, "creator", i));
+        payload.put("author_count", readIndexedInt(rootNode, "author_count", i));
+        payload.put("description", readOptionalIndexedText(rootNode, "description", i));
+        payload.put("citedby_count", readIndexedInt(rootNode, "citedby_count", i));
+        payload.put("openaccess", readIndexedInt(rootNode, "openaccess", i));
+        payload.put("freetoread", readOptionalIndexedText(rootNode, "freetoread", i));
+        payload.put("freetoreadLabel", readOptionalIndexedText(rootNode, "freetoreadLabel", i));
+        payload.put("article_number", readOptionalIndexedText(rootNode, "article_number", i));
+        payload.put("pageRange", readOptionalIndexedText(rootNode, "pageRange", i));
+        payload.put("coverDate", readOptionalIndexedText(rootNode, "coverDate", i));
+        payload.put("coverDisplayDate", readOptionalIndexedText(rootNode, "coverDisplayDate", i));
+        payload.put("volume", readOptionalIndexedText(rootNode, "volume", i));
+        payload.put("issueIdentifier", readOptionalIndexedText(rootNode, "issueIdentifier", i));
+        payload.put("afid", readOptionalIndexedText(rootNode, "afid", i));
+        payload.put("affilname", readOptionalIndexedText(rootNode, "affilname", i));
+        payload.put("affiliation_city", readOptionalIndexedText(rootNode, "affiliation_city", i));
+        payload.put("affiliation_country", readOptionalIndexedText(rootNode, "affiliation_country", i));
+        payload.put("author_ids", readOptionalIndexedText(rootNode, "author_ids", i));
+        payload.put("author_names", readOptionalIndexedText(rootNode, "author_names", i));
+        payload.put("author_afids", readOptionalIndexedText(rootNode, "author_afids", i));
+        payload.put("source_id", readOptionalIndexedText(rootNode, "source_id", i));
+        payload.put("publicationName", readOptionalIndexedText(rootNode, "publicationName", i));
+        payload.put("issn", readOptionalIndexedText(rootNode, "issn", i));
+        payload.put("eIssn", readOptionalIndexedText(rootNode, "eIssn", i));
+        payload.put("isbn", readOptionalIndexedText(rootNode, "isbn", i));
+        payload.put("aggregationType", readOptionalIndexedText(rootNode, "aggregationType", i));
+        payload.put("fund_acr", readOptionalIndexedText(rootNode, "fund_acr", i));
+        payload.put("fund_no", readOptionalIndexedText(rootNode, "fund_no", i));
+        payload.put("fund_sponsor", readOptionalIndexedText(rootNode, "fund_sponsor", i));
+        return payload;
     }
 
     private void processSingleCitation(Publication cited, JsonNode rootNode) {

@@ -9,7 +9,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.controller.dto.ScopusForumListItemResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusForumPageResponse;
-import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumSearchView;
 
 import java.util.List;
 import java.util.Locale;
@@ -39,8 +39,8 @@ public class ScopusForumQueryService {
             ));
         }
 
-        List<Forum> rows = mongoTemplate.find(query, Forum.class);
-        long totalItems = mongoTemplate.count(Query.of(query).limit(-1).skip(-1), Forum.class);
+        List<ScopusForumSearchView> rows = mongoTemplate.find(query, ScopusForumSearchView.class);
+        long totalItems = mongoTemplate.count(Query.of(query).limit(-1).skip(-1), ScopusForumSearchView.class);
         int totalPages = (int) Math.ceil(totalItems / (double) size);
 
         List<ScopusForumListItemResponse> items = rows.stream()
@@ -49,7 +49,7 @@ public class ScopusForumQueryService {
         return new ScopusForumPageResponse(items, page, size, totalItems, totalPages);
     }
 
-    private ScopusForumListItemResponse toListItem(Forum forum) {
+    private ScopusForumListItemResponse toListItem(ScopusForumSearchView forum) {
         return new ScopusForumListItemResponse(
                 forum.getId(),
                 forum.getPublicationName(),

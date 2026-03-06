@@ -11,9 +11,7 @@ import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAffiliationRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
+import ro.uvt.pokedex.core.service.application.ScopusProjectionReadService;
 
 import java.util.List;
 import java.util.Set;
@@ -26,13 +24,9 @@ import static org.mockito.Mockito.when;
 class CacheServiceTest {
 
     @Mock
-    private ScopusForumRepository scopusForumRepository;
+    private ScopusProjectionReadService scopusProjectionReadService;
     @Mock
     private CoreConferenceRankingRepository coreConferenceRankingRepository;
-    @Mock
-    private ScopusAuthorRepository scopusAuthorRepository;
-    @Mock
-    private ScopusAffiliationRepository scopusAffiliationRepository;
     @Mock
     private GroupRepository groupRepository;
 
@@ -49,17 +43,15 @@ class CacheServiceTest {
         Affiliation affiliation = new Affiliation();
         affiliation.setAfid("af1");
 
-        when(scopusForumRepository.findAll()).thenReturn(List.of(forum));
+        when(scopusProjectionReadService.findAllForums()).thenReturn(List.of(forum));
         when(coreConferenceRankingRepository.findAll()).thenReturn(List.of(core));
-        when(scopusAuthorRepository.findAll()).thenReturn(List.of(author));
-        when(scopusAffiliationRepository.findAll()).thenReturn(List.of(affiliation));
+        when(scopusProjectionReadService.findAllAuthors()).thenReturn(List.of(author));
+        when(scopusProjectionReadService.findAllAffiliations()).thenReturn(List.of(affiliation));
         when(groupRepository.findAll()).thenReturn(List.of());
 
         cacheService = new CacheService(
-                scopusForumRepository,
+                scopusProjectionReadService,
                 coreConferenceRankingRepository,
-                scopusAuthorRepository,
-                scopusAffiliationRepository,
                 groupRepository
         );
     }

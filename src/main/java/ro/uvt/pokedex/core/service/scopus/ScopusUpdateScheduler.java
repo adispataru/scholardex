@@ -17,6 +17,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import ro.uvt.pokedex.core.model.scopus.Citation;
 import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEntityType;
 import ro.uvt.pokedex.core.model.tasks.ScopusCitationsUpdate;
 import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;
 import ro.uvt.pokedex.core.model.tasks.Status;
@@ -26,7 +27,8 @@ import ro.uvt.pokedex.core.repository.tasks.ScopusCitationUpdateRepository;
 import ro.uvt.pokedex.core.repository.tasks.ScopusPublicationUpdateRepository;
 import ro.uvt.pokedex.core.service.integration.IntegrationErrorCode;
 import ro.uvt.pokedex.core.service.integration.IntegrationException;
-import ro.uvt.pokedex.core.service.importing.ScopusDataService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScopusImportEventIngestionService;
 import ro.uvt.pokedex.core.service.scopus.dto.AuthorWorksRequest;
 import ro.uvt.pokedex.core.service.scopus.dto.AuthorWorksResponse;
 import ro.uvt.pokedex.core.service.scopus.dto.CitationsByEidRequest;
@@ -47,9 +49,10 @@ public class ScopusUpdateScheduler {
 
     private final ScopusPublicationUpdateRepository taskRepo;
     private final ScopusPublicationRepository publicationRepo;
-    private final ScopusDataService scopusDataService;
     private final ScopusCitationUpdateRepository citationsTaskRepo;
     private final ScopusCitationRepository citationRepo;
+    private final ScopusImportEventIngestionService importEventIngestionService;
+    private final ScopusCanonicalMaterializationService canonicalMaterializationService;
     private final MeterRegistry meterRegistry;
 
     private final WebClient scopusPythonClient;
@@ -156,6 +159,7 @@ public class ScopusUpdateScheduler {
 
         String cursor = null;
         int imported = 0;
+        String batchId = "scheduler-publication-task-" + task.getId() + "-attempt-" + task.getAttemptCount();
 
         do {
             AuthorWorksRequest req = buildRequest(authorScopusId, fromDate, cursor);
@@ -163,15 +167,20 @@ public class ScopusUpdateScheduler {
 
             if (resp.getItems() != null) {
                 for (JsonNode item : resp.getItems()) {
-                    Publication publication = scopusDataService.createPublicationFromJson(item);
-                    scopusDataService.handleAffiliations(publication, item);
-                    scopusDataService.handleAuthors(publication, item);
-                    scopusDataService.handleVenue(publication, item);
-                    scopusDataService.handleFunding(publication, item);
-
-                    Optional<Publication> existing = publicationRepo.findByEid(publication.getEid());
-                    if (existing.isEmpty()) {
-                        publicationRepo.insert(publication);
+                    String sourceRecordId = text(item, "eid");
+                    if (sourceRecordId == null || sourceRecordId.isBlank()) {
+                        continue;
+                    }
+                    ScopusImportEventIngestionService.EventIngestionOutcome outcome = importEventIngestionService.ingest(
+                            ScopusImportEntityType.PUBLICATION,
+                            "SCOPUS_PYTHON_AUTHOR_WORKS",
+                            sourceRecordId,
+                            batchId,
+                            req.getRequest_id(),
+                            "json-object",
+                            item
+                    );
+                    if (outcome.imported()) {
                         imported++;
                     }
                 }
@@ -190,6 +199,7 @@ public class ScopusUpdateScheduler {
         task.setLastErrorMessage(null);
         task.setNextAttemptAt(null);
         taskRepo.save(task);
+        canonicalMaterializationService.rebuildFactsAndViews("scheduler-publication-task-" + task.getId());
     }
 
 
@@ -269,6 +279,7 @@ public class ScopusUpdateScheduler {
 
         int importedPublications = 0;
         int createdCitations = 0;
+        String batchId = "scheduler-citation-task-" + task.getId() + "-attempt-" + task.getAttemptCount();
 
         Map<String, List<JsonNode>> byEid = resp.getByEid();
         if (byEid != null) {
@@ -278,42 +289,43 @@ public class ScopusUpdateScheduler {
 
                 if (citingItems == null || citingItems.isEmpty()) continue;
 
-                Optional<Publication> citedOpt = publicationRepo.findByEid(citedEid);
-                if (citedOpt.isEmpty()) {
-                    log.warn("Cited publication with EID {} not found locally, skipping its citations", citedEid);
-                    continue;
-                }
-                Publication cited = citedOpt.get();
-
                 for (JsonNode item : citingItems) {
-                    Publication citing = scopusDataService.createPublicationFromJson(item);
-                    scopusDataService.handleAffiliations(citing, item);
-                    scopusDataService.handleAuthors(citing, item);
-                    scopusDataService.handleVenue(citing, item);
-                    scopusDataService.handleFunding(citing, item);
+                    String citingEid = text(item, "eid");
+                    if (citingEid == null || citingEid.isBlank()) {
+                        continue;
+                    }
 
-                    // upsert citing publication by EID
-                    Optional<Publication> existing = publicationRepo.findByEid(citing.getEid());
-                    if (existing.isPresent()) {
-                        citing = existing.get();
-                    } else {
-                        citing = publicationRepo.insert(citing);
+                    ScopusImportEventIngestionService.EventIngestionOutcome publicationOutcome = importEventIngestionService.ingest(
+                            ScopusImportEntityType.PUBLICATION,
+                            "SCOPUS_PYTHON_CITATIONS_PUBLICATION",
+                            citingEid,
+                            batchId,
+                            req.getRequestId(),
+                            "json-object",
+                            item
+                    );
+                    if (publicationOutcome.imported()) {
                         importedPublications++;
                     }
 
-                    Citation citation = new Citation();
-                    citation.setCitedId(cited.getId());
-                    citation.setCitingId(citing.getId());
+                    Map<String, Object> citationPayload = new LinkedHashMap<>();
+                    citationPayload.put("citedEid", citedEid);
+                    citationPayload.put("citingEid", citingEid);
+                    citationPayload.put("citingItem", item);
 
-                    if (citationRepo
-                            .findByCitedIdAndCitingId(cited.getId(), citing.getId())
-                            .isEmpty()) {
-                        citationRepo.insert(citation);
+                    ScopusImportEventIngestionService.EventIngestionOutcome citationOutcome = importEventIngestionService.ingest(
+                            ScopusImportEntityType.CITATION,
+                            "SCOPUS_PYTHON_CITATIONS_EDGE",
+                            citedEid + "->" + citingEid,
+                            batchId,
+                            req.getRequestId(),
+                            "json-object",
+                            citationPayload
+                    );
+                    if (citationOutcome.imported()) {
                         createdCitations++;
                     }
                 }
-                cited.setCitedbyCount((int) citationRepo.countAllByCitedId(cited.getId()));
-                publicationRepo.save(cited);
             }
         }
 
@@ -325,6 +337,7 @@ public class ScopusUpdateScheduler {
         task.setLastErrorMessage(null);
         task.setNextAttemptAt(null);
         citationsTaskRepo.save(task);
+        canonicalMaterializationService.rebuildFactsAndViews("scheduler-citation-task-" + task.getId());
     }
 
     private void closeContext(AutoCloseable context) {
@@ -442,6 +455,18 @@ public class ScopusUpdateScheduler {
         } catch (Exception e) {
             return Optional.empty();
         }
+    }
+
+    private String text(JsonNode node, String field) {
+        if (node == null || field == null) {
+            return null;
+        }
+        JsonNode value = node.path(field);
+        if (value.isMissingNode() || value.isNull()) {
+            return null;
+        }
+        String text = value.asText();
+        return text == null ? null : text.trim();
     }
 
     private CitationsByEidResponse callPythonCitations(CitationsByEidRequest req) {

@@ -6,10 +6,6 @@ import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Citation;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusCitationRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.service.application.model.AdminScopusCitationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminScopusPublicationSearchViewModel;
 
@@ -19,31 +15,29 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class AdminScopusFacade {
-    private final ScopusPublicationRepository scopusPublicationRepository;
-    private final ScopusAuthorRepository scopusAuthorRepository;
-    private final ScopusCitationRepository scopusCitationRepository;
-    private final ScopusForumRepository scopusForumRepository;
+    private final ScopusProjectionReadService scopusProjectionReadService;
 
     public AdminScopusPublicationSearchViewModel buildPublicationSearchView(String paperTitle) {
-        List<Publication> publications = new ArrayList<>(scopusPublicationRepository.findByTitleContainingIgnoreCaseOrderByCoverDateDesc(paperTitle));
+        List<Publication> publications = new ArrayList<>(
+                scopusProjectionReadService.findPublicationsByTitleContainingIgnoreCaseOrderByCoverDateDesc(paperTitle));
         publications.sort(PublicationOrderingSupport.publicationComparator());
         Set<String> authorKeys = new HashSet<>();
         publications.forEach(publication -> authorKeys.addAll(publication.getAuthors()));
-        Map<String, Author> authorMap = scopusAuthorRepository.findByIdIn(authorKeys).stream()
+        Map<String, Author> authorMap = scopusProjectionReadService.findAuthorsByIdIn(authorKeys).stream()
                 .collect(Collectors.toMap(Author::getId, author -> author));
         return new AdminScopusPublicationSearchViewModel(publications, authorMap);
     }
 
     public Optional<AdminScopusCitationsViewModel> buildPublicationCitationsView(String publicationId) {
-        Optional<Publication> publicationOpt = scopusPublicationRepository.findById(publicationId);
+        Optional<Publication> publicationOpt = scopusProjectionReadService.findPublicationByAnyId(publicationId);
         if (publicationOpt.isEmpty()) {
             return Optional.empty();
         }
         Publication publication = publicationOpt.get();
 
-        List<Citation> allByCited = scopusCitationRepository.findAllByCitedId(publication.getId());
+        List<Citation> allByCited = scopusProjectionReadService.findAllCitationsByCitedId(publication.getId());
         List<String> citingIds = allByCited.stream().map(Citation::getCitingId).toList();
-        List<Publication> citations = new ArrayList<>(scopusPublicationRepository.findAllByIdIn(citingIds));
+        List<Publication> citations = new ArrayList<>(scopusProjectionReadService.findAllPublicationsByIdIn(citingIds));
         PublicationOrderingSupport.sortPublicationsInPlace(citations);
 
         Set<String> authorKeys = new HashSet<>(publication.getAuthors());
@@ -53,12 +47,12 @@ public class AdminScopusFacade {
             forumKeys.add(citation.getForum());
         });
 
-        Map<String, Author> authorMap = scopusAuthorRepository.findByIdIn(authorKeys).stream()
+        Map<String, Author> authorMap = scopusProjectionReadService.findAuthorsByIdIn(authorKeys).stream()
                 .collect(Collectors.toMap(Author::getId, author -> author));
-        Map<String, Forum> forumMap = scopusForumRepository.findByIdIn(forumKeys).stream()
+        Map<String, Forum> forumMap = scopusProjectionReadService.findForumsByIdIn(forumKeys).stream()
                 .collect(Collectors.toMap(Forum::getId, forum -> forum));
 
-        Forum publicationForum = scopusForumRepository.findById(publication.getForum()).orElse(null);
+        Forum publicationForum = scopusProjectionReadService.findForumById(publication.getForum()).orElse(null);
 
         return Optional.of(new AdminScopusCitationsViewModel(
                 publication,

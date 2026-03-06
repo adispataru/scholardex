@@ -10,8 +10,6 @@ import ro.uvt.pokedex.core.model.reporting.Group;
 import ro.uvt.pokedex.core.model.reporting.WoSExtractor;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisZipExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupMemberCnfisWorkbook;
@@ -28,8 +26,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GroupCnfisExportFacade {
     private final GroupManagementFacade groupManagementFacade;
-    private final ScopusPublicationRepository scopusPublicationRepository;
-    private final ScopusForumRepository scopusForumRepository;
+    private final ScopusProjectionReadService scopusProjectionReadService;
     private final CNFISScoringService2025 cnfiSScoringService2025;
     private final WoSExtractor woSExtractor;
     private final CNFISReportExportService exportService;
@@ -47,7 +44,7 @@ public class GroupCnfisExportFacade {
             authorIds.addAll(researcher.getScopusId());
         }
 
-        List<Publication> publications = scopusPublicationRepository.findAllByAuthorsIn(authorIds);
+        List<Publication> publications = scopusProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
         publications = filterPublicationsByYear(publications, startYear, endYear);
 
         Domain allDomain = resolveAllDomain();
@@ -68,7 +65,7 @@ public class GroupCnfisExportFacade {
 
         for (Researcher researcher : group.getResearchers()) {
             List<String> authorIds = researcher.getScopusId();
-            List<Publication> publications = scopusPublicationRepository.findAllByAuthorsIn(authorIds);
+            List<Publication> publications = scopusProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
             publications = filterPublicationsByYear(publications, startYear, endYear);
 
             List<CNFISReport2025> cnfisReports = generateReports(publications, allDomain);
@@ -122,7 +119,7 @@ public class GroupCnfisExportFacade {
         List<CNFISReport2025> reports = new ArrayList<>();
         for (Publication publication : publications) {
             Publication enrichedPublication = woSExtractor.findPublicationWosId(publication);
-            scopusPublicationRepository.save(enrichedPublication);
+            persistEnrichment(enrichedPublication);
             reports.add(cnfiSScoringService2025.getReport(enrichedPublication, domain));
         }
         return reports;
@@ -130,7 +127,17 @@ public class GroupCnfisExportFacade {
 
     private Map<String, Forum> loadForumMap(List<Publication> publications) {
         Set<String> forumKeys = publications.stream().map(Publication::getForum).collect(Collectors.toSet());
-        return scopusForumRepository.findByIdIn(forumKeys).stream()
+        return scopusProjectionReadService.findForumsByIdIn(forumKeys).stream()
                 .collect(Collectors.toMap(Forum::getId, forum -> forum));
+    }
+
+    private void persistEnrichment(Publication enrichedPublication) {
+        scopusProjectionReadService.findPublicationViewById(enrichedPublication.getId())
+                .ifPresent(row -> {
+                    row.setWosId(enrichedPublication.getWosId());
+                    row.setWosLineage("wos-extractor");
+                    row.setUpdatedAt(java.time.Instant.now());
+                    scopusProjectionReadService.savePublicationView(row);
+                });
     }
 }

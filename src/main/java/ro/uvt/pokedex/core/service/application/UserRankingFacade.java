@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.repository.reporting.RankingRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
 
 import java.util.Optional;
 
@@ -13,11 +12,11 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UserRankingFacade {
 
-    private final ScopusForumRepository forumRepository;
+    private final ScopusProjectionReadService scopusProjectionReadService;
     private final RankingRepository rankingRepository;
 
     public Optional<WoSRanking> resolveJournalRankingForForum(String forumId) {
-        Optional<Forum> forumOptional = forumRepository.findById(forumId);
+        Optional<Forum> forumOptional = scopusProjectionReadService.findForumById(forumId);
         if (forumOptional.isEmpty()) {
             return Optional.empty();
         }

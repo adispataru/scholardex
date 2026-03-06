@@ -10,9 +10,6 @@ import ro.uvt.pokedex.core.model.reporting.Group;
 import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.service.application.model.GroupEditViewModel;
 
 import java.util.List;
@@ -28,11 +25,7 @@ class GroupExportFacadeTest {
     @Mock
     private GroupManagementFacade groupManagementFacade;
     @Mock
-    private ScopusPublicationRepository scopusPublicationRepository;
-    @Mock
-    private ScopusAuthorRepository scopusAuthorRepository;
-    @Mock
-    private ScopusForumRepository scopusForumRepository;
+    private ScopusProjectionReadService scopusProjectionReadService;
 
     @InjectMocks
     private GroupExportFacade facade;
@@ -71,11 +64,11 @@ class GroupExportFacadeTest {
 
         when(groupManagementFacade.buildGroupEditView("g1"))
                 .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of()));
-        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1")))
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
                 .thenReturn(List.of(publication));
-        when(scopusAuthorRepository.findByIdIn(anyCollection()))
+        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection()))
                 .thenReturn(List.of(author));
-        when(scopusForumRepository.findByIdIn(anyCollection()))
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection()))
                 .thenReturn(List.of(forum));
 
         var result = facade.buildGroupPublicationCsvExport("g1");
@@ -128,11 +121,11 @@ class GroupExportFacadeTest {
 
         when(groupManagementFacade.buildGroupEditView("g1"))
                 .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of()));
-        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1")))
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
                 .thenReturn(List.of(p1, malformed, p2, p1));
-        when(scopusAuthorRepository.findByIdIn(anyCollection()))
+        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection()))
                 .thenReturn(List.of(author));
-        when(scopusForumRepository.findByIdIn(anyCollection()))
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection()))
                 .thenReturn(List.of(forum));
 
         var result = facade.buildGroupPublicationCsvExport("g1");

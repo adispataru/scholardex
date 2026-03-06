@@ -10,10 +10,7 @@ import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Citation;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusCitationRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.service.ResearcherService;
 
 import java.util.List;
@@ -29,13 +26,7 @@ class UserPublicationFacadeTest {
     @Mock
     private ResearcherService researcherService;
     @Mock
-    private ScopusAuthorRepository scopusAuthorRepository;
-    @Mock
-    private ScopusCitationRepository scopusCitationRepository;
-    @Mock
-    private ScopusPublicationRepository scopusPublicationRepository;
-    @Mock
-    private ScopusForumRepository scopusForumRepository;
+    private ScopusProjectionReadService scopusProjectionReadService;
 
     @InjectMocks
     private UserPublicationFacade facade;
@@ -61,9 +52,9 @@ class UserPublicationFacadeTest {
         forum.setId("f1");
 
         when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
-        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author));
-        when(scopusPublicationRepository.findAllByAuthorsContaining("a1")).thenReturn(List.of(p));
-        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum));
+        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsContaining("a1")).thenReturn(List.of(p));
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
 
         var vmOpt = facade.buildUserPublicationsView("r1");
 
@@ -95,10 +86,10 @@ class UserPublicationFacadeTest {
         shared.setCoverDate("2022-01-01");
 
         when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
-        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author1, author2));
-        when(scopusPublicationRepository.findAllByAuthorsContaining("a1")).thenReturn(List.of(shared));
-        when(scopusPublicationRepository.findAllByAuthorsContaining("a2")).thenReturn(List.of(shared));
-        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum("f1")));
+        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author1, author2));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsContaining("a1")).thenReturn(List.of(shared));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsContaining("a2")).thenReturn(List.of(shared));
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum("f1")));
 
         var vmOpt = facade.buildUserPublicationsView("r1");
 
@@ -120,10 +111,10 @@ class UserPublicationFacadeTest {
         Publication sameYearHigherTitle = publication("p1", "Beta", "2024-01-10", 1, "f1", List.of("a1"));
 
         when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
-        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author));
-        when(scopusPublicationRepository.findAllByAuthorsContaining("a1"))
+        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsContaining("a1"))
                 .thenReturn(List.of(malformed, sameYearHigherTitle, newest));
-        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum("f1")));
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum("f1")));
 
         var vmOpt = facade.buildUserPublicationsView("r1");
 
@@ -141,12 +132,12 @@ class UserPublicationFacadeTest {
         Citation link2 = citation("p1", "c2");
         Citation link3 = citation("p1", "c3");
 
-        when(scopusPublicationRepository.findById("p1")).thenReturn(Optional.of(publication));
-        when(scopusCitationRepository.findAllByCitedId("p1")).thenReturn(List.of(link1, link2, link3));
-        when(scopusPublicationRepository.findAllByIdIn(List.of("c1", "c2", "c3"))).thenReturn(List.of(c1, c3, c2));
-        when(scopusForumRepository.findById("f1")).thenReturn(Optional.of(forum("f1")));
-        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author("a1")));
-        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum("f2")));
+        when(scopusProjectionReadService.findPublicationByAnyId("p1")).thenReturn(Optional.of(publication));
+        when(scopusProjectionReadService.findAllCitationsByCitedId("p1")).thenReturn(List.of(link1, link2, link3));
+        when(scopusProjectionReadService.findAllPublicationsByIdIn(List.of("c1", "c2", "c3"))).thenReturn(List.of(c1, c3, c2));
+        when(scopusProjectionReadService.findForumById("f1")).thenReturn(Optional.of(forum("f1")));
+        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author("a1")));
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum("f2")));
 
         var vmOpt = facade.buildCitationsView("p1");
 
@@ -157,27 +148,30 @@ class UserPublicationFacadeTest {
     @Test
     void findPublicationForEditUsesCanonicalIdLookup() {
         Publication publication = publication("p1", "P", "2023-01-01", 0, "f1", List.of("a1"));
-        when(scopusPublicationRepository.findById("p1")).thenReturn(Optional.of(publication));
+        when(scopusProjectionReadService.findPublicationByAnyId("p1")).thenReturn(Optional.of(publication));
 
         var result = facade.findPublicationForEdit("p1");
 
         assertTrue(result.isPresent());
-        verify(scopusPublicationRepository).findById("p1");
+        verify(scopusProjectionReadService).findPublicationByAnyId("p1");
     }
 
     @Test
     void updatePublicationMetadataUsesCanonicalIdLookupAndSave() {
-        Publication existing = publication("p1", "Old", "2023-01-01", 0, "f1", List.of("a1"));
+        ScholardexPublicationView existing = new ScholardexPublicationView();
+        existing.setId("p1");
+        existing.setSubtype("old");
+        existing.setSubtypeDescription("Old");
         Publication patch = new Publication();
         patch.setSubtype("cp");
         patch.setSubtypeDescription("Proceedings");
-        when(scopusPublicationRepository.findById("p1")).thenReturn(Optional.of(existing));
+        when(scopusProjectionReadService.findPublicationViewById("p1")).thenReturn(Optional.of(existing));
 
         facade.updatePublicationMetadata("p1", patch);
 
         assertEquals("cp", existing.getSubtype());
         assertEquals("Proceedings", existing.getSubtypeDescription());
-        verify(scopusPublicationRepository).save(existing);
+        verify(scopusProjectionReadService).savePublicationView(existing);
     }
 
     private static Publication publication(String id, String title, String coverDate, int citedByCount, String forumId, List<String> authors) {

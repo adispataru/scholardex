@@ -12,10 +12,6 @@ import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.repository.InstitutionRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusCitationRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsViewModel;
 
@@ -27,10 +23,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class AdminInstitutionReportFacade {
     private final InstitutionRepository institutionRepository;
-    private final ScopusPublicationRepository scopusPublicationRepository;
-    private final ScopusCitationRepository scopusCitationRepository;
-    private final ScopusAuthorRepository scopusAuthorRepository;
-    private final ScopusForumRepository scopusForumRepository;
+    private final ScopusProjectionReadService scopusProjectionReadService;
     private final IndividualReportRepository individualReportRepository;
 
     public Optional<AdminInstitutionPublicationsViewModel> buildInstitutionPublicationsView(String institutionId) {
@@ -94,7 +87,7 @@ public class AdminInstitutionReportFacade {
     private List<Publication> loadInstitutionPublications(Institution institution) {
         Map<String, Publication> publicationsById = new LinkedHashMap<>();
         for (Affiliation affiliation : institution.getScopusAffiliations()) {
-            scopusPublicationRepository.findAllByAffiliationsContaining(affiliation.getAfid())
+            findPublicationsByAffiliation(affiliation.getAfid())
                     .forEach(publication -> publicationsById.putIfAbsent(publication.getId(), publication));
         }
         List<Publication> publications = new ArrayList<>(publicationsById.values());
@@ -104,10 +97,10 @@ public class AdminInstitutionReportFacade {
 
     private Map<String, List<Publication>> loadCitationMap(List<Publication> publications) {
         List<String> ids = publications.stream().map(Publication::getId).toList();
-        List<Citation> citations = scopusCitationRepository.findAllByCitedIdIn(ids);
+        List<Citation> citations = scopusProjectionReadService.findAllCitationsByCitedIdIn(ids);
         Map<String, List<Publication>> citationMap = new HashMap<>();
         for (Citation citation : citations) {
-            Optional<Publication> citingPublication = scopusPublicationRepository.findById(citation.getCitingId());
+            Optional<Publication> citingPublication = scopusProjectionReadService.findPublicationByAnyId(citation.getCitingId());
             if (citingPublication.isPresent()) {
                 citationMap.putIfAbsent(citation.getCitedId(), new ArrayList<>());
                 citationMap.get(citation.getCitedId()).add(citingPublication.get());
@@ -120,7 +113,7 @@ public class AdminInstitutionReportFacade {
     private Map<String, Author> loadAuthorMap(List<Publication> publications) {
         Set<String> authorKeys = new HashSet<>();
         publications.forEach(publication -> authorKeys.addAll(publication.getAuthors()));
-        return scopusAuthorRepository.findByIdIn(authorKeys).stream()
+        return scopusProjectionReadService.findAuthorsByIdIn(authorKeys).stream()
                 .collect(Collectors.toMap(Author::getId, author -> author));
     }
 
@@ -129,13 +122,13 @@ public class AdminInstitutionReportFacade {
         publications.forEach(publication -> authorKeys.addAll(publication.getAuthors()));
         citationMap.values().forEach(citingPublications ->
                 citingPublications.forEach(citing -> authorKeys.addAll(citing.getAuthors())));
-        return scopusAuthorRepository.findByIdIn(authorKeys).stream()
+        return scopusProjectionReadService.findAuthorsByIdIn(authorKeys).stream()
                 .collect(Collectors.toMap(Author::getId, author -> author));
     }
 
     private Map<String, Forum> loadForumMap(List<Publication> publications) {
         Set<String> forumKeys = publications.stream().map(Publication::getForum).collect(Collectors.toSet());
-        return scopusForumRepository.findByIdIn(forumKeys).stream()
+        return scopusProjectionReadService.findForumsByIdIn(forumKeys).stream()
                 .collect(Collectors.toMap(Forum::getId, forum -> forum));
     }
 
@@ -143,7 +136,11 @@ public class AdminInstitutionReportFacade {
         Set<String> forumKeys = publications.stream().map(Publication::getForum).collect(Collectors.toSet());
         citationMap.values().forEach(citingPublications ->
                 citingPublications.forEach(citing -> forumKeys.add(citing.getForum())));
-        return scopusForumRepository.findByIdIn(forumKeys).stream()
+        return scopusProjectionReadService.findForumsByIdIn(forumKeys).stream()
                 .collect(Collectors.toMap(Forum::getId, forum -> forum));
+    }
+
+    private List<Publication> findPublicationsByAffiliation(String affiliationId) {
+        return scopusProjectionReadService.findAllPublicationsByAffiliationsContaining(affiliationId);
     }
 }

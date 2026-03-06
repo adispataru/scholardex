@@ -10,7 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import ro.uvt.pokedex.core.controller.dto.ScopusForumPageResponse;
-import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumSearchView;
 
 import java.util.List;
 
@@ -35,12 +35,12 @@ class ScopusForumQueryServiceTest {
 
     @Test
     void searchBuildsPagedSortedQueryAndMapsResponse() {
-        Forum a = forum("1", "ACM Journal", "1111", "2222", "Journal");
-        Forum b = forum("2", "IEEE Journal", "4444", "5555", "Conference");
+        ScopusForumSearchView a = forum("1", "ACM Journal", "1111", "2222", "Journal");
+        ScopusForumSearchView b = forum("2", "IEEE Journal", "4444", "5555", "Conference");
 
-        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(Forum.class)))
+        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(ScopusForumSearchView.class)))
                 .thenReturn(List.of(a, b));
-        when(mongoTemplate.count(org.mockito.ArgumentMatchers.any(Query.class), eq(Forum.class)))
+        when(mongoTemplate.count(org.mockito.ArgumentMatchers.any(Query.class), eq(ScopusForumSearchView.class)))
                 .thenReturn(11L);
 
         ScopusForumPageResponse result = service.search(1, 5, "publicationName", "asc", null);
@@ -53,7 +53,7 @@ class ScopusForumQueryServiceTest {
         assertEquals("1", result.items().get(0).id());
 
         ArgumentCaptor<Query> findQueryCaptor = ArgumentCaptor.forClass(Query.class);
-        verify(mongoTemplate).find(findQueryCaptor.capture(), eq(Forum.class));
+        verify(mongoTemplate).find(findQueryCaptor.capture(), eq(ScopusForumSearchView.class));
         Query findQuery = findQueryCaptor.getValue();
         assertEquals(5, findQuery.getLimit());
         assertEquals(5L, findQuery.getSkip());
@@ -63,15 +63,15 @@ class ScopusForumQueryServiceTest {
 
     @Test
     void searchWithQueryAddsOrRegexCriteria() {
-        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(Forum.class)))
+        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(ScopusForumSearchView.class)))
                 .thenReturn(List.of());
-        when(mongoTemplate.count(org.mockito.ArgumentMatchers.any(Query.class), eq(Forum.class)))
+        when(mongoTemplate.count(org.mockito.ArgumentMatchers.any(Query.class), eq(ScopusForumSearchView.class)))
                 .thenReturn(0L);
 
         service.search(0, 25, "issn", "desc", "abc");
 
         ArgumentCaptor<Query> findQueryCaptor = ArgumentCaptor.forClass(Query.class);
-        verify(mongoTemplate).find(findQueryCaptor.capture(), eq(Forum.class));
+        verify(mongoTemplate).find(findQueryCaptor.capture(), eq(ScopusForumSearchView.class));
         Query findQuery = findQueryCaptor.getValue();
         String queryJson = findQuery.getQueryObject().toJson();
         assertEquals(-1, findQuery.getSortObject().getInteger("issn"));
@@ -96,8 +96,8 @@ class ScopusForumQueryServiceTest {
         assertThrows(IllegalArgumentException.class, () -> service.search(0, 25, "publicationName", "asc", "x".repeat(101)));
     }
 
-    private Forum forum(String id, String name, String issn, String eIssn, String aggregationType) {
-        Forum forum = new Forum();
+    private ScopusForumSearchView forum(String id, String name, String issn, String eIssn, String aggregationType) {
+        ScopusForumSearchView forum = new ScopusForumSearchView();
         forum.setId(id);
         forum.setPublicationName(name);
         forum.setIssn(issn);

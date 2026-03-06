@@ -8,7 +8,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.repository.reporting.RankingRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
 
 import java.util.Optional;
 
@@ -19,7 +18,7 @@ import static org.mockito.Mockito.when;
 class UserRankingFacadeTest {
 
     @Mock
-    private ScopusForumRepository forumRepository;
+    private ScopusProjectionReadService scopusProjectionReadService;
     @Mock
     private RankingRepository rankingRepository;
 
@@ -31,7 +30,7 @@ class UserRankingFacadeTest {
         Forum forum = new Forum();
         forum.setId("f1");
         forum.setAggregationType("Conference");
-        when(forumRepository.findById("f1")).thenReturn(Optional.of(forum));
+        when(scopusProjectionReadService.findForumById("f1")).thenReturn(Optional.of(forum));
 
         assertTrue(facade.resolveJournalRankingForForum("f1").isEmpty());
     }
@@ -41,7 +40,7 @@ class UserRankingFacadeTest {
         Forum forum = new Forum();
         forum.setId("f1");
         forum.setAggregationType("Journal");
-        when(forumRepository.findById("f1")).thenReturn(Optional.of(forum));
+        when(scopusProjectionReadService.findForumById("f1")).thenReturn(Optional.of(forum));
 
         assertTrue(facade.resolveJournalRankingForForum("f1").isEmpty());
     }
@@ -54,7 +53,7 @@ class UserRankingFacadeTest {
         forum.setIssn("1234-5678");
         WoSRanking ranking = new WoSRanking();
         ranking.setId("1234-5678");
-        when(forumRepository.findById("f1")).thenReturn(Optional.of(forum));
+        when(scopusProjectionReadService.findForumById("f1")).thenReturn(Optional.of(forum));
         when(rankingRepository.findById("1234-5678")).thenReturn(Optional.of(ranking));
 
         Optional<WoSRanking> result = facade.resolveJournalRankingForForum("f1");

@@ -10,7 +10,8 @@ import ro.uvt.pokedex.core.repository.scopus.ScopusCitationRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.repository.tasks.ScopusCitationUpdateRepository;
 import ro.uvt.pokedex.core.repository.tasks.ScopusPublicationUpdateRepository;
-import ro.uvt.pokedex.core.service.importing.ScopusDataService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScopusImportEventIngestionService;
 
 import java.time.Instant;
 import java.util.List;
@@ -23,16 +24,18 @@ class ScopusUpdateSchedulerTest {
     void pollQueueSkipsPublicationTaskWhenNextAttemptInFuture() {
         ScopusPublicationUpdateRepository publicationTaskRepo = mock(ScopusPublicationUpdateRepository.class);
         ScopusPublicationRepository publicationRepo = mock(ScopusPublicationRepository.class);
-        ScopusDataService scopusDataService = mock(ScopusDataService.class);
         ScopusCitationUpdateRepository citationTaskRepo = mock(ScopusCitationUpdateRepository.class);
         ScopusCitationRepository citationRepo = mock(ScopusCitationRepository.class);
+        ScopusImportEventIngestionService ingestionService = mock(ScopusImportEventIngestionService.class);
+        ScopusCanonicalMaterializationService canonicalMaterializationService = mock(ScopusCanonicalMaterializationService.class);
 
         ScopusUpdateScheduler scheduler = new ScopusUpdateScheduler(
                 publicationTaskRepo,
                 publicationRepo,
-                scopusDataService,
                 citationTaskRepo,
                 citationRepo,
+                ingestionService,
+                canonicalMaterializationService,
                 new SimpleMeterRegistry(),
                 WebClient.builder().baseUrl("http://localhost").build()
         );
@@ -54,16 +57,18 @@ class ScopusUpdateSchedulerTest {
     void computeFromDateUsesLatestPublicationDateWithoutForcedOverride() {
         ScopusPublicationUpdateRepository publicationTaskRepo = mock(ScopusPublicationUpdateRepository.class);
         ScopusPublicationRepository publicationRepo = mock(ScopusPublicationRepository.class);
-        ScopusDataService scopusDataService = mock(ScopusDataService.class);
         ScopusCitationUpdateRepository citationTaskRepo = mock(ScopusCitationUpdateRepository.class);
         ScopusCitationRepository citationRepo = mock(ScopusCitationRepository.class);
+        ScopusImportEventIngestionService ingestionService = mock(ScopusImportEventIngestionService.class);
+        ScopusCanonicalMaterializationService canonicalMaterializationService = mock(ScopusCanonicalMaterializationService.class);
 
         ScopusUpdateScheduler scheduler = new ScopusUpdateScheduler(
                 publicationTaskRepo,
                 publicationRepo,
-                scopusDataService,
                 citationTaskRepo,
                 citationRepo,
+                ingestionService,
+                canonicalMaterializationService,
                 new SimpleMeterRegistry(),
                 WebClient.builder().baseUrl("http://localhost").build()
         );

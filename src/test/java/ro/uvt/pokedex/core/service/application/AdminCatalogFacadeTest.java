@@ -18,10 +18,6 @@ import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndicatorRepository;
 import ro.uvt.pokedex.core.repository.reporting.RankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAffiliationRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized;
 import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 
@@ -36,10 +32,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class AdminCatalogFacadeTest {
 
-    @Mock private ScopusForumRepository scopusVenueRepository;
-    @Mock private ScopusAuthorRepository scopusAuthorRepository;
-    @Mock private ScopusAffiliationRepository scopusAffiliationRepository;
-    @Mock private ScopusPublicationRepository scopusPublicationRepository;
+    @Mock private ScopusProjectionReadService scopusProjectionReadService;
     @Mock private ArtisticEventRepository artisticEventRepository;
     @Mock private RankingRepository rankingRepository;
     @Mock private CoreConferenceRankingRepository coreConferenceRankingRepository;
@@ -95,8 +88,8 @@ class AdminCatalogFacadeTest {
         Affiliation affiliation = new Affiliation();
         affiliation.setName("Aff");
         Forum forum = new Forum();
-        when(scopusAffiliationRepository.findAllByNameContains("uvt")).thenReturn(List.of(affiliation));
-        when(scopusVenueRepository.findAll()).thenReturn(List.of(forum));
+        when(scopusProjectionReadService.findAffiliationsByNameContains("uvt")).thenReturn(List.of(affiliation));
+        when(scopusProjectionReadService.findAllForums()).thenReturn(List.of(forum));
 
         assertEquals(1, facade.listAffiliationsByNameContains("uvt").size());
         assertEquals(1, facade.listScopusVenues().size());

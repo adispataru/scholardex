@@ -9,23 +9,18 @@ import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAffiliationRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
+import ro.uvt.pokedex.core.service.application.ScopusProjectionReadService;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
-import java.util.stream.Collectors;
 
 @Service
 @Data
 public class CacheService {
-    private final ScopusAuthorRepository scopusAuthorRepository;
-    private final ScopusAffiliationRepository scopusAffiliationRepository;
+    private final ScopusProjectionReadService scopusProjectionReadService;
     private final ConcurrentMap<String, Forum> forumCache;
-    private final ScopusForumRepository scopusForumRepository;
 
     private final CoreConferenceRankingRepository coreConferenceRankingRepository;
     private final GroupRepository groupRepository;
@@ -36,32 +31,28 @@ public class CacheService {
 
     @Autowired
     public CacheService(
-            ScopusForumRepository scopusForumRepository,
+            ScopusProjectionReadService scopusProjectionReadService,
             CoreConferenceRankingRepository coreConferenceRankingRepository,
-            ScopusAuthorRepository scopusAuthorRepository,
-            ScopusAffiliationRepository scopusAffiliationRepository,
             GroupRepository groupRepository
     ) {
-        this.scopusForumRepository = scopusForumRepository;
+        this.scopusProjectionReadService = scopusProjectionReadService;
         this.coreConferenceRankingRepository = coreConferenceRankingRepository;
-        this.scopusAffiliationRepository = scopusAffiliationRepository;
         this.groupRepository = groupRepository;
         this.forumCache = new ConcurrentHashMap<>();
-        this.scopusForumRepository.findAll().forEach(f -> {
+        this.scopusProjectionReadService.findAllForums().forEach(f -> {
             forumCache.put(f.getId(), f);
         });
 
         this.confRankingCache = new ConcurrentHashMap<>();
         confRankingCache.putAll(coreConferenceRankingRepository.findAll().stream().collect(Collectors.groupingBy(CoreConferenceRanking::getAcronym)));
-        this.scopusAuthorRepository = scopusAuthorRepository;
-        List<Author> all = scopusAuthorRepository.findAll();
+        List<Author> all = scopusProjectionReadService.findAllAuthors();
         groupRepository.findAll().forEach(group ->
                 group.getResearchers().forEach(researcher ->
                         universityAuthorIds.addAll(researcher.getScopusId())));
         all.forEach(a -> {
             authorCache.put(a.getId(), a);
         });
-        scopusAffiliationRepository.findAll().forEach(a -> {
+        scopusProjectionReadService.findAllAffiliations().forEach(a -> {
             affiliationCache.put(a.getAfid(), a);
         });
     }
@@ -109,14 +100,14 @@ public class CacheService {
     }
 
     public void saveAllAuthors() {
-        scopusAuthorRepository.saveAll(authorCache.values());
+        authorCache.values().forEach(scopusProjectionReadService::saveAuthor);
     }
 
     public void saveAllForums() {
-        scopusForumRepository.saveAll(forumCache.values());
+        forumCache.values().forEach(scopusProjectionReadService::saveForum);
     }
 
     public void saveAllAffiliations() {
-        scopusAffiliationRepository.saveAll(affiliationCache.values());
+        affiliationCache.values().forEach(scopusProjectionReadService::saveAffiliation);
     }
 }

@@ -13,8 +13,6 @@ import ro.uvt.pokedex.core.model.reporting.Group;
 import ro.uvt.pokedex.core.model.reporting.WoSExtractor;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.service.application.model.GroupEditViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupListViewModel;
 import ro.uvt.pokedex.core.service.reporting.CNFISReportExportService;
@@ -38,9 +36,7 @@ class GroupCnfisExportFacadeTest {
     @Mock
     private GroupManagementFacade groupManagementFacade;
     @Mock
-    private ScopusPublicationRepository scopusPublicationRepository;
-    @Mock
-    private ScopusForumRepository scopusForumRepository;
+    private ScopusProjectionReadService scopusProjectionReadService;
     @Mock
     private CNFISScoringService2025 cnfiSScoringService2025;
     @Mock
@@ -78,19 +74,18 @@ class GroupCnfisExportFacadeTest {
         when(groupManagementFacade.buildGroupEditView("g1"))
                 .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of()));
         when(groupManagementFacade.buildGroupListView()).thenReturn(groupListViewModel);
-        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1")))
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
                 .thenReturn(List.of(inRange, outOfRange));
         when(woSExtractor.findPublicationWosId(inRange)).thenReturn(inRange);
         when(cnfiSScoringService2025.getReport(eq(inRange), any())).thenReturn(new CNFISReport2025());
-        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum));
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
+        lenient().when(scopusProjectionReadService.findPublicationViewById(any())).thenReturn(Optional.empty());
 
         var result = facade.buildGroupCnfisExport("g1", 2021, 2024);
 
         assertTrue(result.isPresent());
         assertEquals(1, result.get().publications().size());
         assertEquals("p1", result.get().publications().get(0).getId());
-        verify(scopusPublicationRepository, times(1)).save(inRange);
-
         ArgumentCaptor<Domain> domainCaptor = ArgumentCaptor.forClass(Domain.class);
         verify(cnfiSScoringService2025).getReport(eq(inRange), domainCaptor.capture());
         assertEquals("ALL", domainCaptor.getValue().getName());
@@ -113,8 +108,8 @@ class GroupCnfisExportFacadeTest {
 
         Publication p1 = publication("p1", "f1", "2022-01-01");
         Publication p2 = publication("p2", "f2", "2023-01-01");
-        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of(p1));
-        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a2"))).thenReturn(List.of(p2));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(p1));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a2"))).thenReturn(List.of(p2));
         when(woSExtractor.findPublicationWosId(any(Publication.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(cnfiSScoringService2025.getReport(any(Publication.class), any(Domain.class))).thenReturn(new CNFISReport2025());
 
@@ -122,7 +117,8 @@ class GroupCnfisExportFacadeTest {
         f1.setId("f1");
         Forum f2 = new Forum();
         f2.setId("f2");
-        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(f1, f2));
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(f1, f2));
+        lenient().when(scopusProjectionReadService.findPublicationViewById(any())).thenReturn(Optional.empty());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), anyList(), eq(false)))
                 .thenReturn(new byte[]{1, 2, 3});
 
@@ -149,10 +145,11 @@ class GroupCnfisExportFacadeTest {
                 .thenReturn(new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), new Group()));
 
         Publication publication = publication("p1", "f1", "2022-01-01");
-        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
         when(woSExtractor.findPublicationWosId(any(Publication.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(cnfiSScoringService2025.getReport(any(Publication.class), any(Domain.class))).thenReturn(new CNFISReport2025());
-        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of());
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of());
+        lenient().when(scopusProjectionReadService.findPublicationViewById(any())).thenReturn(Optional.empty());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), anyList(), eq(true)))
                 .thenReturn(new byte[]{9, 9, 9});
 
@@ -189,8 +186,9 @@ class GroupCnfisExportFacadeTest {
         when(groupManagementFacade.buildGroupListView())
                 .thenReturn(new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), new Group()));
 
-        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of());
-        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of());
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of());
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of());
+        lenient().when(scopusProjectionReadService.findPublicationViewById(any())).thenReturn(Optional.empty());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false)))
                 .thenReturn(new byte[]{5, 5});
 
@@ -220,11 +218,12 @@ class GroupCnfisExportFacadeTest {
                 .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of()));
         when(groupManagementFacade.buildGroupListView())
                 .thenReturn(new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), new Group()));
-        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1")))
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
                 .thenReturn(List.of(start, end, out));
         when(woSExtractor.findPublicationWosId(any(Publication.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(cnfiSScoringService2025.getReport(any(Publication.class), any(Domain.class))).thenReturn(new CNFISReport2025());
-        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum));
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
+        lenient().when(scopusProjectionReadService.findPublicationViewById(any())).thenReturn(Optional.empty());
 
         var result = facade.buildGroupCnfisExport("g1", 2021, 2024);
 
@@ -250,19 +249,19 @@ class GroupCnfisExportFacadeTest {
                 .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of()));
         when(groupManagementFacade.buildGroupListView())
                 .thenReturn(new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), new Group()));
-        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1")))
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
                 .thenReturn(List.of(valid, invalid));
         when(woSExtractor.findPublicationWosId(any(Publication.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(cnfiSScoringService2025.getReport(any(Publication.class), any(Domain.class))).thenReturn(new CNFISReport2025());
-        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum));
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
+        lenient().when(scopusProjectionReadService.findPublicationViewById(any())).thenReturn(Optional.empty());
 
         var result = facade.buildGroupCnfisExport("g1", 2021, 2024);
 
         assertTrue(result.isPresent());
         assertEquals(1, result.get().publications().size());
         assertEquals("pValid", result.get().publications().getFirst().getId());
-        verify(scopusPublicationRepository).save(valid);
-        verify(scopusPublicationRepository, times(1)).save(any(Publication.class));
+        verify(scopusProjectionReadService, never()).savePublicationView(any());
     }
 
     private static Researcher researcher(String firstName, String lastName, List<String> scopusIds) {

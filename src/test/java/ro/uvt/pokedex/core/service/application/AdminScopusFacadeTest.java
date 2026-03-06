@@ -9,10 +9,6 @@ import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Citation;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusCitationRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,13 +21,7 @@ import static org.mockito.Mockito.when;
 class AdminScopusFacadeTest {
 
     @Mock
-    private ScopusPublicationRepository scopusPublicationRepository;
-    @Mock
-    private ScopusAuthorRepository scopusAuthorRepository;
-    @Mock
-    private ScopusCitationRepository scopusCitationRepository;
-    @Mock
-    private ScopusForumRepository scopusForumRepository;
+    private ScopusProjectionReadService scopusProjectionReadService;
 
     @InjectMocks
     private AdminScopusFacade facade;
@@ -40,8 +30,8 @@ class AdminScopusFacadeTest {
     void buildPublicationSearchViewReturnsPublicationsAndAuthorMap() {
         Publication publication = publication("p1", "f1", List.of("a1"), "2024-01-01", "Paper");
         Author author = author("a1", "Author One");
-        when(scopusPublicationRepository.findByTitleContainingIgnoreCaseOrderByCoverDateDesc("paper")).thenReturn(List.of(publication));
-        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author));
+        when(scopusProjectionReadService.findPublicationsByTitleContainingIgnoreCaseOrderByCoverDateDesc("paper")).thenReturn(List.of(publication));
+        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
 
         var vm = facade.buildPublicationSearchView("paper");
 
@@ -55,8 +45,8 @@ class AdminScopusFacadeTest {
         Publication p1 = publication("p1", "f1", List.of("a1"), "2024-01-01", "Beta");
         Publication p2 = publication("p2", "f1", List.of("a1"), "2024-01-01", "Alpha");
         Publication p3 = publication("p3", "f1", List.of("a1"), "bad-date", "Zeta");
-        when(scopusPublicationRepository.findByTitleContainingIgnoreCaseOrderByCoverDateDesc("paper")).thenReturn(List.of(p1, p3, p2));
-        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author("a1", "Author One")));
+        when(scopusProjectionReadService.findPublicationsByTitleContainingIgnoreCaseOrderByCoverDateDesc("paper")).thenReturn(List.of(p1, p3, p2));
+        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author("a1", "Author One")));
 
         var vm = facade.buildPublicationSearchView("paper");
 
@@ -65,7 +55,7 @@ class AdminScopusFacadeTest {
 
     @Test
     void buildPublicationCitationsViewReturnsEmptyWhenPublicationMissing() {
-        when(scopusPublicationRepository.findById("missing")).thenReturn(Optional.empty());
+        when(scopusProjectionReadService.findPublicationByAnyId("missing")).thenReturn(Optional.empty());
 
         var vm = facade.buildPublicationCitationsView("missing");
 
@@ -83,12 +73,12 @@ class AdminScopusFacadeTest {
         Forum forum1 = forum("f1", "Forum One");
         Forum forum2 = forum("f2", "Forum Two");
 
-        when(scopusPublicationRepository.findById("p1")).thenReturn(Optional.of(publication));
-        when(scopusCitationRepository.findAllByCitedId("p1")).thenReturn(List.of(citation));
-        when(scopusPublicationRepository.findAllByIdIn(List.of("p2"))).thenReturn(List.of(citing));
-        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author("a1", "A1"), author("a2", "A2")));
-        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum2));
-        when(scopusForumRepository.findById("f1")).thenReturn(Optional.of(forum1));
+        when(scopusProjectionReadService.findPublicationByAnyId("p1")).thenReturn(Optional.of(publication));
+        when(scopusProjectionReadService.findAllCitationsByCitedId("p1")).thenReturn(List.of(citation));
+        when(scopusProjectionReadService.findAllPublicationsByIdIn(List.of("p2"))).thenReturn(List.of(citing));
+        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author("a1", "A1"), author("a2", "A2")));
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum2));
+        when(scopusProjectionReadService.findForumById("f1")).thenReturn(Optional.of(forum1));
 
         var vm = facade.buildPublicationCitationsView("p1");
 
@@ -115,13 +105,13 @@ class AdminScopusFacadeTest {
         cit3.setCitedId("p1");
         cit3.setCitingId("c3");
 
-        when(scopusPublicationRepository.findById("p1")).thenReturn(Optional.of(publication));
-        when(scopusCitationRepository.findAllByCitedId("p1")).thenReturn(List.of(cit1, cit2, cit3));
-        when(scopusPublicationRepository.findAllByIdIn(List.of("c1", "c2", "c3"))).thenReturn(List.of(c1, c3, c2));
-        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(
+        when(scopusProjectionReadService.findPublicationByAnyId("p1")).thenReturn(Optional.of(publication));
+        when(scopusProjectionReadService.findAllCitationsByCitedId("p1")).thenReturn(List.of(cit1, cit2, cit3));
+        when(scopusProjectionReadService.findAllPublicationsByIdIn(List.of("c1", "c2", "c3"))).thenReturn(List.of(c1, c3, c2));
+        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(
                 author("a1", "A1"), author("a2", "A2"), author("a3", "A3"), author("a4", "A4")));
-        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum("f2", "Forum Two")));
-        when(scopusForumRepository.findById("f1")).thenReturn(Optional.of(forum("f1", "Forum One")));
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum("f2", "Forum Two")));
+        when(scopusProjectionReadService.findForumById("f1")).thenReturn(Optional.of(forum("f1", "Forum One")));
 
         var vm = facade.buildPublicationCitationsView("p1");
 

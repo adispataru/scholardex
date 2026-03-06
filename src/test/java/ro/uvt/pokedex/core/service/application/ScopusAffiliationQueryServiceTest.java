@@ -10,7 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationPageResponse;
-import ro.uvt.pokedex.core.model.scopus.Affiliation;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationSearchView;
 
 import java.util.List;
 
@@ -35,12 +35,12 @@ class ScopusAffiliationQueryServiceTest {
 
     @Test
     void searchBuildsPagedSortedQueryAndMapsResponse() {
-        Affiliation a = affiliation("1", "UVT", "Timisoara", "Romania");
-        Affiliation b = affiliation("2", "MIT", "Cambridge", "USA");
+        ScopusAffiliationSearchView a = affiliation("1", "UVT", "Timisoara", "Romania");
+        ScopusAffiliationSearchView b = affiliation("2", "MIT", "Cambridge", "USA");
 
-        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(Affiliation.class)))
+        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(ScopusAffiliationSearchView.class)))
                 .thenReturn(List.of(a, b));
-        when(mongoTemplate.count(org.mockito.ArgumentMatchers.any(Query.class), eq(Affiliation.class)))
+        when(mongoTemplate.count(org.mockito.ArgumentMatchers.any(Query.class), eq(ScopusAffiliationSearchView.class)))
                 .thenReturn(11L);
 
         ScopusAffiliationPageResponse result = service.search(1, 5, "name", "asc", null);
@@ -53,7 +53,7 @@ class ScopusAffiliationQueryServiceTest {
         assertEquals("1", result.items().get(0).afid());
 
         ArgumentCaptor<Query> findQueryCaptor = ArgumentCaptor.forClass(Query.class);
-        verify(mongoTemplate).find(findQueryCaptor.capture(), eq(Affiliation.class));
+        verify(mongoTemplate).find(findQueryCaptor.capture(), eq(ScopusAffiliationSearchView.class));
         Query findQuery = findQueryCaptor.getValue();
         assertEquals(5, findQuery.getLimit());
         assertEquals(5L, findQuery.getSkip());
@@ -63,15 +63,15 @@ class ScopusAffiliationQueryServiceTest {
 
     @Test
     void searchWithQueryAddsRegexCriteria() {
-        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(Affiliation.class)))
+        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(ScopusAffiliationSearchView.class)))
                 .thenReturn(List.of());
-        when(mongoTemplate.count(org.mockito.ArgumentMatchers.any(Query.class), eq(Affiliation.class)))
+        when(mongoTemplate.count(org.mockito.ArgumentMatchers.any(Query.class), eq(ScopusAffiliationSearchView.class)))
                 .thenReturn(0L);
 
         service.search(0, 25, "afid", "desc", "abc");
 
         ArgumentCaptor<Query> findQueryCaptor = ArgumentCaptor.forClass(Query.class);
-        verify(mongoTemplate).find(findQueryCaptor.capture(), eq(Affiliation.class));
+        verify(mongoTemplate).find(findQueryCaptor.capture(), eq(ScopusAffiliationSearchView.class));
         Query findQuery = findQueryCaptor.getValue();
         String queryJson = findQuery.getQueryObject().toJson();
         assertEquals(-1, findQuery.getSortObject().getInteger("_id"));
@@ -96,9 +96,9 @@ class ScopusAffiliationQueryServiceTest {
         assertThrows(IllegalArgumentException.class, () -> service.search(0, 25, "name", "asc", "x".repeat(101)));
     }
 
-    private Affiliation affiliation(String afid, String name, String city, String country) {
-        Affiliation affiliation = new Affiliation();
-        affiliation.setAfid(afid);
+    private ScopusAffiliationSearchView affiliation(String afid, String name, String city, String country) {
+        ScopusAffiliationSearchView affiliation = new ScopusAffiliationSearchView();
+        affiliation.setId(afid);
         affiliation.setName(name);
         affiliation.setCity(city);
         affiliation.setCountry(country);

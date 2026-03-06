@@ -22,10 +22,6 @@ import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
 import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndicatorRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusCitationRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
@@ -59,10 +55,7 @@ public class UserReportFacade {
     private final IndicatorRepository indicatorRepository;
     private final IndividualReportRepository individualReportRepository;
     private final ActivityInstanceRepository activityInstanceRepository;
-    private final ScopusAuthorRepository scopusAuthorRepository;
-    private final ScopusCitationRepository scopusCitationRepository;
-    private final ScopusPublicationRepository scopusPublicationRepository;
-    private final ScopusForumRepository scopusForumRepository;
+    private final ScopusProjectionReadService scopusProjectionReadService;
     private final DomainRepository domainRepository;
     private final ActivityReportingService activityReportingService;
     private final ScientificProductionService scientificProductionService;
@@ -103,15 +96,15 @@ public class UserReportFacade {
 
         Researcher researcher = researcherOpt.get();
         Indicator indicator = indicatorOpt.get();
-        List<Author> authors = scopusAuthorRepository.findByIdIn(researcher.getScopusId());
+        List<Author> authors = findAuthorsByIds(researcher.getScopusId());
         if (authors.isEmpty()) {
             return Optional.empty();
         }
 
         List<String> authorIds = authors.stream().map(Author::getId).toList();
-        List<Publication> publications = scopusPublicationRepository.findAllByAuthorsIn(authorIds);
+        List<Publication> publications = findPublicationsByAuthorIds(authorIds);
         Set<String> forumKeys = publications.stream().map(Publication::getForum).collect(Collectors.toSet());
-        Map<String, Forum> forumMap = scopusForumRepository.findByIdIn(forumKeys).stream()
+        Map<String, Forum> forumMap = findForumsByIds(forumKeys).stream()
                 .collect(Collectors.toMap(Forum::getId, forum -> forum));
 
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
@@ -142,7 +135,7 @@ public class UserReportFacade {
         }
 
         List<String> authorIds = new ArrayList<>(researcherOpt.get().getScopusId());
-        List<Publication> publications = scopusPublicationRepository.findAllByAuthorsIn(authorIds);
+        List<Publication> publications = findPublicationsByAuthorIds(authorIds);
         publications = publications.stream().filter(publication -> {
             return PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)
                     .map(pubYear -> pubYear >= startYear && pubYear <= endYear)
@@ -153,12 +146,12 @@ public class UserReportFacade {
         List<CNFISReport2025> cnfisReports = new ArrayList<>();
         for (Publication publication : publications) {
             Publication enrichedPublication = woSExtractor.findPublicationWosId(publication);
-            scopusPublicationRepository.save(enrichedPublication);
+            persistWosEnrichment(enrichedPublication);
             cnfisReports.add(cnfiSScoringService2025.getReport(enrichedPublication, domain));
         }
 
         Set<String> forumKeys = publications.stream().map(Publication::getForum).collect(Collectors.toSet());
-        Map<String, Forum> forumMap = scopusForumRepository.findByIdIn(forumKeys).stream()
+        Map<String, Forum> forumMap = findForumsByIds(forumKeys).stream()
                 .collect(Collectors.toMap(Forum::getId, forum -> forum));
 
         byte[] workbookBytes = exportService.generateCNFISReportWorkbook(publications, cnfisReports, forumMap, authorIds, false);
@@ -181,15 +174,15 @@ public class UserReportFacade {
         }
 
         Researcher researcher = researcherOpt.get();
-        List<Author> authors = scopusAuthorRepository.findByIdIn(researcher.getScopusId());
+        List<Author> authors = findAuthorsByIds(researcher.getScopusId());
         if (authors.isEmpty()) {
             return UserWorkbookExportResult.notFound();
         }
 
         List<String> authorIds = authors.stream().map(Author::getId).toList();
-        List<Publication> publications = scopusPublicationRepository.findAllByAuthorsIn(authorIds);
+        List<Publication> publications = findPublicationsByAuthorIds(authorIds);
         Set<String> forumKeys = publications.stream().map(Publication::getForum).collect(Collectors.toSet());
-        Map<String, Forum> forumMap = scopusForumRepository.findByIdIn(forumKeys).stream()
+        Map<String, Forum> forumMap = findForumsByIds(forumKeys).stream()
                 .collect(Collectors.toMap(Forum::getId, forum -> forum));
 
         ClassPathResource resource = new ClassPathResource("/data/templates/Anexa5-Fisa_articole_brevete.xlsx");
@@ -257,13 +250,13 @@ public class UserReportFacade {
             return handleActivities(indicator, activities, attrs);
         }
 
-        List<Author> authors = scopusAuthorRepository.findByIdIn(researcher.getScopusId());
+        List<Author> authors = findAuthorsByIds(researcher.getScopusId());
         List<String> authorIds = authors.stream().map(Author::getId).toList();
         if (authors.isEmpty()) {
             return new UserIndicatorApplyViewModel("user/indicators", attrs);
         }
 
-        List<Publication> publications = scopusPublicationRepository.findAllByAuthorsIn(authorIds);
+        List<Publication> publications = findPublicationsByAuthorIds(authorIds);
         if (indicator.getOutputType().toString().contains("PUBLICATIONS")) {
             return handlePublications(indicator, authors, publications, attrs);
         }
@@ -295,13 +288,13 @@ public class UserReportFacade {
             return new UserIndividualReportViewModel("redirect:/error", attrs);
         }
 
-        List<Author> authors = scopusAuthorRepository.findByIdIn(researcher.getScopusId());
+        List<Author> authors = findAuthorsByIds(researcher.getScopusId());
         if (authors.isEmpty()) {
             return new UserIndividualReportViewModel("redirect:/error", attrs);
         }
 
         List<String> authorIds = authors.stream().map(Author::getId).toList();
-        List<Publication> publications = scopusPublicationRepository.findAllByAuthorsIn(authorIds);
+        List<Publication> publications = findPublicationsByAuthorIds(authorIds);
         if (!"ANY".equals(report.getIndividualAffiliation().getName())) {
             publications = publications.stream().filter(p -> report.getIndividualAffiliation().getScopusAffiliations().stream().anyMatch(aff -> p.getAffiliations().contains(aff.getAfid()))).collect(Collectors.toList());
         }
@@ -360,7 +353,7 @@ public class UserReportFacade {
 
         Set<String> forumKeys = new HashSet<>();
         filteredPublications.forEach(p -> forumKeys.add(p.getForum()));
-        List<Forum> forums = scopusForumRepository.findByIdIn(forumKeys);
+        List<Forum> forums = findForumsByIds(forumKeys);
         Map<String, Forum> forumMap = new HashMap<>();
         forums.forEach(f -> forumMap.put(f.getId(), f));
 
@@ -403,9 +396,9 @@ public class UserReportFacade {
         Map<String, Publication> citationsMap = new HashMap<>();
 
         List<String> pubIds = publications.stream().map(Publication::getId).toList();
-        List<Citation> allCitations = scopusCitationRepository.findAllByCitedIdIn(pubIds);
+        List<Citation> allCitations = findCitationsByCitedIds(pubIds);
         List<String> allCitationsIds = allCitations.stream().map(Citation::getCitingId).collect(Collectors.toList());
-        List<Publication> allByEidIn = scopusPublicationRepository.findAllByIdIn(allCitationsIds);
+        List<Publication> allByEidIn = findPublicationsByIds(allCitationsIds);
         Map<String, List<Publication>> citationsMapRetrieved = allByEidIn.stream().collect(Collectors.groupingBy(Publication::getId));
 
         Set<String> forumKeys = new HashSet<>();
@@ -432,7 +425,7 @@ public class UserReportFacade {
         applyFinalSelector(indicator, scores);
         double total = scores.values().stream().mapToDouble(s -> s.get("total").getAuthorScore()).sum();
 
-        List<Forum> forums = scopusForumRepository.findByIdIn(forumKeys);
+        List<Forum> forums = findForumsByIds(forumKeys);
         Map<String, Forum> forumMap = new HashMap<>();
         forums.forEach(f -> forumMap.put(f.getId(), f));
         attrs.put("forumMap", forumMap);
@@ -471,9 +464,9 @@ public class UserReportFacade {
         boolean excludeSelf = indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF);
 
         List<String> pubIds = publications.stream().map(Publication::getId).toList();
-        List<Citation> allCitations = scopusCitationRepository.findAllByCitedIdIn(pubIds);
+        List<Citation> allCitations = findCitationsByCitedIds(pubIds);
         List<String> citationIds = allCitations.stream().map(Citation::getCitingId).toList();
-        List<Publication> allCitationsPub = scopusPublicationRepository.findAllByIdIn(citationIds);
+        List<Publication> allCitationsPub = findPublicationsByIds(citationIds);
         Map<String, List<Publication>> pubCitationsMap = allCitationsPub.stream().collect(Collectors.groupingBy(Publication::getId));
         Map<String, Map<String, Score>> scores = new HashMap<>();
 
@@ -560,14 +553,14 @@ public class UserReportFacade {
         int rowIdx = sheet.getLastRowNum();
         for (Publication publication : publications) {
             sheet.createRow(++rowIdx);
-            List<Citation> citations = scopusCitationRepository.findAllByCitedId(publication.getId());
+            List<Citation> citations = findCitationsByCitedId(publication.getId());
             List<String> citingIds = citations.stream().map(Citation::getCitingId).collect(Collectors.toList());
-            List<Publication> citingPublications = scopusPublicationRepository.findAllByIdIn(citingIds);
+            List<Publication> citingPublications = findPublicationsByIds(citingIds);
 
             Set<String> forumKeys = citingPublications.stream().map(Publication::getForum).collect(Collectors.toSet());
             Set<String> authorIds = citingPublications.stream().map(Publication::getAuthors).flatMap(Collection::stream).collect(Collectors.toSet());
-            List<Forum> forums = scopusForumRepository.findByIdIn(forumKeys);
-            scopusAuthorRepository.findByIdIn(authorIds);
+            List<Forum> forums = findForumsByIds(forumKeys);
+            findAuthorsByIds(authorIds);
             Map<String, Forum> forumMap2 = forums.stream().collect(Collectors.toMap(Forum::getId, forum -> forum));
             forumMap.putAll(forumMap2);
 
@@ -650,5 +643,39 @@ public class UserReportFacade {
                 scores.get(key).put("total", score);
             }
         }
+    }
+
+    private List<Author> findAuthorsByIds(Collection<String> authorIds) {
+        return scopusProjectionReadService.findAuthorsByIdIn(authorIds);
+    }
+
+    private List<Publication> findPublicationsByAuthorIds(Collection<String> authorIds) {
+        return scopusProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
+    }
+
+    private List<Publication> findPublicationsByIds(Collection<String> publicationIds) {
+        return scopusProjectionReadService.findAllPublicationsByIdIn(publicationIds);
+    }
+
+    private List<Citation> findCitationsByCitedIds(Collection<String> publicationIds) {
+        return scopusProjectionReadService.findAllCitationsByCitedIdIn(publicationIds);
+    }
+
+    private List<Citation> findCitationsByCitedId(String publicationId) {
+        return scopusProjectionReadService.findAllCitationsByCitedId(publicationId);
+    }
+
+    private List<Forum> findForumsByIds(Collection<String> forumIds) {
+        return scopusProjectionReadService.findForumsByIdIn(forumIds);
+    }
+
+    private void persistWosEnrichment(Publication enrichedPublication) {
+        scopusProjectionReadService.findPublicationViewById(enrichedPublication.getId())
+                .ifPresent(row -> {
+                    row.setWosId(enrichedPublication.getWosId());
+                    row.setWosLineage("wos-extractor");
+                    row.setUpdatedAt(java.time.Instant.now());
+                    scopusProjectionReadService.savePublicationView(row);
+                });
     }
 }

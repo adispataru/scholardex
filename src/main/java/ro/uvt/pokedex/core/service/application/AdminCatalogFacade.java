@@ -21,10 +21,6 @@ import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndicatorRepository;
 import ro.uvt.pokedex.core.repository.reporting.RankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAffiliationRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized;
 
 import java.util.ArrayList;
@@ -37,10 +33,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class AdminCatalogFacade {
 
-    private final ScopusForumRepository scopusVenueRepository;
-    private final ScopusAuthorRepository scopusAuthorRepository;
-    private final ScopusAffiliationRepository scopusAffiliationRepository;
-    private final ScopusPublicationRepository scopusPublicationRepository;
+    private final ScopusProjectionReadService scopusProjectionReadService;
     private final ArtisticEventRepository artisticEventRepository;
     private final RankingRepository rankingRepository;
     private final CoreConferenceRankingRepository coreConferenceRankingRepository;
@@ -55,13 +48,13 @@ public class AdminCatalogFacade {
     }
 
     public List<Affiliation> listAffiliationsByNameContains(String afname) {
-        List<Affiliation> affiliations = new ArrayList<>(scopusAffiliationRepository.findAllByNameContains(afname));
+        List<Affiliation> affiliations = new ArrayList<>(scopusProjectionReadService.findAffiliationsByNameContains(afname));
         affiliations.sort(java.util.Comparator.comparing(Affiliation::getName));
         return affiliations;
     }
 
     public List<Affiliation> listAffiliationsByCountry(String country) {
-        List<Affiliation> affiliations = new ArrayList<>(scopusAffiliationRepository.findAllByCountry(country));
+        List<Affiliation> affiliations = new ArrayList<>(scopusProjectionReadService.findAffiliationsByCountry(country));
         affiliations.sort(java.util.Comparator.comparing(Affiliation::getName));
         return affiliations;
     }
@@ -134,45 +127,43 @@ public class AdminCatalogFacade {
     }
 
     public List<Forum> listScopusVenues() {
-        return scopusVenueRepository.findAll();
+        return scopusProjectionReadService.findAllForums();
     }
 
     public Optional<Forum> findScopusVenueById(String id) {
-        return scopusVenueRepository.findById(id);
+        return scopusProjectionReadService.findForumById(id);
     }
 
     public Forum saveScopusVenue(Forum forum) {
-        return scopusVenueRepository.save(forum);
+        return scopusProjectionReadService.saveForum(forum);
     }
 
     public List<Author> listScopusAuthorsByAffiliation(String affiliationId) {
-        return scopusAffiliationRepository.findById(affiliationId)
-                .map(scopusAuthorRepository::findAllByAffiliationsContaining)
-                .orElse(Collections.emptyList());
+        return scopusProjectionReadService.findAuthorsByAffiliationId(affiliationId);
     }
 
     public Optional<Author> findScopusAuthorById(String id) {
-        return scopusAuthorRepository.findById(id);
+        return scopusProjectionReadService.findAuthorById(id);
     }
 
     public List<Publication> listPublicationsByAuthorId(String authorId) {
-        return scopusPublicationRepository.findAllByAuthorsContaining(authorId);
+        return scopusProjectionReadService.findAllPublicationsByAuthorsContaining(authorId);
     }
 
     public Author saveScopusAuthor(Author author) {
-        return scopusAuthorRepository.save(author);
+        return scopusProjectionReadService.saveAuthor(author);
     }
 
     public List<Affiliation> listScopusAffiliations() {
-        return scopusAffiliationRepository.findAll();
+        return scopusProjectionReadService.findAllAffiliations();
     }
 
     public Optional<Affiliation> findScopusAffiliationById(String id) {
-        return scopusAffiliationRepository.findById(id);
+        return scopusProjectionReadService.findAffiliationById(id);
     }
 
     public Affiliation saveScopusAffiliation(Affiliation affiliation) {
-        return scopusAffiliationRepository.save(affiliation);
+        return scopusProjectionReadService.saveAffiliation(affiliation);
     }
 
     public List<ArtisticEvent> listArtisticEvents() {
@@ -190,4 +181,5 @@ public class AdminCatalogFacade {
     public Optional<CoreConferenceRanking> findCoreRankingById(String id) {
         return coreConferenceRankingRepository.findById(id);
     }
+
 }

@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.service.application;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.mockito.InjectMocks;
@@ -21,10 +22,6 @@ import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
 import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndicatorRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusCitationRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
@@ -46,7 +43,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -63,13 +62,7 @@ class UserReportFacadeTest {
     @Mock
     private ActivityInstanceRepository activityInstanceRepository;
     @Mock
-    private ScopusAuthorRepository scopusAuthorRepository;
-    @Mock
-    private ScopusCitationRepository scopusCitationRepository;
-    @Mock
-    private ScopusPublicationRepository scopusPublicationRepository;
-    @Mock
-    private ScopusForumRepository scopusForumRepository;
+    private ScopusProjectionReadService scopusProjectionReadService;
     @Mock
     private DomainRepository domainRepository;
     @Mock
@@ -87,6 +80,11 @@ class UserReportFacadeTest {
 
     @InjectMocks
     private UserReportFacade facade;
+
+    @BeforeEach
+    void defaults() {
+        lenient().when(scopusProjectionReadService.findPublicationViewById(any())).thenReturn(Optional.empty());
+    }
 
     @Test
     void buildIndicatorsViewReturnsRepositoryValues() {
@@ -174,10 +172,10 @@ class UserReportFacadeTest {
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
         when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
-        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
         when(woSExtractor.findPublicationWosId(publication)).thenReturn(publication);
-        when(scopusForumRepository.findByIdIn(any())).thenReturn(List.of());
+        when(scopusProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false)))
                 .thenReturn(new byte[]{1, 2});
 
@@ -222,10 +220,10 @@ class UserReportFacadeTest {
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
         when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
-        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of(pStart, pIn, pEnd, pOut));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(pStart, pIn, pEnd, pOut));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
         when(woSExtractor.findPublicationWosId(any(Publication.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(scopusForumRepository.findByIdIn(any())).thenReturn(List.of());
+        when(scopusProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false)))
                 .thenReturn(new byte[]{1});
 
@@ -233,7 +231,7 @@ class UserReportFacadeTest {
 
         assertEquals(UserWorkbookExportStatus.OK, result.status());
         // only in-range publications should be enriched/saved (2021..2024 inclusive)
-        org.mockito.Mockito.verify(scopusPublicationRepository, org.mockito.Mockito.times(3)).save(any(Publication.class));
+        verify(scopusProjectionReadService, never()).savePublicationView(any());
     }
 
     @Test
@@ -248,7 +246,7 @@ class UserReportFacadeTest {
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
         when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
-        when(scopusAuthorRepository.findByIdIn(List.of("a1"))).thenReturn(List.of());
+        when(scopusProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of());
 
         var result = facade.buildLegacyUserCnfisWorkbookExport("user@uvt.ro");
 
@@ -301,9 +299,9 @@ class UserReportFacadeTest {
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
         when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
         when(indicatorRepository.findById("i1")).thenReturn(Optional.of(indicator));
-        when(scopusAuthorRepository.findByIdIn(List.of("a1"))).thenReturn(List.of(author));
-        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
-        when(scopusForumRepository.findByIdIn(any())).thenReturn(List.of(forum));
+        when(scopusProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
+        when(scopusProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of(forum));
         when(scientificProductionService.calculateScientificProductionScore(anyList(), eq(indicator)))
                 .thenReturn(Map.of("Paper One", publicationScore));
         when(cacheService.getAuthorCache()).thenReturn(Map.of("a1", author));
@@ -359,9 +357,9 @@ class UserReportFacadeTest {
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
         when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
         when(indicatorRepository.findById("i1")).thenReturn(Optional.of(indicator));
-        when(scopusAuthorRepository.findByIdIn(List.of("a1"))).thenReturn(List.of(author));
-        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
-        when(scopusForumRepository.findByIdIn(any())).thenReturn(List.of(forum));
+        when(scopusProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
+        when(scopusProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of(forum));
         when(scientificProductionService.calculateScientificProductionScore(anyList(), eq(indicator)))
                 .thenReturn(Map.of("Paper One", publicationScore));
         when(cacheService.getAuthorCache()).thenReturn(Map.of("a1", author));
@@ -403,11 +401,11 @@ class UserReportFacadeTest {
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
         when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
-        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of(pIn, pOut));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(pIn, pOut));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
         when(woSExtractor.findPublicationWosId(any(Publication.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(cnfiSScoringService2025.getReport(any(Publication.class), eq(allDomain))).thenReturn(report);
-        when(scopusForumRepository.findByIdIn(any())).thenReturn(List.of());
+        when(scopusProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false)))
                 .thenReturn(new byte[]{7});
 
@@ -450,19 +448,18 @@ class UserReportFacadeTest {
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
         when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
-        when(scopusPublicationRepository.findAllByAuthorsIn(List.of("a1"))).thenReturn(List.of(valid, invalid));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(valid, invalid));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
         when(woSExtractor.findPublicationWosId(any(Publication.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(cnfiSScoringService2025.getReport(any(Publication.class), eq(allDomain))).thenReturn(report);
-        when(scopusForumRepository.findByIdIn(any())).thenReturn(List.of());
+        when(scopusProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false)))
                 .thenReturn(new byte[]{7});
 
         var result = facade.buildUserCnfisWorkbookExport("user@uvt.ro", 2021, 2024);
 
         assertEquals(UserWorkbookExportStatus.OK, result.status());
-        verify(scopusPublicationRepository).save(valid);
-        verify(scopusPublicationRepository, org.mockito.Mockito.times(1)).save(any(Publication.class));
+        verify(scopusProjectionReadService, never()).savePublicationView(any());
 
         ArgumentCaptor<List<Publication>> publicationCaptor = ArgumentCaptor.forClass(List.class);
         verify(exportService).generateCNFISReportWorkbook(publicationCaptor.capture(), anyList(), anyMap(), eq(List.of("a1")), eq(false));

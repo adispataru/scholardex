@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Initialization</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+<div id="wrapper">
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="~{fragments :: admin-sidebar('initialization')}"></div>
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar}"></div>
+            <div class="container-fluid">
+                <h1 class="h3 mb-2 text-gray-800">Initialization</h1>
+                <p class="mb-4">Canonical big-bang operations for WoS and Scopus. Execute steps in order or run full flows.</p>
+
+                <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+                <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">WoS Initialization</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small">Run canonical WoS pipeline actions. For migration, use dry-run first then full-run.</p>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>1. Ensure indexes</div>
+                            <form th:action="@{/admin/initialization/wos/ensureIndexes}" method="post">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
+                            </form>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>2. Rebuild projections</div>
+                            <form th:action="@{/admin/initialization/wos/rebuildProjections}" method="post">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
+                            </form>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>3. Run big-bang migration</div>
+                            <form th:action="@{/admin/initialization/wos/runBigBangMigration}" method="post" class="d-flex align-items-center">
+                                <input type="text"
+                                       name="sourceVersion"
+                                       class="form-control form-control-sm mr-2"
+                                       style="width: 220px;"
+                                       placeholder="Optional sourceVersion">
+                                <button type="submit" name="dryRun" value="true" class="btn btn-outline-primary btn-sm mr-2">Dry run</button>
+                                <button type="submit" name="dryRun" value="false" class="btn btn-primary btn-sm">Full run</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Scopus Initialization</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small">Ingestion source uses configured <code>scopus.data.file</code>. Steps are synchronous and deterministic.</p>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>1. Ingest events</div>
+                            <form th:action="@{/admin/initialization/scopus/ingest}" method="post">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
+                            </form>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>2. Build facts</div>
+                            <form th:action="@{/admin/initialization/scopus/buildFacts}" method="post">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
+                            </form>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>3. Build projections/views</div>
+                            <form th:action="@{/admin/initialization/scopus/buildProjections}" method="post">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
+                            </form>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>4. Ensure canonical indexes</div>
+                            <form th:action="@{/admin/initialization/scopus/ensureIndexes}" method="post">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
+                            </form>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>5. Run full big-bang</div>
+                            <form th:action="@{/admin/initialization/scopus/runBigBang}" method="post">
+                                <button type="submit" class="btn btn-primary btn-sm">Run full</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+
+    <a class="scroll-to-top rounded" href="#page-top">
+        <i class="fa-solid fa-angle-up"></i>
+    </a>
+</div>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+</body>
+</html>

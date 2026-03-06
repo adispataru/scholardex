@@ -9,7 +9,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationListItemResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationPageResponse;
-import ro.uvt.pokedex.core.model.scopus.Affiliation;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationSearchView;
 
 import java.util.List;
 import java.util.Locale;
@@ -39,8 +39,8 @@ public class ScopusAffiliationQueryService {
             ));
         }
 
-        List<Affiliation> rows = mongoTemplate.find(query, Affiliation.class);
-        long totalItems = mongoTemplate.count(Query.of(query).limit(-1).skip(-1), Affiliation.class);
+        List<ScopusAffiliationSearchView> rows = mongoTemplate.find(query, ScopusAffiliationSearchView.class);
+        long totalItems = mongoTemplate.count(Query.of(query).limit(-1).skip(-1), ScopusAffiliationSearchView.class);
         int totalPages = (int) Math.ceil(totalItems / (double) size);
 
         List<ScopusAffiliationListItemResponse> items = rows.stream()
@@ -49,9 +49,9 @@ public class ScopusAffiliationQueryService {
         return new ScopusAffiliationPageResponse(items, page, size, totalItems, totalPages);
     }
 
-    private ScopusAffiliationListItemResponse toListItem(Affiliation affiliation) {
+    private ScopusAffiliationListItemResponse toListItem(ScopusAffiliationSearchView affiliation) {
         return new ScopusAffiliationListItemResponse(
-                affiliation.getAfid(),
+                affiliation.getId(),
                 affiliation.getName(),
                 affiliation.getCity(),
                 affiliation.getCountry()

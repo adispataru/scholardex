@@ -14,10 +14,6 @@ import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.repository.InstitutionRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusCitationRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 
 import java.util.List;
 import java.util.Optional;
@@ -32,13 +28,7 @@ class AdminInstitutionReportFacadeTest {
     @Mock
     private InstitutionRepository institutionRepository;
     @Mock
-    private ScopusPublicationRepository scopusPublicationRepository;
-    @Mock
-    private ScopusCitationRepository scopusCitationRepository;
-    @Mock
-    private ScopusAuthorRepository scopusAuthorRepository;
-    @Mock
-    private ScopusForumRepository scopusForumRepository;
+    private ScopusProjectionReadService scopusProjectionReadService;
     @Mock
     private IndividualReportRepository individualReportRepository;
 
@@ -64,9 +54,9 @@ class AdminInstitutionReportFacadeTest {
         report.setTitle("R1");
 
         when(institutionRepository.findById("inst")).thenReturn(Optional.of(institution));
-        when(scopusPublicationRepository.findAllByAffiliationsContaining("af1")).thenReturn(List.of(publication));
-        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author));
-        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum));
+        when(scopusProjectionReadService.findAllPublicationsByAffiliationsContaining("af1")).thenReturn(List.of(publication));
+        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
         when(individualReportRepository.findAll()).thenReturn(List.of(report));
 
         var result = facade.buildInstitutionPublicationsView("inst");
@@ -89,9 +79,9 @@ class AdminInstitutionReportFacadeTest {
         Forum forum = forum("f1", "Forum One");
 
         when(institutionRepository.findById("inst")).thenReturn(Optional.of(institution));
-        when(scopusPublicationRepository.findAllByAffiliationsContaining("af1")).thenReturn(List.of(validPublication, invalidPublication));
-        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author));
-        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum));
+        when(scopusProjectionReadService.findAllPublicationsByAffiliationsContaining("af1")).thenReturn(List.of(validPublication, invalidPublication));
+        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
         when(individualReportRepository.findAll()).thenReturn(List.of());
 
         var result = facade.buildInstitutionPublicationsView("inst");
@@ -113,11 +103,11 @@ class AdminInstitutionReportFacadeTest {
         citation.setCitingId("p2");
 
         when(institutionRepository.findById("inst")).thenReturn(Optional.of(institution));
-        when(scopusPublicationRepository.findAllByAffiliationsContaining("af1")).thenReturn(List.of(cited));
-        when(scopusCitationRepository.findAllByCitedIdIn(List.of("p1"))).thenReturn(List.of(citation));
-        when(scopusPublicationRepository.findById("p2")).thenReturn(Optional.of(citing));
-        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author("a1", "A1"), author("a2", "A2")));
-        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum("f1", "F1"), forum("f2", "F2")));
+        when(scopusProjectionReadService.findAllPublicationsByAffiliationsContaining("af1")).thenReturn(List.of(cited));
+        when(scopusProjectionReadService.findAllCitationsByCitedIdIn(List.of("p1"))).thenReturn(List.of(citation));
+        when(scopusProjectionReadService.findPublicationByAnyId("p2")).thenReturn(Optional.of(citing));
+        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author("a1", "A1"), author("a2", "A2")));
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum("f1", "F1"), forum("f2", "F2")));
 
         var result = facade.buildInstitutionPublicationsExport("inst");
 
@@ -139,9 +129,9 @@ class AdminInstitutionReportFacadeTest {
         Forum forum = forum("f1", "Forum One");
 
         when(institutionRepository.findById("inst")).thenReturn(Optional.of(institution));
-        when(scopusPublicationRepository.findAllByAffiliationsContaining("af1")).thenReturn(List.of(p1, p3, p2));
-        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author));
-        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum));
+        when(scopusProjectionReadService.findAllPublicationsByAffiliationsContaining("af1")).thenReturn(List.of(p1, p3, p2));
+        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
         when(individualReportRepository.findAll()).thenReturn(List.of());
 
         var result = facade.buildInstitutionPublicationsView("inst");
@@ -162,10 +152,10 @@ class AdminInstitutionReportFacadeTest {
 
         Publication shared = publication("p-shared", "e1", "f1", "2023-01-01", List.of("a1"), "Shared");
         when(institutionRepository.findById("inst")).thenReturn(Optional.of(institution));
-        when(scopusPublicationRepository.findAllByAffiliationsContaining("af1")).thenReturn(List.of(shared));
-        when(scopusPublicationRepository.findAllByAffiliationsContaining("af2")).thenReturn(List.of(shared));
-        when(scopusAuthorRepository.findByIdIn(anyCollection())).thenReturn(List.of(author("a1", "A1")));
-        when(scopusForumRepository.findByIdIn(anyCollection())).thenReturn(List.of(forum("f1", "F1")));
+        when(scopusProjectionReadService.findAllPublicationsByAffiliationsContaining("af1")).thenReturn(List.of(shared));
+        when(scopusProjectionReadService.findAllPublicationsByAffiliationsContaining("af2")).thenReturn(List.of(shared));
+        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author("a1", "A1")));
+        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum("f1", "F1")));
         when(individualReportRepository.findAll()).thenReturn(List.of());
 
         var result = facade.buildInstitutionPublicationsView("inst");

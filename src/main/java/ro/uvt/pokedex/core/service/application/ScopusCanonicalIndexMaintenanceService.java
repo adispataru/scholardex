@@ -1,0 +1,312 @@
+package ro.uvt.pokedex.core.service.application;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.index.Index;
+import org.springframework.data.mongodb.core.index.IndexField;
+import org.springframework.data.mongodb.core.index.IndexInfo;
+import org.springframework.data.mongodb.core.index.IndexOperations;
+import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationSearchView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorSearchView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumSearchView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusFundingFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEvent;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+@Service
+public class ScopusCanonicalIndexMaintenanceService {
+
+    private static final Logger log = LoggerFactory.getLogger(ScopusCanonicalIndexMaintenanceService.class);
+
+    static final String IDX_IMPORT_UNIQ = "uniq_scopus_import_event_idempotence";
+    static final String IDX_IMPORT_BATCH_CORRELATION = "idx_scopus_import_batch_correlation";
+
+    static final String IDX_PUBLICATION_UNIQ_EID = "uniq_scopus_publication_fact_eid";
+    static final String IDX_PUBLICATION_AUTHOR = "idx_scopus_publication_author";
+    static final String IDX_PUBLICATION_AFFILIATION = "idx_scopus_publication_affiliation";
+    static final String IDX_PUBLICATION_FORUM_COVERDATE = "idx_scopus_publication_forum_coverdate";
+
+    static final String IDX_CITATION_UNIQ_EDGE = "uniq_scopus_citation_fact_edge";
+    static final String IDX_CITATION_CITED = "idx_scopus_citation_cited";
+
+    static final String IDX_FORUM_UNIQ_SOURCE_ID = "uniq_scopus_forum_fact_source_id";
+    static final String IDX_FORUM_NAME = "idx_scopus_forum_name";
+    static final String IDX_FORUM_ISSN = "idx_scopus_forum_issn";
+    static final String IDX_FORUM_EISSN = "idx_scopus_forum_eissn";
+    static final String IDX_FORUM_AGG = "idx_scopus_forum_agg";
+
+    static final String IDX_AUTHOR_UNIQ = "uniq_scopus_author_fact_author_id";
+    static final String IDX_AUTHOR_NAME = "idx_scopus_author_name";
+    static final String IDX_AUTHOR_AFFILIATIONS = "idx_scopus_author_affiliations";
+
+    static final String IDX_AFFILIATION_UNIQ = "uniq_scopus_affiliation_fact_afid";
+    static final String IDX_AFFILIATION_NAME = "idx_scopus_affiliation_name";
+    static final String IDX_AFFILIATION_CITY = "idx_scopus_affiliation_city";
+    static final String IDX_AFFILIATION_COUNTRY = "idx_scopus_affiliation_country";
+
+    static final String IDX_FUNDING_UNIQ = "uniq_scopus_funding_fact_key";
+    static final String IDX_FUNDING_SPONSOR = "idx_scopus_funding_sponsor";
+
+    static final String IDX_FORUM_VIEW_NAME = "idx_scopus_forum_view_name";
+    static final String IDX_FORUM_VIEW_ISSN = "idx_scopus_forum_view_issn";
+    static final String IDX_FORUM_VIEW_EISSN = "idx_scopus_forum_view_eissn";
+    static final String IDX_FORUM_VIEW_AGG = "idx_scopus_forum_view_agg";
+
+    static final String IDX_AUTHOR_VIEW_NAME = "idx_scopus_author_view_name";
+    static final String IDX_AUTHOR_VIEW_AFFILIATIONS = "idx_scopus_author_view_affiliations";
+
+    static final String IDX_AFFILIATION_VIEW_NAME = "idx_scopus_affiliation_view_name";
+    static final String IDX_AFFILIATION_VIEW_CITY = "idx_scopus_affiliation_view_city";
+    static final String IDX_AFFILIATION_VIEW_COUNTRY = "idx_scopus_affiliation_view_country";
+    static final String IDX_AFFILIATION_VIEW_AFID = "idx_scopus_affiliation_view_afid";
+
+    static final String IDX_MERGED_PUBLICATION_EID = "idx_scholardex_publication_eid";
+    static final String IDX_MERGED_PUBLICATION_TITLE = "idx_scholardex_publication_title";
+    static final String IDX_MERGED_PUBLICATION_COVERDATE = "idx_scholardex_publication_coverdate";
+    static final String IDX_MERGED_PUBLICATION_AUTHORS = "idx_scholardex_publication_authors";
+    static final String IDX_MERGED_PUBLICATION_AFFILIATIONS = "idx_scholardex_publication_affiliations";
+    static final String IDX_MERGED_PUBLICATION_FORUM = "idx_scholardex_publication_forum";
+    static final String IDX_MERGED_PUBLICATION_WOS = "idx_scholardex_publication_wosid";
+    static final String IDX_MERGED_PUBLICATION_GOOGLE_SCHOLAR = "idx_scholardex_publication_google_scholar_id";
+
+    private final MongoTemplate mongoTemplate;
+
+    public ScopusCanonicalIndexMaintenanceService(MongoTemplate mongoTemplate) {
+        this.mongoTemplate = mongoTemplate;
+    }
+
+    public ScopusCanonicalIndexEnsureResult ensureIndexes() {
+        List<String> created = new ArrayList<>();
+        List<String> present = new ArrayList<>();
+        List<String> invalid = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
+
+        ensureImportIndexes(created, present, invalid, errors);
+        ensurePublicationFactIndexes(created, present, invalid, errors);
+        ensureCitationFactIndexes(created, present, invalid, errors);
+        ensureForumFactIndexes(created, present, invalid, errors);
+        ensureAuthorFactIndexes(created, present, invalid, errors);
+        ensureAffiliationFactIndexes(created, present, invalid, errors);
+        ensureFundingFactIndexes(created, present, invalid, errors);
+        ensureForumViewIndexes(created, present, invalid, errors);
+        ensureAuthorViewIndexes(created, present, invalid, errors);
+        ensureAffiliationViewIndexes(created, present, invalid, errors);
+        ensureMergedPublicationViewIndexes(created, present, invalid, errors);
+
+        ScopusCanonicalIndexEnsureResult result = new ScopusCanonicalIndexEnsureResult(created, present, invalid, errors);
+        log.info("Scopus canonical index ensure summary: created={}, present={}, invalid={}, errors={}",
+                created.size(), present.size(), invalid.size(), errors.size());
+        return result;
+    }
+
+    private void ensureImportIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ScopusImportEvent.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_IMPORT_UNIQ, true,
+                List.of(field("entityType"), field("source"), field("sourceRecordId"), field("payloadHash"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_IMPORT_BATCH_CORRELATION, false,
+                List.of(field("batchId"), field("correlationId"), field("entityType"))),
+                created, present, invalid, errors);
+    }
+
+    private void ensurePublicationFactIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ScopusPublicationFact.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_PUBLICATION_UNIQ_EID, true, List.of(field("eid"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_PUBLICATION_AUTHOR, false, List.of(field("authors"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_PUBLICATION_AFFILIATION, false, List.of(field("affiliations"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_PUBLICATION_FORUM_COVERDATE, false, List.of(field("forumId"), field("coverDate"))),
+                created, present, invalid, errors);
+    }
+
+    private void ensureCitationFactIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ScopusCitationFact.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CITATION_UNIQ_EDGE, true, List.of(field("citedEid"), field("citingEid"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CITATION_CITED, false, List.of(field("citedEid"))),
+                created, present, invalid, errors);
+    }
+
+    private void ensureForumFactIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ScopusForumFact.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_FORUM_UNIQ_SOURCE_ID, true, List.of(field("sourceId"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_FORUM_NAME, false, List.of(field("publicationName"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_FORUM_ISSN, false, List.of(field("issn"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_FORUM_EISSN, false, List.of(field("eIssn"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_FORUM_AGG, false, List.of(field("aggregationType"))),
+                created, present, invalid, errors);
+    }
+
+    private void ensureAuthorFactIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ScopusAuthorFact.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_AUTHOR_UNIQ, true, List.of(field("authorId"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_AUTHOR_NAME, false, List.of(field("name"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_AUTHOR_AFFILIATIONS, false, List.of(field("affiliationIds"))),
+                created, present, invalid, errors);
+    }
+
+    private void ensureAffiliationFactIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ScopusAffiliationFact.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_AFFILIATION_UNIQ, true, List.of(field("afid"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_AFFILIATION_NAME, false, List.of(field("name"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_AFFILIATION_CITY, false, List.of(field("city"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_AFFILIATION_COUNTRY, false, List.of(field("country"))),
+                created, present, invalid, errors);
+    }
+
+    private void ensureFundingFactIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ScopusFundingFact.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_FUNDING_UNIQ, true, List.of(field("fundingKey"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_FUNDING_SPONSOR, false, List.of(field("sponsor"))),
+                created, present, invalid, errors);
+    }
+
+    private void ensureForumViewIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ScopusForumSearchView.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_FORUM_VIEW_NAME, false, List.of(field("publicationName"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_FORUM_VIEW_ISSN, false, List.of(field("issn"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_FORUM_VIEW_EISSN, false, List.of(field("eIssn"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_FORUM_VIEW_AGG, false, List.of(field("aggregationType"))),
+                created, present, invalid, errors);
+    }
+
+    private void ensureAuthorViewIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ScopusAuthorSearchView.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_AUTHOR_VIEW_NAME, false, List.of(field("name"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_AUTHOR_VIEW_AFFILIATIONS, false, List.of(field("affiliationIds"))),
+                created, present, invalid, errors);
+    }
+
+    private void ensureAffiliationViewIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ScopusAffiliationSearchView.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_AFFILIATION_VIEW_NAME, false, List.of(field("name"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_AFFILIATION_VIEW_CITY, false, List.of(field("city"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_AFFILIATION_VIEW_COUNTRY, false, List.of(field("country"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_AFFILIATION_VIEW_AFID, false, List.of(field("_id"))),
+                created, present, invalid, errors);
+    }
+
+    private void ensureMergedPublicationViewIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ScholardexPublicationView.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_MERGED_PUBLICATION_EID, false, List.of(field("eid"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_MERGED_PUBLICATION_TITLE, false, List.of(field("title"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_MERGED_PUBLICATION_COVERDATE, false, List.of(field("coverDate"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_MERGED_PUBLICATION_AUTHORS, false, List.of(field("authorIds"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_MERGED_PUBLICATION_AFFILIATIONS, false, List.of(field("affiliationIds"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_MERGED_PUBLICATION_FORUM, false, List.of(field("forumId"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_MERGED_PUBLICATION_WOS, false, List.of(field("wosId"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_MERGED_PUBLICATION_GOOGLE_SCHOLAR, false, List.of(field("googleScholarId"))),
+                created, present, invalid, errors);
+    }
+
+    private void ensureNamedIndex(
+            IndexOperations ops,
+            IndexDefinition definition,
+            List<String> created,
+            List<String> present,
+            List<String> invalid,
+            List<String> errors
+    ) {
+        try {
+            List<IndexInfo> indexInfo = ops.getIndexInfo();
+            IndexInfo exact = indexInfo.stream().filter(info -> definition.matchesByNameAndShape(info)).findFirst().orElse(null);
+            if (exact != null) {
+                present.add(definition.name());
+                return;
+            }
+
+            IndexInfo sameShapeDifferentName = indexInfo.stream().filter(definition::matchesByShape).findFirst().orElse(null);
+            if (sameShapeDifferentName != null) {
+                invalid.add(definition.name() + " (existing=" + sameShapeDifferentName.getName() + ")");
+                return;
+            }
+
+            Index index = new Index().named(definition.name());
+            for (IndexField field : definition.fields()) {
+                index.on(field.getKey(), Sort.Direction.ASC);
+            }
+            if (definition.unique()) {
+                index.unique();
+            }
+            ops.ensureIndex(index);
+            created.add(definition.name());
+        } catch (Exception e) {
+            errors.add(definition.name() + ": " + e.getMessage());
+        }
+    }
+
+    private IndexField field(String key) {
+        return IndexField.create(key, Sort.Direction.ASC);
+    }
+
+    private record IndexDefinition(String name, boolean unique, List<IndexField> fields) {
+        boolean matchesByNameAndShape(IndexInfo info) {
+            if (info == null) {
+                return false;
+            }
+            return Objects.equals(name, info.getName()) && matchesByShape(info);
+        }
+
+        boolean matchesByShape(IndexInfo info) {
+            if (info == null) {
+                return false;
+            }
+            if (unique != info.isUnique()) {
+                return false;
+            }
+            if (info.getIndexFields().size() != fields.size()) {
+                return false;
+            }
+            String expected = fields.stream().map(IndexField::getKey).collect(Collectors.joining("|"));
+            String actual = info.getIndexFields().stream().map(IndexField::getKey).collect(Collectors.joining("|"));
+            return Objects.equals(expected, actual);
+        }
+    }
+
+    public record ScopusCanonicalIndexEnsureResult(
+            List<String> created,
+            List<String> present,
+            List<String> invalid,
+            List<String> errors
+    ) {
+    }
+}
