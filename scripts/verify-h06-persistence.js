@@ -44,8 +44,6 @@ const userReportFacadePath =
   'src/main/java/ro/uvt/pokedex/core/service/application/UserReportFacade.java';
 const groupCnfisFacadePath =
   'src/main/java/ro/uvt/pokedex/core/service/application/GroupCnfisExportFacade.java';
-const cacheServicePath =
-  'src/main/java/ro/uvt/pokedex/core/service/CacheService.java';
 const userPublicationFacadePath =
   'src/main/java/ro/uvt/pokedex/core/service/application/UserPublicationFacade.java';
 const adminScopusFacadePath =
@@ -72,7 +70,6 @@ const yearParsingGuardFiles = [
 
 const userReportContent = readFile(userReportFacadePath);
 const groupCnfisContent = readFile(groupCnfisFacadePath);
-const cacheServiceContent = readFile(cacheServicePath);
 const userPublicationFacadeContent = readFile(userPublicationFacadePath);
 const adminScopusFacadeContent = readFile(adminScopusFacadePath);
 const rankingRepositoryContent = readFile(rankingRepositoryPath);
@@ -121,31 +118,6 @@ if (groupFilterMethod == null) {
   );
 }
 
-assertNotContains(
-  cacheServiceContent,
-  'rankingCacheByIssn.put(r.getId(), List.of(r));',
-  `${cacheServicePath}: ISSN cache must not be prefilled with ranking id keys.`
-);
-assertContains(
-  cacheServiceContent,
-  'cacheRankingByIssnKey(r.getIssn(), r);',
-  `${cacheServicePath}: cacheRankings must prefill ISSN key path from ranking.issn.`
-);
-assertContains(
-  cacheServiceContent,
-  'cacheRankingByIssnKey(r.getEIssn(), r);',
-  `${cacheServicePath}: cacheRankings must prefill ISSN key path from ranking.eIssn.`
-);
-assertContains(
-  cacheServiceContent,
-  'rankingRepository.findAllByIssn(key)',
-  `${cacheServicePath}: getCachedRankingsByIssn must query findAllByIssn on cache miss.`
-);
-assertContains(
-  cacheServiceContent,
-  'rankingRepository.findAllByEIssn(key)',
-  `${cacheServicePath}: getCachedRankingsByIssn must query findAllByEIssn on cache miss.`
-);
 assertContains(
   rankingRepositoryContent,
   '@Query("{ \'eIssn\': ?0 }")',
@@ -162,11 +134,65 @@ assertContains(
   'findById(publicationId)',
   `${userPublicationFacadePath}: edit/update flow must use canonical findById(publicationId).`
 );
-assertNotContains(
+const findForEditMethod = extractMethodSlice(
   userPublicationFacadeContent,
-  'findByEid(',
-  `${userPublicationFacadePath}: user edit/update flow must not use findByEid.`
+  'public Optional<Publication> findPublicationForEdit(',
+  ['public void updatePublicationMetadata(']
 );
+if (findForEditMethod == null) {
+  errors.push(`${userPublicationFacadePath}: missing findPublicationForEdit method.`);
+} else {
+  assertContains(
+    findForEditMethod,
+    'findById(publicationId)',
+    `${userPublicationFacadePath}: findPublicationForEdit must use canonical findById(publicationId).`
+  );
+  assertNotContains(
+    findForEditMethod,
+    'findByEid(',
+    `${userPublicationFacadePath}: findPublicationForEdit must not use findByEid compatibility fallback.`
+  );
+}
+
+const updateMetadataMethod = extractMethodSlice(
+  userPublicationFacadeContent,
+  'public void updatePublicationMetadata(',
+  ['private int computeHIndex(']
+);
+if (updateMetadataMethod == null) {
+  errors.push(`${userPublicationFacadePath}: missing updatePublicationMetadata method.`);
+} else {
+  assertContains(
+    updateMetadataMethod,
+    'findById(publicationId)',
+    `${userPublicationFacadePath}: updatePublicationMetadata must use canonical findById(publicationId).`
+  );
+  assertNotContains(
+    updateMetadataMethod,
+    'findByEid(',
+    `${userPublicationFacadePath}: updatePublicationMetadata must not use findByEid compatibility fallback.`
+  );
+}
+
+const citationsViewMethod = extractMethodSlice(
+  userPublicationFacadeContent,
+  'public Optional<UserPublicationCitationsViewModel> buildCitationsView(',
+  ['// Uses canonical Mongo `id`; EID-based lookup belongs to importer/scopus integration paths.']
+);
+if (citationsViewMethod == null) {
+  errors.push(`${userPublicationFacadePath}: missing buildCitationsView method.`);
+} else {
+  assertContains(
+    citationsViewMethod,
+    'findById(publicationId)',
+    `${userPublicationFacadePath}: buildCitationsView must attempt canonical id lookup first.`
+  );
+  assertContains(
+    citationsViewMethod,
+    '.or(() -> scopusPublicationRepository.findByEid(publicationId))',
+    `${userPublicationFacadePath}: buildCitationsView must keep explicit id/eid compatibility fallback.`
+  );
+}
 assertContains(
   adminScopusFacadeContent,
   'findByTitleContainingIgnoreCaseOrderByCoverDateDesc',

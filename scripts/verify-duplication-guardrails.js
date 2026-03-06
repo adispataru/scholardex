@@ -53,8 +53,23 @@ if (!exists(csScoringPath)) {
   const csContent = read(csScoringPath);
   requirePattern(
     csContent,
+    /case\s+"ar"\s*,\s*"re"\s*->\s*journalScoringService\.getScore\(publication,\s*indicator\)/,
+    `${csScoringPath}: publication dispatch must route ar/re to ComputerScienceJournalScoringService`
+  );
+  requirePattern(
+    csContent,
+    /case\s+"cp"\s*->\s*conferenceScoringService\.getScore\(publication,\s*indicator\)/,
+    `${csScoringPath}: publication dispatch must route cp to ComputerScienceConferenceScoringService`
+  );
+  requirePattern(
+    csContent,
+    /default\s*->\s*\{[\s\S]*yield\s+createEmptyScore\(\);[\s\S]*\}/,
+    `${csScoringPath}: publication dispatch default branch must return createEmptyScore()`
+  );
+  forbidPattern(
+    csContent,
     /case\s+"bk"\s*,\s*"ch"\s*->\s*bookScoringService\.getScore\(publication,\s*indicator\)/,
-    `${csScoringPath}: publication dispatch must route bk/ch to ComputerScienceBookService`
+    `${csScoringPath}: publication dispatch must not route bk/ch to ComputerScienceBookService`
   );
   requirePattern(
     csContent,

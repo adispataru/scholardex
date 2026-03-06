@@ -33,30 +33,24 @@ jobs:
           set -euo pipefail
           npm ci
 
-      - name: verify-architecture-boundaries
+      - name: Run guardrail suite
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p .ci-logs
-          npm run verify-architecture-boundaries 2>&1 | tee .ci-logs/verify-architecture-boundaries.log
 
-      - name: verify-h06-persistence
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm run verify-h06-persistence 2>&1 | tee .ci-logs/verify-h06-persistence.log
+          run_guardrail() {
+            local script="$1"
+            npm run "$script" 2>&1 | tee ".ci-logs/${script}.log"
+          }
 
-      - name: verify-h07-guardrails
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm run verify-h07-guardrails 2>&1 | tee .ci-logs/verify-h07-guardrails.log
-
-      - name: verify-h08-baseline
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm run verify-h08-baseline 2>&1 | tee .ci-logs/verify-h08-baseline.log
+          run_guardrail verify-architecture-boundaries
+          run_guardrail verify-h06-persistence
+          run_guardrail verify-h07-guardrails
+          run_guardrail verify-h08-baseline
+          run_guardrail verify-h12-integrations
+          run_guardrail verify-duplication-guardrails
+          run_guardrail verify-wos-parity-baseline
 
       - name: Upload guardrail logs on failure
         if: failure()
