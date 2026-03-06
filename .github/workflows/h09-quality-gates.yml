@@ -144,6 +144,8 @@ jobs:
 
       - name: gradle-check
         shell: bash
+        env:
+          SPRING_DATA_MONGODB_URI: mongodb://localhost:27017/scholardex_ci
         run: |
           set -euo pipefail
           chmod +x ./gradlew
