@@ -20,7 +20,7 @@ public final class ScoringCategorySupport {
         if (normalized.isEmpty()) {
             return "";
         }
-        int delimiter = normalized.indexOf('-');
+        int delimiter = normalized.lastIndexOf('-');
         if (delimiter < 0) {
             return normalized;
         }
@@ -32,7 +32,7 @@ public final class ScoringCategorySupport {
         if (normalized.isEmpty()) {
             return "";
         }
-        int delimiter = normalized.indexOf('-');
+        int delimiter = normalized.lastIndexOf('-');
         if (delimiter < 0 || delimiter == normalized.length() - 1) {
             return "";
         }

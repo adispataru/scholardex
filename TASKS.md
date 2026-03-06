@@ -76,14 +76,16 @@ Done history moved to `TASKS-done.md`.
     Exit criteria: `/api/rankings/wos` and scoring lookups execute with index-backed query plans under target dataset size.
     Status: completed on 2026-03-06.
     Note: added manual WoS index maintenance action/service with deterministic named-index contract, verification reporting, and ranking-view normalized fields for prefix-search index readiness.
-  - [ ] `H14.9` API read-path cutover.
+  - [x] `H14.9` API read-path cutover.
     Deliverable: `/api/rankings/wos` and related WoS list/detail reads backed by projections rather than `CacheService#getAllRankings`.
     Exit criteria: API contracts unchanged; response parity and pagination/sort/filter behavior preserved.
     Edition filter rule: operational API reads must filter to `editionNormalized IN (SCIE, SSCI)`; `OTHER/UNKNOWN` retained only for traceability.
-  - [ ] `H14.10` Reporting lookup cutover.
+  - [x] `H14.10` Reporting lookup cutover.
     Deliverable: reporting lookup port backed by `wos.scoring_view`/facts for AIS/RIS (+ IF fallback policy where still allowed).
     Exit criteria: report computations avoid full WoS cache scans and match baseline score outputs for AIS/RIS.
     Edition filter rule: operational scoring/reporting reads use only `SCIE/SSCI` normalized editions.
+    Status: completed on 2026-03-06.
+    Note: introduced `@Primary` projection/fact-backed `ReportingLookupPort` for WoS methods (`getRankingsByIssn`, `getTopRankings`) with SCIE/SSCI filtering and no WoS cache fallback, while non-WoS lookup methods remain cache-backed until H14.11.
   - [ ] `H14.11` CacheService role minimization.
     Deliverable: remove WoS primary lookup responsibilities from `CacheService`; keep optional short-lived aggregate memoization only.
     Exit criteria: no WoS ranking/report primary read path depends on cache preloading.

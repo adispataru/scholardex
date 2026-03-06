@@ -7,9 +7,11 @@ import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 
 import java.util.Optional;
 import java.util.List;
+import java.util.Set;
 
 public interface WosCategoryFactRepository extends MongoRepository<WosCategoryFact, String> {
     List<WosCategoryFact> findAllByJournalId(String journalId);
+    List<WosCategoryFact> findAllByJournalIdInAndEditionNormalizedIn(List<String> journalIds, Set<EditionNormalized> editions);
 
     Optional<WosCategoryFact> findByJournalIdAndYearAndCategoryNameCanonicalAndEditionNormalizedAndMetricType(
             String journalId,
