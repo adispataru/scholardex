@@ -142,14 +142,26 @@ jobs:
           set -euo pipefail
           npm run verify-template-assets 2>&1 | tee .ci-logs/verify-template-assets.log
 
+      - name: Wait for Mongo service
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in {1..60}; do
+            if docker exec "${{ job.services.mongo.id }}" mongosh --eval "db.adminCommand({ ping: 1 })" --quiet >/dev/null 2>&1; then
+              echo "Mongo is ready."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Mongo service did not become ready in time" >&2
+          exit 1
+
       - name: gradle-check
         shell: bash
-        env:
-          SPRING_DATA_MONGODB_URI: mongodb://localhost:27017/scholardex_ci
         run: |
           set -euo pipefail
           chmod +x ./gradlew
-          ./gradlew check 2>&1 | tee .ci-logs/gradle-check.log
+          ./gradlew --no-daemon check -Dspring.data.mongodb.uri=mongodb://localhost:27017/scholardex_ci 2>&1 | tee .ci-logs/gradle-check.log
 
       - name: Upload quality logs and test report on failure
         if: failure()
