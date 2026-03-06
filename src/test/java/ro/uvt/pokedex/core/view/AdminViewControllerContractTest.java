@@ -32,6 +32,7 @@ import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.AdminInstitutionReportFacade;
 import ro.uvt.pokedex.core.service.application.AdminScopusFacade;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
+import ro.uvt.pokedex.core.service.application.WosBigBangMigrationService;
 import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsExportViewModel;
@@ -145,6 +146,30 @@ class AdminViewControllerContractTest {
     }
 
     @Test
+    void runWosBigBangMigrationRedirectsAndDelegates() throws Exception {
+        when(rankingMaintenanceFacade.runWosBigBangMigration(eq(true), eq("v2026")))
+                .thenReturn(new WosBigBangMigrationService.WosBigBangMigrationResult(
+                        true,
+                        "data/loaded",
+                        "v2026",
+                        java.time.Instant.now(),
+                        java.time.Instant.now(),
+                        new WosBigBangMigrationService.MigrationStepResult("ingest", false, 0, 0, 0, 0, 0, "dry-run", List.of()),
+                        new WosBigBangMigrationService.MigrationStepResult("facts", false, 0, 0, 0, 0, 0, "dry-run", List.of()),
+                        new WosBigBangMigrationService.MigrationStepResult("projections", false, 0, 0, 0, 0, 0, "dry-run", List.of()),
+                        new WosBigBangMigrationService.VerificationSummary(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, List.of(), true, true)
+                ));
+
+        mockMvc.perform(post("/admin/rankings/wos/runBigBangMigration")
+                        .param("dryRun", "true")
+                        .param("sourceVersion", "v2026"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/rankings/wos"));
+
+        verify(rankingMaintenanceFacade).runWosBigBangMigration(true, "v2026");
+    }
+
+    @Test
     void wosRankingsPageRendersExpectedTemplateAndClientControls() throws Exception {
         mockMvc.perform(get("/admin/rankings/wos"))
                 .andExpect(status().isOk())
@@ -159,6 +184,7 @@ class AdminViewControllerContractTest {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-wos-next\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/admin/rankings/wos/rebuildProjections")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/admin/rankings/wos/ensureIndexes")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/admin/rankings/wos/runBigBangMigration")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/js/admin-rankings-wos.js")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
     }

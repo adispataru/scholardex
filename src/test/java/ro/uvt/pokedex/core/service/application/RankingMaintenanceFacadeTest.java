@@ -22,6 +22,8 @@ class RankingMaintenanceFacadeTest {
     private WosProjectionBuilderService wosProjectionBuilderService;
     @Mock
     private WosIndexMaintenanceService wosIndexMaintenanceService;
+    @Mock
+    private WosBigBangMigrationService wosBigBangMigrationService;
 
     @InjectMocks
     private RankingMaintenanceFacade facade;
@@ -29,19 +31,19 @@ class RankingMaintenanceFacadeTest {
     @Test
     void legacyComputePositionsOperationIsDisabled() {
         assertThrows(IllegalStateException.class, facade::computePositionsForKnownQuarters);
-        verifyNoInteractions(wosProjectionBuilderService, wosIndexMaintenanceService);
+        verifyNoInteractions(wosProjectionBuilderService, wosIndexMaintenanceService, wosBigBangMigrationService);
     }
 
     @Test
     void legacyComputeQuartersOperationIsDisabled() {
         assertThrows(IllegalStateException.class, facade::computeQuartersAndRankingsWhereMissing);
-        verifyNoInteractions(wosProjectionBuilderService, wosIndexMaintenanceService);
+        verifyNoInteractions(wosProjectionBuilderService, wosIndexMaintenanceService, wosBigBangMigrationService);
     }
 
     @Test
     void legacyMergeOperationIsDisabled() {
         assertThrows(IllegalStateException.class, facade::mergeDuplicateRankings);
-        verifyNoInteractions(wosProjectionBuilderService, wosIndexMaintenanceService);
+        verifyNoInteractions(wosProjectionBuilderService, wosIndexMaintenanceService, wosBigBangMigrationService);
     }
 
     @Test
@@ -64,6 +66,28 @@ class RankingMaintenanceFacadeTest {
         WosIndexMaintenanceService.WosIndexEnsureResult result = facade.ensureWosIndexes();
 
         verify(wosIndexMaintenanceService).ensureWosIndexes();
+        org.junit.jupiter.api.Assertions.assertSame(expected, result);
+    }
+
+    @Test
+    void runWosBigBangMigrationDelegatesToMigrationService() {
+        WosBigBangMigrationService.WosBigBangMigrationResult expected =
+                new WosBigBangMigrationService.WosBigBangMigrationResult(
+                        true,
+                        "data/loaded",
+                        "v2026",
+                        java.time.Instant.now(),
+                        java.time.Instant.now(),
+                        new WosBigBangMigrationService.MigrationStepResult("ingest", false, 0, 0, 0, 0, 0, "dry-run", List.of()),
+                        new WosBigBangMigrationService.MigrationStepResult("facts", false, 0, 0, 0, 0, 0, "dry-run", List.of()),
+                        new WosBigBangMigrationService.MigrationStepResult("proj", false, 0, 0, 0, 0, 0, "dry-run", List.of()),
+                        new WosBigBangMigrationService.VerificationSummary(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, List.of(), true, true)
+                );
+        when(wosBigBangMigrationService.run(true, "v2026")).thenReturn(expected);
+
+        WosBigBangMigrationService.WosBigBangMigrationResult result = facade.runWosBigBangMigration(true, "v2026");
+
+        verify(wosBigBangMigrationService).run(true, "v2026");
         org.junit.jupiter.api.Assertions.assertSame(expected, result);
     }
 }

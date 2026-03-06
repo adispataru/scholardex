@@ -10,6 +10,7 @@ import ro.uvt.pokedex.core.service.importing.wos.WosProjectionBuilderService;
 public class RankingMaintenanceFacade {
     private final WosProjectionBuilderService wosProjectionBuilderService;
     private final WosIndexMaintenanceService wosIndexMaintenanceService;
+    private final WosBigBangMigrationService wosBigBangMigrationService;
 
     public void computePositionsForKnownQuarters() {
         throw new IllegalStateException("Legacy WoS maintenance operation is disabled. Use canonical WoS ingestion/facts/projections pipeline.");
@@ -29,5 +30,9 @@ public class RankingMaintenanceFacade {
 
     public WosIndexMaintenanceService.WosIndexEnsureResult ensureWosIndexes() {
         return wosIndexMaintenanceService.ensureWosIndexes();
+    }
+
+    public WosBigBangMigrationService.WosBigBangMigrationResult runWosBigBangMigration(boolean dryRun, String sourceVersionOverride) {
+        return wosBigBangMigrationService.run(dryRun, sourceVersionOverride);
     }
 }

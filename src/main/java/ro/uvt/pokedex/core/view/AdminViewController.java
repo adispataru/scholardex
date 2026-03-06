@@ -538,6 +538,46 @@ public class AdminViewController {
         return "redirect:/admin/rankings/wos";
     }
 
+    @PostMapping("/rankings/wos/runBigBangMigration")
+    public String runWosBigBangMigration(
+            @RequestParam(name = "dryRun", defaultValue = "true") boolean dryRun,
+            @RequestParam(name = "sourceVersion", required = false) String sourceVersion,
+            RedirectAttributes redirectAttributes
+    ) {
+        try {
+            var result = rankingMaintenanceFacade.runWosBigBangMigration(dryRun, sourceVersion);
+            String mode = dryRun ? "dry-run" : "full-run";
+            String successMessage =
+                    "WoS big-bang " + mode
+                            + " complete. Ingest[p=" + result.ingest().processed()
+                            + ", i=" + result.ingest().imported()
+                            + ", u=" + result.ingest().updated()
+                            + ", s=" + result.ingest().skipped()
+                            + ", e=" + result.ingest().errors()
+                            + "], Facts[p=" + result.buildFacts().processed()
+                            + ", i=" + result.buildFacts().imported()
+                            + ", u=" + result.buildFacts().updated()
+                            + ", s=" + result.buildFacts().skipped()
+                            + ", e=" + result.buildFacts().errors()
+                            + "], Projections[p=" + result.buildProjections().processed()
+                            + ", i=" + result.buildProjections().imported()
+                            + ", u=" + result.buildProjections().updated()
+                            + ", s=" + result.buildProjections().skipped()
+                            + ", e=" + result.buildProjections().errors()
+                            + "], Verify[events=" + result.verification().importEvents()
+                            + ", metricFacts=" + result.verification().metricFacts()
+                            + ", categoryFacts=" + result.verification().categoryFacts()
+                            + ", rankingRows=" + result.verification().rankingViewRows()
+                            + ", scoringRows=" + result.verification().scoringViewRows()
+                            + ", parserErrors=" + result.verification().parserErrors()
+                            + "].";
+            redirectAttributes.addFlashAttribute("successMessage", successMessage);
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "WoS big-bang migration failed: " + e.getMessage());
+        }
+        return "redirect:/admin/rankings/wos";
+    }
+
     @GetMapping("/rankings/core")
     public String showCoreRankingsPage() {
         return "admin/rankings-core";

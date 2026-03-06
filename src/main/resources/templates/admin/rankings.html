@@ -25,6 +25,8 @@
             <div class="container-fluid">
                 <h1 class="h3 mb-2 text-gray-800">Rankings</h1>
                 <p class="mb-4">This page displays the rankings of journals.</p>
+                <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+                <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
                 <div class="card shadow mb-4">
                     <div class="card-header py-3">
                         <h6 class="m-0 font-weight-bold text-primary">Actions</h6>
@@ -58,6 +60,18 @@
                             <h3 class="h3 mb-0 text-gray-800">Ensure WoS indexes (H14.8)</h3>
                             <form th:action="@{/admin/rankings/wos/ensureIndexes}" method="post">
                                 <button type="submit" class="btn btn-primary">Go! </button>
+                            </form>
+                        </div>
+                        <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                            <h3 class="h3 mb-0 text-gray-800">Run WoS big-bang migration (H14.12)</h3>
+                            <form th:action="@{/admin/rankings/wos/runBigBangMigration}" method="post" class="d-flex align-items-center">
+                                <input type="text"
+                                       name="sourceVersion"
+                                       class="form-control mr-2"
+                                       style="width: 220px;"
+                                       placeholder="Optional sourceVersion">
+                                <button type="submit" name="dryRun" value="true" class="btn btn-outline-primary mr-2">Dry run</button>
+                                <button type="submit" name="dryRun" value="false" class="btn btn-primary">Full run</button>
                             </form>
                         </div>
                     </div>

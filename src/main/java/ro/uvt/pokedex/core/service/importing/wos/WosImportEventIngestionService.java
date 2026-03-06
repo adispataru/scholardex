@@ -25,8 +25,10 @@ import java.nio.file.Files;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -55,6 +57,66 @@ public class WosImportEventIngestionService {
                 total.getProcessedCount(), total.getImportedCount(), total.getUpdatedCount(), total.getSkippedCount(),
                 total.getErrorCount(), total.getErrorsSample());
         return total;
+    }
+
+    public WosIngestionPreview previewDirectory(String directoryPath, String sourceVersionOverride) {
+        File dataDir = new File(directoryPath);
+        int filesScanned = 0;
+        int plannedEvents = 0;
+        List<String> samples = new ArrayList<>();
+        int errors = 0;
+
+        File[] govFiles = dataDir.listFiles((d, name) -> name.matches("AIS_\\d{4}\\.xlsx*") || name.matches("RIS_\\d{4}\\.xlsx*"));
+        if (govFiles != null) {
+            for (File file : govFiles) {
+                filesScanned++;
+                String sourceVersion = sourceVersionOverride != null && !sourceVersionOverride.isBlank()
+                        ? sourceVersionOverride
+                        : inferSourceVersion(file.getName());
+                try (FileInputStream fis = new FileInputStream(file); Workbook workbook = WorkbookFactory.create(fis)) {
+                    Sheet sheet = workbook.getSheetAt(0);
+                    int rowCount = Math.max(0, sheet.getPhysicalNumberOfRows() - 1);
+                    plannedEvents += rowCount;
+                    if (samples.size() < 20) {
+                        samples.add("gov-file=" + file.getName() + ", sourceVersion=" + sourceVersion + ", rows=" + rowCount);
+                    }
+                } catch (Exception e) {
+                    errors++;
+                    if (samples.size() < 20) {
+                        samples.add("gov-file=" + file.getName() + ", preview-error=" + e.getMessage());
+                    }
+                }
+            }
+        }
+
+        File jsonDir = new File(dataDir, "wos-json-1997-2019");
+        if (jsonDir.exists() && jsonDir.isDirectory()) {
+            File[] jsonFiles = jsonDir.listFiles((d, name) -> name.endsWith(".json"));
+            if (jsonFiles != null) {
+                for (File file : jsonFiles) {
+                    filesScanned++;
+                    String sourceVersion = sourceVersionOverride != null && !sourceVersionOverride.isBlank()
+                            ? sourceVersionOverride
+                            : inferSourceVersion(file.getName());
+                    try {
+                        JsonNode root = objectMapper.readTree(Files.readAllBytes(file.toPath()));
+                        int itemCount = root.isArray() ? root.size() : 0;
+                        plannedEvents += itemCount;
+                        if (samples.size() < 20) {
+                            samples.add("json-file=wos-json-1997-2019/" + file.getName()
+                                    + ", sourceVersion=" + sourceVersion + ", items=" + itemCount);
+                        }
+                    } catch (Exception e) {
+                        errors++;
+                        if (samples.size() < 20) {
+                            samples.add("json-file=wos-json-1997-2019/" + file.getName() + ", preview-error=" + e.getMessage());
+                        }
+                    }
+                }
+            }
+        }
+
+        return new WosIngestionPreview(filesScanned, plannedEvents, errors, List.copyOf(samples));
     }
 
     private void ingestGovernmentAisRisExcel(File dataDir, String sourceVersionOverride, ImportProcessingResult total) {
@@ -276,5 +338,13 @@ public class WosImportEventIngestionService {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 not available", e);
         }
+    }
+
+    public record WosIngestionPreview(
+            int filesScanned,
+            int plannedEvents,
+            int errorCount,
+            List<String> samples
+    ) {
     }
 }
