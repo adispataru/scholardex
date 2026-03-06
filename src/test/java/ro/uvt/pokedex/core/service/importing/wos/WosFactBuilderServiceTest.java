@@ -3,6 +3,7 @@ package ro.uvt.pokedex.core.service.importing.wos;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -56,18 +57,21 @@ class WosFactBuilderServiceTest {
     private final List<WosCategoryFact> categoryStore = new ArrayList<>();
     private final List<WosFactConflict> conflictStore = new ArrayList<>();
     private final AtomicInteger idSeq = new AtomicInteger(1);
+    private SimpleMeterRegistry meterRegistry;
 
     private WosFactBuilderService service;
 
     @BeforeEach
     void setUp() {
+        meterRegistry = new SimpleMeterRegistry();
         service = new WosFactBuilderService(
                 parserOrchestrator,
                 identityResolutionService,
                 metricFactRepository,
                 categoryFactRepository,
                 factConflictRepository,
-                mongoTemplate
+                mongoTemplate,
+                meterRegistry
         );
         lenient().when(identityResolutionService.resolveIdentity(anyString(), anyString(), anyString(), any()))
                 .thenReturn(new IdentityResolutionResult("jid-1", "key", WosIdentityResolutionStatus.MATCHED, null));
@@ -208,6 +212,21 @@ class WosFactBuilderServiceTest {
         assertEquals(0, metricStore.size());
         assertEquals(0, categoryStore.size());
         assertTrue(result.getSkippedCount() > 0);
+        assertEquals(1.0, meterRegistry.get("pokedex.wos.if.source_policy.skips").counter().count());
+    }
+
+    @Test
+    void ifFromOfficialSourceIsAcceptedBySourcePolicy() {
+        WosParsedRecord incoming = record(MetricType.IF, WosSourceType.OFFICIAL_WOS_EXTRACT, 2.4, "v2023", "7");
+        when(parserOrchestrator.parseAllEvents()).thenReturn(runOf(List.of(incoming)));
+
+        ImportProcessingResult result = service.buildFactsFromImportEvents();
+
+        assertEquals(2, result.getImportedCount()); // metric + category
+        assertEquals(0, result.getErrorCount());
+        assertEquals(1, metricStore.size());
+        assertEquals(1, categoryStore.size());
+        assertEquals(0.0, meterRegistry.get("pokedex.wos.if.source_policy.skips").counter().count());
     }
 
     private WosParsedRecord record(MetricType metricType, WosSourceType sourceType, Double value, String sourceVersion, String sourceRowItem) {

@@ -104,31 +104,29 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
     /* ------------------------------------------------------------------ */
 
     private Optional<Score> computeCSScore(WoSRanking ranking, int year, String category, WoSRanking.Rank rank) {
-
-        Score score = new Score();
-
-        
-        if (rank.getQAis().get(year) == null) {
+        WoSRanking.Quarter quarter = rank.getQAis().get(year);
+        if (quarter == null) {
             return Optional.empty();
         }
 
-        //TODO Come up with a better caching mechanism
-        int top = lookupPort.getTopRankings(
-                ranking.getWebOfScienceCategoryIndex().keySet().iterator().next(),
-                year);
+        Score score = new Score();
+
+        // TODO Come up with a better caching mechanism
+        int top = lookupPort.getTopRankings(category, year);
         int numTop = (int) (0.2 * top);
+        int rankPosition = rank.getRankAis().getOrDefault(year, Integer.MAX_VALUE);
 
         double points;
-        switch (rank.getQAis().get(year)) {
-            case Q1 -> points = (rank.getRankAis().get(year) < numTop) ? 12.0 : 8.0;
-            case Q2 -> points = (rank.getRankAis().get(year) < numTop) ? 8.0 : 4.0;
-            case Q3 -> points = (rank.getRankAis().get(year) < numTop) ? 4.0 : 2.0;
+        switch (quarter) {
+            case Q1 -> points = (rankPosition < numTop) ? 12.0 : 8.0;
+            case Q2 -> points = (rankPosition < numTop) ? 8.0 : 4.0;
+            case Q3 -> points = (rankPosition < numTop) ? 4.0 : 2.0;
             case Q4 -> points = 2.0;
             default -> points = 0.0;
         }
 
         score.setScore(points);
-        score.setQuarter(rank.getQAis().get(year).toString());
+        score.setQuarter(quarter.toString());
         score.setCategory(getCategory(points).toString());
         return Optional.of(score);
     }

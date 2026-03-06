@@ -1,5 +1,7 @@
 package ro.uvt.pokedex.core.service.reporting;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,10 +25,16 @@ public class ImpactFactorJournalScoringService extends AbstractWoSForumScoringSe
 
     private static final Logger logger = LoggerFactory.getLogger(ImpactFactorJournalScoringService.class);
     private static final int LAST_YEAR = 2023;
+    private final Counter requestsCounter;
+    private final Counter successCounter;
+    private final Counter missingCounter;
 
     @Autowired
-    public ImpactFactorJournalScoringService(ReportingLookupPort lookupPort) {
+    public ImpactFactorJournalScoringService(ReportingLookupPort lookupPort, MeterRegistry meterRegistry) {
         super(lookupPort);
+        this.requestsCounter = meterRegistry.counter("pokedex.reporting.if.requests");
+        this.successCounter = meterRegistry.counter("pokedex.reporting.if.success");
+        this.missingCounter = meterRegistry.counter("pokedex.reporting.if.missing");
     }
 
     /* ------------------------------------------------------------------ */
@@ -35,6 +43,7 @@ public class ImpactFactorJournalScoringService extends AbstractWoSForumScoringSe
 
     @Override
     public Score getScore(Publication publication, Indicator indicator) {
+        requestsCounter.increment();
         Domain domain = indicator.getDomain();
         Forum forum = lookupPort.getForum(publication.getForum());
 
@@ -63,7 +72,12 @@ public class ImpactFactorJournalScoringService extends AbstractWoSForumScoringSe
                     this::compareScoresByPoints
             );
         }
-        return createScore(scoreResult);
+        return finalizeWithTelemetry(
+                createScore(scoreResult),
+                "publication",
+                publication == null ? null : publication.getId(),
+                forum == null ? null : forum.getPublicationName()
+        );
     }
 
     /* ------------------------------------------------------------------ */
@@ -72,6 +86,7 @@ public class ImpactFactorJournalScoringService extends AbstractWoSForumScoringSe
 
     @Override
     public Score getScore(ActivityInstance activity, Indicator indicator) {
+        requestsCounter.increment();
         Domain domain = indicator.getDomain();
         Forum forum = getForumFromActivity(activity);
 
@@ -96,7 +111,12 @@ public class ImpactFactorJournalScoringService extends AbstractWoSForumScoringSe
                 },
                 this::compareScoresByPoints
         );
-        return createScore(scoreResult);
+        return finalizeWithTelemetry(
+                createScore(scoreResult),
+                "activity",
+                activity == null ? null : activity.getId(),
+                forum == null ? null : forum.getPublicationName()
+        );
     }
 
     /* ------------------------------------------------------------------ */
@@ -106,5 +126,18 @@ public class ImpactFactorJournalScoringService extends AbstractWoSForumScoringSe
     @Override
     public String getDescription() {
         return "Returns the impact factor\n";
+    }
+
+    private Score finalizeWithTelemetry(Score score, String context, String sourceId, String forumName) {
+        if (score.getYear() > 0) {
+            successCounter.increment();
+            logger.info("IMPACT_FACTOR scoring resolved: strategy=IMPACT_FACTOR context={} sourceId={} year={} score={} quarter={} forum={}",
+                    context, sourceId, score.getYear(), score.getScore(), score.getQuarter(), forumName);
+        } else {
+            missingCounter.increment();
+            logger.info("IMPACT_FACTOR scoring missing: strategy=IMPACT_FACTOR context={} sourceId={} reason=if_missing_or_not_eligible forum={}",
+                    context, sourceId, forumName);
+        }
+        return score;
     }
 }

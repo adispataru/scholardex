@@ -1,0 +1,55 @@
+{
+  "version": "test-pass",
+  "counts": {
+    "importEvents": 1,
+    "metricFacts": 1,
+    "categoryFacts": 1,
+    "rankingView": 1,
+    "scoringView": 1
+  },
+  "editionCounts": {
+    "SCIE": 1
+  },
+  "scienceToScieExpectedCount": 1,
+  "bundledSplitChecks": [],
+  "timelineChecks": [
+    {
+      "journalId": "j1",
+      "metricType": "AIS",
+      "edition": "SCIE",
+      "expected": {
+        "2023": 1.5
+      }
+    }
+  ],
+  "categoryChecks": [
+    {
+      "journalId": "j1",
+      "categoryNameCanonical": "Computer Science, Theory & Methods",
+      "metricType": "AIS",
+      "edition": "SCIE",
+      "expected": {
+        "2023": {"quarter": "Q1", "rank": 1}
+      }
+    }
+  ],
+  "scoringChecks": [
+    {
+      "categoryNameCanonical": "Computer Science, Theory & Methods",
+      "edition": "SCIE",
+      "metricType": "AIS",
+      "year": 2023,
+      "quarter": "Q1",
+      "expectedTopCount": 1
+    }
+  ],
+  "ifMissingChecks": [
+    {
+      "journalId": "j1",
+      "year": 2023,
+      "edition": "SCIE",
+      "expectedMissing": true
+    }
+  ],
+  "allowlistedMismatches": []
+}

@@ -81,7 +81,12 @@ class RankingMaintenanceFacadeTest {
                         new WosBigBangMigrationService.MigrationStepResult("ingest", false, 0, 0, 0, 0, 0, "dry-run", List.of()),
                         new WosBigBangMigrationService.MigrationStepResult("facts", false, 0, 0, 0, 0, 0, "dry-run", List.of()),
                         new WosBigBangMigrationService.MigrationStepResult("proj", false, 0, 0, 0, 0, 0, "dry-run", List.of()),
-                        new WosBigBangMigrationService.VerificationSummary(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, List.of(), true, true)
+                        new WosBigBangMigrationService.VerificationSummary(
+                                0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, List.of(),
+                                true, true,
+                                false, 0, 0, List.of(), List.of("eligibility")
+                        )
                 );
         when(wosBigBangMigrationService.run(true, "v2026")).thenReturn(expected);
 

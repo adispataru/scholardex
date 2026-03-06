@@ -1,0 +1,20 @@
+{
+  "version": "test-fail",
+  "counts": {
+    "importEvents": 99,
+    "metricFacts": 99,
+    "categoryFacts": 99,
+    "rankingView": 99,
+    "scoringView": 99
+  },
+  "editionCounts": {
+    "SCIE": 99
+  },
+  "scienceToScieExpectedCount": 99,
+  "bundledSplitChecks": [],
+  "timelineChecks": [],
+  "categoryChecks": [],
+  "scoringChecks": [],
+  "ifMissingChecks": [],
+  "allowlistedMismatches": []
+}

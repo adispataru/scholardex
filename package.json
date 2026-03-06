@@ -13,6 +13,7 @@
     "verify-h07-guardrails": "node scripts/verify-h07-guardrails.js",
     "verify-h08-observability-guardrails": "node scripts/verify-h08-observability-guardrails.js",
     "verify-h12-integrations": "node scripts/verify-h12-integrations.js",
+    "verify-wos-parity-baseline": "node scripts/verify-wos-parity-baseline.js",
     "test-rankings-wos": "node scripts/test-rankings-wos.js",
     "test-rankings-core": "node scripts/test-rankings-core.js",
     "test-rankings-urap": "node scripts/test-rankings-urap.js",

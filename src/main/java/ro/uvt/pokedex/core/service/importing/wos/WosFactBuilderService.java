@@ -1,5 +1,7 @@
 package ro.uvt.pokedex.core.service.importing.wos;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -44,6 +46,7 @@ public class WosFactBuilderService {
     private final WosCategoryFactRepository categoryFactRepository;
     private final WosFactConflictRepository factConflictRepository;
     private final MongoTemplate mongoTemplate;
+    private final Counter ifSourcePolicySkipCounter;
 
     public WosFactBuilderService(
             WosImportEventParserOrchestrator parserOrchestrator,
@@ -51,7 +54,8 @@ public class WosFactBuilderService {
             WosMetricFactRepository metricFactRepository,
             WosCategoryFactRepository categoryFactRepository,
             WosFactConflictRepository factConflictRepository,
-            MongoTemplate mongoTemplate
+            MongoTemplate mongoTemplate,
+            MeterRegistry meterRegistry
     ) {
         this.parserOrchestrator = parserOrchestrator;
         this.identityResolutionService = identityResolutionService;
@@ -59,6 +63,7 @@ public class WosFactBuilderService {
         this.categoryFactRepository = categoryFactRepository;
         this.factConflictRepository = factConflictRepository;
         this.mongoTemplate = mongoTemplate;
+        this.ifSourcePolicySkipCounter = meterRegistry.counter("pokedex.wos.if.source_policy.skips");
     }
 
     public ImportProcessingResult buildFactsFromImportEvents() {
@@ -99,6 +104,11 @@ public class WosFactBuilderService {
                         result.getSkippedCount(), result.getErrorCount());
             }
             if (!WosCanonicalContractSupport.isSourceAllowedForMetric(record.metricType(), record.sourceType())) {
+                if (record.metricType() == MetricType.IF) {
+                    ifSourcePolicySkipCounter.increment();
+                    log.warn("WoS IF source-policy skip: metricType={} sourceType={} sourceRef={}#{}",
+                            record.metricType(), record.sourceType(), record.sourceFile(), record.sourceRowItem());
+                }
                 result.markSkipped("source-not-allowed metric=" + record.metricType() + ", source=" + record.sourceType()
                         + ", sourceRef=" + record.sourceFile() + "#" + record.sourceRowItem());
                 continue;

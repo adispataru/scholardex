@@ -22,10 +22,12 @@ import ro.uvt.pokedex.core.service.importing.wos.model.WosParserRunSummary;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -36,6 +38,7 @@ class WosBigBangMigrationServiceTest {
     @Mock private WosImportEventIngestionService ingestionService;
     @Mock private WosFactBuilderService factBuilderService;
     @Mock private WosProjectionBuilderService projectionBuilderService;
+    @Mock private WosParityReconciliationService parityReconciliationService;
     @Mock private WosImportEventParserOrchestrator parserOrchestrator;
     @Mock private WosImportEventRepository importEventRepository;
     @Mock private WosJournalIdentityRepository journalIdentityRepository;
@@ -52,6 +55,7 @@ class WosBigBangMigrationServiceTest {
                 ingestionService,
                 factBuilderService,
                 projectionBuilderService,
+                parityReconciliationService,
                 parserOrchestrator,
                 importEventRepository,
                 journalIdentityRepository,
@@ -72,6 +76,16 @@ class WosBigBangMigrationServiceTest {
         when(categoryFactRepository.count()).thenReturn(8L);
         when(rankingViewRepository.count()).thenReturn(4L);
         when(scoringViewRepository.count()).thenReturn(8L);
+        lenient().when(parityReconciliationService.runEligibilityCheck()).thenReturn(
+                new WosParityReconciliationService.ParityReconciliationResult(
+                        true, true, List.of("eligibility"), 0, 0, List.of()
+                )
+        );
+        lenient().when(parityReconciliationService.runFullParity()).thenReturn(
+                new WosParityReconciliationService.ParityReconciliationResult(
+                        true, true, List.of("counts"), 0, 0, List.of()
+                )
+        );
     }
 
     @Test
@@ -85,10 +99,13 @@ class WosBigBangMigrationServiceTest {
         assertFalse(result.ingest().executed());
         assertFalse(result.buildFacts().executed());
         assertFalse(result.buildProjections().executed());
+        assertFalse(result.verification().parityPassed());
+        assertEquals(0, result.verification().parityMismatchCount());
         verify(ingestionService).previewDirectory("data/loaded", "v2026");
         verify(ingestionService, never()).ingestDirectory(anyString(), anyString());
         verify(factBuilderService, never()).buildFactsFromImportEvents();
         verify(projectionBuilderService, never()).rebuildWosProjections();
+        verify(parityReconciliationService).runEligibilityCheck();
     }
 
     @Test
@@ -114,9 +131,11 @@ class WosBigBangMigrationServiceTest {
         assertTrue(result.ingest().executed());
         assertTrue(result.buildFacts().executed());
         assertTrue(result.buildProjections().executed());
+        assertTrue(result.verification().parityPassed());
+        assertEquals(0, result.verification().parityMismatchCount());
         verify(ingestionService).ingestDirectory("data/loaded", "v2026");
         verify(factBuilderService).buildFactsFromImportEvents();
         verify(projectionBuilderService).rebuildWosProjections();
+        verify(parityReconciliationService).runFullParity();
     }
 }
-

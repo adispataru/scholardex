@@ -1,0 +1,226 @@
+{
+  "baselineVersion": "v1",
+  "source": {
+    "environment": "staging",
+    "h14_12_run_id": "MANUAL_FROM_RUNNING_CONTAINER_2026-03-06",
+    "generatedAt": "2026-03-06",
+    "note": "Generated from currently available canonical facts in running mongo container."
+  },
+  "fixture": {
+    "journalCount": 20,
+    "requiredCoverageTags": [
+      "AIS_PRESENT",
+      "IF_MISSING",
+      "SCIE",
+      "SCIENCE_TO_SCIE",
+      "SSCI"
+    ],
+    "journals": [
+      {
+        "journalId": "jid_8d8adbf14febcfbed31980ba9d7c0b5dad49616cf21ec1f72c80ce02efbe62bb",
+        "tags": [
+          "AIS_PRESENT",
+          "IF_MISSING",
+          "SCIE",
+          "SSCI",
+          "SCIENCE_TO_SCIE"
+        ]
+      },
+      {
+        "journalId": "jid_f2da5c7c3a5ab08ab98f0b0bbed86f6e3861146ef4d735e263660c586aaf4902",
+        "tags": [
+          "AIS_PRESENT",
+          "IF_MISSING",
+          "SCIE",
+          "SSCI",
+          "SCIENCE_TO_SCIE"
+        ]
+      },
+      {
+        "journalId": "jid_8c522021e93b368e792931b2c2701681da008a936a56862da419e087e39168ee",
+        "tags": [
+          "AIS_PRESENT",
+          "IF_MISSING",
+          "SCIE",
+          "SSCI",
+          "SCIENCE_TO_SCIE"
+        ]
+      },
+      {
+        "journalId": "jid_bab34031e2e11f1548fdf37e750b684b01cb511023d29586190b56db6f815cda",
+        "tags": [
+          "AIS_PRESENT",
+          "IF_MISSING",
+          "SCIE",
+          "SSCI",
+          "SCIENCE_TO_SCIE"
+        ]
+      },
+      {
+        "journalId": "jid_61dca734891160987c30d7a9d0cdab2746a8128ada8763ae1a4e49cf12031b46",
+        "tags": [
+          "AIS_PRESENT",
+          "IF_MISSING",
+          "SCIE",
+          "SSCI"
+        ]
+      },
+      {
+        "journalId": "jid_ecbaf38be2905ddfaecbf06165c418ec34d6336d6dc302a2154b269682cfedcc",
+        "tags": [
+          "AIS_PRESENT",
+          "IF_MISSING",
+          "SCIE",
+          "SSCI",
+          "SCIENCE_TO_SCIE"
+        ]
+      },
+      {
+        "journalId": "jid_7444c79a4d30464daf545438fcf66fbad16abf453ff14f41839d9670d97dd4f3",
+        "tags": [
+          "AIS_PRESENT",
+          "IF_MISSING",
+          "SCIE",
+          "SSCI"
+        ]
+      },
+      {
+        "journalId": "jid_c84d386f39b08c30be79809cd4a90a5e051214cb18392227846d2130848fab63",
+        "tags": [
+          "AIS_PRESENT",
+          "IF_MISSING",
+          "SCIE",
+          "SSCI",
+          "SCIENCE_TO_SCIE"
+        ]
+      },
+      {
+        "journalId": "jid_66eab7cd82f44d69a08e2cd5e40c33057aad191eb26fc965b2908e7da816c5b0",
+        "tags": [
+          "AIS_PRESENT",
+          "IF_MISSING",
+          "SCIE",
+          "SSCI"
+        ]
+      },
+      {
+        "journalId": "jid_450875db3204f5242cc197b0e6aa2451b8fc924d0b5c536578712eb79d8224c1",
+        "tags": [
+          "AIS_PRESENT",
+          "IF_MISSING",
+          "SCIE",
+          "SSCI"
+        ]
+      },
+      {
+        "journalId": "jid_838cf0918f4981dfbaab5163e47c3d8d5ed37ab1975f702b8bf4da2e4fccfd23",
+        "tags": [
+          "AIS_PRESENT",
+          "IF_MISSING",
+          "SCIE",
+          "SSCI",
+          "SCIENCE_TO_SCIE"
+        ]
+      },
+      {
+        "journalId": "jid_4bf019ae472988fb6c0dafd7a37f392af04e54ed67ffe35a5578ab22f169b893",
+        "tags": [
+          "AIS_PRESENT",
+          "IF_MISSING",
+          "SCIE",
+          "SSCI",
+          "SCIENCE_TO_SCIE"
+        ]
+      },
+      {
+        "journalId": "jid_c6e54783493934806557078503e5967efece7aee786ee6155bca2798b67ec750",
+        "tags": [
+          "AIS_PRESENT",
+          "IF_MISSING",
+          "SCIE",
+          "SSCI"
+        ]
+      },
+      {
+        "journalId": "jid_94120ab11e89b55a15d19738003cc43c891c211d2302f4aec0e235b0e1ce4760",
+        "tags": [
+          "AIS_PRESENT",
+          "IF_MISSING",
+          "SCIE",
+          "SSCI",
+          "SCIENCE_TO_SCIE"
+        ]
+      },
+      {
+        "journalId": "jid_87e35be59a047bf2aa8c5fe1dbead9b2b9667c2fe535d24386703913649b21f7",
+        "tags": [
+          "AIS_PRESENT",
+          "IF_MISSING",
+          "SCIE",
+          "SSCI",
+          "SCIENCE_TO_SCIE"
+        ]
+      },
+      {
+        "journalId": "jid_081b336c5107ddc915fdd45f17c6f2a2610bb843df69f4d2648b20337ab4166f",
+        "tags": [
+          "AIS_PRESENT",
+          "IF_MISSING",
+          "SCIE",
+          "SSCI",
+          "SCIENCE_TO_SCIE"
+        ]
+      },
+      {
+        "journalId": "jid_6a23b029b7da1899c125524cdd0ab1ad55204bba45cae6ce805ffe690da523f3",
+        "tags": [
+          "AIS_PRESENT",
+          "IF_MISSING",
+          "SCIE",
+          "SSCI"
+        ]
+      },
+      {
+        "journalId": "jid_20fd35fd9373243c42fd329dcfc5343573d0d629ce6007adc3e69616c896e527",
+        "tags": [
+          "AIS_PRESENT",
+          "IF_MISSING",
+          "SCIE",
+          "SSCI",
+          "SCIENCE_TO_SCIE"
+        ]
+      },
+      {
+        "journalId": "jid_3c451d8f93d863f6fd1fc55c337348712a459ebc5714bc86b0d47b6d8c4c721c",
+        "tags": [
+          "AIS_PRESENT",
+          "IF_MISSING",
+          "SCIE",
+          "SSCI",
+          "SCIENCE_TO_SCIE"
+        ]
+      },
+      {
+        "journalId": "jid_d58b84feae82391d69547ff0613da3822a33a7fe7acc560e5c3416859b4d4ad9",
+        "tags": [
+          "AIS_PRESENT",
+          "IF_MISSING",
+          "SCIE",
+          "SSCI",
+          "SCIENCE_TO_SCIE"
+        ]
+      }
+    ],
+    "coverageGaps": [
+      "IF_PRESENT not available in current canonical facts",
+      "RIS_PRESENT not available in current canonical facts"
+    ]
+  },
+  "allowlistPolicy": {
+    "default": "EMPTY",
+    "requiresIssueReference": true,
+    "requiresExpiryOrTargetVersion": true,
+    "wildcardsAllowed": false
+  }
+}
+

@@ -27,6 +27,7 @@ public class WosBigBangMigrationService {
     private final WosImportEventIngestionService ingestionService;
     private final WosFactBuilderService factBuilderService;
     private final WosProjectionBuilderService projectionBuilderService;
+    private final WosParityReconciliationService parityReconciliationService;
     private final WosImportEventParserOrchestrator parserOrchestrator;
     private final WosImportEventRepository importEventRepository;
     private final WosJournalIdentityRepository journalIdentityRepository;
@@ -65,13 +66,16 @@ public class WosBigBangMigrationService {
             );
             ImportProcessingResult factResult = factBuilderService.buildFactsFromImportEvents();
             ImportProcessingResult projectionResult = projectionBuilderService.rebuildWosProjections();
+
             ingestStep = MigrationStepResult.executed("ingest", ingestionResult);
             factStep = MigrationStepResult.executed("build-facts", factResult);
             projectionStep = MigrationStepResult.executed("build-projections", projectionResult);
         }
 
         WosParserRunResult parserRun = parserOrchestrator.parseAllEvents();
-        VerificationSummary verificationSummary = buildVerificationSummary(parserRun.summary());
+        WosParityReconciliationService.ParityReconciliationResult parityResult =
+                dryRun ? parityReconciliationService.runEligibilityCheck() : parityReconciliationService.runFullParity();
+        VerificationSummary verificationSummary = buildVerificationSummary(parserRun.summary(), dryRun, parityResult);
 
         return new WosBigBangMigrationResult(
                 dryRun,
@@ -93,7 +97,11 @@ public class WosBigBangMigrationService {
         return sourceVersionOverride.trim();
     }
 
-    private VerificationSummary buildVerificationSummary(WosParserRunSummary parserSummary) {
+    private VerificationSummary buildVerificationSummary(
+            WosParserRunSummary parserSummary,
+            boolean dryRun,
+            WosParityReconciliationService.ParityReconciliationResult parityResult
+    ) {
         long importEvents = importEventRepository.count();
         long journalIdentities = journalIdentityRepository.count();
         long metricFacts = metricFactRepository.count();
@@ -116,7 +124,12 @@ public class WosBigBangMigrationService {
                 parserSummary.getErrorCount(),
                 parserSummary.getSamples(),
                 rankingAligned,
-                scoringAligned
+                scoringAligned,
+                !dryRun && parityResult.passed(),
+                parityResult.mismatchCount(),
+                parityResult.allowlistedMismatchCount(),
+                parityResult.mismatches(),
+                parityResult.executedChecks()
         );
     }
 
@@ -158,7 +171,13 @@ public class WosBigBangMigrationService {
             );
         }
 
-        static MigrationStepResult dryRun(String stepName, String note, List<String> samples, int processed, int errors) {
+        static MigrationStepResult dryRun(
+                String stepName,
+                String note,
+                List<String> samples,
+                int processed,
+                int errors
+        ) {
             return new MigrationStepResult(stepName, false, processed, 0, 0, 0, errors, note, samples);
         }
     }
@@ -176,7 +195,12 @@ public class WosBigBangMigrationService {
             int parserErrors,
             List<String> parserSamples,
             boolean rankingViewAlignedWithIdentity,
-            boolean scoringViewAlignedWithCategoryFacts
+            boolean scoringViewAlignedWithCategoryFacts,
+            boolean parityPassed,
+            int parityMismatchCount,
+            int parityAllowlistedMismatchCount,
+            List<String> paritySamples,
+            List<String> parityExecutedChecks
     ) {
     }
 }

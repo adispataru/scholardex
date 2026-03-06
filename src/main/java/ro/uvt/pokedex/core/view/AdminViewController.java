@@ -570,6 +570,9 @@ public class AdminViewController {
                             + ", rankingRows=" + result.verification().rankingViewRows()
                             + ", scoringRows=" + result.verification().scoringViewRows()
                             + ", parserErrors=" + result.verification().parserErrors()
+                            + ", parityPassed=" + result.verification().parityPassed()
+                            + ", parityMismatches=" + result.verification().parityMismatchCount()
+                            + ", parityAllowlisted=" + result.verification().parityAllowlistedMismatchCount()
                             + "].";
             if (result.dryRun() && result.ingest().note() != null && !result.ingest().note().isBlank()) {
                 successMessage = successMessage + " " + result.ingest().note() + ".";
