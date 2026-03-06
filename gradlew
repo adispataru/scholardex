@@ -114,11 +114,11 @@ esac
 
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
-# On macOS, prefer JDK 21 when available to keep Gradle 8.7 compatible
-# and avoid local failures on newer default JDKs.
+# On macOS, prefer JDK 25 when available so local wrapper execution
+# stays aligned with the project toolchain baseline.
 if "$darwin" && [ -x "/usr/libexec/java_home" ] ; then
-    JAVA21_HOME=$( /usr/libexec/java_home -v 21 2>/dev/null || true )
-    if [ -n "$JAVA21_HOME" ] ; then
+    JAVA25_HOME=$( /usr/libexec/java_home -v 25 2>/dev/null || true )
+    if [ -n "$JAVA25_HOME" ] ; then
         CURRENT_JAVA_MAJOR=""
         if [ -n "$JAVA_HOME" ] && [ -x "$JAVA_HOME/bin/java" ] ; then
             CURRENT_JAVA_MAJOR=$( "$JAVA_HOME/bin/java" -version 2>&1 | sed -n '1s/.*version \"\([0-9][0-9]*\).*/\1/p' )
@@ -126,8 +126,8 @@ if "$darwin" && [ -x "/usr/libexec/java_home" ] ; then
             CURRENT_JAVA_MAJOR=$( java -version 2>&1 | sed -n '1s/.*version \"\([0-9][0-9]*\).*/\1/p' )
         fi
 
-        if [ -z "$JAVA_HOME" ] || [ -z "$CURRENT_JAVA_MAJOR" ] || [ "$CURRENT_JAVA_MAJOR" -gt 21 ] ; then
-            JAVA_HOME="$JAVA21_HOME"
+        if [ -z "$JAVA_HOME" ] || [ -z "$CURRENT_JAVA_MAJOR" ] || [ "$CURRENT_JAVA_MAJOR" -gt 25 ] ; then
+            JAVA_HOME="$JAVA25_HOME"
         fi
     fi
 fi

@@ -25,6 +25,24 @@ Done history moved to `TASKS-done.md`.
   Goal: upgrade the runtime/build toolchain to newer Java + Gradle versions with deterministic local/CI behavior.
   Deliverable: aligned Java/Gradle versions, dependency/plugin compatibility fixes, and green baseline gates.
   Exit criteria: `java-smoke`, `quality-full`, and local `./gradlew check` pass on the upgraded toolchain without environment-specific hacks.
+  Subtasks:
+  - [x] `H16.1` Baseline and target matrix.
+    Deliverable: documented current Java/Gradle/plugin/dependency versions and an explicit target upgrade matrix with compatibility notes.
+    Exit criteria: upgrade scope and order are fixed, with rollback path and known risk hotspots identified.
+    Status note (2026-03-06): completed in `docs/h16-toolchain-modernization-matrix.md` with pinned target direction (Java 25, Gradle 9.1.x+, Spring Boot 4.0.x LTS-target line), compatibility ownership, and rollback guards.
+  - [x] `H16.2` Gradle wrapper and build tooling bump.
+    Deliverable: upgraded Gradle wrapper and required build script/property updates to match the target Java/toolchain baseline.
+    Exit criteria: `./gradlew --version`, configuration phase, and core build lifecycle start cleanly on the new wrapper.
+    Status note (2026-03-06): completed with wrapper `9.1.0`, Java toolchain/launchers moved to `25`, macOS wrapper guard updated for JDK 25, and dependency-management plugin bumped to `1.1.7` for Gradle 9 compatibility (`--version`, `help`, `compileJava` all pass).
+  - [ ] `H16.3` Plugin and dependency compatibility remediation.
+    Deliverable: minimal set of plugin/dependency upgrades or config changes required to restore compile/test/check behavior.
+    Exit criteria: no deprecated/broken build integrations remain on critical paths (`compileJava`, `test`, `check`).
+  - [ ] `H16.4` CI parity and deterministic execution hardening.
+    Deliverable: workflow and environment alignment updates so local and CI use the same Java/Gradle assumptions.
+    Exit criteria: `java-smoke` and `quality-full` run with identical toolchain intent across local and CI.
+  - [ ] `H16.5` Validation and closeout evidence.
+    Deliverable: run log + short closeout note capturing command results, residual risks, and follow-ups.
+    Exit criteria: local `./gradlew check` and CI gates (`java-smoke`, `quality-full`) are green on the upgraded stack.
 
 ## How To Use This File
 
