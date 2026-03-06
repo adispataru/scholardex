@@ -172,3 +172,54 @@ Validation pass set:
 - `./gradlew compileJava --stacktrace`
 - `./gradlew test --stacktrace`
 - `./gradlew check --stacktrace`
+
+## H16.4 Status Update (2026-03-06)
+
+CI parity and deterministic execution hardening executed:
+
+- Updated Java setup from 21 to 25 in:
+  - `.github/workflows/h09-quality-gates.yml`
+  - `.github/workflows/h09-security-gates.yml`
+- Standardized Gradle CI execution to wrapper + non-daemon mode on Java jobs:
+  - `./gradlew --no-daemon compileJava`
+  - `./gradlew --no-daemon test --tests "*CoreApplicationTests"`
+  - `./gradlew --no-daemon check` (already in quality-full)
+- Kept Node baseline at 20 and preserved job names/structure and artifact behavior.
+- Updated CI baseline documentation in `docs/h09-ci-gates.md` to reflect Java 25 parity.
+
+Validation pass set:
+
+- `./gradlew --version`
+- `./gradlew compileJava`
+- `./gradlew test --tests "*CoreApplicationTests"`
+- `./gradlew check`
+
+## H16.5 Validation and Closeout Evidence (2026-03-06)
+
+Validation run log:
+
+1. `./gradlew --version`
+   - Result: PASS
+   - Evidence: Gradle `9.1.0`, launcher JVM `25.0.2`.
+2. `./gradlew compileJava`
+   - Result: PASS (`UP-TO-DATE`).
+3. `./gradlew test --tests "*CoreApplicationTests"`
+   - Result: PASS.
+4. `./gradlew check`
+   - Result: PASS, including frontend/template/guardrail verification tasks.
+
+Closeout summary:
+
+- Local upgraded-toolchain validation is green on the required critical path (`compileJava`, smoke test selection, full `check`).
+- CI parity updates for Java 25 and wrapper-based non-daemon execution are implemented for `java-smoke`, `quality-full`, and CodeQL build compile.
+- H16 implementation stack is decision-complete for rollout on the upgraded baseline.
+
+Residual risks:
+
+- CI gate final state (`java-smoke`, `quality-full`) requires PR workflow execution to confirm remote runner parity after workflow edits.
+- Java 25 native-access warnings from Gradle/Netty remain informational today but should be monitored for future JDK enforcement changes.
+
+Follow-ups:
+
+1. Open/verify a PR run and confirm green statuses for `java-smoke`, `quality-full`, and `codeql-analysis`.
+2. If CI shows environment-specific drift, capture in `docs/h10-failure-triage.md` with a targeted remediation note.

@@ -44,6 +44,12 @@ Jobs:
 5. `dependency-review`
 6. `codeql-analysis`
 
+Runtime baseline:
+
+1. Java: Temurin 25 for all Java-based CI jobs (`java-smoke`, `quality-full`, `codeql-analysis`)
+2. Node.js: 20 for frontend/guardrail jobs
+3. Gradle: project wrapper (`./gradlew`) with non-daemon invocation in CI build/test/check steps
+
 Branch-protection required checks (enforced target):
 
 1. `guardrails`
