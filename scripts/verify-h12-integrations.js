@@ -8,21 +8,42 @@ function readFile(path) {
 }
 
 function runRg(pattern, paths) {
-  try {
-    const output = execFileSync('rg', ['-n', pattern, ...paths], {
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
-    return output
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean);
-  } catch (error) {
-    if (typeof error.status === 'number' && error.status === 1) {
-      return [];
+  const runners = [
+    { cmd: 'rg', args: ['-n', pattern, ...paths] },
+    { cmd: 'grep', args: ['-R', '-n', '-E', pattern, ...paths] }
+  ];
+
+  let missingToolCount = 0;
+  for (const runner of runners) {
+    try {
+      const output = execFileSync(runner.cmd, runner.args, {
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+      return output
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean);
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        missingToolCount += 1;
+        continue;
+      }
+      if (typeof error.status === 'number' && error.status === 1) {
+        return [];
+      }
+      throw error;
     }
-    throw error;
   }
+
+  if (missingToolCount === runners.length) {
+    errors.push(
+      'H12 integration guardrail verification requires either `rg` (ripgrep) or `grep` to be available in PATH.'
+    );
+    process.exit(1);
+  }
+
+  return [];
 }
 
 const schedulerPath =

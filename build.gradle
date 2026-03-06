@@ -46,6 +46,9 @@ tasks.named('test') {
     javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(21)
     }
+    systemProperty 'spring.task.scheduling.enabled', 'false'
+    systemProperty 'core.scopus.scheduler.enabled', 'false'
+    systemProperty 'management.health.scopusPython.enabled', 'false'
     useJUnitPlatform()
 }
 
