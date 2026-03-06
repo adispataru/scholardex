@@ -19,6 +19,7 @@ import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosScoringViewRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -70,6 +71,10 @@ class WosProjectionBuilderServiceTest {
         assertEquals(2022, rankingView.getLatestAisYear());
         assertEquals(2023, rankingView.getLatestRisYear());
         assertEquals(EditionNormalized.SCIE, rankingView.getLatestEditionNormalized());
+        assertEquals("journal jid-1", rankingView.getNameNorm());
+        assertEquals("12345678", rankingView.getIssnNorm());
+        assertEquals("87654321", rankingView.getEIssnNorm());
+        assertEquals(List.of("11112222"), rankingView.getAlternativeIssnsNorm());
         assertNotNull(rankingView.getBuildVersion());
         assertNotNull(rankingView.getBuildAt());
         assertEquals(rankingView.getBuildVersion(), scoringView.getBuildVersion());
@@ -115,6 +120,30 @@ class WosProjectionBuilderServiceTest {
         WosRankingView view = rankingCaptor.getValue().getFirst();
         assertEquals(EditionNormalized.UNKNOWN, view.getLatestEditionNormalized());
         assertTrue(view.getLatestAisYear() == null && view.getLatestRisYear() == null);
+    }
+
+    @Test
+    void rebuildNormalizesRankingSearchFieldsDeterministically() {
+        WosProjectionBuilderService service = service();
+        WosJournalIdentity identity = new WosJournalIdentity();
+        identity.setId("jid-4");
+        identity.setTitle("  Journal:  Of  TESTS  ");
+        identity.setPrimaryIssn(" 1234-5678 ");
+        identity.setEIssn(" 8765 4321 ");
+        identity.setAliasIssns(Arrays.asList("1111-2222", " 11112222 ", null, ""));
+        when(identityRepository.findAll()).thenReturn(List.of(identity));
+        when(metricFactRepository.findAll()).thenReturn(List.of());
+        when(categoryFactRepository.findAll()).thenReturn(List.of());
+
+        service.rebuildWosProjections();
+
+        ArgumentCaptor<List<WosRankingView>> rankingCaptor = ArgumentCaptor.forClass(List.class);
+        verify(rankingViewRepository).saveAll(rankingCaptor.capture());
+        WosRankingView view = rankingCaptor.getValue().getFirst();
+        assertEquals("journal: of tests", view.getNameNorm());
+        assertEquals("12345678", view.getIssnNorm());
+        assertEquals("87654321", view.getEIssnNorm());
+        assertEquals(List.of("11112222"), view.getAlternativeIssnsNorm());
     }
 
     private WosProjectionBuilderService service() {

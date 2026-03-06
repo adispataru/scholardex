@@ -115,4 +115,14 @@ class RankingViewSecurityContractTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/custom-error?error=403"));
     }
+
+    @Test
+    void nonAdminCannotInvokeEnsureIndexesOperation() throws Exception {
+        mockMvc.perform(post("/admin/rankings/wos/ensureIndexes")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro")
+                                .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+    }
 }

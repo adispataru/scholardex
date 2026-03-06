@@ -23,10 +23,13 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.Locale;
 
 @Service
 public class WosProjectionBuilderService {
@@ -116,6 +119,10 @@ public class WosProjectionBuilderService {
         view.setIssn(identity.getPrimaryIssn());
         view.setEIssn(identity.getEIssn());
         view.setAlternativeIssns(identity.getAliasIssns() == null ? List.of() : new ArrayList<>(identity.getAliasIssns()));
+        view.setNameNorm(normalizeText(identity.getTitle()));
+        view.setIssnNorm(normalizeIssn(identity.getPrimaryIssn()));
+        view.setEIssnNorm(normalizeIssn(identity.getEIssn()));
+        view.setAlternativeIssnsNorm(normalizeIssnList(identity.getAliasIssns()));
         view.setLatestAisYear(maxYearWithValue(journalFacts, MetricType.AIS));
         view.setLatestRisYear(maxYearWithValue(journalFacts, MetricType.RIS));
         view.setLatestEditionNormalized(resolveLatestEdition(journalFacts));
@@ -224,5 +231,37 @@ public class WosProjectionBuilderService {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 not available", e);
         }
+    }
+
+    private String normalizeText(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String normalized = raw.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+        return normalized.isBlank() ? null : normalized;
+    }
+
+    private String normalizeIssn(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String normalized = raw.trim().toUpperCase(Locale.ROOT)
+                .replace("-", "")
+                .replace(" ", "");
+        return normalized.isBlank() ? null : normalized;
+    }
+
+    private List<String> normalizeIssnList(List<String> rawTokens) {
+        if (rawTokens == null || rawTokens.isEmpty()) {
+            return List.of();
+        }
+        Set<String> normalized = new LinkedHashSet<>();
+        for (String token : rawTokens) {
+            String value = normalizeIssn(token);
+            if (value != null) {
+                normalized.add(value);
+            }
+        }
+        return new ArrayList<>(normalized);
     }
 }

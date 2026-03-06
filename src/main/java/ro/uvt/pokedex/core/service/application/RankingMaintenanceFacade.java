@@ -17,6 +17,7 @@ public class RankingMaintenanceFacade {
     private final CacheService cacheService;
     private final RankingRepository rankingRepository;
     private final WosProjectionBuilderService wosProjectionBuilderService;
+    private final WosIndexMaintenanceService wosIndexMaintenanceService;
 
     public void computePositionsForKnownQuarters() {
         List<WoSRanking> rankings = cacheService.getAllRankings();
@@ -51,5 +52,9 @@ public class RankingMaintenanceFacade {
 
     public ImportProcessingResult rebuildWosProjections() {
         return wosProjectionBuilderService.rebuildWosProjections();
+    }
+
+    public WosIndexMaintenanceService.WosIndexEnsureResult ensureWosIndexes() {
+        return wosIndexMaintenanceService.ensureWosIndexes();
     }
 }

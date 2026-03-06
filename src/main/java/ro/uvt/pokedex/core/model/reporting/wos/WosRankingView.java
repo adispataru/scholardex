@@ -22,6 +22,10 @@ public class WosRankingView {
     private String eIssn;
     @Indexed
     private List<String> alternativeIssns = new ArrayList<>();
+    private String nameNorm;
+    private String issnNorm;
+    private String eIssnNorm;
+    private List<String> alternativeIssnsNorm = new ArrayList<>();
     private Integer latestAisYear;
     private Integer latestRisYear;
     private EditionNormalized latestEditionNormalized;

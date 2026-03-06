@@ -510,6 +510,17 @@ public class AdminViewController {
         return "redirect:/admin/rankings/wos";
     }
 
+    @PostMapping("/rankings/wos/ensureIndexes")
+    public String ensureWosIndexes(RedirectAttributes redirectAttributes) {
+        var result = rankingMaintenanceFacade.ensureWosIndexes();
+        redirectAttributes.addFlashAttribute("successMessage",
+                "WoS indexes ensured. Created=" + result.created().size()
+                        + ", Present=" + result.present().size()
+                        + ", Invalid=" + result.invalid().size()
+                        + ", Errors=" + result.errors().size());
+        return "redirect:/admin/rankings/wos";
+    }
+
     @GetMapping("/rankings/core")
     public String showCoreRankingsPage() {
         return "admin/rankings-core";

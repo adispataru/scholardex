@@ -71,9 +71,11 @@ Done history moved to `TASKS-done.md`.
     Exit criteria: projections are rebuildable from facts, versioned, and can be regenerated without manual patching.
     Status: completed on 2026-03-06.
     Note: added manual full-rebuild projection pipeline with shared `buildVersion`/`buildAt` stamping and admin-triggered rebuild action.
-  - [ ] `H14.8` Mongo indexing and query plan hardening.
+  - [x] `H14.8` Mongo indexing and query plan hardening.
     Deliverable: compound indexes for fact/projection access patterns.
     Exit criteria: `/api/rankings/wos` and scoring lookups execute with index-backed query plans under target dataset size.
+    Status: completed on 2026-03-06.
+    Note: added manual WoS index maintenance action/service with deterministic named-index contract, verification reporting, and ranking-view normalized fields for prefix-search index readiness.
   - [ ] `H14.9` API read-path cutover.
     Deliverable: `/api/rankings/wos` and related WoS list/detail reads backed by projections rather than `CacheService#getAllRankings`.
     Exit criteria: API contracts unchanged; response parity and pagination/sort/filter behavior preserved.

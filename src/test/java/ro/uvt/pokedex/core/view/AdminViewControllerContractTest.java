@@ -116,6 +116,21 @@ class AdminViewControllerContractTest {
     }
 
     @Test
+    void ensureWosIndexesRedirectsAndDelegates() throws Exception {
+        when(rankingMaintenanceFacade.ensureWosIndexes()).thenReturn(
+                new ro.uvt.pokedex.core.service.application.WosIndexMaintenanceService.WosIndexEnsureResult(
+                        List.of("idx"), List.of("idx2"), List.of(), List.of()
+                )
+        );
+
+        mockMvc.perform(post("/admin/rankings/wos/ensureIndexes"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/rankings/wos"));
+
+        verify(rankingMaintenanceFacade).ensureWosIndexes();
+    }
+
+    @Test
     void wosRankingsPageRendersExpectedTemplateAndClientControls() throws Exception {
         mockMvc.perform(get("/admin/rankings/wos"))
                 .andExpect(status().isOk())
@@ -129,6 +144,7 @@ class AdminViewControllerContractTest {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-wos-prev\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-wos-next\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/admin/rankings/wos/rebuildProjections")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/admin/rankings/wos/ensureIndexes")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/js/admin-rankings-wos.js")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
     }

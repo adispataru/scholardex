@@ -24,6 +24,8 @@ class RankingMaintenanceFacadeTest {
     private RankingRepository rankingRepository;
     @Mock
     private WosProjectionBuilderService wosProjectionBuilderService;
+    @Mock
+    private WosIndexMaintenanceService wosIndexMaintenanceService;
 
     @InjectMocks
     private RankingMaintenanceFacade facade;
@@ -109,6 +111,19 @@ class RankingMaintenanceFacadeTest {
 
         verify(wosProjectionBuilderService).rebuildWosProjections();
         verifyNoInteractions(cacheService, rankingRepository);
+        org.junit.jupiter.api.Assertions.assertSame(expected, result);
+    }
+
+    @Test
+    void ensureWosIndexesDelegatesToIndexMaintenanceService() {
+        WosIndexMaintenanceService.WosIndexEnsureResult expected =
+                new WosIndexMaintenanceService.WosIndexEnsureResult(List.of("a"), List.of("b"), List.of(), List.of());
+        when(wosIndexMaintenanceService.ensureWosIndexes()).thenReturn(expected);
+
+        WosIndexMaintenanceService.WosIndexEnsureResult result = facade.ensureWosIndexes();
+
+        verify(wosIndexMaintenanceService).ensureWosIndexes();
+        verifyNoInteractions(cacheService, rankingRepository, wosProjectionBuilderService);
         org.junit.jupiter.api.Assertions.assertSame(expected, result);
     }
 
