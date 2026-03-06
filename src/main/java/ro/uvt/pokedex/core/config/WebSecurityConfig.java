@@ -17,7 +17,7 @@ import org.springframework.security.web.access.RequestMatcherDelegatingAccessDen
 import org.springframework.security.web.authentication.DelegatingAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
-import org.springframework.security.web.util.matcher.RequestMatcher;
+    import org.springframework.security.web.util.matcher.RequestMatcher;
 import ro.uvt.pokedex.core.handlers.ApiAccessDeniedHandler;
 import ro.uvt.pokedex.core.handlers.ApiAuthenticationEntryPoint;
 import ro.uvt.pokedex.core.handlers.CustomAccessDeniedHandler;

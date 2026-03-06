@@ -152,7 +152,9 @@ const securityConfig = fs.readFileSync(securityConfigPath, 'utf8');
 if (/csrf\(AbstractHttpConfigurer::disable\)/.test(securityConfig)) {
   errors.push(`${securityConfigPath}: global CSRF disable is forbidden in H07-R4.`);
 }
-if (!/ignoringRequestMatchers\(new AntPathRequestMatcher\("\/api\/\*\*"\)\)/.test(securityConfig)) {
+const csrfIgnoresApiOnlyAntMatcher = /ignoringRequestMatchers\(new AntPathRequestMatcher\("\/api\/\*\*"\)\)/.test(securityConfig);
+const csrfIgnoresApiOnlyPathPattern = /ignoringRequestMatchers\(PathPatternRequestMatcher\.pathPattern\("\/api\/\*\*"\)\)/.test(securityConfig);
+if (!csrfIgnoresApiOnlyAntMatcher && !csrfIgnoresApiOnlyPathPattern) {
   errors.push(`${securityConfigPath}: CSRF config must explicitly ignore /api/** only.`);
 }
 
