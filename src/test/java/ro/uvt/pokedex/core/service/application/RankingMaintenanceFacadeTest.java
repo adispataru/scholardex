@@ -5,23 +5,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ro.uvt.pokedex.core.model.WoSRanking;
-import ro.uvt.pokedex.core.repository.reporting.RankingRepository;
-import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.wos.WosProjectionBuilderService;
 
 import java.util.List;
 
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class RankingMaintenanceFacadeTest {
 
-    @Mock
-    private CacheService cacheService;
-    @Mock
-    private RankingRepository rankingRepository;
     @Mock
     private WosProjectionBuilderService wosProjectionBuilderService;
     @Mock
@@ -31,75 +27,21 @@ class RankingMaintenanceFacadeTest {
     private RankingMaintenanceFacade facade;
 
     @Test
-    void computePositionsForKnownQuartersPersistsAndRefreshesCache() {
-        WoSRanking ranking = ranking("J1");
-        when(cacheService.getAllRankings()).thenReturn(List.of(ranking));
-
-        facade.computePositionsForKnownQuarters();
-
-        verify(rankingRepository).saveAll(anyList());
-        verify(cacheService).cacheRankings();
+    void legacyComputePositionsOperationIsDisabled() {
+        assertThrows(IllegalStateException.class, facade::computePositionsForKnownQuarters);
+        verifyNoInteractions(wosProjectionBuilderService, wosIndexMaintenanceService);
     }
 
     @Test
-    void computeQuartersAndRankingsWhereMissingPersistsAndRefreshesCache() {
-        WoSRanking ranking = ranking("J1");
-        when(cacheService.getAllRankings()).thenReturn(List.of(ranking));
-
-        facade.computeQuartersAndRankingsWhereMissing();
-
-        verify(rankingRepository).saveAll(anyList());
-        verify(cacheService).cacheRankings();
+    void legacyComputeQuartersOperationIsDisabled() {
+        assertThrows(IllegalStateException.class, facade::computeQuartersAndRankingsWhereMissing);
+        verifyNoInteractions(wosProjectionBuilderService, wosIndexMaintenanceService);
     }
 
     @Test
-    void mergeDuplicateRankingsPersistsMergedDeletesDuplicateAndRefreshesCache() {
-        WoSRanking first = ranking("Same");
-        first.setIssn("0000-0001");
-        WoSRanking second = ranking("Same");
-        second.setEIssn("0000-0002");
-        when(cacheService.getAllRankings()).thenReturn(List.of(first, second));
-
-        facade.mergeDuplicateRankings();
-
-        verify(rankingRepository).save(any(WoSRanking.class));
-        verify(rankingRepository).delete(any(WoSRanking.class));
-        verify(cacheService).cacheRankings();
-    }
-
-    @Test
-    void mergeDuplicateRankingsDoesNotDeleteWhenNoDuplicates() {
-        WoSRanking first = ranking("A");
-        WoSRanking second = ranking("B");
-        when(cacheService.getAllRankings()).thenReturn(List.of(first, second));
-
-        facade.mergeDuplicateRankings();
-
-        verify(rankingRepository, never()).save(any(WoSRanking.class));
-        verify(rankingRepository, never()).delete(any(WoSRanking.class));
-        verify(cacheService).cacheRankings();
-    }
-
-    @Test
-    void computeMethodsHandleEmptyRankingsList() {
-        when(cacheService.getAllRankings()).thenReturn(List.of());
-
-        facade.computePositionsForKnownQuarters();
-        facade.computeQuartersAndRankingsWhereMissing();
-
-        verify(rankingRepository, times(2)).saveAll(anyList());
-        verify(cacheService, times(2)).cacheRankings();
-    }
-
-    @Test
-    void mergeDuplicateRankingsHandlesEmptyListWithoutPersistenceMutations() {
-        when(cacheService.getAllRankings()).thenReturn(List.of());
-
-        facade.mergeDuplicateRankings();
-
-        verify(rankingRepository, never()).save(any(WoSRanking.class));
-        verify(rankingRepository, never()).delete(any(WoSRanking.class));
-        verify(cacheService).cacheRankings();
+    void legacyMergeOperationIsDisabled() {
+        assertThrows(IllegalStateException.class, facade::mergeDuplicateRankings);
+        verifyNoInteractions(wosProjectionBuilderService, wosIndexMaintenanceService);
     }
 
     @Test
@@ -110,7 +52,6 @@ class RankingMaintenanceFacadeTest {
         ImportProcessingResult result = facade.rebuildWosProjections();
 
         verify(wosProjectionBuilderService).rebuildWosProjections();
-        verifyNoInteractions(cacheService, rankingRepository);
         org.junit.jupiter.api.Assertions.assertSame(expected, result);
     }
 
@@ -123,14 +64,6 @@ class RankingMaintenanceFacadeTest {
         WosIndexMaintenanceService.WosIndexEnsureResult result = facade.ensureWosIndexes();
 
         verify(wosIndexMaintenanceService).ensureWosIndexes();
-        verifyNoInteractions(cacheService, rankingRepository, wosProjectionBuilderService);
         org.junit.jupiter.api.Assertions.assertSame(expected, result);
-    }
-
-    private static WoSRanking ranking(String name) {
-        WoSRanking ranking = new WoSRanking();
-        ranking.setName(name);
-        ranking.setScore(new WoSRanking.Score());
-        return ranking;
     }
 }

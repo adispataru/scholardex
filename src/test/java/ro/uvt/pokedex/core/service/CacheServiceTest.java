@@ -5,19 +5,22 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ro.uvt.pokedex.core.model.WoSRanking;
+import ro.uvt.pokedex.core.model.CoreConferenceRanking;
+import ro.uvt.pokedex.core.model.scopus.Affiliation;
+import ro.uvt.pokedex.core.model.scopus.Author;
+import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
-import ro.uvt.pokedex.core.repository.reporting.RankingRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusAffiliationRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
 
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class CacheServiceTest {
@@ -26,8 +29,6 @@ class CacheServiceTest {
     private ScopusForumRepository scopusForumRepository;
     @Mock
     private CoreConferenceRankingRepository coreConferenceRankingRepository;
-    @Mock
-    private RankingRepository rankingRepository;
     @Mock
     private ScopusAuthorRepository scopusAuthorRepository;
     @Mock
@@ -39,92 +40,56 @@ class CacheServiceTest {
 
     @BeforeEach
     void setUp() {
-        when(scopusForumRepository.findAll()).thenReturn(List.of());
-        when(coreConferenceRankingRepository.findAll()).thenReturn(List.of());
-        when(rankingRepository.findAll()).thenReturn(List.of());
-        when(scopusAuthorRepository.findAll()).thenReturn(List.of());
-        when(scopusAffiliationRepository.findAll()).thenReturn(List.of());
+        Forum forum = new Forum();
+        forum.setId("f1");
+        CoreConferenceRanking core = new CoreConferenceRanking();
+        core.setAcronym("ICSE");
+        Author author = new Author();
+        author.setId("a1");
+        Affiliation affiliation = new Affiliation();
+        affiliation.setAfid("af1");
+
+        when(scopusForumRepository.findAll()).thenReturn(List.of(forum));
+        when(coreConferenceRankingRepository.findAll()).thenReturn(List.of(core));
+        when(scopusAuthorRepository.findAll()).thenReturn(List.of(author));
+        when(scopusAffiliationRepository.findAll()).thenReturn(List.of(affiliation));
         when(groupRepository.findAll()).thenReturn(List.of());
+
         cacheService = new CacheService(
                 scopusForumRepository,
                 coreConferenceRankingRepository,
-                rankingRepository,
                 scopusAuthorRepository,
                 scopusAffiliationRepository,
                 groupRepository
         );
-        clearInvocations(rankingRepository);
     }
 
     @Test
-    void getCachedRankingsByIssnUsesRepositoryIssnLookup() {
-        WoSRanking ranking = ranking("r1", "1234-5678", null);
-        when(rankingRepository.findAllByIssn("1234-5678")).thenReturn(List.of(ranking));
-        when(rankingRepository.findAllByEIssn("1234-5678")).thenReturn(List.of());
-
-        List<WoSRanking> results = cacheService.getCachedRankingsByIssn("1234-5678");
-
-        assertEquals(1, results.size());
-        assertEquals("r1", results.getFirst().getId());
-        verify(rankingRepository).findAllByIssn("1234-5678");
-        verify(rankingRepository).findAllByEIssn("1234-5678");
+    void cachedForumLookupWorks() {
+        Forum forum = cacheService.getCachedForums("f1");
+        assertEquals("f1", forum.getId());
     }
 
     @Test
-    void getCachedRankingsByIssnIncludesEIssnFallbackAndDeduplicatesById() {
-        WoSRanking ranking = ranking("same", null, "8765-4321");
-        when(rankingRepository.findAllByIssn("8765-4321")).thenReturn(List.of(ranking));
-        when(rankingRepository.findAllByEIssn("8765-4321")).thenReturn(List.of(ranking));
-
-        List<WoSRanking> results = cacheService.getCachedRankingsByIssn("8765-4321");
-
-        assertEquals(1, results.size());
-        assertEquals("same", results.getFirst().getId());
+    void conferenceRankingLookupUsesCacheMap() {
+        List<CoreConferenceRanking> rankings = cacheService.getCachedConfRankings("ICSE");
+        assertEquals(1, rankings.size());
     }
 
     @Test
-    void getCachedRankingsByIssnUsesNormalizedKeyForCacheAndRepositoryQueries() {
-        WoSRanking ranking = ranking("r1", "abcd-1234", null);
-        when(rankingRepository.findAllByIssn("abcd-1234")).thenReturn(List.of(ranking));
-        when(rankingRepository.findAllByEIssn("abcd-1234")).thenReturn(List.of());
+    void authorAndAffiliationCachesAreReadableAndMutable() {
+        assertEquals("a1", cacheService.getAuthor("a1").getId());
+        assertEquals("af1", cacheService.getAffiliation("af1").getAfid());
 
-        List<WoSRanking> first = cacheService.getCachedRankingsByIssn("  ABCD-1234 ");
-        List<WoSRanking> second = cacheService.getCachedRankingsByIssn("abcd-1234");
-
-        assertEquals(1, first.size());
-        assertEquals(1, second.size());
-        verify(rankingRepository, times(1)).findAllByIssn("abcd-1234");
-        verify(rankingRepository, times(1)).findAllByEIssn("abcd-1234");
+        Author replacementAuthor = new Author();
+        replacementAuthor.setId("a2");
+        cacheService.putAuthor("a2", replacementAuthor);
+        assertSame(replacementAuthor, cacheService.getAuthor("a2"));
     }
 
     @Test
-    void cacheRankingsDoesNotPolluteIssnCacheWithRankingIdKeys() {
-        WoSRanking ranking = ranking("ranking-id", "1111-2222", null);
-        when(rankingRepository.findAll()).thenReturn(List.of(ranking));
-        when(rankingRepository.findAllByIssn("ranking-id")).thenReturn(List.of());
-        when(rankingRepository.findAllByEIssn("ranking-id")).thenReturn(List.of());
-
-        cacheService.cacheRankings();
-        List<WoSRanking> results = cacheService.getCachedRankingsByIssn("ranking-id");
-
-        assertEquals(0, results.size());
-        verify(rankingRepository).findAllByIssn("ranking-id");
-        verify(rankingRepository).findAllByEIssn("ranking-id");
-    }
-
-    @Test
-    void getCachedTopRankingsReturnsZeroWhenCategoryYearMissing() {
-        int result = cacheService.getCachedTopRankings("cs", 2024);
-        assertEquals(0, result);
-    }
-
-    private static WoSRanking ranking(String id, String issn, String eIssn) {
-        WoSRanking ranking = new WoSRanking();
-        ranking.setId(id);
-        ranking.setIssn(issn);
-        ranking.setEIssn(eIssn);
-        ranking.setScore(new WoSRanking.Score());
-        ranking.setWebOfScienceCategoryIndex(Map.of());
-        return ranking;
+    void universityAuthorIdsReturnsSet() {
+        Set<String> ids = cacheService.getUniversityAuthorIds();
+        assertEquals(0, ids.size());
     }
 }

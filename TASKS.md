@@ -86,12 +86,18 @@ Done history moved to `TASKS-done.md`.
     Edition filter rule: operational scoring/reporting reads use only `SCIE/SSCI` normalized editions.
     Status: completed on 2026-03-06.
     Note: introduced `@Primary` projection/fact-backed `ReportingLookupPort` for WoS methods (`getRankingsByIssn`, `getTopRankings`) with SCIE/SSCI filtering and no WoS cache fallback, while non-WoS lookup methods remain cache-backed until H14.11.
-  - [ ] `H14.11` CacheService role minimization.
+  - [x] `H14.11` CacheService role minimization.
     Deliverable: remove WoS primary lookup responsibilities from `CacheService`; keep optional short-lived aggregate memoization only.
     Exit criteria: no WoS ranking/report primary read path depends on cache preloading.
-  - [ ] `H14.12` Big-bang migration tooling.
-    Deliverable: one-command/full-run migration workflow (staging first): ingest events -> build facts -> build projections -> verify.
-    Exit criteria: dry-run and full-run outputs include reconciliation metrics and deterministic rerun behavior.
+    Status: completed on 2026-03-06.
+    Note: WoS ranking/top-count cache methods were removed from `CacheService`, legacy WoS maintenance operations were disabled, and operational WoS reporting/category reads now use canonical facts/projections.
+  - [ ] `H14.12` Big-bang migration tooling (admin-triggered only).
+    Deliverable: admin-only full-run migration workflow (staging first) from `/admin/rankings/wos`: ingest events -> build facts -> build projections -> verify.
+    Exit criteria: admin-triggered dry-run and full-run outputs include reconciliation metrics, deterministic rerun behavior, and clear operator-visible summaries/errors.
+    Notes:
+    - Execution path is admin maintenance action only (no separate CLI/public runner contract).
+    - Workflow must use existing canonical services and produce deterministic per-step accounting.
+    - Security: action is restricted to `PLATFORM_ADMIN`.
   - [ ] `H14.13` Parity and reconciliation suite.
     Deliverable: automated checks for counts, sampled journal timelines, category/rank consistency, and score parity.
     Exit criteria: parity gates pass against agreed baseline before production cutover.
@@ -102,9 +108,32 @@ Done history moved to `TASKS-done.md`.
   - [ ] `H14.15` Rollback/cutover playbook.
     Deliverable: operational runbook for cutover, rollback, and replay recovery.
     Exit criteria: staged rehearsal completed with documented timings and recovery steps.
-  - [ ] `H14.16` Deprecation closure for `Indicator.Strategy.IMPACT_FACTOR`.
-    Deliverable: strategy marked deprecated with explicit source-policy behavior and telemetry.
-    Exit criteria: runtime behavior is deterministic when IF missing, and usage is observable.
+  - [ ] `H14.16` Operational support closure for `Indicator.Strategy.IMPACT_FACTOR`.
+    Deliverable: keep `IMPACT_FACTOR` fully supported using only official WoS extracted data lineage (including future key-based imports), with explicit source-policy behavior and telemetry.
+    Exit criteria: runtime behavior is deterministic when IF missing, IF ingestion uses official WoS extracted sources only, and usage remains observable.
+  - [ ] `H14.17` De-couple WoS category and edition everywhere (remove combined string key).
+    Goal: migrate all WoS ranking/scoring/domain/admin flows from `"<category> - <edition>"` keys to first-class separate fields.
+    Deliverable: no operational code path requires parsing/joining category+edition strings; compatibility bridges removed.
+    Exit criteria: `ScoringCategorySupport.extractCategory*` combined-key parsing no longer used in WoS runtime paths, and domain/category matching uses structured values.
+    Subtasks:
+    - [ ] `H14.17.1` Introduce structured category-edition contract in reporting runtime.
+      Deliverable: add internal value type (e.g., `CategoryEdition{categoryNameCanonical, editionNormalized}`) and migrate WoS lookup outputs to structured entries.
+      Exit criteria: WoS reporting internals do not require composite string keys.
+    - [ ] `H14.17.2` Migrate scorer/category matching to structured inputs.
+      Deliverable: replace string split/parsing in scorer flows with structured category+edition matching.
+      Exit criteria: AIS/RIS/CNFIS scoring paths no longer parse `"-"` to detect edition.
+    - [ ] `H14.17.3` Migrate domain WoS category storage/usage to structured representation.
+      Deliverable: domain eligibility checks use separate category + edition fields (with migration/backward-read strategy).
+      Exit criteria: no exact-match dependency on `List<String>` combined keys in operational WoS checks.
+    - [ ] `H14.17.4` Update admin catalog/edit flows.
+      Deliverable: admin category listing and selection use structured pairs; display formatting remains UI-only concern.
+      Exit criteria: persisted/admin-selected values are not stored as concatenated keys.
+    - [ ] `H14.17.5` Remove compatibility bridges and dead helpers.
+      Deliverable: remove runtime combined-key creation/parsing paths in projection-backed lookup/details services and helper utilities.
+      Exit criteria: grep check finds no WoS operational ` + " - " + ` key synthesis except optional display-only formatting.
+    - [ ] `H14.17.6` Regression and parity suite.
+      Deliverable: updated tests for WoS lookup, scorer parity, domain eligibility, admin category management.
+      Exit criteria: parity preserved vs current SCIE/SSCI behavior and targeted suites pass.
 
   Test cases to track in H14:
   - [ ] Government row with index `SCIENCE` maps to `editionNormalized=SCIE`.
@@ -112,11 +141,20 @@ Done history moved to `TASKS-done.md`.
   - [ ] Missing/invalid edition text stored as `UNKNOWN` with raw source preserved.
   - [ ] Operational ranking/report queries include only `SCIE/SSCI` and ignore `OTHER/UNKNOWN`.
   - [ ] Re-run of ingestion produces identical edition-normalization outputs.
+  - [ ] Structured match works for same category with different editions (`SCIE` vs `SSCI`).
+  - [ ] `getTopRankings` and domain eligibility behave correctly without combined-key parsing.
+  - [ ] Admin domain/category edits persist structured category+edition values and render correctly.
+  - [ ] Existing AIS/RIS/CNFIS scoring outputs remain parity-stable for representative fixtures.
+  - [ ] No operational code path relies on `ScoringCategorySupport.extractCategoryIndex` for WoS.
+  - [ ] Admin-triggered H14.12 run executes full chain (ingest -> facts -> projections -> verify) with deterministic summary and no side effects for unauthorized users.
 
   Assumptions/defaults for H14 edition handling:
   - [ ] Keep raw edition values persisted for audit; operationally filter to `SCIE/SSCI`.
   - [ ] Official WoS extracted JSON (`data/wos-json-1997-2019`) and government AIS/RIS are both authoritative inputs; normalization resolves inconsistencies.
   - [ ] Edition is first-class data in Approach 3, not encoded in category strings.
+  - [ ] Keep external endpoint shapes unchanged for this migration; changes are internal + domain category persistence model.
+  - [ ] Temporary read-compatibility for existing combined-key domain data is allowed during migration; write path becomes structured.
+  - [ ] Any remaining combined category-edition formatting is display-only (UI labels), not lookup keys.
 
 ## How To Use This File
 

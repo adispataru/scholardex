@@ -16,6 +16,7 @@ import java.util.Set;
 public class CacheBackedReportingLookupFacade implements ReportingLookupPort {
 
     private final CacheService cacheService;
+    private final ProjectionBackedReportingLookupFacade projectionBackedReportingLookupFacade;
 
     @Override
     public Forum getForum(String forumId) {
@@ -24,7 +25,7 @@ public class CacheBackedReportingLookupFacade implements ReportingLookupPort {
 
     @Override
     public List<WoSRanking> getRankingsByIssn(String issn) {
-        return cacheService.getCachedRankingsByIssn(issn);
+        return projectionBackedReportingLookupFacade.getRankingsByIssn(issn);
     }
 
     @Override
@@ -34,7 +35,7 @@ public class CacheBackedReportingLookupFacade implements ReportingLookupPort {
 
     @Override
     public int getTopRankings(String categoryIndex, Integer year) {
-        return cacheService.getCachedTopRankings(categoryIndex, year);
+        return projectionBackedReportingLookupFacade.getTopRankings(categoryIndex, year);
     }
 
     @Override

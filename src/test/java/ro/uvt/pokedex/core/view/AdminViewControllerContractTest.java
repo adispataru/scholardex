@@ -45,6 +45,7 @@ import java.util.TreeMap;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
@@ -87,6 +88,16 @@ class AdminViewControllerContractTest {
                 .andExpect(redirectedUrl("/admin/rankings/wos"));
 
         verify(rankingMaintenanceFacade).computePositionsForKnownQuarters();
+    }
+
+    @Test
+    void computePositionsShowsErrorFlashWhenLegacyOperationDisabled() throws Exception {
+        doThrow(new IllegalStateException("disabled")).when(rankingMaintenanceFacade).computePositionsForKnownQuarters();
+
+        mockMvc.perform(post("/admin/rankings/wos/computePositionsForKnownQuarters"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/rankings/wos"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash().attributeExists("errorMessage"));
     }
 
     @Test

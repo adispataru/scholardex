@@ -23,6 +23,8 @@ class CacheBackedReportingLookupFacadeTest {
 
     @Mock
     private CacheService cacheService;
+    @Mock
+    private ProjectionBackedReportingLookupFacade projectionBackedReportingLookupFacade;
 
     @InjectMocks
     private CacheBackedReportingLookupFacade facade;
@@ -39,14 +41,14 @@ class CacheBackedReportingLookupFacadeTest {
     }
 
     @Test
-    void getRankingsByIssnDelegatesToCacheService() {
+    void getRankingsByIssnDelegatesToProjectionFacade() {
         List<WoSRanking> expected = List.of(new WoSRanking());
-        when(cacheService.getCachedRankingsByIssn("issn")).thenReturn(expected);
+        when(projectionBackedReportingLookupFacade.getRankingsByIssn("issn")).thenReturn(expected);
 
         List<WoSRanking> actual = facade.getRankingsByIssn("issn");
 
         assertSame(expected, actual);
-        verify(cacheService).getCachedRankingsByIssn("issn");
+        verify(projectionBackedReportingLookupFacade).getRankingsByIssn("issn");
     }
 
     @Test
@@ -61,13 +63,13 @@ class CacheBackedReportingLookupFacadeTest {
     }
 
     @Test
-    void getTopRankingsDelegatesToCacheService() {
-        when(cacheService.getCachedTopRankings("cat", 2023)).thenReturn(7);
+    void getTopRankingsDelegatesToProjectionFacade() {
+        when(projectionBackedReportingLookupFacade.getTopRankings("cat", 2023)).thenReturn(7);
 
         int actual = facade.getTopRankings("cat", 2023);
 
         assertEquals(7, actual);
-        verify(cacheService).getCachedTopRankings("cat", 2023);
+        verify(projectionBackedReportingLookupFacade).getTopRankings("cat", 2023);
     }
 
     @Test

@@ -17,11 +17,13 @@ import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndicatorRepository;
 import ro.uvt.pokedex.core.repository.reporting.RankingRepository;
+import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusAffiliationRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
-import ro.uvt.pokedex.core.service.CacheService;
+import ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized;
+import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 
 import java.util.List;
 import java.util.Optional;
@@ -45,7 +47,7 @@ class AdminCatalogFacadeTest {
     @Mock private DomainRepository domainRepository;
     @Mock private InstitutionRepository institutionRepository;
     @Mock private ActivityRepository activityRepository;
-    @Mock private CacheService cacheService;
+    @Mock private WosCategoryFactRepository wosCategoryFactRepository;
 
     @InjectMocks
     private AdminCatalogFacade facade;
@@ -75,9 +77,17 @@ class AdminCatalogFacadeTest {
 
     @Test
     void listWosCategoriesReturnsSortedValues() {
-        when(cacheService.getWosCategories()).thenReturn(Set.of("B", "A"));
+        WosCategoryFact factB = new WosCategoryFact();
+        factB.setCategoryNameCanonical("B");
+        factB.setEditionNormalized(EditionNormalized.SCIE);
+        WosCategoryFact factA = new WosCategoryFact();
+        factA.setCategoryNameCanonical("A");
+        factA.setEditionNormalized(EditionNormalized.SSCI);
+        when(wosCategoryFactRepository.findAllByEditionNormalizedIn(Set.of(EditionNormalized.SCIE, EditionNormalized.SSCI)))
+                .thenReturn(List.of(factB, factA));
+
         List<String> categories = facade.listWosCategories();
-        assertEquals(List.of("A", "B"), categories);
+        assertEquals(List.of("A - SSCI", "B - SCIE"), categories);
     }
 
     @Test

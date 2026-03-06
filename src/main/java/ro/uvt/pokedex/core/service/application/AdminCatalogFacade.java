@@ -20,16 +20,18 @@ import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndicatorRepository;
 import ro.uvt.pokedex.core.repository.reporting.RankingRepository;
+import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusAffiliationRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusAuthorRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusForumRepository;
 import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
-import ro.uvt.pokedex.core.service.CacheService;
+import ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -46,7 +48,7 @@ public class AdminCatalogFacade {
     private final DomainRepository domainRepository;
     private final InstitutionRepository institutionRepository;
     private final ActivityRepository activityRepository;
-    private final CacheService cacheService;
+    private final WosCategoryFactRepository wosCategoryFactRepository;
 
     public List<Institution> listInstitutions() {
         return institutionRepository.findAll();
@@ -121,9 +123,14 @@ public class AdminCatalogFacade {
     }
 
     public List<String> listWosCategories() {
-        List<String> categories = new ArrayList<>(cacheService.getWosCategories());
-        Collections.sort(categories);
-        return categories;
+        return wosCategoryFactRepository
+                .findAllByEditionNormalizedIn(Set.of(EditionNormalized.SCIE, EditionNormalized.SSCI))
+                .stream()
+                .filter(f -> f.getCategoryNameCanonical() != null && !f.getCategoryNameCanonical().isBlank())
+                .map(f -> f.getCategoryNameCanonical() + " - " + f.getEditionNormalized())
+                .distinct()
+                .sorted()
+                .toList();
     }
 
     public List<Forum> listScopusVenues() {

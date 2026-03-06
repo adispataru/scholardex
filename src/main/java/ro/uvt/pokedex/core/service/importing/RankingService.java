@@ -9,7 +9,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.repository.reporting.RankingRepository;
-import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.wos.WosFactBuilderService;
 import ro.uvt.pokedex.core.service.importing.wos.WosImportEventIngestionService;
@@ -28,9 +27,6 @@ public class RankingService {
 
     @Autowired
     private RankingRepository rankingRepository;
-
-    @Autowired
-    private CacheService cacheService;
     @Autowired(required = false)
     private WosImportEventIngestionService wosImportEventIngestionService;
     @Autowired(required = false)
@@ -56,7 +52,6 @@ public class RankingService {
                 }
             }
             logger.info("Successfully initialized categories from the Excel file.");
-            cacheService.syncRankingCacheToDb();
         } catch (IOException | EncryptedDocumentException e) {
             logger.error("Error reading the Excel file: {}", e);
         }
@@ -69,7 +64,7 @@ public class RankingService {
         String category = row.getCell(3, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK).getStringCellValue();
 
         String compositeId = WoSRanking.getGeneratedId(issn, eIssn);
-        WoSRanking ranking = cacheService.getCachedRankingById(compositeId);
+        WoSRanking ranking = compositeId == null ? null : rankingRepository.findById(compositeId).orElse(null);
 
         if (ranking == null) {
             ranking = new WoSRanking();
@@ -92,8 +87,7 @@ public class RankingService {
         ranking.getWebOfScienceCategoryIndex().put(category, rank);
         ranking.setScore(score);
 
-//        rankingRepository.save(ranking);
-        cacheService.putCachedRankingById(ranking.getId(), ranking);
+        rankingRepository.save(ranking);
         logger.debug("Initialized ranking for journal {}", ranking.getName());
     }
 
@@ -101,7 +95,6 @@ public class RankingService {
     public void loadRankingsFromExcel(String directoryPath, String excelPassword) {
         ingestWosEventsIfConfigured(directoryPath);
         buildWosFactsIfConfigured();
-        cacheService.cacheRankings();
         ImportProcessingResult totalResult = new ImportProcessingResult(20);
         File dir = new File(directoryPath);
         File[] files = dir.listFiles((d, name) -> name.matches("AIS_\\d{4}\\.xlsx*") || name.matches("RIS_\\d{4}\\.xlsx*"));
@@ -167,10 +160,7 @@ public class RankingService {
                         fileResult.getErrorCount(),
                         fileResult.getErrorsSample());
 
-                logger.info("Syncing cash...");
-                cacheService.syncRankingCacheToDb(); // Sync the caches to the database at the end
-                cacheService.cacheRankings();
-                logger.info("Cached synced...");
+                logger.info("Processed legacy ranking import file {}", fileName);
             } catch (IOException | EncryptedDocumentException e) {
                 totalResult.markError("file=" + fileName + ", error=" + e.getMessage());
                 logger.error("Error reading the Excel file: {}", file.getName(), e);
@@ -277,7 +267,7 @@ public class RankingService {
             return false;
         }
         resolveIdentityIfConfigured(issn, eIssn, name, year);
-        WoSRanking ranking = cacheService.getCachedRankingById(compositeId);
+        WoSRanking ranking = rankingRepository.findById(compositeId).orElse(null);
 
         if (ranking == null) {
             ranking = new WoSRanking();
@@ -315,7 +305,7 @@ public class RankingService {
             ranking.getWebOfScienceCategoryIndex().put(category, rank);
         }
 
-        cacheService.putCachedRankingById(ranking.getId(), ranking);
+        rankingRepository.save(ranking);
         logger.debug("Updated ranking for journal {}", ranking.getName());
         return true;
     }
@@ -433,7 +423,6 @@ public class RankingService {
     public void deleteWosRankings() {
         logger.info("Deleting all WoS rankings...");
         rankingRepository.deleteAll();
-        cacheService.clearRankingCache();
         logger.info("Successfully deleted all WoS rankings.");
     }
 }

@@ -485,20 +485,35 @@ public class AdminViewController {
     }
 
     @PostMapping("/rankings/wos/computePositionsForKnownQuarters")
-    public String computeMissingRanks() {
-        rankingMaintenanceFacade.computePositionsForKnownQuarters();
+    public String computeMissingRanks(RedirectAttributes redirectAttributes) {
+        try {
+            rankingMaintenanceFacade.computePositionsForKnownQuarters();
+            redirectAttributes.addFlashAttribute("successMessage", "Legacy WoS operation completed.");
+        } catch (IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+        }
         return "redirect:/admin/rankings/wos";
     }
 
     @PostMapping("/rankings/wos/computeQuartersAndRankingsWhereMissing")
-    public String computeMissingQuartersAndRanks() {
-        rankingMaintenanceFacade.computeQuartersAndRankingsWhereMissing();
+    public String computeMissingQuartersAndRanks(RedirectAttributes redirectAttributes) {
+        try {
+            rankingMaintenanceFacade.computeQuartersAndRankingsWhereMissing();
+            redirectAttributes.addFlashAttribute("successMessage", "Legacy WoS operation completed.");
+        } catch (IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+        }
         return "redirect:/admin/rankings/wos";
     }
 
     @PostMapping("/rankings/wos/mergeDuplicateRankings")
-    public String mergeDuplicateRankings() {
-        rankingMaintenanceFacade.mergeDuplicateRankings();
+    public String mergeDuplicateRankings(RedirectAttributes redirectAttributes) {
+        try {
+            rankingMaintenanceFacade.mergeDuplicateRankings();
+            redirectAttributes.addFlashAttribute("successMessage", "Legacy WoS operation completed.");
+        } catch (IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+        }
         return "redirect:/admin/rankings/wos";
     }
 
