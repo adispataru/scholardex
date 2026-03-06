@@ -161,7 +161,7 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x ./gradlew
-          ./gradlew --no-daemon check -Dspring.data.mongodb.uri=mongodb://localhost:27017/scholardex_ci 2>&1 | tee .ci-logs/gradle-check.log
+          ./gradlew --no-daemon check 2>&1 | tee .ci-logs/gradle-check.log
 
       - name: Upload quality logs and test report on failure
         if: failure()
