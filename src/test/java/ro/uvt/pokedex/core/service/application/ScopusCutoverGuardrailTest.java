@@ -21,7 +21,8 @@ class ScopusCutoverGuardrailTest {
                 Path.of("src/main/java/ro/uvt/pokedex/core/service/application/GroupCnfisExportFacade.java"),
                 Path.of("src/main/java/ro/uvt/pokedex/core/service/application/UserReportFacade.java"),
                 Path.of("src/main/java/ro/uvt/pokedex/core/service/application/UserRankingFacade.java"),
-                Path.of("src/main/java/ro/uvt/pokedex/core/service/application/AdminCatalogFacade.java")
+                Path.of("src/main/java/ro/uvt/pokedex/core/service/application/AdminCatalogFacade.java"),
+                Path.of("src/main/java/ro/uvt/pokedex/core/service/scopus/ScopusUpdateScheduler.java")
         );
 
         for (Path file : guardedFiles) {

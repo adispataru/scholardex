@@ -6,10 +6,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;
 import ro.uvt.pokedex.core.model.tasks.Status;
-import ro.uvt.pokedex.core.repository.scopus.ScopusCitationRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.repository.tasks.ScopusCitationUpdateRepository;
 import ro.uvt.pokedex.core.repository.tasks.ScopusPublicationUpdateRepository;
+import ro.uvt.pokedex.core.service.application.ScopusProjectionReadService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusImportEventIngestionService;
 
@@ -23,17 +22,15 @@ class ScopusUpdateSchedulerTest {
     @Test
     void pollQueueSkipsPublicationTaskWhenNextAttemptInFuture() {
         ScopusPublicationUpdateRepository publicationTaskRepo = mock(ScopusPublicationUpdateRepository.class);
-        ScopusPublicationRepository publicationRepo = mock(ScopusPublicationRepository.class);
         ScopusCitationUpdateRepository citationTaskRepo = mock(ScopusCitationUpdateRepository.class);
-        ScopusCitationRepository citationRepo = mock(ScopusCitationRepository.class);
+        ScopusProjectionReadService projectionReadService = mock(ScopusProjectionReadService.class);
         ScopusImportEventIngestionService ingestionService = mock(ScopusImportEventIngestionService.class);
         ScopusCanonicalMaterializationService canonicalMaterializationService = mock(ScopusCanonicalMaterializationService.class);
 
         ScopusUpdateScheduler scheduler = new ScopusUpdateScheduler(
                 publicationTaskRepo,
-                publicationRepo,
                 citationTaskRepo,
-                citationRepo,
+                projectionReadService,
                 ingestionService,
                 canonicalMaterializationService,
                 new SimpleMeterRegistry(),
@@ -56,17 +53,15 @@ class ScopusUpdateSchedulerTest {
     @Test
     void computeFromDateUsesLatestPublicationDateWithoutForcedOverride() {
         ScopusPublicationUpdateRepository publicationTaskRepo = mock(ScopusPublicationUpdateRepository.class);
-        ScopusPublicationRepository publicationRepo = mock(ScopusPublicationRepository.class);
         ScopusCitationUpdateRepository citationTaskRepo = mock(ScopusCitationUpdateRepository.class);
-        ScopusCitationRepository citationRepo = mock(ScopusCitationRepository.class);
+        ScopusProjectionReadService projectionReadService = mock(ScopusProjectionReadService.class);
         ScopusImportEventIngestionService ingestionService = mock(ScopusImportEventIngestionService.class);
         ScopusCanonicalMaterializationService canonicalMaterializationService = mock(ScopusCanonicalMaterializationService.class);
 
         ScopusUpdateScheduler scheduler = new ScopusUpdateScheduler(
                 publicationTaskRepo,
-                publicationRepo,
                 citationTaskRepo,
-                citationRepo,
+                projectionReadService,
                 ingestionService,
                 canonicalMaterializationService,
                 new SimpleMeterRegistry(),
@@ -76,8 +71,8 @@ class ScopusUpdateSchedulerTest {
 
         var publication = new ro.uvt.pokedex.core.model.scopus.Publication();
         publication.setCoverDate("2024-06-15");
-        when(publicationRepo.findTopByAuthorsContainsOrderByCoverDateDesc("a1"))
-                .thenReturn(java.util.Optional.of(publication));
+        when(projectionReadService.findAllPublicationsByAuthorsContaining("a1"))
+                .thenReturn(List.of(publication));
 
         String fromDate = (String) ReflectionTestUtils.invokeMethod(scheduler, "computeFromDate", "a1");
 

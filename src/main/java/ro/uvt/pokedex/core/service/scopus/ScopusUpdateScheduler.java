@@ -21,10 +21,9 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEntityType;
 import ro.uvt.pokedex.core.model.tasks.ScopusCitationsUpdate;
 import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;
 import ro.uvt.pokedex.core.model.tasks.Status;
-import ro.uvt.pokedex.core.repository.scopus.ScopusCitationRepository;
-import ro.uvt.pokedex.core.repository.scopus.ScopusPublicationRepository;
 import ro.uvt.pokedex.core.repository.tasks.ScopusCitationUpdateRepository;
 import ro.uvt.pokedex.core.repository.tasks.ScopusPublicationUpdateRepository;
+import ro.uvt.pokedex.core.service.application.ScopusProjectionReadService;
 import ro.uvt.pokedex.core.service.integration.IntegrationErrorCode;
 import ro.uvt.pokedex.core.service.integration.IntegrationException;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService;
@@ -48,9 +47,8 @@ import java.util.stream.Collectors;
 public class ScopusUpdateScheduler {
 
     private final ScopusPublicationUpdateRepository taskRepo;
-    private final ScopusPublicationRepository publicationRepo;
     private final ScopusCitationUpdateRepository citationsTaskRepo;
-    private final ScopusCitationRepository citationRepo;
+    private final ScopusProjectionReadService scopusProjectionReadService;
     private final ScopusImportEventIngestionService importEventIngestionService;
     private final ScopusCanonicalMaterializationService canonicalMaterializationService;
     private final MeterRegistry meterRegistry;
@@ -350,7 +348,7 @@ public class ScopusUpdateScheduler {
 
     private Map<String, String> computeEidLastCitationDatesForAuthor(String authorScopusId) {
         // 1) All publications by this author
-        List<Publication> authorPubs = publicationRepo.findAllByAuthorsContaining(authorScopusId);
+        List<Publication> authorPubs = scopusProjectionReadService.findAllPublicationsByAuthorsContaining(authorScopusId);
         if (authorPubs.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -369,7 +367,7 @@ public class ScopusUpdateScheduler {
                 .filter(Objects::nonNull)
                 .toList();
 
-        List<Citation> citations = citationRepo.findAllByCitedIdIn(citedIds);
+        List<Citation> citations = scopusProjectionReadService.findAllCitationsByCitedIdIn(citedIds);
 
         // 3) Load all citing publications for those citations (more efficient than findAll())
         Set<String> citingIds = citations.stream()
@@ -379,7 +377,7 @@ public class ScopusUpdateScheduler {
 
         List<Publication> citingPubs = citingIds.isEmpty()
                 ? Collections.emptyList()
-                : publicationRepo.findAllByIdIn(new ArrayList<>(citingIds));
+                : scopusProjectionReadService.findAllPublicationsByIdIn(new ArrayList<>(citingIds));
 
         Map<String, Publication> citingById = new HashMap<>();
         for (Publication p : citingPubs) {
@@ -432,16 +430,13 @@ public class ScopusUpdateScheduler {
 
 
     private String computeFromDate(String authorScopusId) {
-        // Try repo shortcut
-        Optional<Publication> latest = publicationRepo.findTopByAuthorsContainsOrderByCoverDateDesc(authorScopusId);
-        LocalDate base;
-        if (latest.isPresent()) {
-            String cd = latest.get().getCoverDate(); // expected "yyyy-MM-dd" or "yyyy-MM"
-            base = parseCoverDate(cd).orElse(LocalDate.now(Z).minusYears(5));
-        } else {
-            // If no prior data, go back 5 years as a sane default
-            base = LocalDate.now(Z).minusYears(5);
-        }
+        List<Publication> publications = scopusProjectionReadService.findAllPublicationsByAuthorsContaining(authorScopusId);
+        LocalDate base = publications.stream()
+                .map(Publication::getCoverDate)
+                .map(this::parseCoverDate)
+                .flatMap(Optional::stream)
+                .max(LocalDate::compareTo)
+                .orElse(LocalDate.now(Z).minusYears(5));
         return base.minusYears(1).format(ISO);
     }
 

@@ -46,7 +46,7 @@ Done history moved to `TASKS-done.md`.
   - [x] `H17.6` Big-bang read/write cutover and legacy retirement.
     Deliverable: switch active Scopus write flows to canonical ingestion and publication-facing read flows to merged `scholardex.publication` projection; remove/disable legacy direct-write and direct-read Scopus document paths in runtime facades; centralize WoS/Scopus big-bang operations on dedicated admin initialization UI (`/admin/initialization`) with deterministic step actions and full-run orchestration.
     Exit criteria: no active runtime path writes legacy Scopus documents directly, publication reads no longer depend on legacy direct Scopus documents, and big-bang maintenance is executed from the dedicated initialization page (rankings page no longer exposes maintenance controls).
-  - [ ] `H17.7` Scheduler and task flow canonicalization.
+  - [x] `H17.7` Scheduler and task flow canonicalization.
     Deliverable: `ScopusPublicationUpdate` and `ScopusCitationsUpdate` execution publishes canonical events and triggers canonical transform/projection flow.
     Exit criteria: scheduled/manual Scopus updates are fully canonical and replay-safe.
   - [ ] `H17.8` Guardrails and regression gates.
