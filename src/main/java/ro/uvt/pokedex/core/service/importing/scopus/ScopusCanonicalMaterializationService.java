@@ -16,10 +16,15 @@ public class ScopusCanonicalMaterializationService {
     private final ScopusProjectionBuilderService projectionBuilderService;
 
     public void rebuildFactsAndViews(String trigger) {
-        ImportProcessingResult factResult = factBuilderService.buildFactsFromImportEvents();
+        rebuildFactsAndViews(trigger, null);
+    }
+
+    public void rebuildFactsAndViews(String trigger, String batchId) {
+        ImportProcessingResult factResult = factBuilderService.buildFactsFromImportEvents(batchId);
         ImportProcessingResult projectionResult = projectionBuilderService.rebuildViews();
-        log.info("Scopus canonical materialization complete: trigger={}, factProcessed={}, factErrors={}, projectionProcessed={}, projectionErrors={}",
+        log.info("Scopus canonical materialization complete: trigger={}, batchId={}, factProcessed={}, factErrors={}, projectionProcessed={}, projectionErrors={}",
                 trigger,
+                batchId,
                 factResult.getProcessedCount(),
                 factResult.getErrorCount(),
                 projectionResult.getProcessedCount(),

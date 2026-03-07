@@ -11,9 +11,12 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.core.codec.DecodingException;
+import org.springframework.core.io.buffer.DataBufferLimitException;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 import ro.uvt.pokedex.core.model.scopus.Citation;
 import ro.uvt.pokedex.core.model.scopus.Publication;
@@ -164,7 +167,7 @@ public class ScopusUpdateScheduler {
             AuthorWorksResponse resp = callPython(req);
 
             if (resp.getItems() != null) {
-                for (JsonNode item : resp.getItems()) {
+                for (Map<String, Object> item : resp.getItems()) {
                     String sourceRecordId = text(item, "eid");
                     if (sourceRecordId == null || sourceRecordId.isBlank()) {
                         continue;
@@ -176,7 +179,7 @@ public class ScopusUpdateScheduler {
                             batchId,
                             req.getRequest_id(),
                             "json-object",
-                            item
+                            mapper.valueToTree(item)
                     );
                     if (outcome.imported()) {
                         imported++;
@@ -197,7 +200,7 @@ public class ScopusUpdateScheduler {
         task.setLastErrorMessage(null);
         task.setNextAttemptAt(null);
         taskRepo.save(task);
-        canonicalMaterializationService.rebuildFactsAndViews("scheduler-publication-task-" + task.getId());
+        canonicalMaterializationService.rebuildFactsAndViews("scheduler-publication-task-" + task.getId(), batchId);
     }
 
 
@@ -279,19 +282,20 @@ public class ScopusUpdateScheduler {
         int createdCitations = 0;
         String batchId = "scheduler-citation-task-" + task.getId() + "-attempt-" + task.getAttemptCount();
 
-        Map<String, List<JsonNode>> byEid = resp.getByEid();
+        Map<String, List<Map<String, Object>>> byEid = resp.getByEid();
         if (byEid != null) {
-            for (Map.Entry<String, List<JsonNode>> entry : byEid.entrySet()) {
+            for (Map.Entry<String, List<Map<String, Object>>> entry : byEid.entrySet()) {
                 String citedEid = entry.getKey();
-                List<JsonNode> citingItems = entry.getValue();
+                List<Map<String, Object>> citingItems = entry.getValue();
 
                 if (citingItems == null || citingItems.isEmpty()) continue;
 
-                for (JsonNode item : citingItems) {
-                    String citingEid = text(item, "eid");
+                for (Map<String, Object> citingItem : citingItems) {
+                    String citingEid = text(citingItem, "eid");
                     if (citingEid == null || citingEid.isBlank()) {
                         continue;
                     }
+                    JsonNode item = mapper.valueToTree(citingItem);
 
                     ScopusImportEventIngestionService.EventIngestionOutcome publicationOutcome = importEventIngestionService.ingest(
                             ScopusImportEntityType.PUBLICATION,
@@ -335,7 +339,7 @@ public class ScopusUpdateScheduler {
         task.setLastErrorMessage(null);
         task.setNextAttemptAt(null);
         citationsTaskRepo.save(task);
-        canonicalMaterializationService.rebuildFactsAndViews("scheduler-citation-task-" + task.getId());
+        canonicalMaterializationService.rebuildFactsAndViews("scheduler-citation-task-" + task.getId(), batchId);
     }
 
     private void closeContext(AutoCloseable context) {
@@ -462,6 +466,18 @@ public class ScopusUpdateScheduler {
         }
         String text = value.asText();
         return text == null ? null : text.trim();
+    }
+
+    private String text(Map<String, Object> map, String field) {
+        if (map == null || field == null) {
+            return null;
+        }
+        Object value = map.get(field);
+        if (value == null) {
+            return null;
+        }
+        String text = String.valueOf(value);
+        return text.isBlank() ? null : text.trim();
     }
 
     private CitationsByEidResponse callPythonCitations(CitationsByEidRequest req) {
@@ -620,7 +636,8 @@ public class ScopusUpdateScheduler {
         if (exception instanceof IntegrationException ie) {
             return ie;
         }
-        if (exception instanceof WebClientResponseException responseException) {
+        WebClientResponseException responseException = findCause(exception, WebClientResponseException.class);
+        if (responseException != null) {
             int status = responseException.getStatusCode().value();
             if (status >= 500) {
                 return new IntegrationException(
@@ -637,7 +654,7 @@ public class ScopusUpdateScheduler {
                     exception
             );
         }
-        if (exception instanceof WebClientRequestException) {
+        if (findCause(exception, WebClientRequestException.class) != null) {
             return new IntegrationException(
                     IntegrationErrorCode.EXTERNAL_TIMEOUT,
                     true,
@@ -645,11 +662,51 @@ public class ScopusUpdateScheduler {
                     exception
             );
         }
+        if (findCause(exception, DataBufferLimitException.class) != null) {
+            return new IntegrationException(
+                    IntegrationErrorCode.EXTERNAL_BAD_PAYLOAD,
+                    false,
+                    operation + " failed because response payload exceeded configured buffer size",
+                    exception
+            );
+        }
+        if (findCause(exception, DecodingException.class) != null) {
+            return new IntegrationException(
+                    IntegrationErrorCode.EXTERNAL_BAD_PAYLOAD,
+                    false,
+                    operation + " failed because response payload could not be decoded",
+                    exception
+            );
+        }
+        Throwable rootCause = rootCause(exception);
+        String details = rootCause.getMessage();
+        String suffix = (details == null || details.isBlank()) ? "" : ": " + details;
         return new IntegrationException(
                 IntegrationErrorCode.EXTERNAL_BAD_PAYLOAD,
                 false,
-                operation + " failed with unexpected integration error",
+                operation + " failed with unexpected integration error (" + rootCause.getClass().getSimpleName() + ")" + suffix,
                 exception
         );
+    }
+
+    private Throwable rootCause(Throwable exception) {
+        Throwable current = Exceptions.unwrap(exception);
+        int guard = 0;
+        while (current.getCause() != null && current.getCause() != current && guard++ < 20) {
+            current = current.getCause();
+        }
+        return current;
+    }
+
+    private <T extends Throwable> T findCause(Throwable exception, Class<T> type) {
+        Throwable current = Exceptions.unwrap(exception);
+        int guard = 0;
+        while (current != null && guard++ < 20) {
+            if (type.isInstance(current)) {
+                return type.cast(current);
+            }
+            current = current.getCause();
+        }
+        return null;
     }
 }

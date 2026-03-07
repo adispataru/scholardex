@@ -2,19 +2,26 @@ package ro.uvt.pokedex.core.service.scopus;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.codec.DecodingException;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;
 import ro.uvt.pokedex.core.model.tasks.Status;
 import ro.uvt.pokedex.core.repository.tasks.ScopusCitationUpdateRepository;
 import ro.uvt.pokedex.core.repository.tasks.ScopusPublicationUpdateRepository;
 import ro.uvt.pokedex.core.service.application.ScopusProjectionReadService;
+import ro.uvt.pokedex.core.service.integration.IntegrationErrorCode;
+import ro.uvt.pokedex.core.service.integration.IntegrationException;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusImportEventIngestionService;
 
 import java.time.Instant;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class ScopusUpdateSchedulerTest {
@@ -77,5 +84,64 @@ class ScopusUpdateSchedulerTest {
         String fromDate = (String) ReflectionTestUtils.invokeMethod(scheduler, "computeFromDate", "a1");
 
         org.junit.jupiter.api.Assertions.assertEquals("2023-06-15", fromDate);
+    }
+
+    @Test
+    void mapIntegrationExceptionHandlesWrappedHttpStatus() {
+        ScopusUpdateScheduler scheduler = scheduler();
+        WebClientResponseException nested = WebClientResponseException.create(
+                HttpStatus.BAD_REQUEST.value(),
+                "Bad Request",
+                HttpHeaders.EMPTY,
+                "{\"detail\":\"invalid_author_id\"}".getBytes(),
+                null
+        );
+
+        IntegrationException mapped = (IntegrationException) ReflectionTestUtils.invokeMethod(
+                scheduler,
+                "mapIntegrationException",
+                "authorWorks",
+                new RuntimeException("wrapper", nested)
+        );
+
+        assertNotNull(mapped);
+        assertEquals(IntegrationErrorCode.EXTERNAL_BAD_PAYLOAD, mapped.getErrorCode());
+        assertFalse(mapped.isRetryable());
+        assertEquals("authorWorks failed with HTTP 400", mapped.getMessage());
+    }
+
+    @Test
+    void mapIntegrationExceptionClassifiesDecodingErrors() {
+        ScopusUpdateScheduler scheduler = scheduler();
+
+        IntegrationException mapped = (IntegrationException) ReflectionTestUtils.invokeMethod(
+                scheduler,
+                "mapIntegrationException",
+                "authorWorks",
+                new RuntimeException("wrapper", new DecodingException("Cannot decode response"))
+        );
+
+        assertNotNull(mapped);
+        assertEquals(IntegrationErrorCode.EXTERNAL_BAD_PAYLOAD, mapped.getErrorCode());
+        assertFalse(mapped.isRetryable());
+        assertEquals("authorWorks failed because response payload could not be decoded", mapped.getMessage());
+    }
+
+    private ScopusUpdateScheduler scheduler() {
+        ScopusPublicationUpdateRepository publicationTaskRepo = mock(ScopusPublicationUpdateRepository.class);
+        ScopusCitationUpdateRepository citationTaskRepo = mock(ScopusCitationUpdateRepository.class);
+        ScopusProjectionReadService projectionReadService = mock(ScopusProjectionReadService.class);
+        ScopusImportEventIngestionService ingestionService = mock(ScopusImportEventIngestionService.class);
+        ScopusCanonicalMaterializationService canonicalMaterializationService = mock(ScopusCanonicalMaterializationService.class);
+
+        return new ScopusUpdateScheduler(
+                publicationTaskRepo,
+                citationTaskRepo,
+                projectionReadService,
+                ingestionService,
+                canonicalMaterializationService,
+                new SimpleMeterRegistry(),
+                WebClient.builder().baseUrl("http://localhost").build()
+        );
     }
 }

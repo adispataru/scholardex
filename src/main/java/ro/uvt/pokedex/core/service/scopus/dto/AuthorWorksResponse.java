@@ -1,10 +1,9 @@
 package ro.uvt.pokedex.core.service.scopus.dto;
 
-
-import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Map;
 
 @Data
 public class AuthorWorksResponse {
@@ -13,5 +12,5 @@ public class AuthorWorksResponse {
     private String from_date;
     private Integer total;
     private String next_cursor;
-    private List<JsonNode> items;
+    private List<Map<String, Object>> items;
 }
