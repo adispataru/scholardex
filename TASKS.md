@@ -45,16 +45,26 @@ Done history moved to `TASKS-done.md`.
     - Canonical enrichment implementation: `WosFactBuilderService#enrichMissingCategoryRankingFields` computes missing `rank`, `quarter`, `quartileRank` while preserving source-provided fields.
     - Initialization order now includes explicit enrichment step before projections (`/admin/initialization/wos/enrichCategoryRankings`).
     - Big-bang flow executes enrichment between `build-facts` and `build-projections`.
-  - [ ] `H18.3` Add admin backend endpoints for enrichment operations.
+  - [x] `H18.3` Add admin backend endpoints for enrichment operations.
     Deliverable: secured admin endpoints to trigger enrichment and retrieve summary results (processed, computed, preserved, failed).
     Exit criteria: authorized admins can execute enrichment and get deterministic run summaries.
-    Status: active next task.
-  - [ ] `H18.4` Build dedicated admin page for WoS enrichment.
+    Status: completed on 2026-03-08.
+    Handover:
+    - New admin JSON endpoints: `POST /admin/initialization/wos/enrichment/run` and `GET /admin/initialization/wos/enrichment/summary`.
+    - Deterministic summary DTO: `stepName`, `executed`, `startedAt`, `completedAt`, `processed`, `computed`, `preserved`, `failed`, `skipped`, `note`.
+    - Locked mapping used in backend reporting: `computed=updated`, `failed=errors`, `preserved=processed-computed-failed`.
+  - [x] `H18.4` Build dedicated admin page for WoS enrichment.
     Deliverable: admin UI page to start enrichment runs and review per-run outcome metrics.
     Exit criteria: page is accessible to admins only and supports operational verification.
+    Status: completed on 2026-03-08.
+    Handover:
+    - Dedicated page endpoint: `GET /admin/initialization/wos/enrichment` with run action `POST /admin/initialization/wos/enrichment/runPage`.
+    - Page shows latest deterministic enrichment metrics (`processed`, `computed`, `preserved`, `failed`, `skipped`) and links to JSON summary endpoint.
+    - Initialization step 3 now exposes direct navigation to the dedicated enrichment page (`Open page`).
   - [ ] `H18.5` Backfill historical WoS records.
     Deliverable: one-time/backfill-capable execution path for existing data.
     Exit criteria: historical records are enriched according to the same contract, with idempotent rerun behavior.
+    Status: active next task.
   - [ ] `H18.6` Add regression and integration test coverage.
     Deliverable: tests for preservation logic, computation correctness, and admin trigger flow.
     Exit criteria: automated tests cover success paths and key failure/edge cases.

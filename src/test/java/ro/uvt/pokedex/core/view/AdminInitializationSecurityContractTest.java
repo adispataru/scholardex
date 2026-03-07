@@ -55,4 +55,38 @@ class AdminInitializationSecurityContractTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/custom-error?error=403"));
     }
+
+    @Test
+    void nonAdminCannotRunWosEnrichmentApi() throws Exception {
+        mockMvc.perform(post("/admin/initialization/wos/enrichment/run")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+    }
+
+    @Test
+    void nonAdminCannotAccessWosEnrichmentPage() throws Exception {
+        mockMvc.perform(get("/admin/initialization/wos/enrichment")
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+    }
+
+    @Test
+    void nonAdminCannotRunWosEnrichmentPageFlow() throws Exception {
+        mockMvc.perform(post("/admin/initialization/wos/enrichment/runPage")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+    }
+
+    @Test
+    void nonAdminCannotReadWosEnrichmentSummaryApi() throws Exception {
+        mockMvc.perform(get("/admin/initialization/wos/enrichment/summary")
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+    }
 }

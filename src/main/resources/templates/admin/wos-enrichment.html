@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>WoS Enrichment</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+<div id="wrapper">
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="~{fragments :: admin-sidebar('initialization')}"></div>
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar}"></div>
+            <div class="container-fluid">
+                <h1 class="h3 mb-2 text-gray-800">WoS Enrichment</h1>
+                <p class="mb-4">Run WoS category enrichment and verify deterministic run metrics.</p>
+
+                <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+                <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">Run Enrichment</h6>
+                        <a th:href="@{/admin/initialization}" class="btn btn-outline-secondary btn-sm">Back to Initialization</a>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <form th:action="@{/admin/initialization/wos/enrichment/runPage}" method="post" class="mr-2">
+                                <button type="submit" class="btn btn-primary btn-sm">Run enrichment</button>
+                            </form>
+                            <a th:href="@{/admin/initialization/wos/enrichment/summary}" class="btn btn-outline-primary btn-sm">View JSON summary</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Latest Run Summary</h6>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-bordered table-sm mb-0">
+                            <tbody>
+                            <tr><th scope="row">Step</th><td th:text="${summary.stepName}">enrich-category-rankings</td></tr>
+                            <tr><th scope="row">Executed</th><td th:text="${summary.executed}">false</td></tr>
+                            <tr><th scope="row">Started At</th><td th:text="${summary.startedAt}">-</td></tr>
+                            <tr><th scope="row">Completed At</th><td th:text="${summary.completedAt}">-</td></tr>
+                            <tr><th scope="row">Processed</th><td th:text="${summary.processed}">0</td></tr>
+                            <tr><th scope="row">Computed</th><td th:text="${summary.computed}">0</td></tr>
+                            <tr><th scope="row">Preserved</th><td th:text="${summary.preserved}">0</td></tr>
+                            <tr><th scope="row">Failed</th><td th:text="${summary.failed}">0</td></tr>
+                            <tr><th scope="row">Skipped</th><td th:text="${summary.skipped}">0</td></tr>
+                            <tr><th scope="row">Note</th><td th:text="${summary.note}">not-run</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+
+    <a class="scroll-to-top rounded" href="#page-top">
+        <i class="fa-solid fa-angle-up"></i>
+    </a>
+</div>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+</body>
+</html>

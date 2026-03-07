@@ -33,6 +33,7 @@ import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublication
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminScopusCitationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminScopusPublicationSearchViewModel;
+import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
 
@@ -546,6 +547,8 @@ public class AdminViewController {
     ) {
         try {
             var result = rankingMaintenanceFacade.runWosBigBangMigration(dryRun, sourceVersion);
+            WosEnrichmentRunSummaryDto enrichmentSummary =
+                    WosEnrichmentRunSummaryDto.fromStep(result.enrichCategoryRankings(), null, null);
             String mode = dryRun ? "dry-run" : "full-run";
             String successMessage =
                     "WoS big-bang " + mode
@@ -559,11 +562,11 @@ public class AdminViewController {
                             + ", u=" + result.buildFacts().updated()
                             + ", s=" + result.buildFacts().skipped()
                             + ", e=" + result.buildFacts().errors()
-                            + "], Enrichment[p=" + result.enrichCategoryRankings().processed()
-                            + ", i=" + result.enrichCategoryRankings().imported()
-                            + ", u=" + result.enrichCategoryRankings().updated()
-                            + ", s=" + result.enrichCategoryRankings().skipped()
-                            + ", e=" + result.enrichCategoryRankings().errors()
+                            + "], Enrichment[processed=" + enrichmentSummary.processed()
+                            + ", computed=" + enrichmentSummary.computed()
+                            + ", preserved=" + enrichmentSummary.preserved()
+                            + ", failed=" + enrichmentSummary.failed()
+                            + ", skipped=" + enrichmentSummary.skipped()
                             + "], Projections[p=" + result.buildProjections().processed()
                             + ", i=" + result.buildProjections().imported()
                             + ", u=" + result.buildProjections().updated()

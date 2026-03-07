@@ -2,13 +2,16 @@ package ro.uvt.pokedex.core.view;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.ScopusBigBangMigrationService;
+import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
 
 @Controller
 @RequestMapping("/admin/initialization")
@@ -21,6 +24,12 @@ public class AdminInitializationController {
     @GetMapping
     public String showInitializationPage() {
         return "admin/initialization";
+    }
+
+    @GetMapping("/wos/enrichment")
+    public String showWosEnrichmentPage(Model model) {
+        model.addAttribute("summary", rankingMaintenanceFacade.latestWosCategoryRankingEnrichmentSummary());
+        return "admin/wos-enrichment";
     }
 
     @PostMapping("/wos/rebuildProjections")
@@ -73,9 +82,28 @@ public class AdminInitializationController {
 
     @PostMapping("/wos/enrichCategoryRankings")
     public String enrichWosCategoryRankings(RedirectAttributes redirectAttributes) {
-        var step = rankingMaintenanceFacade.enrichWosCategoryRankings();
-        redirectAttributes.addFlashAttribute("successMessage", "WoS category ranking enrichment complete. " + formatWosStep("enrichment", step));
+        var summary = rankingMaintenanceFacade.runWosCategoryRankingEnrichmentWithSummary();
+        redirectAttributes.addFlashAttribute("successMessage", "WoS category ranking enrichment complete. " + formatWosEnrichmentSummary(summary));
         return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/wos/enrichment/run")
+    @ResponseBody
+    public WosEnrichmentRunSummaryDto runWosCategoryEnrichmentApi() {
+        return rankingMaintenanceFacade.runWosCategoryRankingEnrichmentWithSummary();
+    }
+
+    @PostMapping("/wos/enrichment/runPage")
+    public String runWosCategoryEnrichmentPageFlow(RedirectAttributes redirectAttributes) {
+        var summary = rankingMaintenanceFacade.runWosCategoryRankingEnrichmentWithSummary();
+        redirectAttributes.addFlashAttribute("successMessage", "WoS category ranking enrichment complete. " + formatWosEnrichmentSummary(summary));
+        return "redirect:/admin/initialization/wos/enrichment";
+    }
+
+    @GetMapping("/wos/enrichment/summary")
+    @ResponseBody
+    public WosEnrichmentRunSummaryDto getLastWosCategoryEnrichmentSummaryApi() {
+        return rankingMaintenanceFacade.latestWosCategoryRankingEnrichmentSummary();
     }
 
     @PostMapping("/wos/runBigBangMigration")
@@ -91,7 +119,11 @@ public class AdminInitializationController {
             redirectAttributes.addFlashAttribute("successMessage", "WoS big-bang " + mode + " complete. "
                     + formatWosStep("ingest", result.ingest()) + " "
                     + formatWosStep("facts", result.buildFacts()) + " "
-                    + formatWosStep("enrichment", result.enrichCategoryRankings()) + " "
+                    + formatWosEnrichmentSummary(WosEnrichmentRunSummaryDto.fromStep(
+                    result.enrichCategoryRankings(),
+                    null,
+                    null
+            )) + " "
                     + formatWosStep("projections", result.buildProjections()) + " "
                     + "verify[events=" + result.verification().importEvents()
                     + ", metricFacts=" + result.verification().metricFacts()
@@ -240,5 +272,14 @@ public class AdminInitializationController {
                 + ", authorViews=" + verification.authorViews()
                 + ", affiliationViews=" + verification.affiliationViews()
                 + ", publicationViews=" + verification.publicationViews() + "].";
+    }
+
+    private String formatWosEnrichmentSummary(WosEnrichmentRunSummaryDto summary) {
+        return "enrichment[processed=" + summary.processed()
+                + ", computed=" + summary.computed()
+                + ", preserved=" + summary.preserved()
+                + ", failed=" + summary.failed()
+                + ", skipped=" + summary.skipped()
+                + "].";
     }
 }

@@ -5,12 +5,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.wos.WosProjectionBuilderService;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -161,6 +163,70 @@ class RankingMaintenanceFacadeTest {
 
         verify(wosBigBangMigrationService).runEnrichCategoryRankingsStep();
         org.junit.jupiter.api.Assertions.assertSame(expected, result);
+    }
+
+    @Test
+    void runWosCategoryRankingEnrichmentWithSummaryMapsCountersDeterministically() {
+        WosBigBangMigrationService.MigrationStepResult step =
+                new WosBigBangMigrationService.MigrationStepResult(
+                        "enrich-category-rankings",
+                        true,
+                        100,
+                        0,
+                        25,
+                        70,
+                        5,
+                        null,
+                        List.of(),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                );
+        when(wosBigBangMigrationService.runEnrichCategoryRankingsStep()).thenReturn(step);
+
+        WosEnrichmentRunSummaryDto summary = facade.runWosCategoryRankingEnrichmentWithSummary();
+
+        verify(wosBigBangMigrationService).runEnrichCategoryRankingsStep();
+        assertEquals("enrich-category-rankings", summary.stepName());
+        assertEquals(true, summary.executed());
+        assertEquals(100, summary.processed());
+        assertEquals(25, summary.computed());
+        assertEquals(70, summary.preserved());
+        assertEquals(5, summary.failed());
+        assertEquals(70, summary.skipped());
+    }
+
+    @Test
+    void latestWosCategoryRankingEnrichmentSummaryReturnsLastRunSummary() {
+        WosBigBangMigrationService.MigrationStepResult step =
+                new WosBigBangMigrationService.MigrationStepResult(
+                        "enrich-category-rankings",
+                        true,
+                        10,
+                        0,
+                        4,
+                        6,
+                        0,
+                        null,
+                        List.of(),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                );
+        when(wosBigBangMigrationService.runEnrichCategoryRankingsStep()).thenReturn(step);
+
+        facade.runWosCategoryRankingEnrichmentWithSummary();
+        WosEnrichmentRunSummaryDto latest = facade.latestWosCategoryRankingEnrichmentSummary();
+
+        assertEquals(true, latest.executed());
+        assertEquals(10, latest.processed());
+        assertEquals(4, latest.computed());
+        assertEquals(6, latest.preserved());
+        assertEquals(0, latest.failed());
     }
 
     @Test

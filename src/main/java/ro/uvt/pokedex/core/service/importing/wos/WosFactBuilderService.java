@@ -40,6 +40,7 @@ public class WosFactBuilderService {
     private static final Logger log = LoggerFactory.getLogger(WosFactBuilderService.class);
     private static final int FACT_BUILD_CHUNK_SIZE = 1_000;
     private static final int FACT_BUILD_HEARTBEAT_INTERVAL = 10_000;
+    private static final int ENRICHMENT_GROUP_CHUNK_SIZE = 1_000;
     private static final String IDENTITY_NULL_MARKER = "__NULL__";
 
     private final WosImportEventParserOrchestrator parserOrchestrator;
@@ -145,6 +146,7 @@ public class WosFactBuilderService {
     }
 
     public ImportProcessingResult enrichMissingCategoryRankingFields() {
+        long enrichmentStartedAtNanos = System.nanoTime();
         ImportProcessingResult result = new ImportProcessingResult(20);
         List<WosCategoryFact> allCategoryFacts = categoryFactRepository.findAll();
         if (allCategoryFacts.isEmpty()) {
@@ -180,16 +182,51 @@ public class WosFactBuilderService {
             groups.computeIfAbsent(key, ignored -> new ArrayList<>()).add(fact);
         }
 
-        List<WosCategoryFact> pendingUpdates = new ArrayList<>();
-        for (List<WosCategoryFact> groupFacts : groups.values()) {
-            enrichCategoryGroup(groupFacts, metricByKey, pendingUpdates, result);
+        List<Map.Entry<CategoryEnrichmentGroupKey, List<WosCategoryFact>>> groupEntries = new ArrayList<>(groups.entrySet());
+        int totalGroups = groupEntries.size();
+        int totalBatches = totalGroups == 0 ? 0 : ((totalGroups - 1) / ENRICHMENT_GROUP_CHUNK_SIZE) + 1;
+        int batchesProcessed = 0;
+
+        for (int from = 0; from < totalGroups; from += ENRICHMENT_GROUP_CHUNK_SIZE) {
+            long chunkStartedAtNanos = System.nanoTime();
+            int to = Math.min(totalGroups, from + ENRICHMENT_GROUP_CHUNK_SIZE);
+            int batchIndex = from / ENRICHMENT_GROUP_CHUNK_SIZE;
+            int chunkNo = batchIndex + 1;
+
+            long enrichStartedAtNanos = System.nanoTime();
+            List<WosCategoryFact> pendingUpdates = new ArrayList<>();
+            for (int i = from; i < to; i++) {
+                enrichCategoryGroup(groupEntries.get(i).getValue(), metricByKey, pendingUpdates, result);
+            }
+
+            long saveStartedAtNanos = System.nanoTime();
+            if (!pendingUpdates.isEmpty()) {
+                categoryFactRepository.saveAll(pendingUpdates);
+            }
+            long finishedAtNanos = System.nanoTime();
+            batchesProcessed++;
+
+            log.info("WoS category enrichment chunk {} complete [batch={} / totalBatches={}]: groups={} updates={} timingsMs[enrich={}, save={}, total={}]",
+                    chunkNo,
+                    chunkNo,
+                    totalBatches,
+                    (to - from),
+                    pendingUpdates.size(),
+                    nanosToMillis(saveStartedAtNanos - enrichStartedAtNanos),
+                    nanosToMillis(finishedAtNanos - saveStartedAtNanos),
+                    nanosToMillis(finishedAtNanos - chunkStartedAtNanos));
         }
 
-        if (!pendingUpdates.isEmpty()) {
-            categoryFactRepository.saveAll(pendingUpdates);
-        }
-        log.info("WoS category ranking enrichment summary: processed={}, updated={}, skipped={}, errors={}",
-                result.getProcessedCount(), result.getUpdatedCount(), result.getSkippedCount(), result.getErrorCount());
+        long enrichmentFinishedAtNanos = System.nanoTime();
+        log.info("WoS category ranking enrichment summary: processed={}, updated={}, skipped={}, errors={}, groups={}, chunksProcessed={}, totalChunks={}, totalMs={}",
+                result.getProcessedCount(),
+                result.getUpdatedCount(),
+                result.getSkippedCount(),
+                result.getErrorCount(),
+                totalGroups,
+                batchesProcessed,
+                totalBatches,
+                nanosToMillis(enrichmentFinishedAtNanos - enrichmentStartedAtNanos));
         return result;
     }
 

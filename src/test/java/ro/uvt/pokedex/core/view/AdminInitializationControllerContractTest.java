@@ -11,6 +11,7 @@ import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.ScopusBigBangMigrationService;
 import ro.uvt.pokedex.core.service.application.WosBigBangMigrationService;
+import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.time.Instant;
@@ -22,6 +23,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
@@ -47,6 +49,7 @@ class AdminInitializationControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/ingest")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/buildFacts")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/enrichCategoryRankings")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/enrichment")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/rebuildProjections")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/ensureIndexes")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/resetCanonicalState")))
@@ -86,6 +89,31 @@ class AdminInitializationControllerContractTest {
                 .andExpect(redirectedUrl("/admin/initialization"));
 
         verify(rankingMaintenanceFacade).runWosBigBangMigration(true, "v2026", 200, true);
+    }
+
+    @Test
+    void wosEnrichmentPageRendersTemplate() throws Exception {
+        when(rankingMaintenanceFacade.latestWosCategoryRankingEnrichmentSummary())
+                .thenReturn(new WosEnrichmentRunSummaryDto(
+                        "enrich-category-rankings",
+                        false,
+                        null,
+                        null,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        "not-run"
+                ));
+
+        mockMvc.perform(get("/admin/initialization/wos/enrichment"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin/wos-enrichment"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/enrichment/runPage")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/enrichment/summary")));
+
+        verify(rankingMaintenanceFacade).latestWosCategoryRankingEnrichmentSummary();
     }
 
     @Test
@@ -156,21 +184,17 @@ class AdminInitializationControllerContractTest {
 
     @Test
     void enrichWosCategoryRankingsRedirectsToInitializationPage() throws Exception {
-        when(rankingMaintenanceFacade.enrichWosCategoryRankings())
-                .thenReturn(new WosBigBangMigrationService.MigrationStepResult(
+        when(rankingMaintenanceFacade.runWosCategoryRankingEnrichmentWithSummary())
+                .thenReturn(new WosEnrichmentRunSummaryDto(
                         "enrich-category-rankings",
                         true,
+                        Instant.now(),
+                        Instant.now(),
                         1000,
-                        0,
                         240,
                         760,
                         0,
-                        null,
-                        List.of(),
-                        null,
-                        null,
-                        null,
-                        null,
+                        760,
                         null
                 ));
 
@@ -178,7 +202,89 @@ class AdminInitializationControllerContractTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/initialization"));
 
-        verify(rankingMaintenanceFacade).enrichWosCategoryRankings();
+        verify(rankingMaintenanceFacade).runWosCategoryRankingEnrichmentWithSummary();
+    }
+
+    @Test
+    void runWosCategoryEnrichmentApiReturnsSummaryJson() throws Exception {
+        when(rankingMaintenanceFacade.runWosCategoryRankingEnrichmentWithSummary())
+                .thenReturn(new WosEnrichmentRunSummaryDto(
+                        "enrich-category-rankings",
+                        true,
+                        Instant.parse("2026-03-08T09:00:00Z"),
+                        Instant.parse("2026-03-08T09:00:05Z"),
+                        1000,
+                        240,
+                        760,
+                        0,
+                        760,
+                        null
+                ));
+
+        mockMvc.perform(post("/admin/initialization/wos/enrichment/run"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stepName").value("enrich-category-rankings"))
+                .andExpect(jsonPath("$.executed").value(true))
+                .andExpect(jsonPath("$.processed").value(1000))
+                .andExpect(jsonPath("$.computed").value(240))
+                .andExpect(jsonPath("$.preserved").value(760))
+                .andExpect(jsonPath("$.failed").value(0))
+                .andExpect(jsonPath("$.skipped").value(760));
+
+        verify(rankingMaintenanceFacade).runWosCategoryRankingEnrichmentWithSummary();
+    }
+
+    @Test
+    void runWosCategoryEnrichmentPageFlowRedirectsToDedicatedPage() throws Exception {
+        when(rankingMaintenanceFacade.runWosCategoryRankingEnrichmentWithSummary())
+                .thenReturn(new WosEnrichmentRunSummaryDto(
+                        "enrich-category-rankings",
+                        true,
+                        Instant.now(),
+                        Instant.now(),
+                        10,
+                        2,
+                        8,
+                        0,
+                        8,
+                        null
+                ));
+
+        mockMvc.perform(post("/admin/initialization/wos/enrichment/runPage"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization/wos/enrichment"));
+
+        verify(rankingMaintenanceFacade).runWosCategoryRankingEnrichmentWithSummary();
+    }
+
+    @Test
+    void getWosCategoryEnrichmentSummaryApiReturnsLatestSummaryJson() throws Exception {
+        when(rankingMaintenanceFacade.latestWosCategoryRankingEnrichmentSummary())
+                .thenReturn(new WosEnrichmentRunSummaryDto(
+                        "enrich-category-rankings",
+                        false,
+                        null,
+                        null,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        "not-run"
+                ));
+
+        mockMvc.perform(get("/admin/initialization/wos/enrichment/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stepName").value("enrich-category-rankings"))
+                .andExpect(jsonPath("$.executed").value(false))
+                .andExpect(jsonPath("$.processed").value(0))
+                .andExpect(jsonPath("$.computed").value(0))
+                .andExpect(jsonPath("$.preserved").value(0))
+                .andExpect(jsonPath("$.failed").value(0))
+                .andExpect(jsonPath("$.skipped").value(0))
+                .andExpect(jsonPath("$.note").value("not-run"));
+
+        verify(rankingMaintenanceFacade).latestWosCategoryRankingEnrichmentSummary();
     }
 
     @Test

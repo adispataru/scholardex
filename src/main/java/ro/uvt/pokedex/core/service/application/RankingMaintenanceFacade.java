@@ -2,8 +2,12 @@ package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.wos.WosProjectionBuilderService;
+
+import java.time.Instant;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 @RequiredArgsConstructor
@@ -11,6 +15,8 @@ public class RankingMaintenanceFacade {
     private final WosProjectionBuilderService wosProjectionBuilderService;
     private final WosIndexMaintenanceService wosIndexMaintenanceService;
     private final WosBigBangMigrationService wosBigBangMigrationService;
+    private final AtomicReference<WosEnrichmentRunSummaryDto> lastWosEnrichmentSummary =
+            new AtomicReference<>(WosEnrichmentRunSummaryDto.notRun());
 
     public void computePositionsForKnownQuarters() {
         throw new IllegalStateException("Legacy WoS maintenance operation is disabled. Use canonical WoS ingestion/facts/projections pipeline.");
@@ -62,10 +68,33 @@ public class RankingMaintenanceFacade {
     }
 
     public WosBigBangMigrationService.MigrationStepResult enrichWosCategoryRankings() {
-        return wosBigBangMigrationService.runEnrichCategoryRankingsStep();
+        return executeAndTrackWosCategoryEnrichment().step();
+    }
+
+    public WosEnrichmentRunSummaryDto runWosCategoryRankingEnrichmentWithSummary() {
+        return executeAndTrackWosCategoryEnrichment().summary();
+    }
+
+    public WosEnrichmentRunSummaryDto latestWosCategoryRankingEnrichmentSummary() {
+        return lastWosEnrichmentSummary.get();
     }
 
     public WosBigBangMigrationService.CanonicalResetResult resetWosCanonicalState() {
         return wosBigBangMigrationService.resetCanonicalState();
+    }
+
+    private synchronized EnrichmentExecution executeAndTrackWosCategoryEnrichment() {
+        Instant startedAt = Instant.now();
+        WosBigBangMigrationService.MigrationStepResult step = wosBigBangMigrationService.runEnrichCategoryRankingsStep();
+        Instant completedAt = Instant.now();
+        WosEnrichmentRunSummaryDto summary = WosEnrichmentRunSummaryDto.fromStep(step, startedAt, completedAt);
+        lastWosEnrichmentSummary.set(summary);
+        return new EnrichmentExecution(step, summary);
+    }
+
+    private record EnrichmentExecution(
+            WosBigBangMigrationService.MigrationStepResult step,
+            WosEnrichmentRunSummaryDto summary
+    ) {
     }
 }
