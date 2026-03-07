@@ -408,12 +408,6 @@ public class WosFactBuilderService {
                 result.markSkipped("metric-score-duplicate-same-file key=" + metricScoreKeyString(resolved.journalId(), record));
                 return;
             }
-            pendingConflicts.add(buildMetricConflictExistingWinner(
-                    "duplicate-source-file",
-                    metricScoreKeyString(resolved.journalId(), record),
-                    existing,
-                    record
-            ));
             result.markSkipped("metric-score-conflict-same-file key=" + metricScoreKeyString(resolved.journalId(), record));
             return;
         }
@@ -433,7 +427,7 @@ public class WosFactBuilderService {
             WosMetricFact loserSnapshot = copyMetric(existing);
             WosMetricFact updated = applyMetricRecord(existing, record);
             pendingMetricSaves.put(key, updated);
-            if (shouldEmitConflict(record.sourceType(), decision.reason())) {
+            if (shouldEmitConflict(decision.reason())) {
                 pendingConflicts.add(buildMetricConflictIncomingWinner(
                         decision.reason(),
                         metricScoreKeyString(resolved.journalId(), record),
@@ -443,12 +437,14 @@ public class WosFactBuilderService {
             }
             result.markUpdated();
         } else {
-            pendingConflicts.add(buildMetricConflictExistingWinner(
-                    decision.reason(),
-                    metricScoreKeyString(resolved.journalId(), record),
-                    existing,
-                    record
-            ));
+            if (shouldEmitConflict(decision.reason())) {
+                pendingConflicts.add(buildMetricConflictExistingWinner(
+                        decision.reason(),
+                        metricScoreKeyString(resolved.journalId(), record),
+                        existing,
+                        record
+                ));
+            }
             result.markSkipped("metric-score-conflict-loser key=" + metricScoreKeyString(resolved.journalId(), record));
         }
     }
@@ -493,7 +489,7 @@ public class WosFactBuilderService {
             WosCategoryFact loserSnapshot = copyCategory(existing);
             WosCategoryFact updated = applyCategoryRecord(existing, record);
             pendingCategorySaves.put(key, updated);
-            if (shouldEmitConflict(record.sourceType(), decision.reason())) {
+            if (shouldEmitConflict(decision.reason())) {
                 pendingConflicts.add(buildCategoryConflictIncomingWinner(
                         decision.reason(),
                         categoryRankingKeyString(resolved.journalId(), record),
@@ -503,12 +499,14 @@ public class WosFactBuilderService {
             }
             result.markUpdated();
         } else {
-            pendingConflicts.add(buildCategoryConflictExistingWinner(
-                    decision.reason(),
-                    categoryRankingKeyString(resolved.journalId(), record),
-                    existing,
-                    record
-            ));
+            if (shouldEmitConflict(decision.reason())) {
+                pendingConflicts.add(buildCategoryConflictExistingWinner(
+                        decision.reason(),
+                        categoryRankingKeyString(resolved.journalId(), record),
+                        existing,
+                        record
+                ));
+            }
             result.markSkipped("category-ranking-conflict-loser key=" + categoryRankingKeyString(resolved.journalId(), record));
         }
     }
@@ -630,8 +628,8 @@ public class WosFactBuilderService {
         return value != null && Double.compare(value, 0.0d) == 0;
     }
 
-    private boolean shouldEmitConflict(WosSourceType incomingSourceType, String reason) {
-        return !(incomingSourceType == WosSourceType.GOV_AIS_RIS && "source-precedence".equals(reason));
+    private boolean shouldEmitConflict(String reason) {
+        return !"source-precedence".equals(reason) && !"duplicate-source-file".equals(reason);
     }
 
     private boolean isSameCategoryRanking(WosCategoryFact fact, WosParsedRecord record) {

@@ -198,7 +198,7 @@ class WosFactBuilderServiceTest {
     }
 
     @Test
-    void sameFileDuplicateDifferentScoreCreatesConflictAndSkips() {
+    void sameFileDuplicateDifferentScoreSkipsWithoutConflict() {
         WosMetricFact existing = new WosMetricFact();
         existing.setId("m-existing");
         existing.setJournalId("jid-1");
@@ -237,7 +237,7 @@ class WosFactBuilderServiceTest {
         assertEquals(0, result.getUpdatedCount());
         assertTrue(result.getSkippedCount() > 0);
         assertEquals(1.1, existing.getValue());
-        assertTrue(conflictStore.stream().anyMatch(c -> "METRIC_SCORE".equals(c.getFactType()) && "duplicate-source-file".equals(c.getConflictReason())));
+        assertTrue(conflictStore.stream().noneMatch(c -> "METRIC_SCORE".equals(c.getFactType()) && "duplicate-source-file".equals(c.getConflictReason())));
     }
 
     @Test

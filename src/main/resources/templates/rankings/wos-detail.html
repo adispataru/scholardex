@@ -28,38 +28,46 @@
             border: 1px solid #d1d3e2;
             border-radius: 2px;
         }
-        .wos-heatmap-table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-            font-size: 0.75rem;
+        .gh-heatmap-wrap {
+            overflow-x: auto;
         }
-        .wos-heatmap-table th,
-        .wos-heatmap-table td {
-            border: 1px solid #d1d3e2;
-            text-align: center;
-            padding: 0.35rem 0.2rem;
+        .gh-heatmap {
+            min-width: fit-content;
         }
-        .wos-heatmap-table th {
-            background: #f8f9fc;
+        .gh-heatmap-row {
+            display: grid;
+            grid-auto-rows: 16px;
+            column-gap: 4px;
+            row-gap: 0;
+            margin-bottom: 6px;
+            align-items: center;
+        }
+        .gh-label {
+            font-size: 0.72rem;
             color: #5a5c69;
-            font-weight: 600;
-        }
-        .wos-heatmap-row-label {
-            background: #f8f9fc;
+            font-weight: 700;
             text-align: left;
-            padding-left: 0.5rem;
             white-space: nowrap;
-            width: 54px;
+            padding-right: 6px;
         }
-        .wos-heatmap-cell {
-            color: #1f2937;
-            line-height: 1.1;
-            min-height: 30px;
+        .gh-year {
+            font-size: 0.62rem;
+            color: #858796;
+            text-align: center;
+            line-height: 1;
         }
-        .wos-heatmap-cell-empty {
-            color: #f8f9fc;
+        .gh-cell {
+            width: 14px;
+            height: 14px;
+            border-radius: 2px;
+            border: 1px solid #d1d3e2;
+            cursor: default;
         }
+        .gh-q1 { background: #d9534f; }
+        .gh-q2 { background: #f6c23e; }
+        .gh-q3 { background: #ffffff; }
+        .gh-q4 { background: #b8bcc2; }
+        .gh-empty { background: #6c757d; }
     </style>
 </head>
 <body id="page-top">
@@ -120,7 +128,7 @@
                             <div class="card-body">
                                 <h6 class="m-0 text-primary">General Metrics</h6>
                                 <div class="chart-area">
-                                    <canvas id="chart-score"></canvas>
+                                    <div id="chart-score"></div>
                                 </div>
                             </div>
                         </div>
@@ -128,15 +136,17 @@
                 </div>
                 <div class="row">
                     <div class="col-xl-12 col-md-12 mb-12">
-                        <div th:each="e, iterStat : ${journal.webOfScienceCategoryIndex}" class="col-xl-6 col-md-6 mb-6">
-                                <div class="card shadow py-2">
-                                    <div class="card-body">
-                                        <h6 class="m-0 text-primary" th:text="${e.key}">Category</h6>
-                                        <div class="chart-area">
-                                            <div th:attr="id='chart-quartile-' + ${#strings.replace(e.key, ' ', '-')}"></div>
-                                        </div>
+                        <div class="card shadow py-2 card-spacing">
+                            <div class="card-body">
+                                <h6 class="m-0 text-primary mb-3">Category Rankings</h6>
+                                <div th:each="e, iterStat : ${journal.webOfScienceCategoryIndex}" class="mb-4">
+                                    <h6 class="m-0 text-primary" th:text="${e.key}">Category</h6>
+                                    <div class="mt-2">
+                                        <div th:attr="id='chart-quartile-' + ${#strings.replace(e.key, ' ', '-')}"></div>
                                     </div>
+                                    <hr th:if="${!iterStat.last}" />
                                 </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -241,11 +251,6 @@
         return match ? Number(match[1]) : null;
     }
 
-    function quarterValue(quarter) {
-        if (quarter == null) return 0;
-        return quarter;
-    }
-
     function metricCellLabel(quarter, rank) {
         if (quarter == null && rank == null) {
             return '—';
@@ -257,6 +262,14 @@
             return 'Q' + quarter;
         }
         return '#' + rank;
+    }
+
+    function quarterCssClass(quarter) {
+        if (quarter === 1) return 'gh-q1';
+        if (quarter === 2) return 'gh-q2';
+        if (quarter === 3) return 'gh-q3';
+        if (quarter === 4) return 'gh-q4';
+        return 'gh-empty';
     }
 
     function renderCategoryHeatmap(container, categoryName, entry, years) {
@@ -293,38 +306,34 @@
             + '<span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#b8bcc2"></span>Q4</span>'
             + '<span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#6c757d"></span>No data</span>'
             + '</div>';
-        var rowsHtml = metricDefs.map(function (metric, idx) {
-            return '<div class="mb-2"><div class="small font-weight-bold mb-1">'
-                    + metric.label
-                    + '</div><div id="frappe-heatmap-' + categoryName.replace(/[^A-Za-z0-9]/g, '_') + '-' + idx + '"></div></div>';
+        var columnTemplate = '80px ' + years.map(function () { return '14px'; }).join(' ');
+        var headerRow = '<div class="gh-heatmap-row" style="grid-template-columns:' + columnTemplate + ';">'
+                + '<div class="gh-label"></div>'
+                + years.map(function (year) {
+                    return '<div class="gh-year" title="' + year + '">' + String(year).slice(-2) + '</div>';
+                }).join('')
+                + '</div>';
+
+        var rowsHtml = metricDefs.map(function (metric) {
+            var rowCells = years.map(function (year) {
+                var quarter = quarterNumber(metric.quarterMap[year]);
+                var rank = metric.rankMap[year];
+                var quartileRank = metric.quartileRankMap[year];
+                var title = metricCellLabel(quarter, rank);
+                if (quartileRank != null) {
+                    title += ' (quartile rank: #' + quartileRank + ')';
+                }
+                return '<div class="gh-cell ' + quarterCssClass(quarter) + '" title="' + title + '"></div>';
+            }).join('');
+            return '<div class="gh-heatmap-row" style="grid-template-columns:' + columnTemplate + ';">'
+                    + '<div class="gh-label">' + metric.label + '</div>' + rowCells + '</div>';
         }).join('');
 
-        container.innerHTML = legendHtml + rowsHtml;
-
-        if (!hasFrappe || years.length === 0) {
-            return;
-        }
-
-        metricDefs.forEach(function (metric, idx) {
-            var datapoints = {};
-            years.forEach(function (year) {
-                var quarter = quarterNumber(metric.quarterMap[year]);
-                datapoints[year + '-01-01'] = quarterValue(quarter);
-            });
-
-            var id = '#frappe-heatmap-' + categoryName.replace(/[^A-Za-z0-9]/g, '_') + '-' + idx;
-            new frappe.Chart(id, {
-                type: 'heatmap',
-                title: '',
-                data: { dataPoints: datapoints },
-                height: 90,
-                discreteDomains: 1,
-                countLabel: 'Quartile value'
-            });
-        });
+        container.innerHTML = legendHtml
+                + '<div class="gh-heatmap-wrap"><div class="gh-heatmap">' + headerRow + rowsHtml + '</div></div>';
     }
 
-    Object.keys(categoryData).forEach(function (key) {
+    Object.keys(categoryData || {}).forEach(function (key) {
         var container = document.getElementById('chart-quartile-' + key.replace(/ /g, '-'));
         renderCategoryHeatmap(container, key, categoryData[key] || {}, years);
     });

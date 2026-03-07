@@ -99,6 +99,10 @@ class WosCanonicalContractSupportTest {
     void issnNormalizationIsHyphenInsensitive() {
         assertEquals("12345678", WosCanonicalContractSupport.normalizeIssnToken("1234-5678"));
         assertEquals("12345678", WosCanonicalContractSupport.normalizeIssnToken(" 12345678 "));
+        assertEquals("1234567X", WosCanonicalContractSupport.normalizeIssnToken("1234-567X"));
+        assertNull(WosCanonicalContractSupport.normalizeIssnToken("********"));
+        assertNull(WosCanonicalContractSupport.normalizeIssnToken("N/A"));
+        assertNull(WosCanonicalContractSupport.normalizeIssnToken("1234-ABCD"));
     }
 
     @Test

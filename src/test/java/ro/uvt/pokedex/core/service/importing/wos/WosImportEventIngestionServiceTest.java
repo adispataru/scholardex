@@ -161,6 +161,61 @@ class WosImportEventIngestionServiceTest {
         assertJournalTitle(store, "AIS_2020.xlsx", "v2020", "3", "ULTRASONICS SONOCHEMISTRY");
     }
 
+    @Test
+    void ingestDirectorySkipsRowsWithOnlyInvalidIssnTokensAndClearsInvalidSibling() throws Exception {
+        Path dir = Files.createTempDirectory("wos-events-invalid-issn");
+        createAis2020IdentityEdgeCaseExcel(dir.resolve("AIS_2020.xlsx"));
+
+        EventStore store = new EventStore();
+        WosImportEventRepository repository = repositoryMock(store);
+        WosImportEventIngestionService service = new WosImportEventIngestionService(repository, new ObjectMapper());
+
+        ImportProcessingResult result = service.ingestDirectory(dir.toString(), null);
+
+        assertEquals(2, result.getProcessedCount());
+        assertEquals(1, result.getImportedCount());
+        assertEquals(1, result.getSkippedCount());
+
+        assertEquals(1, store.list(WosSourceType.GOV_AIS_RIS, "AIS_2020.xlsx", "v2020").size());
+        WosImportEvent persisted = store.get(WosSourceType.GOV_AIS_RIS, "AIS_2020.xlsx", "v2020", "2");
+        assertNotNull(persisted);
+        JsonNode payload = new ObjectMapper().readTree(persisted.getPayload());
+        assertEquals("1234-5678", payload.path("cells").path("c1").asText());
+        assertEquals("", payload.path("cells").path("c2").asText());
+    }
+
+    @Test
+    void ingestDirectorySkipsOfficialJsonItemsWithOnlyInvalidIssnAndClearsInvalidSibling() throws Exception {
+        Path dir = Files.createTempDirectory("wos-events-json-invalid-issn");
+        Path jsonDir = dir.resolve("wos-json-1997-2019");
+        Files.createDirectories(jsonDir);
+        Files.writeString(jsonDir.resolve("journals-SCIE-year-2019.json"), """
+                [
+                  {"journalTitle":"Bad","year":2019,"edition":"SCIE","issn":"********","eissn":"********","articleInfluenceScore":1.2,"categoryName":"ACOUSTICS"},
+                  {"journalTitle":"Good","year":2019,"edition":"SCIE","issn":"1234-5678","eissn":"********","articleInfluenceScore":0.9,"categoryName":"ECONOMICS"}
+                ]
+                """);
+
+        EventStore store = new EventStore();
+        WosImportEventRepository repository = repositoryMock(store);
+        WosImportEventIngestionService service = new WosImportEventIngestionService(repository, new ObjectMapper());
+
+        ImportProcessingResult result = service.ingestDirectory(dir.toString(), null);
+
+        assertEquals(2, result.getProcessedCount());
+        assertEquals(1, result.getImportedCount());
+        assertEquals(1, result.getSkippedCount());
+
+        assertEquals(1, store.list(WosSourceType.OFFICIAL_WOS_EXTRACT,
+                "wos-json-1997-2019/journals-SCIE-year-2019.json", "v2019").size());
+        WosImportEvent persisted = store.get(WosSourceType.OFFICIAL_WOS_EXTRACT,
+                "wos-json-1997-2019/journals-SCIE-year-2019.json", "v2019", "1");
+        assertNotNull(persisted);
+        JsonNode payload = new ObjectMapper().readTree(persisted.getPayload());
+        assertEquals("1234-5678", payload.path("issn").asText());
+        assertTrue(payload.path("eissn").isNull());
+    }
+
     private void assertJournalTitle(EventStore store, String sourceFile, String sourceVersion, String rowItem, String expectedTitle)
             throws Exception {
         WosImportEvent event = store.get(WosSourceType.GOV_AIS_RIS, sourceFile, sourceVersion, rowItem);
@@ -284,6 +339,42 @@ class WosImportEventIngestionServiceTest {
             formulaCell.setCellValue("Journal Cached");
             row1.createCell(1).setCellValue("1234-5678");
             row1.createCell(2).setCellValue(1.1);
+
+            try (FileOutputStream out = new FileOutputStream(file.toFile())) {
+                workbook.write(out);
+            }
+        }
+    }
+
+    private void createAis2020IdentityEdgeCaseExcel(Path file) throws Exception {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Sheet1");
+            Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("Title");
+            header.createCell(1).setCellValue("ISSN");
+            header.createCell(2).setCellValue("eISSN");
+            header.createCell(3).setCellValue("Value");
+            header.createCell(4).setCellValue("Edition");
+            header.createCell(5).setCellValue("Category");
+            header.createCell(6).setCellValue("Quarter");
+
+            Row row1 = sheet.createRow(1);
+            row1.createCell(0).setCellValue("Invalid Both");
+            row1.createCell(1).setCellValue("********");
+            row1.createCell(2).setCellValue("********");
+            row1.createCell(3).setCellValue(1.1);
+            row1.createCell(4).setCellValue("SCIE");
+            row1.createCell(5).setCellValue("ACOUSTICS");
+            row1.createCell(6).setCellValue(1.0);
+
+            Row row2 = sheet.createRow(2);
+            row2.createCell(0).setCellValue("Mixed Valid");
+            row2.createCell(1).setCellValue("1234-5678");
+            row2.createCell(2).setCellValue("********");
+            row2.createCell(3).setCellValue(2.2);
+            row2.createCell(4).setCellValue("SCIE");
+            row2.createCell(5).setCellValue("ACOUSTICS");
+            row2.createCell(6).setCellValue(2.0);
 
             try (FileOutputStream out = new FileOutputStream(file.toFile())) {
                 workbook.write(out);

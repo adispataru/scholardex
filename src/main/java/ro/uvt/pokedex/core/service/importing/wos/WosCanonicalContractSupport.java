@@ -34,6 +34,7 @@ public final class WosCanonicalContractSupport {
     private static final Pattern COMBINING_MARKS = Pattern.compile("\\p{M}+");
     private static final Pattern SOCIAL_SCIENCES_TEXT = Pattern.compile("\\bSOCIAL\\s+SCIENCES?\\b");
     private static final Pattern SCIE_TOKEN = Pattern.compile("\\bSCIE\\b");
+    private static final Pattern ISSN_TOKEN = Pattern.compile("^[0-9]{7}[0-9X]$");
 
     private WosCanonicalContractSupport() {
     }
@@ -113,7 +114,10 @@ public final class WosCanonicalContractSupport {
             return null;
         }
         String normalized = rawIssn.trim().toUpperCase(Locale.ROOT).replace("-", "").replace(" ", "");
-        return normalized.isBlank() ? null : normalized;
+        if (normalized.isBlank()) {
+            return null;
+        }
+        return ISSN_TOKEN.matcher(normalized).matches() ? normalized : null;
     }
 
     public static String normalizeTitleFingerprint(String rawTitle) {

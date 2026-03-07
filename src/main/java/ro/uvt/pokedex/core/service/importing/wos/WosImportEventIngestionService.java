@@ -34,6 +34,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -159,6 +160,9 @@ public class WosImportEventIngestionService {
                     payload.put("metricType", metricType);
                     payload.put("year", year);
                     payload.put("cells", extractCells(row, formulaEvaluator, dataFormatter));
+                    if (shouldSkipGovEvent(payload, fileResult, total, fileName, Integer.toString(i))) {
+                        continue;
+                    }
                     processEventFast(
                             WosSourceType.GOV_AIS_RIS,
                             fileName,
@@ -219,13 +223,19 @@ public class WosImportEventIngestionService {
                 int idx = 0;
                 while (iterator.hasNext()) {
                     JsonNode item = iterator.next();
+                    JsonNode sanitizedItem = sanitizeOfficialJsonIdentity(item);
+                    if (sanitizedItem == null) {
+                        markIdentitySkipped(fileResult, total, fileName, Integer.toString(idx));
+                        idx++;
+                        continue;
+                    }
                     processEventFast(
                             WosSourceType.OFFICIAL_WOS_EXTRACT,
                             fileName,
                             sourceVersion,
                             Integer.toString(idx),
                             "json-item",
-                            item,
+                            sanitizedItem,
                             existingByRowItem,
                             toPersist,
                             fileResult,
@@ -300,6 +310,137 @@ public class WosImportEventIngestionService {
             fileResult.markError("source=" + sourceFile + "#" + sourceRowItem + ", error=" + e.getMessage());
             total.markError("source=" + sourceFile + "#" + sourceRowItem + ", error=" + e.getMessage());
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private boolean shouldSkipGovEvent(
+            Map<String, Object> payload,
+            ImportProcessingResult fileResult,
+            ImportProcessingResult total,
+            String sourceFile,
+            String sourceRowItem
+    ) {
+        Object metricTypeRaw = payload.get("metricType");
+        Object yearRaw = payload.get("year");
+        Object cellsRaw = payload.get("cells");
+        if (!(cellsRaw instanceof Map<?, ?> cellsAny)) {
+            return false;
+        }
+        Map<String, Object> cells = (Map<String, Object>) cellsAny;
+        Set<String> idColumns = govIdentityColumns(asString(metricTypeRaw), asString(yearRaw));
+        if (idColumns.isEmpty()) {
+            return false;
+        }
+
+        boolean hasAnyToken = false;
+        boolean hasValidToken = false;
+        for (String column : idColumns) {
+            String raw = asString(cells.get(column));
+            String normalized = WosCanonicalContractSupport.normalizeIssnToken(raw);
+            if (raw != null && !raw.isBlank()) {
+                hasAnyToken = true;
+            }
+            if (normalized != null) {
+                hasValidToken = true;
+            } else if (raw != null && !raw.isBlank()) {
+                cells.put(column, "");
+            }
+        }
+
+        if (hasAnyToken && !hasValidToken) {
+            markIdentitySkipped(fileResult, total, sourceFile, sourceRowItem);
+            return true;
+        }
+        return false;
+    }
+
+    private JsonNode sanitizeOfficialJsonIdentity(JsonNode node) {
+        if (node == null || !node.isObject()) {
+            return node;
+        }
+        com.fasterxml.jackson.databind.node.ObjectNode objectNode = node.deepCopy();
+        String rawIssn = textOrNull(objectNode.get("issn"));
+        String rawEIssn = firstNonBlank(textOrNull(objectNode.get("eissn")), textOrNull(objectNode.get("eIssn")));
+
+        String normalizedIssn = WosCanonicalContractSupport.normalizeIssnToken(rawIssn);
+        String normalizedEIssn = WosCanonicalContractSupport.normalizeIssnToken(rawEIssn);
+
+        boolean hasAnyToken = (rawIssn != null && !rawIssn.isBlank()) || (rawEIssn != null && !rawEIssn.isBlank());
+        if (hasAnyToken && normalizedIssn == null && normalizedEIssn == null) {
+            return null;
+        }
+
+        if (normalizedIssn == null) {
+            objectNode.putNull("issn");
+        }
+        if (normalizedEIssn == null) {
+            objectNode.putNull("eissn");
+            objectNode.putNull("eIssn");
+        }
+        return objectNode;
+    }
+
+    private void markIdentitySkipped(
+            ImportProcessingResult fileResult,
+            ImportProcessingResult total,
+            String sourceFile,
+            String sourceRowItem
+    ) {
+        String message = "invalid-identity-identifiers=" + sourceFile + "#" + sourceRowItem;
+        fileResult.markProcessed();
+        total.markProcessed();
+        fileResult.markSkipped(message);
+        total.markSkipped(message);
+    }
+
+    private Set<String> govIdentityColumns(String metricTypeRaw, String yearRaw) {
+        if (metricTypeRaw == null || yearRaw == null) {
+            return Set.of();
+        }
+        String metricType = metricTypeRaw.trim().toUpperCase(Locale.ROOT);
+        int year;
+        try {
+            year = Integer.parseInt(yearRaw.trim());
+        } catch (Exception e) {
+            return Set.of();
+        }
+        if ("AIS".equals(metricType)) {
+            if (year >= 2020 && year <= 2023) {
+                return Set.of("c1", "c2");
+            }
+            if (year >= 2014 && year <= 2017) {
+                return Set.of("c2");
+            }
+            return Set.of("c1");
+        }
+        if ("RIS".equals(metricType)) {
+            if (year >= 2020) {
+                return Set.of("c1", "c2");
+            }
+            return Set.of("c1");
+        }
+        return Set.of();
+    }
+
+    private String textOrNull(JsonNode node) {
+        if (node == null || node.isNull() || node.isMissingNode()) {
+            return null;
+        }
+        return node.asText();
+    }
+
+    private String firstNonBlank(String left, String right) {
+        if (left != null && !left.isBlank()) {
+            return left;
+        }
+        if (right != null && !right.isBlank()) {
+            return right;
+        }
+        return null;
+    }
+
+    private String asString(Object value) {
+        return value == null ? null : String.valueOf(value);
     }
 
     private String normalizePayload(Object payload) throws JsonProcessingException {
