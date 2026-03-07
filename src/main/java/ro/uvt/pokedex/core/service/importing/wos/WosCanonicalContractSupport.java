@@ -32,6 +32,8 @@ public final class WosCanonicalContractSupport {
     private static final Pattern NON_ALNUM_OR_SPACE = Pattern.compile("[^\\p{Alnum}\\s]");
     private static final Pattern MULTI_SPACE = Pattern.compile("\\s+");
     private static final Pattern COMBINING_MARKS = Pattern.compile("\\p{M}+");
+    private static final Pattern SOCIAL_SCIENCES_TEXT = Pattern.compile("\\bSOCIAL\\s+SCIENCES?\\b");
+    private static final Pattern SCIE_TOKEN = Pattern.compile("\\bSCIE\\b");
 
     private WosCanonicalContractSupport() {
     }
@@ -44,10 +46,12 @@ public final class WosCanonicalContractSupport {
         }
 
         String normalized = rawEdition.toUpperCase(Locale.ROOT);
-        if (normalized.contains("SSCI")) {
+        boolean hasSsci = normalized.contains("SSCI") || SOCIAL_SCIENCES_TEXT.matcher(normalized).find();
+        if (hasSsci) {
             editions.add(EditionNormalized.SSCI);
         }
-        if (normalized.contains("SCIE") || normalized.contains("SCIENCE")) {
+        String normalizedWithoutSocialSciences = SOCIAL_SCIENCES_TEXT.matcher(normalized).replaceAll(" ");
+        if (SCIE_TOKEN.matcher(normalized).find() || normalizedWithoutSocialSciences.contains("SCIENCE")) {
             editions.add(EditionNormalized.SCIE);
         }
         if (normalized.contains("AHCI")) {

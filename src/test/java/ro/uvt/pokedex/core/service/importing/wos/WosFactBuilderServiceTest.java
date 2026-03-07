@@ -33,6 +33,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -148,6 +149,54 @@ class WosFactBuilderServiceTest {
         assertEquals(1, result.getUpdatedCount());
         assertEquals(0.9, existing.getValue());
         assertEquals("v2023", existing.getSourceVersion());
+        assertTrue(conflictStore.stream().anyMatch(c -> "METRIC".equals(c.getFactType())));
+    }
+
+    @Test
+    void sameMetricScoreSkipsWithoutConflict() {
+        WosMetricFact existing = new WosMetricFact();
+        existing.setId("m-existing");
+        existing.setJournalId("jid-1");
+        existing.setYear(2023);
+        existing.setMetricType(MetricType.AIS);
+        existing.setCategoryNameCanonical("ACOUSTICS");
+        existing.setEditionNormalized(EditionNormalized.SCIE);
+        existing.setValue(1.1);
+        existing.setQuarter("Q2");
+        existing.setRank(10);
+        existing.setSourceType(WosSourceType.GOV_AIS_RIS);
+        existing.setSourceVersion("v2023");
+        existing.setSourceRowItem("1");
+        metricStore.add(existing);
+
+        WosParsedRecord incoming = new WosParsedRecord(
+                "Journal",
+                "12345678",
+                "87654321",
+                2023,
+                MetricType.AIS,
+                1.1,
+                "ACOUSTICS",
+                "SCIE",
+                EditionNormalized.SCIE,
+                "Q1",
+                2,
+                "ev-2",
+                WosSourceType.GOV_AIS_RIS,
+                "file.xlsx",
+                "v2024",
+                "8"
+        );
+        when(parserOrchestrator.parseAllEvents()).thenReturn(runOf(List.of(incoming)));
+
+        ImportProcessingResult result = service.buildFactsFromImportEvents();
+
+        assertEquals(0, result.getUpdatedCount());
+        assertTrue(result.getSkippedCount() > 0);
+        assertEquals("Q2", existing.getQuarter());
+        assertEquals(10, existing.getRank());
+        assertTrue(conflictStore.isEmpty());
+        verify(factConflictRepository, never()).saveAll(any());
     }
 
     @Test

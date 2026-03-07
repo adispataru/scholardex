@@ -21,6 +21,18 @@ class WosCanonicalContractSupportTest {
     }
 
     @Test
+    void socialSciencesTokenNormalizesToSsci() {
+        assertEquals(Set.of(EditionNormalized.SSCI), WosCanonicalContractSupport.normalizeEditionCandidates("social sciences"));
+        assertEquals(Set.of(EditionNormalized.SSCI), WosCanonicalContractSupport.normalizeEditionCandidates("SOCIAL SCIENCE"));
+    }
+
+    @Test
+    void mixedScienceAndSocialSciencesNormalizeToScieAndSsci() {
+        Set<EditionNormalized> editions = WosCanonicalContractSupport.normalizeEditionCandidates("science + social sciences");
+        assertEquals(Set.of(EditionNormalized.SSCI, EditionNormalized.SCIE), editions);
+    }
+
+    @Test
     void bundledScieAndSsciRequiresSplit() {
         String raw = "COMPUTER SCIENCE - SCIE; BUSINESS - SSCI";
         Set<EditionNormalized> editions = WosCanonicalContractSupport.normalizeEditionCandidates(raw);

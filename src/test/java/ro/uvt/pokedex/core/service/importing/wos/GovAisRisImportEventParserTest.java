@@ -39,6 +39,23 @@ class GovAisRisImportEventParserTest {
     }
 
     @Test
+    void parsesAis2013WithSocialSciencesEditionNormalizedToSsci() throws Exception {
+        WosImportEvent event = event("AIS", "2013", Map.of(
+                "c0", "Journal Social",
+                "c1", "1234-5678",
+                "c2", 0.512,
+                "c3", "SOCIOLOGY",
+                "c4", "social sciences"
+        ));
+
+        WosParsedEventResult result = parser.parse(event);
+
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        assertEquals(1, result.records().size());
+        assertEquals(EditionNormalized.SSCI, result.records().get(0).editionNormalized());
+    }
+
+    @Test
     void parsesAis2020WithQuarterAndEissn() throws Exception {
         WosImportEvent event = event("AIS", "2020", Map.of(
                 "c0", "ULTRASOUND",

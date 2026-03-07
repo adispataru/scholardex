@@ -354,6 +354,11 @@ public class WosFactBuilderService {
             return;
         }
 
+        if (isSameMetricScore(existing, record)) {
+            result.markSkipped("metric-duplicate-score key=" + metricKeyString(resolved.journalId(), record));
+            return;
+        }
+
         if (isSameMetric(existing, record)) {
             result.markSkipped("metric-unchanged key=" + metricKeyString(resolved.journalId(), record));
             return;
@@ -471,6 +476,10 @@ public class WosFactBuilderService {
                 && safeEq(fact.getSourceVersion(), record.sourceVersion())
                 && safeEq(fact.getSourceRowItem(), record.sourceRowItem())
                 && safeEq(fact.getSourceEventId(), record.sourceEventId());
+    }
+
+    private boolean isSameMetricScore(WosMetricFact fact, WosParsedRecord record) {
+        return safeEq(fact.getValue(), record.value());
     }
 
     private boolean safeEq(Object left, Object right) {
