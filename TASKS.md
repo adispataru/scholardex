@@ -49,15 +49,15 @@ Done history moved to `TASKS-done.md`.
   - [x] `H17.7` Scheduler and task flow canonicalization.
     Deliverable: `ScopusPublicationUpdate` and `ScopusCitationsUpdate` execution publishes canonical events and triggers canonical transform/projection flow.
     Exit criteria: scheduled/manual Scopus updates are fully canonical and replay-safe.
-  - [ ] `H17.8` Guardrails and regression gates.
+  - [x] `H17.8` Guardrails and regression gates.
     Deliverable: guardrail checks that fail on legacy direct-write Scopus persistence and enforce canonical pipeline usage in CI.
     Exit criteria: CI blocks reintroduction of non-canonical Scopus persistence patterns.
-  - [ ] `H17.9` Validation and closeout evidence.
+  - [x] `H17.9` Validation and closeout evidence.
     Deliverable: run log + closeout notes capturing `./gradlew compileJava`, targeted Scopus tests, `./gradlew check`, and replay/idempotence verification evidence.
     Exit criteria: local and CI critical gates are green with canonical Scopus pipeline active.
-  - [ ] `H17.10` Cross-source merge policy and linker rules.
-    Deliverable: decision-locked merge/link contract for `scholardex.publication` covering canonical publication key/link strategy, deterministic field-ownership precedence (Scopus vs WoS vs Scholar), enrichment lineage, and replay-safe reapplication rules.
-    Exit criteria: merged publication behavior is deterministic, ownership-safe, and implementable without unresolved policy decisions.
+  - [x] `H17.10` Cross-source merge policy and linker rules.
+    Deliverable: production linker/merge implementation for `scholardex.publication_view` with exact-key resolution precedence (`id` -> `eid` -> `doiNormalized`), conflict quarantine persistence, NON-WOS exclusion, and migrated WoS enrichment call-sites (`UserReportFacade`, `GroupCnfisExportFacade`) that write through linker-owned lineage fields only.
+    Exit criteria: enrichment writes are deterministic, ownership-safe, replay-safe, conflict-aware (quarantine/non-mutating), and no reporting/export flow bypasses linker service for WoS/Scholar-owned keys.
 
 ## How To Use This File
 

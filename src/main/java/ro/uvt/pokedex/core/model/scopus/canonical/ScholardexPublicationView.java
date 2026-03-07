@@ -14,6 +14,7 @@ public class ScholardexPublicationView {
     @Id
     private String id;
     private String doi;
+    private String doiNormalized;
     private String eid;
     private String title;
     private String subtype;

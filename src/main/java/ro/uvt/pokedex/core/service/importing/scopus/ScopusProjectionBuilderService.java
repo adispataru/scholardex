@@ -29,13 +29,17 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 @Service
 public class ScopusProjectionBuilderService {
 
     private static final Logger log = LoggerFactory.getLogger(ScopusProjectionBuilderService.class);
+    private static final Pattern DOI_URL_PREFIX = Pattern.compile("^https?://(dx\\.)?doi\\.org/", Pattern.CASE_INSENSITIVE);
+    private static final Pattern DOI_PREFIX = Pattern.compile("^doi:", Pattern.CASE_INSENSITIVE);
 
     private final ScopusForumFactRepository forumFactRepository;
     private final ScopusAuthorFactRepository authorFactRepository;
@@ -171,6 +175,7 @@ public class ScopusProjectionBuilderService {
         ScholardexPublicationView view = new ScholardexPublicationView();
         view.setId(fact.getId());
         view.setDoi(fact.getDoi());
+        view.setDoiNormalized(normalizeDoi(fact.getDoi()));
         view.setEid(fact.getEid());
         view.setTitle(fact.getTitle());
         view.setSubtype(fact.getSubtype());
@@ -247,5 +252,19 @@ public class ScopusProjectionBuilderService {
             result.markProcessed();
             result.markImported();
         }
+    }
+
+    private String normalizeDoi(String doi) {
+        if (doi == null) {
+            return null;
+        }
+        String normalized = doi.trim();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        normalized = DOI_URL_PREFIX.matcher(normalized).replaceFirst("");
+        normalized = DOI_PREFIX.matcher(normalized).replaceFirst("");
+        normalized = normalized.trim().toLowerCase(Locale.ROOT);
+        return normalized.isEmpty() ? null : normalized;
     }
 }

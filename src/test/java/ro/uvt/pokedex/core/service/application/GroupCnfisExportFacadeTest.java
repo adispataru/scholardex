@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -37,6 +38,8 @@ class GroupCnfisExportFacadeTest {
     private GroupManagementFacade groupManagementFacade;
     @Mock
     private ScopusProjectionReadService scopusProjectionReadService;
+    @Mock
+    private PublicationEnrichmentLinkerService publicationEnrichmentLinkerService;
     @Mock
     private CNFISScoringService2025 cnfiSScoringService2025;
     @Mock
@@ -77,9 +80,15 @@ class GroupCnfisExportFacadeTest {
         when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
                 .thenReturn(List.of(inRange, outOfRange));
         when(woSExtractor.findPublicationWosId(inRange)).thenReturn(inRange);
+        when(publicationEnrichmentLinkerService.linkWosEnrichment(any(Publication.class), anyString(), anyString(), anyString()))
+                .thenReturn(new PublicationEnrichmentLinkerService.LinkResult(
+                        PublicationEnrichmentLinkerService.LinkState.LINKED,
+                        "linked",
+                        "p1",
+                        null
+                ));
         when(cnfiSScoringService2025.getReport(eq(inRange), any())).thenReturn(new CNFISReport2025());
         when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
-        lenient().when(scopusProjectionReadService.findPublicationViewById(any())).thenReturn(Optional.empty());
 
         var result = facade.buildGroupCnfisExport("g1", 2021, 2024);
 
@@ -111,6 +120,13 @@ class GroupCnfisExportFacadeTest {
         when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(p1));
         when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a2"))).thenReturn(List.of(p2));
         when(woSExtractor.findPublicationWosId(any(Publication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(publicationEnrichmentLinkerService.linkWosEnrichment(any(Publication.class), anyString(), anyString(), anyString()))
+                .thenReturn(new PublicationEnrichmentLinkerService.LinkResult(
+                        PublicationEnrichmentLinkerService.LinkState.LINKED,
+                        "linked",
+                        "p1",
+                        null
+                ));
         when(cnfiSScoringService2025.getReport(any(Publication.class), any(Domain.class))).thenReturn(new CNFISReport2025());
 
         Forum f1 = new Forum();
@@ -118,7 +134,6 @@ class GroupCnfisExportFacadeTest {
         Forum f2 = new Forum();
         f2.setId("f2");
         when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(f1, f2));
-        lenient().when(scopusProjectionReadService.findPublicationViewById(any())).thenReturn(Optional.empty());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), anyList(), eq(false)))
                 .thenReturn(new byte[]{1, 2, 3});
 
@@ -147,9 +162,15 @@ class GroupCnfisExportFacadeTest {
         Publication publication = publication("p1", "f1", "2022-01-01");
         when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
         when(woSExtractor.findPublicationWosId(any(Publication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(publicationEnrichmentLinkerService.linkWosEnrichment(any(Publication.class), anyString(), anyString(), anyString()))
+                .thenReturn(new PublicationEnrichmentLinkerService.LinkResult(
+                        PublicationEnrichmentLinkerService.LinkState.LINKED,
+                        "linked",
+                        "p1",
+                        null
+                ));
         when(cnfiSScoringService2025.getReport(any(Publication.class), any(Domain.class))).thenReturn(new CNFISReport2025());
         when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of());
-        lenient().when(scopusProjectionReadService.findPublicationViewById(any())).thenReturn(Optional.empty());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), anyList(), eq(true)))
                 .thenReturn(new byte[]{9, 9, 9});
 
@@ -188,7 +209,6 @@ class GroupCnfisExportFacadeTest {
 
         when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of());
         when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of());
-        lenient().when(scopusProjectionReadService.findPublicationViewById(any())).thenReturn(Optional.empty());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false)))
                 .thenReturn(new byte[]{5, 5});
 
@@ -221,9 +241,15 @@ class GroupCnfisExportFacadeTest {
         when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
                 .thenReturn(List.of(start, end, out));
         when(woSExtractor.findPublicationWosId(any(Publication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(publicationEnrichmentLinkerService.linkWosEnrichment(any(Publication.class), anyString(), anyString(), anyString()))
+                .thenReturn(new PublicationEnrichmentLinkerService.LinkResult(
+                        PublicationEnrichmentLinkerService.LinkState.LINKED,
+                        "linked",
+                        "p1",
+                        null
+                ));
         when(cnfiSScoringService2025.getReport(any(Publication.class), any(Domain.class))).thenReturn(new CNFISReport2025());
         when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
-        lenient().when(scopusProjectionReadService.findPublicationViewById(any())).thenReturn(Optional.empty());
 
         var result = facade.buildGroupCnfisExport("g1", 2021, 2024);
 
@@ -252,15 +278,22 @@ class GroupCnfisExportFacadeTest {
         when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
                 .thenReturn(List.of(valid, invalid));
         when(woSExtractor.findPublicationWosId(any(Publication.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(publicationEnrichmentLinkerService.linkWosEnrichment(any(Publication.class), anyString(), anyString(), anyString()))
+                .thenReturn(new PublicationEnrichmentLinkerService.LinkResult(
+                        PublicationEnrichmentLinkerService.LinkState.LINKED,
+                        "linked",
+                        "pValid",
+                        null
+                ));
         when(cnfiSScoringService2025.getReport(any(Publication.class), any(Domain.class))).thenReturn(new CNFISReport2025());
         when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
-        lenient().when(scopusProjectionReadService.findPublicationViewById(any())).thenReturn(Optional.empty());
 
         var result = facade.buildGroupCnfisExport("g1", 2021, 2024);
 
         assertTrue(result.isPresent());
         assertEquals(1, result.get().publications().size());
         assertEquals("pValid", result.get().publications().getFirst().getId());
+        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq(valid), anyString(), anyString(), anyString());
         verify(scopusProjectionReadService, never()).savePublicationView(any());
     }
 

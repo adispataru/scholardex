@@ -224,6 +224,12 @@
             <span>Initialization</span>
         </a>
     </li>
+    <li class="nav-item" th:classappend="${activeSection} == 'conflicts' ? 'active' : ''">
+        <a class="nav-link" th:href="@{/admin/conflicts}">
+            <i class="fa-solid fa-fw fa-triangle-exclamation"></i>
+            <span>Conflicts</span>
+        </a>
+    </li>
 
         <!-- Divider -->
         <hr class="sidebar-divider d-none d-md-block">

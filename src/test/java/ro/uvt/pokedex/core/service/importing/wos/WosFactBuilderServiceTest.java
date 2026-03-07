@@ -52,6 +52,8 @@ class WosFactBuilderServiceTest {
     private WosFactConflictRepository factConflictRepository;
     @Mock
     private MongoTemplate mongoTemplate;
+    @Mock
+    private WosFactBuildCheckpointService checkpointService;
 
     private final List<WosMetricFact> metricStore = new ArrayList<>();
     private final List<WosCategoryFact> categoryStore = new ArrayList<>();
@@ -71,6 +73,7 @@ class WosFactBuilderServiceTest {
                 categoryFactRepository,
                 factConflictRepository,
                 mongoTemplate,
+                checkpointService,
                 meterRegistry
         );
         lenient().when(identityResolutionService.resolveIdentity(anyString(), anyString(), anyString(), any()))
@@ -105,10 +108,15 @@ class WosFactBuilderServiceTest {
             }
             return saved;
         });
-        lenient().when(factConflictRepository.save(any(WosFactConflict.class))).thenAnswer(invocation -> {
-            WosFactConflict c = invocation.getArgument(0);
-            conflictStore.add(c);
-            return c;
+        lenient().when(factConflictRepository.saveAll(any())).thenAnswer(invocation -> {
+            @SuppressWarnings("unchecked")
+            Iterable<WosFactConflict> iterable = (Iterable<WosFactConflict>) invocation.getArgument(0);
+            List<WosFactConflict> saved = new ArrayList<>();
+            for (WosFactConflict conflict : iterable) {
+                conflictStore.add(conflict);
+                saved.add(conflict);
+            }
+            return saved;
         });
     }
 
@@ -196,7 +204,7 @@ class WosFactBuilderServiceTest {
 
         assertEquals(0, result.getUpdatedCount());
         assertTrue(result.getSkippedCount() > 0);
-        verify(factConflictRepository).save(any(WosFactConflict.class));
+        verify(factConflictRepository).saveAll(any());
         assertEquals(1.5, existing.getValue());
     }
 
@@ -229,6 +237,69 @@ class WosFactBuilderServiceTest {
         assertEquals(0.0, meterRegistry.get("pokedex.wos.if.source_policy.skips").counter().count());
     }
 
+    @Test
+    void recordWithoutIssnAndEIssnIsSkippedForIdentityResolution() {
+        WosParsedRecord incoming = new WosParsedRecord(
+                "Title Only",
+                null,
+                null,
+                2023,
+                MetricType.AIS,
+                1.2,
+                "ACOUSTICS",
+                "SCIE",
+                EditionNormalized.SCIE,
+                "Q1",
+                2,
+                "ev-1",
+                WosSourceType.GOV_AIS_RIS,
+                "file.xlsx",
+                "v2023",
+                "9"
+        );
+        when(parserOrchestrator.parseAllEvents()).thenReturn(runOf(List.of(incoming)));
+
+        ImportProcessingResult result = service.buildFactsFromImportEvents();
+
+        assertEquals(0, result.getImportedCount());
+        assertTrue(result.getSkippedCount() > 0);
+        verify(identityResolutionService, org.mockito.Mockito.never())
+                .resolveIdentity(anyString(), anyString(), anyString(), any());
+    }
+
+    @Test
+    void checkpointedBuildStartsFromCheckpointPlusOne() {
+        when(parserOrchestrator.parseAllEvents()).thenReturn(runOf(generateRecords(3000)));
+
+        ro.uvt.pokedex.core.model.reporting.wos.WosFactBuildCheckpoint checkpoint =
+                new ro.uvt.pokedex.core.model.reporting.wos.WosFactBuildCheckpoint();
+        checkpoint.setPipelineKey(WosFactBuildCheckpointService.WOS_FACT_BUILD_PIPELINE_KEY);
+        checkpoint.setLastCompletedBatch(1);
+        when(checkpointService.readCheckpoint()).thenReturn(java.util.Optional.of(checkpoint));
+
+        WosFactBuilderService.FactBuildRunResult run =
+                service.buildFactsFromImportEventsWithCheckpoint(null, true, "run-1", "v2023");
+
+        assertEquals(2, run.startBatch());
+        assertEquals(2, run.endBatch());
+        assertEquals(1, run.batchesProcessed());
+        verify(checkpointService).upsertCheckpoint(eq(2), anyInt(), anyString(), eq("run-1"), eq("v2023"));
+    }
+
+    @Test
+    void checkpointedBuildUsesManualOverrideWhenProvided() {
+        when(parserOrchestrator.parseAllEvents()).thenReturn(runOf(generateRecords(2000)));
+
+        WosFactBuilderService.FactBuildRunResult run =
+                service.buildFactsFromImportEventsWithCheckpoint(1, true, "run-2", "v2023");
+
+        assertEquals(1, run.startBatch());
+        assertEquals(1, run.endBatch());
+        assertEquals(1, run.batchesProcessed());
+        assertTrue(!run.resumedFromCheckpoint());
+        verify(checkpointService).upsertCheckpoint(eq(1), anyInt(), anyString(), eq("run-2"), eq("v2023"));
+    }
+
     private WosParsedRecord record(MetricType metricType, WosSourceType sourceType, Double value, String sourceVersion, String sourceRowItem) {
         return new WosParsedRecord(
                 "Journal",
@@ -257,5 +328,13 @@ class WosFactBuilderServiceTest {
             summary.markParsed();
         });
         return new WosParserRunResult(summary, records);
+    }
+
+    private List<WosParsedRecord> generateRecords(int count) {
+        List<WosParsedRecord> records = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            records.add(record(MetricType.AIS, WosSourceType.GOV_AIS_RIS, 1.0 + i, "v2023", Integer.toString(i)));
+        }
+        return records;
     }
 }

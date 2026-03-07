@@ -11,6 +11,9 @@ public interface ScholardexPublicationViewRepository extends MongoRepository<Sch
     Optional<ScholardexPublicationView> findByEid(String eid);
     Optional<ScholardexPublicationView> findByWosId(String wosId);
     Optional<ScholardexPublicationView> findByGoogleScholarId(String googleScholarId);
+    List<ScholardexPublicationView> findAllByWosId(String wosId);
+    List<ScholardexPublicationView> findAllByGoogleScholarId(String googleScholarId);
+    List<ScholardexPublicationView> findAllByDoiNormalized(String doiNormalized);
     List<ScholardexPublicationView> findAllByIdIn(Collection<String> ids);
     List<ScholardexPublicationView> findAllByEidIn(Collection<String> eids);
     List<ScholardexPublicationView> findAllByAuthorIdsIn(Collection<String> authorIds);

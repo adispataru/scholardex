@@ -10,6 +10,7 @@ import java.util.Optional;
 
 public interface WosJournalIdentityRepository extends MongoRepository<WosJournalIdentity, String> {
     Optional<WosJournalIdentity> findByIdentityKey(String identityKey);
+    List<WosJournalIdentity> findAllByIdentityKeyIn(Collection<String> identityKeys);
 
     @Query("{'$or':[{'primaryIssn': {'$in': ?0}}, {'eIssn': {'$in': ?0}}, {'aliasIssns': {'$in': ?0}}]}")
     List<WosJournalIdentity> findCandidatesByIssnTokens(Collection<String> normalizedIssnTokens);

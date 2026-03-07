@@ -12,6 +12,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -53,7 +54,7 @@ class WosImportEventParserOrchestratorTest {
         unsupported.setSourceRowItem("3");
         unsupported.setPayload("{}");
 
-        when(repository.findAll()).thenReturn(List.of(govEvent, unsupported, jsonEvent));
+        when(repository.findAll(any(org.springframework.data.domain.Sort.class))).thenReturn(List.of(govEvent, unsupported, jsonEvent));
 
         WosParserRunResult result = orchestrator.parseAllEvents();
 

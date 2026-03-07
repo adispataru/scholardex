@@ -2,6 +2,7 @@ package ro.uvt.pokedex.core.service.importing.wos;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.wos.WosImportEvent;
 import ro.uvt.pokedex.core.repository.reporting.WosImportEventRepository;
@@ -12,13 +13,18 @@ import ro.uvt.pokedex.core.service.importing.wos.model.WosParserRunResult;
 import ro.uvt.pokedex.core.service.importing.wos.model.WosParserRunSummary;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 @Service
 public class WosImportEventParserOrchestrator {
     private static final Logger log = LoggerFactory.getLogger(WosImportEventParserOrchestrator.class);
     private static final int PARSER_HEARTBEAT_INTERVAL = 10_000;
+    private static final Sort EVENT_SORT = Sort.by(
+            Sort.Order.asc("sourceType"),
+            Sort.Order.asc("sourceFile"),
+            Sort.Order.asc("sourceVersion"),
+            Sort.Order.asc("sourceRowItem")
+    );
 
     private final WosImportEventRepository importEventRepository;
     private final List<WosImportEventParser> parsers;
@@ -32,12 +38,7 @@ public class WosImportEventParserOrchestrator {
     }
 
     public WosParserRunResult parseAllEvents() {
-        List<WosImportEvent> events = new ArrayList<>(importEventRepository.findAll());
-        events.sort(Comparator
-                .comparing(WosImportEvent::getSourceType, Comparator.nullsLast(Enum::compareTo))
-                .thenComparing(WosImportEvent::getSourceFile, Comparator.nullsLast(String::compareTo))
-                .thenComparing(WosImportEvent::getSourceVersion, Comparator.nullsLast(String::compareTo))
-                .thenComparing(WosImportEvent::getSourceRowItem, Comparator.nullsLast(String::compareTo)));
+        List<WosImportEvent> events = new ArrayList<>(importEventRepository.findAll(EVENT_SORT));
         return parseEvents(events);
     }
 

@@ -93,7 +93,7 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
 
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult result = service.ensureIndexes();
 
-        assertEquals(40, result.created().size());
+        assertEquals(41, result.created().size());
         assertTrue(result.present().isEmpty());
         assertTrue(result.invalid().isEmpty());
         assertTrue(result.errors().isEmpty());
@@ -155,6 +155,7 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         ));
         when(mergedPublicationViewOps.getIndexInfo()).thenReturn(List.of(
                 info(ScopusCanonicalIndexMaintenanceService.IDX_MERGED_PUBLICATION_EID, false, "eid"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_MERGED_PUBLICATION_DOI_NORMALIZED, false, "doiNormalized"),
                 info(ScopusCanonicalIndexMaintenanceService.IDX_MERGED_PUBLICATION_TITLE, false, "title"),
                 info(ScopusCanonicalIndexMaintenanceService.IDX_MERGED_PUBLICATION_COVERDATE, false, "coverDate"),
                 info(ScopusCanonicalIndexMaintenanceService.IDX_MERGED_PUBLICATION_AUTHORS, false, "authorIds"),
@@ -166,7 +167,7 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
 
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult result = service.ensureIndexes();
 
-        assertEquals(40, result.present().size());
+        assertEquals(41, result.present().size());
         assertTrue(result.created().isEmpty());
         assertTrue(result.invalid().isEmpty());
         assertTrue(result.errors().isEmpty());

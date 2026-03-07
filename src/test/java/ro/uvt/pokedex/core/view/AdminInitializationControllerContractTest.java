@@ -21,6 +21,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
@@ -42,21 +43,31 @@ class AdminInitializationControllerContractTest {
     void initializationPageRendersTemplate() throws Exception {
         mockMvc.perform(get("/admin/initialization"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("admin/initialization"));
+                .andExpect(view().name("admin/initialization"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/ingest")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/buildFacts")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/rebuildProjections")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/ensureIndexes")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/resetCanonicalState")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/initialization/wos/runBigBangMigration"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/runBigBang"))));
     }
 
     @Test
     void runWosBigBangRedirectsToInitializationPage() throws Exception {
-        when(rankingMaintenanceFacade.runWosBigBangMigration(eq(true), eq("v2026")))
+        when(rankingMaintenanceFacade.runWosBigBangMigration(eq(true), eq("v2026"), eq(200), eq(true)))
                 .thenReturn(new WosBigBangMigrationService.WosBigBangMigrationResult(
                         true,
                         "data/loaded",
                         "v2026",
                         Instant.now(),
                         Instant.now(),
-                        new WosBigBangMigrationService.MigrationStepResult("ingest", false, 0, 0, 0, 0, 0, "dry-run", List.of()),
-                        new WosBigBangMigrationService.MigrationStepResult("facts", false, 0, 0, 0, 0, 0, "dry-run", List.of()),
-                        new WosBigBangMigrationService.MigrationStepResult("projections", false, 0, 0, 0, 0, 0, "dry-run", List.of()),
+                        new WosBigBangMigrationService.MigrationStepResult("ingest", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
+                                null, null, null, null, null),
+                        new WosBigBangMigrationService.MigrationStepResult("facts", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
+                                200, null, 0, false, 199),
+                        new WosBigBangMigrationService.MigrationStepResult("projections", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
+                                null, null, null, null, null),
                         new WosBigBangMigrationService.VerificationSummary(
                                 0, 0, 0, 0, 0, 0,
                                 0, 0, 0, 0, List.of(),
@@ -66,11 +77,101 @@ class AdminInitializationControllerContractTest {
 
         mockMvc.perform(post("/admin/initialization/wos/runBigBangMigration")
                         .param("dryRun", "true")
+                        .param("sourceVersion", "v2026")
+                        .param("startBatchOverride", "200"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+
+        verify(rankingMaintenanceFacade).runWosBigBangMigration(true, "v2026", 200, true);
+    }
+
+    @Test
+    void ingestWosRedirectsToInitializationPage() throws Exception {
+        when(rankingMaintenanceFacade.ingestWosEvents(eq("v2026")))
+                .thenReturn(new WosBigBangMigrationService.MigrationStepResult(
+                        "ingest",
+                        true,
+                        100,
+                        80,
+                        0,
+                        20,
+                        0,
+                        null,
+                        List.of(),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                ));
+
+        mockMvc.perform(post("/admin/initialization/wos/ingest")
                         .param("sourceVersion", "v2026"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/initialization"));
 
-        verify(rankingMaintenanceFacade).runWosBigBangMigration(true, "v2026");
+        verify(rankingMaintenanceFacade).ingestWosEvents("v2026");
+    }
+
+    @Test
+    void resetWosFactCheckpointRedirectsToInitializationPage() throws Exception {
+        mockMvc.perform(post("/admin/initialization/wos/resetFactCheckpoint"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+
+        verify(rankingMaintenanceFacade).resetWosFactBuildCheckpoint();
+    }
+
+    @Test
+    void buildWosFactsRedirectsToInitializationPage() throws Exception {
+        when(rankingMaintenanceFacade.buildWosFactsFromEvents(eq(200), eq("v2026"), eq(true)))
+                .thenReturn(new WosBigBangMigrationService.MigrationStepResult(
+                        "build-facts",
+                        true,
+                        1000,
+                        800,
+                        200,
+                        0,
+                        0,
+                        null,
+                        List.of(),
+                        200,
+                        205,
+                        6,
+                        true,
+                        199
+                ));
+
+        mockMvc.perform(post("/admin/initialization/wos/buildFacts")
+                        .param("sourceVersion", "v2026")
+                        .param("startBatchOverride", "200"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+
+        verify(rankingMaintenanceFacade).buildWosFactsFromEvents(200, "v2026", true);
+    }
+
+    @Test
+    void resetWosCanonicalStateRedirectsToInitializationPage() throws Exception {
+        when(rankingMaintenanceFacade.resetWosCanonicalState())
+                .thenReturn(new WosBigBangMigrationService.CanonicalResetResult(10, 8, 6, 6, 2, 3, 7, 7));
+
+        mockMvc.perform(post("/admin/initialization/wos/resetCanonicalState")
+                        .param("confirmation", "RESET"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+
+        verify(rankingMaintenanceFacade).resetWosCanonicalState();
+    }
+
+    @Test
+    void resetWosCanonicalStateWithoutResetConfirmationDoesNotExecute() throws Exception {
+        mockMvc.perform(post("/admin/initialization/wos/resetCanonicalState")
+                        .param("confirmation", "reset"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+
+        org.mockito.Mockito.verifyNoInteractions(rankingMaintenanceFacade);
     }
 
     @Test

@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.service.importing.wos;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -13,6 +14,7 @@ import ro.uvt.pokedex.core.repository.reporting.WosImportEventRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -22,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -106,6 +109,73 @@ class WosImportEventIngestionServiceTest {
         assertTrue(store.containsSourceType(WosSourceType.OFFICIAL_WOS_EXTRACT));
     }
 
+    @Test
+    void ingestDirectoryEvaluatesFormulaCellsInsteadOfPersistingFormulaText() throws Exception {
+        Path dir = Files.createTempDirectory("wos-events-formula");
+        createFormulaExcel(dir.resolve("AIS_2024.xlsx"));
+
+        EventStore store = new EventStore();
+        WosImportEventRepository repository = repositoryMock(store);
+        WosImportEventIngestionService service = new WosImportEventIngestionService(repository, new ObjectMapper());
+
+        ImportProcessingResult result = service.ingestDirectory(dir.toString(), null);
+
+        assertEquals(1, result.getImportedCount());
+        WosImportEvent event = store.get(WosSourceType.GOV_AIS_RIS, "AIS_2024.xlsx", "v2024", "1");
+        JsonNode payload = new ObjectMapper().readTree(event.getPayload());
+        assertEquals("Journal Formula", payload.path("cells").path("c0").asText());
+    }
+
+    @Test
+    void ingestDirectoryUsesCachedValueForExternalReferenceFormula() throws Exception {
+        Path dir = Files.createTempDirectory("wos-events-external-formula");
+        createExternalFormulaExcelWithCachedValue(dir.resolve("AIS_2020.xlsx"));
+
+        EventStore store = new EventStore();
+        WosImportEventRepository repository = repositoryMock(store);
+        WosImportEventIngestionService service = new WosImportEventIngestionService(repository, new ObjectMapper());
+
+        ImportProcessingResult result = service.ingestDirectory(dir.toString(), null);
+
+        assertEquals(1, result.getImportedCount());
+        WosImportEvent event = store.get(WosSourceType.GOV_AIS_RIS, "AIS_2020.xlsx", "v2020", "1");
+        JsonNode payload = new ObjectMapper().readTree(event.getPayload());
+        assertEquals("Journal Cached", payload.path("cells").path("c0").asText());
+    }
+
+    @Test
+    void ingestDirectoryUsesCachedValuesFromEncryptedAisFixture() throws Exception {
+        Path dir = Files.createTempDirectory("wos-events-ais-2020-fixture");
+        copyResource("/wos/AIS_2020-test.xlsx", dir.resolve("AIS_2020.xlsx"));
+
+        EventStore store = new EventStore();
+        WosImportEventRepository repository = repositoryMock(store);
+        WosImportEventIngestionService service = new WosImportEventIngestionService(repository, new ObjectMapper());
+        ReflectionTestUtils.setField(service, "govAisPassword", "uefiscdi");
+
+        ImportProcessingResult result = service.ingestDirectory(dir.toString(), null);
+
+        assertEquals(3, result.getImportedCount());
+        assertJournalTitle(store, "AIS_2020.xlsx", "v2020", "1", "ULTRASOUND IN OBSTETRICS & GYNECOLOGY");
+        assertJournalTitle(store, "AIS_2020.xlsx", "v2020", "2", "ULTRASCHALL IN DER MEDIZIN");
+        assertJournalTitle(store, "AIS_2020.xlsx", "v2020", "3", "ULTRASONICS SONOCHEMISTRY");
+    }
+
+    private void assertJournalTitle(EventStore store, String sourceFile, String sourceVersion, String rowItem, String expectedTitle)
+            throws Exception {
+        WosImportEvent event = store.get(WosSourceType.GOV_AIS_RIS, sourceFile, sourceVersion, rowItem);
+        assertNotNull(event);
+        JsonNode payload = new ObjectMapper().readTree(event.getPayload());
+        assertEquals(expectedTitle, payload.path("cells").path("c0").asText());
+    }
+
+    private void copyResource(String resourcePath, Path target) throws Exception {
+        try (InputStream input = WosImportEventIngestionServiceTest.class.getResourceAsStream(resourcePath)) {
+            assertNotNull(input);
+            Files.copy(input, target);
+        }
+    }
+
     private WosImportEventRepository repositoryMock(EventStore store) {
         WosImportEventRepository repository = mock(WosImportEventRepository.class);
         when(repository.findBySourceTypeAndSourceFileAndSourceVersionAndSourceRowItem(any(), any(), any(), any()))
@@ -179,6 +249,46 @@ class WosImportEventIngestionServiceTest {
                 ]
                 """;
         Files.writeString(file, content);
+    }
+
+    private void createFormulaExcel(Path file) throws Exception {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Sheet1");
+            Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("Title");
+            header.createCell(1).setCellValue("ISSN");
+            header.createCell(2).setCellValue("Value");
+
+            Row row1 = sheet.createRow(1);
+            row1.createCell(0).setCellFormula("CONCATENATE(\"Journal\", \" Formula\")");
+            row1.createCell(1).setCellValue("1234-5678");
+            row1.createCell(2).setCellValue(1.1);
+
+            try (FileOutputStream out = new FileOutputStream(file.toFile())) {
+                workbook.write(out);
+            }
+        }
+    }
+
+    private void createExternalFormulaExcelWithCachedValue(Path file) throws Exception {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Sheet1");
+            Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("Title");
+            header.createCell(1).setCellValue("ISSN");
+            header.createCell(2).setCellValue("Value");
+
+            Row row1 = sheet.createRow(1);
+            var formulaCell = row1.createCell(0);
+            formulaCell.setCellFormula("CONCATENATE('/missing/path/[formule2021.xlsx]AIS.cuartile.formule'!A2847)");
+            formulaCell.setCellValue("Journal Cached");
+            row1.createCell(1).setCellValue("1234-5678");
+            row1.createCell(2).setCellValue(1.1);
+
+            try (FileOutputStream out = new FileOutputStream(file.toFile())) {
+                workbook.write(out);
+            }
+        }
     }
 
     private static final class EventStore {

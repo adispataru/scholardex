@@ -1,7 +1,6 @@
 package ro.uvt.pokedex.core.service.application;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.mockito.InjectMocks;
@@ -43,7 +42,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
@@ -77,14 +75,11 @@ class UserReportFacadeTest {
     private CNFISReportExportService exportService;
     @Mock
     private CacheService cacheService;
+    @Mock
+    private PublicationEnrichmentLinkerService publicationEnrichmentLinkerService;
 
     @InjectMocks
     private UserReportFacade facade;
-
-    @BeforeEach
-    void defaults() {
-        lenient().when(scopusProjectionReadService.findPublicationViewById(any())).thenReturn(Optional.empty());
-    }
 
     @Test
     void buildIndicatorsViewReturnsRepositoryValues() {
@@ -231,6 +226,9 @@ class UserReportFacadeTest {
 
         assertEquals(UserWorkbookExportStatus.OK, result.status());
         // only in-range publications should be enriched/saved (2021..2024 inclusive)
+        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq(pStart), any(), any(), any());
+        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq(pIn), any(), any(), any());
+        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq(pEnd), any(), any(), any());
         verify(scopusProjectionReadService, never()).savePublicationView(any());
     }
 
@@ -459,6 +457,7 @@ class UserReportFacadeTest {
         var result = facade.buildUserCnfisWorkbookExport("user@uvt.ro", 2021, 2024);
 
         assertEquals(UserWorkbookExportStatus.OK, result.status());
+        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq(valid), any(), any(), any());
         verify(scopusProjectionReadService, never()).savePublicationView(any());
 
         ArgumentCaptor<List<Publication>> publicationCaptor = ArgumentCaptor.forClass(List.class);

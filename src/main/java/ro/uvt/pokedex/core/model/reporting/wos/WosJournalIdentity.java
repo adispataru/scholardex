@@ -31,6 +31,7 @@ public class WosJournalIdentity {
     private String title;
     @Indexed
     private String normalizedTitle;
+    private List<String> alternativeNames = new ArrayList<>();
     private boolean active = true;
     private Instant createdAt;
     private Instant updatedAt;

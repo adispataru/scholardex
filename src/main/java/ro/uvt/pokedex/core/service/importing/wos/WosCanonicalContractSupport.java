@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 
 /**
  * H14.1 shared contract helpers. Concrete parser/integration use is deferred to H14.2/H14.4/H14.5.
@@ -30,6 +31,7 @@ public final class WosCanonicalContractSupport {
     private static final double SENTINEL_MISSING_SCORE = -999.0;
     private static final Pattern NON_ALNUM_OR_SPACE = Pattern.compile("[^\\p{Alnum}\\s]");
     private static final Pattern MULTI_SPACE = Pattern.compile("\\s+");
+    private static final Pattern COMBINING_MARKS = Pattern.compile("\\p{M}+");
 
     private WosCanonicalContractSupport() {
     }
@@ -114,7 +116,10 @@ public final class WosCanonicalContractSupport {
         if (rawTitle == null) {
             return null;
         }
-        String normalized = NON_ALNUM_OR_SPACE.matcher(rawTitle.toLowerCase(Locale.ROOT)).replaceAll(" ");
+        String normalized = rawTitle.toLowerCase(Locale.ROOT);
+        normalized = Normalizer.normalize(normalized, Normalizer.Form.NFKD);
+        normalized = COMBINING_MARKS.matcher(normalized).replaceAll("");
+        normalized = NON_ALNUM_OR_SPACE.matcher(normalized).replaceAll(" ");
         normalized = MULTI_SPACE.matcher(normalized).replaceAll(" ").trim();
         return normalized.isBlank() ? null : normalized;
     }
@@ -123,21 +128,12 @@ public final class WosCanonicalContractSupport {
         Set<String> issnTokens = normalizedIssnTokens == null ? Set.of() :
                 normalizedIssnTokens.stream().filter(Objects::nonNull).map(String::trim).filter(s -> !s.isBlank())
                         .map(v -> v.toUpperCase(Locale.ROOT)).collect(Collectors.toCollection(LinkedHashSet::new));
-        String material;
-        if (!issnTokens.isEmpty()) {
-            String joinedIssns = issnTokens.stream().sorted().collect(Collectors.joining("|"));
-            material = "issn:" + joinedIssns;
-        } else {
-            String title = normalizedTitleFingerprint == null ? "" : normalizedTitleFingerprint;
-            String normalizedEdition = normalizeEditionForIdentity(editionRaw);
-            material = "title:" + title + "|year:" + (year == null ? "0" : year) + "|edition:" + normalizedEdition;
+        if (issnTokens.isEmpty()) {
+            return null;
         }
+        String joinedIssns = issnTokens.stream().sorted().collect(Collectors.joining("|"));
+        String material = "issn:" + joinedIssns;
         return sha256Hex(material);
-    }
-
-    private static String normalizeEditionForIdentity(String editionRaw) {
-        Set<EditionNormalized> editions = normalizeEditionCandidates(editionRaw);
-        return editions.stream().map(Enum::name).sorted().collect(Collectors.joining("+"));
     }
 
     private static String sha256Hex(String text) {

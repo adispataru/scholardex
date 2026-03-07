@@ -33,6 +33,35 @@ public class RankingMaintenanceFacade {
     }
 
     public WosBigBangMigrationService.WosBigBangMigrationResult runWosBigBangMigration(boolean dryRun, String sourceVersionOverride) {
-        return wosBigBangMigrationService.run(dryRun, sourceVersionOverride);
+        return runWosBigBangMigration(dryRun, sourceVersionOverride, null, true);
+    }
+
+    public WosBigBangMigrationService.WosBigBangMigrationResult runWosBigBangMigration(
+            boolean dryRun,
+            String sourceVersionOverride,
+            Integer startBatchOverride,
+            boolean useCheckpoint
+    ) {
+        return wosBigBangMigrationService.run(dryRun, sourceVersionOverride, startBatchOverride, useCheckpoint);
+    }
+
+    public void resetWosFactBuildCheckpoint() {
+        wosBigBangMigrationService.resetFactBuildCheckpoint();
+    }
+
+    public WosBigBangMigrationService.MigrationStepResult ingestWosEvents(String sourceVersionOverride) {
+        return wosBigBangMigrationService.runIngestStep(sourceVersionOverride);
+    }
+
+    public WosBigBangMigrationService.MigrationStepResult buildWosFactsFromEvents(
+            Integer startBatchOverride,
+            String sourceVersionOverride,
+            boolean useCheckpoint
+    ) {
+        return wosBigBangMigrationService.runBuildFactsStep(startBatchOverride, sourceVersionOverride, useCheckpoint);
+    }
+
+    public WosBigBangMigrationService.CanonicalResetResult resetWosCanonicalState() {
+        return wosBigBangMigrationService.resetCanonicalState();
     }
 }

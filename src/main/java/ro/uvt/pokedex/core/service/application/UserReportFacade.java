@@ -50,6 +50,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class UserReportFacade {
+    private static final String WOS_EXTRACTOR_SOURCE = "WOSEXTRACTOR";
+    private static final String LINKER_VERSION = "h17.10";
+
     private final UserService userService;
     private final ResearcherService researcherService;
     private final IndicatorRepository indicatorRepository;
@@ -63,6 +66,7 @@ public class UserReportFacade {
     private final WoSExtractor woSExtractor;
     private final CNFISReportExportService exportService;
     private final CacheService cacheService;
+    private final PublicationEnrichmentLinkerService publicationEnrichmentLinkerService;
 
     public UserIndicatorsViewModel buildIndicatorsView(String userEmail) {
         // userEmail kept in signature to lock facade contract for later permission-aware extensions.
@@ -144,9 +148,15 @@ public class UserReportFacade {
 
         Domain domain = domainRepository.findByName("ALL").orElse(null);
         List<CNFISReport2025> cnfisReports = new ArrayList<>();
+        String linkerRunId = "user-cnfis-" + System.currentTimeMillis();
         for (Publication publication : publications) {
             Publication enrichedPublication = woSExtractor.findPublicationWosId(publication);
-            persistWosEnrichment(enrichedPublication);
+            publicationEnrichmentLinkerService.linkWosEnrichment(
+                    enrichedPublication,
+                    WOS_EXTRACTOR_SOURCE,
+                    LINKER_VERSION,
+                    linkerRunId
+            );
             cnfisReports.add(cnfiSScoringService2025.getReport(enrichedPublication, domain));
         }
 
@@ -669,13 +679,4 @@ public class UserReportFacade {
         return scopusProjectionReadService.findForumsByIdIn(forumIds);
     }
 
-    private void persistWosEnrichment(Publication enrichedPublication) {
-        scopusProjectionReadService.findPublicationViewById(enrichedPublication.getId())
-                .ifPresent(row -> {
-                    row.setWosId(enrichedPublication.getWosId());
-                    row.setWosLineage("wos-extractor");
-                    row.setUpdatedAt(java.time.Instant.now());
-                    scopusProjectionReadService.savePublicationView(row);
-                });
-    }
 }

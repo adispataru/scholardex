@@ -74,6 +74,7 @@ public class ScopusCanonicalIndexMaintenanceService {
     static final String IDX_AFFILIATION_VIEW_AFID = "idx_scopus_affiliation_view_afid";
 
     static final String IDX_MERGED_PUBLICATION_EID = "idx_scholardex_publication_eid";
+    static final String IDX_MERGED_PUBLICATION_DOI_NORMALIZED = "idx_scholardex_publication_doi_normalized";
     static final String IDX_MERGED_PUBLICATION_TITLE = "idx_scholardex_publication_title";
     static final String IDX_MERGED_PUBLICATION_COVERDATE = "idx_scholardex_publication_coverdate";
     static final String IDX_MERGED_PUBLICATION_AUTHORS = "idx_scholardex_publication_authors";
@@ -221,6 +222,8 @@ public class ScopusCanonicalIndexMaintenanceService {
     private void ensureMergedPublicationViewIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
         IndexOperations ops = mongoTemplate.indexOps(ScholardexPublicationView.class);
         ensureNamedIndex(ops, new IndexDefinition(IDX_MERGED_PUBLICATION_EID, false, List.of(field("eid"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_MERGED_PUBLICATION_DOI_NORMALIZED, false, List.of(field("doiNormalized"))),
                 created, present, invalid, errors);
         ensureNamedIndex(ops, new IndexDefinition(IDX_MERGED_PUBLICATION_TITLE, false, List.of(field("title"))),
                 created, present, invalid, errors);

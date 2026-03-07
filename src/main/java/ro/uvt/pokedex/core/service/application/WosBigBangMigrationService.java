@@ -5,10 +5,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosImportEventRepository;
+import ro.uvt.pokedex.core.repository.reporting.WosIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosJournalIdentityRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosScoringViewRepository;
+import ro.uvt.pokedex.core.repository.reporting.WosFactConflictRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.wos.WosFactBuilderService;
 import ro.uvt.pokedex.core.service.importing.wos.WosImportEventIngestionService;
@@ -33,6 +35,8 @@ public class WosBigBangMigrationService {
     private final WosJournalIdentityRepository journalIdentityRepository;
     private final WosMetricFactRepository metricFactRepository;
     private final WosCategoryFactRepository categoryFactRepository;
+    private final WosIdentityConflictRepository identityConflictRepository;
+    private final WosFactConflictRepository factConflictRepository;
     private final WosRankingViewRepository rankingViewRepository;
     private final WosScoringViewRepository scoringViewRepository;
 
@@ -40,14 +44,31 @@ public class WosBigBangMigrationService {
     private String migrationDataDirectory;
 
     public WosBigBangMigrationResult run(boolean dryRun, String sourceVersionOverride) {
+        return run(dryRun, sourceVersionOverride, null, true);
+    }
+
+    public WosBigBangMigrationResult run(
+            boolean dryRun,
+            String sourceVersionOverride,
+            Integer startBatchOverride,
+            boolean useCheckpoint
+    ) {
         Instant startedAt = Instant.now();
         MigrationStepResult ingestStep;
         MigrationStepResult factStep;
         MigrationStepResult projectionStep;
+        String normalizedSourceVersion = normalizeSourceVersion(sourceVersionOverride);
 
         if (dryRun) {
             WosImportEventIngestionService.WosIngestionPreview preview =
-                    ingestionService.previewDirectory(migrationDataDirectory, normalizeSourceVersion(sourceVersionOverride));
+                    ingestionService.previewDirectory(migrationDataDirectory, normalizedSourceVersion);
+            var checkpoint = factBuilderService.readFactBuildCheckpoint().orElse(null);
+            int checkpointLastBatch = checkpoint == null || checkpoint.getLastCompletedBatch() == null
+                    ? -1
+                    : checkpoint.getLastCompletedBatch();
+            int effectiveStartBatch = startBatchOverride == null
+                    ? Math.max(0, checkpointLastBatch + 1)
+                    : Math.max(0, startBatchOverride);
             ingestStep = MigrationStepResult.dryRun(
                     "ingest",
                     "dry-run preview: files=" + preview.filesScanned()
@@ -55,20 +76,55 @@ public class WosBigBangMigrationService {
                             + ", errors=" + preview.errorCount(),
                     preview.samples(),
                     preview.plannedEvents(),
-                    preview.errorCount()
+                    preview.errorCount(),
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
             );
-            factStep = MigrationStepResult.dryRun("build-facts", "dry-run: canonical fact build skipped", List.of(), 0, 0);
-            projectionStep = MigrationStepResult.dryRun("build-projections", "dry-run: projection rebuild skipped", List.of(), 0, 0);
+            factStep = MigrationStepResult.dryRun(
+                    "build-facts",
+                    "dry-run: canonical fact build skipped"
+                            + ", checkpointLastCompletedBatch=" + checkpointLastBatch
+                            + ", effectiveStartBatch=" + effectiveStartBatch
+                            + ", mode=" + (startBatchOverride == null ? "checkpoint" : "manual-override"),
+                    List.of(),
+                    0,
+                    0,
+                    effectiveStartBatch,
+                    null,
+                    0,
+                    startBatchOverride == null && checkpointLastBatch >= 0,
+                    checkpointLastBatch
+            );
+            projectionStep = MigrationStepResult.dryRun("build-projections", "dry-run: projection rebuild skipped", List.of(), 0, 0,
+                    null, null, null, null, null);
         } else {
             ImportProcessingResult ingestionResult = ingestionService.ingestDirectory(
                     migrationDataDirectory,
-                    normalizeSourceVersion(sourceVersionOverride)
+                    normalizedSourceVersion
             );
-            ImportProcessingResult factResult = factBuilderService.buildFactsFromImportEvents();
+            String runId = "wos-fact-build-" + startedAt.toEpochMilli();
+            WosFactBuilderService.FactBuildRunResult factRun = factBuilderService.buildFactsFromImportEventsWithCheckpoint(
+                    startBatchOverride,
+                    useCheckpoint,
+                    runId,
+                    normalizedSourceVersion
+            );
+            ImportProcessingResult factResult = factRun.result();
             ImportProcessingResult projectionResult = projectionBuilderService.rebuildWosProjections();
 
             ingestStep = MigrationStepResult.executed("ingest", ingestionResult);
-            factStep = MigrationStepResult.executed("build-facts", factResult);
+            factStep = MigrationStepResult.executed(
+                    "build-facts",
+                    factResult,
+                    factRun.startBatch(),
+                    factRun.endBatch(),
+                    factRun.batchesProcessed(),
+                    factRun.resumedFromCheckpoint(),
+                    factRun.checkpointLastCompletedBatch()
+            );
             projectionStep = MigrationStepResult.executed("build-projections", projectionResult);
         }
 
@@ -80,7 +136,7 @@ public class WosBigBangMigrationService {
         return new WosBigBangMigrationResult(
                 dryRun,
                 migrationDataDirectory,
-                normalizeSourceVersion(sourceVersionOverride),
+                normalizedSourceVersion,
                 startedAt,
                 Instant.now(),
                 ingestStep,
@@ -133,6 +189,72 @@ public class WosBigBangMigrationService {
         );
     }
 
+    public void resetFactBuildCheckpoint() {
+        factBuilderService.resetFactBuildCheckpoint();
+    }
+
+    public CanonicalResetResult resetCanonicalState() {
+        long events = importEventRepository.count();
+        long journalIdentities = journalIdentityRepository.count();
+        long metricFacts = metricFactRepository.count();
+        long categoryFacts = categoryFactRepository.count();
+        long identityConflicts = identityConflictRepository.count();
+        long factConflicts = factConflictRepository.count();
+        long rankingRows = rankingViewRepository.count();
+        long scoringRows = scoringViewRepository.count();
+
+        scoringViewRepository.deleteAll();
+        rankingViewRepository.deleteAll();
+        factConflictRepository.deleteAll();
+        identityConflictRepository.deleteAll();
+        categoryFactRepository.deleteAll();
+        metricFactRepository.deleteAll();
+        journalIdentityRepository.deleteAll();
+        importEventRepository.deleteAll();
+        factBuilderService.resetFactBuildCheckpoint();
+
+        return new CanonicalResetResult(
+                events,
+                journalIdentities,
+                metricFacts,
+                categoryFacts,
+                identityConflicts,
+                factConflicts,
+                rankingRows,
+                scoringRows
+        );
+    }
+
+    public MigrationStepResult runIngestStep(String sourceVersionOverride) {
+        String normalizedSourceVersion = normalizeSourceVersion(sourceVersionOverride);
+        ImportProcessingResult ingestResult = ingestionService.ingestDirectory(migrationDataDirectory, normalizedSourceVersion);
+        return MigrationStepResult.executed("ingest", ingestResult);
+    }
+
+    public MigrationStepResult runBuildFactsStep(
+            Integer startBatchOverride,
+            String sourceVersionOverride,
+            boolean useCheckpoint
+    ) {
+        String normalizedSourceVersion = normalizeSourceVersion(sourceVersionOverride);
+        String runId = "wos-fact-build-step-" + Instant.now().toEpochMilli();
+        WosFactBuilderService.FactBuildRunResult run = factBuilderService.buildFactsFromImportEventsWithCheckpoint(
+                startBatchOverride,
+                useCheckpoint,
+                runId,
+                normalizedSourceVersion
+        );
+        return MigrationStepResult.executed(
+                "build-facts",
+                run.result(),
+                run.startBatch(),
+                run.endBatch(),
+                run.batchesProcessed(),
+                run.resumedFromCheckpoint(),
+                run.checkpointLastCompletedBatch()
+        );
+    }
+
     public record WosBigBangMigrationResult(
             boolean dryRun,
             String dataDirectory,
@@ -155,9 +277,26 @@ public class WosBigBangMigrationService {
             int skipped,
             int errors,
             String note,
-            List<String> samples
+            List<String> samples,
+            Integer startBatch,
+            Integer endBatch,
+            Integer batchesProcessed,
+            Boolean resumedFromCheckpoint,
+            Integer checkpointLastCompletedBatch
     ) {
         static MigrationStepResult executed(String stepName, ImportProcessingResult result) {
+            return executed(stepName, result, null, null, null, null, null);
+        }
+
+        static MigrationStepResult executed(
+                String stepName,
+                ImportProcessingResult result,
+                Integer startBatch,
+                Integer endBatch,
+                Integer batchesProcessed,
+                Boolean resumedFromCheckpoint,
+                Integer checkpointLastCompletedBatch
+        ) {
             return new MigrationStepResult(
                     stepName,
                     true,
@@ -167,7 +306,12 @@ public class WosBigBangMigrationService {
                     result.getSkippedCount(),
                     result.getErrorCount(),
                     null,
-                    result.getErrorsSample()
+                    result.getErrorsSample(),
+                    startBatch,
+                    endBatch,
+                    batchesProcessed,
+                    resumedFromCheckpoint,
+                    checkpointLastCompletedBatch
             );
         }
 
@@ -176,9 +320,29 @@ public class WosBigBangMigrationService {
                 String note,
                 List<String> samples,
                 int processed,
-                int errors
+                int errors,
+                Integer startBatch,
+                Integer endBatch,
+                Integer batchesProcessed,
+                Boolean resumedFromCheckpoint,
+                Integer checkpointLastCompletedBatch
         ) {
-            return new MigrationStepResult(stepName, false, processed, 0, 0, 0, errors, note, samples);
+            return new MigrationStepResult(
+                    stepName,
+                    false,
+                    processed,
+                    0,
+                    0,
+                    0,
+                    errors,
+                    note,
+                    samples,
+                    startBatch,
+                    endBatch,
+                    batchesProcessed,
+                    resumedFromCheckpoint,
+                    checkpointLastCompletedBatch
+            );
         }
     }
 
@@ -201,6 +365,18 @@ public class WosBigBangMigrationService {
             int parityAllowlistedMismatchCount,
             List<String> paritySamples,
             List<String> parityExecutedChecks
+    ) {
+    }
+
+    public record CanonicalResetResult(
+            long importEvents,
+            long journalIdentities,
+            long metricFacts,
+            long categoryFacts,
+            long identityConflicts,
+            long factConflicts,
+            long rankingViewRows,
+            long scoringViewRows
     ) {
     }
 }

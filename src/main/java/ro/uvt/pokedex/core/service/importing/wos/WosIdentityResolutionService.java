@@ -11,6 +11,7 @@ import ro.uvt.pokedex.core.service.importing.wos.model.WosIdentitySourceContext;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -21,7 +22,7 @@ import java.util.stream.Collectors;
 public class WosIdentityResolutionService {
 
     private static final String CONFLICT_TYPE_AMBIGUOUS_MATCH = "AMBIGUOUS_MATCH";
-    private static final String CONFLICT_REASON_ISSN_TITLE_MISMATCH = "ISSN overlap with conflicting title fingerprint";
+    private static final String CONFLICT_REASON_ISSN_COLLISION = "ISSN overlap across multiple journal identities";
 
     private final WosJournalIdentityRepository journalIdentityRepository;
     private final WosIdentityConflictRepository identityConflictRepository;
@@ -42,6 +43,10 @@ public class WosIdentityResolutionService {
     ) {
         WosIdentitySourceContext context = sourceContext == null ? WosIdentitySourceContext.empty() : sourceContext;
         Set<String> normalizedIssns = normalizedIssnSet(rawIssn, rawEIssn);
+        if (normalizedIssns.isEmpty()) {
+            return null;
+        }
+
         String normalizedTitle = WosCanonicalContractSupport.normalizeTitleFingerprint(rawTitle);
         String identityKey = WosCanonicalContractSupport.buildIdentityKey(
                 normalizedIssns,
@@ -50,23 +55,27 @@ public class WosIdentityResolutionService {
                 context.editionRaw()
         );
 
-        WosJournalIdentity matchedByKey = journalIdentityRepository.findByIdentityKey(identityKey).orElse(null);
+        WosJournalIdentity matchedByKey = identityKey == null
+                ? null
+                : journalIdentityRepository.findByIdentityKey(identityKey).orElse(null);
         if (matchedByKey != null) {
             maybeUpdateAliases(matchedByKey, normalizedIssns, rawTitle, normalizedTitle);
             return new IdentityResolutionResult(matchedByKey.getId(), identityKey, WosIdentityResolutionStatus.MATCHED, null);
         }
 
-        List<WosJournalIdentity> candidates = normalizedIssns.isEmpty()
-                ? List.of()
-                : journalIdentityRepository.findCandidatesByIssnTokens(normalizedIssns);
+        List<WosJournalIdentity> candidates = journalIdentityRepository.findCandidatesByIssnTokens(normalizedIssns);
         if (candidates.size() > 1) {
+            WosJournalIdentity resolved = resolveBestCandidate(candidates, normalizedIssns);
+            if (resolved != null) {
+                resolved.setIdentityKey(identityKey);
+                maybeUpdateAliases(resolved, normalizedIssns, rawTitle, normalizedTitle);
+                return new IdentityResolutionResult(resolved.getId(), identityKey, WosIdentityResolutionStatus.MATCHED, null);
+            }
             return createConflictIdentity(rawIssn, rawEIssn, rawTitle, normalizedIssns, normalizedTitle, identityKey, context, candidates);
         }
+
         if (candidates.size() == 1) {
             WosJournalIdentity candidate = candidates.get(0);
-            if (isAmbiguousConflict(candidate, normalizedIssns, normalizedTitle)) {
-                return createConflictIdentity(rawIssn, rawEIssn, rawTitle, normalizedIssns, normalizedTitle, identityKey, context, candidates);
-            }
             candidate.setIdentityKey(identityKey);
             maybeUpdateAliases(candidate, normalizedIssns, rawTitle, normalizedTitle);
             return new IdentityResolutionResult(candidate.getId(), identityKey, WosIdentityResolutionStatus.MATCHED, null);
@@ -74,6 +83,18 @@ public class WosIdentityResolutionService {
 
         WosJournalIdentity created = createIdentity(rawIssn, rawEIssn, rawTitle, normalizedIssns, normalizedTitle, identityKey, null, null);
         return new IdentityResolutionResult(created.getId(), identityKey, WosIdentityResolutionStatus.CREATED, null);
+    }
+
+    public java.util.Map<String, String> findJournalIdsByIdentityKeys(Set<String> identityKeys) {
+        if (identityKeys == null || identityKeys.isEmpty()) {
+            return java.util.Map.of();
+        }
+        return journalIdentityRepository.findAllByIdentityKeyIn(identityKeys).stream()
+                .collect(Collectors.toMap(
+                        WosJournalIdentity::getIdentityKey,
+                        WosJournalIdentity::getId,
+                        (left, right) -> left
+                ));
     }
 
     private Set<String> normalizedIssnSet(String rawIssn, String rawEIssn) {
@@ -110,6 +131,11 @@ public class WosIdentityResolutionService {
             identity.setAliasIssns(new ArrayList<>());
             changed = true;
         }
+        if (identity.getAlternativeNames() == null) {
+            identity.setAlternativeNames(new ArrayList<>());
+            changed = true;
+        }
+
         for (String token : normalizedIssns) {
             if (!token.equals(identity.getPrimaryIssn())
                     && !token.equals(identity.getEIssn())
@@ -118,28 +144,110 @@ public class WosIdentityResolutionService {
                 changed = true;
             }
         }
-        if (identity.getTitle() == null && rawTitle != null && !rawTitle.isBlank()) {
-            identity.setTitle(rawTitle.trim());
-            changed = true;
+
+        String incomingTitle = rawTitle == null ? null : rawTitle.trim();
+        if (incomingTitle != null && incomingTitle.isBlank()) {
+            incomingTitle = null;
         }
-        if (identity.getNormalizedTitle() == null && normalizedTitle != null) {
+        String normalizedCanonicalTitle = WosCanonicalContractSupport.normalizeTitleFingerprint(identity.getTitle());
+
+        if ((identity.getTitle() == null || identity.getTitle().isBlank()) && incomingTitle != null) {
+            identity.setTitle(incomingTitle);
             identity.setNormalizedTitle(normalizedTitle);
             changed = true;
+        } else if (incomingTitle != null) {
+            String normalizedIncomingTitle = WosCanonicalContractSupport.normalizeTitleFingerprint(incomingTitle);
+            if (normalizedIncomingTitle != null
+                    && normalizedCanonicalTitle != null
+                    && !normalizedIncomingTitle.equals(normalizedCanonicalTitle)
+                    && !containsAlternativeName(identity.getAlternativeNames(), normalizedIncomingTitle)
+                    && !normalizedIncomingTitle.equals(normalizedCanonicalTitle)) {
+                identity.getAlternativeNames().add(incomingTitle);
+                changed = true;
+            }
         }
+
         if (changed) {
             identity.setUpdatedAt(Instant.now());
             journalIdentityRepository.save(identity);
         }
     }
 
-    private boolean isAmbiguousConflict(WosJournalIdentity candidate, Set<String> normalizedIssns, String normalizedTitle) {
-        Set<String> candidateIssns = gatherIdentityIssnTokens(candidate);
-        boolean hasOverlap = candidateIssns.stream().anyMatch(normalizedIssns::contains);
-        boolean titleMismatch = normalizedTitle != null
-                && candidate.getNormalizedTitle() != null
-                && !normalizedTitle.equals(candidate.getNormalizedTitle());
-        boolean nonExactIssnMatch = !candidateIssns.equals(normalizedIssns);
-        return hasOverlap && titleMismatch && nonExactIssnMatch;
+    private boolean containsAlternativeName(List<String> alternativeNames, String normalizedIncomingTitle) {
+        if (alternativeNames == null || alternativeNames.isEmpty()) {
+            return false;
+        }
+        for (String alternativeName : alternativeNames) {
+            String normalizedAlternative = WosCanonicalContractSupport.normalizeTitleFingerprint(alternativeName);
+            if (normalizedIncomingTitle.equals(normalizedAlternative)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private WosJournalIdentity resolveBestCandidate(
+            List<WosJournalIdentity> candidates,
+            Set<String> normalizedIssns
+    ) {
+        int maxOverlap = candidates.stream()
+                .mapToInt(candidate -> overlapScore(gatherIdentityIssnTokens(candidate), normalizedIssns))
+                .max()
+                .orElse(0);
+        List<WosJournalIdentity> bestOverlap = candidates.stream()
+                .filter(candidate -> overlapScore(gatherIdentityIssnTokens(candidate), normalizedIssns) == maxOverlap)
+                .toList();
+        if (bestOverlap.size() == 1) {
+            return bestOverlap.getFirst();
+        }
+
+        Instant latestUpdatedAt = bestOverlap.stream()
+                .map(this::effectiveUpdatedAt)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+        List<WosJournalIdentity> latestByUpdatedAt = bestOverlap.stream()
+                .filter(candidate -> Objects.equals(effectiveUpdatedAt(candidate), latestUpdatedAt))
+                .toList();
+        if (latestByUpdatedAt.size() == 1) {
+            return latestByUpdatedAt.getFirst();
+        }
+
+        Instant latestCreatedAt = latestByUpdatedAt.stream()
+                .map(this::effectiveCreatedAt)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+        List<WosJournalIdentity> latestByCreatedAt = latestByUpdatedAt.stream()
+                .filter(candidate -> Objects.equals(effectiveCreatedAt(candidate), latestCreatedAt))
+                .toList();
+        if (latestByCreatedAt.size() == 1) {
+            return latestByCreatedAt.getFirst();
+        }
+
+        return null;
+    }
+
+    private int overlapScore(Set<String> leftIssns, Set<String> rightIssns) {
+        if (leftIssns.isEmpty() || rightIssns.isEmpty()) {
+            return 0;
+        }
+        int score = 0;
+        for (String token : leftIssns) {
+            if (rightIssns.contains(token)) {
+                score++;
+            }
+        }
+        return score;
+    }
+
+    private Instant effectiveUpdatedAt(WosJournalIdentity identity) {
+        if (identity.getUpdatedAt() != null) {
+            return identity.getUpdatedAt();
+        }
+        return effectiveCreatedAt(identity);
+    }
+
+    private Instant effectiveCreatedAt(WosJournalIdentity identity) {
+        return identity.getCreatedAt() == null ? Instant.EPOCH : identity.getCreatedAt();
     }
 
     private Set<String> gatherIdentityIssnTokens(WosJournalIdentity identity) {
@@ -173,7 +281,7 @@ public class WosIdentityResolutionService {
     ) {
         WosIdentityConflict conflict = new WosIdentityConflict();
         conflict.setConflictType(CONFLICT_TYPE_AMBIGUOUS_MATCH);
-        conflict.setConflictReason(CONFLICT_REASON_ISSN_TITLE_MISMATCH);
+        conflict.setConflictReason(CONFLICT_REASON_ISSN_COLLISION);
         conflict.setConflictDetectedAt(Instant.now());
         conflict.setSourceEventId(context.sourceEventId());
         conflict.setSourceFile(context.sourceFile());
@@ -195,7 +303,7 @@ public class WosIdentityResolutionService {
                 normalizedTitle,
                 identityKey,
                 CONFLICT_TYPE_AMBIGUOUS_MATCH,
-                CONFLICT_REASON_ISSN_TITLE_MISMATCH
+                CONFLICT_REASON_ISSN_COLLISION
         );
         return new IdentityResolutionResult(created.getId(), identityKey, WosIdentityResolutionStatus.CONFLICT, savedConflict.getId());
     }
@@ -218,6 +326,7 @@ public class WosIdentityResolutionService {
         identity.setTitle(rawTitle == null ? null : rawTitle.trim());
         identity.setNormalizedTitle(normalizedTitle);
         identity.setAliasIssns(new ArrayList<>());
+        identity.setAlternativeNames(new ArrayList<>());
         for (String token : normalizedIssns) {
             if (!token.equals(identity.getPrimaryIssn()) && !token.equals(identity.getEIssn())) {
                 identity.getAliasIssns().add(token);

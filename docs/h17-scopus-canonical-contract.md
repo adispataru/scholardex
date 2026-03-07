@@ -307,6 +307,32 @@ Ownership rules:
   - merged projection rebuild must preserve ownership boundaries and must not clobber WoS/Scholar-owned fields;
   - enrichment fields must either persist outside Scopus rebuild scope or be deterministically re-applied by linker/rebuilder runs using lineage-backed inputs.
 
+## H17.10 Linker and Merge Rules (Locked)
+- Linker write authority:
+  - `PublicationEnrichmentLinkerService` is the only runtime writer for WoS/Scholar-owned keys in `scholardex.publication_view`.
+  - permitted linker-owned fields: `wosId`, `googleScholarId`, `wosLineage`, `scholarLineage`, `linkerVersion`, `linkerRunId`, `linkedAt`.
+  - linker must not mutate Scopus-owned fields.
+- Deterministic link key precedence:
+  - `id` first;
+  - then `eid`;
+  - then exact `doiNormalized`.
+- DOI matching:
+  - DOI values are normalized before lookup (`https://doi.org/...` and `doi:` stripped, lowercase).
+  - link resolution uses exact normalized DOI token match only.
+- Conflict policy:
+  - conflicts are quarantined in `scholardex.publication_link_conflicts`.
+  - conflict conditions include key collision (`wosId`/`googleScholarId` already linked to another publication) and ambiguous DOI resolution.
+  - conflict outcome is non-mutating for target publication rows (quarantine only, no reassignment).
+- NON-WOS handling:
+  - `Publication.NON_WOS_ID` is treated as sentinel/skip.
+  - sentinel values are never persisted to `scholardex.publication_view.wosId`.
+- Replay safety:
+  - Scopus fact/view rebuild remains deterministic for Scopus-owned fields.
+  - enrichment keys survive rebuild through ownership-safe preservation or deterministic linker reapplication using lineage metadata.
+- Scholar scope in H17:
+  - linker-facing Scholar interface is locked (`linkScholarEnrichment`).
+  - Scholar ingestion pipeline rollout is outside this slice.
+
 ## Compatibility Rule
 The canonical projections must preserve fields required by current read paths:
 - publication title/date/authors/forum/citation linkage for admin/user/report flows;

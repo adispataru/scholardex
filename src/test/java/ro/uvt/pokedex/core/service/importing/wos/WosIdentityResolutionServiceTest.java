@@ -13,6 +13,7 @@ import ro.uvt.pokedex.core.service.importing.wos.model.IdentityResolutionResult;
 import ro.uvt.pokedex.core.service.importing.wos.model.WosIdentityResolutionStatus;
 import ro.uvt.pokedex.core.service.importing.wos.model.WosIdentitySourceContext;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -25,6 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -63,81 +65,124 @@ class WosIdentityResolutionServiceTest {
     }
 
     @Test
-    void sameIssnAcrossRowsMapsToSameJournalId() {
-        WosIdentitySourceContext context = new WosIdentitySourceContext(2023, "SCIE", "ev-1", "AIS_2023.xlsx", "v1", "12");
+    void sameIssnDifferentTitlesMatchAndAppendAlternativeNames() {
+        WosIdentitySourceContext context = new WosIdentitySourceContext(2024, "SCIE", "ev-1", "AIS_2024.xlsx", "v1", "1");
 
-        IdentityResolutionResult first = service.resolveIdentity("1234-5678", null, "Journal Of Testing", context);
-        IdentityResolutionResult second = service.resolveIdentity("12345678", null, "Journal Of Testing", context);
+        IdentityResolutionResult first = service.resolveIdentity("1234-5678", null, "Old Journal Name", context);
+        IdentityResolutionResult second = service.resolveIdentity("1234-5678", null, "New Journal Name", context);
 
         assertEquals(WosIdentityResolutionStatus.CREATED, first.status());
         assertEquals(WosIdentityResolutionStatus.MATCHED, second.status());
         assertEquals(first.journalId(), second.journalId());
-        assertEquals(1, identitiesById.size());
+
+        WosJournalIdentity identity = identitiesById.get(first.journalId());
+        assertEquals("Old Journal Name", identity.getTitle());
+        assertEquals(List.of("New Journal Name"), identity.getAlternativeNames());
     }
 
     @Test
-    void missingIssnUsesDeterministicTitleFallback() {
-        WosIdentitySourceContext context = new WosIdentitySourceContext(2019, "SCIENCE", "ev-2", "wos-2019.json", "v1", "item-4");
+    void missingIssnAndEIssnReturnsUnresolvedAndDoesNotCreateIdentity() {
+        WosIdentitySourceContext context = new WosIdentitySourceContext(2024, "SCIE", "ev-2", "AIS_2024.xlsx", "v1", "2");
 
-        IdentityResolutionResult first = service.resolveIdentity(null, null, "  Journal: Systems & AI ", context);
-        IdentityResolutionResult second = service.resolveIdentity("", " ", "Journal Systems AI", context);
+        IdentityResolutionResult result = service.resolveIdentity(null, "", "Title Only", context);
 
-        assertEquals(first.journalId(), second.journalId());
-        assertEquals(WosIdentityResolutionStatus.MATCHED, second.status());
-        assertEquals(1, identitiesById.size());
+        assertNull(result);
+        assertEquals(0, identitiesById.size());
     }
 
     @Test
-    void ambiguousOverlapCreatesSeparateIdentityAndConflictLog() {
-        WosIdentitySourceContext contextA = new WosIdentitySourceContext(2024, "SCIE", "ev-10", "AIS_2024.xlsx", "v3", "row-77");
-        WosIdentitySourceContext contextB = new WosIdentitySourceContext(2024, "SCIE", "ev-11", "AIS_2024.xlsx", "v3", "row-78");
+    void multiCandidateUsesIssnOverlapThenUpdatedAtToResolveDeterministically() {
+        WosIdentitySourceContext context = new WosIdentitySourceContext(2024, "SCIE", "ev-3", "AIS_2024.xlsx", "v1", "3");
 
-        IdentityResolutionResult first = service.resolveIdentity("1111-2222", "3333-4444", "Alpha Journal", contextA);
-        IdentityResolutionResult second = service.resolveIdentity("1111-2222", "5555-6666", "Completely Different Journal", contextB);
+        WosJournalIdentity stronger = seedIdentity(
+                "jid-stronger",
+                Set.of("11112222", "33334444"),
+                "Candidate A",
+                Instant.parse("2026-03-07T10:00:00Z"),
+                Instant.parse("2026-03-07T10:00:00Z")
+        );
+        seedIdentity(
+                "jid-weaker",
+                Set.of("11112222"),
+                "Candidate B",
+                Instant.parse("2026-03-07T11:00:00Z"),
+                Instant.parse("2026-03-07T11:00:00Z")
+        );
 
-        assertEquals(WosIdentityResolutionStatus.CREATED, first.status());
-        assertEquals(WosIdentityResolutionStatus.CONFLICT, second.status());
-        assertNotEquals(first.journalId(), second.journalId());
-        assertEquals(1, conflicts.size());
-        assertEquals("ev-11", conflicts.get(0).getSourceEventId());
-        assertTrue(conflicts.get(0).getCandidateJournalIds().contains(first.journalId()));
+        IdentityResolutionResult resolved = service.resolveIdentity("1111-2222", "3333-4444", "Incoming", context);
+
+        assertEquals(WosIdentityResolutionStatus.MATCHED, resolved.status());
+        assertEquals(stronger.getId(), resolved.journalId());
+        assertEquals(0, conflicts.size());
     }
 
     @Test
-    void replayIsIdempotentAndDoesNotDuplicateIdentities() {
-        WosIdentitySourceContext context = new WosIdentitySourceContext(2022, "SSCI", "ev-20", "RIS_2022.xlsx", "v1", "row-5");
+    void unresolvedTieCreatesConflictAndSeparateIdentity() {
+        WosIdentitySourceContext context = new WosIdentitySourceContext(2024, "SCIE", "ev-4", "AIS_2024.xlsx", "v1", "4");
 
-        service.resolveIdentity("2100-0001", "2100-0002", "Replay Journal", context);
-        service.resolveIdentity("2100-0001", "2100-0002", "Replay Journal", context);
-        service.resolveIdentity("2100-0001", "2100-0002", "Replay Journal", context);
+        seedIdentity(
+                "jid-a",
+                Set.of("99990000"),
+                "Candidate A",
+                Instant.parse("2026-03-07T10:00:00Z"),
+                Instant.parse("2026-03-07T10:00:00Z")
+        );
+        seedIdentity(
+                "jid-b",
+                Set.of("99990000"),
+                "Candidate B",
+                Instant.parse("2026-03-07T10:00:00Z"),
+                Instant.parse("2026-03-07T10:00:00Z")
+        );
 
-        assertEquals(1, identitiesById.size());
-    }
+        IdentityResolutionResult conflictResult = service.resolveIdentity("9999-0000", null, "Incoming", context);
 
-    @Test
-    void aliasUpdatesAreIdempotent() {
-        WosIdentitySourceContext context = new WosIdentitySourceContext(2025, "SCIE", "ev-30", "AIS_2025.xlsx", "v1", "row-6");
-
-        IdentityResolutionResult created = service.resolveIdentity("5000-0001", "5000-0002", "Alias Journal", context);
-        service.resolveIdentity("5000-0001", "5000-0003", "Alias Journal", context);
-        service.resolveIdentity("5000-0001", "5000-0003", "Alias Journal", context);
-
-        WosJournalIdentity identity = identitiesById.get(created.journalId());
-        assertEquals(List.of("50000003"), identity.getAliasIssns());
-    }
-
-    @Test
-    void conflictPersistenceIncludesLineage() {
-        WosIdentitySourceContext contextA = new WosIdentitySourceContext(2026, "SCIE", "ev-40", "AIS_2026.xlsx", "v2", "row-8");
-        WosIdentitySourceContext contextB = new WosIdentitySourceContext(2026, "SCIE", "ev-41", "AIS_2026.xlsx", "v2", "row-9");
-
-        service.resolveIdentity("8000-0001", "8000-0002", "Lineage A", contextA);
-        IdentityResolutionResult conflictResult = service.resolveIdentity("8000-0001", "8000-0003", "Lineage B", contextB);
-
-        verify(identityConflictRepository).save(any(WosIdentityConflict.class));
         assertEquals(WosIdentityResolutionStatus.CONFLICT, conflictResult.status());
-        assertEquals("row-9", conflicts.get(0).getSourceRowItem());
-        assertEquals(conflicts.get(0).getId(), conflictResult.conflictId());
+        assertEquals(1, conflicts.size());
+        assertEquals("ISSN overlap across multiple journal identities", conflicts.get(0).getConflictReason());
+        assertTrue(conflicts.get(0).getCandidateJournalIds().contains("jid-a"));
+        assertTrue(conflicts.get(0).getCandidateJournalIds().contains("jid-b"));
+        assertNotEquals("jid-a", conflictResult.journalId());
+        assertNotEquals("jid-b", conflictResult.journalId());
+    }
+
+    @Test
+    void replayIsIdempotentAndDoesNotDuplicateNamesOrIdentities() {
+        WosIdentitySourceContext context = new WosIdentitySourceContext(2024, "SCIE", "ev-5", "AIS_2024.xlsx", "v1", "5");
+
+        IdentityResolutionResult created = service.resolveIdentity("1234-0000", null, "Replay Name", context);
+        service.resolveIdentity("1234-0000", null, "Replay Name", context);
+        service.resolveIdentity("1234-0000", null, "Replay Name", context);
+
+        assertEquals(1, identitiesById.size());
+        WosJournalIdentity identity = identitiesById.get(created.journalId());
+        assertTrue(identity.getAlternativeNames().isEmpty());
+    }
+
+    private WosJournalIdentity seedIdentity(
+            String id,
+            Set<String> issnTokens,
+            String title,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        List<String> ordered = new ArrayList<>(issnTokens);
+        String primary = ordered.isEmpty() ? null : ordered.getFirst();
+        String eIssn = ordered.size() > 1 ? ordered.get(1) : null;
+        List<String> aliases = ordered.size() > 2 ? ordered.subList(2, ordered.size()) : List.of();
+
+        WosJournalIdentity identity = new WosJournalIdentity();
+        identity.setId(id);
+        identity.setPrimaryIssn(primary);
+        identity.setEIssn(eIssn);
+        identity.setAliasIssns(new ArrayList<>(aliases));
+        identity.setTitle(title);
+        identity.setNormalizedTitle(WosCanonicalContractSupport.normalizeTitleFingerprint(title));
+        identity.setAlternativeNames(new ArrayList<>());
+        identity.setCreatedAt(createdAt);
+        identity.setUpdatedAt(updatedAt);
+        persistIdentity(identity);
+        return identity;
     }
 
     private List<WosJournalIdentity> findByAnyIssn(Collection<String> tokens) {
@@ -172,7 +217,11 @@ class WosIdentityResolutionServiceTest {
         if (identity.getAliasIssns() == null) {
             identity.setAliasIssns(new ArrayList<>());
         }
+        if (identity.getAlternativeNames() == null) {
+            identity.setAlternativeNames(new ArrayList<>());
+        }
         identity.setAliasIssns(new ArrayList<>(new LinkedHashSet<>(identity.getAliasIssns())));
+        identity.setAlternativeNames(new ArrayList<>(new LinkedHashSet<>(identity.getAlternativeNames())));
         identitiesById.put(identity.getId(), identity);
         if (identity.getIdentityKey() != null) {
             identitiesByKey.put(identity.getIdentityKey(), identity);

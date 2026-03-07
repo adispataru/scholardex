@@ -50,6 +50,7 @@ class WosCanonicalSchemaContractTest {
         Set<String> fields = fieldsOf(WosJournalIdentity.class);
         assertTrue(fields.contains("identityKey"));
         assertTrue(fields.contains("aliasIssns"));
+        assertTrue(fields.contains("alternativeNames"));
         assertTrue(fields.contains("mergeGroupId"));
         assertTrue(fields.contains("conflictType"));
         assertTrue(fields.contains("conflictReason"));

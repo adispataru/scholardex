@@ -4,7 +4,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellValue;
 import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.FormulaEvaluator;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -141,6 +144,8 @@ public class WosImportEventIngestionService {
             String year = extractYear(fileName);
             try (Workbook workbook = openWorkbook(file, metricType)) {
                 Sheet sheet = workbook.getSheetAt(0);
+                FormulaEvaluator formulaEvaluator = workbook.getCreationHelper().createFormulaEvaluator();
+                DataFormatter dataFormatter = new DataFormatter(Locale.ROOT);
                 int numRows = sheet.getPhysicalNumberOfRows();
                 Map<String, WosImportEvent> existingByRowItem =
                         loadExistingByRowItem(WosSourceType.GOV_AIS_RIS, fileName, sourceVersion);
@@ -153,7 +158,7 @@ public class WosImportEventIngestionService {
                     Map<String, Object> payload = new LinkedHashMap<>();
                     payload.put("metricType", metricType);
                     payload.put("year", year);
-                    payload.put("cells", extractCells(row));
+                    payload.put("cells", extractCells(row, formulaEvaluator, dataFormatter));
                     processEventFast(
                             WosSourceType.GOV_AIS_RIS,
                             fileName,
@@ -352,7 +357,7 @@ public class WosImportEventIngestionService {
         return "v" + year;
     }
 
-    private Map<String, Object> extractCells(Row row) {
+    private Map<String, Object> extractCells(Row row, FormulaEvaluator formulaEvaluator, DataFormatter dataFormatter) {
         Map<String, Object> cells = new LinkedHashMap<>();
         short first = row.getFirstCellNum();
         short last = row.getLastCellNum();
@@ -362,20 +367,55 @@ public class WosImportEventIngestionService {
         for (int c = first; c < last; c++) {
             Cell cell = row.getCell(c, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
             String key = "c" + c;
-            cells.put(key, cellToValue(cell));
+            cells.put(key, cellToValue(cell, formulaEvaluator, dataFormatter));
         }
         return cells;
     }
 
-    private Object cellToValue(Cell cell) {
+    private Object cellToValue(Cell cell, FormulaEvaluator formulaEvaluator, DataFormatter dataFormatter) {
         CellType cellType = cell.getCellType();
+        if (cellType == CellType.FORMULA) {
+            try {
+                CellValue evaluated = formulaEvaluator.evaluate(cell);
+                if (evaluated != null) {
+                    if (evaluated.getCellType() == CellType.NUMERIC) {
+                        return evaluated.getNumberValue();
+                    }
+                    if (evaluated.getCellType() == CellType.BOOLEAN) {
+                        return evaluated.getBooleanValue();
+                    }
+                    if (evaluated.getCellType() == CellType.STRING) {
+                        return trimOrEmpty(evaluated.getStringValue());
+                    }
+                }
+            } catch (Exception ignored) {
+                // External references can fail evaluation locally; fallback to cached result.
+            }
+            CellType cachedType = cell.getCachedFormulaResultType();
+            if (cachedType == CellType.NUMERIC) {
+                return cell.getNumericCellValue();
+            }
+            if (cachedType == CellType.BOOLEAN) {
+                return cell.getBooleanCellValue();
+            }
+            if (cachedType == CellType.STRING) {
+                return trimOrEmpty(cell.getStringCellValue());
+            }
+            return trimOrEmpty(dataFormatter.formatCellValue(cell, formulaEvaluator));
+        }
         if (cellType == CellType.NUMERIC) {
             return cell.getNumericCellValue();
         }
         if (cellType == CellType.BOOLEAN) {
             return cell.getBooleanCellValue();
         }
-        String value = cell.toString();
+        if (cellType == CellType.STRING) {
+            return trimOrEmpty(cell.getStringCellValue());
+        }
+        return trimOrEmpty(dataFormatter.formatCellValue(cell));
+    }
+
+    private String trimOrEmpty(String value) {
         return value == null ? "" : value.trim();
     }
 

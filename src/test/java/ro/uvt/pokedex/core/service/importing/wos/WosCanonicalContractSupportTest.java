@@ -95,4 +95,17 @@ class WosCanonicalContractSupportTest {
         String key2 = WosCanonicalContractSupport.buildIdentityKey(Set.of("87654321", "12345678"), "other title", 2020, "SSCI");
         assertEquals(key1, key2);
     }
+
+    @Test
+    void identityKeyIsMissingWhenNoIssnTokensProvided() {
+        assertNull(WosCanonicalContractSupport.buildIdentityKey(Set.of(), "some title", 2024, "SCIE"));
+    }
+
+    @Test
+    void titleNormalizationFoldsDiacriticsDeterministically() {
+        assertEquals(
+                "revista romana de fizica",
+                WosCanonicalContractSupport.normalizeTitleFingerprint("Revista Romana de Fízică")
+        );
+    }
 }

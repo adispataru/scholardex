@@ -63,6 +63,7 @@ class ScopusProjectionBuilderServiceTest {
         publicationFact.setId("p1");
         publicationFact.setEid("2-s2.0-1");
         publicationFact.setTitle("Paper");
+        publicationFact.setDoi("https://doi.org/10.1000/AbC");
         publicationFact.setAuthors(List.of("a1"));
         publicationFact.setAffiliations(List.of("af1"));
         publicationFact.setCitedByCount(1);
@@ -86,5 +87,6 @@ class ScopusProjectionBuilderServiceTest {
         verify(publicationViewRepository).saveAll(publicationViewsCaptor.capture());
         assertEquals(1, publicationViewsCaptor.getValue().size());
         assertEquals("WOS:0001", publicationViewsCaptor.getValue().getFirst().getWosId());
+        assertEquals("10.1000/abc", publicationViewsCaptor.getValue().getFirst().getDoiNormalized());
     }
 }
