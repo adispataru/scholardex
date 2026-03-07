@@ -14,6 +14,9 @@ class WosCanonicalSchemaContractTest {
     @Test
     void metricFactContainsRequiredContractFields() {
         Set<String> fields = fieldsOf(WosMetricFact.class);
+        assertTrue(fields.contains("categoryNameCanonical"));
+        assertTrue(fields.contains("quarter"));
+        assertTrue(fields.contains("rank"));
         assertTrue(fields.contains("editionRaw"));
         assertTrue(fields.contains("editionNormalized"));
         assertTrue(fields.contains("sourceType"));
@@ -24,7 +27,7 @@ class WosCanonicalSchemaContractTest {
     }
 
     @Test
-    void categoryFactContainsRequiredContractFields() {
+    void categoryFactRemainsAvailableAsLegacyContract() {
         Set<String> fields = fieldsOf(WosCategoryFact.class);
         assertTrue(fields.contains("categoryNameCanonical"));
         assertTrue(fields.contains("editionRaw"));

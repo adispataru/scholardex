@@ -2,8 +2,9 @@ package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
+import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 import ro.uvt.pokedex.core.repository.reporting.WosImportEventRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosJournalIdentityRepository;
@@ -31,10 +32,10 @@ public class WosBigBangMigrationService {
     private final WosProjectionBuilderService projectionBuilderService;
     private final WosParityReconciliationService parityReconciliationService;
     private final WosImportEventParserOrchestrator parserOrchestrator;
+    private final MongoTemplate mongoTemplate;
     private final WosImportEventRepository importEventRepository;
     private final WosJournalIdentityRepository journalIdentityRepository;
     private final WosMetricFactRepository metricFactRepository;
-    private final WosCategoryFactRepository categoryFactRepository;
     private final WosIdentityConflictRepository identityConflictRepository;
     private final WosFactConflictRepository factConflictRepository;
     private final WosRankingViewRepository rankingViewRepository;
@@ -161,12 +162,12 @@ public class WosBigBangMigrationService {
         long importEvents = importEventRepository.count();
         long journalIdentities = journalIdentityRepository.count();
         long metricFacts = metricFactRepository.count();
-        long categoryFacts = categoryFactRepository.count();
+        long categoryFacts = countLegacyCategoryFacts();
         long rankingRows = rankingViewRepository.count();
         long scoringRows = scoringViewRepository.count();
 
         boolean rankingAligned = rankingRows <= journalIdentities;
-        boolean scoringAligned = scoringRows <= categoryFacts;
+        boolean scoringAligned = scoringRows <= metricFacts;
         return new VerificationSummary(
                 importEvents,
                 journalIdentities,
@@ -197,7 +198,7 @@ public class WosBigBangMigrationService {
         long events = importEventRepository.count();
         long journalIdentities = journalIdentityRepository.count();
         long metricFacts = metricFactRepository.count();
-        long categoryFacts = categoryFactRepository.count();
+        long categoryFacts = countLegacyCategoryFacts();
         long identityConflicts = identityConflictRepository.count();
         long factConflicts = factConflictRepository.count();
         long rankingRows = rankingViewRepository.count();
@@ -207,7 +208,7 @@ public class WosBigBangMigrationService {
         rankingViewRepository.deleteAll();
         factConflictRepository.deleteAll();
         identityConflictRepository.deleteAll();
-        categoryFactRepository.deleteAll();
+        mongoTemplate.remove(new org.springframework.data.mongodb.core.query.Query(), WosCategoryFact.class);
         metricFactRepository.deleteAll();
         journalIdentityRepository.deleteAll();
         importEventRepository.deleteAll();
@@ -378,5 +379,9 @@ public class WosBigBangMigrationService {
             long rankingViewRows,
             long scoringViewRows
     ) {
+    }
+
+    private long countLegacyCategoryFacts() {
+        return mongoTemplate.getCollection("wos.category_facts").countDocuments();
     }
 }

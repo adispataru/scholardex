@@ -8,10 +8,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized;
 import ro.uvt.pokedex.core.model.reporting.wos.MetricType;
-import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
-import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
 
@@ -29,14 +27,12 @@ class WosRankingDetailsReadServiceTest {
     private WosRankingViewRepository rankingViewRepository;
     @Mock
     private WosMetricFactRepository metricFactRepository;
-    @Mock
-    private WosCategoryFactRepository categoryFactRepository;
 
     private WosRankingDetailsReadService service;
 
     @BeforeEach
     void setUp() {
-        service = new WosRankingDetailsReadService(rankingViewRepository, metricFactRepository, categoryFactRepository);
+        service = new WosRankingDetailsReadService(rankingViewRepository, metricFactRepository);
     }
 
     @Test
@@ -52,7 +48,6 @@ class WosRankingDetailsReadServiceTest {
         view.setId("j1");
         when(rankingViewRepository.findById("j1")).thenReturn(Optional.of(view));
         when(metricFactRepository.findAllByJournalId("j1")).thenReturn(List.of());
-        when(categoryFactRepository.findAllByJournalId("j1")).thenReturn(List.of());
 
         assertTrue(service.findByJournalId("j1").isEmpty());
     }
@@ -69,12 +64,15 @@ class WosRankingDetailsReadServiceTest {
         WosMetricFact aisMetric = metricFact(2021, MetricType.AIS, 1.25, EditionNormalized.SCIE);
         WosMetricFact risMetric = metricFact(2021, MetricType.RIS, 0.75, EditionNormalized.SCIE);
         WosMetricFact ifMetric = metricFact(2021, MetricType.IF, 2.10, EditionNormalized.SCIE);
-        WosCategoryFact aisCategory = categoryFact("COMPUTER SCIENCE", 2021, MetricType.AIS, "Q2", 10, EditionNormalized.SCIE);
-        WosCategoryFact ifCategory = categoryFact("COMPUTER SCIENCE", 2021, MetricType.IF, "Q3", 15, EditionNormalized.SCIE);
+        aisMetric.setCategoryNameCanonical("COMPUTER SCIENCE");
+        aisMetric.setQuarter("Q2");
+        aisMetric.setRank(10);
+        ifMetric.setCategoryNameCanonical("COMPUTER SCIENCE");
+        ifMetric.setQuarter("Q3");
+        ifMetric.setRank(15);
 
         when(rankingViewRepository.findById("j1")).thenReturn(Optional.of(view));
         when(metricFactRepository.findAllByJournalId("j1")).thenReturn(List.of(aisMetric, risMetric, ifMetric));
-        when(categoryFactRepository.findAllByJournalId("j1")).thenReturn(List.of(aisCategory, ifCategory));
 
         Optional<WoSRanking> result = service.findByJournalId("j1");
 
@@ -97,25 +95,6 @@ class WosRankingDetailsReadServiceTest {
         fact.setYear(year);
         fact.setMetricType(metricType);
         fact.setValue(value);
-        fact.setEditionNormalized(editionNormalized);
-        return fact;
-    }
-
-    private WosCategoryFact categoryFact(
-            String categoryName,
-            int year,
-            MetricType metricType,
-            String quarter,
-            Integer rank,
-            EditionNormalized editionNormalized
-    ) {
-        WosCategoryFact fact = new WosCategoryFact();
-        fact.setJournalId("j1");
-        fact.setCategoryNameCanonical(categoryName);
-        fact.setYear(year);
-        fact.setMetricType(metricType);
-        fact.setQuarter(quarter);
-        fact.setRank(rank);
         fact.setEditionNormalized(editionNormalized);
         return fact;
     }

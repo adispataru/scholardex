@@ -27,6 +27,7 @@ Done history moved to `TASKS-done.md`.
   Exit criteria: Scopus ingest is replayable/idempotent from source events, source-specific facts remain authoritative, merged publication views are deterministic and lineage-backed, and guardrail checks protect against regressions and ownership drift.
   Assumption lock (2026-03-06): big-bang cutover for all Scopus entities; no historical data migration/backfill is required (clean-state bootstrap only).
   Amendment note (2026-03-06): H17.1 contract is extended to include cross-source ownership boundaries and derived merged-publication projection constraints (`scholardex.publication*`) without reopening H17.1 status.
+  Amendment note (2026-03-07): WoS canonical fact semantics are category-granular in `WosMetricFact` (`journalId + year + metricType + categoryNameCanonical + editionNormalized`); runtime canonical build/projection flow no longer writes or depends on `wos.category_facts`.
   Subtasks:
   - [x] `H17.1` Canonical Scopus contract lock.
     Deliverable: `docs/h17-scopus-canonical-contract.md` with canonical collections, required fields, identity keys, lineage fields, and source-policy rules for publications, citations, forums, authors, affiliations, and funding.

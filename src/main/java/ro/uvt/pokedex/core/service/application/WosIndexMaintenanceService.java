@@ -9,7 +9,6 @@ import org.springframework.data.mongodb.core.index.IndexField;
 import org.springframework.data.mongodb.core.index.IndexInfo;
 import org.springframework.data.mongodb.core.index.IndexOperations;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 import ro.uvt.pokedex.core.model.reporting.wos.WosScoringView;
@@ -26,8 +25,6 @@ public class WosIndexMaintenanceService {
 
     static final String IDX_METRIC_UNIQ = "uniq_metric_fact";
     static final String IDX_METRIC_LOOKUP = "idx_wos_metric_lookup";
-    static final String IDX_CATEGORY_UNIQ = "uniq_category_fact";
-    static final String IDX_CATEGORY_LOOKUP = "idx_wos_category_lookup";
     static final String IDX_RANKING_SORT_NAME = "idx_wos_ranking_sort_name";
     static final String IDX_RANKING_SORT_ISSN = "idx_wos_ranking_sort_issn";
     static final String IDX_RANKING_SORT_EISSN = "idx_wos_ranking_sort_eissn";
@@ -51,7 +48,6 @@ public class WosIndexMaintenanceService {
         List<String> errors = new ArrayList<>();
 
         ensureMetricFactIndexes(created, present, invalid, errors);
-        ensureCategoryFactIndexes(created, present, invalid, errors);
         ensureRankingViewIndexes(created, present, invalid, errors);
         ensureScoringViewIndexes(created, present, invalid, errors);
 
@@ -66,24 +62,10 @@ public class WosIndexMaintenanceService {
         ensureNamedIndex(ops, new IndexDefinition(
                 IDX_METRIC_UNIQ,
                 true,
-                List.of(field("journalId"), field("year"), field("metricType"), field("editionNormalized"))
+                List.of(field("journalId"), field("year"), field("metricType"), field("categoryNameCanonical"), field("editionNormalized"))
         ), created, present, invalid, errors);
         ensureNamedIndex(ops, new IndexDefinition(
                 IDX_METRIC_LOOKUP,
-                false,
-                List.of(field("metricType"), field("year"), field("editionNormalized"), field("journalId"))
-        ), created, present, invalid, errors);
-    }
-
-    private void ensureCategoryFactIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
-        IndexOperations ops = mongoTemplate.indexOps(WosCategoryFact.class);
-        ensureNamedIndex(ops, new IndexDefinition(
-                IDX_CATEGORY_UNIQ,
-                true,
-                List.of(field("journalId"), field("year"), field("categoryNameCanonical"), field("editionNormalized"), field("metricType"))
-        ), created, present, invalid, errors);
-        ensureNamedIndex(ops, new IndexDefinition(
-                IDX_CATEGORY_LOOKUP,
                 false,
                 List.of(field("categoryNameCanonical"), field("year"), field("metricType"), field("editionNormalized"), field("journalId"))
         ), created, present, invalid, errors);

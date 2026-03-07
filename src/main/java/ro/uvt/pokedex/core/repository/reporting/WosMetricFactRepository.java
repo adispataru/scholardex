@@ -13,10 +13,11 @@ public interface WosMetricFactRepository extends MongoRepository<WosMetricFact, 
     List<WosMetricFact> findAllByJournalId(String journalId);
     List<WosMetricFact> findAllByJournalIdInAndEditionNormalizedIn(List<String> journalIds, Set<EditionNormalized> editions);
 
-    Optional<WosMetricFact> findByJournalIdAndYearAndMetricTypeAndEditionNormalized(
+    Optional<WosMetricFact> findByJournalIdAndYearAndMetricTypeAndCategoryNameCanonicalAndEditionNormalized(
             String journalId,
             Integer year,
             MetricType metricType,
+            String categoryNameCanonical,
             EditionNormalized editionNormalized
     );
 }

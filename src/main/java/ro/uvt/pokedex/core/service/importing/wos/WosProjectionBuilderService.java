@@ -5,12 +5,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized;
 import ro.uvt.pokedex.core.model.reporting.wos.MetricType;
-import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosJournalIdentity;
 import ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 import ro.uvt.pokedex.core.model.reporting.wos.WosScoringView;
-import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosJournalIdentityRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
@@ -38,20 +36,17 @@ public class WosProjectionBuilderService {
 
     private final WosJournalIdentityRepository identityRepository;
     private final WosMetricFactRepository metricFactRepository;
-    private final WosCategoryFactRepository categoryFactRepository;
     private final WosRankingViewRepository rankingViewRepository;
     private final WosScoringViewRepository scoringViewRepository;
 
     public WosProjectionBuilderService(
             WosJournalIdentityRepository identityRepository,
             WosMetricFactRepository metricFactRepository,
-            WosCategoryFactRepository categoryFactRepository,
             WosRankingViewRepository rankingViewRepository,
             WosScoringViewRepository scoringViewRepository
     ) {
         this.identityRepository = identityRepository;
         this.metricFactRepository = metricFactRepository;
-        this.categoryFactRepository = categoryFactRepository;
         this.rankingViewRepository = rankingViewRepository;
         this.scoringViewRepository = scoringViewRepository;
     }
@@ -63,14 +58,11 @@ public class WosProjectionBuilderService {
         try {
             List<WosJournalIdentity> identities = identityRepository.findAll();
             List<WosMetricFact> metricFacts = metricFactRepository.findAll();
-            List<WosCategoryFact> categoryFacts = categoryFactRepository.findAll();
 
             Map<String, List<WosMetricFact>> metricByJournal = new HashMap<>();
-            Map<String, WosMetricFact> metricByKey = new HashMap<>();
 
             for (WosMetricFact fact : metricFacts) {
                 metricByJournal.computeIfAbsent(fact.getJournalId(), key -> new ArrayList<>()).add(fact);
-                metricByKey.put(metricKey(fact.getJournalId(), fact.getYear(), fact.getMetricType(), fact.getEditionNormalized()), fact);
             }
 
             List<WosRankingView> rankingViews = new ArrayList<>(identities.size());
@@ -79,16 +71,10 @@ public class WosProjectionBuilderService {
                 rankingViews.add(toRankingView(identity, metricByJournal.getOrDefault(identity.getId(), List.of()), buildVersion, buildAt));
             }
 
-            List<WosScoringView> scoringViews = new ArrayList<>(categoryFacts.size());
-            for (WosCategoryFact categoryFact : categoryFacts) {
+            List<WosScoringView> scoringViews = new ArrayList<>(metricFacts.size());
+            for (WosMetricFact metricFact : metricFacts) {
                 result.markProcessed();
-                WosMetricFact metricFact = metricByKey.get(metricKey(
-                        categoryFact.getJournalId(),
-                        categoryFact.getYear(),
-                        categoryFact.getMetricType(),
-                        categoryFact.getEditionNormalized()
-                ));
-                scoringViews.add(toScoringView(categoryFact, metricFact, buildVersion, buildAt));
+                scoringViews.add(toScoringView(metricFact, buildVersion, buildAt));
             }
 
             rankingViewRepository.deleteAll();
@@ -132,28 +118,23 @@ public class WosProjectionBuilderService {
         return view;
     }
 
-    private WosScoringView toScoringView(
-            WosCategoryFact categoryFact,
-            WosMetricFact metricFact,
-            String buildVersion,
-            Instant buildAt
-    ) {
+    private WosScoringView toScoringView(WosMetricFact metricFact, String buildVersion, Instant buildAt) {
         WosScoringView view = new WosScoringView();
         view.setId(scoringViewId(
-                categoryFact.getJournalId(),
-                categoryFact.getYear(),
-                categoryFact.getCategoryNameCanonical(),
-                categoryFact.getEditionNormalized(),
-                categoryFact.getMetricType()
+                metricFact.getJournalId(),
+                metricFact.getYear(),
+                metricFact.getCategoryNameCanonical(),
+                metricFact.getEditionNormalized(),
+                metricFact.getMetricType()
         ));
-        view.setJournalId(categoryFact.getJournalId());
-        view.setYear(categoryFact.getYear());
-        view.setCategoryNameCanonical(categoryFact.getCategoryNameCanonical());
-        view.setEditionNormalized(categoryFact.getEditionNormalized());
-        view.setMetricType(categoryFact.getMetricType());
-        view.setQuarter(categoryFact.getQuarter());
-        view.setRank(categoryFact.getRank());
-        view.setValue(metricFact == null ? null : metricFact.getValue());
+        view.setJournalId(metricFact.getJournalId());
+        view.setYear(metricFact.getYear());
+        view.setCategoryNameCanonical(metricFact.getCategoryNameCanonical());
+        view.setEditionNormalized(metricFact.getEditionNormalized());
+        view.setMetricType(metricFact.getMetricType());
+        view.setQuarter(metricFact.getQuarter());
+        view.setRank(metricFact.getRank());
+        view.setValue(metricFact.getValue());
         view.setBuildVersion(buildVersion);
         view.setBuildAt(buildAt);
         view.setUpdatedAt(buildAt);
@@ -191,15 +172,6 @@ public class WosProjectionBuilderService {
                         .thenComparing(WosMetricFact::getSourceVersion, Comparator.nullsFirst(String::compareTo))
                         .thenComparing(WosMetricFact::getSourceRowItem, Comparator.nullsFirst(String::compareTo)))
                 .orElse(null);
-    }
-
-    private String metricKey(String journalId, Integer year, MetricType metricType, EditionNormalized editionNormalized) {
-        return String.join("|",
-                journalId == null ? "" : journalId,
-                year == null ? "" : year.toString(),
-                metricType == null ? "" : metricType.name(),
-                editionNormalized == null ? "" : editionNormalized.name()
-        );
     }
 
     private String scoringViewId(

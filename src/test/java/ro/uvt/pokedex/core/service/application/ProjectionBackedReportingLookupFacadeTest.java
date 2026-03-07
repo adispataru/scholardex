@@ -11,12 +11,10 @@ import org.springframework.data.mongodb.core.query.Query;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized;
 import ro.uvt.pokedex.core.model.reporting.wos.MetricType;
-import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 import ro.uvt.pokedex.core.model.reporting.wos.WosScoringView;
 import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
 import ro.uvt.pokedex.core.service.CacheService;
 
@@ -39,8 +37,6 @@ class ProjectionBackedReportingLookupFacadeTest {
     @Mock
     private WosMetricFactRepository metricFactRepository;
     @Mock
-    private WosCategoryFactRepository categoryFactRepository;
-    @Mock
     private MongoTemplate mongoTemplate;
 
     private ProjectionBackedReportingLookupFacade facade;
@@ -50,7 +46,6 @@ class ProjectionBackedReportingLookupFacadeTest {
         facade = new ProjectionBackedReportingLookupFacade(
                 cacheService,
                 metricFactRepository,
-                categoryFactRepository,
                 mongoTemplate
         );
     }
@@ -79,14 +74,19 @@ class ProjectionBackedReportingLookupFacadeTest {
         WosMetricFact ais = metricFact("j1", 2023, MetricType.AIS, 1.5, EditionNormalized.SCIE);
         WosMetricFact ris = metricFact("j1", 2023, MetricType.RIS, 0.8, EditionNormalized.SSCI);
         WosMetricFact ifFact = metricFact("j1", 2023, MetricType.IF, 2.2, EditionNormalized.SCIE);
-        WosCategoryFact catAis = categoryFact("j1", "ECONOMICS", 2023, MetricType.AIS, "Q1", 2, EditionNormalized.SCIE);
-        WosCategoryFact catIf = categoryFact("j1", "ECONOMICS", 2023, MetricType.IF, "Q2", 4, EditionNormalized.SSCI);
+        ais.setCategoryNameCanonical("ECONOMICS");
+        ais.setQuarter("Q1");
+        ais.setRank(2);
+        ifFact.setCategoryNameCanonical("ECONOMICS");
+        ifFact.setQuarter("Q2");
+        ifFact.setRank(4);
+        ris.setCategoryNameCanonical("ECONOMICS");
+        ris.setQuarter("Q3");
+        ris.setRank(7);
 
         when(mongoTemplate.find(any(Query.class), eq(WosRankingView.class))).thenReturn(List.of(view));
         when(metricFactRepository.findAllByJournalIdInAndEditionNormalizedIn(eq(List.of("j1")), eq(Set.of(EditionNormalized.SCIE, EditionNormalized.SSCI))))
                 .thenReturn(List.of(ais, ris, ifFact));
-        when(categoryFactRepository.findAllByJournalIdInAndEditionNormalizedIn(eq(List.of("j1")), eq(Set.of(EditionNormalized.SCIE, EditionNormalized.SSCI))))
-                .thenReturn(List.of(catAis, catIf));
 
         List<WoSRanking> rankings = facade.getRankingsByIssn("12345678");
 
@@ -133,23 +133,4 @@ class ProjectionBackedReportingLookupFacadeTest {
         return fact;
     }
 
-    private WosCategoryFact categoryFact(
-            String journalId,
-            String category,
-            int year,
-            MetricType metricType,
-            String quarter,
-            int rank,
-            EditionNormalized editionNormalized
-    ) {
-        WosCategoryFact fact = new WosCategoryFact();
-        fact.setJournalId(journalId);
-        fact.setCategoryNameCanonical(category);
-        fact.setYear(year);
-        fact.setMetricType(metricType);
-        fact.setQuarter(quarter);
-        fact.setRank(rank);
-        fact.setEditionNormalized(editionNormalized);
-        return fact;
-    }
 }

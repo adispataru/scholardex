@@ -1,12 +1,13 @@
 package ro.uvt.pokedex.core.service.application;
 
+import com.mongodb.client.MongoCollection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
-import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosImportEventRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosJournalIdentityRepository;
@@ -45,10 +46,11 @@ class WosBigBangMigrationServiceTest {
     @Mock private WosProjectionBuilderService projectionBuilderService;
     @Mock private WosParityReconciliationService parityReconciliationService;
     @Mock private WosImportEventParserOrchestrator parserOrchestrator;
+    @Mock private MongoTemplate mongoTemplate;
+    @Mock private MongoCollection<org.bson.Document> legacyCategoryCollection;
     @Mock private WosImportEventRepository importEventRepository;
     @Mock private WosJournalIdentityRepository journalIdentityRepository;
     @Mock private WosMetricFactRepository metricFactRepository;
-    @Mock private WosCategoryFactRepository categoryFactRepository;
     @Mock private WosIdentityConflictRepository identityConflictRepository;
     @Mock private WosFactConflictRepository factConflictRepository;
     @Mock private WosRankingViewRepository rankingViewRepository;
@@ -64,10 +66,10 @@ class WosBigBangMigrationServiceTest {
                 projectionBuilderService,
                 parityReconciliationService,
                 parserOrchestrator,
+                mongoTemplate,
                 importEventRepository,
                 journalIdentityRepository,
                 metricFactRepository,
-                categoryFactRepository,
                 identityConflictRepository,
                 factConflictRepository,
                 rankingViewRepository,
@@ -82,7 +84,8 @@ class WosBigBangMigrationServiceTest {
         lenient().when(importEventRepository.count()).thenReturn(5L);
         lenient().when(journalIdentityRepository.count()).thenReturn(4L);
         lenient().when(metricFactRepository.count()).thenReturn(10L);
-        lenient().when(categoryFactRepository.count()).thenReturn(8L);
+        lenient().when(mongoTemplate.getCollection("wos.category_facts")).thenReturn(legacyCategoryCollection);
+        lenient().when(legacyCategoryCollection.countDocuments()).thenReturn(8L);
         lenient().when(rankingViewRepository.count()).thenReturn(4L);
         lenient().when(scoringViewRepository.count()).thenReturn(8L);
         lenient().when(factBuilderService.readFactBuildCheckpoint()).thenReturn(Optional.empty());
@@ -208,7 +211,7 @@ class WosBigBangMigrationServiceTest {
         when(importEventRepository.count()).thenReturn(11L);
         when(journalIdentityRepository.count()).thenReturn(9L);
         when(metricFactRepository.count()).thenReturn(7L);
-        when(categoryFactRepository.count()).thenReturn(6L);
+        when(legacyCategoryCollection.countDocuments()).thenReturn(6L);
         when(identityConflictRepository.count()).thenReturn(3L);
         when(factConflictRepository.count()).thenReturn(2L);
         when(rankingViewRepository.count()).thenReturn(5L);
@@ -228,7 +231,7 @@ class WosBigBangMigrationServiceTest {
         verify(rankingViewRepository).deleteAll();
         verify(factConflictRepository).deleteAll();
         verify(identityConflictRepository).deleteAll();
-        verify(categoryFactRepository).deleteAll();
+        verify(mongoTemplate).remove(any(org.springframework.data.mongodb.core.query.Query.class), eq(ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact.class));
         verify(metricFactRepository).deleteAll();
         verify(journalIdentityRepository).deleteAll();
         verify(importEventRepository).deleteAll();

@@ -7,12 +7,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized;
 import ro.uvt.pokedex.core.model.reporting.wos.MetricType;
-import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosJournalIdentity;
 import ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 import ro.uvt.pokedex.core.model.reporting.wos.WosScoringView;
-import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosJournalIdentityRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
@@ -24,7 +22,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
@@ -38,8 +35,6 @@ class WosProjectionBuilderServiceTest {
     @Mock
     private WosMetricFactRepository metricFactRepository;
     @Mock
-    private WosCategoryFactRepository categoryFactRepository;
-    @Mock
     private WosRankingViewRepository rankingViewRepository;
     @Mock
     private WosScoringViewRepository scoringViewRepository;
@@ -49,11 +44,8 @@ class WosProjectionBuilderServiceTest {
         WosProjectionBuilderService service = service();
         when(identityRepository.findAll()).thenReturn(List.of(identity("jid-1")));
         when(metricFactRepository.findAll()).thenReturn(List.of(
-                metric("jid-1", 2022, MetricType.AIS, EditionNormalized.SCIE, 1.2),
-                metric("jid-1", 2023, MetricType.RIS, EditionNormalized.SSCI, 0.8)
-        ));
-        when(categoryFactRepository.findAll()).thenReturn(List.of(
-                category("jid-1", 2022, MetricType.AIS, EditionNormalized.SCIE, "ACOUSTICS", "Q1", 1)
+                metric("jid-1", 2022, MetricType.AIS, EditionNormalized.SCIE, "ACOUSTICS", "Q1", 1, 1.2),
+                metric("jid-1", 2023, MetricType.RIS, EditionNormalized.SSCI, "ACOUSTICS", "Q2", 3, 0.8)
         ));
 
         ImportProcessingResult result = service.rebuildWosProjections();
@@ -79,27 +71,25 @@ class WosProjectionBuilderServiceTest {
         assertNotNull(rankingView.getBuildAt());
         assertEquals(rankingView.getBuildVersion(), scoringView.getBuildVersion());
         assertEquals(rankingView.getBuildAt(), scoringView.getBuildAt());
+        assertEquals("ACOUSTICS", scoringView.getCategoryNameCanonical());
+        assertEquals("Q1", scoringView.getQuarter());
+        assertEquals(1, scoringView.getRank());
         assertEquals(1.2, scoringView.getValue());
-        assertEquals(2, result.getProcessedCount());
-        assertEquals(2, result.getImportedCount());
+        assertEquals(3, result.getProcessedCount());
+        assertEquals(3, result.getImportedCount());
     }
 
     @Test
-    void rebuildLeavesScoringValueNullWhenMetricFactMissing() {
+    void rebuildCreatesNoScoringRowsWhenMetricFactMissing() {
         WosProjectionBuilderService service = service();
         when(identityRepository.findAll()).thenReturn(List.of(identity("jid-2")));
         when(metricFactRepository.findAll()).thenReturn(List.of());
-        when(categoryFactRepository.findAll()).thenReturn(List.of(
-                category("jid-2", 2024, MetricType.RIS, EditionNormalized.ESCI, "EDUCATION", "Q2", 3)
-        ));
 
         service.rebuildWosProjections();
 
         ArgumentCaptor<List<WosScoringView>> scoringCaptor = ArgumentCaptor.forClass(List.class);
         verify(scoringViewRepository).saveAll(scoringCaptor.capture());
-        WosScoringView scoringView = scoringCaptor.getValue().getFirst();
-        assertNull(scoringView.getValue());
-        assertEquals(EditionNormalized.ESCI, scoringView.getEditionNormalized());
+        assertTrue(scoringCaptor.getValue().isEmpty());
     }
 
     @Test
@@ -107,9 +97,8 @@ class WosProjectionBuilderServiceTest {
         WosProjectionBuilderService service = service();
         when(identityRepository.findAll()).thenReturn(List.of(identity("jid-3")));
         when(metricFactRepository.findAll()).thenReturn(List.of(
-                metric("jid-3", 2020, MetricType.IF, EditionNormalized.SCIE, 4.1)
+                metric("jid-3", 2020, MetricType.IF, EditionNormalized.SCIE, "MEDICINE", "Q1", 1, 4.1)
         ));
-        when(categoryFactRepository.findAll()).thenReturn(List.of());
         when(rankingViewRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
         when(scoringViewRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -133,7 +122,6 @@ class WosProjectionBuilderServiceTest {
         identity.setAliasIssns(Arrays.asList("1111-2222", " 11112222 ", null, ""));
         when(identityRepository.findAll()).thenReturn(List.of(identity));
         when(metricFactRepository.findAll()).thenReturn(List.of());
-        when(categoryFactRepository.findAll()).thenReturn(List.of());
 
         service.rebuildWosProjections();
 
@@ -150,7 +138,6 @@ class WosProjectionBuilderServiceTest {
         return new WosProjectionBuilderService(
                 identityRepository,
                 metricFactRepository,
-                categoryFactRepository,
                 rankingViewRepository,
                 scoringViewRepository
         );
@@ -166,35 +153,27 @@ class WosProjectionBuilderServiceTest {
         return identity;
     }
 
-    private WosMetricFact metric(String journalId, int year, MetricType metricType, EditionNormalized edition, Double value) {
+    private WosMetricFact metric(
+            String journalId,
+            int year,
+            MetricType metricType,
+            EditionNormalized edition,
+            String categoryNameCanonical,
+            String quarter,
+            Integer rank,
+            Double value
+    ) {
         WosMetricFact fact = new WosMetricFact();
         fact.setJournalId(journalId);
         fact.setYear(year);
         fact.setMetricType(metricType);
         fact.setEditionNormalized(edition);
+        fact.setCategoryNameCanonical(categoryNameCanonical);
+        fact.setQuarter(quarter);
+        fact.setRank(rank);
         fact.setValue(value);
         fact.setSourceVersion("v" + year);
         fact.setSourceRowItem("1");
-        return fact;
-    }
-
-    private WosCategoryFact category(
-            String journalId,
-            int year,
-            MetricType metricType,
-            EditionNormalized edition,
-            String categoryName,
-            String quarter,
-            Integer rank
-    ) {
-        WosCategoryFact fact = new WosCategoryFact();
-        fact.setJournalId(journalId);
-        fact.setYear(year);
-        fact.setMetricType(metricType);
-        fact.setEditionNormalized(edition);
-        fact.setCategoryNameCanonical(categoryName);
-        fact.setQuarter(quarter);
-        fact.setRank(rank);
         return fact;
     }
 }

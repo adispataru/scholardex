@@ -9,14 +9,17 @@ import java.time.Instant;
 
 @Data
 @Document(collection = "wos.metric_facts")
-@CompoundIndex(name = "uniq_metric_fact", def = "{'journalId': 1, 'year': 1, 'metricType': 1, 'editionNormalized': 1}", unique = true)
+@CompoundIndex(name = "uniq_metric_fact", def = "{'journalId': 1, 'year': 1, 'metricType': 1, 'categoryNameCanonical': 1, 'editionNormalized': 1}", unique = true)
 public class WosMetricFact {
     @Id
     private String id;
     private String journalId;
     private Integer year;
     private MetricType metricType;
+    private String categoryNameCanonical;
     private Double value;
+    private String quarter;
+    private Integer rank;
     private String editionRaw;
     private EditionNormalized editionNormalized;
     private WosSourceType sourceType;

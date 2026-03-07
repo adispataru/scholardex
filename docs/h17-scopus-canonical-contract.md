@@ -307,6 +307,12 @@ Ownership rules:
   - merged projection rebuild must preserve ownership boundaries and must not clobber WoS/Scholar-owned fields;
   - enrichment fields must either persist outside Scopus rebuild scope or be deterministically re-applied by linker/rebuilder runs using lineage-backed inputs.
 
+## WoS Canonical Interop Amendment (2026-03-07)
+- WoS metric semantics are category-granular at the fact level:
+  - canonical key: `journalId + year + metricType + categoryNameCanonical + editionNormalized`.
+- WoS ranking/scoring projections are built from metric facts only (`value`, `quarter`, `rank` carried by `WosMetricFact`).
+- `wos.category_facts` is treated as legacy compatibility storage and is not part of active canonical runtime write/read flow.
+
 ## H17.10 Linker and Merge Rules (Locked)
 - Linker write authority:
   - `PublicationEnrichmentLinkerService` is the only runtime writer for WoS/Scholar-owned keys in `scholardex.publication_view`.

@@ -10,11 +10,9 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized;
 import ro.uvt.pokedex.core.model.reporting.wos.MetricType;
-import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosFactConflict;
 import ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosSourceType;
-import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosFactConflictRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
@@ -47,8 +45,6 @@ class WosFactBuilderServiceTest {
     @Mock
     private WosMetricFactRepository metricFactRepository;
     @Mock
-    private WosCategoryFactRepository categoryFactRepository;
-    @Mock
     private WosFactConflictRepository factConflictRepository;
     @Mock
     private MongoTemplate mongoTemplate;
@@ -56,7 +52,6 @@ class WosFactBuilderServiceTest {
     private WosFactBuildCheckpointService checkpointService;
 
     private final List<WosMetricFact> metricStore = new ArrayList<>();
-    private final List<WosCategoryFact> categoryStore = new ArrayList<>();
     private final List<WosFactConflict> conflictStore = new ArrayList<>();
     private final AtomicInteger idSeq = new AtomicInteger(1);
     private SimpleMeterRegistry meterRegistry;
@@ -70,7 +65,6 @@ class WosFactBuilderServiceTest {
                 parserOrchestrator,
                 identityResolutionService,
                 metricFactRepository,
-                categoryFactRepository,
                 factConflictRepository,
                 mongoTemplate,
                 checkpointService,
@@ -80,8 +74,6 @@ class WosFactBuilderServiceTest {
                 .thenReturn(new IdentityResolutionResult("jid-1", "key", WosIdentityResolutionStatus.MATCHED, null));
         lenient().when(mongoTemplate.find(any(Query.class), eq(WosMetricFact.class)))
                 .thenAnswer(invocation -> new ArrayList<>(metricStore));
-        lenient().when(mongoTemplate.find(any(Query.class), eq(WosCategoryFact.class)))
-                .thenAnswer(invocation -> new ArrayList<>(categoryStore));
         lenient().when(metricFactRepository.saveAll(any())).thenAnswer(invocation -> {
             @SuppressWarnings("unchecked")
             Iterable<WosMetricFact> iterable = (Iterable<WosMetricFact>) invocation.getArgument(0);
@@ -90,19 +82,6 @@ class WosFactBuilderServiceTest {
                 if (fact.getId() == null) {
                     fact.setId("m-" + idSeq.getAndIncrement());
                     metricStore.add(fact);
-                }
-                saved.add(fact);
-            }
-            return saved;
-        });
-        lenient().when(categoryFactRepository.saveAll(any())).thenAnswer(invocation -> {
-            @SuppressWarnings("unchecked")
-            Iterable<WosCategoryFact> iterable = (Iterable<WosCategoryFact>) invocation.getArgument(0);
-            List<WosCategoryFact> saved = new ArrayList<>();
-            for (WosCategoryFact fact : iterable) {
-                if (fact.getId() == null) {
-                    fact.setId("c-" + idSeq.getAndIncrement());
-                    categoryStore.add(fact);
                 }
                 saved.add(fact);
             }
@@ -127,6 +106,7 @@ class WosFactBuilderServiceTest {
         existing.setJournalId("jid-1");
         existing.setYear(2023);
         existing.setMetricType(MetricType.AIS);
+        existing.setCategoryNameCanonical("ACOUSTICS");
         existing.setEditionNormalized(EditionNormalized.SCIE);
         existing.setSourceType(WosSourceType.OFFICIAL_WOS_EXTRACT);
         existing.setSourceVersion("v2023");
@@ -152,6 +132,7 @@ class WosFactBuilderServiceTest {
         existing.setJournalId("jid-1");
         existing.setYear(2023);
         existing.setMetricType(MetricType.RIS);
+        existing.setCategoryNameCanonical("ACOUSTICS");
         existing.setEditionNormalized(EditionNormalized.UNKNOWN);
         existing.setSourceType(WosSourceType.GOV_AIS_RIS);
         existing.setSourceVersion("v2022");
@@ -177,10 +158,9 @@ class WosFactBuilderServiceTest {
         ImportProcessingResult first = service.buildFactsFromImportEvents();
         ImportProcessingResult second = service.buildFactsFromImportEvents();
 
-        assertEquals(2, first.getImportedCount()); // metric + category
-        assertEquals(2, second.getSkippedCount()); // metric unchanged + category unchanged
+        assertEquals(1, first.getImportedCount());
+        assertEquals(1, second.getSkippedCount());
         assertEquals(1, metricStore.size());
-        assertEquals(1, categoryStore.size());
     }
 
     @Test
@@ -190,6 +170,7 @@ class WosFactBuilderServiceTest {
         existing.setJournalId("jid-1");
         existing.setYear(2023);
         existing.setMetricType(MetricType.AIS);
+        existing.setCategoryNameCanonical("ACOUSTICS");
         existing.setEditionNormalized(EditionNormalized.SCIE);
         existing.setSourceType(WosSourceType.GOV_AIS_RIS);
         existing.setSourceVersion("v2023");
@@ -218,7 +199,6 @@ class WosFactBuilderServiceTest {
         assertEquals(0, result.getImportedCount());
         assertEquals(0, result.getUpdatedCount());
         assertEquals(0, metricStore.size());
-        assertEquals(0, categoryStore.size());
         assertTrue(result.getSkippedCount() > 0);
         assertEquals(1.0, meterRegistry.get("pokedex.wos.if.source_policy.skips").counter().count());
     }
@@ -230,10 +210,9 @@ class WosFactBuilderServiceTest {
 
         ImportProcessingResult result = service.buildFactsFromImportEvents();
 
-        assertEquals(2, result.getImportedCount()); // metric + category
+        assertEquals(1, result.getImportedCount());
         assertEquals(0, result.getErrorCount());
         assertEquals(1, metricStore.size());
-        assertEquals(1, categoryStore.size());
         assertEquals(0.0, meterRegistry.get("pokedex.wos.if.source_policy.skips").counter().count());
     }
 
