@@ -319,6 +319,14 @@ Ownership rules:
 - WoS scoring/ranking projections are built by joining score facts with category ranking facts.
 - `wos.category_facts` is canonical runtime storage for category ranking facts.
 
+## WoS Ranking Enrichment Amendment (2026-03-08, H18.1)
+- H18.1 locks computation policy for missing WoS category-ranking fields (`rank`, `quarter`, `quartileRank`).
+- Source of truth:
+  - `docs/h18.1-wos-ranking-enrichment-contract.md`
+- Contract relationship:
+  - this document keeps canonical storage/ownership/source-policy rules;
+  - H18.1 defines deterministic enrichment math, field-level preservation precedence, and run-summary accounting for missing category-ranking values.
+
 ## H17.10 Linker and Merge Rules (Locked)
 - Linker write authority:
   - `PublicationEnrichmentLinkerService` is the only runtime writer for WoS/Scholar-owned keys in `scholardex.publication_view`.
