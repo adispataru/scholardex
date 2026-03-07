@@ -5,10 +5,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized;
 import ro.uvt.pokedex.core.model.reporting.wos.MetricType;
+import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosJournalIdentity;
 import ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 import ro.uvt.pokedex.core.model.reporting.wos.WosScoringView;
+import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosJournalIdentityRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
@@ -21,13 +23,13 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashSet;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.Locale;
 
 @Service
 public class WosProjectionBuilderService {
@@ -36,17 +38,20 @@ public class WosProjectionBuilderService {
 
     private final WosJournalIdentityRepository identityRepository;
     private final WosMetricFactRepository metricFactRepository;
+    private final WosCategoryFactRepository categoryFactRepository;
     private final WosRankingViewRepository rankingViewRepository;
     private final WosScoringViewRepository scoringViewRepository;
 
     public WosProjectionBuilderService(
             WosJournalIdentityRepository identityRepository,
             WosMetricFactRepository metricFactRepository,
+            WosCategoryFactRepository categoryFactRepository,
             WosRankingViewRepository rankingViewRepository,
             WosScoringViewRepository scoringViewRepository
     ) {
         this.identityRepository = identityRepository;
         this.metricFactRepository = metricFactRepository;
+        this.categoryFactRepository = categoryFactRepository;
         this.rankingViewRepository = rankingViewRepository;
         this.scoringViewRepository = scoringViewRepository;
     }
@@ -58,23 +63,40 @@ public class WosProjectionBuilderService {
         try {
             List<WosJournalIdentity> identities = identityRepository.findAll();
             List<WosMetricFact> metricFacts = metricFactRepository.findAll();
+            List<WosCategoryFact> categoryFacts = categoryFactRepository.findAll();
 
             Map<String, List<WosMetricFact>> metricByJournal = new HashMap<>();
-
             for (WosMetricFact fact : metricFacts) {
                 metricByJournal.computeIfAbsent(fact.getJournalId(), key -> new ArrayList<>()).add(fact);
+            }
+
+            Map<String, List<WosCategoryFact>> categoryByJournal = new HashMap<>();
+            for (WosCategoryFact fact : categoryFacts) {
+                categoryByJournal.computeIfAbsent(fact.getJournalId(), key -> new ArrayList<>()).add(fact);
+            }
+
+            Map<ScoreKey, WosMetricFact> scoreByKey = new HashMap<>();
+            for (WosMetricFact fact : metricFacts) {
+                scoreByKey.put(new ScoreKey(fact.getJournalId(), fact.getYear(), fact.getMetricType()), fact);
             }
 
             List<WosRankingView> rankingViews = new ArrayList<>(identities.size());
             for (WosJournalIdentity identity : identities) {
                 result.markProcessed();
-                rankingViews.add(toRankingView(identity, metricByJournal.getOrDefault(identity.getId(), List.of()), buildVersion, buildAt));
+                rankingViews.add(toRankingView(
+                        identity,
+                        metricByJournal.getOrDefault(identity.getId(), List.of()),
+                        categoryByJournal.getOrDefault(identity.getId(), List.of()),
+                        buildVersion,
+                        buildAt
+                ));
             }
 
-            List<WosScoringView> scoringViews = new ArrayList<>(metricFacts.size());
-            for (WosMetricFact metricFact : metricFacts) {
+            List<WosScoringView> scoringViews = new ArrayList<>(categoryFacts.size());
+            for (WosCategoryFact categoryFact : categoryFacts) {
                 result.markProcessed();
-                scoringViews.add(toScoringView(metricFact, buildVersion, buildAt));
+                WosMetricFact score = scoreByKey.get(new ScoreKey(categoryFact.getJournalId(), categoryFact.getYear(), categoryFact.getMetricType()));
+                scoringViews.add(toScoringView(categoryFact, score, buildVersion, buildAt));
             }
 
             rankingViewRepository.deleteAll();
@@ -95,7 +117,8 @@ public class WosProjectionBuilderService {
 
     private WosRankingView toRankingView(
             WosJournalIdentity identity,
-            List<WosMetricFact> journalFacts,
+            List<WosMetricFact> journalScoreFacts,
+            List<WosCategoryFact> journalCategoryFacts,
             String buildVersion,
             Instant buildAt
     ) {
@@ -109,32 +132,37 @@ public class WosProjectionBuilderService {
         view.setIssnNorm(normalizeIssn(identity.getPrimaryIssn()));
         view.setEIssnNorm(normalizeIssn(identity.getEIssn()));
         view.setAlternativeIssnsNorm(normalizeIssnList(identity.getAliasIssns()));
-        view.setLatestAisYear(maxYearWithValue(journalFacts, MetricType.AIS));
-        view.setLatestRisYear(maxYearWithValue(journalFacts, MetricType.RIS));
-        view.setLatestEditionNormalized(resolveLatestEdition(journalFacts));
+        view.setLatestAisYear(maxYearWithValue(journalScoreFacts, MetricType.AIS));
+        view.setLatestRisYear(maxYearWithValue(journalScoreFacts, MetricType.RIS));
+        view.setLatestEditionNormalized(resolveLatestEdition(journalCategoryFacts));
         view.setBuildVersion(buildVersion);
         view.setBuildAt(buildAt);
         view.setUpdatedAt(buildAt);
         return view;
     }
 
-    private WosScoringView toScoringView(WosMetricFact metricFact, String buildVersion, Instant buildAt) {
+    private WosScoringView toScoringView(
+            WosCategoryFact categoryFact,
+            WosMetricFact scoreFact,
+            String buildVersion,
+            Instant buildAt
+    ) {
         WosScoringView view = new WosScoringView();
         view.setId(scoringViewId(
-                metricFact.getJournalId(),
-                metricFact.getYear(),
-                metricFact.getCategoryNameCanonical(),
-                metricFact.getEditionNormalized(),
-                metricFact.getMetricType()
+                categoryFact.getJournalId(),
+                categoryFact.getYear(),
+                categoryFact.getCategoryNameCanonical(),
+                categoryFact.getEditionNormalized(),
+                categoryFact.getMetricType()
         ));
-        view.setJournalId(metricFact.getJournalId());
-        view.setYear(metricFact.getYear());
-        view.setCategoryNameCanonical(metricFact.getCategoryNameCanonical());
-        view.setEditionNormalized(metricFact.getEditionNormalized());
-        view.setMetricType(metricFact.getMetricType());
-        view.setQuarter(metricFact.getQuarter());
-        view.setRank(metricFact.getRank());
-        view.setValue(metricFact.getValue());
+        view.setJournalId(categoryFact.getJournalId());
+        view.setYear(categoryFact.getYear());
+        view.setCategoryNameCanonical(categoryFact.getCategoryNameCanonical());
+        view.setEditionNormalized(categoryFact.getEditionNormalized());
+        view.setMetricType(categoryFact.getMetricType());
+        view.setQuarter(categoryFact.getQuarter());
+        view.setRank(categoryFact.getRank());
+        view.setValue(scoreFact == null ? null : scoreFact.getValue());
         view.setBuildVersion(buildVersion);
         view.setBuildAt(buildAt);
         view.setUpdatedAt(buildAt);
@@ -151,26 +179,25 @@ public class WosProjectionBuilderService {
                 .orElse(null);
     }
 
-    private EditionNormalized resolveLatestEdition(List<WosMetricFact> facts) {
-        WosMetricFact latestAis = latestMetricWithValue(facts, MetricType.AIS);
+    private EditionNormalized resolveLatestEdition(List<WosCategoryFact> facts) {
+        WosCategoryFact latestAis = latestCategoryFact(facts, MetricType.AIS);
         if (latestAis != null && latestAis.getEditionNormalized() != null) {
             return latestAis.getEditionNormalized();
         }
-        WosMetricFact latestRis = latestMetricWithValue(facts, MetricType.RIS);
+        WosCategoryFact latestRis = latestCategoryFact(facts, MetricType.RIS);
         if (latestRis != null && latestRis.getEditionNormalized() != null) {
             return latestRis.getEditionNormalized();
         }
         return EditionNormalized.UNKNOWN;
     }
 
-    private WosMetricFact latestMetricWithValue(List<WosMetricFact> facts, MetricType metricType) {
+    private WosCategoryFact latestCategoryFact(List<WosCategoryFact> facts, MetricType metricType) {
         return facts.stream()
                 .filter(f -> f.getMetricType() == metricType)
-                .filter(f -> f.getValue() != null)
                 .max(Comparator
-                        .comparing(WosMetricFact::getYear, Comparator.nullsFirst(Integer::compareTo))
-                        .thenComparing(WosMetricFact::getSourceVersion, Comparator.nullsFirst(String::compareTo))
-                        .thenComparing(WosMetricFact::getSourceRowItem, Comparator.nullsFirst(String::compareTo)))
+                        .comparing(WosCategoryFact::getYear, Comparator.nullsFirst(Integer::compareTo))
+                        .thenComparing(WosCategoryFact::getSourceVersion, Comparator.nullsFirst(String::compareTo))
+                        .thenComparing(WosCategoryFact::getSourceRowItem, Comparator.nullsFirst(String::compareTo)))
                 .orElse(null);
     }
 
@@ -235,5 +262,8 @@ public class WosProjectionBuilderService {
             }
         }
         return new ArrayList<>(normalized);
+    }
+
+    private record ScoreKey(String journalId, Integer year, MetricType metricType) {
     }
 }

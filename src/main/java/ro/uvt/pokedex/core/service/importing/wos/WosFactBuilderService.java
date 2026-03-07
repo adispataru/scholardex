@@ -10,10 +10,12 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized;
 import ro.uvt.pokedex.core.model.reporting.wos.MetricType;
-import ro.uvt.pokedex.core.model.reporting.wos.WosFactConflict;
+import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosFactBuildCheckpoint;
+import ro.uvt.pokedex.core.model.reporting.wos.WosFactConflict;
 import ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosSourceType;
+import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosFactConflictRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
@@ -43,6 +45,7 @@ public class WosFactBuilderService {
     private final WosImportEventParserOrchestrator parserOrchestrator;
     private final WosIdentityResolutionService identityResolutionService;
     private final WosMetricFactRepository metricFactRepository;
+    private final WosCategoryFactRepository categoryFactRepository;
     private final WosFactConflictRepository factConflictRepository;
     private final MongoTemplate mongoTemplate;
     private final WosFactBuildCheckpointService checkpointService;
@@ -52,6 +55,7 @@ public class WosFactBuilderService {
             WosImportEventParserOrchestrator parserOrchestrator,
             WosIdentityResolutionService identityResolutionService,
             WosMetricFactRepository metricFactRepository,
+            WosCategoryFactRepository categoryFactRepository,
             WosFactConflictRepository factConflictRepository,
             MongoTemplate mongoTemplate,
             WosFactBuildCheckpointService checkpointService,
@@ -60,6 +64,7 @@ public class WosFactBuilderService {
         this.parserOrchestrator = parserOrchestrator;
         this.identityResolutionService = identityResolutionService;
         this.metricFactRepository = metricFactRepository;
+        this.categoryFactRepository = categoryFactRepository;
         this.factConflictRepository = factConflictRepository;
         this.mongoTemplate = mongoTemplate;
         this.checkpointService = checkpointService;
@@ -155,7 +160,7 @@ public class WosFactBuilderService {
         for (WosParsedRecord record : chunk) {
             result.markProcessed();
             if (result.getProcessedCount() % FACT_BUILD_HEARTBEAT_INTERVAL == 0) {
-                log.info("WoS fact-builder progress: processed={} imported={} updated={} skipped={} errors={}",
+                log.info("WoS fact-builder progress: processed={} imported={} updated={} skipped={} errors= {}",
                         result.getProcessedCount(), result.getImportedCount(), result.getUpdatedCount(),
                         result.getSkippedCount(), result.getErrorCount());
             }
@@ -180,17 +185,24 @@ public class WosFactBuilderService {
 
         long preloadStartedAtNanos = System.nanoTime();
         Map<MetricFactKey, WosMetricFact> existingMetrics = preloadMetricFacts(resolved);
+        Map<CategoryFactKey, WosCategoryFact> existingCategories = preloadCategoryFacts(resolved);
+
         long upsertStartedAtNanos = System.nanoTime();
         Map<MetricFactKey, WosMetricFact> pendingMetricSaves = new LinkedHashMap<>();
+        Map<CategoryFactKey, WosCategoryFact> pendingCategorySaves = new LinkedHashMap<>();
         List<WosFactConflict> pendingConflicts = new ArrayList<>();
 
         for (ResolvedRecord resolvedRecord : resolved) {
             upsertMetricFact(resolvedRecord, result, existingMetrics, pendingMetricSaves, pendingConflicts);
+            upsertCategoryFact(resolvedRecord, result, existingCategories, pendingCategorySaves, pendingConflicts);
         }
 
         long saveStartedAtNanos = System.nanoTime();
         if (!pendingMetricSaves.isEmpty()) {
             metricFactRepository.saveAll(pendingMetricSaves.values());
+        }
+        if (!pendingCategorySaves.isEmpty()) {
+            categoryFactRepository.saveAll(pendingCategorySaves.values());
         }
         if (!pendingConflicts.isEmpty()) {
             factConflictRepository.saveAll(pendingConflicts);
@@ -202,12 +214,13 @@ public class WosFactBuilderService {
         }
 
         long finishedAtNanos = System.nanoTime();
-        log.info("WoS fact-builder chunk {} complete [batch={} / totalBatches={}]: resolved={} metricWrites={} conflictWrites={} timingsMs[identity+filter={}, preload={}, upsert={}, save={}, total={}]",
+        log.info("WoS fact-builder chunk {} complete [batch={} / totalBatches={}]: resolved={} metricWrites={} categoryWrites={} conflictWrites={} timingsMs[identity+filter={}, preload={}, upsert={}, save={}, total={}]",
                 chunkNo,
                 batchIndex,
                 totalBatches,
                 resolved.size(),
                 pendingMetricSaves.size(),
+                pendingCategorySaves.size(),
                 pendingConflicts.size(),
                 nanosToMillis(preloadStartedAtNanos - chunkStartedAtNanos),
                 nanosToMillis(upsertStartedAtNanos - preloadStartedAtNanos),
@@ -219,8 +232,7 @@ public class WosFactBuilderService {
     private Map<MetricFactKey, WosMetricFact> preloadMetricFacts(List<ResolvedRecord> resolved) {
         Set<MetricFactKey> keys = new LinkedHashSet<>();
         for (ResolvedRecord rr : resolved) {
-            WosParsedRecord record = rr.record();
-            MetricFactKey key = metricKey(rr.journalId(), record);
+            MetricFactKey key = metricKey(rr.journalId(), rr.record());
             if (key != null) {
                 keys.add(key);
             }
@@ -231,12 +243,7 @@ public class WosFactBuilderService {
 
         Map<MetricPreloadGroup, Set<String>> groupToJournalIds = new LinkedHashMap<>();
         for (MetricFactKey key : keys) {
-            MetricPreloadGroup group = new MetricPreloadGroup(
-                    key.year(),
-                    key.metricType(),
-                    key.categoryNameCanonical(),
-                    key.editionNormalized()
-            );
+            MetricPreloadGroup group = new MetricPreloadGroup(key.year(), key.metricType());
             groupToJournalIds.computeIfAbsent(group, ignored -> new LinkedHashSet<>()).add(key.journalId());
         }
 
@@ -246,8 +253,6 @@ public class WosFactBuilderService {
             Query query = new Query(new Criteria().andOperator(
                     Criteria.where("year").is(group.year()),
                     Criteria.where("metricType").is(group.metricType()),
-                    Criteria.where("categoryNameCanonical").is(group.categoryNameCanonical()),
-                    Criteria.where("editionNormalized").is(group.editionNormalized()),
                     Criteria.where("journalId").in(entry.getValue())
             ));
             existing.addAll(mongoTemplate.find(query, WosMetricFact.class));
@@ -255,7 +260,51 @@ public class WosFactBuilderService {
 
         Map<MetricFactKey, WosMetricFact> out = new LinkedHashMap<>();
         for (WosMetricFact fact : existing) {
-            MetricFactKey key = new MetricFactKey(
+            MetricFactKey key = new MetricFactKey(fact.getJournalId(), fact.getYear(), fact.getMetricType());
+            out.put(key, fact);
+        }
+        return out;
+    }
+
+    private Map<CategoryFactKey, WosCategoryFact> preloadCategoryFacts(List<ResolvedRecord> resolved) {
+        Set<CategoryFactKey> keys = new LinkedHashSet<>();
+        for (ResolvedRecord rr : resolved) {
+            CategoryFactKey key = categoryKey(rr.journalId(), rr.record());
+            if (key != null) {
+                keys.add(key);
+            }
+        }
+        if (keys.isEmpty()) {
+            return new LinkedHashMap<>();
+        }
+
+        Map<CategoryPreloadGroup, Set<String>> groupToJournalIds = new LinkedHashMap<>();
+        for (CategoryFactKey key : keys) {
+            CategoryPreloadGroup group = new CategoryPreloadGroup(
+                    key.year(),
+                    key.metricType(),
+                    key.categoryNameCanonical(),
+                    key.editionNormalized()
+            );
+            groupToJournalIds.computeIfAbsent(group, ignored -> new LinkedHashSet<>()).add(key.journalId());
+        }
+
+        List<WosCategoryFact> existing = new ArrayList<>();
+        for (Map.Entry<CategoryPreloadGroup, Set<String>> entry : groupToJournalIds.entrySet()) {
+            CategoryPreloadGroup group = entry.getKey();
+            Query query = new Query(new Criteria().andOperator(
+                    Criteria.where("year").is(group.year()),
+                    Criteria.where("metricType").is(group.metricType()),
+                    Criteria.where("categoryNameCanonical").is(group.categoryNameCanonical()),
+                    Criteria.where("editionNormalized").is(group.editionNormalized()),
+                    Criteria.where("journalId").in(entry.getValue())
+            ));
+            existing.addAll(mongoTemplate.find(query, WosCategoryFact.class));
+        }
+
+        Map<CategoryFactKey, WosCategoryFact> out = new LinkedHashMap<>();
+        for (WosCategoryFact fact : existing) {
+            CategoryFactKey key = new CategoryFactKey(
                     fact.getJournalId(),
                     fact.getYear(),
                     fact.getMetricType(),
@@ -341,7 +390,7 @@ public class WosFactBuilderService {
         WosParsedRecord record = resolved.record();
         MetricFactKey key = metricKey(resolved.journalId(), record);
         if (key == null) {
-            result.markSkipped("metric-key-incomplete source=" + record.sourceFile() + "#" + record.sourceRowItem());
+            result.markSkipped("metric-score-key-incomplete source=" + record.sourceFile() + "#" + record.sourceRowItem());
             return;
         }
 
@@ -354,13 +403,28 @@ public class WosFactBuilderService {
             return;
         }
 
-        if (isSameMetricScore(existing, record)) {
-            result.markSkipped("metric-duplicate-score key=" + metricKeyString(resolved.journalId(), record));
+        if (isSameSourceFile(existing, record)) {
+            if (safeEq(existing.getValue(), record.value())) {
+                result.markSkipped("metric-score-duplicate-same-file key=" + metricScoreKeyString(resolved.journalId(), record));
+                return;
+            }
+            pendingConflicts.add(buildMetricConflictExistingWinner(
+                    "duplicate-source-file",
+                    metricScoreKeyString(resolved.journalId(), record),
+                    existing,
+                    record
+            ));
+            result.markSkipped("metric-score-conflict-same-file key=" + metricScoreKeyString(resolved.journalId(), record));
             return;
         }
 
-        if (isSameMetric(existing, record)) {
-            result.markSkipped("metric-unchanged key=" + metricKeyString(resolved.journalId(), record));
+        if (safeEq(existing.getValue(), record.value())) {
+            result.markSkipped("metric-score-duplicate key=" + metricScoreKeyString(resolved.journalId(), record));
+            return;
+        }
+
+        if (isZero(record.value())) {
+            result.markSkipped("metric-score-zero-incoming key=" + metricScoreKeyString(resolved.journalId(), record));
             return;
         }
 
@@ -369,21 +433,76 @@ public class WosFactBuilderService {
             WosMetricFact loserSnapshot = copyMetric(existing);
             WosMetricFact updated = applyMetricRecord(existing, record);
             pendingMetricSaves.put(key, updated);
-            pendingConflicts.add(buildMetricConflictIncomingWinner(
-                    decision.reason(),
-                    metricKeyString(resolved.journalId(), record),
-                    record,
-                    loserSnapshot
-            ));
+            if (shouldEmitConflict(record.sourceType(), decision.reason())) {
+                pendingConflicts.add(buildMetricConflictIncomingWinner(
+                        decision.reason(),
+                        metricScoreKeyString(resolved.journalId(), record),
+                        record,
+                        loserSnapshot
+                ));
+            }
             result.markUpdated();
         } else {
             pendingConflicts.add(buildMetricConflictExistingWinner(
                     decision.reason(),
-                    metricKeyString(resolved.journalId(), record),
+                    metricScoreKeyString(resolved.journalId(), record),
                     existing,
                     record
             ));
-            result.markSkipped("metric-conflict-loser key=" + metricKeyString(resolved.journalId(), record));
+            result.markSkipped("metric-score-conflict-loser key=" + metricScoreKeyString(resolved.journalId(), record));
+        }
+    }
+
+    private void upsertCategoryFact(
+            ResolvedRecord resolved,
+            ImportProcessingResult result,
+            Map<CategoryFactKey, WosCategoryFact> existingCategories,
+            Map<CategoryFactKey, WosCategoryFact> pendingCategorySaves,
+            List<WosFactConflict> pendingConflicts
+    ) {
+        WosParsedRecord record = resolved.record();
+        CategoryFactKey key = categoryKey(resolved.journalId(), record);
+        if (key == null) {
+            result.markSkipped("category-ranking-key-incomplete source=" + record.sourceFile() + "#" + record.sourceRowItem());
+            return;
+        }
+
+        WosCategoryFact existing = existingCategories.get(key);
+        if (existing == null) {
+            WosCategoryFact created = toCategoryFact(resolved.journalId(), record);
+            existingCategories.put(key, created);
+            pendingCategorySaves.put(key, created);
+            result.markImported();
+            return;
+        }
+
+        if (isSameCategoryRanking(existing, record)) {
+            result.markSkipped("category-ranking-duplicate key=" + categoryRankingKeyString(resolved.journalId(), record));
+            return;
+        }
+
+        WinnerDecision<WosCategoryFact> decision = decideCategoryWinner(existing, record);
+        if (decision.incomingWins()) {
+            WosCategoryFact loserSnapshot = copyCategory(existing);
+            WosCategoryFact updated = applyCategoryRecord(existing, record);
+            pendingCategorySaves.put(key, updated);
+            if (shouldEmitConflict(record.sourceType(), decision.reason())) {
+                pendingConflicts.add(buildCategoryConflictIncomingWinner(
+                        decision.reason(),
+                        categoryRankingKeyString(resolved.journalId(), record),
+                        record,
+                        loserSnapshot
+                ));
+            }
+            result.markUpdated();
+        } else {
+            pendingConflicts.add(buildCategoryConflictExistingWinner(
+                    decision.reason(),
+                    categoryRankingKeyString(resolved.journalId(), record),
+                    existing,
+                    record
+            ));
+            result.markSkipped("category-ranking-conflict-loser key=" + categoryRankingKeyString(resolved.journalId(), record));
         }
     }
 
@@ -411,13 +530,20 @@ public class WosFactBuilderService {
     }
 
     private MetricFactKey metricKey(String journalId, WosParsedRecord record) {
+        if (record.metricType() == null || record.year() == null) {
+            return null;
+        }
+        return new MetricFactKey(journalId, record.year(), record.metricType());
+    }
+
+    private CategoryFactKey categoryKey(String journalId, WosParsedRecord record) {
         if (record.metricType() == null || record.year() == null || record.editionNormalized() == null) {
             return null;
         }
         if (record.categoryNameCanonical() == null || record.categoryNameCanonical().isBlank()) {
             return null;
         }
-        return new MetricFactKey(
+        return new CategoryFactKey(
                 journalId,
                 record.year(),
                 record.metricType(),
@@ -427,6 +553,22 @@ public class WosFactBuilderService {
     }
 
     private WinnerDecision<WosMetricFact> decideMetricWinner(WosMetricFact existing, WosParsedRecord incoming) {
+        WosSourceType preferred = WosCanonicalContractSupport.selectCanonicalOperationalSource(
+                incoming.metricType(), existing.getSourceType(), incoming.sourceType());
+        if (preferred == incoming.sourceType() && preferred != existing.getSourceType()) {
+            return WinnerDecision.incoming("source-precedence");
+        }
+        if (preferred == existing.getSourceType() && preferred != incoming.sourceType()) {
+            return WinnerDecision.existing("source-precedence");
+        }
+        int cmp = compareLineage(existing.getSourceVersion(), existing.getSourceRowItem(), incoming.sourceVersion(), incoming.sourceRowItem());
+        if (cmp < 0) {
+            return WinnerDecision.incoming("latest-lineage");
+        }
+        return WinnerDecision.existing("latest-lineage");
+    }
+
+    private WinnerDecision<WosCategoryFact> decideCategoryWinner(WosCategoryFact existing, WosParsedRecord incoming) {
         WosSourceType preferred = WosCanonicalContractSupport.selectCanonicalOperationalSource(
                 incoming.metricType(), existing.getSourceType(), incoming.sourceType());
         if (preferred == incoming.sourceType() && preferred != existing.getSourceType()) {
@@ -468,22 +610,26 @@ public class WosFactBuilderService {
         }
     }
 
-    private boolean isSameMetric(WosMetricFact fact, WosParsedRecord record) {
-        return safeEq(fact.getValue(), record.value())
-                && safeEq(fact.getQuarter(), record.quarter())
-                && safeEq(fact.getRank(), record.rank())
-                && safeEq(fact.getSourceType(), record.sourceType())
-                && safeEq(fact.getSourceVersion(), record.sourceVersion())
-                && safeEq(fact.getSourceRowItem(), record.sourceRowItem())
-                && safeEq(fact.getSourceEventId(), record.sourceEventId());
-    }
-
-    private boolean isSameMetricScore(WosMetricFact fact, WosParsedRecord record) {
-        return safeEq(fact.getValue(), record.value());
-    }
-
     private boolean safeEq(Object left, Object right) {
         return left == null ? right == null : left.equals(right);
+    }
+
+    private boolean isSameSourceFile(WosMetricFact fact, WosParsedRecord record) {
+        return safeEq(fact.getSourceFile(), record.sourceFile())
+                && safeEq(fact.getSourceVersion(), record.sourceVersion());
+    }
+
+    private boolean isZero(Double value) {
+        return value != null && Double.compare(value, 0.0d) == 0;
+    }
+
+    private boolean shouldEmitConflict(WosSourceType incomingSourceType, String reason) {
+        return !(incomingSourceType == WosSourceType.GOV_AIS_RIS && "source-precedence".equals(reason));
+    }
+
+    private boolean isSameCategoryRanking(WosCategoryFact fact, WosParsedRecord record) {
+        return safeEq(fact.getQuarter(), record.quarter())
+                && safeEq(fact.getRank(), record.rank());
     }
 
     private WosMetricFact toMetricFact(String journalId, WosParsedRecord record) {
@@ -491,12 +637,7 @@ public class WosFactBuilderService {
         fact.setJournalId(journalId);
         fact.setYear(record.year());
         fact.setMetricType(record.metricType());
-        fact.setCategoryNameCanonical(record.categoryNameCanonical());
         fact.setValue(record.value());
-        fact.setQuarter(record.quarter());
-        fact.setRank(record.rank());
-        fact.setEditionRaw(record.editionRaw());
-        fact.setEditionNormalized(record.editionNormalized());
         fact.setSourceType(record.sourceType());
         fact.setSourceEventId(record.sourceEventId());
         fact.setSourceFile(record.sourceFile());
@@ -508,9 +649,38 @@ public class WosFactBuilderService {
 
     private WosMetricFact applyMetricRecord(WosMetricFact fact, WosParsedRecord record) {
         fact.setValue(record.value());
+        fact.setSourceType(record.sourceType());
+        fact.setSourceEventId(record.sourceEventId());
+        fact.setSourceFile(record.sourceFile());
+        fact.setSourceVersion(record.sourceVersion());
+        fact.setSourceRowItem(record.sourceRowItem());
+        fact.setCreatedAt(Instant.now());
+        return fact;
+    }
+
+    private WosCategoryFact toCategoryFact(String journalId, WosParsedRecord record) {
+        WosCategoryFact fact = new WosCategoryFact();
+        fact.setJournalId(journalId);
+        fact.setYear(record.year());
+        fact.setMetricType(record.metricType());
+        fact.setCategoryNameCanonical(record.categoryNameCanonical());
+        fact.setEditionRaw(record.editionRaw());
+        fact.setEditionNormalized(record.editionNormalized());
         fact.setQuarter(record.quarter());
         fact.setRank(record.rank());
+        fact.setSourceType(record.sourceType());
+        fact.setSourceEventId(record.sourceEventId());
+        fact.setSourceFile(record.sourceFile());
+        fact.setSourceVersion(record.sourceVersion());
+        fact.setSourceRowItem(record.sourceRowItem());
+        fact.setCreatedAt(Instant.now());
+        return fact;
+    }
+
+    private WosCategoryFact applyCategoryRecord(WosCategoryFact fact, WosParsedRecord record) {
         fact.setEditionRaw(record.editionRaw());
+        fact.setQuarter(record.quarter());
+        fact.setRank(record.rank());
         fact.setSourceType(record.sourceType());
         fact.setSourceEventId(record.sourceEventId());
         fact.setSourceFile(record.sourceFile());
@@ -522,7 +692,7 @@ public class WosFactBuilderService {
 
     private WosFactConflict buildMetricConflictExistingWinner(String reason, String factKey, WosMetricFact winner, WosParsedRecord loser) {
         WosFactConflict conflict = new WosFactConflict();
-        conflict.setFactType("METRIC");
+        conflict.setFactType("METRIC_SCORE");
         conflict.setConflictReason(reason);
         conflict.setFactKey(factKey);
         conflict.setWinnerSourceEventId(winner.getSourceEventId());
@@ -530,30 +700,20 @@ public class WosFactBuilderService {
         conflict.setWinnerSourceVersion(winner.getSourceVersion());
         conflict.setWinnerSourceRowItem(winner.getSourceRowItem());
         conflict.setWinnerSourceType(winner.getSourceType());
-        conflict.setWinnerValueSnapshot(
-                (winner.getCategoryNameCanonical() == null ? "" : winner.getCategoryNameCanonical())
-                        + "|" + winner.getValue()
-                        + "|" + (winner.getQuarter() == null ? "" : winner.getQuarter())
-                        + "|" + winner.getRank()
-        );
+        conflict.setWinnerValueSnapshot(String.valueOf(winner.getValue()));
         conflict.setLoserSourceEventId(loser.sourceEventId());
         conflict.setLoserSourceFile(loser.sourceFile());
         conflict.setLoserSourceVersion(loser.sourceVersion());
         conflict.setLoserSourceRowItem(loser.sourceRowItem());
         conflict.setLoserSourceType(loser.sourceType());
-        conflict.setLoserValueSnapshot(
-                (loser.categoryNameCanonical() == null ? "" : loser.categoryNameCanonical())
-                        + "|" + loser.value()
-                        + "|" + (loser.quarter() == null ? "" : loser.quarter())
-                        + "|" + loser.rank()
-        );
+        conflict.setLoserValueSnapshot(String.valueOf(loser.value()));
         conflict.setDetectedAt(Instant.now());
         return conflict;
     }
 
     private WosFactConflict buildMetricConflictIncomingWinner(String reason, String factKey, WosParsedRecord winner, WosMetricFact loser) {
         WosFactConflict conflict = new WosFactConflict();
-        conflict.setFactType("METRIC");
+        conflict.setFactType("METRIC_SCORE");
         conflict.setConflictReason(reason);
         conflict.setFactKey(factKey);
         conflict.setWinnerSourceEventId(winner.sourceEventId());
@@ -561,29 +721,79 @@ public class WosFactBuilderService {
         conflict.setWinnerSourceVersion(winner.sourceVersion());
         conflict.setWinnerSourceRowItem(winner.sourceRowItem());
         conflict.setWinnerSourceType(winner.sourceType());
-        conflict.setWinnerValueSnapshot(
-                (winner.categoryNameCanonical() == null ? "" : winner.categoryNameCanonical())
-                        + "|" + winner.value()
-                        + "|" + (winner.quarter() == null ? "" : winner.quarter())
-                        + "|" + winner.rank()
-        );
+        conflict.setWinnerValueSnapshot(String.valueOf(winner.value()));
         conflict.setLoserSourceEventId(loser.getSourceEventId());
         conflict.setLoserSourceFile(loser.getSourceFile());
         conflict.setLoserSourceVersion(loser.getSourceVersion());
         conflict.setLoserSourceRowItem(loser.getSourceRowItem());
         conflict.setLoserSourceType(loser.getSourceType());
-        conflict.setLoserValueSnapshot(
-                (loser.getCategoryNameCanonical() == null ? "" : loser.getCategoryNameCanonical())
-                        + "|" + loser.getValue()
-                        + "|" + (loser.getQuarter() == null ? "" : loser.getQuarter())
-                        + "|" + loser.getRank()
-        );
+        conflict.setLoserValueSnapshot(String.valueOf(loser.getValue()));
         conflict.setDetectedAt(Instant.now());
         return conflict;
     }
 
-    private String metricKeyString(String journalId, WosParsedRecord record) {
-        return "metric|"
+    private WosFactConflict buildCategoryConflictExistingWinner(String reason, String factKey, WosCategoryFact winner, WosParsedRecord loser) {
+        WosFactConflict conflict = new WosFactConflict();
+        conflict.setFactType("CATEGORY_RANKING");
+        conflict.setConflictReason(reason);
+        conflict.setFactKey(factKey);
+        conflict.setWinnerSourceEventId(winner.getSourceEventId());
+        conflict.setWinnerSourceFile(winner.getSourceFile());
+        conflict.setWinnerSourceVersion(winner.getSourceVersion());
+        conflict.setWinnerSourceRowItem(winner.getSourceRowItem());
+        conflict.setWinnerSourceType(winner.getSourceType());
+        conflict.setWinnerValueSnapshot(snapshotCategory(winner));
+        conflict.setLoserSourceEventId(loser.sourceEventId());
+        conflict.setLoserSourceFile(loser.sourceFile());
+        conflict.setLoserSourceVersion(loser.sourceVersion());
+        conflict.setLoserSourceRowItem(loser.sourceRowItem());
+        conflict.setLoserSourceType(loser.sourceType());
+        conflict.setLoserValueSnapshot(snapshotCategory(loser));
+        conflict.setDetectedAt(Instant.now());
+        return conflict;
+    }
+
+    private WosFactConflict buildCategoryConflictIncomingWinner(String reason, String factKey, WosParsedRecord winner, WosCategoryFact loser) {
+        WosFactConflict conflict = new WosFactConflict();
+        conflict.setFactType("CATEGORY_RANKING");
+        conflict.setConflictReason(reason);
+        conflict.setFactKey(factKey);
+        conflict.setWinnerSourceEventId(winner.sourceEventId());
+        conflict.setWinnerSourceFile(winner.sourceFile());
+        conflict.setWinnerSourceVersion(winner.sourceVersion());
+        conflict.setWinnerSourceRowItem(winner.sourceRowItem());
+        conflict.setWinnerSourceType(winner.sourceType());
+        conflict.setWinnerValueSnapshot(snapshotCategory(winner));
+        conflict.setLoserSourceEventId(loser.getSourceEventId());
+        conflict.setLoserSourceFile(loser.getSourceFile());
+        conflict.setLoserSourceVersion(loser.getSourceVersion());
+        conflict.setLoserSourceRowItem(loser.getSourceRowItem());
+        conflict.setLoserSourceType(loser.getSourceType());
+        conflict.setLoserValueSnapshot(snapshotCategory(loser));
+        conflict.setDetectedAt(Instant.now());
+        return conflict;
+    }
+
+    private String snapshotCategory(WosCategoryFact fact) {
+        return (fact.getCategoryNameCanonical() == null ? "" : fact.getCategoryNameCanonical())
+                + "|" + (fact.getEditionNormalized() == null ? "" : fact.getEditionNormalized())
+                + "|" + (fact.getQuarter() == null ? "" : fact.getQuarter())
+                + "|" + fact.getRank();
+    }
+
+    private String snapshotCategory(WosParsedRecord record) {
+        return (record.categoryNameCanonical() == null ? "" : record.categoryNameCanonical())
+                + "|" + (record.editionNormalized() == null ? "" : record.editionNormalized())
+                + "|" + (record.quarter() == null ? "" : record.quarter())
+                + "|" + record.rank();
+    }
+
+    private String metricScoreKeyString(String journalId, WosParsedRecord record) {
+        return "metric-score|" + journalId + "|" + record.year() + "|" + record.metricType();
+    }
+
+    private String categoryRankingKeyString(String journalId, WosParsedRecord record) {
+        return "category-ranking|"
                 + journalId + "|"
                 + record.year() + "|"
                 + record.metricType() + "|"
@@ -598,8 +808,19 @@ public class WosFactBuilderService {
         copy.setSourceVersion(source.getSourceVersion());
         copy.setSourceRowItem(source.getSourceRowItem());
         copy.setSourceType(source.getSourceType());
-        copy.setCategoryNameCanonical(source.getCategoryNameCanonical());
         copy.setValue(source.getValue());
+        return copy;
+    }
+
+    private WosCategoryFact copyCategory(WosCategoryFact source) {
+        WosCategoryFact copy = new WosCategoryFact();
+        copy.setSourceEventId(source.getSourceEventId());
+        copy.setSourceFile(source.getSourceFile());
+        copy.setSourceVersion(source.getSourceVersion());
+        copy.setSourceRowItem(source.getSourceRowItem());
+        copy.setSourceType(source.getSourceType());
+        copy.setCategoryNameCanonical(source.getCategoryNameCanonical());
+        copy.setEditionNormalized(source.getEditionNormalized());
         copy.setQuarter(source.getQuarter());
         copy.setRank(source.getRank());
         return copy;
@@ -673,13 +894,18 @@ public class WosFactBuilderService {
     private record MetricFactKey(
             String journalId,
             Integer year,
-            MetricType metricType,
-            String categoryNameCanonical,
-            EditionNormalized editionNormalized
+            MetricType metricType
     ) {
     }
 
     private record MetricPreloadGroup(
+            Integer year,
+            MetricType metricType
+    ) {
+    }
+
+    private record CategoryFactKey(
+            String journalId,
             Integer year,
             MetricType metricType,
             String categoryNameCanonical,
@@ -687,4 +913,11 @@ public class WosFactBuilderService {
     ) {
     }
 
+    private record CategoryPreloadGroup(
+            Integer year,
+            MetricType metricType,
+            String categoryNameCanonical,
+            EditionNormalized editionNormalized
+    ) {
+    }
 }

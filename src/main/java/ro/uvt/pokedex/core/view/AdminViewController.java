@@ -566,7 +566,7 @@ public class AdminViewController {
                             + ", e=" + result.buildProjections().errors()
                             + "], Verify[events=" + result.verification().importEvents()
                             + ", metricFacts=" + result.verification().metricFacts()
-                            + ", legacyCategoryFacts=" + result.verification().categoryFacts()
+                            + ", categoryFacts=" + result.verification().categoryFacts()
                             + ", rankingRows=" + result.verification().rankingViewRows()
                             + ", scoringRows=" + result.verification().scoringViewRows()
                             + ", parserErrors=" + result.verification().parserErrors()

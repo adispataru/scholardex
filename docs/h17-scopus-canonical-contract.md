@@ -308,10 +308,11 @@ Ownership rules:
   - enrichment fields must either persist outside Scopus rebuild scope or be deterministically re-applied by linker/rebuilder runs using lineage-backed inputs.
 
 ## WoS Canonical Interop Amendment (2026-03-07)
-- WoS metric semantics are category-granular at the fact level:
-  - canonical key: `journalId + year + metricType + categoryNameCanonical + editionNormalized`.
-- WoS ranking/scoring projections are built from metric facts only (`value`, `quarter`, `rank` carried by `WosMetricFact`).
-- `wos.category_facts` is treated as legacy compatibility storage and is not part of active canonical runtime write/read flow.
+- WoS canonical facts are split by responsibility:
+  - score fact key: `journalId + year + metricType` (`WosMetricFact.value` + lineage).
+  - category ranking fact key: `journalId + year + metricType + categoryNameCanonical + editionNormalized` (`wos.category_facts.quarter/rank` + lineage).
+- WoS scoring/ranking projections are built by joining score facts with category ranking facts.
+- `wos.category_facts` is canonical runtime storage for category ranking facts.
 
 ## H17.10 Linker and Merge Rules (Locked)
 - Linker write authority:

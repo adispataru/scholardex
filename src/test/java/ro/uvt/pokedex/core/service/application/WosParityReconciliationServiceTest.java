@@ -52,7 +52,6 @@ class WosParityReconciliationServiceTest {
         metricFact.setJournalId("j1");
         metricFact.setYear(2023);
         metricFact.setMetricType(MetricType.AIS);
-        metricFact.setEditionNormalized(EditionNormalized.SCIE);
         metricFact.setValue(1.5);
 
         WosCategoryFact categoryFact = new WosCategoryFact();

@@ -87,7 +87,7 @@ public class AdminInitializationController {
                     + formatWosStep("projections", result.buildProjections()) + " "
                     + "verify[events=" + result.verification().importEvents()
                     + ", metricFacts=" + result.verification().metricFacts()
-                    + ", legacyCategoryFacts=" + result.verification().categoryFacts()
+                    + ", categoryFacts=" + result.verification().categoryFacts()
                     + ", rankingRows=" + result.verification().rankingViewRows()
                     + ", scoringRows=" + result.verification().scoringViewRows()
                     + ", parserErrors=" + result.verification().parserErrors()
@@ -125,7 +125,7 @@ public class AdminInitializationController {
                 "WoS canonical state cleared. events=" + result.importEvents()
                         + ", journalIdentities=" + result.journalIdentities()
                         + ", metricFacts=" + result.metricFacts()
-                        + ", legacyCategoryFacts=" + result.categoryFacts()
+                        + ", categoryFacts=" + result.categoryFacts()
                         + ", identityConflicts=" + result.identityConflicts()
                         + ", factConflicts=" + result.factConflicts()
                         + ", rankingViews=" + result.rankingViewRows()

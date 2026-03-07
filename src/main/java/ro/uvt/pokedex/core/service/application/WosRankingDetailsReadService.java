@@ -4,8 +4,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.reporting.wos.MetricType;
+import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
+import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
 
@@ -20,22 +22,25 @@ public class WosRankingDetailsReadService {
 
     private final WosRankingViewRepository rankingViewRepository;
     private final WosMetricFactRepository metricFactRepository;
+    private final WosCategoryFactRepository categoryFactRepository;
 
     public Optional<WoSRanking> findByJournalId(String journalId) {
         Optional<WosRankingView> viewOpt = rankingViewRepository.findById(journalId);
         if (viewOpt.isEmpty()) {
             return Optional.empty();
         }
-        List<WosMetricFact> metricFacts = metricFactRepository.findAllByJournalId(journalId);
-        if (metricFacts.isEmpty()) {
+        List<WosMetricFact> scoreFacts = metricFactRepository.findAllByJournalId(journalId);
+        List<WosCategoryFact> categoryFacts = categoryFactRepository.findAllByJournalId(journalId);
+        if (scoreFacts.isEmpty() && categoryFacts.isEmpty()) {
             return Optional.empty();
         }
-        return Optional.of(toLegacyDetails(viewOpt.get(), metricFacts));
+        return Optional.of(toLegacyDetails(viewOpt.get(), scoreFacts, categoryFacts));
     }
 
     private WoSRanking toLegacyDetails(
             WosRankingView view,
-            List<WosMetricFact> metricFacts
+            List<WosMetricFact> scoreFacts,
+            List<WosCategoryFact> categoryFacts
     ) {
         WoSRanking ranking = new WoSRanking();
         ranking.setId(view.getId());
@@ -45,7 +50,7 @@ public class WosRankingDetailsReadService {
         ranking.setAlternativeIssns(view.getAlternativeIssns() == null ? List.of() : view.getAlternativeIssns());
 
         WoSRanking.Score score = new WoSRanking.Score();
-        for (WosMetricFact metricFact : metricFacts) {
+        for (WosMetricFact metricFact : scoreFacts) {
             if (metricFact.getYear() == null || metricFact.getValue() == null) {
                 continue;
             }
@@ -58,42 +63,42 @@ public class WosRankingDetailsReadService {
         ranking.setScore(score);
 
         Map<String, WoSRanking.Rank> categories = new HashMap<>();
-        for (WosMetricFact metricFact : metricFacts) {
-            if (metricFact.getYear() == null || metricFact.getMetricType() == null) {
+        for (WosCategoryFact categoryFact : categoryFacts) {
+            if (categoryFact.getYear() == null || categoryFact.getMetricType() == null) {
                 continue;
             }
-            if (metricFact.getCategoryNameCanonical() == null || metricFact.getCategoryNameCanonical().isBlank()) {
+            if (categoryFact.getCategoryNameCanonical() == null || categoryFact.getCategoryNameCanonical().isBlank()) {
                 continue;
             }
-            String categoryKey = metricFact.getCategoryNameCanonical();
-            if (metricFact.getEditionNormalized() != null) {
-                categoryKey = categoryKey + " - " + metricFact.getEditionNormalized().name();
+            String categoryKey = categoryFact.getCategoryNameCanonical();
+            if (categoryFact.getEditionNormalized() != null) {
+                categoryKey = categoryKey + " - " + categoryFact.getEditionNormalized().name();
             }
             WoSRanking.Rank rank = categories.computeIfAbsent(categoryKey, ignored -> new WoSRanking.Rank());
-            WoSRanking.Quarter quarter = parseQuarter(metricFact.getQuarter());
-            switch (metricFact.getMetricType()) {
+            WoSRanking.Quarter quarter = parseQuarter(categoryFact.getQuarter());
+            switch (categoryFact.getMetricType()) {
                 case AIS -> {
                     if (quarter != null) {
-                        rank.getQAis().put(metricFact.getYear(), quarter);
+                        rank.getQAis().put(categoryFact.getYear(), quarter);
                     }
-                    if (metricFact.getRank() != null) {
-                        rank.getRankAis().put(metricFact.getYear(), metricFact.getRank());
+                    if (categoryFact.getRank() != null) {
+                        rank.getRankAis().put(categoryFact.getYear(), categoryFact.getRank());
                     }
                 }
                 case RIS -> {
                     if (quarter != null) {
-                        rank.getQRis().put(metricFact.getYear(), quarter);
+                        rank.getQRis().put(categoryFact.getYear(), quarter);
                     }
-                    if (metricFact.getRank() != null) {
-                        rank.getRankRis().put(metricFact.getYear(), metricFact.getRank());
+                    if (categoryFact.getRank() != null) {
+                        rank.getRankRis().put(categoryFact.getYear(), categoryFact.getRank());
                     }
                 }
                 case IF -> {
                     if (quarter != null) {
-                        rank.getQIF().put(metricFact.getYear(), quarter);
+                        rank.getQIF().put(categoryFact.getYear(), quarter);
                     }
-                    if (metricFact.getRank() != null) {
-                        rank.getRankIF().put(metricFact.getYear(), metricFact.getRank());
+                    if (categoryFact.getRank() != null) {
+                        rank.getRankIF().put(categoryFact.getYear(), categoryFact.getRank());
                     }
                 }
             }

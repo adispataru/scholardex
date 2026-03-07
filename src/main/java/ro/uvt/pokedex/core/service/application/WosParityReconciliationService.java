@@ -105,7 +105,7 @@ public class WosParityReconciliationService {
 
         executedChecks.add("scores");
         allowlistedMismatchCount += checkScoringViewTopCounts(baseline.root().path("scoringChecks"), scoringRows, allowlist, mismatches);
-        allowlistedMismatchCount += checkIfMissing(baseline.root().path("ifMissingChecks"), metricFacts, allowlist, mismatches);
+        allowlistedMismatchCount += checkIfMissing(baseline.root().path("ifMissingChecks"), metricFacts, categoryFacts, allowlist, mismatches);
 
         executedChecks.add("replay-determinism");
         allowlistedMismatchCount += checkReplayDeterminism(baseline.root().path("replayChecks"), metricFacts, categoryFacts, allowlist, mismatches);
@@ -266,7 +266,6 @@ public class WosParityReconciliationService {
             Map<Integer, Double> actualByYear = metricFacts.stream()
                     .filter(f -> journalId.equals(f.getJournalId()))
                     .filter(f -> metricType == f.getMetricType())
-                    .filter(f -> edition == f.getEditionNormalized())
                     .filter(f -> f.getYear() != null)
                     .collect(Collectors.toMap(
                             WosMetricFact::getYear,
@@ -394,7 +393,13 @@ public class WosParityReconciliationService {
         return allowlisted;
     }
 
-    private int checkIfMissing(JsonNode ifMissingChecksNode, List<WosMetricFact> metricFacts, Set<String> allowlist, List<String> mismatches) {
+    private int checkIfMissing(
+            JsonNode ifMissingChecksNode,
+            List<WosMetricFact> metricFacts,
+            List<WosCategoryFact> categoryFacts,
+            Set<String> allowlist,
+            List<String> mismatches
+    ) {
         if (ifMissingChecksNode == null || !ifMissingChecksNode.isArray()) {
             return 0;
         }
@@ -413,10 +418,14 @@ public class WosParityReconciliationService {
                     .anyMatch(f -> journalId.equals(f.getJournalId())
                             && year.equals(f.getYear())
                             && f.getMetricType() == MetricType.IF
-                            && f.getEditionNormalized() == edition
                             && f.getValue() != null);
+            boolean hasIfEdition = categoryFacts.stream()
+                    .anyMatch(f -> journalId.equals(f.getJournalId())
+                            && year.equals(f.getYear())
+                            && f.getMetricType() == MetricType.IF
+                            && f.getEditionNormalized() == edition);
 
-            boolean missing = !hasIf;
+            boolean missing = !(hasIf && hasIfEdition);
             String key = "ifMissing[" + i + "]";
             if (!Objects.equals(expectedMissing, missing)) {
                 if (allowlist.contains(key)) {
@@ -468,8 +477,7 @@ public class WosParityReconciliationService {
                 String key = String.join("|",
                         String.valueOf(fact.getJournalId()),
                         String.valueOf(fact.getYear()),
-                        String.valueOf(fact.getMetricType()),
-                        String.valueOf(fact.getEditionNormalized()));
+                        String.valueOf(fact.getMetricType()));
                 if (!seen.add(key)) {
                     duplicates++;
                 }

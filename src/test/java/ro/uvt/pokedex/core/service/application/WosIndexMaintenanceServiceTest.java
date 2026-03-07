@@ -10,6 +10,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.IndexField;
 import org.springframework.data.mongodb.core.index.IndexInfo;
 import org.springframework.data.mongodb.core.index.IndexOperations;
+import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 import ro.uvt.pokedex.core.model.reporting.wos.WosScoringView;
@@ -31,6 +32,8 @@ class WosIndexMaintenanceServiceTest {
     @Mock
     private IndexOperations metricOps;
     @Mock
+    private IndexOperations categoryOps;
+    @Mock
     private IndexOperations rankingOps;
     @Mock
     private IndexOperations scoringOps;
@@ -41,6 +44,7 @@ class WosIndexMaintenanceServiceTest {
     void setUp() {
         service = new WosIndexMaintenanceService(mongoTemplate);
         when(mongoTemplate.indexOps(WosMetricFact.class)).thenReturn(metricOps);
+        when(mongoTemplate.indexOps(WosCategoryFact.class)).thenReturn(categoryOps);
         when(mongoTemplate.indexOps(WosRankingView.class)).thenReturn(rankingOps);
         when(mongoTemplate.indexOps(WosScoringView.class)).thenReturn(scoringOps);
     }
@@ -48,16 +52,18 @@ class WosIndexMaintenanceServiceTest {
     @Test
     void ensureWosIndexesCreatesAllMissingIndexes() {
         when(metricOps.getIndexInfo()).thenReturn(List.of());
+        when(categoryOps.getIndexInfo()).thenReturn(List.of());
         when(rankingOps.getIndexInfo()).thenReturn(List.of());
         when(scoringOps.getIndexInfo()).thenReturn(List.of());
 
         WosIndexMaintenanceService.WosIndexEnsureResult result = service.ensureWosIndexes();
 
-        assertEquals(11, result.created().size());
+        assertEquals(13, result.created().size());
         assertTrue(result.present().isEmpty());
         assertTrue(result.invalid().isEmpty());
         assertTrue(result.errors().isEmpty());
         verify(metricOps, org.mockito.Mockito.times(2)).ensureIndex(any());
+        verify(categoryOps, org.mockito.Mockito.times(2)).ensureIndex(any());
         verify(rankingOps, org.mockito.Mockito.times(7)).ensureIndex(any());
         verify(scoringOps, org.mockito.Mockito.times(2)).ensureIndex(any());
     }
@@ -65,8 +71,12 @@ class WosIndexMaintenanceServiceTest {
     @Test
     void ensureWosIndexesMarksExistingIndexesAsPresent() {
         when(metricOps.getIndexInfo()).thenReturn(List.of(
-                info(WosIndexMaintenanceService.IDX_METRIC_UNIQ, true, "journalId", "year", "metricType", "categoryNameCanonical", "editionNormalized"),
-                info(WosIndexMaintenanceService.IDX_METRIC_LOOKUP, false, "categoryNameCanonical", "year", "metricType", "editionNormalized", "journalId")
+                info(WosIndexMaintenanceService.IDX_METRIC_UNIQ, true, "journalId", "year", "metricType"),
+                info(WosIndexMaintenanceService.IDX_METRIC_LOOKUP, false, "year", "metricType", "journalId")
+        ));
+        when(categoryOps.getIndexInfo()).thenReturn(List.of(
+                info(WosIndexMaintenanceService.IDX_CATEGORY_UNIQ, true, "journalId", "year", "categoryNameCanonical", "editionNormalized", "metricType"),
+                info(WosIndexMaintenanceService.IDX_CATEGORY_LOOKUP, false, "categoryNameCanonical", "year", "metricType", "editionNormalized", "journalId")
         ));
         when(rankingOps.getIndexInfo()).thenReturn(List.of(
                 info(WosIndexMaintenanceService.IDX_RANKING_SORT_NAME, false, "name"),
@@ -84,11 +94,12 @@ class WosIndexMaintenanceServiceTest {
 
         WosIndexMaintenanceService.WosIndexEnsureResult result = service.ensureWosIndexes();
 
-        assertEquals(11, result.present().size());
+        assertEquals(13, result.present().size());
         assertTrue(result.created().isEmpty());
         assertTrue(result.invalid().isEmpty());
         assertTrue(result.errors().isEmpty());
         verify(metricOps, never()).ensureIndex(any());
+        verify(categoryOps, never()).ensureIndex(any());
         verify(rankingOps, never()).ensureIndex(any());
         verify(scoringOps, never()).ensureIndex(any());
     }
@@ -96,8 +107,12 @@ class WosIndexMaintenanceServiceTest {
     @Test
     void ensureWosIndexesReportsInvalidWhenShapeExistsUnderDifferentName() {
         when(metricOps.getIndexInfo()).thenReturn(List.of(
-                info("other_metric_uniq", true, "journalId", "year", "metricType", "categoryNameCanonical", "editionNormalized"),
-                info(WosIndexMaintenanceService.IDX_METRIC_LOOKUP, false, "categoryNameCanonical", "year", "metricType", "editionNormalized", "journalId")
+                info("other_metric_uniq", true, "journalId", "year", "metricType"),
+                info(WosIndexMaintenanceService.IDX_METRIC_LOOKUP, false, "year", "metricType", "journalId")
+        ));
+        when(categoryOps.getIndexInfo()).thenReturn(List.of(
+                info(WosIndexMaintenanceService.IDX_CATEGORY_UNIQ, true, "journalId", "year", "categoryNameCanonical", "editionNormalized", "metricType"),
+                info(WosIndexMaintenanceService.IDX_CATEGORY_LOOKUP, false, "categoryNameCanonical", "year", "metricType", "editionNormalized", "journalId")
         ));
         when(rankingOps.getIndexInfo()).thenReturn(List.of(
                 info(WosIndexMaintenanceService.IDX_RANKING_SORT_NAME, false, "name"),
@@ -118,7 +133,7 @@ class WosIndexMaintenanceServiceTest {
         assertEquals(1, result.invalid().size());
         assertTrue(result.invalid().getFirst().contains(WosIndexMaintenanceService.IDX_METRIC_UNIQ));
         assertTrue(result.created().isEmpty());
-        assertEquals(10, result.present().size());
+        assertEquals(12, result.present().size());
         verify(metricOps, never()).ensureIndex(any());
     }
 
