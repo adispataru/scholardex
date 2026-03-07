@@ -158,6 +158,8 @@ class AdminViewControllerContractTest {
                                 null, null, null, null, null),
                         new WosBigBangMigrationService.MigrationStepResult("facts", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
                                 null, null, null, null, null),
+                        new WosBigBangMigrationService.MigrationStepResult("enrichment", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
+                                null, null, null, null, null),
                         new WosBigBangMigrationService.MigrationStepResult("projections", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
                                 null, null, null, null, null),
                         new WosBigBangMigrationService.VerificationSummary(

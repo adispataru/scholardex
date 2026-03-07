@@ -369,7 +369,7 @@ Transition compatibility:
 ## H17.6 Operational Cutover Surface
 - Canonical admin operational surface for big-bang initialization is `GET/POST /admin/initialization`.
 - The initialization page exposes deterministic WoS and Scopus step execution:
-  - WoS: ensure indexes, rebuild projections, run big-bang (`dryRun` or full run).
+  - WoS: ingest events, build facts, enrich category rankings, rebuild projections, ensure indexes, run big-bang (`dryRun` or full run).
   - Scopus: ingest events, build facts, build projections/views, ensure indexes, run full big-bang.
 - Rankings UI is read/browsing-focused and must not expose WoS/Scopus maintenance action controls.
 - Big-bang actions are synchronous in admin flows and must return structured step summaries (processed/imported/updated/skipped/errors plus verification counts).

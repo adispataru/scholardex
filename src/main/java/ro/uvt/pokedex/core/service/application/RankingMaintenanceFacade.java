@@ -61,6 +61,10 @@ public class RankingMaintenanceFacade {
         return wosBigBangMigrationService.runBuildFactsStep(startBatchOverride, sourceVersionOverride, useCheckpoint);
     }
 
+    public WosBigBangMigrationService.MigrationStepResult enrichWosCategoryRankings() {
+        return wosBigBangMigrationService.runEnrichCategoryRankingsStep();
+    }
+
     public WosBigBangMigrationService.CanonicalResetResult resetWosCanonicalState() {
         return wosBigBangMigrationService.resetCanonicalState();
     }

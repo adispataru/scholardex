@@ -144,6 +144,55 @@ public class WosFactBuilderService {
         checkpointService.resetCheckpoint();
     }
 
+    public ImportProcessingResult enrichMissingCategoryRankingFields() {
+        ImportProcessingResult result = new ImportProcessingResult(20);
+        List<WosCategoryFact> allCategoryFacts = categoryFactRepository.findAll();
+        if (allCategoryFacts.isEmpty()) {
+            return result;
+        }
+
+        Map<MetricFactKey, WosMetricFact> metricByKey = new LinkedHashMap<>();
+        for (WosMetricFact metricFact : metricFactRepository.findAll()) {
+            MetricFactKey key = new MetricFactKey(metricFact.getJournalId(), metricFact.getYear(), metricFact.getMetricType());
+            metricByKey.put(key, metricFact);
+        }
+
+        Map<CategoryEnrichmentGroupKey, List<WosCategoryFact>> groups = new LinkedHashMap<>();
+        for (WosCategoryFact fact : allCategoryFacts) {
+            result.markProcessed();
+            if (!requiresCategoryRankingEnrichment(fact)) {
+                continue;
+            }
+            if (fact.getYear() == null
+                    || fact.getMetricType() == null
+                    || fact.getCategoryNameCanonical() == null
+                    || fact.getCategoryNameCanonical().isBlank()
+                    || fact.getEditionNormalized() == null) {
+                result.markSkipped("insufficient-grouping-data factId=" + fact.getId());
+                continue;
+            }
+            CategoryEnrichmentGroupKey key = new CategoryEnrichmentGroupKey(
+                    fact.getYear(),
+                    fact.getMetricType(),
+                    fact.getCategoryNameCanonical(),
+                    fact.getEditionNormalized()
+            );
+            groups.computeIfAbsent(key, ignored -> new ArrayList<>()).add(fact);
+        }
+
+        List<WosCategoryFact> pendingUpdates = new ArrayList<>();
+        for (List<WosCategoryFact> groupFacts : groups.values()) {
+            enrichCategoryGroup(groupFacts, metricByKey, pendingUpdates, result);
+        }
+
+        if (!pendingUpdates.isEmpty()) {
+            categoryFactRepository.saveAll(pendingUpdates);
+        }
+        log.info("WoS category ranking enrichment summary: processed={}, updated={}, skipped={}, errors={}",
+                result.getProcessedCount(), result.getUpdatedCount(), result.getSkippedCount(), result.getErrorCount());
+        return result;
+    }
+
     private void processChunk(
             List<WosParsedRecord> chunk,
             ImportProcessingResult result,
@@ -893,6 +942,153 @@ public class WosFactBuilderService {
         return nanos / 1_000_000L;
     }
 
+    private void enrichCategoryGroup(
+            List<WosCategoryFact> groupFacts,
+            Map<MetricFactKey, WosMetricFact> metricByKey,
+            List<WosCategoryFact> pendingUpdates,
+            ImportProcessingResult result
+    ) {
+        List<RankCandidate> ranked = new ArrayList<>();
+        List<WosCategoryFact> uncomputable = new ArrayList<>();
+        for (WosCategoryFact fact : groupFacts) {
+            MetricFactKey metricKey = new MetricFactKey(fact.getJournalId(), fact.getYear(), fact.getMetricType());
+            WosMetricFact metricFact = metricByKey.get(metricKey);
+            Double metricValue = metricFact == null ? null : metricFact.getValue();
+            if (metricValue == null) {
+                uncomputable.add(fact);
+                continue;
+            }
+            ranked.add(new RankCandidate(fact, metricValue));
+        }
+
+        ranked.sort(Comparator
+                .comparing(RankCandidate::metricValue, Comparator.reverseOrder())
+                .thenComparing(candidate -> candidate.fact().getJournalId(), Comparator.nullsFirst(String::compareTo)));
+
+        Map<String, Integer> rankByFactId = competitionRanks(ranked);
+        Map<String, String> computedQuarterByFactId = computedQuarterByFactId(ranked);
+        Map<String, String> effectiveQuarterByFactId = new HashMap<>();
+        for (RankCandidate candidate : ranked) {
+            WosCategoryFact fact = candidate.fact();
+            String sourceQuarter = normalizeQuarter(fact.getQuarter());
+            String computedQuarter = computedQuarterByFactId.get(fact.getId());
+            effectiveQuarterByFactId.put(fact.getId(), sourceQuarter == null ? computedQuarter : sourceQuarter);
+        }
+        Map<String, Integer> quartileRankByFactId = quartileRankByFactId(ranked, effectiveQuarterByFactId);
+
+        for (RankCandidate candidate : ranked) {
+            WosCategoryFact fact = candidate.fact();
+            boolean changed = false;
+
+            if (fact.getRank() == null) {
+                Integer computedRank = rankByFactId.get(fact.getId());
+                if (computedRank != null) {
+                    fact.setRank(computedRank);
+                    changed = true;
+                }
+            }
+            if (isBlank(fact.getQuarter())) {
+                String computedQuarter = computedQuarterByFactId.get(fact.getId());
+                if (computedQuarter != null) {
+                    fact.setQuarter(computedQuarter);
+                    changed = true;
+                }
+            }
+            if (fact.getQuartileRank() == null) {
+                Integer computedQuartileRank = quartileRankByFactId.get(fact.getId());
+                if (computedQuartileRank != null) {
+                    fact.setQuartileRank(computedQuartileRank);
+                    changed = true;
+                }
+            }
+
+            if (changed) {
+                fact.setCreatedAt(Instant.now());
+                pendingUpdates.add(fact);
+                result.markUpdated();
+            }
+        }
+
+        for (WosCategoryFact fact : uncomputable) {
+            if (requiresCategoryRankingEnrichment(fact)) {
+                result.markSkipped("missing-metric-value factId=" + fact.getId());
+            }
+        }
+    }
+
+    private Map<String, Integer> competitionRanks(List<RankCandidate> ranked) {
+        Map<String, Integer> byFactId = new HashMap<>();
+        Double previousValue = null;
+        int currentRank = 0;
+        for (int i = 0; i < ranked.size(); i++) {
+            RankCandidate candidate = ranked.get(i);
+            if (previousValue == null || Double.compare(previousValue, candidate.metricValue()) != 0) {
+                currentRank = i + 1;
+            }
+            byFactId.put(candidate.fact().getId(), currentRank);
+            previousValue = candidate.metricValue();
+        }
+        return byFactId;
+    }
+
+    private Map<String, String> computedQuarterByFactId(List<RankCandidate> ranked) {
+        Map<String, String> byFactId = new HashMap<>();
+        int n = ranked.size();
+        if (n == 0) {
+            return byFactId;
+        }
+        int q1End = (int) Math.ceil(n / 4.0d);
+        int q2End = (int) Math.ceil(n / 2.0d);
+        int q3End = (int) Math.ceil((3.0d * n) / 4.0d);
+        for (int i = 0; i < ranked.size(); i++) {
+            int position = i + 1;
+            String quarter;
+            if (position <= q1End) {
+                quarter = "Q1";
+            } else if (position <= q2End) {
+                quarter = "Q2";
+            } else if (position <= q3End) {
+                quarter = "Q3";
+            } else {
+                quarter = "Q4";
+            }
+            byFactId.put(ranked.get(i).fact().getId(), quarter);
+        }
+        return byFactId;
+    }
+
+    private Map<String, Integer> quartileRankByFactId(
+            List<RankCandidate> ranked,
+            Map<String, String> effectiveQuarterByFactId
+    ) {
+        Map<String, Integer> byFactId = new HashMap<>();
+        Map<String, List<RankCandidate>> byQuarter = new LinkedHashMap<>();
+        for (RankCandidate candidate : ranked) {
+            String quarter = normalizeQuarter(effectiveQuarterByFactId.get(candidate.fact().getId()));
+            if (quarter == null) {
+                continue;
+            }
+            byQuarter.computeIfAbsent(quarter, ignored -> new ArrayList<>()).add(candidate);
+        }
+        for (List<RankCandidate> quarterCandidates : byQuarter.values()) {
+            Map<String, Integer> quarterRanks = competitionRanks(quarterCandidates);
+            byFactId.putAll(quarterRanks);
+        }
+        return byFactId;
+    }
+
+    private boolean requiresCategoryRankingEnrichment(WosCategoryFact fact) {
+        return fact != null && (fact.getRank() == null || isBlank(fact.getQuarter()) || fact.getQuartileRank() == null);
+    }
+
+    private String normalizeQuarter(String quarter) {
+        if (quarter == null) {
+            return null;
+        }
+        String normalized = quarter.trim().toUpperCase();
+        return normalized.isBlank() ? null : normalized;
+    }
+
     private record WinnerDecision<T>(boolean incomingWins, String reason) {
         static <T> WinnerDecision<T> incoming(String reason) {
             return new WinnerDecision<>(true, reason);
@@ -943,6 +1139,20 @@ public class WosFactBuilderService {
             MetricType metricType,
             String categoryNameCanonical,
             EditionNormalized editionNormalized
+    ) {
+    }
+
+    private record CategoryEnrichmentGroupKey(
+            Integer year,
+            MetricType metricType,
+            String categoryNameCanonical,
+            EditionNormalized editionNormalized
+    ) {
+    }
+
+    private record RankCandidate(
+            WosCategoryFact fact,
+            Double metricValue
     ) {
     }
 }

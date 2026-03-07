@@ -104,10 +104,12 @@ class WosBigBangMigrationServiceTest {
         assertTrue(result.dryRun());
         assertFalse(result.ingest().executed());
         assertFalse(result.buildFacts().executed());
+        assertFalse(result.enrichCategoryRankings().executed());
         assertFalse(result.buildProjections().executed());
         assertFalse(result.verification().parityPassed());
         verify(ingestionService, never()).ingestDirectory(anyString(), anyString());
         verify(factBuilderService, never()).buildFactsFromImportEventsWithCheckpoint(any(), anyBoolean(), any(), any());
+        verify(factBuilderService, never()).enrichMissingCategoryRankingFields();
         verify(parityReconciliationService).runEligibilityCheck();
     }
 
@@ -123,6 +125,10 @@ class WosBigBangMigrationServiceTest {
         factResult.markUpdated();
         when(factBuilderService.buildFactsFromImportEventsWithCheckpoint(eq(null), eq(true), anyString(), eq("v2026")))
                 .thenReturn(new WosFactBuilderService.FactBuildRunResult(factResult, 0, 0, 1, false, -1));
+        ImportProcessingResult enrichmentResult = new ImportProcessingResult(5);
+        enrichmentResult.markProcessed();
+        enrichmentResult.markUpdated();
+        when(factBuilderService.enrichMissingCategoryRankingFields()).thenReturn(enrichmentResult);
 
         ImportProcessingResult projectionResult = new ImportProcessingResult(5);
         projectionResult.markProcessed();
@@ -134,8 +140,10 @@ class WosBigBangMigrationServiceTest {
         assertFalse(result.dryRun());
         assertTrue(result.ingest().executed());
         assertTrue(result.buildFacts().executed());
+        assertTrue(result.enrichCategoryRankings().executed());
         assertTrue(result.buildProjections().executed());
         assertTrue(result.verification().parityPassed());
+        verify(factBuilderService).enrichMissingCategoryRankingFields();
         verify(parityReconciliationService).runFullParity();
     }
 
@@ -156,5 +164,20 @@ class WosBigBangMigrationServiceTest {
         verify(categoryFactRepository).deleteAll();
         verify(metricFactRepository).deleteAll();
         verify(factBuilderService).resetFactBuildCheckpoint();
+    }
+
+    @Test
+    void runEnrichCategoryRankingsStepDelegatesToFactBuilder() {
+        ImportProcessingResult enrichmentResult = new ImportProcessingResult(5);
+        enrichmentResult.markProcessed();
+        enrichmentResult.markUpdated();
+        when(factBuilderService.enrichMissingCategoryRankingFields()).thenReturn(enrichmentResult);
+
+        WosBigBangMigrationService.MigrationStepResult step = service.runEnrichCategoryRankingsStep();
+
+        assertTrue(step.executed());
+        assertEquals(1, step.processed());
+        assertEquals(1, step.updated());
+        verify(factBuilderService).enrichMissingCategoryRankingFields();
     }
 }

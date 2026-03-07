@@ -56,6 +56,7 @@ public class WosBigBangMigrationService {
         Instant startedAt = Instant.now();
         MigrationStepResult ingestStep;
         MigrationStepResult factStep;
+        MigrationStepResult enrichmentStep;
         MigrationStepResult projectionStep;
         String normalizedSourceVersion = normalizeSourceVersion(sourceVersionOverride);
 
@@ -98,6 +99,18 @@ public class WosBigBangMigrationService {
                     startBatchOverride == null && checkpointLastBatch >= 0,
                     checkpointLastBatch
             );
+            enrichmentStep = MigrationStepResult.dryRun(
+                    "enrich-category-rankings",
+                    "dry-run: category ranking enrichment skipped",
+                    List.of(),
+                    0,
+                    0,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+            );
             projectionStep = MigrationStepResult.dryRun("build-projections", "dry-run: projection rebuild skipped", List.of(), 0, 0,
                     null, null, null, null, null);
         } else {
@@ -113,6 +126,7 @@ public class WosBigBangMigrationService {
                     normalizedSourceVersion
             );
             ImportProcessingResult factResult = factRun.result();
+            ImportProcessingResult enrichmentResult = factBuilderService.enrichMissingCategoryRankingFields();
             ImportProcessingResult projectionResult = projectionBuilderService.rebuildWosProjections();
 
             ingestStep = MigrationStepResult.executed("ingest", ingestionResult);
@@ -125,6 +139,7 @@ public class WosBigBangMigrationService {
                     factRun.resumedFromCheckpoint(),
                     factRun.checkpointLastCompletedBatch()
             );
+            enrichmentStep = MigrationStepResult.executed("enrich-category-rankings", enrichmentResult);
             projectionStep = MigrationStepResult.executed("build-projections", projectionResult);
         }
 
@@ -141,6 +156,7 @@ public class WosBigBangMigrationService {
                 Instant.now(),
                 ingestStep,
                 factStep,
+                enrichmentStep,
                 projectionStep,
                 verificationSummary
         );
@@ -255,6 +271,11 @@ public class WosBigBangMigrationService {
         );
     }
 
+    public MigrationStepResult runEnrichCategoryRankingsStep() {
+        ImportProcessingResult result = factBuilderService.enrichMissingCategoryRankingFields();
+        return MigrationStepResult.executed("enrich-category-rankings", result);
+    }
+
     public record WosBigBangMigrationResult(
             boolean dryRun,
             String dataDirectory,
@@ -263,6 +284,7 @@ public class WosBigBangMigrationService {
             Instant completedAt,
             MigrationStepResult ingest,
             MigrationStepResult buildFacts,
+            MigrationStepResult enrichCategoryRankings,
             MigrationStepResult buildProjections,
             VerificationSummary verification
     ) {

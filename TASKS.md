@@ -29,15 +29,26 @@ Done history moved to `TASKS-done.md`.
   Deliverable: enrichment flow that computes `rank`, `quartile`, and `quartileRank` per `category + edition`, plus an admin page to run/inspect enrichment.
   Exit criteria: for each `category + edition`, source-provided values are preserved; missing values are deterministically computed; admins can run and validate enrichment from a dedicated page.
   Subtasks:
-  - [ ] `H18.1` Define enrichment computation contract.
+  - [x] `H18.1` Define enrichment computation contract.
     Deliverable: documented deterministic rules for `rank`, `quartile`, and `quartileRank` at `category + edition` scope, including tie handling and null/insufficient-data behavior.
     Exit criteria: rules are unambiguous and implementation-ready.
-  - [ ] `H18.2` Integrate enrichment into WoS ingestion/projection flow.
+    Status: completed on 2026-03-08.
+    Handover:
+    - Contract source of truth: `docs/h18.1-wos-ranking-enrichment-contract.md`.
+    - Canonical linkage amendment: `docs/h17-scopus-canonical-contract.md` (H18.1 section).
+    - Locked decisions: competition rank ties (`1,1,3`), position-bucket quartiles, source `quarter` precedence, missing metric value -> skip (non-conflict).
+  - [x] `H18.2` Integrate enrichment into WoS ingestion/projection flow.
     Deliverable: service-level enrichment step that preserves source values and computes only missing fields.
     Exit criteria: persistence reflects "source if present, computed otherwise" for all three fields.
+    Status: completed on 2026-03-08.
+    Handover:
+    - Canonical enrichment implementation: `WosFactBuilderService#enrichMissingCategoryRankingFields` computes missing `rank`, `quarter`, `quartileRank` while preserving source-provided fields.
+    - Initialization order now includes explicit enrichment step before projections (`/admin/initialization/wos/enrichCategoryRankings`).
+    - Big-bang flow executes enrichment between `build-facts` and `build-projections`.
   - [ ] `H18.3` Add admin backend endpoints for enrichment operations.
     Deliverable: secured admin endpoints to trigger enrichment and retrieve summary results (processed, computed, preserved, failed).
     Exit criteria: authorized admins can execute enrichment and get deterministic run summaries.
+    Status: active next task.
   - [ ] `H18.4` Build dedicated admin page for WoS enrichment.
     Deliverable: admin UI page to start enrichment runs and review per-run outcome metrics.
     Exit criteria: page is accessible to admins only and supports operational verification.
@@ -47,4 +58,3 @@ Done history moved to `TASKS-done.md`.
   - [ ] `H18.6` Add regression and integration test coverage.
     Deliverable: tests for preservation logic, computation correctness, and admin trigger flow.
     Exit criteria: automated tests cover success paths and key failure/edge cases.
-

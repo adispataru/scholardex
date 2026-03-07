@@ -71,6 +71,13 @@ public class AdminInitializationController {
         return "redirect:/admin/initialization";
     }
 
+    @PostMapping("/wos/enrichCategoryRankings")
+    public String enrichWosCategoryRankings(RedirectAttributes redirectAttributes) {
+        var step = rankingMaintenanceFacade.enrichWosCategoryRankings();
+        redirectAttributes.addFlashAttribute("successMessage", "WoS category ranking enrichment complete. " + formatWosStep("enrichment", step));
+        return "redirect:/admin/initialization";
+    }
+
     @PostMapping("/wos/runBigBangMigration")
     public String runWosBigBangMigration(
             @RequestParam(name = "dryRun", defaultValue = "true") boolean dryRun,
@@ -84,6 +91,7 @@ public class AdminInitializationController {
             redirectAttributes.addFlashAttribute("successMessage", "WoS big-bang " + mode + " complete. "
                     + formatWosStep("ingest", result.ingest()) + " "
                     + formatWosStep("facts", result.buildFacts()) + " "
+                    + formatWosStep("enrichment", result.enrichCategoryRankings()) + " "
                     + formatWosStep("projections", result.buildProjections()) + " "
                     + "verify[events=" + result.verification().importEvents()
                     + ", metricFacts=" + result.verification().metricFacts()

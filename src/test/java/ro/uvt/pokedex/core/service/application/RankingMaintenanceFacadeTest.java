@@ -82,6 +82,8 @@ class RankingMaintenanceFacadeTest {
                                 null, null, null, null, null),
                         new WosBigBangMigrationService.MigrationStepResult("facts", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
                                 null, null, null, null, null),
+                        new WosBigBangMigrationService.MigrationStepResult("enrichment", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
+                                null, null, null, null, null),
                         new WosBigBangMigrationService.MigrationStepResult("proj", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
                                 null, null, null, null, null),
                         new WosBigBangMigrationService.VerificationSummary(
@@ -131,6 +133,33 @@ class RankingMaintenanceFacadeTest {
                 facade.buildWosFactsFromEvents(200, "v2026", true);
 
         verify(wosBigBangMigrationService).runBuildFactsStep(200, "v2026", true);
+        org.junit.jupiter.api.Assertions.assertSame(expected, result);
+    }
+
+    @Test
+    void enrichWosCategoryRankingsDelegatesToMigrationService() {
+        WosBigBangMigrationService.MigrationStepResult expected =
+                new WosBigBangMigrationService.MigrationStepResult(
+                        "enrich-category-rankings",
+                        true,
+                        10,
+                        0,
+                        4,
+                        6,
+                        0,
+                        null,
+                        List.of(),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                );
+        when(wosBigBangMigrationService.runEnrichCategoryRankingsStep()).thenReturn(expected);
+
+        WosBigBangMigrationService.MigrationStepResult result = facade.enrichWosCategoryRankings();
+
+        verify(wosBigBangMigrationService).runEnrichCategoryRankingsStep();
         org.junit.jupiter.api.Assertions.assertSame(expected, result);
     }
 

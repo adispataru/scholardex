@@ -46,6 +46,7 @@ class AdminInitializationControllerContractTest {
                 .andExpect(view().name("admin/initialization"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/ingest")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/buildFacts")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/enrichCategoryRankings")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/rebuildProjections")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/ensureIndexes")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/resetCanonicalState")))
@@ -66,6 +67,8 @@ class AdminInitializationControllerContractTest {
                                 null, null, null, null, null),
                         new WosBigBangMigrationService.MigrationStepResult("facts", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
                                 200, null, 0, false, 199),
+                        new WosBigBangMigrationService.MigrationStepResult("enrichment", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
+                                null, null, null, null, null),
                         new WosBigBangMigrationService.MigrationStepResult("projections", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
                                 null, null, null, null, null),
                         new WosBigBangMigrationService.VerificationSummary(
@@ -149,6 +152,33 @@ class AdminInitializationControllerContractTest {
                 .andExpect(redirectedUrl("/admin/initialization"));
 
         verify(rankingMaintenanceFacade).buildWosFactsFromEvents(200, "v2026", true);
+    }
+
+    @Test
+    void enrichWosCategoryRankingsRedirectsToInitializationPage() throws Exception {
+        when(rankingMaintenanceFacade.enrichWosCategoryRankings())
+                .thenReturn(new WosBigBangMigrationService.MigrationStepResult(
+                        "enrich-category-rankings",
+                        true,
+                        1000,
+                        0,
+                        240,
+                        760,
+                        0,
+                        null,
+                        List.of(),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                ));
+
+        mockMvc.perform(post("/admin/initialization/wos/enrichCategoryRankings"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+
+        verify(rankingMaintenanceFacade).enrichWosCategoryRankings();
     }
 
     @Test

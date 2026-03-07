@@ -79,6 +79,8 @@ class WosFactBuilderServiceTest {
                 .thenAnswer(invocation -> new ArrayList<>(metricStore));
         lenient().when(mongoTemplate.find(any(Query.class), eq(WosCategoryFact.class)))
                 .thenAnswer(invocation -> new ArrayList<>(categoryStore));
+        lenient().when(metricFactRepository.findAll()).thenAnswer(invocation -> new ArrayList<>(metricStore));
+        lenient().when(categoryFactRepository.findAll()).thenAnswer(invocation -> new ArrayList<>(categoryStore));
 
         lenient().when(metricFactRepository.saveAll(any())).thenAnswer(invocation -> {
             @SuppressWarnings("unchecked")
@@ -380,6 +382,50 @@ class WosFactBuilderServiceTest {
     }
 
     @Test
+    void enrichMissingCategoryRankingFieldsComputesAndPreservesSourceQuarter() {
+        metricStore.add(metric("jid-1", 2024, MetricType.AIS, 9.0));
+        metricStore.add(metric("jid-2", 2024, MetricType.AIS, 9.0));
+        metricStore.add(metric("jid-3", 2024, MetricType.AIS, 7.5));
+
+        WosCategoryFact c1 = category("c1", "jid-1", 2024, MetricType.AIS, "ECONOMICS", EditionNormalized.SCIE, null, null, null);
+        WosCategoryFact c2 = category("c2", "jid-2", 2024, MetricType.AIS, "ECONOMICS", EditionNormalized.SCIE, "Q4", null, null);
+        WosCategoryFact c3 = category("c3", "jid-3", 2024, MetricType.AIS, "ECONOMICS", EditionNormalized.SCIE, "Q3", 1, 3);
+        categoryStore.addAll(List.of(c1, c2, c3));
+
+        ImportProcessingResult result = service.enrichMissingCategoryRankingFields();
+
+        assertEquals(3, result.getProcessedCount());
+        assertEquals(2, result.getUpdatedCount());
+
+        assertEquals(1, c1.getRank());
+        assertEquals("Q1", c1.getQuarter());
+        assertEquals(1, c1.getQuartileRank());
+
+        assertEquals(1, c2.getRank());
+        assertEquals("Q4", c2.getQuarter());
+        assertEquals(1, c2.getQuartileRank());
+
+        assertEquals(3, c3.getRank());
+        assertEquals("Q3", c3.getQuarter());
+        assertEquals(1, c3.getQuartileRank());
+    }
+
+    @Test
+    void enrichMissingCategoryRankingFieldsSkipsWhenMetricValueIsMissing() {
+        WosCategoryFact c1 = category("c1", "jid-1", 2024, MetricType.AIS, "ECONOMICS", EditionNormalized.SCIE, null, null, null);
+        categoryStore.add(c1);
+
+        ImportProcessingResult result = service.enrichMissingCategoryRankingFields();
+
+        assertEquals(1, result.getProcessedCount());
+        assertEquals(0, result.getUpdatedCount());
+        assertTrue(result.getSkippedCount() > 0);
+        assertEquals(null, c1.getRank());
+        assertEquals(null, c1.getQuarter());
+        assertEquals(null, c1.getQuartileRank());
+    }
+
+    @Test
     void checkpointedBuildStartsFromCheckpointPlusOne() {
         when(parserOrchestrator.parseAllEvents()).thenReturn(runOf(generateRecords(3000)));
 
@@ -452,6 +498,39 @@ class WosFactBuilderServiceTest {
             summary.markParsed();
         });
         return new WosParserRunResult(summary, records);
+    }
+
+    private WosMetricFact metric(String journalId, int year, MetricType metricType, double value) {
+        WosMetricFact fact = new WosMetricFact();
+        fact.setJournalId(journalId);
+        fact.setYear(year);
+        fact.setMetricType(metricType);
+        fact.setValue(value);
+        return fact;
+    }
+
+    private WosCategoryFact category(
+            String id,
+            String journalId,
+            int year,
+            MetricType metricType,
+            String category,
+            EditionNormalized edition,
+            String quarter,
+            Integer quartileRank,
+            Integer rank
+    ) {
+        WosCategoryFact fact = new WosCategoryFact();
+        fact.setId(id);
+        fact.setJournalId(journalId);
+        fact.setYear(year);
+        fact.setMetricType(metricType);
+        fact.setCategoryNameCanonical(category);
+        fact.setEditionNormalized(edition);
+        fact.setQuarter(quarter);
+        fact.setQuartileRank(quartileRank);
+        fact.setRank(rank);
+        return fact;
     }
 
     private List<WosParsedRecord> generateRecords(int count) {
