@@ -1,7 +1,10 @@
-# Project Recovery Tasks (High-Level)
+# Project Tasks (High-Level)
 
-Objective: raise runtime functional quality from baseline-safe behavior to production-grade correctness and resilience.
+## How To Use This File
 
+- Each `Hxx` item is intentionally high-level and should be investigated through subtasks in planning mode.
+- Create subtasks only when starting work on one `Hxx`; keep this file stable as the top-level map.
+- Move completed `Hxx` entries and their subtasks to `TASKS-done.md`.
 Done history moved to `TASKS-done.md`.
 
 ## Backlog
@@ -22,8 +25,4 @@ Done history moved to `TASKS-done.md`.
     Exit criteria: failure mode is reproducible and blocks regressions.
 
 
-## How To Use This File
 
-- Each `Hxx` item is intentionally high-level and should be investigated through subtasks in planning mode.
-- Create subtasks only when starting work on one `Hxx`; keep this file stable as the top-level map.
-- Move completed `Hxx` entries and their subtasks to `TASKS-done.md`.
