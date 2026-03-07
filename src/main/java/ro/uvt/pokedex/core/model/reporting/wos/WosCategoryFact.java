@@ -20,6 +20,7 @@ public class WosCategoryFact {
     private EditionNormalized editionNormalized;
     private MetricType metricType;
     private String quarter;
+    private Integer quartileRank;
     private Integer rank;
     private WosSourceType sourceType;
     private String sourceEventId;

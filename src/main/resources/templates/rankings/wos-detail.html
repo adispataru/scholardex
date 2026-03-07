@@ -9,6 +9,57 @@
         .card-spacing {
             margin-bottom: 20px;
         }
+        .heatmap-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.75rem;
+            color: #5a5c69;
+        }
+        .heatmap-legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .heatmap-legend-swatch {
+            width: 14px;
+            height: 14px;
+            border: 1px solid #d1d3e2;
+            border-radius: 2px;
+        }
+        .wos-heatmap-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 0.75rem;
+        }
+        .wos-heatmap-table th,
+        .wos-heatmap-table td {
+            border: 1px solid #d1d3e2;
+            text-align: center;
+            padding: 0.35rem 0.2rem;
+        }
+        .wos-heatmap-table th {
+            background: #f8f9fc;
+            color: #5a5c69;
+            font-weight: 600;
+        }
+        .wos-heatmap-row-label {
+            background: #f8f9fc;
+            text-align: left;
+            padding-left: 0.5rem;
+            white-space: nowrap;
+            width: 54px;
+        }
+        .wos-heatmap-cell {
+            color: #1f2937;
+            line-height: 1.1;
+            min-height: 30px;
+        }
+        .wos-heatmap-cell-empty {
+            color: #f8f9fc;
+        }
     </style>
 </head>
 <body id="page-top">
@@ -70,7 +121,7 @@
                                     <div class="card-body">
                                         <h6 class="m-0 text-primary" th:text="${e.key}">Category</h6>
                                         <div class="chart-area">
-                                            <canvas th:attr="id='chart-quartile-' + ${#strings.replace(e.key, ' ', '-')}"></canvas>
+                                            <div th:attr="id='chart-quartile-' + ${#strings.replace(e.key, ' ', '-')}"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -120,21 +171,35 @@
     // Get the data from the server-side model
     var categoryData = /*[[${journal.webOfScienceCategoryIndex}]]*/ '{}';
     var score = /*[[${journal.score}]]*/ '{}';
-    //years should span the range of the score.ais map
+    function collectYearKeys(container, yearSet) {
+        if (!container || typeof container !== 'object') {
+            return;
+        }
+        Object.keys(container).forEach(function (key) {
+            if (/^\d{4}$/.test(key)) {
+                yearSet.add(Number(key));
+            }
+        });
+    }
 
-    var years = [];
-    var min = 3000, max = 0;
-    for(var key in score.ais) {
-        if (key < min) {
-            min = key;
-        }
-        if(key > max){
-            max = key;
-        }
-    }
-    for(var i = min; i <= max; i++){
-        years.push(i);
-    }
+    var yearSet = new Set();
+    collectYearKeys(score.ais, yearSet);
+    collectYearKeys(score.ris, yearSet);
+    collectYearKeys(score.if, yearSet);
+
+    Object.keys(categoryData || {}).forEach(function (categoryKey) {
+        var category = categoryData[categoryKey] || {};
+        collectYearKeys(category.qAis, yearSet);
+        collectYearKeys(category.rankAis, yearSet);
+        collectYearKeys(category.qRis, yearSet);
+        collectYearKeys(category.rankRis, yearSet);
+        collectYearKeys(category.qif, yearSet);
+        collectYearKeys(category.qIF, yearSet);
+        collectYearKeys(category.rankIf, yearSet);
+        collectYearKeys(category.rankIF, yearSet);
+    });
+
+    var years = Array.from(yearSet).sort(function (a, b) { return a - b; });
     var scoreChart = document.getElementById('chart-score');
     if(scoreChart != null) {
         var ctx = scoreChart.getContext('2d');
@@ -248,109 +313,128 @@
         });
     }
 
-    // Chart.js configuration
-    Object.keys(categoryData).forEach(function(key) {
-        var quartCtx = document.getElementById('chart-quartile-' + key.replace(/ /g, '-')).getContext('2d');
-        var entry = categoryData[key];
-
-
-        new Chart(quartCtx, {
-            type: 'bar',
-            data: {
-                labels: years,
-                datasets: [
-                        {
-                        label: 'Q AIS',
-                        data: years.map(year => entry.qais[year] != null ? entry.qais[year][1] : 0),
-                            backgroundColor: "#4e73df",
-                            hoverBackgroundColor: "#2e59d9",
-                            borderColor: "#4e73df",
-                    },
-                        {
-                        label: 'Q AIS Position',
-                        data: years.map(year => entry.rankAis[year] != null ? entry.rankAis[year] : 0),
-                        backgroundColor: "rgba(54, 185, 204)",
-                        hoverBackgroundColor: "rgba(24, 125, 165)",
-                        borderColor: "rgba(54, 185, 204, 1)",
-                    },
-                    {
-                        label: 'Q IF',
-                        data: years.map(year => entry.qif[year] != null ? entry.qif[year][1] : 0),
-                        backgroundColor: "#df4e4e",
-                        hoverBackgroundColor: "#d92e2e",
-                        borderColor: "#df4e69",
-                    },
-                    {
-                        label: 'Q IF Position',
-                        data: years.map(year => entry.rankIF[year] != null ? entry.rankIF[year] : 0),
-                        backgroundColor: "rgb(204,54,129)",
-                        hoverBackgroundColor: "rgb(181,49,115)",
-                        borderColor: "rgb(204,54,129)",
-                    }]
-            },
-            options: {
-                maintainAspectRatio: false,
-                layout: {
-                    padding: {
-                        left: 10,
-                        right: 25,
-                        top: 25,
-                        bottom: 0
-                    }
-                },
-                scales: {
-                    xAxes: [{
-                        time: {
-                            unit: 'year'
-                        },
-                        gridLines: {
-                            display: false,
-                            drawBorder: false
-                        },
-                        ticks: {
-                            maxTicksLimit: 8
-                        }
-                    }],
-                    yAxes: [{
-                        ticks: {
-                            maxTicksLimit: 5,
-                            padding: 10
-                        },
-                        gridLines: {
-                            color: "rgb(234, 236, 244)",
-                            zeroLineColor: "rgb(234, 236, 244)",
-                            drawBorder: false,
-                            borderDash: [2],
-                            zeroLineBorderDash: [2]
-                        }
-                    }]
-                },
-                legend: {
-                    display: true
-                },
-                tooltips: {
-                    backgroundColor: "rgb(255,255,255)",
-                    bodyFontColor: "#858796",
-                    titleMarginBottom: 10,
-                    titleFontColor: '#6e707e',
-                    titleFontSize: 14,
-                    borderColor: '#dddfeb',
-                    borderWidth: 1,
-                    xPadding: 15,
-                    yPadding: 15,
-                    displayColors: false,
-                    intersect: false,
-                    mode: 'index',
-                    caretPadding: 10,
-                    callbacks: {
-                        label: function(tooltipItem, chart) {
-                            var datasetLabel = chart.datasets[tooltipItem.datasetIndex].label || '';
-                            return datasetLabel + ': ' + number_format(tooltipItem.yLabel, 2);
-                        }
-                    }
-                }
+    function getField(entry, keys) {
+        for (var i = 0; i < keys.length; i++) {
+            var key = keys[i];
+            if (entry && entry[key] != null) {
+                return entry[key];
             }
-        });
+        }
+        return {};
+    }
+
+    function quarterNumber(rawQuarter) {
+        if (rawQuarter == null) {
+            return null;
+        }
+        if (Array.isArray(rawQuarter) && rawQuarter.length > 0) {
+            rawQuarter = rawQuarter[0];
+        }
+        if (typeof rawQuarter === 'number' && rawQuarter >= 1 && rawQuarter <= 4) {
+            return rawQuarter;
+        }
+        var normalized = String(rawQuarter).trim().toUpperCase();
+        var match = normalized.match(/^Q?([1-4])$/);
+        return match ? Number(match[1]) : null;
+    }
+
+    function cellColor(quarter) {
+        if (quarter === 1) return '#d9534f';
+        if (quarter === 2) return '#f6c23e';
+        if (quarter === 3) return '#ffffff';
+        if (quarter === 4) return '#b8bcc2';
+        return '#6c757d';
+    }
+
+    function cellTextColor(quarter) {
+        if (quarter == null || quarter === 4) {
+            return '#ffffff';
+        }
+        return '#1f2937';
+    }
+
+    function metricCellLabel(quarter, rank) {
+        if (quarter == null && rank == null) {
+            return '—';
+        }
+        if (quarter != null && rank != null) {
+            return 'Q' + quarter + ' #' + rank;
+        }
+        if (quarter != null) {
+            return 'Q' + quarter;
+        }
+        return '#' + rank;
+    }
+
+    function renderCategoryHeatmap(container, categoryName, entry, years) {
+        if (!container) {
+            return;
+        }
+
+        var metricDefs = [
+            {
+                label: 'AIS',
+                quarterMap: getField(entry, ['qais', 'qAis']),
+                rankMap: getField(entry, ['rankAis', 'rankAIS']),
+                quartileRankMap: getField(entry, ['quartileRankAis', 'quartileRankAIS'])
+            },
+            {
+                label: 'RIS',
+                quarterMap: getField(entry, ['qris', 'qRis']),
+                rankMap: getField(entry, ['rankRis', 'rankRIS']),
+                quartileRankMap: getField(entry, ['quartileRankRis', 'quartileRankRIS'])
+            },
+            {
+                label: 'IF',
+                quarterMap: getField(entry, ['qif', 'qIF']),
+                rankMap: getField(entry, ['rankIf', 'rankIF']),
+                quartileRankMap: getField(entry, ['quartileRankIf', 'quartileRankIF'])
+            }
+        ];
+
+        var legendHtml = ''
+            + '<div class="heatmap-legend">'
+            + '<span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#d9534f"></span>Q1</span>'
+            + '<span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#f6c23e"></span>Q2</span>'
+            + '<span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#ffffff"></span>Q3</span>'
+            + '<span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#b8bcc2"></span>Q4</span>'
+            + '<span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#6c757d"></span>No data</span>'
+            + '</div>';
+
+        var headerHtml = years.map(function (year) {
+            return '<th>' + year + '</th>';
+        }).join('');
+
+        var bodyHtml = metricDefs.map(function (metric) {
+            var cells = years.map(function (year) {
+                var quarter = quarterNumber(metric.quarterMap[year]);
+                var rank = metric.rankMap[year] != null ? metric.rankMap[year] : null;
+                var quartileRank = metric.quartileRankMap[year] != null ? metric.quartileRankMap[year] : null;
+                var label = metricCellLabel(quarter, rank);
+                var background = cellColor(quarter);
+                var color = cellTextColor(quarter);
+                var cls = quarter == null && rank == null ? 'wos-heatmap-cell wos-heatmap-cell-empty' : 'wos-heatmap-cell';
+                var title = categoryName + ' | ' + metric.label + ' | ' + year + ': ' + label;
+                if (quartileRank != null) {
+                    title += ' (quartile rank #' + quartileRank + ')';
+                }
+                return '<td class="' + cls + '" style="background:' + background + ';color:' + color + '" title="' + title + '">' + label + '</td>';
+            }).join('');
+            return '<tr><th class="wos-heatmap-row-label">' + metric.label + '</th>' + cells + '</tr>';
+        }).join('');
+
+        container.innerHTML = legendHtml
+            + '<div class="table-responsive">'
+            + '<table class="wos-heatmap-table">'
+            + '<thead><tr><th class="wos-heatmap-row-label">Metric</th>' + headerHtml + '</tr></thead>'
+            + '<tbody>' + bodyHtml + '</tbody>'
+            + '</table>'
+            + '</div>';
+    }
+
+    Object.keys(categoryData).forEach(function (key) {
+        var container = document.getElementById('chart-quartile-' + key.replace(/ /g, '-'));
+        renderCategoryHeatmap(container, key, categoryData[key] || {}, years);
     });
 </script>
 

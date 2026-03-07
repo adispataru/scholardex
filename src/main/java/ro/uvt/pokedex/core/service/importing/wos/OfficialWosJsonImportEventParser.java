@@ -97,6 +97,7 @@ public class OfficialWosJsonImportEventParser implements WosImportEventParser {
                     editionRaw,
                     edition,
                     null,
+                    null,
                     rank,
                     event.getId(),
                     event.getSourceType(),

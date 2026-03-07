@@ -18,6 +18,7 @@ public class WosScoringView {
     private MetricType metricType;
     private Double value;
     private String quarter;
+    private Integer quartileRank;
     private Integer rank;
     private String buildVersion;
     private Instant buildAt;

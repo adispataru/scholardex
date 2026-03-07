@@ -10,6 +10,7 @@ Operational policy lock:
 - `scholardex.publication_view` merges source-specific enrichments from Scopus, WoS, and Google Scholar under explicit field ownership boundaries.
 - H17 assumption lock (2026-03-06): big-bang cutover in clean state, without historical backfill.
 - Amendment lock (2026-03-06): H17.1 remains complete and now includes cross-source ownership and merged publication projection constraints.
+- Amendment lock (2026-03-07): WoS category ranking semantics are explicit: `rank` is category+edition rank, `quartileRank` is rank within quartile.
 
 ## Scope
 This contract covers Scopus entities used by active runtime paths:
@@ -310,7 +311,10 @@ Ownership rules:
 ## WoS Canonical Interop Amendment (2026-03-07)
 - WoS canonical facts are split by responsibility:
   - score fact key: `journalId + year + metricType` (`WosMetricFact.value` + lineage).
-  - category ranking fact key: `journalId + year + metricType + categoryNameCanonical + editionNormalized` (`wos.category_facts.quarter/rank` + lineage).
+  - category ranking fact key: `journalId + year + metricType + categoryNameCanonical + editionNormalized` (`wos.category_facts.quarter/quartileRank/rank` + lineage).
+  - source availability:
+    - official WoS JSON provides `rank` (category+edition rank),
+    - government AIS/RIS files provide `quarter` (quartile rank is usually unavailable and remains null).
 - WoS scoring/ranking projections are built by joining score facts with category ranking facts.
 - `wos.category_facts` is canonical runtime storage for category ranking facts.
 

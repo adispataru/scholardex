@@ -67,6 +67,7 @@ class WosRankingDetailsReadServiceTest {
         WosMetricFact ifMetric = metricFact(2021, MetricType.IF, 2.10);
 
         WosCategoryFact aisCategory = categoryFact("COMPUTER SCIENCE", 2021, MetricType.AIS, "Q2", 10, EditionNormalized.SCIE);
+        aisCategory.setQuartileRank(3);
         WosCategoryFact ifCategory = categoryFact("COMPUTER SCIENCE", 2021, MetricType.IF, "Q3", 15, EditionNormalized.SCIE);
 
         when(rankingViewRepository.findById("j1")).thenReturn(Optional.of(view));
@@ -83,6 +84,7 @@ class WosRankingDetailsReadServiceTest {
 
         String categoryKey = "COMPUTER SCIENCE - SCIE";
         assertEquals(WoSRanking.Quarter.Q2, ranking.getWebOfScienceCategoryIndex().get(categoryKey).getQAis().get(2021));
+        assertEquals(3, ranking.getWebOfScienceCategoryIndex().get(categoryKey).getQuartileRankAis().get(2021));
         assertEquals(10, ranking.getWebOfScienceCategoryIndex().get(categoryKey).getRankAis().get(2021));
         assertEquals(WoSRanking.Quarter.Q3, ranking.getWebOfScienceCategoryIndex().get(categoryKey).getQIF().get(2021));
         assertEquals(15, ranking.getWebOfScienceCategoryIndex().get(categoryKey).getRankIF().get(2021));

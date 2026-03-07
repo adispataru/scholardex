@@ -80,6 +80,7 @@ public class GovAisRisImportEventParser implements WosImportEventParser {
                     editionRaw,
                     edition,
                     row.quarter,
+                    null,
                     row.rank,
                     event.getId(),
                     event.getSourceType(),

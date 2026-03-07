@@ -39,6 +39,7 @@ class OfficialWosJsonImportEventParserTest {
         assertTrue(result.records().stream().anyMatch(r -> r.metricType() == MetricType.AIS));
         assertTrue(result.records().stream().anyMatch(r -> r.metricType() == MetricType.IF));
         assertTrue(result.records().stream().allMatch(r -> r.editionNormalized() == EditionNormalized.ESCI));
+        assertTrue(result.records().stream().allMatch(r -> r.quartileRank() == null));
     }
 
     @Test

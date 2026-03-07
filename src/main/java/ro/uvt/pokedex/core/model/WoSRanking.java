@@ -53,6 +53,9 @@ public class WoSRanking {
         private Map<Integer, Integer> rankAis = new HashMap<>();
         private Map<Integer, Integer> rankIF = new HashMap<>();
         private Map<Integer, Integer> rankRis = new HashMap<>();
+        private Map<Integer, Integer> quartileRankAis = new HashMap<>();
+        private Map<Integer, Integer> quartileRankIF = new HashMap<>();
+        private Map<Integer, Integer> quartileRankRis = new HashMap<>();
     }
 
     @Data
@@ -124,6 +127,15 @@ public class WoSRanking {
                 }
                 for(Map.Entry<Integer, Integer> rankRisEntry : toMergeRank.getRankRis().entrySet()) {
                     rank.getRankRis().put(rankRisEntry.getKey(), rankRisEntry.getValue());
+                }
+                for (Map.Entry<Integer, Integer> quartileRankAisEntry : toMergeRank.getQuartileRankAis().entrySet()) {
+                    rank.getQuartileRankAis().put(quartileRankAisEntry.getKey(), quartileRankAisEntry.getValue());
+                }
+                for (Map.Entry<Integer, Integer> quartileRankIFEntry : toMergeRank.getQuartileRankIF().entrySet()) {
+                    rank.getQuartileRankIF().put(quartileRankIFEntry.getKey(), quartileRankIFEntry.getValue());
+                }
+                for (Map.Entry<Integer, Integer> quartileRankRisEntry : toMergeRank.getQuartileRankRis().entrySet()) {
+                    rank.getQuartileRankRis().put(quartileRankRisEntry.getKey(), quartileRankRisEntry.getValue());
                 }
             } else {
                 webOfScienceCategoryIndex.put(entry.getKey(), entry.getValue());

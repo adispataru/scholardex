@@ -47,7 +47,7 @@ class WosProjectionBuilderServiceTest {
                 metric("jid-1", 2023, MetricType.RIS, 0.8)
         ));
         when(categoryFactRepository.findAll()).thenReturn(List.of(
-                category("jid-1", 2022, MetricType.AIS, EditionNormalized.SCIE, "ACOUSTICS", "Q1", 1),
+                category("jid-1", 2022, MetricType.AIS, EditionNormalized.SCIE, "ACOUSTICS", "Q1", 7, 1),
                 category("jid-1", 2023, MetricType.RIS, EditionNormalized.SSCI, "ACOUSTICS", "Q2", 3)
         ));
 
@@ -68,6 +68,7 @@ class WosProjectionBuilderServiceTest {
         assertEquals(rankingView.getBuildVersion(), scoringView.getBuildVersion());
         assertEquals("ACOUSTICS", scoringView.getCategoryNameCanonical());
         assertEquals("Q1", scoringView.getQuarter());
+        assertEquals(7, scoringView.getQuartileRank());
         assertEquals(1, scoringView.getRank());
         assertEquals(1.2, scoringView.getValue());
         assertEquals(3, result.getImportedCount());
@@ -169,6 +170,19 @@ class WosProjectionBuilderServiceTest {
             String quarter,
             Integer rank
     ) {
+        return category(journalId, year, metricType, edition, categoryName, quarter, null, rank);
+    }
+
+    private WosCategoryFact category(
+            String journalId,
+            int year,
+            MetricType metricType,
+            EditionNormalized edition,
+            String categoryName,
+            String quarter,
+            Integer quartileRank,
+            Integer rank
+    ) {
         WosCategoryFact fact = new WosCategoryFact();
         fact.setJournalId(journalId);
         fact.setYear(year);
@@ -176,6 +190,7 @@ class WosProjectionBuilderServiceTest {
         fact.setEditionNormalized(edition);
         fact.setCategoryNameCanonical(categoryName);
         fact.setQuarter(quarter);
+        fact.setQuartileRank(quartileRank);
         fact.setRank(rank);
         return fact;
     }

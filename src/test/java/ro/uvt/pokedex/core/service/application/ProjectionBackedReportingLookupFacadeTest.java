@@ -77,6 +77,7 @@ class ProjectionBackedReportingLookupFacadeTest {
         WosMetricFact ifFact = metricFact("j1", 2023, MetricType.IF, 2.2);
 
         WosCategoryFact catAis = categoryFact("j1", "ECONOMICS", 2023, MetricType.AIS, "Q1", 2, EditionNormalized.SCIE);
+        catAis.setQuartileRank(1);
         WosCategoryFact catIf = categoryFact("j1", "ECONOMICS", 2023, MetricType.IF, "Q2", 4, EditionNormalized.SSCI);
 
         when(mongoTemplate.find(any(Query.class), eq(WosRankingView.class))).thenReturn(List.of(view));
@@ -94,6 +95,7 @@ class ProjectionBackedReportingLookupFacadeTest {
         assertEquals(2.2, ranking.getScore().getIF().get(2023));
         assertTrue(ranking.getWebOfScienceCategoryIndex().containsKey("ECONOMICS - SCIE"));
         assertTrue(ranking.getWebOfScienceCategoryIndex().containsKey("ECONOMICS - SSCI"));
+        assertEquals(1, ranking.getWebOfScienceCategoryIndex().get("ECONOMICS - SCIE").getQuartileRankAis().get(2023));
     }
 
     @Test

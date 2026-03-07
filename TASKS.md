@@ -28,6 +28,7 @@ Done history moved to `TASKS-done.md`.
   Assumption lock (2026-03-06): big-bang cutover for all Scopus entities; no historical data migration/backfill is required (clean-state bootstrap only).
   Amendment note (2026-03-06): H17.1 contract is extended to include cross-source ownership boundaries and derived merged-publication projection constraints (`scholardex.publication*`) without reopening H17.1 status.
   Amendment note (2026-03-07): WoS canonical fact semantics are split: journal score facts in `WosMetricFact` (`journalId + year + metricType`) and category ranking facts in `wos.category_facts` (`journalId + year + metricType + categoryNameCanonical + editionNormalized`); projections/read paths join score + ranking facts.
+  Amendment note (2026-03-07): WoS category ranking facts now carry both `quarter + quartileRank` and `rank` where `rank` is category+edition rank (official JSON), while government data may provide only quarter.
   Subtasks:
   - [x] `H17.1` Canonical Scopus contract lock.
     Deliverable: `docs/h17-scopus-canonical-contract.md` with canonical collections, required fields, identity keys, lineage fields, and source-policy rules for publications, citations, forums, authors, affiliations, and funding.

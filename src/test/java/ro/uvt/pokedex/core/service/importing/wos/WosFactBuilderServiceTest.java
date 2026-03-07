@@ -222,6 +222,7 @@ class WosFactBuilderServiceTest {
                 "SSCI",
                 EditionNormalized.SSCI,
                 "Q1",
+                null,
                 2,
                 "ev-1",
                 WosSourceType.GOV_AIS_RIS,
@@ -287,6 +288,84 @@ class WosFactBuilderServiceTest {
     }
 
     @Test
+    void categoryMissingRankingIsEnrichedFromOfficialWithoutConflict() {
+        WosCategoryFact existing = new WosCategoryFact();
+        existing.setId("c-existing");
+        existing.setJournalId("jid-1");
+        existing.setYear(2023);
+        existing.setMetricType(MetricType.AIS);
+        existing.setCategoryNameCanonical("ACOUSTICS");
+        existing.setEditionNormalized(EditionNormalized.SCIE);
+        existing.setQuarter(null);
+        existing.setRank(null);
+        existing.setSourceType(WosSourceType.GOV_AIS_RIS);
+        existing.setSourceFile("AIS_2023.xlsx");
+        existing.setSourceVersion("v2023");
+        existing.setSourceRowItem("1");
+        categoryStore.add(existing);
+
+        WosParsedRecord incoming = record(
+                MetricType.AIS,
+                WosSourceType.OFFICIAL_WOS_EXTRACT,
+                1.2,
+                "v2023",
+                "77",
+                "ACOUSTICS",
+                EditionNormalized.SCIE,
+                "Q2",
+                13
+        );
+        when(parserOrchestrator.parseAllEvents()).thenReturn(runOf(List.of(incoming)));
+
+        ImportProcessingResult result = service.buildFactsFromImportEvents();
+
+        assertEquals(1, result.getUpdatedCount());
+        assertEquals("Q2", existing.getQuarter());
+        assertEquals(13, existing.getRank());
+        assertTrue(conflictStore.stream().noneMatch(c -> "CATEGORY_RANKING".equals(c.getFactType())));
+    }
+
+    @Test
+    void categoryRankingTupleIncludesQuartileRank() {
+        WosCategoryFact existing = new WosCategoryFact();
+        existing.setId("c-existing");
+        existing.setJournalId("jid-1");
+        existing.setYear(2023);
+        existing.setMetricType(MetricType.AIS);
+        existing.setCategoryNameCanonical("ACOUSTICS");
+        existing.setEditionNormalized(EditionNormalized.SCIE);
+        existing.setQuarter("Q1");
+        existing.setQuartileRank(4);
+        existing.setRank(20);
+        existing.setSourceType(WosSourceType.OFFICIAL_WOS_EXTRACT);
+        existing.setSourceFile("wos.json");
+        existing.setSourceVersion("v2023");
+        existing.setSourceRowItem("1");
+        categoryStore.add(existing);
+
+        WosParsedRecord incoming = record(
+                MetricType.AIS,
+                WosSourceType.OFFICIAL_WOS_EXTRACT,
+                1.1,
+                "v2023",
+                "2",
+                "ACOUSTICS",
+                EditionNormalized.SCIE,
+                "Q1",
+                5,
+                20
+        );
+        when(parserOrchestrator.parseAllEvents()).thenReturn(runOf(List.of(incoming)));
+
+        ImportProcessingResult result = service.buildFactsFromImportEvents();
+
+        assertEquals(1, result.getUpdatedCount());
+        assertEquals(5, existing.getQuartileRank());
+        assertEquals(20, existing.getRank());
+        assertTrue(conflictStore.stream().anyMatch(c -> "CATEGORY_RANKING".equals(c.getFactType())));
+    }
+
+    @Test
     void ifFromGovSourceIsSkippedBySourcePolicy() {
         WosParsedRecord incoming = record(MetricType.IF, WosSourceType.GOV_AIS_RIS, 2.4, "v2023", "7", "ACOUSTICS", EditionNormalized.SCIE, "Q2", 10);
         when(parserOrchestrator.parseAllEvents()).thenReturn(runOf(List.of(incoming)));
@@ -330,6 +409,21 @@ class WosFactBuilderServiceTest {
             String quarter,
             Integer rank
     ) {
+        return record(metricType, sourceType, value, sourceVersion, sourceRowItem, category, edition, quarter, null, rank);
+    }
+
+    private WosParsedRecord record(
+            MetricType metricType,
+            WosSourceType sourceType,
+            Double value,
+            String sourceVersion,
+            String sourceRowItem,
+            String category,
+            EditionNormalized edition,
+            String quarter,
+            Integer quartileRank,
+            Integer rank
+    ) {
         return new WosParsedRecord(
                 "Journal",
                 "12345678",
@@ -341,6 +435,7 @@ class WosFactBuilderServiceTest {
                 edition == null ? null : edition.name(),
                 edition,
                 quarter,
+                quartileRank,
                 rank,
                 "ev-1",
                 sourceType,

@@ -168,6 +168,9 @@ public class ProjectionBackedReportingLookupFacade implements ReportingLookupPor
                     if (quarter != null) {
                         rank.getQAis().put(categoryFact.getYear(), quarter);
                     }
+                    if (categoryFact.getQuartileRank() != null) {
+                        rank.getQuartileRankAis().put(categoryFact.getYear(), categoryFact.getQuartileRank());
+                    }
                     if (categoryFact.getRank() != null) {
                         rank.getRankAis().put(categoryFact.getYear(), categoryFact.getRank());
                     }
@@ -176,6 +179,9 @@ public class ProjectionBackedReportingLookupFacade implements ReportingLookupPor
                     if (quarter != null) {
                         rank.getQRis().put(categoryFact.getYear(), quarter);
                     }
+                    if (categoryFact.getQuartileRank() != null) {
+                        rank.getQuartileRankRis().put(categoryFact.getYear(), categoryFact.getQuartileRank());
+                    }
                     if (categoryFact.getRank() != null) {
                         rank.getRankRis().put(categoryFact.getYear(), categoryFact.getRank());
                     }
@@ -183,6 +189,9 @@ public class ProjectionBackedReportingLookupFacade implements ReportingLookupPor
                 case IF -> {
                     if (quarter != null) {
                         rank.getQIF().put(categoryFact.getYear(), quarter);
+                    }
+                    if (categoryFact.getQuartileRank() != null) {
+                        rank.getQuartileRankIF().put(categoryFact.getYear(), categoryFact.getQuartileRank());
                     }
                     if (categoryFact.getRank() != null) {
                         rank.getRankIF().put(categoryFact.getYear(), categoryFact.getRank());

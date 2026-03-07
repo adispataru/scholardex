@@ -15,6 +15,7 @@ public record WosParsedRecord(
         String editionRaw,
         EditionNormalized editionNormalized,
         String quarter,
+        Integer quartileRank,
         Integer rank,
         String sourceEventId,
         WosSourceType sourceType,

@@ -476,6 +476,13 @@ public class WosFactBuilderService {
             return;
         }
 
+        if (shouldEnrichMissingCategoryRanking(existing, record)) {
+            WosCategoryFact updated = applyCategoryRecord(existing, record);
+            pendingCategorySaves.put(key, updated);
+            result.markUpdated();
+            return;
+        }
+
         if (isSameCategoryRanking(existing, record)) {
             result.markSkipped("category-ranking-duplicate key=" + categoryRankingKeyString(resolved.journalId(), record));
             return;
@@ -629,7 +636,22 @@ public class WosFactBuilderService {
 
     private boolean isSameCategoryRanking(WosCategoryFact fact, WosParsedRecord record) {
         return safeEq(fact.getQuarter(), record.quarter())
+                && safeEq(fact.getQuartileRank(), record.quartileRank())
                 && safeEq(fact.getRank(), record.rank());
+    }
+
+    private boolean shouldEnrichMissingCategoryRanking(WosCategoryFact existing, WosParsedRecord incoming) {
+        boolean existingMissingRanking = isBlank(existing.getQuarter())
+                && existing.getQuartileRank() == null
+                && existing.getRank() == null;
+        boolean incomingHasRanking = !isBlank(incoming.quarter())
+                || incoming.quartileRank() != null
+                || incoming.rank() != null;
+        return existingMissingRanking && incomingHasRanking;
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     private WosMetricFact toMetricFact(String journalId, WosParsedRecord record) {
@@ -667,6 +689,7 @@ public class WosFactBuilderService {
         fact.setEditionRaw(record.editionRaw());
         fact.setEditionNormalized(record.editionNormalized());
         fact.setQuarter(record.quarter());
+        fact.setQuartileRank(record.quartileRank());
         fact.setRank(record.rank());
         fact.setSourceType(record.sourceType());
         fact.setSourceEventId(record.sourceEventId());
@@ -680,6 +703,7 @@ public class WosFactBuilderService {
     private WosCategoryFact applyCategoryRecord(WosCategoryFact fact, WosParsedRecord record) {
         fact.setEditionRaw(record.editionRaw());
         fact.setQuarter(record.quarter());
+        fact.setQuartileRank(record.quartileRank());
         fact.setRank(record.rank());
         fact.setSourceType(record.sourceType());
         fact.setSourceEventId(record.sourceEventId());
@@ -778,6 +802,7 @@ public class WosFactBuilderService {
         return (fact.getCategoryNameCanonical() == null ? "" : fact.getCategoryNameCanonical())
                 + "|" + (fact.getEditionNormalized() == null ? "" : fact.getEditionNormalized())
                 + "|" + (fact.getQuarter() == null ? "" : fact.getQuarter())
+                + "|" + fact.getQuartileRank()
                 + "|" + fact.getRank();
     }
 
@@ -785,6 +810,7 @@ public class WosFactBuilderService {
         return (record.categoryNameCanonical() == null ? "" : record.categoryNameCanonical())
                 + "|" + (record.editionNormalized() == null ? "" : record.editionNormalized())
                 + "|" + (record.quarter() == null ? "" : record.quarter())
+                + "|" + record.quartileRank()
                 + "|" + record.rank();
     }
 
@@ -822,6 +848,7 @@ public class WosFactBuilderService {
         copy.setCategoryNameCanonical(source.getCategoryNameCanonical());
         copy.setEditionNormalized(source.getEditionNormalized());
         copy.setQuarter(source.getQuarter());
+        copy.setQuartileRank(source.getQuartileRank());
         copy.setRank(source.getRank());
         return copy;
     }

@@ -71,6 +71,8 @@ class GovAisRisImportEventParserTest {
 
         assertEquals(WosParsedEventStatus.PARSED, result.status());
         assertEquals("Q1", result.records().get(0).quarter());
+        assertNull(result.records().get(0).rank());
+        assertNull(result.records().get(0).quartileRank());
         assertEquals("14690705", result.records().get(0).eIssn());
     }
 

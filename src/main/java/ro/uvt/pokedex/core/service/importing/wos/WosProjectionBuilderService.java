@@ -161,6 +161,7 @@ public class WosProjectionBuilderService {
         view.setEditionNormalized(categoryFact.getEditionNormalized());
         view.setMetricType(categoryFact.getMetricType());
         view.setQuarter(categoryFact.getQuarter());
+        view.setQuartileRank(categoryFact.getQuartileRank());
         view.setRank(categoryFact.getRank());
         view.setValue(scoreFact == null ? null : scoreFact.getValue());
         view.setBuildVersion(buildVersion);
