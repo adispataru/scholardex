@@ -156,7 +156,7 @@ public class GovAisRisImportEventParser implements WosImportEventParser {
                 row.quarter = normalizeQuarter(text(cells, "c5"));
                 return row;
             }
-            if (year == 2023) {
+            if (year >= 2023) {
                 row.title = normalizeText(text(cells, "c0"));
                 row.issn = normalizeIssn(text(cells, "c1"));
                 row.eIssn = normalizeIssn(text(cells, "c2"));
@@ -171,8 +171,23 @@ public class GovAisRisImportEventParser implements WosImportEventParser {
             row.title = normalizeText(text(cells, "c0"));
             row.issn = normalizeIssn(text(cells, "c1"));
             if (year >= 2020) {
-                row.eIssn = normalizeIssn(text(cells, "c2"));
-                row.metricValue = parseMetricValue(text(cells, "c3"));
+                String c2 = text(cells, "c2");
+                String c3 = text(cells, "c3");
+                String c4 = text(cells, "c4");
+                row.eIssn = normalizeIssn(c2);
+                if (year >= 2024) {
+                    row.editionRaw = normalizeText(c3);
+                    row.metricValue = parseMetricValue(c4);
+                    if (row.metricValue == null) {
+                        // Fallback for files that still use the previous RIS layout.
+                        row.metricValue = parseMetricValue(row.eIssn == null ? c2 : c3);
+                    }
+                } else {
+                    row.metricValue = parseMetricValue(c3);
+                    if (row.metricValue == null && row.eIssn == null) {
+                        row.metricValue = parseMetricValue(c2);
+                    }
+                }
             } else {
                 row.metricValue = parseMetricValue(text(cells, "c2"));
             }

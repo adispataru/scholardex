@@ -96,6 +96,27 @@ class GovAisRisImportEventParserTest {
     }
 
     @Test
+    void parsesAis2024UsingCurrentLayout() throws Exception {
+        WosImportEvent event = event("AIS", "2024", Map.of(
+                "c0", "Acoustics 2024",
+                "c1", "1234-5678",
+                "c2", "2624-599X",
+                "c3", "ACOUSTICS",
+                "c4", "SCIE",
+                "c5", "0.512"
+        ));
+
+        WosParsedEventResult result = parser.parse(event);
+
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        assertEquals(1, result.records().size());
+        assertEquals(EditionNormalized.SCIE, result.records().get(0).editionNormalized());
+        assertEquals("12345678", result.records().get(0).issn());
+        assertEquals("2624599X", result.records().get(0).eIssn());
+        assertEquals(0.512, result.records().get(0).value());
+    }
+
+    @Test
     void parsesRis2019AndRis2020Variants() throws Exception {
         WosParsedEventResult ris2019 = parser.parse(event("RIS", "2019", Map.of(
                 "c0", "Journal A",
@@ -114,6 +135,22 @@ class GovAisRisImportEventParserTest {
         assertNull(ris2019.records().get(0).eIssn());
         assertEquals("21905738", ris2020.records().get(0).eIssn());
         assertEquals(MetricType.RIS, ris2020.records().get(0).metricType());
+    }
+
+    @Test
+    void parsesRis2024WithEditionInC3AndValueInC4() throws Exception {
+        WosParsedEventResult ris2024 = parser.parse(event("RIS", "2024", Map.of(
+                "c0", "Journal C",
+                "c1", "2190-572X",
+                "c2", "2190-5738",
+                "c3", "SCIE",
+                "c4", 0.9331
+        )));
+
+        assertEquals(WosParsedEventStatus.PARSED, ris2024.status());
+        assertEquals("21905738", ris2024.records().get(0).eIssn());
+        assertEquals(EditionNormalized.SCIE, ris2024.records().get(0).editionNormalized());
+        assertEquals(0.9331, ris2024.records().get(0).value());
     }
 
     @Test
