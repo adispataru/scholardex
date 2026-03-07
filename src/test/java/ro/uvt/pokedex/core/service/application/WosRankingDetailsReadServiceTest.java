@@ -61,6 +61,7 @@ class WosRankingDetailsReadServiceTest {
         view.setIssn("1234-5678");
         view.setEIssn("8765-4321");
         view.setAlternativeIssns(List.of("1111-2222"));
+        view.setAlternativeNames(List.of("Journal One Legacy"));
 
         WosMetricFact aisMetric = metricFact(2021, MetricType.AIS, 1.25);
         WosMetricFact risMetric = metricFact(2021, MetricType.RIS, 0.75);
@@ -78,6 +79,8 @@ class WosRankingDetailsReadServiceTest {
 
         assertTrue(result.isPresent());
         WoSRanking ranking = result.get();
+        assertEquals(List.of("Journal One Legacy"), ranking.getAlternativeNames());
+        assertEquals(List.of("1111-2222"), ranking.getAlternativeIssns());
         assertEquals(1.25, ranking.getScore().getAis().get(2021));
         assertEquals(0.75, ranking.getScore().getRis().get(2021));
         assertEquals(2.10, ranking.getScore().getIF().get(2021));

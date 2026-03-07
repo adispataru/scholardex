@@ -18,6 +18,10 @@ const allowlistedExternalAssetReferences = new Map([
   [
     'src/main/resources/templates/admin/rankings-urap-details.html',
     new Set(['https://cdn.jsdelivr.net/npm/chart.js'])
+  ],
+  [
+    'src/main/resources/templates/admin/rankings-view.html',
+    new Set(['https://unpkg.com/frappe-charts@1.6.2/dist/frappe-charts.min.umd.js'])
   ]
 ]);
 

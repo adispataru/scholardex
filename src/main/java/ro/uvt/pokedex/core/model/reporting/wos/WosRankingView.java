@@ -22,6 +22,7 @@ public class WosRankingView {
     private String eIssn;
     @Indexed
     private List<String> alternativeIssns = new ArrayList<>();
+    private List<String> alternativeNames = new ArrayList<>();
     private String nameNorm;
     private String issnNorm;
     private String eIssnNorm;

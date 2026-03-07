@@ -20,6 +20,7 @@ public class WoSRanking {
     private String eIssn;
     @Indexed
     private List<String> alternativeIssns = new ArrayList<>();
+    private List<String> alternativeNames = new ArrayList<>();
     private Score score;
     private Map<String, Rank> webOfScienceCategoryIndex = new HashMap<>();
 

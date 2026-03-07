@@ -11,6 +11,7 @@ Operational policy lock:
 - H17 assumption lock (2026-03-06): big-bang cutover in clean state, without historical backfill.
 - Amendment lock (2026-03-06): H17.1 remains complete and now includes cross-source ownership and merged publication projection constraints.
 - Amendment lock (2026-03-07): WoS category ranking semantics are explicit: `rank` is category+edition rank, `quartileRank` is rank within quartile.
+- Amendment lock (2026-03-07): WoS detail projections expose `alternativeNames` and `alternativeIssns` for ranking detail UX.
 
 ## Scope
 This contract covers Scopus entities used by active runtime paths:

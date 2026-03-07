@@ -128,6 +128,7 @@ public class WosProjectionBuilderService {
         view.setIssn(identity.getPrimaryIssn());
         view.setEIssn(identity.getEIssn());
         view.setAlternativeIssns(identity.getAliasIssns() == null ? List.of() : new ArrayList<>(identity.getAliasIssns()));
+        view.setAlternativeNames(identity.getAlternativeNames() == null ? List.of() : new ArrayList<>(identity.getAlternativeNames()));
         view.setNameNorm(normalizeText(identity.getTitle()));
         view.setIssnNorm(normalizeIssn(identity.getPrimaryIssn()));
         view.setEIssnNorm(normalizeIssn(identity.getEIssn()));

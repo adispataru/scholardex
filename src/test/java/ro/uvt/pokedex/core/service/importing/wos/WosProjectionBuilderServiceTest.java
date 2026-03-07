@@ -64,6 +64,7 @@ class WosProjectionBuilderServiceTest {
         assertEquals(2022, rankingView.getLatestAisYear());
         assertEquals(2023, rankingView.getLatestRisYear());
         assertEquals(EditionNormalized.SCIE, rankingView.getLatestEditionNormalized());
+        assertEquals(List.of("Alt Journal jid-1"), rankingView.getAlternativeNames());
         assertNotNull(rankingView.getBuildVersion());
         assertEquals(rankingView.getBuildVersion(), scoringView.getBuildVersion());
         assertEquals("ACOUSTICS", scoringView.getCategoryNameCanonical());
@@ -147,6 +148,7 @@ class WosProjectionBuilderServiceTest {
         identity.setPrimaryIssn("12345678");
         identity.setEIssn("87654321");
         identity.setAliasIssns(List.of("11112222"));
+        identity.setAlternativeNames(List.of("Alt Journal " + id));
         return identity;
     }
 

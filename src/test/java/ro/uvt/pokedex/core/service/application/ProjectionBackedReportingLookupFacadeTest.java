@@ -71,6 +71,7 @@ class ProjectionBackedReportingLookupFacadeTest {
         view.setIssn("1234-5678");
         view.setEIssn("8765-4321");
         view.setAlternativeIssns(List.of("0000-0000"));
+        view.setAlternativeNames(List.of("Journal One Alt"));
 
         WosMetricFact ais = metricFact("j1", 2023, MetricType.AIS, 1.5);
         WosMetricFact ris = metricFact("j1", 2023, MetricType.RIS, 0.8);
@@ -90,6 +91,8 @@ class ProjectionBackedReportingLookupFacadeTest {
 
         assertEquals(1, rankings.size());
         WoSRanking ranking = rankings.getFirst();
+        assertEquals(List.of("Journal One Alt"), ranking.getAlternativeNames());
+        assertEquals(List.of("0000-0000"), ranking.getAlternativeIssns());
         assertEquals(1.5, ranking.getScore().getAis().get(2023));
         assertEquals(0.8, ranking.getScore().getRis().get(2023));
         assertEquals(2.2, ranking.getScore().getIF().get(2023));

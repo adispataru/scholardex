@@ -48,6 +48,7 @@ public class WosRankingDetailsReadService {
         ranking.setIssn(view.getIssn());
         ranking.setEIssn(view.getEIssn());
         ranking.setAlternativeIssns(view.getAlternativeIssns() == null ? List.of() : view.getAlternativeIssns());
+        ranking.setAlternativeNames(view.getAlternativeNames() == null ? List.of() : view.getAlternativeNames());
 
         WoSRanking.Score score = new WoSRanking.Score();
         for (WosMetricFact metricFact : scoreFacts) {

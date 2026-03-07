@@ -99,6 +99,18 @@
                             <span>eISSN: </span>
                             <span th:text="${journal.eIssn}">eISSN</span>
                         </p>
+                        <p>
+                            <span>Alternative names: </span>
+                            <span th:if="${journal.alternativeNames == null || journal.alternativeNames.isEmpty()}">—</span>
+                            <span th:if="${journal.alternativeNames != null && !journal.alternativeNames.isEmpty()}"
+                                  th:text="${#strings.listJoin(journal.alternativeNames, ', ')}">Alt names</span>
+                        </p>
+                        <p>
+                            <span>Alternative ISSNs: </span>
+                            <span th:if="${journal.alternativeIssns == null || journal.alternativeIssns.isEmpty()}">—</span>
+                            <span th:if="${journal.alternativeIssns != null && !journal.alternativeIssns.isEmpty()}"
+                                  th:text="${#strings.listJoin(journal.alternativeIssns, ', ')}">Alt ISSNs</span>
+                        </p>
                     </div>
                 </div>
 
@@ -141,36 +153,12 @@
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
 
 <script src="/js/demo/datatables-demo.js"></script>
+<script src="https://unpkg.com/frappe-charts@1.6.2/dist/frappe-charts.min.umd.js"></script>
 <script th:inline="javascript">
-    // Function to format numbers
-    function number_format(number, decimals, dec_point, thousands_sep) {
-        number = (number + '').replace(',', '').replace(' ', '');
-        var n = !isFinite(+number) ? 0 : +number,
-            prec = !isFinite(+decimals) ? 0 : Math.abs(decimals),
-            sep = (typeof thousands_sep === 'undefined') ? ',' : thousands_sep,
-            dec = (typeof dec_point === 'undefined') ? '.' : dec_point,
-            s = '',
-            toFixedFix = function(n, prec) {
-                var k = Math.pow(10, prec);
-                return '' + Math.round(n * k) / k;
-            };
-        s = (prec ? toFixedFix(n, prec) : '' + Math.round(n)).split('.');
-        if (s[0].length > 3) {
-            s[0] = s[0].replace(/\B(?=(?:\d{3})+(?!\d))/g, sep);
-        }
-        if ((s[1] || '').length < prec) {
-            s[1] = s[1] || '';
-            s[1] += new Array(prec - s[1].length + 1).join('0');
-        }
-        return s.join(dec);
-    }
-
-    // Define the years to iterate through
-
-
     // Get the data from the server-side model
     var categoryData = /*[[${journal.webOfScienceCategoryIndex}]]*/ '{}';
     var score = /*[[${journal.score}]]*/ '{}';
+
     function collectYearKeys(container, yearSet) {
         if (!container || typeof container !== 'object') {
             return;
@@ -200,115 +188,30 @@
     });
 
     var years = Array.from(yearSet).sort(function (a, b) { return a - b; });
-    var scoreChart = document.getElementById('chart-score');
-    if(scoreChart != null) {
-        var ctx = scoreChart.getContext('2d');
-        new Chart(ctx, {
+    var hasFrappe = window.frappe && window.frappe.Chart;
+
+    if (hasFrappe && years.length > 0) {
+        new frappe.Chart('#chart-score', {
+            title: 'AIS / RIS / IF',
             type: 'line',
+            height: 280,
+            colors: ['#1cc88a', '#f6c23e', '#e74a3b'],
             data: {
                 labels: years,
                 datasets: [{
                     label: 'AIS',
-                    data: years.map(year => score.ais[year] != null ? score.ais[year] : 0),
-                    backgroundColor: "rgba(28, 200, 138, 0.05)",
-                    borderColor: "rgba(28, 200, 138, 1)",
-                    pointRadius: 3,
-                    pointBackgroundColor: "rgba(28, 200, 138, 1)",
-                    pointBorderColor: "rgba(28, 200, 138, 1)",
-                    pointHoverRadius: 3,
-                    pointHoverBackgroundColor: "rgba(28, 200, 138, 1)",
-                    pointHoverBorderColor: "rgba(28, 200, 138, 1)",
-                    pointHitRadius: 10,
-                    pointBorderWidth: 2
+                    values: years.map(function (year) { return score.ais && score.ais[year] != null ? score.ais[year] : null; })
                 }, {
                     label: 'RIS',
-                    data: years.map(year => score.ris[year] != null ? score.ris[year] : 0),
-                    backgroundColor: "rgba(246, 194, 62, 0.05)",
-                    borderColor: "rgba(246, 194, 62, 1)",
-                    pointRadius: 3,
-                    pointBackgroundColor: "rgba(246, 194, 62, 1)",
-                    pointBorderColor: "rgba(246, 194, 62, 1)",
-                    pointHoverRadius: 3,
-                    pointHoverBackgroundColor: "rgba(246, 194, 62, 1)",
-                    pointHoverBorderColor: "rgba(246, 194, 62, 1)",
-                    pointHitRadius: 10,
-                    pointBorderWidth: 2
+                    values: years.map(function (year) { return score.ris && score.ris[year] != null ? score.ris[year] : null; })
                 }, {
                     label: 'IF',
-                    data: years.map(year => score.if[year] != null ? score.if[year] : 0),
-                    backgroundColor: "rgba(231, 74, 59, 0.05)",
-                    borderColor: "rgba(231, 74, 59, 1)",
-                    pointRadius: 3,
-                    pointBackgroundColor: "rgba(231, 74, 59, 1)",
-                    pointBorderColor: "rgba(231, 74, 59, 1)",
-                    pointHoverRadius: 3,
-                    pointHoverBackgroundColor: "rgba(231, 74, 59, 1)",
-                    pointHoverBorderColor: "rgba(231, 74, 59, 1)",
-                    pointHitRadius: 10,
-                    pointBorderWidth: 2
+                    values: years.map(function (year) { return score.if && score.if[year] != null ? score.if[year] : null; })
                 }]
             },
             options: {
-                maintainAspectRatio: false,
-                layout: {
-                    padding: {
-                        left: 10,
-                        right: 25,
-                        top: 25,
-                        bottom: 0
-                    }
-                },
-                scales: {
-                    xAxes: [{
-                        time: {
-                            unit: 'year'
-                        },
-                        gridLines: {
-                            display: false,
-                            drawBorder: false
-                        },
-                        ticks: {
-                            maxTicksLimit: 8
-                        }
-                    }],
-                    yAxes: [{
-                        ticks: {
-                            maxTicksLimit: 5,
-                            padding: 10
-                        },
-                        gridLines: {
-                            color: "rgb(234, 236, 244)",
-                            zeroLineColor: "rgb(234, 236, 244)",
-                            drawBorder: false,
-                            borderDash: [2],
-                            zeroLineBorderDash: [2]
-                        }
-                    }]
-                },
-                legend: {
-                    display: true
-                },
-                tooltips: {
-                    backgroundColor: "rgb(255,255,255)",
-                    bodyFontColor: "#858796",
-                    titleMarginBottom: 10,
-                    titleFontColor: '#6e707e',
-                    titleFontSize: 14,
-                    borderColor: '#dddfeb',
-                    borderWidth: 1,
-                    xPadding: 15,
-                    yPadding: 15,
-                    displayColors: false,
-                    intersect: false,
-                    mode: 'index',
-                    caretPadding: 10,
-                    callbacks: {
-                        label: function (tooltipItem, chart) {
-                            var datasetLabel = chart.datasets[tooltipItem.datasetIndex].label || '';
-                            return datasetLabel + ': ' + number_format(tooltipItem.yLabel, 2);
-                        }
-                    }
-                }
+                lineOptions: { regionFill: 1 },
+                axisOptions: { xAxisMode: 'tick', yAxisMode: 'span', xIsSeries: true }
             }
         });
     }
@@ -338,19 +241,9 @@
         return match ? Number(match[1]) : null;
     }
 
-    function cellColor(quarter) {
-        if (quarter === 1) return '#d9534f';
-        if (quarter === 2) return '#f6c23e';
-        if (quarter === 3) return '#ffffff';
-        if (quarter === 4) return '#b8bcc2';
-        return '#6c757d';
-    }
-
-    function cellTextColor(quarter) {
-        if (quarter == null || quarter === 4) {
-            return '#ffffff';
-        }
-        return '#1f2937';
+    function quarterValue(quarter) {
+        if (quarter == null) return 0;
+        return quarter;
     }
 
     function metricCellLabel(quarter, rank) {
@@ -400,36 +293,35 @@
             + '<span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#b8bcc2"></span>Q4</span>'
             + '<span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#6c757d"></span>No data</span>'
             + '</div>';
-
-        var headerHtml = years.map(function (year) {
-            return '<th>' + year + '</th>';
+        var rowsHtml = metricDefs.map(function (metric, idx) {
+            return '<div class="mb-2"><div class="small font-weight-bold mb-1">'
+                    + metric.label
+                    + '</div><div id="frappe-heatmap-' + categoryName.replace(/[^A-Za-z0-9]/g, '_') + '-' + idx + '"></div></div>';
         }).join('');
 
-        var bodyHtml = metricDefs.map(function (metric) {
-            var cells = years.map(function (year) {
+        container.innerHTML = legendHtml + rowsHtml;
+
+        if (!hasFrappe || years.length === 0) {
+            return;
+        }
+
+        metricDefs.forEach(function (metric, idx) {
+            var datapoints = {};
+            years.forEach(function (year) {
                 var quarter = quarterNumber(metric.quarterMap[year]);
-                var rank = metric.rankMap[year] != null ? metric.rankMap[year] : null;
-                var quartileRank = metric.quartileRankMap[year] != null ? metric.quartileRankMap[year] : null;
-                var label = metricCellLabel(quarter, rank);
-                var background = cellColor(quarter);
-                var color = cellTextColor(quarter);
-                var cls = quarter == null && rank == null ? 'wos-heatmap-cell wos-heatmap-cell-empty' : 'wos-heatmap-cell';
-                var title = categoryName + ' | ' + metric.label + ' | ' + year + ': ' + label;
-                if (quartileRank != null) {
-                    title += ' (quartile rank #' + quartileRank + ')';
-                }
-                return '<td class="' + cls + '" style="background:' + background + ';color:' + color + '" title="' + title + '">' + label + '</td>';
-            }).join('');
-            return '<tr><th class="wos-heatmap-row-label">' + metric.label + '</th>' + cells + '</tr>';
-        }).join('');
+                datapoints[year + '-01-01'] = quarterValue(quarter);
+            });
 
-        container.innerHTML = legendHtml
-            + '<div class="table-responsive">'
-            + '<table class="wos-heatmap-table">'
-            + '<thead><tr><th class="wos-heatmap-row-label">Metric</th>' + headerHtml + '</tr></thead>'
-            + '<tbody>' + bodyHtml + '</tbody>'
-            + '</table>'
-            + '</div>';
+            var id = '#frappe-heatmap-' + categoryName.replace(/[^A-Za-z0-9]/g, '_') + '-' + idx;
+            new frappe.Chart(id, {
+                type: 'heatmap',
+                title: '',
+                data: { dataPoints: datapoints },
+                height: 90,
+                discreteDomains: 1,
+                countLabel: 'Quartile value'
+            });
+        });
     }
 
     Object.keys(categoryData).forEach(function (key) {
