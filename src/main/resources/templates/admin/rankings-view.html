@@ -139,6 +139,13 @@
                         <div class="card shadow py-2 card-spacing">
                             <div class="card-body">
                                 <h6 class="m-0 text-primary mb-3">Category Rankings</h6>
+                                <div class="heatmap-legend">
+                                    <span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#d9534f"></span>Q1</span>
+                                    <span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#f6c23e"></span>Q2</span>
+                                    <span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#ffffff"></span>Q3</span>
+                                    <span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#b8bcc2"></span>Q4</span>
+                                    <span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#6c757d"></span>No data</span>
+                                </div>
                                 <div th:each="e, iterStat : ${journal.webOfScienceCategoryIndex}" class="mb-4">
                                     <h6 class="m-0 text-primary" th:text="${e.key}">Category</h6>
                                     <div class="mt-2">
@@ -298,14 +305,6 @@
             }
         ];
 
-        var legendHtml = ''
-            + '<div class="heatmap-legend">'
-            + '<span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#d9534f"></span>Q1</span>'
-            + '<span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#f6c23e"></span>Q2</span>'
-            + '<span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#ffffff"></span>Q3</span>'
-            + '<span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#b8bcc2"></span>Q4</span>'
-            + '<span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#6c757d"></span>No data</span>'
-            + '</div>';
         var columnTemplate = '80px ' + years.map(function () { return '14px'; }).join(' ');
         var headerRow = '<div class="gh-heatmap-row" style="grid-template-columns:' + columnTemplate + ';">'
                 + '<div class="gh-label"></div>'
@@ -329,8 +328,7 @@
                     + '<div class="gh-label">' + metric.label + '</div>' + rowCells + '</div>';
         }).join('');
 
-        container.innerHTML = legendHtml
-                + '<div class="gh-heatmap-wrap"><div class="gh-heatmap">' + headerRow + rowsHtml + '</div></div>';
+        container.innerHTML = '<div class="gh-heatmap-wrap"><div class="gh-heatmap">' + headerRow + rowsHtml + '</div></div>';
     }
 
     Object.keys(categoryData || {}).forEach(function (key) {
