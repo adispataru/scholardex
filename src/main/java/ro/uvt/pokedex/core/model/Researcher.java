@@ -18,6 +18,7 @@ public class Researcher {
     private String scholarId;
     private List<String> scopusId = new ArrayList<>();
     private List<String> wosId = new ArrayList<>();
+    private String primaryScholardexAuthorId;
     private Position position;
 
     public String getName(){

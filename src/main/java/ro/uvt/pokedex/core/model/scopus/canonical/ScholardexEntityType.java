@@ -5,5 +5,7 @@ public enum ScholardexEntityType {
     FORUM,
     AUTHOR,
     AFFILIATION,
-    CITATION
+    CITATION,
+    AUTHORSHIP,
+    AUTHOR_AFFILIATION
 }

@@ -35,6 +35,7 @@ public class ScholardexPublicationFact {
     private String creator;
     private Integer authorCount;
     private List<String> authorIds = new ArrayList<>();
+    private List<String> pendingAuthorSourceIds = new ArrayList<>();
     private List<String> correspondingAuthors = new ArrayList<>();
     private List<String> affiliationIds = new ArrayList<>();
     private String forumId;

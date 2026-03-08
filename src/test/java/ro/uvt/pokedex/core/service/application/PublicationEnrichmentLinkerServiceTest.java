@@ -14,7 +14,6 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.PublicationLinkConflictRe
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
 
 import java.util.List;
 import java.util.Optional;
@@ -34,8 +33,6 @@ class PublicationEnrichmentLinkerServiceTest {
     @Mock
     private ScholardexPublicationFactRepository publicationFactRepository;
     @Mock
-    private ScholardexPublicationViewRepository publicationViewRepository;
-    @Mock
     private ScholardexSourceLinkRepository sourceLinkRepository;
     @Mock
     private ScholardexIdentityConflictRepository identityConflictRepository;
@@ -48,7 +45,6 @@ class PublicationEnrichmentLinkerServiceTest {
     void setUp() {
         service = new PublicationEnrichmentLinkerService(
                 publicationFactRepository,
-                publicationViewRepository,
                 sourceLinkRepository,
                 identityConflictRepository,
                 conflictRepository

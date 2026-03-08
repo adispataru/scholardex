@@ -7,11 +7,20 @@ import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Citation;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationSearchView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorSearchView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumSearchView;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorAffiliationFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationSearchViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorSearchViewRepository;
@@ -40,9 +49,14 @@ public class ScopusProjectionReadService {
     private final ScopusForumSearchViewRepository forumSearchViewRepository;
     private final ScopusAuthorSearchViewRepository authorSearchViewRepository;
     private final ScopusAffiliationSearchViewRepository affiliationSearchViewRepository;
+    private final ScholardexSourceLinkRepository sourceLinkRepository;
+    private final ScholardexAuthorFactRepository canonicalAuthorFactRepository;
+    private final ScholardexAffiliationFactRepository canonicalAffiliationFactRepository;
+    private final ScholardexAuthorAffiliationFactRepository canonicalAuthorAffiliationFactRepository;
 
     public List<Publication> findAllPublicationsByAuthorsIn(Collection<String> authorIds) {
-        return dedupeAndSortPublications(publicationViewRepository.findAllByAuthorIdsIn(authorIds)
+        List<String> resolvedAuthorIds = resolveCanonicalIds(ScholardexEntityType.AUTHOR, authorIds);
+        return dedupeAndSortPublications(publicationViewRepository.findAllByAuthorIdsIn(resolvedAuthorIds)
                 .stream()
                 .map(this::toPublication)
                 .toList());
@@ -53,10 +67,14 @@ public class ScopusProjectionReadService {
     }
 
     public List<Publication> findAllPublicationsByAffiliationsContaining(String affiliationId) {
-        return dedupeAndSortPublications(publicationViewRepository.findAllByAffiliationIdsContaining(affiliationId)
-                .stream()
-                .map(this::toPublication)
-                .toList());
+        List<String> resolvedAffiliationIds = resolveCanonicalIds(ScholardexEntityType.AFFILIATION, List.of(affiliationId));
+        List<Publication> publications = new ArrayList<>();
+        for (String canonicalAffiliationId : resolvedAffiliationIds) {
+            publicationViewRepository.findAllByAffiliationIdsContaining(canonicalAffiliationId).stream()
+                    .map(this::toPublication)
+                    .forEach(publications::add);
+        }
+        return dedupeAndSortPublications(publications);
     }
 
     public List<Publication> findAllPublicationsByIdIn(Collection<String> ids) {
@@ -134,7 +152,8 @@ public class ScopusProjectionReadService {
     }
 
     public List<Author> findAuthorsByIdIn(Collection<String> authorIds) {
-        return authorSearchViewRepository.findByIdIn(authorIds).stream()
+        List<String> resolvedAuthorIds = resolveCanonicalIds(ScholardexEntityType.AUTHOR, authorIds);
+        return authorSearchViewRepository.findByIdIn(resolvedAuthorIds).stream()
                 .map(this::toAuthor)
                 .toList();
     }
@@ -146,13 +165,20 @@ public class ScopusProjectionReadService {
     }
 
     public List<Author> findAuthorsByAffiliationId(String affiliationId) {
-        return authorSearchViewRepository.findAllByAffiliationIdsContaining(affiliationId).stream()
+        List<String> resolvedAffiliationIds = resolveCanonicalIds(ScholardexEntityType.AFFILIATION, List.of(affiliationId));
+        Set<String> authorIds = new LinkedHashSet<>();
+        for (String canonicalAffiliationId : resolvedAffiliationIds) {
+            canonicalAuthorAffiliationFactRepository.findByAffiliationId(canonicalAffiliationId)
+                    .forEach(edge -> authorIds.add(edge.getAuthorId()));
+        }
+        return authorSearchViewRepository.findByIdIn(authorIds).stream()
                 .map(this::toAuthor)
                 .toList();
     }
 
     public Optional<Author> findAuthorById(String id) {
-        return authorSearchViewRepository.findById(id).map(this::toAuthor);
+        List<String> resolvedAuthorIds = resolveCanonicalIds(ScholardexEntityType.AUTHOR, List.of(id));
+        return authorSearchViewRepository.findByIdIn(resolvedAuthorIds).stream().findFirst().map(this::toAuthor);
     }
 
     public List<Author> findAuthorsByNameContainsIgnoreCase(String authorName) {
@@ -166,7 +192,8 @@ public class ScopusProjectionReadService {
     }
 
     public Optional<Affiliation> findAffiliationById(String id) {
-        return affiliationSearchViewRepository.findById(id).map(this::toAffiliation);
+        List<String> resolvedAffiliationIds = resolveCanonicalIds(ScholardexEntityType.AFFILIATION, List.of(id));
+        return affiliationSearchViewRepository.findByIdIn(resolvedAffiliationIds).stream().findFirst().map(this::toAffiliation);
     }
 
     public List<Affiliation> findAffiliationsByCountry(String country) {
@@ -205,17 +232,56 @@ public class ScopusProjectionReadService {
     }
 
     public Author saveAuthor(Author author) {
-        ScopusAuthorSearchView row = authorSearchViewRepository.findById(author.getId()).orElseGet(ScopusAuthorSearchView::new);
-        row.setId(author.getId());
-        row.setName(author.getName());
-        List<String> affiliationIds = author.getAffiliations() == null
+        String sourceRecordId = normalizeBlank(author.getId());
+        String canonicalId = resolveCanonicalId(ScholardexEntityType.AUTHOR, sourceRecordId)
+                .orElse(sourceRecordId == null ? "sauth_manual_" + Integer.toHexString(Objects.hash(author.getName())) : sourceRecordId);
+        List<String> affiliationSourceIds = author.getAffiliations() == null
                 ? List.of()
                 : author.getAffiliations().stream().map(Affiliation::getAfid).filter(Objects::nonNull).toList();
+        List<String> affiliationIds = resolveCanonicalIds(ScholardexEntityType.AFFILIATION, affiliationSourceIds);
+
+        ScholardexAuthorFact canonicalFact = canonicalAuthorFactRepository.findById(canonicalId).orElseGet(ScholardexAuthorFact::new);
+        java.time.Instant now = java.time.Instant.now();
+        if (canonicalFact.getCreatedAt() == null) {
+            canonicalFact.setCreatedAt(now);
+        }
+        canonicalFact.setId(canonicalId);
+        canonicalFact.setDisplayName(author.getName());
+        canonicalFact.setNameNormalized(normalizeName(author.getName()));
+        canonicalFact.setAffiliationIds(new ArrayList<>(affiliationIds));
+        canonicalFact.setSource("MANUAL_AUTHOR_EDIT");
+        canonicalFact.setSourceRecordId(sourceRecordId);
+        canonicalFact.setUpdatedAt(now);
+        canonicalAuthorFactRepository.save(canonicalFact);
+
+        if (sourceRecordId != null) {
+            upsertSourceLink(ScholardexEntityType.AUTHOR, "MANUAL_AUTHOR_EDIT", sourceRecordId, canonicalId, "manual-author-save", now);
+        }
+
+        for (String affiliationId : affiliationIds) {
+            ScholardexAuthorAffiliationFact edge = canonicalAuthorAffiliationFactRepository
+                    .findByAuthorIdAndAffiliationIdAndSource(canonicalId, affiliationId, "MANUAL_AUTHOR_EDIT")
+                    .orElseGet(ScholardexAuthorAffiliationFact::new);
+            if (edge.getCreatedAt() == null) {
+                edge.setCreatedAt(now);
+            }
+            edge.setAuthorId(canonicalId);
+            edge.setAffiliationId(affiliationId);
+            edge.setSource("MANUAL_AUTHOR_EDIT");
+            edge.setSourceRecordId(canonicalId + "::affiliation::" + affiliationId);
+            edge.setLinkState("LINKED");
+            edge.setLinkReason("manual-author-save");
+            edge.setUpdatedAt(now);
+            canonicalAuthorAffiliationFactRepository.save(edge);
+        }
+
+        ScopusAuthorSearchView row = authorSearchViewRepository.findById(canonicalId).orElseGet(ScopusAuthorSearchView::new);
+        row.setId(canonicalId);
+        row.setName(author.getName());
         row.setAffiliationIds(new ArrayList<>(affiliationIds));
         if (row.getBuildVersion() == null) {
             row.setBuildVersion("manual-override");
         }
-        java.time.Instant now = java.time.Instant.now();
         if (row.getBuildAt() == null) {
             row.setBuildAt(now);
         }
@@ -225,22 +291,118 @@ public class ScopusProjectionReadService {
     }
 
     public Affiliation saveAffiliation(Affiliation affiliation) {
-        ScopusAffiliationSearchView row = affiliationSearchViewRepository.findById(affiliation.getAfid())
+        String sourceRecordId = normalizeBlank(affiliation.getAfid());
+        String canonicalId = resolveCanonicalId(ScholardexEntityType.AFFILIATION, sourceRecordId)
+                .orElse(sourceRecordId == null ? "saff_manual_" + Integer.toHexString(Objects.hash(affiliation.getName(), affiliation.getCity(), affiliation.getCountry())) : sourceRecordId);
+        java.time.Instant now = java.time.Instant.now();
+
+        ScholardexAffiliationFact canonicalFact = canonicalAffiliationFactRepository.findById(canonicalId).orElseGet(ScholardexAffiliationFact::new);
+        if (canonicalFact.getCreatedAt() == null) {
+            canonicalFact.setCreatedAt(now);
+        }
+        canonicalFact.setId(canonicalId);
+        canonicalFact.setName(affiliation.getName());
+        canonicalFact.setNameNormalized(normalizeName(affiliation.getName()));
+        canonicalFact.setCity(affiliation.getCity());
+        canonicalFact.setCountry(affiliation.getCountry());
+        canonicalFact.setSource("MANUAL_AFFILIATION_EDIT");
+        canonicalFact.setSourceRecordId(sourceRecordId);
+        canonicalFact.setUpdatedAt(now);
+        canonicalAffiliationFactRepository.save(canonicalFact);
+
+        if (sourceRecordId != null) {
+            upsertSourceLink(ScholardexEntityType.AFFILIATION, "MANUAL_AFFILIATION_EDIT", sourceRecordId, canonicalId, "manual-affiliation-save", now);
+        }
+
+        ScopusAffiliationSearchView row = affiliationSearchViewRepository.findById(canonicalId)
                 .orElseGet(ScopusAffiliationSearchView::new);
-        row.setId(affiliation.getAfid());
+        row.setId(canonicalId);
         row.setName(affiliation.getName());
         row.setCity(affiliation.getCity());
         row.setCountry(affiliation.getCountry());
         if (row.getBuildVersion() == null) {
             row.setBuildVersion("manual-override");
         }
-        java.time.Instant now = java.time.Instant.now();
         if (row.getBuildAt() == null) {
             row.setBuildAt(now);
         }
         row.setUpdatedAt(now);
         ScopusAffiliationSearchView saved = affiliationSearchViewRepository.save(row);
         return toAffiliation(saved);
+    }
+
+    private Optional<String> resolveCanonicalId(ScholardexEntityType entityType, String candidate) {
+        if (candidate == null || candidate.isBlank()) {
+            return Optional.empty();
+        }
+        List<ScholardexSourceLink> mapped = sourceLinkRepository.findByEntityTypeAndSourceRecordId(entityType, candidate);
+        if (mapped != null) {
+            return mapped.stream()
+                    .map(ScholardexSourceLink::getCanonicalEntityId)
+                    .filter(id -> id != null && !id.isBlank())
+                    .findFirst();
+        }
+        return Optional.empty();
+    }
+
+    private List<String> resolveCanonicalIds(ScholardexEntityType entityType, Collection<String> candidateIds) {
+        if (candidateIds == null || candidateIds.isEmpty()) {
+            return List.of();
+        }
+        LinkedHashSet<String> resolved = new LinkedHashSet<>();
+        for (String id : candidateIds) {
+            String normalized = normalizeBlank(id);
+            if (normalized == null) {
+                continue;
+            }
+            resolved.add(normalized);
+            List<ScholardexSourceLink> mapped = sourceLinkRepository.findByEntityTypeAndSourceRecordId(entityType, normalized);
+            if (mapped == null || mapped.isEmpty()) {
+                continue;
+            }
+            mapped.stream()
+                    .map(ScholardexSourceLink::getCanonicalEntityId)
+                    .filter(candidate -> candidate != null && !candidate.isBlank())
+                    .forEach(resolved::add);
+        }
+        return new ArrayList<>(resolved);
+    }
+
+    private void upsertSourceLink(
+            ScholardexEntityType entityType,
+            String source,
+            String sourceRecordId,
+            String canonicalId,
+            String reason,
+            java.time.Instant now
+    ) {
+        ScholardexSourceLink link = sourceLinkRepository
+                .findByEntityTypeAndSourceAndSourceRecordId(entityType, source, sourceRecordId)
+                .orElseGet(ScholardexSourceLink::new);
+        link.setEntityType(entityType);
+        link.setSource(source);
+        link.setSourceRecordId(sourceRecordId);
+        link.setCanonicalEntityId(canonicalId);
+        link.setLinkState("LINKED");
+        link.setLinkReason(reason);
+        if (link.getLinkedAt() == null) {
+            link.setLinkedAt(now);
+        }
+        link.setUpdatedAt(now);
+        sourceLinkRepository.save(link);
+    }
+
+    private String normalizeBlank(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String normalizeName(String value) {
+        String normalized = normalizeBlank(value);
+        return normalized == null ? null : normalized.toLowerCase(java.util.Locale.ROOT);
     }
 
     private List<Publication> dedupeAndSortPublications(List<Publication> publications) {

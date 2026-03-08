@@ -6,7 +6,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorshipFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
@@ -18,6 +21,8 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -30,6 +35,8 @@ class ScholardexPublicationCanonicalizationServiceTest {
     private ScholardexPublicationFactRepository scholardexPublicationFactRepository;
     @Mock
     private ScholardexSourceLinkRepository scholardexSourceLinkRepository;
+    @Mock
+    private ScholardexAuthorshipFactRepository scholardexAuthorshipFactRepository;
 
     private ScholardexPublicationCanonicalizationService service;
 
@@ -38,7 +45,8 @@ class ScholardexPublicationCanonicalizationServiceTest {
         service = new ScholardexPublicationCanonicalizationService(
                 scopusPublicationFactRepository,
                 scholardexPublicationFactRepository,
-                scholardexSourceLinkRepository
+                scholardexSourceLinkRepository,
+                scholardexAuthorshipFactRepository
         );
     }
 
@@ -90,16 +98,39 @@ class ScholardexPublicationCanonicalizationServiceTest {
         scopusFact.setTitle("A Title");
         scopusFact.setSource("SCOPUS_JSON_BOOTSTRAP");
         scopusFact.setSourceRecordId("2-s2.0-abc");
+        scopusFact.setAuthors(List.of("au-1"));
 
         when(scopusPublicationFactRepository.findAll()).thenReturn(List.of(scopusFact));
         when(scholardexPublicationFactRepository.findByEid("2-s2.0-abc")).thenReturn(Optional.empty());
-        when(scholardexSourceLinkRepository.findByEntityTypeAndSourceAndSourceRecordId(any(), any(), any())).thenReturn(Optional.empty());
+        when(scholardexSourceLinkRepository.findByEntityTypeAndSourceAndSourceRecordId(any(), any(), any()))
+                .thenReturn(Optional.empty());
+        when(scholardexAuthorshipFactRepository.findByPublicationIdAndAuthorIdAndSource(any(), any(), any()))
+                .thenReturn(Optional.empty());
 
         ImportProcessingResult result = service.rebuildCanonicalPublicationFactsFromScopusFacts();
 
         assertEquals(1, result.getProcessedCount());
         assertEquals(1, result.getImportedCount());
         verify(scholardexPublicationFactRepository).save(any(ScholardexPublicationFact.class));
-        verify(scholardexSourceLinkRepository).save(any());
+        verify(scholardexSourceLinkRepository, atLeastOnce()).save(any());
+        verify(scholardexAuthorshipFactRepository).save(any(ScholardexAuthorshipFact.class));
+        verify(scholardexSourceLinkRepository, atLeastOnce()).findByEntityTypeAndSourceAndSourceRecordId(
+                eq(ScholardexEntityType.AUTHOR), eq("SCOPUS_JSON_BOOTSTRAP"), eq("au-1"));
+    }
+
+    @Test
+    void bridgeAuthorIdsReturnsDeterministicFallbackAndPendingMarkerWhenNoCanonicalLinkExists() {
+        when(scholardexSourceLinkRepository.findByEntityTypeAndSourceAndSourceRecordId(any(), any(), any()))
+                .thenReturn(Optional.empty());
+
+        ScholardexPublicationCanonicalizationService.AuthorBridgeResult bridged = service.bridgeAuthorIds(
+                List.of("  au-1 ", "au-1"),
+                "SCOPUS_JSON_BOOTSTRAP"
+        );
+
+        assertEquals(1, bridged.canonicalAuthorIds().size());
+        assertEquals("au-1", bridged.pendingSourceIds().getFirst());
+        assertEquals("au-1", bridged.entries().getFirst().sourceAuthorId());
+        assertEquals(true, bridged.entries().getFirst().pendingResolution());
     }
 }

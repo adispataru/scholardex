@@ -91,18 +91,22 @@ public class ScholardexPublicationBackfillService {
         fact.setArticleNumber(row.getArticleNumber());
         fact.setPageRange(row.getPageRange());
         fact.setApproved(row.isApproved());
-        fact.setAuthorIds(row.getAuthorIds() == null ? List.of() : new ArrayList<>(row.getAuthorIds()));
-        fact.setAffiliationIds(row.getAffiliationIds() == null ? List.of() : new ArrayList<>(row.getAffiliationIds()));
-        fact.setForumId(row.getForumId());
-        fact.setCitedByCount(row.getCitedByCount());
         if (fact.getSource() == null) {
             fact.setSource(SOURCE_LEGACY_PUBLICATION_VIEW);
         }
         if (fact.getSourceRecordId() == null) {
             fact.setSourceRecordId(row.getId());
         }
+        ScholardexPublicationCanonicalizationService.AuthorBridgeResult authorBridge =
+                publicationCanonicalizationService.bridgeAuthorIds(row.getAuthorIds(), fact.getSource());
+        fact.setAuthorIds(authorBridge.canonicalAuthorIds());
+        fact.setPendingAuthorSourceIds(authorBridge.pendingSourceIds());
+        fact.setAffiliationIds(row.getAffiliationIds() == null ? List.of() : new ArrayList<>(row.getAffiliationIds()));
+        fact.setForumId(row.getForumId());
+        fact.setCitedByCount(row.getCitedByCount());
         fact.setUpdatedAt(now);
         publicationFactRepository.save(fact);
+        publicationCanonicalizationService.syncAuthorshipEdges(fact, authorBridge);
         upsertSourceLink(fact, row.getId());
         if (created) {
             result.markImported();

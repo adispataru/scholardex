@@ -61,6 +61,7 @@ public class AdminResearcherController {
         researcher.setScholarId(request.scholarId());
         researcher.setScopusId(request.normalizedScopusId());
         researcher.setWosId(request.normalizedWosId());
+        researcher.setPrimaryScholardexAuthorId(request.primaryScholardexAuthorId());
         researcher.setPosition(request.position());
         return researcher;
     }

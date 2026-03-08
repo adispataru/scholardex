@@ -87,10 +87,10 @@ Done history moved to `TASKS-done.md`.
   - [x] `H19.3` Implement Scholardex publication identity model v2.
     Deliverable: publication model supporting source IDs (`eid`, `wosId`, `googleScholarId`, `userSourceId`) plus canonical `scholardexPublicationId` and lineage metadata, with canonical `authorIds` aligned to relationship-edge contracts.
     Exit criteria: all publication ingest/build paths can persist and resolve the new identity model without ambiguity, and publication author linkage is consistent with canonical authorship edges.
-  - [ ] `H19.4` Implement Scholardex author identity model v2 (researcher-linked).
+  - [x] `H19.4` Implement Scholardex author identity model v2 (researcher-linked).
     Deliverable: author model that supports multiple source author IDs (Scopus/WoS/Scholar/User) as source-identity canonical facts, with canonical `affiliationIds` aligned to relationship-edge contracts, researcher linkage maintained on the researcher side via `primaryScholardexAuthorId`, and deterministic merge rules.
     Exit criteria: author linking and lookup are source-agnostic and deterministic for scoring/reporting entrypoints, and author-affiliation linkage is consistent with canonical author-affiliation edges.
-  - [ ] `H19.5` Implement Scholardex affiliation identity model v2.
+  - [x] `H19.5` Implement Scholardex affiliation identity model v2.
     Deliverable: affiliation model that supports multiple source affiliation IDs and alias resolution across Scopus/WoS/Scholar/User, with reverse-link query support via canonical edge/index contracts (no forum-style reverse arrays required).
     Exit criteria: affiliation linking resolves deterministically, deduplicates source aliases, and supports fast affiliation-side traversal for scoring/reporting entrypoints.
   - [ ] `H19.6` Build WoS-first onboarding into Scholardex entities.

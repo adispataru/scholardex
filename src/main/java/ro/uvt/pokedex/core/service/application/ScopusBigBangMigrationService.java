@@ -17,6 +17,8 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusImportEventReposito
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
 import ro.uvt.pokedex.core.service.importing.ScopusDataService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
+import ro.uvt.pokedex.core.service.importing.scopus.ScholardexAffiliationCanonicalizationService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusFactBuilderService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusProjectionBuilderService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService;
@@ -36,6 +38,8 @@ public class ScopusBigBangMigrationService {
     private final ScopusFactBuilderService scopusFactBuilderService;
     private final ScopusProjectionBuilderService scopusProjectionBuilderService;
     private final ScopusCanonicalIndexMaintenanceService scopusCanonicalIndexMaintenanceService;
+    private final ScholardexAffiliationCanonicalizationService affiliationCanonicalizationService;
+    private final ScholardexAuthorCanonicalizationService authorCanonicalizationService;
     private final ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
     private final ScholardexPublicationBackfillService publicationBackfillService;
     private final ScopusImportEventRepository importEventRepository;
@@ -71,6 +75,8 @@ public class ScopusBigBangMigrationService {
     public ScopusBigBangMigrationResult runBuildFactsStep() {
         Instant startedAt = Instant.now();
         ImportProcessingResult facts = scopusFactBuilderService.buildFactsFromImportEvents();
+        affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts();
+        authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts();
         publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts();
         return new ScopusBigBangMigrationResult(
                 scopusDataFile,
@@ -128,6 +134,8 @@ public class ScopusBigBangMigrationService {
         ImportProcessingResult publicationImport = scopusDataService.importScopusDataSync(scopusDataFile, 0, false);
         ImportProcessingResult citationImport = scopusDataService.importScopusDataCitationsSync(scopusDataFile);
         ImportProcessingResult facts = scopusFactBuilderService.buildFactsFromImportEvents();
+        affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts();
+        authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts();
         publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts();
         ImportProcessingResult projections = scopusProjectionBuilderService.rebuildViews();
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult indexResult =

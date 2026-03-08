@@ -12,6 +12,7 @@ public record AdminResearcherUpsertRequest(
         String scholarId,
         List<String> scopusId,
         List<String> wosId,
+        String primaryScholardexAuthorId,
         Position position
 ) {
     public List<String> normalizedScopusId() {

@@ -10,7 +10,11 @@ import org.springframework.data.mongodb.core.index.IndexInfo;
 import org.springframework.data.mongodb.core.index.IndexOperations;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
@@ -95,6 +99,24 @@ public class ScopusCanonicalIndexMaintenanceService {
     static final String IDX_CANON_PUBLICATION_FORUM = "idx_scholardex_publication_fact_forum";
     static final String IDX_CANON_PUBLICATION_AUTHORS = "idx_scholardex_publication_fact_authors";
     static final String IDX_CANON_PUBLICATION_AFFILIATIONS = "idx_scholardex_publication_fact_affiliations";
+    static final String IDX_CANON_PUBLICATION_PENDING_AUTHOR_SOURCE_IDS = "idx_scholardex_publication_fact_pending_author_source_ids";
+
+    static final String IDX_CANON_AUTHOR_SCOPUS = "uniq_scholardex_author_scopus_id";
+    static final String IDX_CANON_AUTHOR_NAME_NORMALIZED = "idx_scholardex_author_name_normalized";
+    static final String IDX_CANON_AUTHOR_AFFILIATIONS = "idx_scholardex_author_affiliations";
+    static final String IDX_CANON_AUTHOR_PENDING_AFF_SOURCE_IDS = "idx_scholardex_author_pending_aff_source_ids";
+
+    static final String IDX_CANON_AFFILIATION_SCOPUS = "uniq_scholardex_affiliation_scopus_id";
+    static final String IDX_CANON_AFFILIATION_NAME_NORMALIZED = "idx_scholardex_affiliation_name_normalized";
+    static final String IDX_CANON_AFFILIATION_COUNTRY = "idx_scholardex_affiliation_country";
+
+    static final String IDX_AUTHORSHIP_UNIQ_EDGE = "uniq_scholardex_authorship_edge";
+    static final String IDX_AUTHORSHIP_PUBLICATION = "idx_scholardex_authorship_publication";
+    static final String IDX_AUTHORSHIP_AUTHOR = "idx_scholardex_authorship_author";
+
+    static final String IDX_AUTHOR_AFFILIATION_UNIQ_EDGE = "uniq_scholardex_author_affiliation_edge";
+    static final String IDX_AUTHOR_AFFILIATION_AUTHOR = "idx_scholardex_author_affiliation_author";
+    static final String IDX_AUTHOR_AFFILIATION_AFFILIATION = "idx_scholardex_author_affiliation_affiliation";
 
     static final String IDX_SOURCE_LINK_UNIQ = "uniq_scholardex_source_link";
     static final String IDX_SOURCE_LINK_CANONICAL = "idx_scholardex_source_link_canonical";
@@ -125,6 +147,10 @@ public class ScopusCanonicalIndexMaintenanceService {
         ensureAuthorViewIndexes(created, present, invalid, errors);
         ensureAffiliationViewIndexes(created, present, invalid, errors);
         ensureCanonicalPublicationFactIndexes(created, present, invalid, errors);
+        ensureCanonicalAuthorFactIndexes(created, present, invalid, errors);
+        ensureCanonicalAffiliationFactIndexes(created, present, invalid, errors);
+        ensureAuthorshipIndexes(created, present, invalid, errors);
+        ensureAuthorAffiliationIndexes(created, present, invalid, errors);
         ensureSourceLinkIndexes(created, present, invalid, errors);
         ensureIdentityConflictIndexes(created, present, invalid, errors);
         ensureMergedPublicationViewIndexes(created, present, invalid, errors);
@@ -282,6 +308,52 @@ public class ScopusCanonicalIndexMaintenanceService {
         ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_PUBLICATION_AUTHORS, false, List.of(field("authorIds"))),
                 created, present, invalid, errors);
         ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_PUBLICATION_AFFILIATIONS, false, List.of(field("affiliationIds"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_PUBLICATION_PENDING_AUTHOR_SOURCE_IDS, false, List.of(field("pendingAuthorSourceIds"))),
+                created, present, invalid, errors);
+    }
+
+    private void ensureAuthorshipIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ScholardexAuthorshipFact.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_AUTHORSHIP_UNIQ_EDGE, true,
+                        List.of(field("publicationId"), field("authorId"), field("source"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_AUTHORSHIP_PUBLICATION, false, List.of(field("publicationId"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_AUTHORSHIP_AUTHOR, false, List.of(field("authorId"))),
+                created, present, invalid, errors);
+    }
+
+    private void ensureCanonicalAuthorFactIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ScholardexAuthorFact.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_AUTHOR_SCOPUS, true, true, List.of(field("scopusAuthorIds"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_AUTHOR_NAME_NORMALIZED, false, List.of(field("nameNormalized"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_AUTHOR_AFFILIATIONS, false, List.of(field("affiliationIds"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_AUTHOR_PENDING_AFF_SOURCE_IDS, false, List.of(field("pendingAffiliationSourceIds"))),
+                created, present, invalid, errors);
+    }
+
+    private void ensureCanonicalAffiliationFactIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ScholardexAffiliationFact.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_AFFILIATION_SCOPUS, true, true, List.of(field("scopusAffiliationIds"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_AFFILIATION_NAME_NORMALIZED, false, List.of(field("nameNormalized"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_AFFILIATION_COUNTRY, false, List.of(field("country"))),
+                created, present, invalid, errors);
+    }
+
+    private void ensureAuthorAffiliationIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ScholardexAuthorAffiliationFact.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_AUTHOR_AFFILIATION_UNIQ_EDGE, true,
+                        List.of(field("authorId"), field("affiliationId"), field("source"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_AUTHOR_AFFILIATION_AUTHOR, false, List.of(field("authorId"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_AUTHOR_AFFILIATION_AFFILIATION, false, List.of(field("affiliationId"))),
                 created, present, invalid, errors);
     }
 

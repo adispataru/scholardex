@@ -20,6 +20,8 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusImportEventReposito
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
 import ro.uvt.pokedex.core.service.importing.ScopusDataService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
+import ro.uvt.pokedex.core.service.importing.scopus.ScholardexAffiliationCanonicalizationService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusFactBuilderService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusProjectionBuilderService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService;
@@ -36,6 +38,8 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ScopusFactBuilderService scopusFactBuilderService;
     @Mock private ScopusProjectionBuilderService scopusProjectionBuilderService;
     @Mock private ScopusCanonicalIndexMaintenanceService indexMaintenanceService;
+    @Mock private ScholardexAffiliationCanonicalizationService affiliationCanonicalizationService;
+    @Mock private ScholardexAuthorCanonicalizationService authorCanonicalizationService;
     @Mock private ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
     @Mock private ScholardexPublicationBackfillService publicationBackfillService;
     @Mock private ScopusImportEventRepository importEventRepository;
@@ -60,6 +64,8 @@ class ScopusBigBangMigrationServiceTest {
                 scopusFactBuilderService,
                 scopusProjectionBuilderService,
                 indexMaintenanceService,
+                affiliationCanonicalizationService,
+                authorCanonicalizationService,
                 publicationCanonicalizationService,
                 publicationBackfillService,
                 importEventRepository,

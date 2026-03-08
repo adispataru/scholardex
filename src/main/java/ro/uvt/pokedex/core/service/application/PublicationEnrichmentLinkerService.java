@@ -12,7 +12,6 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.PublicationLinkConflictRe
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -37,7 +36,6 @@ public class PublicationEnrichmentLinkerService {
     private static final Pattern DOI_PREFIX = Pattern.compile("^doi:", Pattern.CASE_INSENSITIVE);
 
     private final ScholardexPublicationFactRepository publicationFactRepository;
-    private final ScholardexPublicationViewRepository publicationViewRepository;
     private final ScholardexSourceLinkRepository sourceLinkRepository;
     private final ScholardexIdentityConflictRepository identityConflictRepository;
     private final PublicationLinkConflictRepository conflictRepository;
@@ -86,7 +84,6 @@ public class PublicationEnrichmentLinkerService {
         target.setUpdatedAt(Instant.now());
         publicationFactRepository.save(target);
         upsertSourceLink(source, incomingWosId, target.getId(), linkerVersion, linkerRunId, "wos-link");
-        syncProjectionIdentityFields(target.getId(), incomingWosId, null, source, linkerVersion, linkerRunId);
         return new LinkResult(LinkState.LINKED, "linked", target.getId(), null);
     }
 
@@ -143,7 +140,6 @@ public class PublicationEnrichmentLinkerService {
         target.setUpdatedAt(Instant.now());
         publicationFactRepository.save(target);
         upsertSourceLink(source, incomingScholarId, target.getId(), linkerVersion, linkerRunId, "scholar-link");
-        syncProjectionIdentityFields(target.getId(), null, incomingScholarId, source, linkerVersion, linkerRunId);
         return new LinkResult(LinkState.LINKED, "linked", target.getId(), null);
     }
 
@@ -261,31 +257,6 @@ public class PublicationEnrichmentLinkerService {
         }
         link.setUpdatedAt(now);
         sourceLinkRepository.save(link);
-    }
-
-    private void syncProjectionIdentityFields(
-            String canonicalId,
-            String wosId,
-            String googleScholarId,
-            String source,
-            String linkerVersion,
-            String linkerRunId
-    ) {
-        publicationViewRepository.findById(canonicalId).ifPresent(view -> {
-            if (wosId != null) {
-                view.setWosId(wosId);
-                view.setWosLineage(source);
-            }
-            if (googleScholarId != null) {
-                view.setGoogleScholarId(googleScholarId);
-                view.setScholarLineage(source);
-            }
-            view.setLinkerVersion(linkerVersion);
-            view.setLinkerRunId(linkerRunId);
-            view.setLinkedAt(Instant.now());
-            view.setUpdatedAt(Instant.now());
-            publicationViewRepository.save(view);
-        });
     }
 
     private String normalizeBlank(String value) {

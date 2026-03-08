@@ -7,11 +7,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationSearchViewRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorSearchViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
@@ -30,9 +30,9 @@ class ScopusProjectionBuilderServiceTest {
     @Mock
     private ScopusForumFactRepository forumFactRepository;
     @Mock
-    private ScopusAuthorFactRepository authorFactRepository;
+    private ScholardexAuthorFactRepository authorFactRepository;
     @Mock
-    private ScopusAffiliationFactRepository affiliationFactRepository;
+    private ScholardexAffiliationFactRepository affiliationFactRepository;
     @Mock
     private ScholardexPublicationFactRepository publicationFactRepository;
     @Mock
