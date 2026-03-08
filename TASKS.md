@@ -72,10 +72,10 @@ Done history moved to `TASKS-done.md`.
 - [ ] `H19` Multi-source Scholardex identity and ingestion architecture.
   Goal: make Scholardex the canonical identity layer across publications, authors, forums, and affiliations, supporting four sources (`SCOPUS`, `WOS`, `GSCHOLAR`, `USER_DEFINED`) with deterministic lineage, linking, and runtime reads.
   Deliverable: unified canonical contracts + storage models + ingestion/linking pipelines + immediate runtime cutover so all operational reads/writes resolve through Scholardex entities, not source-specific silo models.
-  Exit criteria: publication/author/forum/affiliation identity is source-agnostic and deterministic; WoS-first onboarding is complete; Scholar (Publish or Perish) and user-defined imports are supported; runtime paths are cut over to Scholardex; source-specific legacy identity paths are removed from runtime.
+  Exit criteria: publication/author/forum/affiliation identity is source-agnostic and deterministic; WoS-first onboarding is complete; Scholar (Publish or Perish) and user-defined imports are supported; runtime paths are cut over to Scholardex; source-specific legacy identity paths are removed from runtime; citations are canonical-ID based across all sources; all entity conflict types are captured in generic conflict storage; source-to-canonical mapping is queryable and replay-stable.
   Subtasks:
-  - [ ] `H19.1` Define canonical multi-source identity and ownership contract.
-    Deliverable: locked contract for Scholardex entities (`publication`, `author`, `forum`, `affiliation`) with per-source IDs, provenance/lineage fields, conflict rules, and replay/idempotence semantics.
+  - [x] `H19.1` Define canonical multi-source identity and ownership contract.
+    Deliverable: locked contract for Scholardex entities (`publication`, `author`, `forum`, `affiliation`, `citation`) with per-source IDs, provenance/lineage fields, conflict rules, source-link mapping rules, and replay/idempotence semantics.
     Exit criteria: one contract document is implementation-ready and explicitly defines source ownership boundaries for Scopus/WoS/Scholar/User-defined.
     Handover:
     - Contract source of truth: `docs/h19.1-multisource-identity-contract.md`.
@@ -106,3 +106,12 @@ Done history moved to `TASKS-done.md`.
   - [ ] `H19.10` End-to-end validation, parity, and operability gates.
     Deliverable: workflow and integration tests covering all four sources, identity-link conflicts, replay/idempotence, and cutover regressions; observability metrics and failure triage hooks.
     Exit criteria: CI gates catch identity/linking regressions and operational dashboards expose source-level ingest/link health.
+  - [ ] `H19.11` Canonical citation model and migration from EID-only citation path.
+    Deliverable: `scholardex.citation_facts` design and implementation keyed by canonical publication IDs, with migration/cutover from source/EID-bound citation reads.
+    Exit criteria: WoS-only and Scholar-only publications participate in citation edges without EID dependency.
+  - [ ] `H19.12` Generic identity conflict model + admin operations.
+    Deliverable: `scholardex.identity_conflicts` contract and implementation covering publication/forum/author/affiliation ambiguity, plus operational listing/resolve/clear flows.
+    Exit criteria: ambiguous merges across all canonical entity types are captured and manageable through one generic conflict surface.
+  - [ ] `H19.13` Source-link ledger + replay/traceability integration.
+    Deliverable: `scholardex.source_links` contract and implementation mapping `(entityType, source, sourceRecordId)` to canonical entity IDs with deterministic state transitions.
+    Exit criteria: traceability/replay workflows can resolve source record to canonical entity deterministically in one query path.
