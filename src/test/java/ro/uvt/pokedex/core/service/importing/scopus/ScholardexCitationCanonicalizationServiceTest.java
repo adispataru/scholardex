@@ -8,12 +8,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationFact;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
+import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusCitationFactRepository;
 
 import java.util.List;
@@ -23,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -37,7 +37,7 @@ class ScholardexCitationCanonicalizationServiceTest {
     @Mock
     private ScholardexCitationFactRepository scholardexCitationFactRepository;
     @Mock
-    private ScholardexSourceLinkRepository scholardexSourceLinkRepository;
+    private ScholardexSourceLinkService sourceLinkService;
     @Mock
     private ScholardexIdentityConflictRepository scholardexIdentityConflictRepository;
     @Mock
@@ -49,7 +49,7 @@ class ScholardexCitationCanonicalizationServiceTest {
                 scopusCitationFactRepository,
                 scholardexPublicationFactRepository,
                 scholardexCitationFactRepository,
-                scholardexSourceLinkRepository,
+                sourceLinkService,
                 scholardexIdentityConflictRepository,
                 checkpointService
         );
@@ -73,12 +73,11 @@ class ScholardexCitationCanonicalizationServiceTest {
         sourceFact.setSourceCorrelationId("corr-1");
         when(scopusCitationFactRepository.findAll()).thenReturn(List.of(sourceFact));
 
-        when(scholardexSourceLinkRepository.findByEntityTypeAndSourceAndSourceRecordId(any(), any(), any()))
+        when(sourceLinkService.findByKey(any(), any(), any()))
                 .thenReturn(Optional.empty());
         when(scholardexCitationFactRepository.findByCitedPublicationIdAndCitingPublicationIdAndSource("spub_1", "spub_2", "SCOPUS_JSON_BOOTSTRAP"))
                 .thenReturn(Optional.empty());
         when(scholardexCitationFactRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(scholardexSourceLinkRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         var result = service.rebuildCanonicalCitationFactsFromScopusFacts();
 
@@ -90,10 +89,7 @@ class ScholardexCitationCanonicalizationServiceTest {
         assertEquals("spub_2", edgeCaptor.getValue().getCitingPublicationId());
         assertEquals("SCOPUS_JSON_BOOTSTRAP", edgeCaptor.getValue().getSource());
 
-        ArgumentCaptor<ScholardexSourceLink> linkCaptor = ArgumentCaptor.forClass(ScholardexSourceLink.class);
-        verify(scholardexSourceLinkRepository).save(linkCaptor.capture());
-        assertEquals("2-s2.0-cited->2-s2.0-citing", linkCaptor.getValue().getSourceRecordId());
-        assertTrue(linkCaptor.getValue().getCanonicalEntityId().startsWith("scit_"));
+        verify(sourceLinkService).link(any(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), eq(false));
     }
 
     @Test
@@ -102,7 +98,7 @@ class ScholardexCitationCanonicalizationServiceTest {
                 scopusCitationFactRepository,
                 scholardexPublicationFactRepository,
                 scholardexCitationFactRepository,
-                scholardexSourceLinkRepository,
+                sourceLinkService,
                 scholardexIdentityConflictRepository,
                 checkpointService
         );

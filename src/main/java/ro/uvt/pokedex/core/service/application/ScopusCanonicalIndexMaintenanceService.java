@@ -150,6 +150,10 @@ public class ScopusCanonicalIndexMaintenanceService {
     static final String IDX_SOURCE_LINK_UNIQ = "uniq_scholardex_source_link";
     static final String IDX_SOURCE_LINK_CANONICAL = "idx_scholardex_source_link_canonical";
     static final String IDX_SOURCE_LINK_SOURCE_RECORD = "idx_scholardex_source_link_source_record";
+    static final String IDX_SOURCE_LINK_ENTITY_CANONICAL = "idx_scholardex_source_link_entity_canonical";
+    static final String IDX_SOURCE_LINK_STATE_UPDATED = "idx_scholardex_source_link_state_updated";
+    static final String IDX_SOURCE_LINK_BATCH_ENTITY = "idx_scholardex_source_link_batch_entity";
+    static final String IDX_SOURCE_LINK_CORRELATION_ENTITY = "idx_scholardex_source_link_correlation_entity";
 
     static final String IDX_IDENTITY_CONFLICT_OPEN = "uniq_scholardex_open_identity_conflict";
     static final String IDX_IDENTITY_CONFLICT_STATUS = "idx_scholardex_identity_conflict_status";
@@ -458,6 +462,14 @@ public class ScopusCanonicalIndexMaintenanceService {
         ensureNamedIndex(ops, new IndexDefinition(IDX_SOURCE_LINK_CANONICAL, false, List.of(field("canonicalEntityId"))),
                 created, present, invalid, errors);
         ensureNamedIndex(ops, new IndexDefinition(IDX_SOURCE_LINK_SOURCE_RECORD, false, List.of(field("entityType"), field("sourceRecordId"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_SOURCE_LINK_ENTITY_CANONICAL, false, List.of(field("entityType"), field("canonicalEntityId"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_SOURCE_LINK_STATE_UPDATED, false, List.of(field("linkState"), field("entityType"), field("updatedAt"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_SOURCE_LINK_BATCH_ENTITY, false, List.of(field("sourceBatchId"), field("entityType"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_SOURCE_LINK_CORRELATION_ENTITY, false, List.of(field("sourceCorrelationId"), field("entityType"))),
                 created, present, invalid, errors);
     }
 

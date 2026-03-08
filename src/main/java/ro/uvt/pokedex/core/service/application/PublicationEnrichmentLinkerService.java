@@ -7,11 +7,9 @@ import ro.uvt.pokedex.core.model.scopus.canonical.PublicationLinkConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.repository.scopus.canonical.PublicationLinkConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -36,7 +34,7 @@ public class PublicationEnrichmentLinkerService {
     private static final Pattern DOI_PREFIX = Pattern.compile("^doi:", Pattern.CASE_INSENSITIVE);
 
     private final ScholardexPublicationFactRepository publicationFactRepository;
-    private final ScholardexSourceLinkRepository sourceLinkRepository;
+    private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexIdentityConflictRepository identityConflictRepository;
     private final PublicationLinkConflictRepository conflictRepository;
 
@@ -240,23 +238,17 @@ public class PublicationEnrichmentLinkerService {
         if (source == null || source.isBlank() || sourceRecordId == null || sourceRecordId.isBlank()) {
             return;
         }
-        ScholardexSourceLink link = sourceLinkRepository
-                .findByEntityTypeAndSourceAndSourceRecordId(ScholardexEntityType.PUBLICATION, source, sourceRecordId)
-                .orElseGet(ScholardexSourceLink::new);
-        Instant now = Instant.now();
-        link.setEntityType(ScholardexEntityType.PUBLICATION);
-        link.setSource(source);
-        link.setSourceRecordId(sourceRecordId);
-        link.setCanonicalEntityId(canonicalId);
-        link.setLinkState("LINKED");
-        link.setLinkReason(reason);
-        link.setSourceBatchId(linkerRunId);
-        link.setSourceCorrelationId(linkerVersion);
-        if (link.getLinkedAt() == null) {
-            link.setLinkedAt(now);
-        }
-        link.setUpdatedAt(now);
-        sourceLinkRepository.save(link);
+        sourceLinkService.link(
+                ScholardexEntityType.PUBLICATION,
+                source,
+                sourceRecordId,
+                canonicalId,
+                reason,
+                null,
+                linkerRunId,
+                linkerVersion,
+                false
+        );
     }
 
     private String normalizeBlank(String value) {

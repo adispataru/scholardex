@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.ScopusBigBangMigrationService;
+import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.application.WosBigBangMigrationService;
 import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
@@ -350,7 +351,7 @@ class AdminInitializationControllerContractTest {
         result.setTotalBatches(10);
         result.setResumedFromCheckpoint(true);
         result.setCheckpointLastCompletedBatch(1);
-        when(scopusBigBangMigrationService.runCanonicalBuildStep(eq("citation"), eq(2), eq(true), eq(500))).thenReturn(result);
+        when(scopusBigBangMigrationService.runCanonicalBuildStep(eq("citation"), eq(2), eq(true), eq(500), eq(false))).thenReturn(result);
 
         mockMvc.perform(post("/admin/initialization/scopus/buildCanonical")
                         .param("entity", "citation")
@@ -360,7 +361,19 @@ class AdminInitializationControllerContractTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/initialization"));
 
-        verify(scopusBigBangMigrationService).runCanonicalBuildStep("citation", 2, true, 500);
+        verify(scopusBigBangMigrationService).runCanonicalBuildStep("citation", 2, true, 500, false);
+    }
+
+    @Test
+    void runScopusSourceLinkReconcileRedirectsToInitializationPage() throws Exception {
+        when(scopusBigBangMigrationService.runSourceLinkReconcileStep())
+                .thenReturn(new ScholardexSourceLinkService.ImportRepairSummary(10L, 5L, 0L));
+
+        mockMvc.perform(post("/admin/initialization/scopus/reconcileSourceLinks"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+
+        verify(scopusBigBangMigrationService).runSourceLinkReconcileStep();
     }
 
     @Test

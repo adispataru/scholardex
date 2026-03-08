@@ -11,8 +11,8 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorshipFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
+import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.util.List;
@@ -35,7 +35,7 @@ class ScholardexPublicationCanonicalizationServiceTest {
     @Mock
     private ScholardexPublicationFactRepository scholardexPublicationFactRepository;
     @Mock
-    private ScholardexSourceLinkRepository scholardexSourceLinkRepository;
+    private ScholardexSourceLinkService sourceLinkService;
     @Mock
     private ScholardexAuthorshipFactRepository scholardexAuthorshipFactRepository;
     @Mock
@@ -48,7 +48,7 @@ class ScholardexPublicationCanonicalizationServiceTest {
         service = new ScholardexPublicationCanonicalizationService(
                 scopusPublicationFactRepository,
                 scholardexPublicationFactRepository,
-                scholardexSourceLinkRepository,
+                sourceLinkService,
                 scholardexAuthorshipFactRepository,
                 checkpointService
         );
@@ -107,7 +107,7 @@ class ScholardexPublicationCanonicalizationServiceTest {
         when(scopusPublicationFactRepository.findAll()).thenReturn(List.of(scopusFact));
         when(scholardexPublicationFactRepository.findByEid("2-s2.0-abc")).thenReturn(Optional.empty());
         when(checkpointService.readCheckpoint(anyString())).thenReturn(Optional.empty());
-        when(scholardexSourceLinkRepository.findByEntityTypeAndSourceAndSourceRecordId(any(), any(), any()))
+        when(sourceLinkService.findByKey(any(), any(), any()))
                 .thenReturn(Optional.empty());
         when(scholardexAuthorshipFactRepository.findByPublicationIdAndAuthorIdAndSource(any(), any(), any()))
                 .thenReturn(Optional.empty());
@@ -117,15 +117,15 @@ class ScholardexPublicationCanonicalizationServiceTest {
         assertEquals(1, result.getProcessedCount());
         assertEquals(1, result.getImportedCount());
         verify(scholardexPublicationFactRepository).save(any(ScholardexPublicationFact.class));
-        verify(scholardexSourceLinkRepository, atLeastOnce()).save(any());
+        verify(sourceLinkService, atLeastOnce()).link(any(), anyString(), anyString(), anyString(), anyString(), any(), any(), any(), eq(false));
         verify(scholardexAuthorshipFactRepository).save(any(ScholardexAuthorshipFact.class));
-        verify(scholardexSourceLinkRepository, atLeastOnce()).findByEntityTypeAndSourceAndSourceRecordId(
+        verify(sourceLinkService, atLeastOnce()).findByKey(
                 eq(ScholardexEntityType.AUTHOR), eq("SCOPUS_JSON_BOOTSTRAP"), eq("au-1"));
     }
 
     @Test
     void bridgeAuthorIdsReturnsDeterministicFallbackAndPendingMarkerWhenNoCanonicalLinkExists() {
-        when(scholardexSourceLinkRepository.findByEntityTypeAndSourceAndSourceRecordId(any(), any(), any()))
+        when(sourceLinkService.findByKey(any(), any(), any()))
                 .thenReturn(Optional.empty());
 
         ScholardexPublicationCanonicalizationService.AuthorBridgeResult bridged = service.bridgeAuthorIds(
@@ -155,7 +155,7 @@ class ScholardexPublicationCanonicalizationServiceTest {
 
         when(scholardexPublicationFactRepository.findByEid("2-s2.0-new")).thenReturn(Optional.empty());
         when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1000/xyz")).thenReturn(List.of(existingByDoi));
-        when(scholardexSourceLinkRepository.findByEntityTypeAndSourceAndSourceRecordId(any(), any(), any()))
+        when(sourceLinkService.findByKey(any(), any(), any()))
                 .thenReturn(Optional.empty());
         when(scholardexAuthorshipFactRepository.findByPublicationIdAndAuthorIdAndSource(any(), any(), any()))
                 .thenReturn(Optional.empty());

@@ -108,7 +108,7 @@ Done history moved to `TASKS-done.md`.
   - [x] `H19.10` Generic identity conflict model + admin operations.
     Deliverable: `scholardex.identity_conflicts` contract and implementation covering publication/forum/author/affiliation ambiguity, plus operational listing/resolve/clear flows.
     Exit criteria: ambiguous merges across all canonical entity types are captured and manageable through one generic conflict surface.
-  - [ ] `H19.11` Source-link ledger + replay/traceability integration.
+  - [x] `H19.11` Source-link ledger + replay/traceability integration.
     Deliverable: `scholardex.source_links` contract and implementation mapping `(entityType, source, sourceRecordId)` to canonical entity IDs with deterministic state transitions.
     Exit criteria: traceability/replay workflows can resolve source record to canonical entity deterministically in one query path.
   - [ ] `H19.12` Canonical relationship-edge model for indicator runtime.

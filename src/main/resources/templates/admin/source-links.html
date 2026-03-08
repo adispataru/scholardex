@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Source Links</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+<div id="wrapper">
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="~{fragments :: admin-sidebar('sourceLinks')}"></div>
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar}"></div>
+            <div class="container-fluid">
+                <h1 class="h3 mb-2 text-gray-800">Source Link Ledger</h1>
+                <p class="mb-4">Traceability and replay diagnostics for <code>scholardex.source_links</code>.</p>
+
+                <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+                <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="card border-left-warning shadow h-100 py-2">
+                            <div class="card-body"><span th:text="'UNMATCHED: ' + ${summary.unmatched}">UNMATCHED: 0</span></div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-left-danger shadow h-100 py-2">
+                            <div class="card-body"><span th:text="'CONFLICT: ' + ${summary.conflict}">CONFLICT: 0</span></div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-left-secondary shadow h-100 py-2">
+                            <div class="card-body"><span th:text="'SKIPPED: ' + ${summary.skipped}">SKIPPED: 0</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Filters</h6></div>
+                    <div class="card-body">
+                        <form method="get" th:action="@{/admin/source-links}" class="form-row align-items-end">
+                            <div class="col-md-2 mt-2"><label class="small mb-1">Entity</label><input class="form-control form-control-sm" name="entityType" th:value="${entityType}" placeholder="PUBLICATION"></div>
+                            <div class="col-md-2 mt-2"><label class="small mb-1">Source</label><input class="form-control form-control-sm" name="source" th:value="${source}" placeholder="WOS"></div>
+                            <div class="col-md-2 mt-2"><label class="small mb-1">State</label><input class="form-control form-control-sm" name="linkState" th:value="${linkState}" placeholder="LINKED"></div>
+                            <div class="col-md-2 mt-2"><label class="small mb-1">Batch</label><input class="form-control form-control-sm" name="sourceBatchId" th:value="${sourceBatchId}"></div>
+                            <div class="col-md-2 mt-2"><label class="small mb-1">Correlation</label><input class="form-control form-control-sm" name="sourceCorrelationId" th:value="${sourceCorrelationId}"></div>
+                            <div class="col-md-2 mt-2"><label class="small mb-1">Event</label><input class="form-control form-control-sm" name="sourceEventId" th:value="${sourceEventId}"></div>
+                            <div class="col-md-2 mt-2"><label class="small mb-1">Updated From</label><input class="form-control form-control-sm" type="date" name="updatedFrom" th:value="${updatedFrom}"></div>
+                            <div class="col-md-2 mt-2"><label class="small mb-1">Updated To</label><input class="form-control form-control-sm" type="date" name="updatedTo" th:value="${updatedTo}"></div>
+                            <div class="col-md-1 mt-2"><label class="small mb-1">Page</label><input class="form-control form-control-sm" type="number" name="page" min="0" th:value="${pageData.number}"></div>
+                            <div class="col-md-1 mt-2"><label class="small mb-1">Size</label><input class="form-control form-control-sm" type="number" name="size" min="1" th:value="${pageData.size}"></div>
+                            <div class="col-md-2 mt-2"><button class="btn btn-primary btn-sm" type="submit">Apply</button></div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Lookup</h6></div>
+                    <div class="card-body">
+                        <form method="get" th:action="@{/admin/source-links}" class="form-row align-items-end mb-3">
+                            <div class="col-md-2"><label class="small mb-1">Entity</label><input class="form-control form-control-sm" name="entityType" th:value="${entityType}" placeholder="PUBLICATION"></div>
+                            <div class="col-md-2"><label class="small mb-1">Source</label><input class="form-control form-control-sm" name="source" th:value="${source}" placeholder="WOS"></div>
+                            <div class="col-md-4"><label class="small mb-1">SourceRecordId</label><input class="form-control form-control-sm" name="lookupSourceRecordId" th:value="${lookupSourceRecordId}"></div>
+                            <div class="col-md-4"><label class="small mb-1">CanonicalId</label><input class="form-control form-control-sm" name="lookupCanonicalId" th:value="${lookupCanonicalId}"></div>
+                            <div class="col-md-2 mt-2"><button class="btn btn-outline-primary btn-sm" type="submit">Lookup</button></div>
+                        </form>
+                        <div th:if="${lookupByKey != null}" class="small mb-2">
+                            <strong>By key:</strong>
+                            <code th:text="${lookupByKey.entityType} + '|' + ${lookupByKey.source} + '|' + ${lookupByKey.sourceRecordId} + ' -> ' + ${lookupByKey.canonicalEntityId} + ' (' + ${lookupByKey.linkState} + ')'"></code>
+                        </div>
+                        <div th:if="${!lookupByCanonical.isEmpty()}" class="small">
+                            <strong>By canonical:</strong>
+                            <span th:each="row : ${lookupByCanonical}" class="d-block">
+                                <code th:text="${row.entityType} + '|' + ${row.source} + '|' + ${row.sourceRecordId} + ' (' + ${row.linkState} + ')'"></code>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Source Links</h6></div>
+                    <div class="card-body table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                            <tr>
+                                <th>Updated</th><th>Entity</th><th>Source</th><th>Source Record</th><th>Canonical</th><th>State</th><th>Reason</th><th>Batch</th><th>Correlation</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="row : ${pageData.content}">
+                                <td th:text="${row.updatedAt}">-</td>
+                                <td th:text="${row.entityType}">-</td>
+                                <td th:text="${row.source}">-</td>
+                                <td th:text="${row.sourceRecordId}">-</td>
+                                <td th:text="${row.canonicalEntityId}">-</td>
+                                <td th:text="${row.linkState}">-</td>
+                                <td th:text="${row.linkReason}">-</td>
+                                <td th:text="${row.sourceBatchId}">-</td>
+                                <td th:text="${row.sourceCorrelationId}">-</td>
+                            </tr>
+                            <tr th:if="${pageData.content.isEmpty()}"><td colspan="9" class="text-center text-muted">No source links found.</td></tr>
+                            </tbody>
+                        </table>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="small text-muted" th:text="'Page ' + (${pageData.number} + 1) + ' / ' + ${pageData.totalPages} + ' (' + ${pageData.totalElements} + ' rows)'"></div>
+                            <div>
+                                <a class="btn btn-outline-secondary btn-sm mr-2" th:classappend="${pageData.hasPrevious()} ? '' : 'disabled'"
+                                   th:href="@{/admin/source-links(page=${pageData.number - 1},size=${pageData.size},entityType=${entityType},source=${source},linkState=${linkState},sourceBatchId=${sourceBatchId},sourceCorrelationId=${sourceCorrelationId},sourceEventId=${sourceEventId},updatedFrom=${updatedFrom},updatedTo=${updatedTo},lookupSourceRecordId=${lookupSourceRecordId},lookupCanonicalId=${lookupCanonicalId})}">Prev</a>
+                                <a class="btn btn-outline-secondary btn-sm" th:classappend="${pageData.hasNext()} ? '' : 'disabled'"
+                                   th:href="@{/admin/source-links(page=${pageData.number + 1},size=${pageData.size},entityType=${entityType},source=${source},linkState=${linkState},sourceBatchId=${sourceBatchId},sourceCorrelationId=${sourceCorrelationId},sourceEventId=${sourceEventId},updatedFrom=${updatedFrom},updatedTo=${updatedTo},lookupSourceRecordId=${lookupSourceRecordId},lookupCanonicalId=${lookupCanonicalId})}">Next</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow mb-4 border-left-danger">
+                    <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-danger">Maintenance</h6></div>
+                    <div class="card-body">
+                        <form method="post" th:action="@{/admin/source-links/reconcile}" class="d-flex align-items-center">
+                            <input type="text" name="confirmation" class="form-control form-control-sm mr-2" style="width: 220px;" placeholder="Type RECONCILE">
+                            <button type="submit" class="btn btn-danger btn-sm">Run reconcile</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+</div>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+</body>
+</html>
+

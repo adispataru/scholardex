@@ -14,8 +14,8 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationFact;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusCitationFactRepository;
+import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.nio.charset.StandardCharsets;
@@ -40,7 +40,6 @@ public class ScholardexCitationCanonicalizationService {
     private static final String DEFAULT_SOURCE_VERSION = "scopus-citation-facts-v1";
     private static final String PIPELINE_KEY = ScholardexCanonicalBuildCheckpointService.CITATION_PIPELINE_KEY;
     private static final String STATUS_OPEN = "OPEN";
-    private static final String LINK_STATE_LINKED = "LINKED";
     private static final String LINK_REASON_SCOPUS_BRIDGE = "scopus-citation-bridge";
     private static final String REASON_UNRESOLVED_CITED = "UNRESOLVED_CITED_PUBLICATION";
     private static final String REASON_UNRESOLVED_CITING = "UNRESOLVED_CITING_PUBLICATION";
@@ -49,7 +48,7 @@ public class ScholardexCitationCanonicalizationService {
     private final ScopusCitationFactRepository scopusCitationFactRepository;
     private final ScholardexPublicationFactRepository scholardexPublicationFactRepository;
     private final ScholardexCitationFactRepository scholardexCitationFactRepository;
-    private final ScholardexSourceLinkRepository scholardexSourceLinkRepository;
+    private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexIdentityConflictRepository scholardexIdentityConflictRepository;
     private final ScholardexCanonicalBuildCheckpointService checkpointService;
 
@@ -238,7 +237,7 @@ public class ScholardexCitationCanonicalizationService {
         canonicalFact.setSourceCorrelationId(sourceFact.getSourceCorrelationId());
         canonicalFact.setUpdatedAt(now);
         scholardexCitationFactRepository.save(canonicalFact);
-        upsertSourceLink(canonicalFact, now);
+        upsertSourceLink(canonicalFact);
 
         if (existingEdge.isPresent()) {
             result.markUpdated();
@@ -251,31 +250,26 @@ public class ScholardexCitationCanonicalizationService {
         if (isBlank(source) || isBlank(sourceRecordId)) {
             return Optional.empty();
         }
-        Optional<ScholardexSourceLink> sourceLink = scholardexSourceLinkRepository
-                .findByEntityTypeAndSourceAndSourceRecordId(ScholardexEntityType.CITATION, source, sourceRecordId);
+        Optional<ScholardexSourceLink> sourceLink = sourceLinkService
+                .findByKey(ScholardexEntityType.CITATION, source, sourceRecordId);
         return sourceLink == null ? Optional.empty() : sourceLink;
     }
 
-    private void upsertSourceLink(ScholardexCitationFact citationFact, Instant now) {
+    private void upsertSourceLink(ScholardexCitationFact citationFact) {
         if (isBlank(citationFact.getSource()) || isBlank(citationFact.getSourceRecordId())) {
             return;
         }
-        ScholardexSourceLink sourceLink = findSourceLink(citationFact.getSource(), citationFact.getSourceRecordId())
-                .orElseGet(ScholardexSourceLink::new);
-        sourceLink.setEntityType(ScholardexEntityType.CITATION);
-        sourceLink.setSource(citationFact.getSource());
-        sourceLink.setSourceRecordId(citationFact.getSourceRecordId());
-        sourceLink.setCanonicalEntityId(citationFact.getId());
-        sourceLink.setLinkState(LINK_STATE_LINKED);
-        sourceLink.setLinkReason(LINK_REASON_SCOPUS_BRIDGE);
-        sourceLink.setSourceEventId(citationFact.getSourceEventId());
-        sourceLink.setSourceBatchId(citationFact.getSourceBatchId());
-        sourceLink.setSourceCorrelationId(citationFact.getSourceCorrelationId());
-        if (sourceLink.getLinkedAt() == null) {
-            sourceLink.setLinkedAt(now);
-        }
-        sourceLink.setUpdatedAt(now);
-        scholardexSourceLinkRepository.save(sourceLink);
+        sourceLinkService.link(
+                ScholardexEntityType.CITATION,
+                citationFact.getSource(),
+                citationFact.getSourceRecordId(),
+                citationFact.getId(),
+                LINK_REASON_SCOPUS_BRIDGE,
+                citationFact.getSourceEventId(),
+                citationFact.getSourceBatchId(),
+                citationFact.getSourceCorrelationId(),
+                false
+        );
     }
 
     private void saveConflict(

@@ -203,10 +203,11 @@ public class AdminInitializationController {
             @RequestParam(name = "entity", required = false) String entity,
             @RequestParam(name = "startBatchOverride", required = false) Integer startBatchOverride,
             @RequestParam(name = "useCheckpoint", defaultValue = "true") boolean useCheckpoint,
+            @RequestParam(name = "reconcileSourceLinks", defaultValue = "false") boolean reconcileSourceLinks,
             @RequestParam(name = "chunkSizeOverride", required = false) Integer chunkSizeOverride,
             RedirectAttributes redirectAttributes
     ) {
-        var result = scopusBigBangMigrationService.runCanonicalBuildStep(entity, startBatchOverride, useCheckpoint, chunkSizeOverride);
+        var result = scopusBigBangMigrationService.runCanonicalBuildStep(entity, startBatchOverride, useCheckpoint, chunkSizeOverride, reconcileSourceLinks);
         redirectAttributes.addFlashAttribute("successMessage",
                 "Scopus canonical build complete (entity=" + (entity == null || entity.isBlank() ? "all" : entity) + "). processed=" + result.getProcessedCount()
                         + ", imported=" + result.getImportedCount()
@@ -220,6 +221,16 @@ public class AdminInitializationController {
                         + ", resumedFromCheckpoint=" + result.getResumedFromCheckpoint()
                         + ", checkpointLastCompletedBatch=" + result.getCheckpointLastCompletedBatch()
                         + ".");
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/scopus/reconcileSourceLinks")
+    public String runScopusSourceLinkReconcile(RedirectAttributes redirectAttributes) {
+        var result = scopusBigBangMigrationService.runSourceLinkReconcileStep();
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Scopus source-link reconcile complete. updated=" + result.updated()
+                        + ", skipped=" + result.skipped()
+                        + ", errors=" + result.errors() + ".");
         return "redirect:/admin/initialization";
     }
 

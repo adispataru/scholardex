@@ -16,7 +16,6 @@ import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
@@ -44,8 +43,6 @@ public class WosScholardexOnboardingService {
     private static final String SOURCE_SCOPUS = "SCOPUS";
     private static final String FORUM_DEFAULT_AGG = "JOURNAL";
 
-    private static final String LINKED = "LINKED";
-    private static final String CONFLICT = "CONFLICT";
     private static final String STATUS_OPEN = "OPEN";
 
     private static final String REASON_WOS_FORUM_ONBOARDING = "wos-forum-onboarding";
@@ -65,7 +62,7 @@ public class WosScholardexOnboardingService {
     private final WosRankingViewRepository wosRankingViewRepository;
     private final ScopusForumFactRepository scopusForumFactRepository;
     private final ScholardexForumFactRepository scholardexForumFactRepository;
-    private final ScholardexSourceLinkRepository scholardexSourceLinkRepository;
+    private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexIdentityConflictRepository scholardexIdentityConflictRepository;
     private final ScholardexPublicationFactRepository scholardexPublicationFactRepository;
 
@@ -134,15 +131,15 @@ public class WosScholardexOnboardingService {
             openConflict(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId, REASON_INVALID_ISSN, List.of(), batchId, correlationId);
         }
 
-        Optional<ScholardexSourceLink> existingLink = scholardexSourceLinkRepository
-                .findByEntityTypeAndSourceAndSourceRecordId(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId);
+        Optional<ScholardexSourceLink> existingLink = sourceLinkService
+                .findByKey(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId);
         if (existingLink.isPresent()) {
             String canonicalId = normalizeBlank(existingLink.get().getCanonicalEntityId());
             if (canonicalId != null && canonicalById.containsKey(canonicalId)) {
                 ScholardexForumFact target = canonicalById.get(canonicalId);
                 mergeForum(target, sourceRecordId, normalizedIssns, name, nameNormalized, aggregationType, aggregationTypeNormalized, scopusForums, now, batchId, correlationId);
                 scholardexForumFactRepository.save(target);
-                upsertLinkedSourceLink(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId, target.getId(), REASON_WOS_FORUM_ONBOARDING, batchId, correlationId, now);
+                upsertLinkedSourceLink(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId, target.getId(), REASON_WOS_FORUM_ONBOARDING, batchId, correlationId);
                 result.markUpdated();
                 return;
             }
@@ -152,7 +149,7 @@ public class WosScholardexOnboardingService {
         if (candidates.size() > 1) {
             String reason = normalizedIssns.isEmpty() ? REASON_AMBIGUOUS_NAME_AGG : REASON_AMBIGUOUS_ISSN;
             List<String> candidateIds = candidates.stream().map(ScholardexForumFact::getId).toList();
-            upsertConflictSourceLink(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId, reason, batchId, correlationId, now);
+            upsertConflictSourceLink(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId, reason, batchId, correlationId);
             openConflict(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId, reason, candidateIds, batchId, correlationId);
             result.markSkipped("wos-forum-ambiguous-candidates sourceRecordId=" + sourceRecordId);
             return;
@@ -163,7 +160,7 @@ public class WosScholardexOnboardingService {
         mergeForum(target, sourceRecordId, normalizedIssns, name, nameNormalized, aggregationType, aggregationTypeNormalized, scopusForums, now, batchId, correlationId);
         scholardexForumFactRepository.save(target);
         canonicalById.put(target.getId(), target);
-        upsertLinkedSourceLink(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId, target.getId(), REASON_WOS_FORUM_ONBOARDING, batchId, correlationId, now);
+        upsertLinkedSourceLink(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId, target.getId(), REASON_WOS_FORUM_ONBOARDING, batchId, correlationId);
         if (created) {
             result.markImported();
         } else {
@@ -340,7 +337,7 @@ public class WosScholardexOnboardingService {
             if (wosId == null || Publication.NON_WOS_ID.equalsIgnoreCase(wosId)) {
                 continue;
             }
-            List<ScholardexSourceLink> existing = scholardexSourceLinkRepository
+            List<ScholardexSourceLink> existing = sourceLinkService
                     .findByEntityTypeAndSourceRecordId(ScholardexEntityType.PUBLICATION, wosId);
             List<String> distinctCanonicalIds = existing.stream()
                     .map(ScholardexSourceLink::getCanonicalEntityId)
@@ -349,7 +346,7 @@ public class WosScholardexOnboardingService {
                     .toList();
             if (distinctCanonicalIds.size() > 1
                     || (distinctCanonicalIds.size() == 1 && !distinctCanonicalIds.getFirst().equals(publication.getId()))) {
-                upsertConflictSourceLink(ScholardexEntityType.PUBLICATION, SOURCE_WOS, wosId, REASON_SOURCE_ID_COLLISION, batchId, correlationId, now);
+                upsertConflictSourceLink(ScholardexEntityType.PUBLICATION, SOURCE_WOS, wosId, REASON_SOURCE_ID_COLLISION, batchId, correlationId);
                 openConflict(
                         ScholardexEntityType.PUBLICATION,
                         SOURCE_WOS,
@@ -369,8 +366,7 @@ public class WosScholardexOnboardingService {
                     publication.getId(),
                     REASON_WOS_PUBLICATION_LINK,
                     batchId,
-                    correlationId,
-                    now
+                    correlationId
             );
             result.markUpdated();
         }
@@ -383,25 +379,19 @@ public class WosScholardexOnboardingService {
             String canonicalEntityId,
             String reason,
             String batchId,
-            String correlationId,
-            Instant now
+            String correlationId
     ) {
-        ScholardexSourceLink link = scholardexSourceLinkRepository
-                .findByEntityTypeAndSourceAndSourceRecordId(entityType, source, sourceRecordId)
-                .orElseGet(ScholardexSourceLink::new);
-        link.setEntityType(entityType);
-        link.setSource(source);
-        link.setSourceRecordId(sourceRecordId);
-        link.setCanonicalEntityId(canonicalEntityId);
-        link.setLinkState(LINKED);
-        link.setLinkReason(reason);
-        link.setSourceBatchId(batchId);
-        link.setSourceCorrelationId(correlationId);
-        if (link.getLinkedAt() == null) {
-            link.setLinkedAt(now);
-        }
-        link.setUpdatedAt(now);
-        scholardexSourceLinkRepository.save(link);
+        sourceLinkService.link(
+                entityType,
+                source,
+                sourceRecordId,
+                canonicalEntityId,
+                reason,
+                null,
+                batchId,
+                correlationId,
+                false
+        );
     }
 
     private void upsertConflictSourceLink(
@@ -410,24 +400,18 @@ public class WosScholardexOnboardingService {
             String sourceRecordId,
             String reason,
             String batchId,
-            String correlationId,
-            Instant now
+            String correlationId
     ) {
-        ScholardexSourceLink link = scholardexSourceLinkRepository
-                .findByEntityTypeAndSourceAndSourceRecordId(entityType, source, sourceRecordId)
-                .orElseGet(ScholardexSourceLink::new);
-        link.setEntityType(entityType);
-        link.setSource(source);
-        link.setSourceRecordId(sourceRecordId);
-        link.setLinkState(CONFLICT);
-        link.setLinkReason(reason);
-        link.setSourceBatchId(batchId);
-        link.setSourceCorrelationId(correlationId);
-        if (link.getLinkedAt() == null) {
-            link.setLinkedAt(now);
-        }
-        link.setUpdatedAt(now);
-        scholardexSourceLinkRepository.save(link);
+        sourceLinkService.markConflict(
+                entityType,
+                source,
+                sourceRecordId,
+                reason,
+                null,
+                batchId,
+                correlationId,
+                false
+        );
     }
 
     private void openConflict(

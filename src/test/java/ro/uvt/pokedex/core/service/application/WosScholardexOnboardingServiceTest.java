@@ -16,7 +16,6 @@ import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
@@ -37,7 +36,7 @@ class WosScholardexOnboardingServiceTest {
     @Mock private WosRankingViewRepository wosRankingViewRepository;
     @Mock private ScopusForumFactRepository scopusForumFactRepository;
     @Mock private ScholardexForumFactRepository scholardexForumFactRepository;
-    @Mock private ScholardexSourceLinkRepository scholardexSourceLinkRepository;
+    @Mock private ScholardexSourceLinkService sourceLinkService;
     @Mock private ScholardexIdentityConflictRepository scholardexIdentityConflictRepository;
     @Mock private ScholardexPublicationFactRepository scholardexPublicationFactRepository;
 
@@ -48,7 +47,7 @@ class WosScholardexOnboardingServiceTest {
                 wosRankingViewRepository,
                 scopusForumFactRepository,
                 scholardexForumFactRepository,
-                scholardexSourceLinkRepository,
+                sourceLinkService,
                 scholardexIdentityConflictRepository,
                 scholardexPublicationFactRepository
         );
@@ -62,11 +61,9 @@ class WosScholardexOnboardingServiceTest {
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of());
-        when(scholardexSourceLinkRepository.findByEntityTypeAndSourceAndSourceRecordId(
+        when(sourceLinkService.findByKey(
                 ScholardexEntityType.FORUM, "WOS", "wos-j-1")).thenReturn(Optional.empty());
         when(scholardexForumFactRepository.save(any(ScholardexForumFact.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-        when(scholardexSourceLinkRepository.save(any(ScholardexSourceLink.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         ImportProcessingResult result = service.runWosOnboarding("batch-1", "corr-1");
@@ -87,7 +84,7 @@ class WosScholardexOnboardingServiceTest {
                 wosRankingViewRepository,
                 scopusForumFactRepository,
                 scholardexForumFactRepository,
-                scholardexSourceLinkRepository,
+                sourceLinkService,
                 scholardexIdentityConflictRepository,
                 scholardexPublicationFactRepository
         );
@@ -104,12 +101,10 @@ class WosScholardexOnboardingServiceTest {
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of(publication));
-        when(scholardexSourceLinkRepository.findByEntityTypeAndSourceRecordId(
+        when(sourceLinkService.findByEntityTypeAndSourceRecordId(
                 ScholardexEntityType.PUBLICATION,
                 "WOS:123"
         )).thenReturn(List.of(existing));
-        when(scholardexSourceLinkRepository.findByEntityTypeAndSourceAndSourceRecordId(
-                ScholardexEntityType.PUBLICATION, "WOS", "WOS:123")).thenReturn(Optional.empty());
         when(scholardexIdentityConflictRepository.findByEntityTypeAndIncomingSourceAndIncomingSourceRecordIdAndReasonCodeAndStatus(
                 eq(ScholardexEntityType.PUBLICATION), eq("WOS"), eq("WOS:123"), eq("SOURCE_ID_COLLISION"), eq("OPEN")
         )).thenReturn(Optional.empty());

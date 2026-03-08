@@ -47,6 +47,7 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
     @Mock private ScholardexCitationCanonicalizationService citationCanonicalizationService;
     @Mock private ScholardexCanonicalBuildCheckpointService canonicalBuildCheckpointService;
+    @Mock private ScholardexSourceLinkService sourceLinkService;
     @Mock private ScholardexPublicationBackfillService publicationBackfillService;
     @Mock private ScopusImportEventRepository importEventRepository;
     @Mock private ScopusPublicationFactRepository publicationFactRepository;
@@ -77,6 +78,7 @@ class ScopusBigBangMigrationServiceTest {
                 publicationCanonicalizationService,
                 citationCanonicalizationService,
                 canonicalBuildCheckpointService,
+                sourceLinkService,
                 publicationBackfillService,
                 importEventRepository,
                 publicationFactRepository,

@@ -146,8 +146,18 @@
                                 <input type="text" name="entity" class="form-control form-control-sm mr-2" style="width: 170px;" placeholder="all">
                                 <input type="number" name="startBatchOverride" min="0" class="form-control form-control-sm mr-2" style="width: 130px;" placeholder="Start">
                                 <input type="number" name="chunkSizeOverride" min="1" class="form-control form-control-sm mr-2" style="width: 130px;" placeholder="Chunk">
+                                <label class="form-check-label small mr-2">
+                                    <input type="checkbox" class="form-check-input mt-1" name="reconcileSourceLinks" value="true">
+                                    reconcile source links
+                                </label>
                                 <input type="hidden" name="useCheckpoint" value="true">
                                 <button type="submit" class="btn btn-outline-secondary btn-sm">Run canonical</button>
+                            </form>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>Maintenance: reconcile source-link ledger (H19.11)</div>
+                            <form th:action="@{/admin/initialization/scopus/reconcileSourceLinks}" method="post">
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">Run reconcile</button>
                             </form>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-3">

@@ -12,8 +12,8 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationFactRepository;
+import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.nio.charset.StandardCharsets;
@@ -37,7 +37,6 @@ public class ScholardexAffiliationCanonicalizationService {
     private static final int DEFAULT_CHUNK_SIZE = 1_000;
     private static final String DEFAULT_SOURCE_VERSION = "scopus-affiliation-facts-v1";
     private static final String PIPELINE_KEY = ScholardexCanonicalBuildCheckpointService.AFFILIATION_PIPELINE_KEY;
-    private static final String LINK_STATE_LINKED = "LINKED";
     private static final String STATUS_OPEN = "OPEN";
     private static final String LINK_REASON_SCOPUS_BRIDGE = "scopus-affiliation-bridge";
     private static final String CONFLICT_SOURCE_ID_COLLISION = "SOURCE_ID_COLLISION";
@@ -47,7 +46,7 @@ public class ScholardexAffiliationCanonicalizationService {
 
     private final ScopusAffiliationFactRepository scopusAffiliationFactRepository;
     private final ScholardexAffiliationFactRepository scholardexAffiliationFactRepository;
-    private final ScholardexSourceLinkRepository sourceLinkRepository;
+    private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexIdentityConflictRepository identityConflictRepository;
     private final ScholardexCanonicalBuildCheckpointService checkpointService;
 
@@ -170,8 +169,8 @@ public class ScholardexAffiliationCanonicalizationService {
             return;
         }
 
-        Optional<ScholardexSourceLink> existingSourceLink = sourceLinkRepository
-                .findByEntityTypeAndSourceAndSourceRecordId(ScholardexEntityType.AFFILIATION, sourceFact.getSource(), sourceRecordId);
+        Optional<ScholardexSourceLink> existingSourceLink = sourceLinkService
+                .findByKey(ScholardexEntityType.AFFILIATION, sourceFact.getSource(), sourceRecordId);
         Optional<ScholardexAffiliationFact> existingBySource = scholardexAffiliationFactRepository.findByScopusAffiliationIdsContains(sourceRecordId);
         String canonicalId = existingSourceLink.map(ScholardexSourceLink::getCanonicalEntityId)
                 .or(() -> existingBySource.map(ScholardexAffiliationFact::getId))
@@ -233,23 +232,17 @@ public class ScholardexAffiliationCanonicalizationService {
         if (isBlank(sourceFact.getSource())) {
             return;
         }
-        ScholardexSourceLink sourceLink = sourceLinkRepository
-                .findByEntityTypeAndSourceAndSourceRecordId(ScholardexEntityType.AFFILIATION, sourceFact.getSource(), sourceRecordId)
-                .orElseGet(ScholardexSourceLink::new);
-        sourceLink.setEntityType(ScholardexEntityType.AFFILIATION);
-        sourceLink.setSource(sourceFact.getSource());
-        sourceLink.setSourceRecordId(sourceRecordId);
-        sourceLink.setCanonicalEntityId(canonicalId);
-        sourceLink.setLinkState(LINK_STATE_LINKED);
-        sourceLink.setLinkReason(LINK_REASON_SCOPUS_BRIDGE);
-        sourceLink.setSourceEventId(sourceFact.getSourceEventId());
-        sourceLink.setSourceBatchId(sourceFact.getSourceBatchId());
-        sourceLink.setSourceCorrelationId(sourceFact.getSourceCorrelationId());
-        if (sourceLink.getLinkedAt() == null) {
-            sourceLink.setLinkedAt(now);
-        }
-        sourceLink.setUpdatedAt(now);
-        sourceLinkRepository.save(sourceLink);
+        sourceLinkService.link(
+                ScholardexEntityType.AFFILIATION,
+                sourceFact.getSource(),
+                sourceRecordId,
+                canonicalId,
+                LINK_REASON_SCOPUS_BRIDGE,
+                sourceFact.getSourceEventId(),
+                sourceFact.getSourceBatchId(),
+                sourceFact.getSourceCorrelationId(),
+                false
+        );
     }
 
     private void saveConflict(ScopusAffiliationFact sourceFact, String sourceRecordId, String reason, List<String> candidates) {

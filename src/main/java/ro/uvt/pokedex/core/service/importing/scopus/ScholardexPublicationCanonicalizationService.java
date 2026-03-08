@@ -13,8 +13,8 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorshipFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
+import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.nio.charset.StandardCharsets;
@@ -41,8 +41,6 @@ public class ScholardexPublicationCanonicalizationService {
     private static final int DEFAULT_CHUNK_SIZE = 1_000;
     private static final String DEFAULT_SOURCE_VERSION = "scopus-publication-facts-v1";
     private static final String PIPELINE_KEY = ScholardexCanonicalBuildCheckpointService.PUBLICATION_PIPELINE_KEY;
-    static final String LINK_STATE_LINKED = "LINKED";
-    static final String LINK_STATE_UNMATCHED = "UNMATCHED";
     private static final String LINK_REASON_SCOPUS_BRIDGE = "scopus-fact-bridge";
     private static final String LINK_REASON_AUTHORSHIP_BRIDGE = "publication-authorship-bridge";
     private static final String LINK_REASON_AUTHOR_FALLBACK = "canonical-author-fallback";
@@ -55,7 +53,7 @@ public class ScholardexPublicationCanonicalizationService {
 
     private final ScopusPublicationFactRepository scopusPublicationFactRepository;
     private final ScholardexPublicationFactRepository scholardexPublicationFactRepository;
-    private final ScholardexSourceLinkRepository scholardexSourceLinkRepository;
+    private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexAuthorshipFactRepository scholardexAuthorshipFactRepository;
     private final ScholardexCanonicalBuildCheckpointService checkpointService;
 
@@ -215,23 +213,17 @@ public class ScholardexPublicationCanonicalizationService {
         if (fact == null || isBlank(fact.getSource()) || isBlank(fact.getSourceRecordId())) {
             return;
         }
-        ScholardexSourceLink link = findSourceLink(ScholardexEntityType.PUBLICATION, fact.getSource(), fact.getSourceRecordId())
-                .orElseGet(ScholardexSourceLink::new);
-        Instant now = Instant.now();
-        link.setEntityType(ScholardexEntityType.PUBLICATION);
-        link.setSource(fact.getSource());
-        link.setSourceRecordId(fact.getSourceRecordId());
-        link.setCanonicalEntityId(fact.getId());
-        link.setLinkState(LINK_STATE_LINKED);
-        link.setLinkReason(reason);
-        link.setSourceEventId(fact.getSourceEventId());
-        link.setSourceBatchId(fact.getSourceBatchId());
-        link.setSourceCorrelationId(fact.getSourceCorrelationId());
-        if (link.getLinkedAt() == null) {
-            link.setLinkedAt(now);
-        }
-        link.setUpdatedAt(now);
-        scholardexSourceLinkRepository.save(link);
+        sourceLinkService.link(
+                ScholardexEntityType.PUBLICATION,
+                fact.getSource(),
+                fact.getSourceRecordId(),
+                fact.getId(),
+                reason,
+                fact.getSourceEventId(),
+                fact.getSourceBatchId(),
+                fact.getSourceCorrelationId(),
+                false
+        );
     }
 
     public AuthorBridgeResult bridgeAuthorIds(List<String> sourceAuthorIds, String source) {
@@ -274,8 +266,7 @@ public class ScholardexPublicationCanonicalizationService {
     }
 
     private Optional<ScholardexSourceLink> findSourceLink(ScholardexEntityType entityType, String source, String sourceRecordId) {
-        Optional<ScholardexSourceLink> link = scholardexSourceLinkRepository
-                .findByEntityTypeAndSourceAndSourceRecordId(entityType, source, sourceRecordId);
+        Optional<ScholardexSourceLink> link = sourceLinkService.findByKey(entityType, source, sourceRecordId);
         return link == null ? Optional.empty() : link;
     }
 
@@ -283,20 +274,17 @@ public class ScholardexPublicationCanonicalizationService {
         if (isBlank(source) || isBlank(sourceAuthorId) || isBlank(fallbackAuthorId)) {
             return;
         }
-        ScholardexSourceLink link = findSourceLink(ScholardexEntityType.AUTHOR, source, sourceAuthorId)
-                .orElseGet(ScholardexSourceLink::new);
-        Instant now = Instant.now();
-        link.setEntityType(ScholardexEntityType.AUTHOR);
-        link.setSource(source);
-        link.setSourceRecordId(sourceAuthorId);
-        link.setCanonicalEntityId(fallbackAuthorId);
-        link.setLinkState(LINK_STATE_UNMATCHED);
-        link.setLinkReason(LINK_REASON_AUTHOR_FALLBACK);
-        if (link.getLinkedAt() == null) {
-            link.setLinkedAt(now);
-        }
-        link.setUpdatedAt(now);
-        scholardexSourceLinkRepository.save(link);
+        sourceLinkService.markUnmatched(
+                ScholardexEntityType.AUTHOR,
+                source,
+                sourceAuthorId,
+                fallbackAuthorId,
+                LINK_REASON_AUTHOR_FALLBACK,
+                null,
+                null,
+                null,
+                false
+        );
     }
 
     private void applyCanonicalPublicationFields(
@@ -377,11 +365,11 @@ public class ScholardexPublicationCanonicalizationService {
             edge.setSourceEventId(fact.getSourceEventId());
             edge.setSourceBatchId(fact.getSourceBatchId());
             edge.setSourceCorrelationId(fact.getSourceCorrelationId());
-            edge.setLinkState(entry.pendingResolution() ? LINK_STATE_UNMATCHED : LINK_STATE_LINKED);
+            edge.setLinkState(entry.pendingResolution() ? ScholardexSourceLinkService.STATE_UNMATCHED : ScholardexSourceLinkService.STATE_LINKED);
             edge.setLinkReason(entry.pendingResolution() ? LINK_REASON_AUTHOR_FALLBACK : LINK_REASON_AUTHORSHIP_BRIDGE);
             edge.setUpdatedAt(now);
             scholardexAuthorshipFactRepository.save(edge);
-            upsertAuthorshipSourceLink(edge, now);
+            upsertAuthorshipSourceLink(edge);
         }
     }
 
@@ -389,26 +377,35 @@ public class ScholardexPublicationCanonicalizationService {
         upsertAuthorshipEdges(fact, bridge, Instant.now());
     }
 
-    private void upsertAuthorshipSourceLink(ScholardexAuthorshipFact edge, Instant now) {
+    private void upsertAuthorshipSourceLink(ScholardexAuthorshipFact edge) {
         if (edge == null || isBlank(edge.getSource()) || isBlank(edge.getSourceRecordId())) {
             return;
         }
-        ScholardexSourceLink link = findSourceLink(ScholardexEntityType.AUTHORSHIP, edge.getSource(), edge.getSourceRecordId())
-                .orElseGet(ScholardexSourceLink::new);
-        link.setEntityType(ScholardexEntityType.AUTHORSHIP);
-        link.setSource(edge.getSource());
-        link.setSourceRecordId(edge.getSourceRecordId());
-        link.setCanonicalEntityId(edge.getId());
-        link.setLinkState(edge.getLinkState());
-        link.setLinkReason(edge.getLinkReason());
-        link.setSourceEventId(edge.getSourceEventId());
-        link.setSourceBatchId(edge.getSourceBatchId());
-        link.setSourceCorrelationId(edge.getSourceCorrelationId());
-        if (link.getLinkedAt() == null) {
-            link.setLinkedAt(now);
+        if (ScholardexSourceLinkService.STATE_LINKED.equals(edge.getLinkState())) {
+            sourceLinkService.link(
+                    ScholardexEntityType.AUTHORSHIP,
+                    edge.getSource(),
+                    edge.getSourceRecordId(),
+                    edge.getId(),
+                    edge.getLinkReason(),
+                    edge.getSourceEventId(),
+                    edge.getSourceBatchId(),
+                    edge.getSourceCorrelationId(),
+                    false
+            );
+            return;
         }
-        link.setUpdatedAt(now);
-        scholardexSourceLinkRepository.save(link);
+        sourceLinkService.markUnmatched(
+                ScholardexEntityType.AUTHORSHIP,
+                edge.getSource(),
+                edge.getSourceRecordId(),
+                edge.getId(),
+                edge.getLinkReason(),
+                edge.getSourceEventId(),
+                edge.getSourceBatchId(),
+                edge.getSourceCorrelationId(),
+                false
+        );
     }
 
     private String buildAuthorshipSourceRecordId(String publicationSourceRecordId, String sourceAuthorId) {

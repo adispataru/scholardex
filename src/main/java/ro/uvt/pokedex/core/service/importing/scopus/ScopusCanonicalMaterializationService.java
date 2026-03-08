@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 @Service
@@ -17,6 +18,7 @@ public class ScopusCanonicalMaterializationService {
     private final ScholardexAuthorCanonicalizationService authorCanonicalizationService;
     private final ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
     private final ScholardexCitationCanonicalizationService citationCanonicalizationService;
+    private final ScholardexSourceLinkService sourceLinkService;
     private final ScopusProjectionBuilderService projectionBuilderService;
 
     public void rebuildFactsAndViews(String trigger) {
@@ -34,8 +36,11 @@ public class ScopusCanonicalMaterializationService {
         ImportProcessingResult canonicalAuthorResult = authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(effectiveOptions);
         ImportProcessingResult canonicalPublicationResult = publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(effectiveOptions);
         ImportProcessingResult canonicalCitationResult = citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(effectiveOptions);
+        ScholardexSourceLinkService.ImportRepairSummary sourceLinkRepair = effectiveOptions.reconcileSourceLinks()
+                ? sourceLinkService.reconcileLinks()
+                : new ScholardexSourceLinkService.ImportRepairSummary(0L, 0L, 0L);
         ImportProcessingResult projectionResult = projectionBuilderService.rebuildViews();
-        log.info("Scopus canonical materialization complete: trigger={}, batchId={}, factProcessed={}, factErrors={}, canonicalAffiliationProcessed={}, canonicalAffiliationErrors={}, canonicalAffiliationBatches={}, canonicalAuthorProcessed={}, canonicalAuthorErrors={}, canonicalAuthorBatches={}, canonicalPublicationProcessed={}, canonicalPublicationErrors={}, canonicalPublicationBatches={}, canonicalCitationProcessed={}, canonicalCitationErrors={}, canonicalCitationBatches={}, projectionProcessed={}, projectionErrors={}",
+        log.info("Scopus canonical materialization complete: trigger={}, batchId={}, factProcessed={}, factErrors={}, canonicalAffiliationProcessed={}, canonicalAffiliationErrors={}, canonicalAffiliationBatches={}, canonicalAuthorProcessed={}, canonicalAuthorErrors={}, canonicalAuthorBatches={}, canonicalPublicationProcessed={}, canonicalPublicationErrors={}, canonicalPublicationBatches={}, canonicalCitationProcessed={}, canonicalCitationErrors={}, canonicalCitationBatches={}, sourceLinkReconcileUpdated={}, sourceLinkReconcileSkipped={}, sourceLinkReconcileErrors={}, projectionProcessed={}, projectionErrors={}",
                 trigger,
                 batchId,
                 factResult.getProcessedCount(),
@@ -52,6 +57,9 @@ public class ScopusCanonicalMaterializationService {
                 canonicalCitationResult.getProcessedCount(),
                 canonicalCitationResult.getErrorCount(),
                 canonicalCitationResult.getBatchesProcessed(),
+                sourceLinkRepair.updated(),
+                sourceLinkRepair.skipped(),
+                sourceLinkRepair.errors(),
                 projectionResult.getProcessedCount(),
                 projectionResult.getErrorCount());
     }

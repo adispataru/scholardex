@@ -153,7 +153,7 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
 
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult result = service.ensureIndexes();
 
-        assertEquals(88, result.created().size());
+        assertEquals(92, result.created().size());
         assertTrue(result.present().isEmpty());
         assertTrue(result.invalid().isEmpty());
         assertTrue(result.errors().isEmpty());
@@ -278,7 +278,11 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         when(sourceLinkOps.getIndexInfo()).thenReturn(List.of(
                 info(ScopusCanonicalIndexMaintenanceService.IDX_SOURCE_LINK_UNIQ, true, "entityType", "source", "sourceRecordId"),
                 info(ScopusCanonicalIndexMaintenanceService.IDX_SOURCE_LINK_CANONICAL, false, "canonicalEntityId"),
-                info(ScopusCanonicalIndexMaintenanceService.IDX_SOURCE_LINK_SOURCE_RECORD, false, "entityType", "sourceRecordId")
+                info(ScopusCanonicalIndexMaintenanceService.IDX_SOURCE_LINK_SOURCE_RECORD, false, "entityType", "sourceRecordId"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_SOURCE_LINK_ENTITY_CANONICAL, false, "entityType", "canonicalEntityId"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_SOURCE_LINK_STATE_UPDATED, false, "linkState", "entityType", "updatedAt"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_SOURCE_LINK_BATCH_ENTITY, false, "sourceBatchId", "entityType"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_SOURCE_LINK_CORRELATION_ENTITY, false, "sourceCorrelationId", "entityType")
         ));
         when(identityConflictOps.getIndexInfo()).thenReturn(List.of(
                 info(ScopusCanonicalIndexMaintenanceService.IDX_IDENTITY_CONFLICT_OPEN, true,
@@ -299,7 +303,7 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
 
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult result = service.ensureIndexes();
 
-        assertEquals(88, result.present().size());
+        assertEquals(92, result.present().size());
         assertTrue(result.created().isEmpty());
         assertTrue(result.invalid().isEmpty());
         assertTrue(result.errors().isEmpty());

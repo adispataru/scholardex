@@ -25,7 +25,6 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationView
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumViewRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 
@@ -51,7 +50,7 @@ public class ScopusProjectionReadService {
     private final ScholardexForumViewRepository forumViewRepository;
     private final ScholardexAuthorViewRepository authorViewRepository;
     private final ScholardexAffiliationViewRepository affiliationViewRepository;
-    private final ScholardexSourceLinkRepository sourceLinkRepository;
+    private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexAuthorFactRepository canonicalAuthorFactRepository;
     private final ScholardexAffiliationFactRepository canonicalAffiliationFactRepository;
     private final ScholardexForumFactRepository canonicalForumFactRepository;
@@ -239,7 +238,7 @@ public class ScopusProjectionReadService {
         canonicalForumFactRepository.save(canonicalFact);
 
         if (sourceRecordId != null) {
-            upsertSourceLink(ScholardexEntityType.FORUM, "MANUAL_FORUM_EDIT", sourceRecordId, canonicalId, "manual-forum-save", now);
+            upsertSourceLink(ScholardexEntityType.FORUM, "MANUAL_FORUM_EDIT", sourceRecordId, canonicalId, "manual-forum-save");
         }
 
         Forum out = new Forum();
@@ -275,7 +274,7 @@ public class ScopusProjectionReadService {
         canonicalAuthorFactRepository.save(canonicalFact);
 
         if (sourceRecordId != null) {
-            upsertSourceLink(ScholardexEntityType.AUTHOR, "MANUAL_AUTHOR_EDIT", sourceRecordId, canonicalId, "manual-author-save", now);
+            upsertSourceLink(ScholardexEntityType.AUTHOR, "MANUAL_AUTHOR_EDIT", sourceRecordId, canonicalId, "manual-author-save");
         }
 
         for (String affiliationId : affiliationIds) {
@@ -327,7 +326,7 @@ public class ScopusProjectionReadService {
         canonicalAffiliationFactRepository.save(canonicalFact);
 
         if (sourceRecordId != null) {
-            upsertSourceLink(ScholardexEntityType.AFFILIATION, "MANUAL_AFFILIATION_EDIT", sourceRecordId, canonicalId, "manual-affiliation-save", now);
+            upsertSourceLink(ScholardexEntityType.AFFILIATION, "MANUAL_AFFILIATION_EDIT", sourceRecordId, canonicalId, "manual-affiliation-save");
         }
 
         Affiliation out = new Affiliation();
@@ -342,7 +341,7 @@ public class ScopusProjectionReadService {
         if (candidate == null || candidate.isBlank()) {
             return Optional.empty();
         }
-        List<ScholardexSourceLink> mapped = sourceLinkRepository.findByEntityTypeAndSourceRecordId(entityType, candidate);
+        List<ScholardexSourceLink> mapped = sourceLinkService.findByEntityTypeAndSourceRecordId(entityType, candidate);
         if (mapped != null) {
             return mapped.stream()
                     .map(ScholardexSourceLink::getCanonicalEntityId)
@@ -363,7 +362,7 @@ public class ScopusProjectionReadService {
                 continue;
             }
             resolved.add(normalized);
-            List<ScholardexSourceLink> mapped = sourceLinkRepository.findByEntityTypeAndSourceRecordId(entityType, normalized);
+            List<ScholardexSourceLink> mapped = sourceLinkService.findByEntityTypeAndSourceRecordId(entityType, normalized);
             if (mapped == null || mapped.isEmpty()) {
                 continue;
             }
@@ -380,23 +379,19 @@ public class ScopusProjectionReadService {
             String source,
             String sourceRecordId,
             String canonicalId,
-            String reason,
-            java.time.Instant now
+            String reason
     ) {
-        ScholardexSourceLink link = sourceLinkRepository
-                .findByEntityTypeAndSourceAndSourceRecordId(entityType, source, sourceRecordId)
-                .orElseGet(ScholardexSourceLink::new);
-        link.setEntityType(entityType);
-        link.setSource(source);
-        link.setSourceRecordId(sourceRecordId);
-        link.setCanonicalEntityId(canonicalId);
-        link.setLinkState("LINKED");
-        link.setLinkReason(reason);
-        if (link.getLinkedAt() == null) {
-            link.setLinkedAt(now);
-        }
-        link.setUpdatedAt(now);
-        sourceLinkRepository.save(link);
+        sourceLinkService.link(
+                entityType,
+                source,
+                sourceRecordId,
+                canonicalId,
+                reason,
+                null,
+                null,
+                null,
+                false
+        );
     }
 
     private String normalizeBlank(String value) {

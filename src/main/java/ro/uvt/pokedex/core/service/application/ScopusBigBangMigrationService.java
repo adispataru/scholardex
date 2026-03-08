@@ -61,6 +61,7 @@ public class ScopusBigBangMigrationService {
     private final ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
     private final ScholardexCitationCanonicalizationService citationCanonicalizationService;
     private final ScholardexCanonicalBuildCheckpointService canonicalBuildCheckpointService;
+    private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexPublicationBackfillService publicationBackfillService;
     private final ScopusImportEventRepository importEventRepository;
     private final ScopusPublicationFactRepository publicationFactRepository;
@@ -105,7 +106,7 @@ public class ScopusBigBangMigrationService {
     ) {
         Instant startedAt = Instant.now();
         ImportProcessingResult facts = scopusFactBuilderService.buildFactsFromImportEvents();
-        CanonicalBuildOptions options = new CanonicalBuildOptions(chunkSizeOverride, startBatchOverride, useCheckpoint, null);
+        CanonicalBuildOptions options = new CanonicalBuildOptions(chunkSizeOverride, startBatchOverride, useCheckpoint, null, false);
         ImportProcessingResult canonicalAffiliations = affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(options);
         ImportProcessingResult canonicalAuthors = authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options);
         ImportProcessingResult canonicalPublications = publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(options);
@@ -331,31 +332,62 @@ public class ScopusBigBangMigrationService {
             String entity,
             Integer startBatchOverride,
             boolean useCheckpoint,
-            Integer chunkSizeOverride
+            Integer chunkSizeOverride,
+            boolean reconcileSourceLinks
     ) {
-        CanonicalBuildOptions options = new CanonicalBuildOptions(chunkSizeOverride, startBatchOverride, useCheckpoint, null);
+        CanonicalBuildOptions options = new CanonicalBuildOptions(chunkSizeOverride, startBatchOverride, useCheckpoint, null, reconcileSourceLinks);
         if (entity == null || entity.isBlank() || "all".equalsIgnoreCase(entity)) {
             ImportProcessingResult affiliations = affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(options);
             ImportProcessingResult authors = authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options);
             ImportProcessingResult publications = publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(options);
             ImportProcessingResult citations = citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options);
-            return combine(affiliations, authors, publications, citations);
+            ImportProcessingResult combined = combine(affiliations, authors, publications, citations);
+            if (reconcileSourceLinks) {
+                applySourceLinkReconcileSummary(combined, sourceLinkService.reconcileLinks());
+            }
+            return combined;
         }
-        return switch (entity.trim().toLowerCase()) {
+        ImportProcessingResult result = switch (entity.trim().toLowerCase()) {
             case "affiliation" -> affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(options);
             case "author" -> authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options);
             case "publication" -> publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(options);
             case "citation" -> citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options);
             default -> {
-                ImportProcessingResult result = new ImportProcessingResult(10);
-                result.markSkipped("unknown canonical build entity: " + entity);
-                yield result;
+                ImportProcessingResult unknownEntityResult = new ImportProcessingResult(10);
+                unknownEntityResult.markSkipped("unknown canonical build entity: " + entity);
+                yield unknownEntityResult;
             }
         };
+        if (reconcileSourceLinks) {
+            applySourceLinkReconcileSummary(result, sourceLinkService.reconcileLinks());
+        }
+        return result;
+    }
+
+    public ScholardexSourceLinkService.ImportRepairSummary runSourceLinkReconcileStep() {
+        return sourceLinkService.reconcileLinks();
     }
 
     public void resetCanonicalBuildCheckpoints() {
         canonicalBuildCheckpointService.resetAll();
+    }
+
+    private void applySourceLinkReconcileSummary(
+            ImportProcessingResult result,
+            ScholardexSourceLinkService.ImportRepairSummary repairSummary
+    ) {
+        if (result == null || repairSummary == null) {
+            return;
+        }
+        for (int i = 0; i < repairSummary.updated(); i++) {
+            result.markUpdated();
+        }
+        for (int i = 0; i < repairSummary.skipped(); i++) {
+            result.markSkipped("source-link-reconcile-skipped");
+        }
+        for (int i = 0; i < repairSummary.errors(); i++) {
+            result.markError("source-link-reconcile-error");
+        }
     }
 
     public CanonicalResetResult resetCanonicalState() {

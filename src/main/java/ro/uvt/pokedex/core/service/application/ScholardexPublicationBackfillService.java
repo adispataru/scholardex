@@ -5,10 +5,8 @@ import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService;
 
@@ -25,7 +23,7 @@ public class ScholardexPublicationBackfillService {
 
     private final ScholardexPublicationViewRepository publicationViewRepository;
     private final ScholardexPublicationFactRepository publicationFactRepository;
-    private final ScholardexSourceLinkRepository sourceLinkRepository;
+    private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
 
     public ImportProcessingResult backfillFromLegacyProjection() {
@@ -121,23 +119,16 @@ public class ScholardexPublicationBackfillService {
         if (sourceRecordId == null || sourceRecordId.isBlank()) {
             return;
         }
-        ScholardexSourceLink link = sourceLinkRepository
-                .findByEntityTypeAndSourceAndSourceRecordId(ScholardexEntityType.PUBLICATION, source, sourceRecordId)
-                .orElseGet(ScholardexSourceLink::new);
-        Instant now = Instant.now();
-        link.setEntityType(ScholardexEntityType.PUBLICATION);
-        link.setSource(source);
-        link.setSourceRecordId(sourceRecordId);
-        link.setCanonicalEntityId(fact.getId());
-        link.setLinkState("LINKED");
-        link.setLinkReason("legacy-backfill");
-        link.setSourceEventId(fact.getSourceEventId());
-        link.setSourceBatchId(fact.getSourceBatchId());
-        link.setSourceCorrelationId(fact.getSourceCorrelationId());
-        if (link.getLinkedAt() == null) {
-            link.setLinkedAt(now);
-        }
-        link.setUpdatedAt(now);
-        sourceLinkRepository.save(link);
+        sourceLinkService.link(
+                ScholardexEntityType.PUBLICATION,
+                source,
+                sourceRecordId,
+                fact.getId(),
+                "legacy-backfill",
+                fact.getSourceEventId(),
+                fact.getSourceBatchId(),
+                fact.getSourceCorrelationId(),
+                false
+        );
     }
 }

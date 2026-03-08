@@ -230,6 +230,12 @@
             <span>Conflicts</span>
         </a>
     </li>
+    <li class="nav-item" th:classappend="${activeSection} == 'sourceLinks' ? 'active' : ''">
+        <a class="nav-link" th:href="@{/admin/source-links}">
+            <i class="fa-solid fa-fw fa-link"></i>
+            <span>Source Links</span>
+        </a>
+    </li>
 
         <!-- Divider -->
         <hr class="sidebar-divider d-none d-md-block">

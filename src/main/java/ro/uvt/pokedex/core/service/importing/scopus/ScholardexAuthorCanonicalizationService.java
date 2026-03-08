@@ -14,8 +14,8 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorFactRepository;
+import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.nio.charset.StandardCharsets;
@@ -43,8 +43,6 @@ public class ScholardexAuthorCanonicalizationService {
     private static final String DEFAULT_SOURCE_VERSION = "scopus-author-facts-v1";
     private static final String PIPELINE_KEY = ScholardexCanonicalBuildCheckpointService.AUTHOR_PIPELINE_KEY;
     private static final String SOURCE_SCOPUS = "SCOPUS";
-    private static final String LINK_STATE_LINKED = "LINKED";
-    private static final String LINK_STATE_UNMATCHED = "UNMATCHED";
     private static final String STATUS_OPEN = "OPEN";
     private static final String LINK_REASON_SCOPUS_BRIDGE = "scopus-author-bridge";
     private static final String LINK_REASON_AFFILIATION_FALLBACK = "canonical-affiliation-fallback";
@@ -57,7 +55,7 @@ public class ScholardexAuthorCanonicalizationService {
     private final ScopusAuthorFactRepository scopusAuthorFactRepository;
     private final ScholardexAuthorFactRepository scholardexAuthorFactRepository;
     private final ScholardexAuthorAffiliationFactRepository authorAffiliationFactRepository;
-    private final ScholardexSourceLinkRepository sourceLinkRepository;
+    private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexIdentityConflictRepository identityConflictRepository;
     private final ScholardexCanonicalBuildCheckpointService checkpointService;
 
@@ -181,8 +179,8 @@ public class ScholardexAuthorCanonicalizationService {
             return;
         }
 
-        Optional<ScholardexSourceLink> existingSourceLink = sourceLinkRepository
-                .findByEntityTypeAndSourceAndSourceRecordId(ScholardexEntityType.AUTHOR, sourceFact.getSource(), sourceRecordId);
+        Optional<ScholardexSourceLink> existingSourceLink = sourceLinkService
+                .findByKey(ScholardexEntityType.AUTHOR, sourceFact.getSource(), sourceRecordId);
         Optional<ScholardexAuthorFact> existingBySource = scholardexAuthorFactRepository.findByScopusAuthorIdsContains(sourceRecordId);
         String canonicalId = existingSourceLink.map(ScholardexSourceLink::getCanonicalEntityId)
                 .or(() -> existingBySource.map(ScholardexAuthorFact::getId))
@@ -217,7 +215,7 @@ public class ScholardexAuthorCanonicalizationService {
         target.setSourceCorrelationId(sourceFact.getSourceCorrelationId());
         target.setUpdatedAt(now);
         scholardexAuthorFactRepository.save(target);
-        upsertAuthorSourceLink(sourceFact, sourceRecordId, target.getId(), now);
+        upsertAuthorSourceLink(sourceFact, sourceRecordId, target.getId());
         upsertAuthorAffiliationEdges(target, sourceFact, affiliationBridge, now);
 
         if (result != null) {
@@ -272,57 +270,47 @@ public class ScholardexAuthorCanonicalizationService {
     private Optional<ScholardexSourceLink> resolveAffiliationSourceLink(String source, String sourceAffiliationId) {
         String normalizedSource = normalizeBlank(source);
         if (normalizedSource != null) {
-            Optional<ScholardexSourceLink> direct = sourceLinkRepository
-                    .findByEntityTypeAndSourceAndSourceRecordId(ScholardexEntityType.AFFILIATION, normalizedSource, sourceAffiliationId);
+            Optional<ScholardexSourceLink> direct = sourceLinkService
+                    .findByKey(ScholardexEntityType.AFFILIATION, normalizedSource, sourceAffiliationId);
             if (direct.isPresent()) {
                 return direct;
             }
         }
-        return sourceLinkRepository.findByEntityTypeAndSourceAndSourceRecordId(ScholardexEntityType.AFFILIATION, SOURCE_SCOPUS, sourceAffiliationId);
+        return sourceLinkService.findByKey(ScholardexEntityType.AFFILIATION, SOURCE_SCOPUS, sourceAffiliationId);
     }
 
     private void upsertUnmatchedAffiliationSourceLink(String source, String sourceAffiliationId, String fallbackAffiliationId) {
         if (isBlank(source) || isBlank(sourceAffiliationId) || isBlank(fallbackAffiliationId)) {
             return;
         }
-        ScholardexSourceLink sourceLink = sourceLinkRepository
-                .findByEntityTypeAndSourceAndSourceRecordId(ScholardexEntityType.AFFILIATION, source, sourceAffiliationId)
-                .orElseGet(ScholardexSourceLink::new);
-        Instant now = Instant.now();
-        sourceLink.setEntityType(ScholardexEntityType.AFFILIATION);
-        sourceLink.setSource(source);
-        sourceLink.setSourceRecordId(sourceAffiliationId);
-        sourceLink.setCanonicalEntityId(fallbackAffiliationId);
-        sourceLink.setLinkState(LINK_STATE_UNMATCHED);
-        sourceLink.setLinkReason(LINK_REASON_AFFILIATION_FALLBACK);
-        if (sourceLink.getLinkedAt() == null) {
-            sourceLink.setLinkedAt(now);
-        }
-        sourceLink.setUpdatedAt(now);
-        sourceLinkRepository.save(sourceLink);
+        sourceLinkService.markUnmatched(
+                ScholardexEntityType.AFFILIATION,
+                source,
+                sourceAffiliationId,
+                fallbackAffiliationId,
+                LINK_REASON_AFFILIATION_FALLBACK,
+                null,
+                null,
+                null,
+                false
+        );
     }
 
-    private void upsertAuthorSourceLink(ScopusAuthorFact sourceFact, String sourceRecordId, String canonicalId, Instant now) {
+    private void upsertAuthorSourceLink(ScopusAuthorFact sourceFact, String sourceRecordId, String canonicalId) {
         if (isBlank(sourceFact.getSource())) {
             return;
         }
-        ScholardexSourceLink sourceLink = sourceLinkRepository
-                .findByEntityTypeAndSourceAndSourceRecordId(ScholardexEntityType.AUTHOR, sourceFact.getSource(), sourceRecordId)
-                .orElseGet(ScholardexSourceLink::new);
-        sourceLink.setEntityType(ScholardexEntityType.AUTHOR);
-        sourceLink.setSource(sourceFact.getSource());
-        sourceLink.setSourceRecordId(sourceRecordId);
-        sourceLink.setCanonicalEntityId(canonicalId);
-        sourceLink.setLinkState(LINK_STATE_LINKED);
-        sourceLink.setLinkReason(LINK_REASON_SCOPUS_BRIDGE);
-        sourceLink.setSourceEventId(sourceFact.getSourceEventId());
-        sourceLink.setSourceBatchId(sourceFact.getSourceBatchId());
-        sourceLink.setSourceCorrelationId(sourceFact.getSourceCorrelationId());
-        if (sourceLink.getLinkedAt() == null) {
-            sourceLink.setLinkedAt(now);
-        }
-        sourceLink.setUpdatedAt(now);
-        sourceLinkRepository.save(sourceLink);
+        sourceLinkService.link(
+                ScholardexEntityType.AUTHOR,
+                sourceFact.getSource(),
+                sourceRecordId,
+                canonicalId,
+                LINK_REASON_SCOPUS_BRIDGE,
+                sourceFact.getSourceEventId(),
+                sourceFact.getSourceBatchId(),
+                sourceFact.getSourceCorrelationId(),
+                false
+        );
     }
 
     private void upsertAuthorAffiliationEdges(
@@ -345,35 +333,43 @@ public class ScholardexAuthorCanonicalizationService {
             edge.setSourceEventId(sourceFact.getSourceEventId());
             edge.setSourceBatchId(sourceFact.getSourceBatchId());
             edge.setSourceCorrelationId(sourceFact.getSourceCorrelationId());
-            edge.setLinkState(entry.pendingResolution() ? LINK_STATE_UNMATCHED : LINK_STATE_LINKED);
+            edge.setLinkState(entry.pendingResolution() ? ScholardexSourceLinkService.STATE_UNMATCHED : ScholardexSourceLinkService.STATE_LINKED);
             edge.setLinkReason(entry.pendingResolution() ? LINK_REASON_AFFILIATION_FALLBACK : LINK_REASON_AUTHOR_AFFILIATION_BRIDGE);
             edge.setUpdatedAt(now);
             authorAffiliationFactRepository.save(edge);
-            upsertAuthorAffiliationSourceLink(edge, now);
+            upsertAuthorAffiliationSourceLink(edge);
         }
     }
 
-    private void upsertAuthorAffiliationSourceLink(ScholardexAuthorAffiliationFact edge, Instant now) {
+    private void upsertAuthorAffiliationSourceLink(ScholardexAuthorAffiliationFact edge) {
         if (isBlank(edge.getSource()) || isBlank(edge.getSourceRecordId())) {
             return;
         }
-        ScholardexSourceLink sourceLink = sourceLinkRepository
-                .findByEntityTypeAndSourceAndSourceRecordId(ScholardexEntityType.AUTHOR_AFFILIATION, edge.getSource(), edge.getSourceRecordId())
-                .orElseGet(ScholardexSourceLink::new);
-        sourceLink.setEntityType(ScholardexEntityType.AUTHOR_AFFILIATION);
-        sourceLink.setSource(edge.getSource());
-        sourceLink.setSourceRecordId(edge.getSourceRecordId());
-        sourceLink.setCanonicalEntityId(edge.getId());
-        sourceLink.setLinkState(edge.getLinkState());
-        sourceLink.setLinkReason(edge.getLinkReason());
-        sourceLink.setSourceEventId(edge.getSourceEventId());
-        sourceLink.setSourceBatchId(edge.getSourceBatchId());
-        sourceLink.setSourceCorrelationId(edge.getSourceCorrelationId());
-        if (sourceLink.getLinkedAt() == null) {
-            sourceLink.setLinkedAt(now);
+        if (ScholardexSourceLinkService.STATE_LINKED.equals(edge.getLinkState())) {
+            sourceLinkService.link(
+                    ScholardexEntityType.AUTHOR_AFFILIATION,
+                    edge.getSource(),
+                    edge.getSourceRecordId(),
+                    edge.getId(),
+                    edge.getLinkReason(),
+                    edge.getSourceEventId(),
+                    edge.getSourceBatchId(),
+                    edge.getSourceCorrelationId(),
+                    false
+            );
+            return;
         }
-        sourceLink.setUpdatedAt(now);
-        sourceLinkRepository.save(sourceLink);
+        sourceLinkService.markUnmatched(
+                ScholardexEntityType.AUTHOR_AFFILIATION,
+                edge.getSource(),
+                edge.getSourceRecordId(),
+                edge.getId(),
+                edge.getLinkReason(),
+                edge.getSourceEventId(),
+                edge.getSourceBatchId(),
+                edge.getSourceCorrelationId(),
+                false
+        );
     }
 
     private void saveConflict(ScopusAuthorFact sourceFact, String sourceRecordId, String reason, List<String> candidates) {

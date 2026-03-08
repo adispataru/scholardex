@@ -9,11 +9,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.model.scopus.canonical.PublicationLinkConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.repository.scopus.canonical.PublicationLinkConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -33,7 +32,7 @@ class PublicationEnrichmentLinkerServiceTest {
     @Mock
     private ScholardexPublicationFactRepository publicationFactRepository;
     @Mock
-    private ScholardexSourceLinkRepository sourceLinkRepository;
+    private ScholardexSourceLinkService sourceLinkService;
     @Mock
     private ScholardexIdentityConflictRepository identityConflictRepository;
     @Mock
@@ -45,7 +44,7 @@ class PublicationEnrichmentLinkerServiceTest {
     void setUp() {
         service = new PublicationEnrichmentLinkerService(
                 publicationFactRepository,
-                sourceLinkRepository,
+                sourceLinkService,
                 identityConflictRepository,
                 conflictRepository
         );
@@ -74,7 +73,7 @@ class PublicationEnrichmentLinkerServiceTest {
         verify(publicationFactRepository).save(saved.capture());
         assertEquals("WOS:1", saved.getValue().getWosId());
         assertEquals("old-title", saved.getValue().getTitle());
-        verify(sourceLinkRepository).save(any(ScholardexSourceLink.class));
+        verify(sourceLinkService).link(any(), anyString(), anyString(), anyString(), anyString(), any(), anyString(), anyString(), eq(false));
     }
 
     @Test
