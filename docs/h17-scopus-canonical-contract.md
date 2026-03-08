@@ -12,6 +12,7 @@ Operational policy lock:
 - Amendment lock (2026-03-06): H17.1 remains complete and now includes cross-source ownership and merged publication projection constraints.
 - Amendment lock (2026-03-07): WoS category ranking semantics are explicit: `rank` is category+edition rank, `quartileRank` is rank within quartile.
 - Amendment lock (2026-03-07): WoS detail projections expose `alternativeNames` and `alternativeIssns` for ranking detail UX.
+- Amendment reference (2026-03-08): multi-source authoritative Scholardex identity contract is locked in `docs/h19.1-multisource-identity-contract.md`.
 
 ## Scope
 This contract covers Scopus entities used by active runtime paths:
@@ -384,3 +385,9 @@ Transition compatibility:
   - source-policy behavior.
 - Cross-source ownership matrix and merged publication projection contract are explicitly locked.
 - `wosId` is locked as WoS-owned enrichment (not Scopus-owned).
+
+## H19.1 Reference
+- H19.1 introduces authoritative multi-source Scholardex identity contracts for publication/author/forum/affiliation.
+- H17 contracts remain valid as source-specific ingestion/fact/view contracts and must align with H19.1 ownership and lineage rules.
+- Source of truth for these H19.1-level decisions:
+  - `docs/h19.1-multisource-identity-contract.md`

@@ -68,3 +68,41 @@ Done history moved to `TASKS-done.md`.
   - [ ] `H18.6` Add regression and integration test coverage.
     Deliverable: tests for preservation logic, computation correctness, and admin trigger flow.
     Exit criteria: automated tests cover success paths and key failure/edge cases.
+
+- [ ] `H19` Multi-source Scholardex identity and ingestion architecture.
+  Goal: make Scholardex the canonical identity layer across publications, authors, forums, and affiliations, supporting four sources (`SCOPUS`, `WOS`, `GSCHOLAR`, `USER_DEFINED`) with deterministic lineage, linking, and runtime reads.
+  Deliverable: unified canonical contracts + storage models + ingestion/linking pipelines + immediate runtime cutover so all operational reads/writes resolve through Scholardex entities, not source-specific silo models.
+  Exit criteria: publication/author/forum/affiliation identity is source-agnostic and deterministic; WoS-first onboarding is complete; Scholar (Publish or Perish) and user-defined imports are supported; runtime paths are cut over to Scholardex; source-specific legacy identity paths are removed from runtime.
+  Subtasks:
+  - [ ] `H19.1` Define canonical multi-source identity and ownership contract.
+    Deliverable: locked contract for Scholardex entities (`publication`, `author`, `forum`, `affiliation`) with per-source IDs, provenance/lineage fields, conflict rules, and replay/idempotence semantics.
+    Exit criteria: one contract document is implementation-ready and explicitly defines source ownership boundaries for Scopus/WoS/Scholar/User-defined.
+    Handover:
+    - Contract source of truth: `docs/h19.1-multisource-identity-contract.md`.
+  - [ ] `H19.2` Define canonical keying and merge policy for journal/forum identity.
+    Deliverable: deterministic forum identity policy that links WoS journal identity and Scopus forum identity into Scholardex forum records, with normalization and collision handling rules.
+    Exit criteria: deterministic link keys and conflict quarantine behavior are documented and testable.
+  - [ ] `H19.3` Implement Scholardex publication identity model v2.
+    Deliverable: publication model supporting source IDs (`eid`, `wosId`, `googleScholarId`, `userSourceId`) plus canonical `scholardexPublicationId` and lineage metadata.
+    Exit criteria: all publication ingest/build paths can persist and resolve the new identity model without ambiguity.
+  - [ ] `H19.4` Implement Scholardex author identity model v2 (researcher-linked).
+    Deliverable: author model that supports multiple source author IDs (Scopus/WoS/Scholar/User) as source-identity canonical facts, with researcher linkage maintained on the researcher side via `primaryScholardexAuthorId` and deterministic merge rules.
+    Exit criteria: author linking and lookup are source-agnostic and deterministic for scoring/reporting entrypoints.
+  - [ ] `H19.5` Implement Scholardex affiliation identity model v2.
+    Deliverable: affiliation model that supports multiple source affiliation IDs and alias resolution across Scopus/WoS/Scholar/User.
+    Exit criteria: affiliation linking resolves deterministically and deduplicates source aliases.
+  - [ ] `H19.6` Build WoS-first onboarding into Scholardex entities.
+    Deliverable: WoS ingestion/linking pipeline that populates/links Scholardex publication/forum/author/affiliation identities using existing WoS canonical facts/views.
+    Exit criteria: WoS-only journals/publications not present in Scopus are represented and queryable in Scholardex runtime reads.
+  - [ ] `H19.7` Build Google Scholar onboarding from Publish-or-Perish exports.
+    Deliverable: import parser + ingest adapter for PoP exports into Scholar-source events/facts and linker integration with Scholardex entities.
+    Exit criteria: Scholar imported records link deterministically and preserve source lineage without mutating non-owned fields.
+  - [ ] `H19.8` Build user-defined source onboarding as first-class source.
+    Deliverable: user-defined ingestion path modeled as source events/facts with deterministic IDs and moderation/approval metadata.
+    Exit criteria: user-defined publications and related entities integrate with the same Scholardex identity and lineage contracts.
+  - [ ] `H19.9` Immediate runtime cutover to Scholardex read/write paths.
+    Deliverable: all runtime read/write entrypoints (user/admin/report/export/scoring lookups) use Scholardex canonical paths directly; source-silo runtime identity paths are removed.
+    Exit criteria: no runtime dependency remains on legacy source-specific identity stores for publication/author/forum/affiliation resolution.
+  - [ ] `H19.10` End-to-end validation, parity, and operability gates.
+    Deliverable: workflow and integration tests covering all four sources, identity-link conflicts, replay/idempotence, and cutover regressions; observability metrics and failure triage hooks.
+    Exit criteria: CI gates catch identity/linking regressions and operational dashboards expose source-level ingest/link health.
