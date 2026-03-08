@@ -79,9 +79,11 @@ Done history moved to `TASKS-done.md`.
     Exit criteria: one contract document is implementation-ready and explicitly defines source ownership boundaries for Scopus/WoS/Scholar/User-defined.
     Handover:
     - Contract source of truth: `docs/h19.1-multisource-identity-contract.md`.
-  - [ ] `H19.2` Define canonical keying and merge policy for journal/forum identity.
+  - [x] `H19.2` Define canonical keying and merge policy for journal/forum identity.
     Deliverable: deterministic forum identity policy that links WoS journal identity and Scopus forum identity into Scholardex forum records, with normalization and collision handling rules.
     Exit criteria: deterministic link keys and conflict quarantine behavior are documented and testable.
+    Handover:
+    - Contract source of truth: `docs/h19.2-forum-keying-merge-contract.md`.
   - [ ] `H19.3` Implement Scholardex publication identity model v2.
     Deliverable: publication model supporting source IDs (`eid`, `wosId`, `googleScholarId`, `userSourceId`) plus canonical `scholardexPublicationId` and lineage metadata.
     Exit criteria: all publication ingest/build paths can persist and resolve the new identity model without ambiguity.

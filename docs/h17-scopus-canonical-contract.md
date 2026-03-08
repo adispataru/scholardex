@@ -13,6 +13,7 @@ Operational policy lock:
 - Amendment lock (2026-03-07): WoS category ranking semantics are explicit: `rank` is category+edition rank, `quartileRank` is rank within quartile.
 - Amendment lock (2026-03-07): WoS detail projections expose `alternativeNames` and `alternativeIssns` for ranking detail UX.
 - Amendment reference (2026-03-08): multi-source authoritative Scholardex identity contract is locked in `docs/h19.1-multisource-identity-contract.md`.
+- Amendment reference (2026-03-08): forum/journal cross-source linking policy is defined in `docs/h19.2-forum-keying-merge-contract.md`.
 
 ## Scope
 This contract covers Scopus entities used by active runtime paths:
