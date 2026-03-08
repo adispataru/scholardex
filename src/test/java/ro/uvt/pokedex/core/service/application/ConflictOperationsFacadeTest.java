@@ -11,11 +11,16 @@ import org.springframework.data.domain.Pageable;
 import ro.uvt.pokedex.core.model.reporting.wos.WosFactConflict;
 import ro.uvt.pokedex.core.model.reporting.wos.WosIdentityConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.PublicationLinkConflict;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
 import ro.uvt.pokedex.core.repository.reporting.WosFactConflictRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.PublicationLinkConflictRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -28,6 +33,8 @@ import static org.mockito.Mockito.when;
 class ConflictOperationsFacadeTest {
 
     @Mock
+    private ScholardexIdentityConflictRepository scholardexIdentityConflictRepository;
+    @Mock
     private WosIdentityConflictRepository wosIdentityConflictRepository;
     @Mock
     private WosFactConflictRepository wosFactConflictRepository;
@@ -39,6 +46,7 @@ class ConflictOperationsFacadeTest {
     @BeforeEach
     void setUp() {
         facade = new ConflictOperationsFacade(
+                scholardexIdentityConflictRepository,
                 wosIdentityConflictRepository,
                 wosFactConflictRepository,
                 publicationLinkConflictRepository
@@ -46,77 +54,78 @@ class ConflictOperationsFacadeTest {
     }
 
     @Test
-    void findWosIdentityConflictsUsesNormalizedFiltersAndSort() {
-        when(wosIdentityConflictRepository
-                .findAllBySourceVersionContainingIgnoreCaseAndSourceFileContainingIgnoreCaseAndConflictTypeContainingIgnoreCase(
-                        any(), any(), any(), any()))
-                .thenReturn(new PageImpl<>(List.of(new WosIdentityConflict())));
+    void findIdentityConflictsUsesNormalizedFiltersAndSort() {
+        when(scholardexIdentityConflictRepository
+                .findAllByEntityTypeAndIncomingSourceContainingIgnoreCaseAndReasonCodeContainingIgnoreCaseAndStatusContainingIgnoreCaseAndDetectedAtBetween(
+                        any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(new ScholardexIdentityConflict())));
 
-        facade.findWosIdentityConflicts(-1, 999, " v2020 ", null, " AMBIGUOUS ");
+        facade.findIdentityConflicts(-1, 999, " publication ", " SCOPUS ", " SOURCE_ID_COLLISION ", " OPEN ", null, null);
 
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-        verify(wosIdentityConflictRepository)
-                .findAllBySourceVersionContainingIgnoreCaseAndSourceFileContainingIgnoreCaseAndConflictTypeContainingIgnoreCase(
-                        eq("v2020"), eq(""), eq("AMBIGUOUS"), pageableCaptor.capture());
+        verify(scholardexIdentityConflictRepository)
+                .findAllByEntityTypeAndIncomingSourceContainingIgnoreCaseAndReasonCodeContainingIgnoreCaseAndStatusContainingIgnoreCaseAndDetectedAtBetween(
+                        eq(ScholardexEntityType.PUBLICATION), eq("SCOPUS"), eq("SOURCE_ID_COLLISION"), eq("OPEN"), any(), any(), pageableCaptor.capture());
         Pageable pageable = pageableCaptor.getValue();
         assertEquals(0, pageable.getPageNumber());
         assertEquals(200, pageable.getPageSize());
-        assertTrue(pageable.getSort().getOrderFor("conflictDetectedAt").isDescending());
+        assertTrue(pageable.getSort().getOrderFor("detectedAt").isDescending());
     }
 
     @Test
-    void findWosFactConflictsWithoutSourceVersionUsesSimpleMethod() {
-        when(wosFactConflictRepository.findAllByFactTypeContainingIgnoreCaseAndConflictReasonContainingIgnoreCase(any(), any(), any()))
-                .thenReturn(new PageImpl<>(List.of(new WosFactConflict())));
+    void updateConflictStatusOnlyMutatesOpenConflicts() {
+        ScholardexIdentityConflict conflict = new ScholardexIdentityConflict();
+        conflict.setId("c1");
+        conflict.setStatus("OPEN");
 
-        facade.findWosFactConflicts(1, 10, "   ", "METRIC", "reason");
+        when(scholardexIdentityConflictRepository.findByIdAndStatus("c1", "OPEN"))
+                .thenReturn(Optional.of(conflict));
 
-        verify(wosFactConflictRepository)
-                .findAllByFactTypeContainingIgnoreCaseAndConflictReasonContainingIgnoreCase(eq("METRIC"), eq("reason"), any());
-    }
+        long updated = facade.updateConflictStatus("c1", "RESOLVED", "admin@uvt.ro");
 
-    @Test
-    void findWosFactConflictsWithSourceVersionUsesWinnerLoserMethod() {
-        when(wosFactConflictRepository
-                .findAllByFactTypeContainingIgnoreCaseAndConflictReasonContainingIgnoreCaseAndWinnerSourceVersionContainingIgnoreCaseOrFactTypeContainingIgnoreCaseAndConflictReasonContainingIgnoreCaseAndLoserSourceVersionContainingIgnoreCase(
-                        any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(new PageImpl<>(List.of(new WosFactConflict())));
-
-        facade.findWosFactConflicts(0, 20, "v2020", "CATEGORY", "latest-lineage");
-
-        verify(wosFactConflictRepository)
-                .findAllByFactTypeContainingIgnoreCaseAndConflictReasonContainingIgnoreCaseAndWinnerSourceVersionContainingIgnoreCaseOrFactTypeContainingIgnoreCaseAndConflictReasonContainingIgnoreCaseAndLoserSourceVersionContainingIgnoreCase(
-                        eq("CATEGORY"), eq("latest-lineage"), eq("v2020"),
-                        eq("CATEGORY"), eq("latest-lineage"), eq("v2020"),
-                        any());
-    }
-
-    @Test
-    void findScopusLinkConflictsUsesNormalizedFiltersAndSort() {
-        when(publicationLinkConflictRepository
-                .findAllByEnrichmentSourceContainingIgnoreCaseAndKeyTypeContainingIgnoreCaseAndConflictReasonContainingIgnoreCase(
-                        any(), any(), any(), any()))
-                .thenReturn(new PageImpl<>(List.of(new PublicationLinkConflict())));
-
-        facade.findScopusLinkConflicts(null, null, " WOSEXTRACTOR ", " wosId ", " key-conflict ");
-
-        verify(publicationLinkConflictRepository)
-                .findAllByEnrichmentSourceContainingIgnoreCaseAndKeyTypeContainingIgnoreCaseAndConflictReasonContainingIgnoreCase(
-                        eq("WOSEXTRACTOR"), eq("wosId"), eq("key-conflict"), any());
+        assertEquals(1L, updated);
+        verify(scholardexIdentityConflictRepository).save(any(ScholardexIdentityConflict.class));
     }
 
     @Test
     void clearOperationsDeleteAllAndReturnCounts() {
+        when(scholardexIdentityConflictRepository.findAll()).thenReturn(List.of(
+                conflict("1", "OPEN"), conflict("2", "RESOLVED"), conflict("3", "OPEN")
+        ));
         when(wosIdentityConflictRepository.count()).thenReturn(3L);
         when(wosFactConflictRepository.count()).thenReturn(4L);
         when(publicationLinkConflictRepository.count()).thenReturn(5L);
 
+        assertEquals(2L, facade.clearOpenIdentityConflicts());
         assertEquals(3L, facade.clearWosIdentityConflicts());
         assertEquals(4L, facade.clearWosFactConflicts());
         assertEquals(5L, facade.clearScopusLinkConflicts());
 
+        verify(scholardexIdentityConflictRepository).deleteAll(any(List.class));
         verify(wosIdentityConflictRepository).deleteAll();
         verify(wosFactConflictRepository).deleteAll();
         verify(publicationLinkConflictRepository).deleteAll();
+    }
+
+    @Test
+    void summarizeUsesStatusCounts() {
+        when(scholardexIdentityConflictRepository.countByStatus("OPEN")).thenReturn(7L);
+        when(scholardexIdentityConflictRepository.countByStatus("RESOLVED")).thenReturn(2L);
+        when(scholardexIdentityConflictRepository.countByStatus("DISMISSED")).thenReturn(1L);
+
+        ConflictOperationsFacade.ConflictSummary summary = facade.summarizeIdentityConflicts();
+
+        assertEquals(7L, summary.open());
+        assertEquals(2L, summary.resolved());
+        assertEquals(1L, summary.dismissed());
+        assertEquals(10L, summary.total());
+    }
+
+    private ScholardexIdentityConflict conflict(String id, String status) {
+        ScholardexIdentityConflict conflict = new ScholardexIdentityConflict();
+        conflict.setId(id);
+        conflict.setStatus(status);
+        conflict.setDetectedAt(Instant.now());
+        return conflict;
     }
 }

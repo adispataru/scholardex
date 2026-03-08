@@ -19,240 +19,138 @@
         <div id="content">
             <div th:replace="~{fragments :: navbar}"></div>
             <div class="container-fluid">
-                <h1 class="h3 mb-2 text-gray-800">Conflicts</h1>
-                <p class="mb-4">Audit and maintenance view for WoS and Scopus canonical conflict records.</p>
+                <h1 class="h3 mb-2 text-gray-800">Canonical Identity Conflicts</h1>
+                <p class="mb-4">Primary conflict operations for <code>scholardex.identity_conflicts</code>.</p>
 
                 <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
                 <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
 
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="card border-left-danger shadow h-100 py-2">
+                            <div class="card-body"><div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Open</div><div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${summary.open}">0</div></div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-left-success shadow h-100 py-2">
+                            <div class="card-body"><div class="text-xs font-weight-bold text-success text-uppercase mb-1">Resolved</div><div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${summary.resolved}">0</div></div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-left-secondary shadow h-100 py-2">
+                            <div class="card-body"><div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">Dismissed</div><div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${summary.dismissed}">0</div></div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-left-primary shadow h-100 py-2">
+                            <div class="card-body"><div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total</div><div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${summary.total}">0</div></div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card shadow mb-4">
                     <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">WoS Identity Conflicts</h6>
+                        <h6 class="m-0 font-weight-bold text-primary">Identity Conflict Queue</h6>
                     </div>
                     <div class="card-body">
                         <form method="get" th:action="@{/admin/conflicts}" class="form-row align-items-end mb-3">
-                            <div class="col-md-3">
-                                <label class="small mb-1">Source version</label>
-                                <input name="wosIdentitySourceVersion" class="form-control form-control-sm" th:value="${wosIdentitySourceVersion}">
+                            <div class="col-md-2"><label class="small mb-1">Entity type</label><input name="entityType" class="form-control form-control-sm" th:value="${entityType}" placeholder="PUBLICATION"></div>
+                            <div class="col-md-2"><label class="small mb-1">Incoming source</label><input name="incomingSource" class="form-control form-control-sm" th:value="${incomingSource}" placeholder="SCOPUS"></div>
+                            <div class="col-md-2"><label class="small mb-1">Reason code</label><input name="reasonCode" class="form-control form-control-sm" th:value="${reasonCode}" placeholder="SOURCE_ID_COLLISION"></div>
+                            <div class="col-md-2"><label class="small mb-1">Status</label><input name="status" class="form-control form-control-sm" th:value="${status}" placeholder="OPEN"></div>
+                            <div class="col-md-2"><label class="small mb-1">Detected from</label><input name="detectedFrom" type="date" class="form-control form-control-sm" th:value="${detectedFrom}"></div>
+                            <div class="col-md-2"><label class="small mb-1">Detected to</label><input name="detectedTo" type="date" class="form-control form-control-sm" th:value="${detectedTo}"></div>
+                            <div class="col-md-1 mt-2"><label class="small mb-1">Size</label><input name="size" type="number" min="1" class="form-control form-control-sm" th:value="${identityPageData.size}"></div>
+                            <div class="col-md-2 mt-2"><button type="submit" class="btn btn-outline-primary btn-sm">Apply</button></div>
+                        </form>
+
+                        <form method="post" th:action="@{/admin/conflicts/bulkStatus}" class="mb-2">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th>Detected At</th>
+                                        <th>Entity</th>
+                                        <th>Source</th>
+                                        <th>Source Record</th>
+                                        <th>Reason</th>
+                                        <th>Status</th>
+                                        <th>Candidates</th>
+                                        <th>Resolved</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="c : ${identityPageData.content}">
+                                        <td><input type="checkbox" name="ids" th:value="${c.id}" th:disabled="${c.status != 'OPEN'}"></td>
+                                        <td th:text="${c.detectedAt}"></td>
+                                        <td th:text="${c.entityType}"></td>
+                                        <td th:text="${c.incomingSource}"></td>
+                                        <td th:text="${c.incomingSourceRecordId}"></td>
+                                        <td th:text="${c.reasonCode}"></td>
+                                        <td th:text="${c.status}"></td>
+                                        <td th:text="${#strings.listJoin(c.candidateCanonicalIds, ', ')}"></td>
+                                        <td th:text="${c.resolvedAt != null ? c.resolvedAt + ' / ' + c.resolvedBy : '-'}"></td>
+                                        <td>
+                                            <button th:if="${c.status == 'OPEN'}" class="btn btn-outline-success btn-sm" type="submit"
+                                                    name="action" value="resolveOne">Resolve</button>
+                                            <button th:if="${c.status == 'OPEN'}" class="btn btn-outline-secondary btn-sm" type="submit"
+                                                    name="action" value="dismissOne">Dismiss</button>
+                                            <input type="hidden" name="singleId" th:value="${c.id}">
+                                        </td>
+                                    </tr>
+                                    <tr th:if="${identityPageData.content.isEmpty()}">
+                                        <td colspan="10" class="text-center text-muted">No conflicts found.</td>
+                                    </tr>
+                                    </tbody>
+                                </table>
                             </div>
-                            <div class="col-md-3">
-                                <label class="small mb-1">Source file</label>
-                                <input name="wosIdentitySourceFile" class="form-control form-control-sm" th:value="${wosIdentitySourceFile}">
+
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <div class="small text-muted" th:text="'Page ' + (${identityPageData.number} + 1) + ' / ' + ${identityPageData.totalPages} + ' (' + ${identityPageData.totalElements} + ' records)'"></div>
+                                <div>
+                                    <a class="btn btn-outline-secondary btn-sm mr-2" th:classappend="${identityPageData.hasPrevious()} ? '' : 'disabled'"
+                                       th:href="@{/admin/conflicts(page=${identityPageData.number - 1},size=${identityPageData.size},entityType=${entityType},incomingSource=${incomingSource},reasonCode=${reasonCode},status=${status},detectedFrom=${detectedFrom},detectedTo=${detectedTo})}">Prev</a>
+                                    <a class="btn btn-outline-secondary btn-sm" th:classappend="${identityPageData.hasNext()} ? '' : 'disabled'"
+                                       th:href="@{/admin/conflicts(page=${identityPageData.number + 1},size=${identityPageData.size},entityType=${entityType},incomingSource=${incomingSource},reasonCode=${reasonCode},status=${status},detectedFrom=${detectedFrom},detectedTo=${detectedTo})}">Next</a>
+                                </div>
                             </div>
-                            <div class="col-md-3">
-                                <label class="small mb-1">Conflict type</label>
-                                <input name="wosIdentityConflictType" class="form-control form-control-sm" th:value="${wosIdentityConflictType}">
-                            </div>
-                            <div class="col-md-1">
-                                <label class="small mb-1">Size</label>
-                                <input name="wosIdentitySize" type="number" min="1" class="form-control form-control-sm" th:value="${wosIdentityPageData.size}">
-                            </div>
-                            <div class="col-md-2">
-                                <button type="submit" class="btn btn-outline-primary btn-sm">Apply</button>
+
+                            <div class="mt-3">
+                                <button type="submit" name="action" value="resolve" class="btn btn-outline-success btn-sm">Bulk resolve selected OPEN</button>
+                                <button type="submit" name="action" value="dismiss" class="btn btn-outline-secondary btn-sm">Bulk dismiss selected OPEN</button>
                             </div>
                         </form>
 
-                        <div class="table-responsive mb-3">
-                            <table class="table table-sm table-bordered">
-                                <thead>
-                                <tr>
-                                    <th>Detected At</th>
-                                    <th>Type</th>
-                                    <th>Reason</th>
-                                    <th>Source</th>
-                                    <th>Input</th>
-                                    <th>Candidates</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <tr th:each="c : ${wosIdentityPageData.content}">
-                                    <td th:text="${c.conflictDetectedAt}"></td>
-                                    <td th:text="${c.conflictType}"></td>
-                                    <td th:text="${c.conflictReason}"></td>
-                                    <td th:text="${c.sourceFile + ' / ' + c.sourceVersion + ' / row ' + c.sourceRowItem}"></td>
-                                    <td th:text="${c.inputTitle}"></td>
-                                    <td th:text="${#strings.listJoin(c.candidateJournalIds, ', ')}"></td>
-                                </tr>
-                                <tr th:if="${wosIdentityPageData.content.isEmpty()}">
-                                    <td colspan="6" class="text-center text-muted">No conflicts found.</td>
-                                </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="small text-muted"
-                                 th:text="'Page ' + (${wosIdentityPageData.number} + 1) + ' / ' + ${wosIdentityPageData.totalPages} + ' (' + ${wosIdentityPageData.totalElements} + ' records)'">
-                            </div>
-                            <div>
-                                <a class="btn btn-outline-secondary btn-sm mr-2"
-                                   th:classappend="${wosIdentityPageData.hasPrevious()} ? '' : 'disabled'"
-                                   th:href="@{/admin/conflicts(wosIdentityPage=${wosIdentityPageData.number - 1},wosIdentitySize=${wosIdentityPageData.size},wosIdentitySourceVersion=${wosIdentitySourceVersion},wosIdentitySourceFile=${wosIdentitySourceFile},wosIdentityConflictType=${wosIdentityConflictType},wosFactPage=${wosFactPageData.number},wosFactSize=${wosFactPageData.size},wosFactSourceVersion=${wosFactSourceVersion},wosFactType=${wosFactType},wosFactConflictReason=${wosFactConflictReason},scopusLinkPage=${scopusLinkPageData.number},scopusLinkSize=${scopusLinkPageData.size},scopusLinkEnrichmentSource=${scopusLinkEnrichmentSource},scopusLinkKeyType=${scopusLinkKeyType},scopusLinkConflictReason=${scopusLinkConflictReason})}">Prev</a>
-                                <a class="btn btn-outline-secondary btn-sm"
-                                   th:classappend="${wosIdentityPageData.hasNext()} ? '' : 'disabled'"
-                                   th:href="@{/admin/conflicts(wosIdentityPage=${wosIdentityPageData.number + 1},wosIdentitySize=${wosIdentityPageData.size},wosIdentitySourceVersion=${wosIdentitySourceVersion},wosIdentitySourceFile=${wosIdentitySourceFile},wosIdentityConflictType=${wosIdentityConflictType},wosFactPage=${wosFactPageData.number},wosFactSize=${wosFactPageData.size},wosFactSourceVersion=${wosFactSourceVersion},wosFactType=${wosFactType},wosFactConflictReason=${wosFactConflictReason},scopusLinkPage=${scopusLinkPageData.number},scopusLinkSize=${scopusLinkPageData.size},scopusLinkEnrichmentSource=${scopusLinkEnrichmentSource},scopusLinkKeyType=${scopusLinkKeyType},scopusLinkConflictReason=${scopusLinkConflictReason})}">Next</a>
-                            </div>
-                        </div>
-
                         <hr>
-                        <form th:action="@{/admin/conflicts/wos/identity/clear}" method="post" class="d-flex align-items-center">
+                        <form th:action="@{/admin/conflicts/identity/open/clear}" method="post" class="d-flex align-items-center">
                             <input type="text" name="confirmation" class="form-control form-control-sm mr-2" style="width: 180px;" placeholder="Type RESET">
-                            <button type="submit" class="btn btn-danger btn-sm">Clear all identity conflicts</button>
+                            <button type="submit" class="btn btn-danger btn-sm">Clear all OPEN identity conflicts</button>
                         </form>
                     </div>
                 </div>
 
                 <div class="card shadow mb-4">
                     <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">WoS Fact Conflicts</h6>
+                        <h6 class="m-0 font-weight-bold text-warning">Legacy Conflict Maintenance (Transition)</h6>
                     </div>
                     <div class="card-body">
-                        <form method="get" th:action="@{/admin/conflicts}" class="form-row align-items-end mb-3">
-                            <div class="col-md-3">
-                                <label class="small mb-1">Source version</label>
-                                <input name="wosFactSourceVersion" class="form-control form-control-sm" th:value="${wosFactSourceVersion}">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="small mb-1">Fact type</label>
-                                <input name="wosFactType" class="form-control form-control-sm" th:value="${wosFactType}">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="small mb-1">Conflict reason</label>
-                                <input name="wosFactConflictReason" class="form-control form-control-sm" th:value="${wosFactConflictReason}">
-                            </div>
-                            <div class="col-md-1">
-                                <label class="small mb-1">Size</label>
-                                <input name="wosFactSize" type="number" min="1" class="form-control form-control-sm" th:value="${wosFactPageData.size}">
-                            </div>
-                            <div class="col-md-2">
-                                <button type="submit" class="btn btn-outline-primary btn-sm">Apply</button>
-                            </div>
-                        </form>
-
-                        <div class="table-responsive mb-3">
-                            <table class="table table-sm table-bordered">
-                                <thead>
-                                <tr>
-                                    <th>Detected At</th>
-                                    <th>Fact Type</th>
-                                    <th>Reason</th>
-                                    <th>Winner</th>
-                                    <th>Loser</th>
-                                    <th>Fact Key</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <tr th:each="c : ${wosFactPageData.content}">
-                                    <td th:text="${c.detectedAt}"></td>
-                                    <td th:text="${c.factType}"></td>
-                                    <td th:text="${c.conflictReason}"></td>
-                                    <td th:text="${c.winnerSourceFile + ' / ' + c.winnerSourceVersion + ' / row ' + c.winnerSourceRowItem}"></td>
-                                    <td th:text="${c.loserSourceFile + ' / ' + c.loserSourceVersion + ' / row ' + c.loserSourceRowItem}"></td>
-                                    <td th:text="${c.factKey}"></td>
-                                </tr>
-                                <tr th:if="${wosFactPageData.content.isEmpty()}">
-                                    <td colspan="6" class="text-center text-muted">No conflicts found.</td>
-                                </tr>
-                                </tbody>
-                            </table>
+                        <div class="mb-2 small text-muted">Forward-only policy: no backfill; legacy stores remain clearable here during transition.</div>
+                        <div class="d-flex flex-column">
+                            <form th:action="@{/admin/conflicts/wos/identity/clear}" method="post" class="d-flex align-items-center mb-2">
+                                <input type="text" name="confirmation" class="form-control form-control-sm mr-2" style="width: 180px;" placeholder="Type RESET">
+                                <button type="submit" class="btn btn-outline-danger btn-sm">Clear legacy WoS identity conflicts</button>
+                            </form>
+                            <form th:action="@{/admin/conflicts/wos/fact/clear}" method="post" class="d-flex align-items-center mb-2">
+                                <input type="text" name="confirmation" class="form-control form-control-sm mr-2" style="width: 180px;" placeholder="Type RESET">
+                                <button type="submit" class="btn btn-outline-danger btn-sm">Clear legacy WoS fact conflicts</button>
+                            </form>
+                            <form th:action="@{/admin/conflicts/scopus/link/clear}" method="post" class="d-flex align-items-center">
+                                <input type="text" name="confirmation" class="form-control form-control-sm mr-2" style="width: 180px;" placeholder="Type RESET">
+                                <button type="submit" class="btn btn-outline-danger btn-sm">Clear legacy Scopus link conflicts</button>
+                            </form>
                         </div>
-
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="small text-muted"
-                                 th:text="'Page ' + (${wosFactPageData.number} + 1) + ' / ' + ${wosFactPageData.totalPages} + ' (' + ${wosFactPageData.totalElements} + ' records)'">
-                            </div>
-                            <div>
-                                <a class="btn btn-outline-secondary btn-sm mr-2"
-                                   th:classappend="${wosFactPageData.hasPrevious()} ? '' : 'disabled'"
-                                   th:href="@{/admin/conflicts(wosIdentityPage=${wosIdentityPageData.number},wosIdentitySize=${wosIdentityPageData.size},wosIdentitySourceVersion=${wosIdentitySourceVersion},wosIdentitySourceFile=${wosIdentitySourceFile},wosIdentityConflictType=${wosIdentityConflictType},wosFactPage=${wosFactPageData.number - 1},wosFactSize=${wosFactPageData.size},wosFactSourceVersion=${wosFactSourceVersion},wosFactType=${wosFactType},wosFactConflictReason=${wosFactConflictReason},scopusLinkPage=${scopusLinkPageData.number},scopusLinkSize=${scopusLinkPageData.size},scopusLinkEnrichmentSource=${scopusLinkEnrichmentSource},scopusLinkKeyType=${scopusLinkKeyType},scopusLinkConflictReason=${scopusLinkConflictReason})}">Prev</a>
-                                <a class="btn btn-outline-secondary btn-sm"
-                                   th:classappend="${wosFactPageData.hasNext()} ? '' : 'disabled'"
-                                   th:href="@{/admin/conflicts(wosIdentityPage=${wosIdentityPageData.number},wosIdentitySize=${wosIdentityPageData.size},wosIdentitySourceVersion=${wosIdentitySourceVersion},wosIdentitySourceFile=${wosIdentitySourceFile},wosIdentityConflictType=${wosIdentityConflictType},wosFactPage=${wosFactPageData.number + 1},wosFactSize=${wosFactPageData.size},wosFactSourceVersion=${wosFactSourceVersion},wosFactType=${wosFactType},wosFactConflictReason=${wosFactConflictReason},scopusLinkPage=${scopusLinkPageData.number},scopusLinkSize=${scopusLinkPageData.size},scopusLinkEnrichmentSource=${scopusLinkEnrichmentSource},scopusLinkKeyType=${scopusLinkKeyType},scopusLinkConflictReason=${scopusLinkConflictReason})}">Next</a>
-                            </div>
-                        </div>
-
-                        <hr>
-                        <form th:action="@{/admin/conflicts/wos/fact/clear}" method="post" class="d-flex align-items-center">
-                            <input type="text" name="confirmation" class="form-control form-control-sm mr-2" style="width: 180px;" placeholder="Type RESET">
-                            <button type="submit" class="btn btn-danger btn-sm">Clear all fact conflicts</button>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Scopus Link Conflicts</h6>
-                    </div>
-                    <div class="card-body">
-                        <form method="get" th:action="@{/admin/conflicts}" class="form-row align-items-end mb-3">
-                            <div class="col-md-3">
-                                <label class="small mb-1">Enrichment source</label>
-                                <input name="scopusLinkEnrichmentSource" class="form-control form-control-sm" th:value="${scopusLinkEnrichmentSource}">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="small mb-1">Key type</label>
-                                <input name="scopusLinkKeyType" class="form-control form-control-sm" th:value="${scopusLinkKeyType}">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="small mb-1">Conflict reason</label>
-                                <input name="scopusLinkConflictReason" class="form-control form-control-sm" th:value="${scopusLinkConflictReason}">
-                            </div>
-                            <div class="col-md-1">
-                                <label class="small mb-1">Size</label>
-                                <input name="scopusLinkSize" type="number" min="1" class="form-control form-control-sm" th:value="${scopusLinkPageData.size}">
-                            </div>
-                            <div class="col-md-2">
-                                <button type="submit" class="btn btn-outline-primary btn-sm">Apply</button>
-                            </div>
-                        </form>
-
-                        <div class="table-responsive mb-3">
-                            <table class="table table-sm table-bordered">
-                                <thead>
-                                <tr>
-                                    <th>Detected At</th>
-                                    <th>Reason</th>
-                                    <th>Source/Key</th>
-                                    <th>Requested</th>
-                                    <th>Target</th>
-                                    <th>Candidates</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <tr th:each="c : ${scopusLinkPageData.content}">
-                                    <td th:text="${c.detectedAt}"></td>
-                                    <td th:text="${c.conflictReason}"></td>
-                                    <td th:text="${c.enrichmentSource + ' / ' + c.keyType + '=' + c.keyValue}"></td>
-                                    <td th:text="${c.requestedPublicationId + ' / ' + c.requestedEid + ' / ' + c.requestedDoiNormalized}"></td>
-                                    <td th:text="${c.targetPublicationId}"></td>
-                                    <td th:text="${#strings.listJoin(c.candidatePublicationIds, ', ')}"></td>
-                                </tr>
-                                <tr th:if="${scopusLinkPageData.content.isEmpty()}">
-                                    <td colspan="6" class="text-center text-muted">No conflicts found.</td>
-                                </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="small text-muted"
-                                 th:text="'Page ' + (${scopusLinkPageData.number} + 1) + ' / ' + ${scopusLinkPageData.totalPages} + ' (' + ${scopusLinkPageData.totalElements} + ' records)'">
-                            </div>
-                            <div>
-                                <a class="btn btn-outline-secondary btn-sm mr-2"
-                                   th:classappend="${scopusLinkPageData.hasPrevious()} ? '' : 'disabled'"
-                                   th:href="@{/admin/conflicts(wosIdentityPage=${wosIdentityPageData.number},wosIdentitySize=${wosIdentityPageData.size},wosIdentitySourceVersion=${wosIdentitySourceVersion},wosIdentitySourceFile=${wosIdentitySourceFile},wosIdentityConflictType=${wosIdentityConflictType},wosFactPage=${wosFactPageData.number},wosFactSize=${wosFactPageData.size},wosFactSourceVersion=${wosFactSourceVersion},wosFactType=${wosFactType},wosFactConflictReason=${wosFactConflictReason},scopusLinkPage=${scopusLinkPageData.number - 1},scopusLinkSize=${scopusLinkPageData.size},scopusLinkEnrichmentSource=${scopusLinkEnrichmentSource},scopusLinkKeyType=${scopusLinkKeyType},scopusLinkConflictReason=${scopusLinkConflictReason})}">Prev</a>
-                                <a class="btn btn-outline-secondary btn-sm"
-                                   th:classappend="${scopusLinkPageData.hasNext()} ? '' : 'disabled'"
-                                   th:href="@{/admin/conflicts(wosIdentityPage=${wosIdentityPageData.number},wosIdentitySize=${wosIdentityPageData.size},wosIdentitySourceVersion=${wosIdentitySourceVersion},wosIdentitySourceFile=${wosIdentitySourceFile},wosIdentityConflictType=${wosIdentityConflictType},wosFactPage=${wosFactPageData.number},wosFactSize=${wosFactPageData.size},wosFactSourceVersion=${wosFactSourceVersion},wosFactType=${wosFactType},wosFactConflictReason=${wosFactConflictReason},scopusLinkPage=${scopusLinkPageData.number + 1},scopusLinkSize=${scopusLinkPageData.size},scopusLinkEnrichmentSource=${scopusLinkEnrichmentSource},scopusLinkKeyType=${scopusLinkKeyType},scopusLinkConflictReason=${scopusLinkConflictReason})}">Next</a>
-                            </div>
-                        </div>
-
-                        <hr>
-                        <form th:action="@{/admin/conflicts/scopus/link/clear}" method="post" class="d-flex align-items-center">
-                            <input type="text" name="confirmation" class="form-control form-control-sm mr-2" style="width: 180px;" placeholder="Type RESET">
-                            <button type="submit" class="btn btn-danger btn-sm">Clear all link conflicts</button>
-                        </form>
                     </div>
                 </div>
             </div>

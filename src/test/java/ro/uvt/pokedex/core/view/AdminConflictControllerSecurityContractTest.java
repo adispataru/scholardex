@@ -45,7 +45,36 @@ class AdminConflictControllerSecurityContractTest {
     }
 
     @Test
-    void nonAdminCannotRunClearActions() throws Exception {
+    void nonAdminCannotRunConflictMutations() throws Exception {
+        mockMvc.perform(post("/admin/conflicts/resolve")
+                        .param("id", "c1")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+
+        mockMvc.perform(post("/admin/conflicts/dismiss")
+                        .param("id", "c1")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+
+        mockMvc.perform(post("/admin/conflicts/bulkStatus")
+                        .param("ids", "c1", "c2")
+                        .param("action", "resolve")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+
+        mockMvc.perform(post("/admin/conflicts/identity/open/clear")
+                        .param("confirmation", "RESET")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+
         mockMvc.perform(post("/admin/conflicts/wos/identity/clear")
                         .param("confirmation", "RESET")
                         .with(csrf())

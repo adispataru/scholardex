@@ -105,7 +105,7 @@ Done history moved to `TASKS-done.md`.
     Deliverable: all runtime read/write entrypoints (user/admin/report/export/scoring lookups) use Scholardex canonical paths directly; source-silo runtime identity paths are removed.
     Exit criteria: no runtime dependency remains on legacy source-specific identity stores for publication/author/forum/affiliation/citation resolution; citation runtime paths resolve via canonical citation facts.
     Status: implementation largely complete for publication/author/forum/affiliation/citation; remaining closeout is decommission/validation hardening.
-  - [ ] `H19.10` Generic identity conflict model + admin operations.
+  - [x] `H19.10` Generic identity conflict model + admin operations.
     Deliverable: `scholardex.identity_conflicts` contract and implementation covering publication/forum/author/affiliation ambiguity, plus operational listing/resolve/clear flows.
     Exit criteria: ambiguous merges across all canonical entity types are captured and manageable through one generic conflict surface.
   - [ ] `H19.11` Source-link ledger + replay/traceability integration.

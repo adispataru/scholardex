@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.view;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -9,6 +10,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ro.uvt.pokedex.core.service.application.ConflictOperationsFacade;
+
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.List;
 
 @Controller
 @RequestMapping("/admin/conflicts")
@@ -19,46 +25,100 @@ public class AdminConflictController {
 
     @GetMapping
     public String showConflictsPage(
-            @RequestParam(name = "wosIdentityPage", required = false) Integer wosIdentityPage,
-            @RequestParam(name = "wosIdentitySize", required = false) Integer wosIdentitySize,
-            @RequestParam(name = "wosIdentitySourceVersion", required = false) String wosIdentitySourceVersion,
-            @RequestParam(name = "wosIdentitySourceFile", required = false) String wosIdentitySourceFile,
-            @RequestParam(name = "wosIdentityConflictType", required = false) String wosIdentityConflictType,
-            @RequestParam(name = "wosFactPage", required = false) Integer wosFactPage,
-            @RequestParam(name = "wosFactSize", required = false) Integer wosFactSize,
-            @RequestParam(name = "wosFactSourceVersion", required = false) String wosFactSourceVersion,
-            @RequestParam(name = "wosFactType", required = false) String wosFactType,
-            @RequestParam(name = "wosFactConflictReason", required = false) String wosFactConflictReason,
-            @RequestParam(name = "scopusLinkPage", required = false) Integer scopusLinkPage,
-            @RequestParam(name = "scopusLinkSize", required = false) Integer scopusLinkSize,
-            @RequestParam(name = "scopusLinkEnrichmentSource", required = false) String scopusLinkEnrichmentSource,
-            @RequestParam(name = "scopusLinkKeyType", required = false) String scopusLinkKeyType,
-            @RequestParam(name = "scopusLinkConflictReason", required = false) String scopusLinkConflictReason,
+            @RequestParam(name = "page", required = false) Integer page,
+            @RequestParam(name = "size", required = false) Integer size,
+            @RequestParam(name = "entityType", required = false) String entityType,
+            @RequestParam(name = "incomingSource", required = false) String incomingSource,
+            @RequestParam(name = "reasonCode", required = false) String reasonCode,
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "detectedFrom", required = false) String detectedFrom,
+            @RequestParam(name = "detectedTo", required = false) String detectedTo,
             Model model
     ) {
-        model.addAttribute("wosIdentityPageData", conflictOperationsFacade.findWosIdentityConflicts(
-                wosIdentityPage, wosIdentitySize, wosIdentitySourceVersion, wosIdentitySourceFile, wosIdentityConflictType
+        Instant from = parseDateStart(detectedFrom);
+        Instant to = parseDateEnd(detectedTo);
+        model.addAttribute("identityPageData", conflictOperationsFacade.findIdentityConflicts(
+                page, size, entityType, incomingSource, reasonCode, status, from, to
         ));
-        model.addAttribute("wosFactPageData", conflictOperationsFacade.findWosFactConflicts(
-                wosFactPage, wosFactSize, wosFactSourceVersion, wosFactType, wosFactConflictReason
-        ));
-        model.addAttribute("scopusLinkPageData", conflictOperationsFacade.findScopusLinkConflicts(
-                scopusLinkPage, scopusLinkSize, scopusLinkEnrichmentSource, scopusLinkKeyType, scopusLinkConflictReason
-        ));
-
-        model.addAttribute("wosIdentitySourceVersion", normalize(wosIdentitySourceVersion));
-        model.addAttribute("wosIdentitySourceFile", normalize(wosIdentitySourceFile));
-        model.addAttribute("wosIdentityConflictType", normalize(wosIdentityConflictType));
-
-        model.addAttribute("wosFactSourceVersion", normalize(wosFactSourceVersion));
-        model.addAttribute("wosFactType", normalize(wosFactType));
-        model.addAttribute("wosFactConflictReason", normalize(wosFactConflictReason));
-
-        model.addAttribute("scopusLinkEnrichmentSource", normalize(scopusLinkEnrichmentSource));
-        model.addAttribute("scopusLinkKeyType", normalize(scopusLinkKeyType));
-        model.addAttribute("scopusLinkConflictReason", normalize(scopusLinkConflictReason));
+        model.addAttribute("summary", conflictOperationsFacade.summarizeIdentityConflicts());
+        model.addAttribute("entityType", normalize(entityType));
+        model.addAttribute("incomingSource", normalize(incomingSource));
+        model.addAttribute("reasonCode", normalize(reasonCode));
+        model.addAttribute("status", normalize(status));
+        model.addAttribute("detectedFrom", normalize(detectedFrom));
+        model.addAttribute("detectedTo", normalize(detectedTo));
 
         return "admin/conflicts";
+    }
+
+    @PostMapping("/resolve")
+    public String resolveConflict(
+            @RequestParam(name = "id") String id,
+            Authentication authentication,
+            RedirectAttributes redirectAttributes
+    ) {
+        long updated = conflictOperationsFacade.updateConflictStatus(id, "RESOLVED", authentication == null ? "" : authentication.getName());
+        if (updated == 0L) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Conflict resolve skipped. Conflict is missing or not OPEN.");
+        } else {
+            redirectAttributes.addFlashAttribute("successMessage", "Conflict resolved.");
+        }
+        return "redirect:/admin/conflicts";
+    }
+
+    @PostMapping("/dismiss")
+    public String dismissConflict(
+            @RequestParam(name = "id") String id,
+            Authentication authentication,
+            RedirectAttributes redirectAttributes
+    ) {
+        long updated = conflictOperationsFacade.updateConflictStatus(id, "DISMISSED", authentication == null ? "" : authentication.getName());
+        if (updated == 0L) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Conflict dismiss skipped. Conflict is missing or not OPEN.");
+        } else {
+            redirectAttributes.addFlashAttribute("successMessage", "Conflict dismissed.");
+        }
+        return "redirect:/admin/conflicts";
+    }
+
+    @PostMapping("/bulkStatus")
+    public String bulkUpdateConflicts(
+            @RequestParam(name = "ids", required = false) List<String> ids,
+            @RequestParam(name = "singleId", required = false) String singleId,
+            @RequestParam(name = "action", required = false) String action,
+            Authentication authentication,
+            RedirectAttributes redirectAttributes
+    ) {
+        if ("resolveOne".equalsIgnoreCase(action) && singleId != null) {
+            long updated = conflictOperationsFacade.updateConflictStatus(singleId, "RESOLVED", authentication == null ? "" : authentication.getName());
+            redirectAttributes.addFlashAttribute("successMessage", "Conflict resolve requested. updated=" + updated + ".");
+            return "redirect:/admin/conflicts";
+        }
+        if ("dismissOne".equalsIgnoreCase(action) && singleId != null) {
+            long updated = conflictOperationsFacade.updateConflictStatus(singleId, "DISMISSED", authentication == null ? "" : authentication.getName());
+            redirectAttributes.addFlashAttribute("successMessage", "Conflict dismiss requested. updated=" + updated + ".");
+            return "redirect:/admin/conflicts";
+        }
+        String requestedStatus = "dismiss".equalsIgnoreCase(action) ? "DISMISSED" : "RESOLVED";
+        long updated = conflictOperationsFacade.bulkUpdateConflictStatus(ids, requestedStatus, authentication == null ? "" : authentication.getName());
+        redirectAttributes.addFlashAttribute("successMessage", "Bulk conflict update complete. updated=" + updated + ".");
+        return "redirect:/admin/conflicts";
+    }
+
+    @PostMapping("/identity/open/clear")
+    public String clearOpenIdentityConflicts(
+            @RequestParam(name = "confirmation", required = false) String confirmation,
+            RedirectAttributes redirectAttributes
+    ) {
+        if (!isResetConfirmation(confirmation)) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    "Open identity conflict clear aborted. Type RESET in the confirmation field to proceed.");
+            return "redirect:/admin/conflicts";
+        }
+        long deleted = conflictOperationsFacade.clearOpenIdentityConflicts();
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Open identity conflicts cleared. deleted=" + deleted + ".");
+        return "redirect:/admin/conflicts";
     }
 
     @PostMapping("/wos/identity/clear")
@@ -115,5 +175,27 @@ public class AdminConflictController {
 
     private String normalize(String value) {
         return value == null ? "" : value;
+    }
+
+    private Instant parseDateStart(String raw) {
+        try {
+            if (raw == null || raw.isBlank()) {
+                return null;
+            }
+            return LocalDate.parse(raw.trim()).atStartOfDay().toInstant(ZoneOffset.UTC);
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    private Instant parseDateEnd(String raw) {
+        try {
+            if (raw == null || raw.isBlank()) {
+                return null;
+            }
+            return LocalDate.parse(raw.trim()).plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
+        } catch (Exception ex) {
+            return null;
+        }
     }
 }
