@@ -3,6 +3,7 @@ package ro.uvt.pokedex.core.repository.scopus.canonical;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,4 +14,5 @@ public interface ScholardexAuthorshipFactRepository extends MongoRepository<Scho
             String source
     );
     List<ScholardexAuthorshipFact> findByPublicationId(String publicationId);
+    List<ScholardexAuthorshipFact> findByAuthorIdIn(Collection<String> authorIds);
 }

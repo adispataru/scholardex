@@ -114,7 +114,7 @@ Done history moved to `TASKS-done.md`.
   - [x] `H19.12` Canonical relationship-edge model for indicator runtime.
     Deliverable: authoritative `scholardex.authorship_facts` (`publication -> author`) and `scholardex.author_affiliation_facts` (`author -> affiliation`) with deterministic ids, lineage, idempotence, and conflict policy.
     Exit criteria: canonical edge writes/replays are deterministic, conflict-safe, and consistent with `publication_facts.authorIds` and `author_facts.affiliationIds`.
-  - [ ] `H19.13` Indicator/report query cutover to edge-backed traversals.
+  - [x] `H19.13` Indicator/report query cutover to edge-backed traversals.
     Deliverable: scoring/report/export/user/admin query paths use canonical edge-backed traversals for publication-by-author and author-by-affiliation access, with performance parity/guardrail checks.
     Exit criteria: runtime indicator computation no longer depends on source-silo author/affiliation linkage paths and passes parity/performance gates.
   - [ ] `H19.8` End-to-end validation, parity, and operability gates.

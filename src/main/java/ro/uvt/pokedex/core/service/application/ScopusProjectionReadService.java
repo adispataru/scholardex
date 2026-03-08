@@ -24,6 +24,7 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationView
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumViewRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorshipFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 
@@ -54,11 +55,22 @@ public class ScopusProjectionReadService {
     private final ScholardexAffiliationFactRepository canonicalAffiliationFactRepository;
     private final ScholardexForumFactRepository canonicalForumFactRepository;
     private final ScholardexAuthorAffiliationFactRepository canonicalAuthorAffiliationFactRepository;
+    private final ScholardexAuthorshipFactRepository canonicalAuthorshipFactRepository;
     private final ScholardexEdgeWriterService edgeWriterService;
 
     public List<Publication> findAllPublicationsByAuthorsIn(Collection<String> authorIds) {
         List<String> resolvedAuthorIds = resolveCanonicalIds(ScholardexEntityType.AUTHOR, authorIds);
-        return dedupeAndSortPublications(publicationViewRepository.findAllByAuthorIdsIn(resolvedAuthorIds)
+        if (resolvedAuthorIds.isEmpty()) {
+            return List.of();
+        }
+        Set<String> publicationIds = canonicalAuthorshipFactRepository.findByAuthorIdIn(resolvedAuthorIds).stream()
+                .map(edge -> normalizeBlank(edge.getPublicationId()))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (publicationIds.isEmpty()) {
+            return List.of();
+        }
+        return dedupeAndSortPublications(publicationViewRepository.findAllByIdIn(publicationIds)
                 .stream()
                 .map(this::toPublication)
                 .toList());
@@ -70,13 +82,33 @@ public class ScopusProjectionReadService {
 
     public List<Publication> findAllPublicationsByAffiliationsContaining(String affiliationId) {
         List<String> resolvedAffiliationIds = resolveCanonicalIds(ScholardexEntityType.AFFILIATION, List.of(affiliationId));
-        List<Publication> publications = new ArrayList<>();
-        for (String canonicalAffiliationId : resolvedAffiliationIds) {
-            publicationViewRepository.findAllByAffiliationIdsContaining(canonicalAffiliationId).stream()
-                    .map(this::toPublication)
-                    .forEach(publications::add);
+        if (resolvedAffiliationIds.isEmpty()) {
+            return List.of();
         }
-        return dedupeAndSortPublications(publications);
+        Set<String> authorIds = new LinkedHashSet<>();
+        for (String canonicalAffiliationId : resolvedAffiliationIds) {
+            canonicalAuthorAffiliationFactRepository.findByAffiliationId(canonicalAffiliationId)
+                    .forEach(edge -> {
+                        String authorId = normalizeBlank(edge.getAuthorId());
+                        if (authorId != null) {
+                            authorIds.add(authorId);
+                        }
+                    });
+        }
+        if (authorIds.isEmpty()) {
+            return List.of();
+        }
+        Set<String> publicationIds = canonicalAuthorshipFactRepository.findByAuthorIdIn(authorIds).stream()
+                .map(edge -> normalizeBlank(edge.getPublicationId()))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (publicationIds.isEmpty()) {
+            return List.of();
+        }
+        return dedupeAndSortPublications(publicationViewRepository.findAllByIdIn(publicationIds)
+                .stream()
+                .map(this::toPublication)
+                .toList());
     }
 
     public List<Publication> findAllPublicationsByIdIn(Collection<String> ids) {
