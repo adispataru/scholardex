@@ -93,7 +93,7 @@ Done history moved to `TASKS-done.md`.
   - [x] `H19.5` Implement Scholardex affiliation identity model v2.
     Deliverable: affiliation model that supports multiple source affiliation IDs and alias resolution across Scopus/WoS/Scholar/User, with reverse-link query support via canonical edge/index contracts (no forum-style reverse arrays required).
     Exit criteria: affiliation linking resolves deterministically, deduplicates source aliases, and supports fast affiliation-side traversal for scoring/reporting entrypoints.
-  - [ ] `H19.6` Build WoS-first onboarding into Scholardex entities.
+  - [x] `H19.6` Build WoS-first onboarding into Scholardex entities.
     Deliverable: WoS ingestion/linking pipeline that populates/links Scholardex publication/forum/author/affiliation identities using existing WoS canonical facts/views.
     Exit criteria: WoS-only journals/publications not present in Scopus are represented and queryable in Scholardex runtime reads.
   - [ ] `H19.7` Build Google Scholar onboarding from Publish-or-Perish exports.

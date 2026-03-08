@@ -138,13 +138,15 @@ public class ScopusProjectionReadService {
     }
 
     public List<Forum> findForumsByIdIn(Collection<String> forumIds) {
-        return forumSearchViewRepository.findByIdIn(forumIds).stream()
+        List<String> resolvedForumIds = resolveCanonicalIds(ScholardexEntityType.FORUM, forumIds);
+        return forumSearchViewRepository.findByIdIn(resolvedForumIds).stream()
                 .map(this::toForum)
                 .toList();
     }
 
     public Optional<Forum> findForumById(String id) {
-        return forumSearchViewRepository.findById(id).map(this::toForum);
+        List<String> resolvedForumIds = resolveCanonicalIds(ScholardexEntityType.FORUM, List.of(id));
+        return forumSearchViewRepository.findByIdIn(resolvedForumIds).stream().findFirst().map(this::toForum);
     }
 
     public List<Forum> findAllForums() {

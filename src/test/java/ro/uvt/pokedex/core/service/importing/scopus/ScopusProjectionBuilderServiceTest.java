@@ -9,6 +9,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationSearchViewRepository;
@@ -34,6 +35,8 @@ class ScopusProjectionBuilderServiceTest {
     @Mock
     private ScholardexAffiliationFactRepository affiliationFactRepository;
     @Mock
+    private ScholardexForumFactRepository canonicalForumFactRepository;
+    @Mock
     private ScholardexPublicationFactRepository publicationFactRepository;
     @Mock
     private ScopusCitationFactRepository citationFactRepository;
@@ -50,6 +53,7 @@ class ScopusProjectionBuilderServiceTest {
     void rebuildViewsPreservesExistingWosEnrichment() {
         ScopusProjectionBuilderService service = new ScopusProjectionBuilderService(
                 forumFactRepository,
+                canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
                 publicationFactRepository,
@@ -71,6 +75,7 @@ class ScopusProjectionBuilderServiceTest {
         publicationFact.setSourceEventId("ev1");
 
         when(forumFactRepository.findAll()).thenReturn(List.of());
+        when(canonicalForumFactRepository.findAll()).thenReturn(List.of());
         when(authorFactRepository.findAll()).thenReturn(List.of());
         when(affiliationFactRepository.findAll()).thenReturn(List.of());
         when(publicationFactRepository.findAll()).thenReturn(List.of(publicationFact));

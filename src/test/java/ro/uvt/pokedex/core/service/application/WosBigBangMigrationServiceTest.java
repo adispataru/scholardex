@@ -42,6 +42,7 @@ class WosBigBangMigrationServiceTest {
 
     @Mock private WosImportEventIngestionService ingestionService;
     @Mock private WosFactBuilderService factBuilderService;
+    @Mock private WosScholardexOnboardingService wosScholardexOnboardingService;
     @Mock private WosProjectionBuilderService projectionBuilderService;
     @Mock private WosParityReconciliationService parityReconciliationService;
     @Mock private WosImportEventParserOrchestrator parserOrchestrator;
@@ -61,6 +62,7 @@ class WosBigBangMigrationServiceTest {
         service = new WosBigBangMigrationService(
                 ingestionService,
                 factBuilderService,
+                wosScholardexOnboardingService,
                 projectionBuilderService,
                 parityReconciliationService,
                 parserOrchestrator,
@@ -110,6 +112,7 @@ class WosBigBangMigrationServiceTest {
         verify(ingestionService, never()).ingestDirectory(anyString(), anyString());
         verify(factBuilderService, never()).buildFactsFromImportEventsWithCheckpoint(any(), anyBoolean(), any(), any());
         verify(factBuilderService, never()).enrichMissingCategoryRankingFields();
+        verify(wosScholardexOnboardingService, never()).runWosOnboarding(any(), any());
         verify(parityReconciliationService).runEligibilityCheck();
     }
 
@@ -143,6 +146,7 @@ class WosBigBangMigrationServiceTest {
         assertTrue(result.enrichCategoryRankings().executed());
         assertTrue(result.buildProjections().executed());
         assertTrue(result.verification().parityPassed());
+        verify(wosScholardexOnboardingService).runWosOnboarding(any(), eq("v2026"));
         verify(factBuilderService).enrichMissingCategoryRankingFields();
         verify(parityReconciliationService).runFullParity();
     }

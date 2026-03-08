@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
@@ -13,6 +14,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumSearchView;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
@@ -41,6 +43,7 @@ public class ScopusProjectionBuilderService {
     private static final Pattern DOI_PREFIX = Pattern.compile("^doi:", Pattern.CASE_INSENSITIVE);
 
     private final ScopusForumFactRepository forumFactRepository;
+    private final ScholardexForumFactRepository canonicalForumFactRepository;
     private final ScholardexAuthorFactRepository authorFactRepository;
     private final ScholardexAffiliationFactRepository affiliationFactRepository;
     private final ScholardexPublicationFactRepository publicationFactRepository;
@@ -52,6 +55,7 @@ public class ScopusProjectionBuilderService {
 
     public ScopusProjectionBuilderService(
             ScopusForumFactRepository forumFactRepository,
+            ScholardexForumFactRepository canonicalForumFactRepository,
             ScholardexAuthorFactRepository authorFactRepository,
             ScholardexAffiliationFactRepository affiliationFactRepository,
             ScholardexPublicationFactRepository publicationFactRepository,
@@ -62,6 +66,7 @@ public class ScopusProjectionBuilderService {
             ScholardexPublicationViewRepository publicationViewRepository
     ) {
         this.forumFactRepository = forumFactRepository;
+        this.canonicalForumFactRepository = canonicalForumFactRepository;
         this.authorFactRepository = authorFactRepository;
         this.affiliationFactRepository = affiliationFactRepository;
         this.publicationFactRepository = publicationFactRepository;
@@ -81,7 +86,8 @@ public class ScopusProjectionBuilderService {
             forumFacts.sort(Comparator.comparing(ScopusForumFact::getSourceId, Comparator.nullsLast(String::compareTo)));
             List<ScopusForumSearchView> forumViews = forumFacts.stream()
                     .map(fact -> toForumView(fact, buildVersion, buildAt))
-                    .toList();
+                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+            mergeWosOnlyForumViews(forumViews, buildVersion, buildAt);
             forumSearchViewRepository.deleteAll();
             forumSearchViewRepository.saveAll(forumViews);
             markImported(result, forumViews.size());
@@ -136,6 +142,35 @@ public class ScopusProjectionBuilderService {
         view.setUpdatedAt(buildAt);
         view.setSourceEventId(fact.getSourceEventId());
         return view;
+    }
+
+    private void mergeWosOnlyForumViews(List<ScopusForumSearchView> forumViews, String buildVersion, Instant buildAt) {
+        List<ScholardexForumFact> canonicalForums = new ArrayList<>(canonicalForumFactRepository.findAll());
+        canonicalForums.sort(Comparator.comparing(ScholardexForumFact::getId, Comparator.nullsLast(String::compareTo)));
+        java.util.Set<String> existingIds = forumViews.stream()
+                .map(ScopusForumSearchView::getId)
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+        for (ScholardexForumFact canonicalForum : canonicalForums) {
+            if (!safeList(canonicalForum.getScopusForumIds()).isEmpty()) {
+                continue;
+            }
+            if (canonicalForum.getId() == null || existingIds.contains(canonicalForum.getId())) {
+                continue;
+            }
+            ScopusForumSearchView wosView = new ScopusForumSearchView();
+            wosView.setId(canonicalForum.getId());
+            wosView.setPublicationName(canonicalForum.getName());
+            wosView.setIssn(canonicalForum.getIssn());
+            wosView.setEIssn(canonicalForum.getEIssn());
+            wosView.setAggregationType(canonicalForum.getAggregationType());
+            wosView.setBuildVersion(buildVersion);
+            wosView.setBuildAt(buildAt);
+            wosView.setUpdatedAt(buildAt);
+            wosView.setSourceEventId(canonicalForum.getSourceEventId());
+            forumViews.add(wosView);
+            existingIds.add(canonicalForum.getId());
+        }
     }
 
     private ScopusAuthorSearchView toAuthorView(ScholardexAuthorFact fact, String buildVersion, Instant buildAt) {
@@ -235,6 +270,10 @@ public class ScopusProjectionBuilderService {
             result.markProcessed();
             result.markImported();
         }
+    }
+
+    private List<String> safeList(List<String> values) {
+        return values == null ? List.of() : values;
     }
 
     private String normalizeDoi(String doi) {
