@@ -11,21 +11,23 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationSearchView;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorSearchView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumSearchView;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationViewRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorViewRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationSearchViewRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorSearchViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusCitationFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumSearchViewRepository;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -46,12 +48,13 @@ public class ScopusProjectionReadService {
 
     private final ScholardexPublicationViewRepository publicationViewRepository;
     private final ScopusCitationFactRepository citationFactRepository;
-    private final ScopusForumSearchViewRepository forumSearchViewRepository;
-    private final ScopusAuthorSearchViewRepository authorSearchViewRepository;
-    private final ScopusAffiliationSearchViewRepository affiliationSearchViewRepository;
+    private final ScholardexForumViewRepository forumViewRepository;
+    private final ScholardexAuthorViewRepository authorViewRepository;
+    private final ScholardexAffiliationViewRepository affiliationViewRepository;
     private final ScholardexSourceLinkRepository sourceLinkRepository;
     private final ScholardexAuthorFactRepository canonicalAuthorFactRepository;
     private final ScholardexAffiliationFactRepository canonicalAffiliationFactRepository;
+    private final ScholardexForumFactRepository canonicalForumFactRepository;
     private final ScholardexAuthorAffiliationFactRepository canonicalAuthorAffiliationFactRepository;
 
     public List<Publication> findAllPublicationsByAuthorsIn(Collection<String> authorIds) {
@@ -139,29 +142,29 @@ public class ScopusProjectionReadService {
 
     public List<Forum> findForumsByIdIn(Collection<String> forumIds) {
         List<String> resolvedForumIds = resolveCanonicalIds(ScholardexEntityType.FORUM, forumIds);
-        return forumSearchViewRepository.findByIdIn(resolvedForumIds).stream()
+        return forumViewRepository.findByIdIn(resolvedForumIds).stream()
                 .map(this::toForum)
                 .toList();
     }
 
     public Optional<Forum> findForumById(String id) {
         List<String> resolvedForumIds = resolveCanonicalIds(ScholardexEntityType.FORUM, List.of(id));
-        return forumSearchViewRepository.findByIdIn(resolvedForumIds).stream().findFirst().map(this::toForum);
+        return forumViewRepository.findByIdIn(resolvedForumIds).stream().findFirst().map(this::toForum);
     }
 
     public List<Forum> findAllForums() {
-        return forumSearchViewRepository.findAll().stream().map(this::toForum).toList();
+        return forumViewRepository.findAll().stream().map(this::toForum).toList();
     }
 
     public List<Author> findAuthorsByIdIn(Collection<String> authorIds) {
         List<String> resolvedAuthorIds = resolveCanonicalIds(ScholardexEntityType.AUTHOR, authorIds);
-        return authorSearchViewRepository.findByIdIn(resolvedAuthorIds).stream()
+        return authorViewRepository.findByIdIn(resolvedAuthorIds).stream()
                 .map(this::toAuthor)
                 .toList();
     }
 
     public List<Author> findAllAuthors() {
-        return authorSearchViewRepository.findAll().stream()
+        return authorViewRepository.findAll().stream()
                 .map(this::toAuthor)
                 .toList();
     }
@@ -173,37 +176,37 @@ public class ScopusProjectionReadService {
             canonicalAuthorAffiliationFactRepository.findByAffiliationId(canonicalAffiliationId)
                     .forEach(edge -> authorIds.add(edge.getAuthorId()));
         }
-        return authorSearchViewRepository.findByIdIn(authorIds).stream()
+        return authorViewRepository.findByIdIn(authorIds).stream()
                 .map(this::toAuthor)
                 .toList();
     }
 
     public Optional<Author> findAuthorById(String id) {
         List<String> resolvedAuthorIds = resolveCanonicalIds(ScholardexEntityType.AUTHOR, List.of(id));
-        return authorSearchViewRepository.findByIdIn(resolvedAuthorIds).stream().findFirst().map(this::toAuthor);
+        return authorViewRepository.findByIdIn(resolvedAuthorIds).stream().findFirst().map(this::toAuthor);
     }
 
     public List<Author> findAuthorsByNameContainsIgnoreCase(String authorName) {
-        return authorSearchViewRepository.findAllByNameContainingIgnoreCase(authorName).stream()
+        return authorViewRepository.findAllByNameContainingIgnoreCase(authorName).stream()
                 .map(this::toAuthor)
                 .toList();
     }
 
     public List<Affiliation> findAllAffiliations() {
-        return affiliationSearchViewRepository.findAll().stream().map(this::toAffiliation).toList();
+        return affiliationViewRepository.findAll().stream().map(this::toAffiliation).toList();
     }
 
     public Optional<Affiliation> findAffiliationById(String id) {
         List<String> resolvedAffiliationIds = resolveCanonicalIds(ScholardexEntityType.AFFILIATION, List.of(id));
-        return affiliationSearchViewRepository.findByIdIn(resolvedAffiliationIds).stream().findFirst().map(this::toAffiliation);
+        return affiliationViewRepository.findByIdIn(resolvedAffiliationIds).stream().findFirst().map(this::toAffiliation);
     }
 
     public List<Affiliation> findAffiliationsByCountry(String country) {
-        return affiliationSearchViewRepository.findAllByCountry(country).stream().map(this::toAffiliation).toList();
+        return affiliationViewRepository.findAllByCountry(country).stream().map(this::toAffiliation).toList();
     }
 
     public List<Affiliation> findAffiliationsByNameContains(String name) {
-        return affiliationSearchViewRepository.findAllByNameContains(name).stream().map(this::toAffiliation).toList();
+        return affiliationViewRepository.findAllByNameContains(name).stream().map(this::toAffiliation).toList();
     }
 
     public Optional<ScholardexPublicationView> findPublicationViewById(String id) {
@@ -215,22 +218,39 @@ public class ScopusProjectionReadService {
     }
 
     public Forum saveForum(Forum forum) {
-        ScopusForumSearchView row = forumSearchViewRepository.findById(forum.getId()).orElseGet(ScopusForumSearchView::new);
-        row.setId(forum.getId());
-        row.setPublicationName(forum.getPublicationName());
-        row.setIssn(forum.getIssn());
-        row.setEIssn(forum.getEIssn());
-        row.setAggregationType(forum.getAggregationType());
-        if (row.getBuildVersion() == null) {
-            row.setBuildVersion("manual-override");
-        }
+        String sourceRecordId = normalizeBlank(forum.getId());
+        String canonicalId = resolveCanonicalId(ScholardexEntityType.FORUM, sourceRecordId)
+                .orElse(sourceRecordId == null
+                        ? "sforum_manual_" + Integer.toHexString(Objects.hash(forum.getPublicationName(), forum.getIssn(), forum.getEIssn(), forum.getAggregationType()))
+                        : sourceRecordId);
         java.time.Instant now = java.time.Instant.now();
-        if (row.getBuildAt() == null) {
-            row.setBuildAt(now);
+        ScholardexForumFact canonicalFact = canonicalForumFactRepository.findById(canonicalId).orElseGet(ScholardexForumFact::new);
+        if (canonicalFact.getCreatedAt() == null) {
+            canonicalFact.setCreatedAt(now);
         }
-        row.setUpdatedAt(now);
-        ScopusForumSearchView saved = forumSearchViewRepository.save(row);
-        return toForum(saved);
+        canonicalFact.setId(canonicalId);
+        canonicalFact.setName(forum.getPublicationName());
+        canonicalFact.setNameNormalized(normalizeName(forum.getPublicationName()));
+        canonicalFact.setIssn(normalizeBlank(forum.getIssn()));
+        canonicalFact.setEIssn(normalizeBlank(forum.getEIssn()));
+        canonicalFact.setAggregationType(normalizeBlank(forum.getAggregationType()));
+        canonicalFact.setAggregationTypeNormalized(normalizeName(forum.getAggregationType()));
+        canonicalFact.setSource("MANUAL_FORUM_EDIT");
+        canonicalFact.setSourceRecordId(sourceRecordId);
+        canonicalFact.setUpdatedAt(now);
+        canonicalForumFactRepository.save(canonicalFact);
+
+        if (sourceRecordId != null) {
+            upsertSourceLink(ScholardexEntityType.FORUM, "MANUAL_FORUM_EDIT", sourceRecordId, canonicalId, "manual-forum-save", now);
+        }
+
+        Forum out = new Forum();
+        out.setId(canonicalId);
+        out.setPublicationName(forum.getPublicationName());
+        out.setIssn(forum.getIssn());
+        out.setEIssn(forum.getEIssn());
+        out.setAggregationType(forum.getAggregationType());
+        return out;
     }
 
     public Author saveAuthor(Author author) {
@@ -277,19 +297,15 @@ public class ScopusProjectionReadService {
             canonicalAuthorAffiliationFactRepository.save(edge);
         }
 
-        ScopusAuthorSearchView row = authorSearchViewRepository.findById(canonicalId).orElseGet(ScopusAuthorSearchView::new);
-        row.setId(canonicalId);
-        row.setName(author.getName());
-        row.setAffiliationIds(new ArrayList<>(affiliationIds));
-        if (row.getBuildVersion() == null) {
-            row.setBuildVersion("manual-override");
-        }
-        if (row.getBuildAt() == null) {
-            row.setBuildAt(now);
-        }
-        row.setUpdatedAt(now);
-        ScopusAuthorSearchView saved = authorSearchViewRepository.save(row);
-        return toAuthor(saved);
+        Author out = new Author();
+        out.setId(canonicalId);
+        out.setName(author.getName());
+        out.setAffiliations(affiliationIds.stream().map(id -> {
+            Affiliation affiliation = new Affiliation();
+            affiliation.setAfid(id);
+            return affiliation;
+        }).toList());
+        return out;
     }
 
     public Affiliation saveAffiliation(Affiliation affiliation) {
@@ -316,21 +332,12 @@ public class ScopusProjectionReadService {
             upsertSourceLink(ScholardexEntityType.AFFILIATION, "MANUAL_AFFILIATION_EDIT", sourceRecordId, canonicalId, "manual-affiliation-save", now);
         }
 
-        ScopusAffiliationSearchView row = affiliationSearchViewRepository.findById(canonicalId)
-                .orElseGet(ScopusAffiliationSearchView::new);
-        row.setId(canonicalId);
-        row.setName(affiliation.getName());
-        row.setCity(affiliation.getCity());
-        row.setCountry(affiliation.getCountry());
-        if (row.getBuildVersion() == null) {
-            row.setBuildVersion("manual-override");
-        }
-        if (row.getBuildAt() == null) {
-            row.setBuildAt(now);
-        }
-        row.setUpdatedAt(now);
-        ScopusAffiliationSearchView saved = affiliationSearchViewRepository.save(row);
-        return toAffiliation(saved);
+        Affiliation out = new Affiliation();
+        out.setAfid(canonicalId);
+        out.setName(affiliation.getName());
+        out.setCity(affiliation.getCity());
+        out.setCountry(affiliation.getCountry());
+        return out;
     }
 
     private Optional<String> resolveCanonicalId(ScholardexEntityType entityType, String candidate) {
@@ -498,7 +505,7 @@ public class ScopusProjectionReadService {
         return publication;
     }
 
-    private Forum toForum(ScopusForumSearchView row) {
+    private Forum toForum(ScholardexForumView row) {
         Forum forum = new Forum();
         forum.setId(row.getId());
         forum.setPublicationName(row.getPublicationName());
@@ -508,7 +515,7 @@ public class ScopusProjectionReadService {
         return forum;
     }
 
-    private Author toAuthor(ScopusAuthorSearchView row) {
+    private Author toAuthor(ScholardexAuthorView row) {
         Author author = new Author();
         author.setId(row.getId());
         author.setName(row.getName());
@@ -525,7 +532,7 @@ public class ScopusProjectionReadService {
         return author;
     }
 
-    private Affiliation toAffiliation(ScopusAffiliationSearchView row) {
+    private Affiliation toAffiliation(ScholardexAffiliationView row) {
         Affiliation affiliation = new Affiliation();
         affiliation.setAfid(row.getId());
         affiliation.setName(row.getName());

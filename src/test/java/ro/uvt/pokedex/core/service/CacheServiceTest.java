@@ -11,6 +11,7 @@ import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
+import ro.uvt.pokedex.core.service.application.ResearcherAuthorLookupService;
 import ro.uvt.pokedex.core.service.application.ScopusProjectionReadService;
 
 import java.util.List;
@@ -29,6 +30,8 @@ class CacheServiceTest {
     private CoreConferenceRankingRepository coreConferenceRankingRepository;
     @Mock
     private GroupRepository groupRepository;
+    @Mock
+    private ResearcherAuthorLookupService researcherAuthorLookupService;
 
     private CacheService cacheService;
 
@@ -52,7 +55,8 @@ class CacheServiceTest {
         cacheService = new CacheService(
                 scopusProjectionReadService,
                 coreConferenceRankingRepository,
-                groupRepository
+                groupRepository,
+                researcherAuthorLookupService
         );
     }
 

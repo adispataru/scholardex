@@ -9,6 +9,7 @@ import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
+import ro.uvt.pokedex.core.service.application.ResearcherAuthorLookupService;
 import ro.uvt.pokedex.core.service.application.ScopusProjectionReadService;
 
 import java.util.*;
@@ -24,6 +25,7 @@ public class CacheService {
 
     private final CoreConferenceRankingRepository coreConferenceRankingRepository;
     private final GroupRepository groupRepository;
+    private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final ConcurrentMap<String, List<CoreConferenceRanking>> confRankingCache;
     private final Map<String, Affiliation> affiliationCache = new HashMap<>();
     private final Map<String, Author> authorCache = new HashMap<>();
@@ -33,11 +35,13 @@ public class CacheService {
     public CacheService(
             ScopusProjectionReadService scopusProjectionReadService,
             CoreConferenceRankingRepository coreConferenceRankingRepository,
-            GroupRepository groupRepository
+            GroupRepository groupRepository,
+            ResearcherAuthorLookupService researcherAuthorLookupService
     ) {
         this.scopusProjectionReadService = scopusProjectionReadService;
         this.coreConferenceRankingRepository = coreConferenceRankingRepository;
         this.groupRepository = groupRepository;
+        this.researcherAuthorLookupService = researcherAuthorLookupService;
         this.forumCache = new ConcurrentHashMap<>();
         this.scopusProjectionReadService.findAllForums().forEach(f -> {
             forumCache.put(f.getId(), f);
@@ -47,8 +51,12 @@ public class CacheService {
         confRankingCache.putAll(coreConferenceRankingRepository.findAll().stream().collect(Collectors.groupingBy(CoreConferenceRanking::getAcronym)));
         List<Author> all = scopusProjectionReadService.findAllAuthors();
         groupRepository.findAll().forEach(group ->
-                group.getResearchers().forEach(researcher ->
-                        universityAuthorIds.addAll(researcher.getScopusId())));
+                group.getResearchers().forEach(researcher -> {
+                    List<String> lookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(researcher);
+                    scopusProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
+                            .map(Author::getId)
+                            .forEach(universityAuthorIds::add);
+                }));
         all.forEach(a -> {
             authorCache.put(a.getId(), a);
         });

@@ -9,9 +9,9 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.controller.dto.ScopusAuthorListItemResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusAuthorPageResponse;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationSearchView;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorSearchView;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationSearchViewRepository;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationViewRepository;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +25,7 @@ public class ScopusAuthorQueryService {
     private static final int MAX_QUERY_LENGTH = 100;
 
     private final MongoTemplate mongoTemplate;
-    private final ScopusAffiliationSearchViewRepository affiliationSearchViewRepository;
+    private final ScholardexAffiliationViewRepository affiliationViewRepository;
 
     public ScopusAuthorPageResponse search(String afid, int page, int size, String sort, String direction, String q) {
         String normalizedSort = normalizeSort(sort);
@@ -50,21 +50,21 @@ public class ScopusAuthorQueryService {
             query.addCriteria(new Criteria().andOperator(andCriteria.toArray(new Criteria[0])));
         }
 
-        List<ScopusAuthorSearchView> rows = mongoTemplate.find(query, ScopusAuthorSearchView.class);
-        long totalItems = mongoTemplate.count(Query.of(query).limit(-1).skip(-1), ScopusAuthorSearchView.class);
+        List<ScholardexAuthorView> rows = mongoTemplate.find(query, ScholardexAuthorView.class);
+        long totalItems = mongoTemplate.count(Query.of(query).limit(-1).skip(-1), ScholardexAuthorView.class);
         int totalPages = (int) Math.ceil(totalItems / (double) size);
 
         List<String> affiliationIds = rows.stream()
                 .flatMap(author -> author.getAffiliationIds().stream())
                 .distinct()
                 .toList();
-        List<ScopusAffiliationSearchView> affiliations = affiliationIds.isEmpty()
+        List<ScholardexAffiliationView> affiliations = affiliationIds.isEmpty()
                 ? List.of()
-                : affiliationSearchViewRepository.findAllById(affiliationIds);
+                : affiliationViewRepository.findByIdIn(affiliationIds);
         java.util.Map<String, String> affiliationNameById = affiliations.stream()
                 .collect(java.util.stream.Collectors.toMap(
-                        ScopusAffiliationSearchView::getId,
-                        ScopusAffiliationSearchView::getName,
+                        ScholardexAffiliationView::getId,
+                        ScholardexAffiliationView::getName,
                         (left, right) -> left
                 ));
 
@@ -74,7 +74,7 @@ public class ScopusAuthorQueryService {
         return new ScopusAuthorPageResponse(items, page, size, totalItems, totalPages);
     }
 
-    private ScopusAuthorListItemResponse toListItem(ScopusAuthorSearchView author, java.util.Map<String, String> affiliationNameById) {
+    private ScopusAuthorListItemResponse toListItem(ScholardexAuthorView author, java.util.Map<String, String> affiliationNameById) {
         List<String> affiliationNames = author.getAffiliationIds() == null
                 ? List.of()
                 : author.getAffiliationIds().stream()

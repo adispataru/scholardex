@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class UserPublicationFacade {
     private final ResearcherService researcherService;
     private final ScopusProjectionReadService scopusProjectionReadService;
+    private final ResearcherAuthorLookupService researcherAuthorLookupService;
 
     public Optional<UserPublicationsViewModel> buildUserPublicationsView(String researcherId) {
         Optional<Researcher> researcherById = researcherService.findResearcherById(researcherId);
@@ -27,7 +28,9 @@ public class UserPublicationFacade {
         }
 
         Researcher researcher = researcherById.get();
-        List<Author> byId = scopusProjectionReadService.findAuthorsByIdIn(researcher.getScopusId());
+        List<Author> byId = scopusProjectionReadService.findAuthorsByIdIn(
+                researcherAuthorLookupService.resolveAuthorLookupKeys(researcher)
+        );
         Map<String, Publication> publicationsById = new LinkedHashMap<>();
         byId.forEach(author -> scopusProjectionReadService.findAllPublicationsByAuthorsContaining(author.getId())
                 .forEach(publication -> publicationsById.putIfAbsent(publication.getId(), publication)));

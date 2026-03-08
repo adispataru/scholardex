@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.service.application;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.mockito.InjectMocks;
@@ -41,12 +42,14 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class UserReportFacadeTest {
@@ -83,9 +86,30 @@ class UserReportFacadeTest {
     private ReportingLookupPort reportingLookupPort;
     @Mock
     private WosRankingViewRepository wosRankingViewRepository;
+    @Mock
+    private ResearcherAuthorLookupService researcherAuthorLookupService;
 
     @InjectMocks
     private UserReportFacade facade;
+
+    @BeforeEach
+    void setUpLookupService() {
+        lenient().when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(Researcher.class)))
+                .thenAnswer(invocation -> {
+                    Researcher researcher = invocation.getArgument(0);
+                    return researcher.getScopusId() == null ? List.of() : researcher.getScopusId();
+                });
+        lenient().when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection()))
+                .thenAnswer(invocation -> {
+                    @SuppressWarnings("unchecked")
+                    var ids = (java.util.Collection<String>) invocation.getArgument(0);
+                    return ids.stream().map(id -> {
+                        var author = new Author();
+                        author.setId(id);
+                        return author;
+                    }).toList();
+                });
+    }
 
     @Test
     void buildIndicatorsViewReturnsRepositoryValues() {

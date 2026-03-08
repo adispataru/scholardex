@@ -33,6 +33,7 @@ public class GroupReportFacade {
     private final ActivityReportingService activityReportingService;
     private final ScientificProductionService scientificProductionService;
     private final ScopusProjectionReadService scopusProjectionReadService;
+    private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final GroupIndividualReportRunRepository groupIndividualReportRunRepository;
 
     public Optional<GroupPublicationsViewModel> buildGroupPublicationsView(String groupId) {
@@ -43,10 +44,14 @@ public class GroupReportFacade {
 
         List<Researcher> researchers = new ArrayList<>(group.getResearchers());
         researchers.sort(Comparator.comparing(Researcher::getName));
-        List<String> authorIds = new ArrayList<>();
+        List<String> lookupKeys = new ArrayList<>();
         for (Researcher researcher : researchers) {
-            authorIds.addAll(researcher.getScopusId());
+            lookupKeys.addAll(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
         }
+        List<String> authorIds = scopusProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
+                .map(Author::getId)
+                .distinct()
+                .toList();
         Map<String, Publication> publicationsById = new LinkedHashMap<>();
         scopusProjectionReadService.findAllPublicationsByAuthorsIn(authorIds)
                 .forEach(publication -> publicationsById.putIfAbsent(publication.getId(), publication));
@@ -142,7 +147,9 @@ public class GroupReportFacade {
         List<String> errors = new ArrayList<>();
 
         for (Researcher researcher : researchers) {
-            List<Author> authors = scopusProjectionReadService.findAuthorsByIdIn(researcher.getScopusId());
+            List<Author> authors = scopusProjectionReadService.findAuthorsByIdIn(
+                    researcherAuthorLookupService.resolveAuthorLookupKeys(researcher)
+            );
             if (authors.isEmpty()) {
                 errors.add("No authors found for researcher " + researcherDisplayName(researcher));
                 continue;

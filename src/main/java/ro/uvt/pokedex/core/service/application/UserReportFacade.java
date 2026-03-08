@@ -69,6 +69,7 @@ public class UserReportFacade {
     private final DomainRepository domainRepository;
     private final ActivityReportingService activityReportingService;
     private final ScientificProductionService scientificProductionService;
+    private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final CNFISScoringService2025 cnfiSScoringService2025;
     private final WoSExtractor woSExtractor;
     private final CNFISReportExportService exportService;
@@ -109,7 +110,7 @@ public class UserReportFacade {
 
         Researcher researcher = researcherOpt.get();
         Indicator indicator = indicatorOpt.get();
-        List<Author> authors = findAuthorsByIds(researcher.getScopusId());
+        List<Author> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
         if (authors.isEmpty()) {
             return Optional.empty();
         }
@@ -147,7 +148,8 @@ public class UserReportFacade {
             return UserWorkbookExportResult.notFound();
         }
 
-        List<String> authorIds = new ArrayList<>(researcherOpt.get().getScopusId());
+        List<String> lookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(researcherOpt.get());
+        List<String> authorIds = findAuthorsByIds(lookupKeys).stream().map(Author::getId).toList();
         List<Publication> publications = findPublicationsByAuthorIds(authorIds);
         publications = publications.stream().filter(publication -> {
             return PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)
@@ -193,7 +195,7 @@ public class UserReportFacade {
         }
 
         Researcher researcher = researcherOpt.get();
-        List<Author> authors = findAuthorsByIds(researcher.getScopusId());
+        List<Author> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
         if (authors.isEmpty()) {
             return UserWorkbookExportResult.notFound();
         }
@@ -269,7 +271,7 @@ public class UserReportFacade {
             return handleActivities(indicator, activities, attrs);
         }
 
-        List<Author> authors = findAuthorsByIds(researcher.getScopusId());
+        List<Author> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
         List<String> authorIds = authors.stream().map(Author::getId).toList();
         if (authors.isEmpty()) {
             return new UserIndicatorApplyViewModel("user/indicators", attrs);
@@ -307,7 +309,7 @@ public class UserReportFacade {
             return new UserIndividualReportViewModel("redirect:/error", attrs);
         }
 
-        List<Author> authors = findAuthorsByIds(researcher.getScopusId());
+        List<Author> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
         if (authors.isEmpty()) {
             return new UserIndividualReportViewModel("redirect:/error", attrs);
         }

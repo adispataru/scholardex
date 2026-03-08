@@ -10,9 +10,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import ro.uvt.pokedex.core.controller.dto.ScopusAuthorPageResponse;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationSearchView;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorSearchView;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationSearchViewRepository;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationViewRepository;
 
 import java.util.List;
 
@@ -28,26 +28,26 @@ class ScopusAuthorQueryServiceTest {
     @Mock
     private MongoTemplate mongoTemplate;
     @Mock
-    private ScopusAffiliationSearchViewRepository affiliationSearchViewRepository;
+    private ScholardexAffiliationViewRepository affiliationViewRepository;
 
     private ScopusAuthorQueryService service;
 
     @BeforeEach
     void setUp() {
-        service = new ScopusAuthorQueryService(mongoTemplate, affiliationSearchViewRepository);
+        service = new ScopusAuthorQueryService(mongoTemplate, affiliationViewRepository);
     }
 
     @Test
     void searchBuildsPagedSortedQueryAndMapsResponse() {
-        ScopusAuthorSearchView a = author("1", "Alice", List.of("af-1"));
-        ScopusAuthorSearchView b = author("2", "Bob", List.of());
-        ScopusAffiliationSearchView af1 = affiliation("af-1", "UVT");
+        ScholardexAuthorView a = author("1", "Alice", List.of("af-1"));
+        ScholardexAuthorView b = author("2", "Bob", List.of());
+        ScholardexAffiliationView af1 = affiliation("af-1", "UVT");
 
-        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(ScopusAuthorSearchView.class)))
+        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(ScholardexAuthorView.class)))
                 .thenReturn(List.of(a, b));
-        when(mongoTemplate.count(org.mockito.ArgumentMatchers.any(Query.class), eq(ScopusAuthorSearchView.class)))
+        when(mongoTemplate.count(org.mockito.ArgumentMatchers.any(Query.class), eq(ScholardexAuthorView.class)))
                 .thenReturn(11L);
-        when(affiliationSearchViewRepository.findAllById(List.of("af-1"))).thenReturn(List.of(af1));
+        when(affiliationViewRepository.findByIdIn(List.of("af-1"))).thenReturn(List.of(af1));
 
         ScopusAuthorPageResponse result = service.search("af-1", 1, 5, "name", "asc", null);
 
@@ -60,7 +60,7 @@ class ScopusAuthorQueryServiceTest {
         assertEquals(List.of("UVT"), result.items().get(0).affiliations());
 
         ArgumentCaptor<Query> findQueryCaptor = ArgumentCaptor.forClass(Query.class);
-        verify(mongoTemplate).find(findQueryCaptor.capture(), eq(ScopusAuthorSearchView.class));
+        verify(mongoTemplate).find(findQueryCaptor.capture(), eq(ScholardexAuthorView.class));
         Query findQuery = findQueryCaptor.getValue();
         assertEquals(5, findQuery.getLimit());
         assertEquals(5L, findQuery.getSkip());
@@ -72,15 +72,15 @@ class ScopusAuthorQueryServiceTest {
 
     @Test
     void searchWithQueryAddsRegexCriteria() {
-        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(ScopusAuthorSearchView.class)))
+        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(ScholardexAuthorView.class)))
                 .thenReturn(List.of());
-        when(mongoTemplate.count(org.mockito.ArgumentMatchers.any(Query.class), eq(ScopusAuthorSearchView.class)))
+        when(mongoTemplate.count(org.mockito.ArgumentMatchers.any(Query.class), eq(ScholardexAuthorView.class)))
                 .thenReturn(0L);
 
         service.search("af-1", 0, 25, "id", "desc", "abc");
 
         ArgumentCaptor<Query> findQueryCaptor = ArgumentCaptor.forClass(Query.class);
-        verify(mongoTemplate).find(findQueryCaptor.capture(), eq(ScopusAuthorSearchView.class));
+        verify(mongoTemplate).find(findQueryCaptor.capture(), eq(ScholardexAuthorView.class));
         Query findQuery = findQueryCaptor.getValue();
         String queryJson = findQuery.getQueryObject().toJson();
         assertEquals(-1, findQuery.getSortObject().getInteger("_id"));
@@ -103,16 +103,16 @@ class ScopusAuthorQueryServiceTest {
         assertThrows(IllegalArgumentException.class, () -> service.search("af-1", 0, 25, "name", "asc", "x".repeat(101)));
     }
 
-    private ScopusAuthorSearchView author(String id, String name, List<String> affiliationIds) {
-        ScopusAuthorSearchView author = new ScopusAuthorSearchView();
+    private ScholardexAuthorView author(String id, String name, List<String> affiliationIds) {
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId(id);
         author.setName(name);
         author.setAffiliationIds(affiliationIds);
         return author;
     }
 
-    private ScopusAffiliationSearchView affiliation(String id, String name) {
-        ScopusAffiliationSearchView affiliation = new ScopusAffiliationSearchView();
+    private ScholardexAffiliationView affiliation(String id, String name) {
+        ScholardexAffiliationView affiliation = new ScholardexAffiliationView();
         affiliation.setId(id);
         affiliation.setName(name);
         return affiliation;

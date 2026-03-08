@@ -10,13 +10,13 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumViewRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorViewRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationSearchViewRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorSearchViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumSearchViewRepository;
 
 import java.util.List;
 
@@ -41,11 +41,11 @@ class ScopusProjectionBuilderServiceTest {
     @Mock
     private ScopusCitationFactRepository citationFactRepository;
     @Mock
-    private ScopusForumSearchViewRepository forumSearchViewRepository;
+    private ScholardexForumViewRepository forumViewRepository;
     @Mock
-    private ScopusAuthorSearchViewRepository authorSearchViewRepository;
+    private ScholardexAuthorViewRepository authorViewRepository;
     @Mock
-    private ScopusAffiliationSearchViewRepository affiliationSearchViewRepository;
+    private ScholardexAffiliationViewRepository affiliationViewRepository;
     @Mock
     private ScholardexPublicationViewRepository publicationViewRepository;
 
@@ -58,9 +58,9 @@ class ScopusProjectionBuilderServiceTest {
                 affiliationFactRepository,
                 publicationFactRepository,
                 citationFactRepository,
-                forumSearchViewRepository,
-                authorSearchViewRepository,
-                affiliationSearchViewRepository,
+                forumViewRepository,
+                authorViewRepository,
+                affiliationViewRepository,
                 publicationViewRepository
         );
 

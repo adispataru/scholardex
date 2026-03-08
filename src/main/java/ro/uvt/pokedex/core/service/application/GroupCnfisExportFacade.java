@@ -30,6 +30,7 @@ public class GroupCnfisExportFacade {
 
     private final GroupManagementFacade groupManagementFacade;
     private final ScopusProjectionReadService scopusProjectionReadService;
+    private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final PublicationEnrichmentLinkerService publicationEnrichmentLinkerService;
     private final CNFISScoringService2025 cnfiSScoringService2025;
     private final WoSExtractor woSExtractor;
@@ -43,10 +44,14 @@ public class GroupCnfisExportFacade {
 
         List<Researcher> researchers = new ArrayList<>(group.getResearchers());
         researchers.sort(Comparator.comparing(Researcher::getName));
-        List<String> authorIds = new ArrayList<>();
+        List<String> lookupKeys = new ArrayList<>();
         for (Researcher researcher : researchers) {
-            authorIds.addAll(researcher.getScopusId());
+            lookupKeys.addAll(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
         }
+        List<String> authorIds = scopusProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
+                .map(ro.uvt.pokedex.core.model.scopus.Author::getId)
+                .distinct()
+                .toList();
 
         List<Publication> publications = scopusProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
         publications = filterPublicationsByYear(publications, startYear, endYear);
@@ -68,7 +73,9 @@ public class GroupCnfisExportFacade {
         List<GroupMemberCnfisWorkbook> workbooks = new ArrayList<>();
 
         for (Researcher researcher : group.getResearchers()) {
-            List<String> authorIds = researcher.getScopusId();
+            List<String> authorIds = scopusProjectionReadService.findAuthorsByIdIn(
+                    researcherAuthorLookupService.resolveAuthorLookupKeys(researcher)
+            ).stream().map(ro.uvt.pokedex.core.model.scopus.Author::getId).toList();
             List<Publication> publications = scopusProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
             publications = filterPublicationsByYear(publications, startYear, endYear);
 

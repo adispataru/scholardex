@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.service.application;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -30,6 +31,7 @@ import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class GroupReportFacadeTest {
@@ -47,10 +49,21 @@ class GroupReportFacadeTest {
     @Mock
     private ScopusProjectionReadService scopusProjectionReadService;
     @Mock
+    private ResearcherAuthorLookupService researcherAuthorLookupService;
+    @Mock
     private GroupIndividualReportRunRepository groupIndividualReportRunRepository;
 
     @InjectMocks
     private GroupReportFacade facade;
+
+    @BeforeEach
+    void setUpLookupService() {
+        lenient().when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(Researcher.class)))
+                .thenAnswer(invocation -> {
+                    Researcher researcher = invocation.getArgument(0);
+                    return researcher.getScopusId() == null ? List.of() : researcher.getScopusId();
+                });
+    }
 
     @Test
     void buildGroupPublicationsViewReturnsRedirectWhenGroupMissing() {

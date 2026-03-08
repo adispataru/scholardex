@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.service.application;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -46,9 +47,30 @@ class GroupCnfisExportFacadeTest {
     private WoSExtractor woSExtractor;
     @Mock
     private CNFISReportExportService exportService;
+    @Mock
+    private ResearcherAuthorLookupService researcherAuthorLookupService;
 
     @InjectMocks
     private GroupCnfisExportFacade facade;
+
+    @BeforeEach
+    void setUpLookupService() {
+        lenient().when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(Researcher.class)))
+                .thenAnswer(invocation -> {
+                    Researcher researcher = invocation.getArgument(0);
+                    return researcher.getScopusId() == null ? List.of() : researcher.getScopusId();
+                });
+        lenient().when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection()))
+                .thenAnswer(invocation -> {
+                    @SuppressWarnings("unchecked")
+                    var ids = (java.util.Collection<String>) invocation.getArgument(0);
+                    return ids.stream().map(id -> {
+                        var author = new ro.uvt.pokedex.core.model.scopus.Author();
+                        author.setId(id);
+                        return author;
+                    }).toList();
+                });
+    }
 
     @Test
     void buildGroupCnfisExportReturnsEmptyWhenGroupMissing() {

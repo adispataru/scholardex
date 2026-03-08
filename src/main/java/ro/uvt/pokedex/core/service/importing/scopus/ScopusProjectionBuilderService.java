@@ -8,21 +8,21 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationSearchView;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorSearchView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumSearchView;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationViewRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorViewRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationSearchViewRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorSearchViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumSearchViewRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.time.Instant;
@@ -48,9 +48,9 @@ public class ScopusProjectionBuilderService {
     private final ScholardexAffiliationFactRepository affiliationFactRepository;
     private final ScholardexPublicationFactRepository publicationFactRepository;
     private final ScopusCitationFactRepository citationFactRepository;
-    private final ScopusForumSearchViewRepository forumSearchViewRepository;
-    private final ScopusAuthorSearchViewRepository authorSearchViewRepository;
-    private final ScopusAffiliationSearchViewRepository affiliationSearchViewRepository;
+    private final ScholardexForumViewRepository forumViewRepository;
+    private final ScholardexAuthorViewRepository authorViewRepository;
+    private final ScholardexAffiliationViewRepository affiliationViewRepository;
     private final ScholardexPublicationViewRepository publicationViewRepository;
 
     public ScopusProjectionBuilderService(
@@ -60,9 +60,9 @@ public class ScopusProjectionBuilderService {
             ScholardexAffiliationFactRepository affiliationFactRepository,
             ScholardexPublicationFactRepository publicationFactRepository,
             ScopusCitationFactRepository citationFactRepository,
-            ScopusForumSearchViewRepository forumSearchViewRepository,
-            ScopusAuthorSearchViewRepository authorSearchViewRepository,
-            ScopusAffiliationSearchViewRepository affiliationSearchViewRepository,
+            ScholardexForumViewRepository forumViewRepository,
+            ScholardexAuthorViewRepository authorViewRepository,
+            ScholardexAffiliationViewRepository affiliationViewRepository,
             ScholardexPublicationViewRepository publicationViewRepository
     ) {
         this.forumFactRepository = forumFactRepository;
@@ -71,9 +71,9 @@ public class ScopusProjectionBuilderService {
         this.affiliationFactRepository = affiliationFactRepository;
         this.publicationFactRepository = publicationFactRepository;
         this.citationFactRepository = citationFactRepository;
-        this.forumSearchViewRepository = forumSearchViewRepository;
-        this.authorSearchViewRepository = authorSearchViewRepository;
-        this.affiliationSearchViewRepository = affiliationSearchViewRepository;
+        this.forumViewRepository = forumViewRepository;
+        this.authorViewRepository = authorViewRepository;
+        this.affiliationViewRepository = affiliationViewRepository;
         this.publicationViewRepository = publicationViewRepository;
     }
 
@@ -84,30 +84,30 @@ public class ScopusProjectionBuilderService {
         try {
             List<ScopusForumFact> forumFacts = new ArrayList<>(forumFactRepository.findAll());
             forumFacts.sort(Comparator.comparing(ScopusForumFact::getSourceId, Comparator.nullsLast(String::compareTo)));
-            List<ScopusForumSearchView> forumViews = forumFacts.stream()
+            List<ScholardexForumView> forumViews = forumFacts.stream()
                     .map(fact -> toForumView(fact, buildVersion, buildAt))
                     .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
             mergeWosOnlyForumViews(forumViews, buildVersion, buildAt);
-            forumSearchViewRepository.deleteAll();
-            forumSearchViewRepository.saveAll(forumViews);
+            forumViewRepository.deleteAll();
+            forumViewRepository.saveAll(forumViews);
             markImported(result, forumViews.size());
 
             List<ScholardexAuthorFact> authorFacts = new ArrayList<>(authorFactRepository.findAll());
             authorFacts.sort(Comparator.comparing(ScholardexAuthorFact::getId, Comparator.nullsLast(String::compareTo)));
-            List<ScopusAuthorSearchView> authorViews = authorFacts.stream()
+            List<ScholardexAuthorView> authorViews = authorFacts.stream()
                     .map(fact -> toAuthorView(fact, buildVersion, buildAt))
                     .toList();
-            authorSearchViewRepository.deleteAll();
-            authorSearchViewRepository.saveAll(authorViews);
+            authorViewRepository.deleteAll();
+            authorViewRepository.saveAll(authorViews);
             markImported(result, authorViews.size());
 
             List<ScholardexAffiliationFact> affiliationFacts = new ArrayList<>(affiliationFactRepository.findAll());
             affiliationFacts.sort(Comparator.comparing(ScholardexAffiliationFact::getId, Comparator.nullsLast(String::compareTo)));
-            List<ScopusAffiliationSearchView> affiliationViews = affiliationFacts.stream()
+            List<ScholardexAffiliationView> affiliationViews = affiliationFacts.stream()
                     .map(fact -> toAffiliationView(fact, buildVersion, buildAt))
                     .toList();
-            affiliationSearchViewRepository.deleteAll();
-            affiliationSearchViewRepository.saveAll(affiliationViews);
+            affiliationViewRepository.deleteAll();
+            affiliationViewRepository.saveAll(affiliationViews);
             markImported(result, affiliationViews.size());
 
             List<ScholardexPublicationFact> publicationFacts = new ArrayList<>(publicationFactRepository.findAll());
@@ -130,8 +130,8 @@ public class ScopusProjectionBuilderService {
         return result;
     }
 
-    private ScopusForumSearchView toForumView(ScopusForumFact fact, String buildVersion, Instant buildAt) {
-        ScopusForumSearchView view = new ScopusForumSearchView();
+    private ScholardexForumView toForumView(ScopusForumFact fact, String buildVersion, Instant buildAt) {
+        ScholardexForumView view = new ScholardexForumView();
         view.setId(fact.getSourceId());
         view.setPublicationName(fact.getPublicationName());
         view.setIssn(fact.getIssn());
@@ -144,11 +144,11 @@ public class ScopusProjectionBuilderService {
         return view;
     }
 
-    private void mergeWosOnlyForumViews(List<ScopusForumSearchView> forumViews, String buildVersion, Instant buildAt) {
+    private void mergeWosOnlyForumViews(List<ScholardexForumView> forumViews, String buildVersion, Instant buildAt) {
         List<ScholardexForumFact> canonicalForums = new ArrayList<>(canonicalForumFactRepository.findAll());
         canonicalForums.sort(Comparator.comparing(ScholardexForumFact::getId, Comparator.nullsLast(String::compareTo)));
         java.util.Set<String> existingIds = forumViews.stream()
-                .map(ScopusForumSearchView::getId)
+                .map(ScholardexForumView::getId)
                 .filter(Objects::nonNull)
                 .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
         for (ScholardexForumFact canonicalForum : canonicalForums) {
@@ -158,7 +158,7 @@ public class ScopusProjectionBuilderService {
             if (canonicalForum.getId() == null || existingIds.contains(canonicalForum.getId())) {
                 continue;
             }
-            ScopusForumSearchView wosView = new ScopusForumSearchView();
+            ScholardexForumView wosView = new ScholardexForumView();
             wosView.setId(canonicalForum.getId());
             wosView.setPublicationName(canonicalForum.getName());
             wosView.setIssn(canonicalForum.getIssn());
@@ -173,8 +173,8 @@ public class ScopusProjectionBuilderService {
         }
     }
 
-    private ScopusAuthorSearchView toAuthorView(ScholardexAuthorFact fact, String buildVersion, Instant buildAt) {
-        ScopusAuthorSearchView view = new ScopusAuthorSearchView();
+    private ScholardexAuthorView toAuthorView(ScholardexAuthorFact fact, String buildVersion, Instant buildAt) {
+        ScholardexAuthorView view = new ScholardexAuthorView();
         view.setId(fact.getId());
         view.setName(fact.getDisplayName());
         view.setAffiliationIds(fact.getAffiliationIds() == null ? List.of() : new ArrayList<>(fact.getAffiliationIds()));
@@ -185,8 +185,8 @@ public class ScopusProjectionBuilderService {
         return view;
     }
 
-    private ScopusAffiliationSearchView toAffiliationView(ScholardexAffiliationFact fact, String buildVersion, Instant buildAt) {
-        ScopusAffiliationSearchView view = new ScopusAffiliationSearchView();
+    private ScholardexAffiliationView toAffiliationView(ScholardexAffiliationFact fact, String buildVersion, Instant buildAt) {
+        ScholardexAffiliationView view = new ScholardexAffiliationView();
         view.setId(fact.getId());
         view.setName(fact.getName());
         view.setCity(fact.getCity());

@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 public class GroupExportFacade {
     private final GroupManagementFacade groupManagementFacade;
     private final ScopusProjectionReadService scopusProjectionReadService;
+    private final ResearcherAuthorLookupService researcherAuthorLookupService;
 
     public Optional<GroupPublicationCsvExportViewModel> buildGroupPublicationCsvExport(String groupId) {
         Group group = groupManagementFacade.buildGroupEditView(groupId).group();
@@ -26,10 +27,14 @@ public class GroupExportFacade {
 
         List<Researcher> researchers = new ArrayList<>(group.getResearchers());
         researchers.sort(Comparator.comparing(Researcher::getName));
-        List<String> authorIds = new ArrayList<>();
+        List<String> lookupKeys = new ArrayList<>();
         for (Researcher researcher : researchers) {
-            authorIds.addAll(researcher.getScopusId());
+            lookupKeys.addAll(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
         }
+        List<String> authorIds = scopusProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
+                .map(Author::getId)
+                .distinct()
+                .toList();
 
         Map<String, Publication> publicationsById = new LinkedHashMap<>();
         scopusProjectionReadService.findAllPublicationsByAuthorsIn(authorIds)
