@@ -326,6 +326,16 @@ public class UserViewController {
         userIndividualReportRunService.refreshRun(currentUser.getEmail(), id);
         return "redirect:/user/individualReports/view/" + id;
     }
+
+    @PostMapping("/individualReports/view/{id}/refresh-all-indicators")
+    public String refreshIndividualReportWithAllIndicators(Authentication authentication, @PathVariable("id") String id) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
+            return "redirect:/login";
+        }
+        userIndividualReportRunService.refreshRunWithAllIndicators(currentUser.getEmail(), id);
+        return "redirect:/user/individualReports/view/" + id;
+    }
+
     @GetMapping("/rankings/{id}")
     public String showRankingPage(@PathVariable String id) {
         return "redirect:/rankings/wos/" + id;

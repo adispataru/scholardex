@@ -159,15 +159,7 @@ public class UserIndicatorResultService {
     }
 
     private IndicatorApplyResultDto.Summary extractSummary(Map<String, Object> attrs) {
-        double totalScore = 0.0;
-        Object totalObj = attrs.get("total");
-        if (totalObj != null) {
-            try {
-                totalScore = Double.parseDouble(String.valueOf(totalObj));
-            } catch (NumberFormatException ignored) {
-                totalScore = 0.0;
-            }
-        }
+        double totalScore = parseDouble(attrs.get("total"));
 
         Integer totalCount = null;
         Object totalCountObj = attrs.get("totalCit");
@@ -198,5 +190,36 @@ public class UserIndicatorResultService {
         }
 
         return new IndicatorApplyResultDto.Summary(totalScore, totalCount, quarterLabels, quarterValues);
+    }
+
+    private double parseDouble(Object value) {
+        if (value == null) {
+            return 0.0;
+        }
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+
+        String raw = String.valueOf(value).trim();
+        if (raw.isEmpty()) {
+            return 0.0;
+        }
+
+        String normalized = raw.replace("\u00A0", "").replace(" ", "");
+        if (normalized.contains(",") && normalized.contains(".")) {
+            if (normalized.lastIndexOf(',') > normalized.lastIndexOf('.')) {
+                normalized = normalized.replace(".", "").replace(",", ".");
+            } else {
+                normalized = normalized.replace(",", "");
+            }
+        } else if (normalized.contains(",")) {
+            normalized = normalized.replace(",", ".");
+        }
+
+        try {
+            return Double.parseDouble(normalized);
+        } catch (NumberFormatException ignored) {
+            return 0.0;
+        }
     }
 }

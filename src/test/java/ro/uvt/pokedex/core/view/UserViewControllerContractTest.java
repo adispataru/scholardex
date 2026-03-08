@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -410,6 +411,25 @@ class UserViewControllerContractTest {
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("/css/individual-report-dashboard.css"));
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("/js/individual-report-dashboard.js"));
         org.junit.jupiter.api.Assertions.assertFalse(html.contains("/js/demo/datatables-demo.js"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("Refresh all indicators"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("/user/individualReports/view/rep-1/refresh-all-indicators"));
+    }
+
+    @Test
+    void individualReportRefreshAllIndicatorsRedirectsToLoginWhenAuthenticationMissing() throws Exception {
+        mockMvc.perform(post("/user/individualReports/view/{id}/refresh-all-indicators", "rep-1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"));
+    }
+
+    @Test
+    void individualReportRefreshAllIndicatorsRedirectsToViewRoute() throws Exception {
+        mockMvc.perform(post("/user/individualReports/view/{id}/refresh-all-indicators", "rep-1")
+                        .with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/user/individualReports/view/rep-1"));
+
+        verify(userIndividualReportRunService).refreshRunWithAllIndicators("u@uvt.ro", "rep-1");
     }
 
     @Test
@@ -502,6 +522,7 @@ class UserViewControllerContractTest {
                                 "scores", Map.of(),
                                 "citationMap", Map.of(),
                                 "forumMap", Map.of(),
+                                "forumWosLinkMap", Map.of(),
                                 "allQuarters", List.of("Q1"),
                                 "allValues", List.of(1)
                         ),

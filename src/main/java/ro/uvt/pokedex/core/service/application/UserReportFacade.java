@@ -22,6 +22,7 @@ import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
 import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndicatorRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
+import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
@@ -34,16 +35,21 @@ import ro.uvt.pokedex.core.service.application.model.UserWorkbookExportResult;
 import ro.uvt.pokedex.core.service.reporting.ActivityReportingService;
 import ro.uvt.pokedex.core.service.reporting.CNFISReportExportService;
 import ro.uvt.pokedex.core.service.reporting.CNFISScoringService2025;
+import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
 import ro.uvt.pokedex.core.service.reporting.Score;
 import ro.uvt.pokedex.core.service.reporting.ScientificProductionService;
 import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.WoSExtractor;
+import ro.uvt.pokedex.core.model.WoSRanking;
+import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -52,6 +58,7 @@ import java.util.stream.Collectors;
 public class UserReportFacade {
     private static final String WOS_EXTRACTOR_SOURCE = "WOSEXTRACTOR";
     private static final String LINKER_VERSION = "h17.10";
+    private static final Pattern ISSN_PATTERN = Pattern.compile("(?i)\\b[0-9]{4}-?[0-9]{3}[0-9x]\\b");
 
     private final UserService userService;
     private final ResearcherService researcherService;
@@ -67,6 +74,8 @@ public class UserReportFacade {
     private final CNFISReportExportService exportService;
     private final CacheService cacheService;
     private final PublicationEnrichmentLinkerService publicationEnrichmentLinkerService;
+    private final ReportingLookupPort reportingLookupPort;
+    private final WosRankingViewRepository wosRankingViewRepository;
 
     public UserIndicatorsViewModel buildIndicatorsView(String userEmail) {
         // userEmail kept in signature to lock facade contract for later permission-aware extensions.
@@ -439,6 +448,7 @@ public class UserReportFacade {
         Map<String, Forum> forumMap = new HashMap<>();
         forums.forEach(f -> forumMap.put(f.getId(), f));
         attrs.put("forumMap", forumMap);
+        attrs.put("forumWosLinkMap", buildForumWosLinkMap(forums));
 
         Map<String, Integer> quarterHistogram = new HashMap<>();
         scores.forEach((k, v) -> v.forEach((kk, vv) -> {
@@ -457,6 +467,81 @@ public class UserReportFacade {
         attrs.put("citationMap", citationsMap);
 
         return new UserIndicatorApplyViewModel("user/indicators-apply-citations", attrs);
+    }
+
+    private Map<String, String> buildForumWosLinkMap(List<Forum> forums) {
+        Map<String, String> forumWosLinkMap = new HashMap<>();
+        for (Forum forum : forums) {
+            if (forum == null || forum.getId() == null) {
+                continue;
+            }
+            String wosJournalId = resolveWosJournalId(forum);
+            if (wosJournalId != null) {
+                forumWosLinkMap.put(forum.getId(), wosJournalId);
+            }
+        }
+        return forumWosLinkMap;
+    }
+
+    private String resolveWosJournalId(Forum forum) {
+        LinkedHashSet<String> issns = extractIssnCandidates(forum.getIssn(), forum.getEIssn());
+        for (String issn : issns) {
+            List<WoSRanking> rankings = reportingLookupPort.getRankingsByIssn(issn);
+            if (!rankings.isEmpty()) {
+                String journalId = rankings.getFirst().getId();
+                if (journalId != null && !journalId.isBlank()) {
+                    return journalId;
+                }
+            }
+            Optional<WosRankingView> byIssnNorm = wosRankingViewRepository.findFirstByIssnNorm(issn);
+            if (byIssnNorm.isPresent() && byIssnNorm.get().getId() != null && !byIssnNorm.get().getId().isBlank()) {
+                return byIssnNorm.get().getId();
+            }
+            Optional<WosRankingView> byEIssnNorm = wosRankingViewRepository.findFirstByeIssnNorm(issn);
+            if (byEIssnNorm.isPresent() && byEIssnNorm.get().getId() != null && !byEIssnNorm.get().getId().isBlank()) {
+                return byEIssnNorm.get().getId();
+            }
+            Optional<WosRankingView> byAltIssnNorm = wosRankingViewRepository.findFirstByAlternativeIssnsNormContains(issn);
+            if (byAltIssnNorm.isPresent() && byAltIssnNorm.get().getId() != null && !byAltIssnNorm.get().getId().isBlank()) {
+                return byAltIssnNorm.get().getId();
+            }
+        }
+        return null;
+    }
+
+    private LinkedHashSet<String> extractIssnCandidates(String... rawValues) {
+        LinkedHashSet<String> candidates = new LinkedHashSet<>();
+        for (String rawValue : rawValues) {
+            if (rawValue == null || rawValue.isBlank()) {
+                continue;
+            }
+            Matcher matcher = ISSN_PATTERN.matcher(rawValue);
+            while (matcher.find()) {
+                String normalized = normalizeIssnToken(matcher.group());
+                if (normalized != null) {
+                    candidates.add(normalized);
+                }
+            }
+            String directNormalized = normalizeIssnToken(rawValue);
+            if (directNormalized != null) {
+                candidates.add(directNormalized);
+            }
+        }
+        return candidates;
+    }
+
+    private String normalizeIssnToken(String rawValue) {
+        if (rawValue == null) {
+            return null;
+        }
+        String normalized = rawValue
+                .trim()
+                .toUpperCase(Locale.ROOT)
+                .replaceAll("[^0-9X]", "");
+        if (normalized.length() != 8) {
+            return null;
+        }
+        return normalized;
     }
 
     private double calculatePublicationScore(Indicator indicator, List<Author> authors, List<Publication> publications) {

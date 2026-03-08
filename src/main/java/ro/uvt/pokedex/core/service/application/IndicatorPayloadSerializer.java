@@ -13,8 +13,8 @@ public class IndicatorPayloadSerializer {
 
     private final ObjectMapper objectMapper;
 
-    public IndicatorPayloadSerializer() {
-        this.objectMapper = new ObjectMapper();
+    public IndicatorPayloadSerializer(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper.copy();
         this.objectMapper.findAndRegisterModules();
         this.objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         this.objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);

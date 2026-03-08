@@ -183,9 +183,15 @@
                                                                         <span th:if="${citationMap[e.key] != null && citationMap[e.key].subtypeDescription == null}" th:text="${citationMap[e.key].subtype}"></span>
                                                                     </td>
                                                                     <td>
-                                                                        <a th:if="${citationMap[e.key] != null && forumMap[citationMap[e.key].forum] != null}"
-                                                                           th:text="${forumMap[citationMap[e.key].forum].publicationName}"
-                                                                           th:href="@{/rankings/wos/{id}(id=${forumMap[citationMap[e.key].forum].id})}">Venue</a>
+                                                                        <th:block th:with="citing=${citationMap[e.key]},
+                                                                                            forum=${citing != null ? forumMap[citing.forum] : null},
+                                                                                            wosVenueId=${(forumWosLinkMap != null && citing != null) ? forumWosLinkMap[citing.forum] : null}">
+                                                                            <a th:if="${forum != null && wosVenueId != null}"
+                                                                               th:text="${forum.publicationName}"
+                                                                               th:href="@{/rankings/wos/{id}(id=${wosVenueId})}">Venue</a>
+                                                                            <span th:if="${forum != null && wosVenueId == null}"
+                                                                                  th:text="${forum.publicationName}">Venue</span>
+                                                                        </th:block>
                                                                     </td>
                                                                     <td th:text="${e.value.category}"></td>
                                                                     <td th:text="${e.value.quarter}"></td>

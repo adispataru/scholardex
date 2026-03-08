@@ -42,6 +42,25 @@ public class UserIndividualReportRunService {
         return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT);
     }
 
+    public Optional<IndividualReportRunDto> refreshRunWithAllIndicators(String userEmail, String reportDefinitionId) {
+        Optional<IndividualReport> reportOpt = individualReportRepository.findById(reportDefinitionId);
+        if (reportOpt.isEmpty()) {
+            return Optional.empty();
+        }
+
+        IndividualReport report = reportOpt.get();
+        if (report.getIndicators() != null) {
+            for (Indicator indicator : report.getIndicators()) {
+                if (indicator == null || indicator.getId() == null) {
+                    continue;
+                }
+                userIndicatorResultService.refreshLatest(userEmail, indicator.getId());
+            }
+        }
+
+        return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT);
+    }
+
     private Optional<IndividualReportRunDto> buildAndSaveRun(String userEmail,
                                                              String reportDefinitionId,
                                                              IndividualReportRunDto.Source source) {

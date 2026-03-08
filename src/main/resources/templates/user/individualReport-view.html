@@ -24,9 +24,14 @@
                  th:attr="data-researcher-position=${researcherPosition}">
                 <div class="d-sm-flex align-items-center justify-content-between mb-4">
                     <h1 class="h3 mb-2 text-gray-800" th:text="${report.title}">Individual Report</h1>
-                    <form th:action="@{/user/individualReports/view/{id}/refresh(id=${report.id})}" method="post">
-                        <button type="submit" class="btn btn-sm btn-outline-primary shadow-sm">Refresh Report</button>
-                    </form>
+                    <div class="d-flex gap-2">
+                        <form th:action="@{/user/individualReports/view/{id}/refresh(id=${report.id})}" method="post">
+                            <button type="submit" class="btn btn-sm btn-outline-primary shadow-sm">Refresh Report</button>
+                        </form>
+                        <form th:action="@{/user/individualReports/view/{id}/refresh-all-indicators(id=${report.id})}" method="post">
+                            <button type="submit" class="btn btn-sm btn-primary shadow-sm">Refresh all indicators</button>
+                        </form>
+                    </div>
                 </div>
                 <p class="mb-4" th:text="${report.description}"></p>
 

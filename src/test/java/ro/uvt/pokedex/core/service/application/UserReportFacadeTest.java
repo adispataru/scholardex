@@ -21,6 +21,7 @@ import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
 import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndicatorRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
+import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
@@ -28,6 +29,7 @@ import ro.uvt.pokedex.core.service.application.model.UserWorkbookExportStatus;
 import ro.uvt.pokedex.core.service.reporting.ActivityReportingService;
 import ro.uvt.pokedex.core.service.reporting.CNFISReportExportService;
 import ro.uvt.pokedex.core.service.reporting.CNFISScoringService2025;
+import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
 import ro.uvt.pokedex.core.service.reporting.Score;
 import ro.uvt.pokedex.core.service.reporting.ScientificProductionService;
 
@@ -77,6 +79,10 @@ class UserReportFacadeTest {
     private CacheService cacheService;
     @Mock
     private PublicationEnrichmentLinkerService publicationEnrichmentLinkerService;
+    @Mock
+    private ReportingLookupPort reportingLookupPort;
+    @Mock
+    private WosRankingViewRepository wosRankingViewRepository;
 
     @InjectMocks
     private UserReportFacade facade;

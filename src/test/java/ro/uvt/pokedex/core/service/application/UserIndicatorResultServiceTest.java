@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.UserIndicatorResult;
 import ro.uvt.pokedex.core.model.user.User;
@@ -48,7 +49,7 @@ class UserIndicatorResultServiceTest {
                 indicatorRepository,
                 userService,
                 userReportFacade,
-                new IndicatorPayloadSerializer()
+                new IndicatorPayloadSerializer(new ObjectMapper())
         );
     }
 
@@ -59,7 +60,7 @@ class UserIndicatorResultServiceTest {
         persisted.setIndicatorId("ind-1");
         persisted.setMode(UserIndicatorResult.Mode.LATEST);
         persisted.setViewName("user/indicators-apply-publications");
-        persisted.setRawGraph(new IndicatorPayloadSerializer().serialize(Map.of("total", "1.00")));
+        persisted.setRawGraph(new IndicatorPayloadSerializer(new ObjectMapper()).serialize(Map.of("total", "1.00")));
         persisted.setCreatedAt(Instant.now());
         persisted.setUpdatedAt(Instant.now());
 
@@ -105,6 +106,40 @@ class UserIndicatorResultServiceTest {
         assertEquals(2.5, dto.summary().totalScore());
         assertNotNull(dto.rawGraph().get("indicator"));
         verify(userIndicatorResultRepository).save(any(UserIndicatorResult.class));
+    }
+
+    @Test
+    void getOrCreateLatestParsesCommaDecimalTotal() {
+        when(userIndicatorResultRepository.findByUserEmailAndIndicatorIdAndMode("u@uvt.ro", "ind-1", UserIndicatorResult.Mode.LATEST))
+                .thenReturn(Optional.empty());
+
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-1");
+        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
+        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        indicator.setFormula("S");
+        when(indicatorRepository.findById("ind-1")).thenReturn(Optional.of(indicator));
+
+        User user = new User();
+        user.setEmail("u@uvt.ro");
+        user.setResearcherId("r-1");
+        when(userService.getUserByEmail("u@uvt.ro")).thenReturn(Optional.of(user));
+
+        when(userReportFacade.buildIndicatorApplyView("u@uvt.ro", "ind-1"))
+                .thenReturn(new UserIndicatorApplyViewModel(
+                        "user/indicators-apply-publications",
+                        Map.of("indicator", indicator, "total", "2,50", "allQuarters", List.of("Q1"), "allValues", List.of(1))
+                ));
+
+        when(userIndicatorResultRepository.save(any(UserIndicatorResult.class))).thenAnswer(invocation -> {
+            UserIndicatorResult entity = invocation.getArgument(0);
+            entity.setId("new-id");
+            return entity;
+        });
+
+        IndicatorApplyResultDto dto = service.getOrCreateLatest("u@uvt.ro", "ind-1");
+
+        assertEquals(2.5, dto.summary().totalScore());
     }
 
     @Test
