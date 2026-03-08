@@ -84,7 +84,7 @@ Done history moved to `TASKS-done.md`.
     Exit criteria: deterministic link keys and conflict quarantine behavior are documented and testable.
     Handover:
     - Contract source of truth: `docs/h19.2-forum-keying-merge-contract.md`.
-  - [ ] `H19.3` Implement Scholardex publication identity model v2.
+  - [x] `H19.3` Implement Scholardex publication identity model v2.
     Deliverable: publication model supporting source IDs (`eid`, `wosId`, `googleScholarId`, `userSourceId`) plus canonical `scholardexPublicationId` and lineage metadata.
     Exit criteria: all publication ingest/build paths can persist and resolve the new identity model without ambiguity.
   - [ ] `H19.4` Implement Scholardex author identity model v2 (researcher-linked).
