@@ -11,6 +11,12 @@ public class ImportProcessingResult {
     private int updatedCount;
     private int skippedCount;
     private int errorCount;
+    private Integer startBatch;
+    private Integer endBatch;
+    private Integer batchesProcessed;
+    private Integer totalBatches;
+    private Boolean resumedFromCheckpoint;
+    private Integer checkpointLastCompletedBatch;
     private final List<String> errorsSample = new ArrayList<>();
 
     public ImportProcessingResult(int maxErrorsSample) {
@@ -62,5 +68,53 @@ public class ImportProcessingResult {
 
     public List<String> getErrorsSample() {
         return Collections.unmodifiableList(errorsSample);
+    }
+
+    public Integer getStartBatch() {
+        return startBatch;
+    }
+
+    public void setStartBatch(Integer startBatch) {
+        this.startBatch = startBatch;
+    }
+
+    public Integer getEndBatch() {
+        return endBatch;
+    }
+
+    public void setEndBatch(Integer endBatch) {
+        this.endBatch = endBatch;
+    }
+
+    public Integer getBatchesProcessed() {
+        return batchesProcessed;
+    }
+
+    public void setBatchesProcessed(Integer batchesProcessed) {
+        this.batchesProcessed = batchesProcessed;
+    }
+
+    public Integer getTotalBatches() {
+        return totalBatches;
+    }
+
+    public void setTotalBatches(Integer totalBatches) {
+        this.totalBatches = totalBatches;
+    }
+
+    public Boolean getResumedFromCheckpoint() {
+        return resumedFromCheckpoint;
+    }
+
+    public void setResumedFromCheckpoint(Boolean resumedFromCheckpoint) {
+        this.resumedFromCheckpoint = resumedFromCheckpoint;
+    }
+
+    public Integer getCheckpointLastCompletedBatch() {
+        return checkpointLastCompletedBatch;
+    }
+
+    public void setCheckpointLastCompletedBatch(Integer checkpointLastCompletedBatch) {
+        this.checkpointLastCompletedBatch = checkpointLastCompletedBatch;
     }
 }

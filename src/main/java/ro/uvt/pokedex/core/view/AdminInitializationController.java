@@ -185,11 +185,48 @@ public class AdminInitializationController {
     }
 
     @PostMapping("/scopus/buildFacts")
-    public String runScopusBuildFacts(RedirectAttributes redirectAttributes) {
-        var result = scopusBigBangMigrationService.runBuildFactsStep();
+    public String runScopusBuildFacts(
+            @RequestParam(name = "startBatchOverride", required = false) Integer startBatchOverride,
+            @RequestParam(name = "useCheckpoint", defaultValue = "true") boolean useCheckpoint,
+            @RequestParam(name = "chunkSizeOverride", required = false) Integer chunkSizeOverride,
+            RedirectAttributes redirectAttributes
+    ) {
+        var result = scopusBigBangMigrationService.runBuildFactsStep(startBatchOverride, useCheckpoint, chunkSizeOverride);
         redirectAttributes.addFlashAttribute("successMessage", "Scopus fact build complete. "
                 + formatScopusStep("facts", result.buildFacts()) + " "
                 + formatScopusVerification(result.verification()));
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/scopus/buildCanonical")
+    public String runScopusCanonicalBuild(
+            @RequestParam(name = "entity", required = false) String entity,
+            @RequestParam(name = "startBatchOverride", required = false) Integer startBatchOverride,
+            @RequestParam(name = "useCheckpoint", defaultValue = "true") boolean useCheckpoint,
+            @RequestParam(name = "chunkSizeOverride", required = false) Integer chunkSizeOverride,
+            RedirectAttributes redirectAttributes
+    ) {
+        var result = scopusBigBangMigrationService.runCanonicalBuildStep(entity, startBatchOverride, useCheckpoint, chunkSizeOverride);
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Scopus canonical build complete (entity=" + (entity == null || entity.isBlank() ? "all" : entity) + "). processed=" + result.getProcessedCount()
+                        + ", imported=" + result.getImportedCount()
+                        + ", updated=" + result.getUpdatedCount()
+                        + ", skipped=" + result.getSkippedCount()
+                        + ", errors=" + result.getErrorCount()
+                        + ", startBatch=" + result.getStartBatch()
+                        + ", endBatch=" + result.getEndBatch()
+                        + ", batchesProcessed=" + result.getBatchesProcessed()
+                        + ", totalBatches=" + result.getTotalBatches()
+                        + ", resumedFromCheckpoint=" + result.getResumedFromCheckpoint()
+                        + ", checkpointLastCompletedBatch=" + result.getCheckpointLastCompletedBatch()
+                        + ".");
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/scopus/resetCanonicalCheckpoints")
+    public String resetScopusCanonicalCheckpoints(RedirectAttributes redirectAttributes) {
+        scopusBigBangMigrationService.resetCanonicalBuildCheckpoints();
+        redirectAttributes.addFlashAttribute("successMessage", "Scopus canonical build checkpoints reset.");
         return "redirect:/admin/initialization";
     }
 
@@ -211,6 +248,18 @@ public class AdminInitializationController {
                 + ", invalid=" + result.ensureIndexes().invalid()
                 + ", errors=" + result.ensureIndexes().errors() + "]. "
                 + formatScopusVerification(result.verification()));
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/scopus/backfillCanonicalCitations")
+    public String runScopusCitationBackfill(RedirectAttributes redirectAttributes) {
+        var result = scopusBigBangMigrationService.runCitationIdentityBackfill();
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Scopus canonical citation backfill complete. processed=" + result.getProcessedCount()
+                        + ", imported=" + result.getImportedCount()
+                        + ", updated=" + result.getUpdatedCount()
+                        + ", skipped=" + result.getSkippedCount()
+                        + ", errors=" + result.getErrorCount() + ".");
         return "redirect:/admin/initialization";
     }
 
@@ -258,6 +307,7 @@ public class AdminInitializationController {
                         + ", authorViews=" + result.authorViews()
                         + ", affiliationViews=" + result.affiliationViews()
                         + ", canonicalPublicationFacts=" + result.canonicalPublicationFacts()
+                        + ", canonicalCitationFacts=" + result.canonicalCitationFacts()
                         + ", canonicalAuthorFacts=" + result.canonicalAuthorFacts()
                         + ", canonicalAffiliationFacts=" + result.canonicalAffiliationFacts()
                         + ", canonicalForumFacts=" + result.canonicalForumFacts()
@@ -295,17 +345,29 @@ public class AdminInitializationController {
         if (step == null) {
             return label + "[not-run].";
         }
+        String checkpointInfo = "";
+        if (step.startBatch() != null || step.endBatch() != null || step.batchesProcessed() != null) {
+            checkpointInfo = ", startBatch=" + step.startBatch()
+                    + ", endBatch=" + step.endBatch()
+                    + ", batchesProcessed=" + step.batchesProcessed()
+                    + ", totalBatches=" + step.totalBatches()
+                    + ", resumedFromCheckpoint=" + step.resumedFromCheckpoint()
+                    + ", checkpointLastCompletedBatch=" + step.checkpointLastCompletedBatch();
+        }
         return label + "[processed=" + step.processed()
                 + ", imported=" + step.imported()
                 + ", updated=" + step.updated()
                 + ", skipped=" + step.skipped()
-                + ", errors=" + step.errors() + "].";
+                + ", errors=" + step.errors()
+                + checkpointInfo + "].";
     }
 
     private String formatScopusVerification(ScopusBigBangMigrationService.VerificationSummary verification) {
         return "verify[events=" + verification.importEvents()
                 + ", publicationFacts=" + verification.publicationFacts()
+                + ", canonicalPublicationFacts=" + verification.canonicalPublicationFacts()
                 + ", citationFacts=" + verification.citationFacts()
+                + ", canonicalCitationFacts=" + verification.canonicalCitationFacts()
                 + ", forumFacts=" + verification.forumFacts()
                 + ", authorFacts=" + verification.authorFacts()
                 + ", affiliationFacts=" + verification.affiliationFacts()

@@ -1,7 +1,11 @@
 package ro.uvt.pokedex.core.service.importing.scopus;
 
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DuplicateKeyException;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCanonicalBuildCheckpoint;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
@@ -26,12 +30,17 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class ScholardexPublicationCanonicalizationService {
 
+    private static final Logger log = LoggerFactory.getLogger(ScholardexPublicationCanonicalizationService.class);
+    private static final int DEFAULT_CHUNK_SIZE = 1_000;
+    private static final String DEFAULT_SOURCE_VERSION = "scopus-publication-facts-v1";
+    private static final String PIPELINE_KEY = ScholardexCanonicalBuildCheckpointService.PUBLICATION_PIPELINE_KEY;
     static final String LINK_STATE_LINKED = "LINKED";
     static final String LINK_STATE_UNMATCHED = "UNMATCHED";
     private static final String LINK_REASON_SCOPUS_BRIDGE = "scopus-fact-bridge";
@@ -48,16 +57,116 @@ public class ScholardexPublicationCanonicalizationService {
     private final ScholardexPublicationFactRepository scholardexPublicationFactRepository;
     private final ScholardexSourceLinkRepository scholardexSourceLinkRepository;
     private final ScholardexAuthorshipFactRepository scholardexAuthorshipFactRepository;
+    private final ScholardexCanonicalBuildCheckpointService checkpointService;
 
     public ImportProcessingResult rebuildCanonicalPublicationFactsFromScopusFacts() {
+        return rebuildCanonicalPublicationFactsFromScopusFacts(CanonicalBuildOptions.defaults());
+    }
+
+    public ImportProcessingResult rebuildCanonicalPublicationFactsFromScopusFacts(CanonicalBuildOptions options) {
         ImportProcessingResult result = new ImportProcessingResult(20);
         List<ScopusPublicationFact> scopusFacts = new ArrayList<>(scopusPublicationFactRepository.findAll());
         scopusFacts.sort(Comparator.comparing(ScopusPublicationFact::getEid, Comparator.nullsLast(String::compareTo)));
-        for (ScopusPublicationFact scopusFact : scopusFacts) {
+        CanonicalBuildOptions effectiveOptions = options == null ? CanonicalBuildOptions.defaults() : options;
+        int chunkSize = effectiveOptions.chunkSizeOverride() == null || effectiveOptions.chunkSizeOverride() <= 0
+                ? DEFAULT_CHUNK_SIZE
+                : effectiveOptions.chunkSizeOverride();
+        int total = scopusFacts.size();
+        int totalBatches = total == 0 ? 0 : ((total - 1) / chunkSize) + 1;
+        Optional<ScholardexCanonicalBuildCheckpoint> checkpoint = effectiveOptions.useCheckpoint()
+                ? checkpointService.readCheckpoint(PIPELINE_KEY)
+                : Optional.empty();
+        int checkpointLastCompletedBatch = checkpoint.map(ScholardexCanonicalBuildCheckpoint::getLastCompletedBatch).orElse(-1);
+        int startBatch = normalizeStartBatch(effectiveOptions.startBatchOverride(), checkpointLastCompletedBatch, effectiveOptions.useCheckpoint());
+        boolean resumedFromCheckpoint = effectiveOptions.useCheckpoint() && effectiveOptions.startBatchOverride() == null && checkpointLastCompletedBatch >= 0;
+        String runId = UUID.randomUUID().toString();
+        String sourceVersion = isBlank(effectiveOptions.sourceVersionOverride()) ? DEFAULT_SOURCE_VERSION : effectiveOptions.sourceVersionOverride();
+        long startedAtNanos = System.nanoTime();
+
+        result.setStartBatch(startBatch);
+        result.setTotalBatches(totalBatches);
+        result.setResumedFromCheckpoint(resumedFromCheckpoint);
+        result.setCheckpointLastCompletedBatch(checkpointLastCompletedBatch);
+
+        if (startBatch >= totalBatches) {
+            result.setEndBatch(startBatch);
+            result.setBatchesProcessed(0);
+            log.info("Scholardex publication canonicalization skipped: totalRecords={}, totalBatches={}, startBatch={}, checkpointLastCompletedBatch={}",
+                    total, totalBatches, startBatch, checkpointLastCompletedBatch);
+            return result;
+        }
+
+        int batchesProcessed = 0;
+        for (int batchIndex = startBatch; batchIndex < totalBatches; batchIndex++) {
+            int from = batchIndex * chunkSize;
+            int to = Math.min(total, from + chunkSize);
+            int chunkNo = batchIndex + 1;
+            int importedBefore = result.getImportedCount();
+            int updatedBefore = result.getUpdatedCount();
+            int skippedBefore = result.getSkippedCount();
+            int errorsBefore = result.getErrorCount();
+
+            CanonicalBuildChunkTimings timings = processChunk(scopusFacts.subList(from, to), result);
+            batchesProcessed++;
+            result.setEndBatch(batchIndex);
+            result.setBatchesProcessed(batchesProcessed);
+
+            if (effectiveOptions.useCheckpoint()) {
+                checkpointService.upsertCheckpoint(
+                        PIPELINE_KEY,
+                        batchIndex,
+                        chunkSize,
+                        lastRecordKey(scopusFacts.subList(from, to)),
+                        runId,
+                        sourceVersion
+                );
+            }
+            log.info("Scholardex publication canonicalization chunk {} complete [batch={} / totalBatches={}]: records={} imported={} updated={} skipped={} errors={} timingsMs[preload={}, resolve={}, upsert={}, save={}, total={}]",
+                    chunkNo,
+                    chunkNo,
+                    totalBatches,
+                    to - from,
+                    result.getImportedCount() - importedBefore,
+                    result.getUpdatedCount() - updatedBefore,
+                    result.getSkippedCount() - skippedBefore,
+                    result.getErrorCount() - errorsBefore,
+                    timings.preloadMs(),
+                    timings.resolveMs(),
+                    timings.upsertMs(),
+                    timings.saveMs(),
+                    timings.totalMs());
+        }
+        log.info("Scholardex publication canonicalization summary: processed={}, imported={}, updated={}, skipped={}, errors={}, batchesProcessed={}, totalBatches={}, resumedFromCheckpoint={}, checkpointLastCompletedBatch={}, totalMs={}",
+                result.getProcessedCount(),
+                result.getImportedCount(),
+                result.getUpdatedCount(),
+                result.getSkippedCount(),
+                result.getErrorCount(),
+                result.getBatchesProcessed(),
+                result.getTotalBatches(),
+                resumedFromCheckpoint,
+                checkpointLastCompletedBatch,
+                nanosToMillis(System.nanoTime() - startedAtNanos));
+        return result;
+    }
+
+    private CanonicalBuildChunkTimings processChunk(List<ScopusPublicationFact> chunk, ImportProcessingResult result) {
+        long chunkStartedAtNanos = System.nanoTime();
+        long preloadFinishedAtNanos = System.nanoTime();
+        long resolveFinishedAtNanos = preloadFinishedAtNanos;
+        for (ScopusPublicationFact scopusFact : chunk) {
             result.markProcessed();
             upsertFromScopusFact(scopusFact, result);
         }
-        return result;
+        long upsertFinishedAtNanos = System.nanoTime();
+        long saveFinishedAtNanos = upsertFinishedAtNanos;
+        return new CanonicalBuildChunkTimings(
+                nanosToMillis(preloadFinishedAtNanos - chunkStartedAtNanos),
+                nanosToMillis(resolveFinishedAtNanos - preloadFinishedAtNanos),
+                nanosToMillis(upsertFinishedAtNanos - resolveFinishedAtNanos),
+                nanosToMillis(saveFinishedAtNanos - upsertFinishedAtNanos),
+                nanosToMillis(saveFinishedAtNanos - chunkStartedAtNanos)
+        );
     }
 
     public void upsertFromScopusFact(ScopusPublicationFact scopusFact, ImportProcessingResult result) {
@@ -68,14 +177,28 @@ public class ScholardexPublicationCanonicalizationService {
             return;
         }
 
-        ScholardexPublicationFact fact = loadExistingByEid(scopusFact.getEid());
+        String doiNormalized = normalizeDoi(scopusFact.getDoi());
+        ScholardexPublicationFact fact = loadExistingByEidOrDoi(scopusFact.getEid(), doiNormalized, result);
         boolean created = fact.getId() == null;
 
         Instant now = Instant.now();
         AuthorBridgeResult authorBridgeResult = bridgeAuthorIds(scopusFact.getAuthors(), scopusFact.getSource());
         applyCanonicalPublicationFields(fact, scopusFact, authorBridgeResult, now);
-
-        scholardexPublicationFactRepository.save(fact);
+        try {
+            scholardexPublicationFactRepository.save(fact);
+        } catch (DuplicateKeyException duplicateKeyException) {
+            Optional<ScholardexPublicationFact> existingByDoi = findSingleByDoi(doiNormalized, result);
+            if (existingByDoi.isEmpty()) {
+                if (result != null) {
+                    result.markError("publication-duplicate-key-no-doi-recovery eid=" + scopusFact.getEid());
+                }
+                throw duplicateKeyException;
+            }
+            fact = existingByDoi.get();
+            applyCanonicalPublicationFields(fact, scopusFact, authorBridgeResult, Instant.now());
+            scholardexPublicationFactRepository.save(fact);
+            created = false;
+        }
         upsertSourceLink(fact, LINK_REASON_SCOPUS_BRIDGE);
         upsertAuthorshipEdges(fact, authorBridgeResult, now);
 
@@ -297,9 +420,27 @@ public class ScholardexPublicationCanonicalizationService {
         return "sauth_" + shortHash("source|" + normalizedSource + "|author|" + normalizeToken(sourceAuthorId));
     }
 
-    private ScholardexPublicationFact loadExistingByEid(String eid) {
-        Optional<ScholardexPublicationFact> existing = scholardexPublicationFactRepository.findByEid(eid);
-        return existing.orElseGet(ScholardexPublicationFact::new);
+    private ScholardexPublicationFact loadExistingByEidOrDoi(String eid, String doiNormalized, ImportProcessingResult result) {
+        Optional<ScholardexPublicationFact> existingByEid = scholardexPublicationFactRepository.findByEid(eid);
+        if (existingByEid.isPresent()) {
+            return existingByEid.get();
+        }
+        return findSingleByDoi(doiNormalized, result).orElseGet(ScholardexPublicationFact::new);
+    }
+
+    private Optional<ScholardexPublicationFact> findSingleByDoi(String doiNormalized, ImportProcessingResult result) {
+        if (isBlank(doiNormalized)) {
+            return Optional.empty();
+        }
+        List<ScholardexPublicationFact> byDoi = new ArrayList<>(scholardexPublicationFactRepository.findAllByDoiNormalized(doiNormalized));
+        if (byDoi.isEmpty()) {
+            return Optional.empty();
+        }
+        byDoi.sort(Comparator.comparing(ScholardexPublicationFact::getId, Comparator.nullsLast(String::compareTo)));
+        if (byDoi.size() > 1 && result != null) {
+            result.markSkipped("ambiguous-existing-doi:" + doiNormalized);
+        }
+        return Optional.of(byDoi.getFirst());
     }
 
     public String buildCanonicalPublicationId(
@@ -391,6 +532,27 @@ public class ScholardexPublicationCanonicalizationService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private int normalizeStartBatch(Integer startBatchOverride, int checkpointLastCompletedBatch, boolean useCheckpoint) {
+        if (startBatchOverride != null) {
+            return Math.max(0, startBatchOverride);
+        }
+        if (useCheckpoint && checkpointLastCompletedBatch >= 0) {
+            return Math.max(0, checkpointLastCompletedBatch + 1);
+        }
+        return 0;
+    }
+
+    private String lastRecordKey(List<ScopusPublicationFact> chunk) {
+        if (chunk == null || chunk.isEmpty()) {
+            return null;
+        }
+        return normalizeBlank(chunk.get(chunk.size() - 1).getEid());
+    }
+
+    private long nanosToMillis(long nanos) {
+        return nanos / 1_000_000L;
     }
 
     public record AuthorBridgeResult(

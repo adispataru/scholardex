@@ -5,6 +5,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
@@ -13,9 +14,9 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactReposi
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationViewRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
 
 import java.util.List;
@@ -39,7 +40,7 @@ class ScopusProjectionBuilderServiceTest {
     @Mock
     private ScholardexPublicationFactRepository publicationFactRepository;
     @Mock
-    private ScopusCitationFactRepository citationFactRepository;
+    private ScholardexCitationFactRepository citationFactRepository;
     @Mock
     private ScholardexForumViewRepository forumViewRepository;
     @Mock
@@ -74,12 +75,17 @@ class ScopusProjectionBuilderServiceTest {
         publicationFact.setCitedByCount(1);
         publicationFact.setSourceEventId("ev1");
 
+        ScholardexCitationFact citationFact = new ScholardexCitationFact();
+        citationFact.setCitedPublicationId("p1");
+        citationFact.setCitingPublicationId("p2");
+        citationFact.setSource("SCOPUS_JSON_BOOTSTRAP");
+
         when(forumFactRepository.findAll()).thenReturn(List.of());
         when(canonicalForumFactRepository.findAll()).thenReturn(List.of());
         when(authorFactRepository.findAll()).thenReturn(List.of());
         when(affiliationFactRepository.findAll()).thenReturn(List.of());
         when(publicationFactRepository.findAll()).thenReturn(List.of(publicationFact));
-        when(citationFactRepository.findAll()).thenReturn(List.of());
+        when(citationFactRepository.findAll()).thenReturn(List.of(citationFact));
 
         service.rebuildViews();
 
@@ -88,5 +94,6 @@ class ScopusProjectionBuilderServiceTest {
         assertEquals(1, publicationViewsCaptor.getValue().size());
         assertNull(publicationViewsCaptor.getValue().getFirst().getWosId());
         assertEquals("10.1000/abc", publicationViewsCaptor.getValue().getFirst().getDoiNormalized());
+        assertEquals(List.of("p2"), publicationViewsCaptor.getValue().getFirst().getCitingPublicationIds());
     }
 }

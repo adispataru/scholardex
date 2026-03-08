@@ -13,6 +13,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
@@ -138,6 +139,10 @@ public class ScopusCanonicalIndexMaintenanceService {
     static final String IDX_AUTHORSHIP_PUBLICATION = "idx_scholardex_authorship_publication";
     static final String IDX_AUTHORSHIP_AUTHOR = "idx_scholardex_authorship_author";
 
+    static final String IDX_CANON_CITATION_UNIQ_EDGE = "uniq_scholardex_citation_edge";
+    static final String IDX_CANON_CITATION_CITED = "idx_scholardex_citation_cited";
+    static final String IDX_CANON_CITATION_CITING = "idx_scholardex_citation_citing";
+
     static final String IDX_AUTHOR_AFFILIATION_UNIQ_EDGE = "uniq_scholardex_author_affiliation_edge";
     static final String IDX_AUTHOR_AFFILIATION_AUTHOR = "idx_scholardex_author_affiliation_author";
     static final String IDX_AUTHOR_AFFILIATION_AFFILIATION = "idx_scholardex_author_affiliation_affiliation";
@@ -179,6 +184,7 @@ public class ScopusCanonicalIndexMaintenanceService {
         ensureCanonicalAffiliationFactIndexes(created, present, invalid, errors);
         ensureCanonicalForumFactIndexes(created, present, invalid, errors);
         ensureAuthorshipIndexes(created, present, invalid, errors);
+        ensureCanonicalCitationIndexes(created, present, invalid, errors);
         ensureAuthorAffiliationIndexes(created, present, invalid, errors);
         ensureSourceLinkIndexes(created, present, invalid, errors);
         ensureIdentityConflictIndexes(created, present, invalid, errors);
@@ -358,7 +364,7 @@ public class ScopusCanonicalIndexMaintenanceService {
                 created, present, invalid, errors);
         ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_PUBLICATION_USER, true, true, List.of(field("userSourceId"))),
                 created, present, invalid, errors);
-        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_PUBLICATION_DOI_NORMALIZED, false, List.of(field("doiNormalized"))),
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_PUBLICATION_DOI_NORMALIZED, true, true, List.of(field("doiNormalized"))),
                 created, present, invalid, errors);
         ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_PUBLICATION_TITLE_NORMALIZED, false, List.of(field("titleNormalized"))),
                 created, present, invalid, errors);
@@ -380,6 +386,17 @@ public class ScopusCanonicalIndexMaintenanceService {
         ensureNamedIndex(ops, new IndexDefinition(IDX_AUTHORSHIP_PUBLICATION, false, List.of(field("publicationId"))),
                 created, present, invalid, errors);
         ensureNamedIndex(ops, new IndexDefinition(IDX_AUTHORSHIP_AUTHOR, false, List.of(field("authorId"))),
+                created, present, invalid, errors);
+    }
+
+    private void ensureCanonicalCitationIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ScholardexCitationFact.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_CITATION_UNIQ_EDGE, true,
+                        List.of(field("citedPublicationId"), field("citingPublicationId"), field("source"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_CITATION_CITED, false, List.of(field("citedPublicationId"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_CITATION_CITING, false, List.of(field("citingPublicationId"))),
                 created, present, invalid, errors);
     }
 

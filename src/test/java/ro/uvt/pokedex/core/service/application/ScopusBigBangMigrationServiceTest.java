@@ -9,6 +9,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationSearchViewRepository;
@@ -23,6 +24,8 @@ import ro.uvt.pokedex.core.service.importing.ScopusDataService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.scopus.ScholardexAffiliationCanonicalizationService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScholardexCanonicalBuildCheckpointService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScholardexCitationCanonicalizationService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusFactBuilderService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusProjectionBuilderService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService;
@@ -42,6 +45,8 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ScholardexAffiliationCanonicalizationService affiliationCanonicalizationService;
     @Mock private ScholardexAuthorCanonicalizationService authorCanonicalizationService;
     @Mock private ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
+    @Mock private ScholardexCitationCanonicalizationService citationCanonicalizationService;
+    @Mock private ScholardexCanonicalBuildCheckpointService canonicalBuildCheckpointService;
     @Mock private ScholardexPublicationBackfillService publicationBackfillService;
     @Mock private ScopusImportEventRepository importEventRepository;
     @Mock private ScopusPublicationFactRepository publicationFactRepository;
@@ -53,6 +58,7 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ScopusAuthorSearchViewRepository authorSearchViewRepository;
     @Mock private ScopusAffiliationSearchViewRepository affiliationSearchViewRepository;
     @Mock private ScholardexPublicationFactRepository scholardexPublicationFactRepository;
+    @Mock private ScholardexCitationFactRepository scholardexCitationFactRepository;
     @Mock private ScholardexSourceLinkRepository scholardexSourceLinkRepository;
     @Mock private ScholardexPublicationViewRepository publicationViewRepository;
     @Mock private MongoTemplate mongoTemplate;
@@ -69,6 +75,8 @@ class ScopusBigBangMigrationServiceTest {
                 affiliationCanonicalizationService,
                 authorCanonicalizationService,
                 publicationCanonicalizationService,
+                citationCanonicalizationService,
+                canonicalBuildCheckpointService,
                 publicationBackfillService,
                 importEventRepository,
                 publicationFactRepository,
@@ -80,6 +88,7 @@ class ScopusBigBangMigrationServiceTest {
                 authorSearchViewRepository,
                 affiliationSearchViewRepository,
                 scholardexPublicationFactRepository,
+                scholardexCitationFactRepository,
                 scholardexSourceLinkRepository,
                 publicationViewRepository,
                 mongoTemplate
@@ -107,6 +116,7 @@ class ScopusBigBangMigrationServiceTest {
         when(publicationFactRepository.count()).thenReturn(50L);
         when(citationFactRepository.count()).thenReturn(80L);
         when(scholardexPublicationFactRepository.count()).thenReturn(55L);
+        when(scholardexCitationFactRepository.count()).thenReturn(78L);
         when(forumFactRepository.count()).thenReturn(10L);
         when(authorFactRepository.count()).thenReturn(40L);
         when(affiliationFactRepository.count()).thenReturn(12L);
@@ -123,6 +133,7 @@ class ScopusBigBangMigrationServiceTest {
         assertEquals(1, full.ensureIndexes().created());
         assertEquals(1, full.ensureIndexes().present());
         assertEquals(100L, full.verification().importEvents());
+        assertEquals(78L, full.verification().canonicalCitationFacts());
         assertEquals(50L, full.verification().publicationViews());
     }
 

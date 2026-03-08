@@ -91,9 +91,10 @@ public class CitationUniquenessMigrationRunner implements CommandLineRunner {
     private void logDuplicateSample(DuplicatePair pair) {
         CitationUniquenessMigrationService.DedupeCandidate candidate = migrationService.buildCandidate(pair.ids());
         log.warn(
-                "H06 citation duplicate pair detected: citedId={} citingId={} ids={} keepId={}",
+                "H06 citation duplicate pair detected: citedId={} citingId={} source={} ids={} keepId={}",
                 pair.citedId(),
                 pair.citingId(),
+                pair.source(),
                 pair.ids(),
                 candidate.keptId()
         );

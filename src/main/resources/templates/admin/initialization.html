@@ -115,7 +115,10 @@
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div>2. Build facts</div>
-                            <form th:action="@{/admin/initialization/scopus/buildFacts}" method="post">
+                            <form th:action="@{/admin/initialization/scopus/buildFacts}" method="post" class="d-flex align-items-center">
+                                <input type="number" name="startBatchOverride" min="0" class="form-control form-control-sm mr-2" style="width: 140px;" placeholder="Start batch">
+                                <input type="number" name="chunkSizeOverride" min="1" class="form-control form-control-sm mr-2" style="width: 140px;" placeholder="Chunk size">
+                                <input type="hidden" name="useCheckpoint" value="true">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                             </form>
                         </div>
@@ -129,6 +132,28 @@
                             <div>4. Ensure canonical indexes</div>
                             <form th:action="@{/admin/initialization/scopus/ensureIndexes}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
+                            </form>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>Maintenance: backfill canonical citations</div>
+                            <form th:action="@{/admin/initialization/scopus/backfillCanonicalCitations}" method="post">
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">Run backfill</button>
+                            </form>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>Maintenance: run canonical build (all|publication|author|affiliation|citation)</div>
+                            <form th:action="@{/admin/initialization/scopus/buildCanonical}" method="post" class="d-flex align-items-center">
+                                <input type="text" name="entity" class="form-control form-control-sm mr-2" style="width: 170px;" placeholder="all">
+                                <input type="number" name="startBatchOverride" min="0" class="form-control form-control-sm mr-2" style="width: 130px;" placeholder="Start">
+                                <input type="number" name="chunkSizeOverride" min="1" class="form-control form-control-sm mr-2" style="width: 130px;" placeholder="Chunk">
+                                <input type="hidden" name="useCheckpoint" value="true">
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">Run canonical</button>
+                            </form>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>Maintenance: reset canonical build checkpoints</div>
+                            <form th:action="@{/admin/initialization/scopus/resetCanonicalCheckpoints}" method="post">
+                                <button type="submit" class="btn btn-outline-warning btn-sm">Reset checkpoints</button>
                             </form>
                         </div>
                         <hr>

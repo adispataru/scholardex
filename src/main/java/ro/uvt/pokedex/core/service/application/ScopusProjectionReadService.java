@@ -17,7 +17,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
@@ -27,7 +27,7 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactReposi
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusCitationFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -47,7 +47,7 @@ import java.util.stream.Collectors;
 public class ScopusProjectionReadService {
 
     private final ScholardexPublicationViewRepository publicationViewRepository;
-    private final ScopusCitationFactRepository citationFactRepository;
+    private final ScholardexCitationFactRepository citationFactRepository;
     private final ScholardexForumViewRepository forumViewRepository;
     private final ScholardexAuthorViewRepository authorViewRepository;
     private final ScholardexAffiliationViewRepository affiliationViewRepository;
@@ -120,19 +120,17 @@ public class ScopusProjectionReadService {
     }
 
     public List<Citation> findAllCitationsByCitedIdIn(Collection<String> citedIds) {
-        Map<String, String> idToEid = loadPublicationEidsByIds(citedIds);
-        List<String> citedEids = idToEid.values().stream().filter(v -> v != null && !v.isBlank()).toList();
-        List<ScopusCitationFact> facts = citationFactRepository.findByCitedEidIn(citedEids);
+        List<String> publicationIds = resolvePublicationIdsByAnyKeys(citedIds);
+        List<ScholardexCitationFact> facts = citationFactRepository.findByCitedPublicationIdIn(publicationIds);
         return mapCitationFacts(facts);
     }
 
     public List<Citation> findAllCitationsByCitedId(String citedId) {
-        Optional<ScholardexPublicationView> cited = publicationViewRepository.findById(citedId)
-                .or(() -> publicationViewRepository.findByEid(citedId));
-        if (cited.isEmpty() || cited.get().getEid() == null) {
+        Optional<Publication> cited = findPublicationByAnyId(citedId);
+        if (cited.isEmpty() || cited.get().getId() == null) {
             return List.of();
         }
-        List<ScopusCitationFact> facts = citationFactRepository.findByCitedEid(cited.get().getEid());
+        List<ScholardexCitationFact> facts = citationFactRepository.findByCitedPublicationId(cited.get().getId());
         return mapCitationFacts(facts);
     }
 
@@ -424,49 +422,55 @@ public class ScopusProjectionReadService {
         return out;
     }
 
-    private Map<String, String> loadPublicationEidsByIds(Collection<String> publicationIds) {
-        Map<String, String> out = new HashMap<>();
-        if (publicationIds == null || publicationIds.isEmpty()) {
-            return out;
+    private List<String> resolvePublicationIdsByAnyKeys(Collection<String> keys) {
+        if (keys == null || keys.isEmpty()) {
+            return List.of();
         }
-        for (ScholardexPublicationView publication : publicationViewRepository.findAllByIdIn(publicationIds)) {
-            out.put(publication.getId(), publication.getEid());
+        LinkedHashSet<String> publicationIds = new LinkedHashSet<>();
+        for (String key : keys) {
+            findPublicationByAnyId(key).map(Publication::getId).ifPresent(publicationIds::add);
         }
-        return out;
+        return new ArrayList<>(publicationIds);
     }
 
-    private List<Citation> mapCitationFacts(List<ScopusCitationFact> facts) {
+    private List<Citation> mapCitationFacts(List<ScholardexCitationFact> facts) {
         if (facts.isEmpty()) {
             return List.of();
         }
-        Set<String> eids = new LinkedHashSet<>();
-        for (ScopusCitationFact fact : facts) {
-            if (fact.getCitedEid() != null) {
-                eids.add(fact.getCitedEid());
+        Set<String> publicationIds = new LinkedHashSet<>();
+        for (ScholardexCitationFact fact : facts) {
+            if (!isBlank(fact.getCitedPublicationId())) {
+                publicationIds.add(fact.getCitedPublicationId());
             }
-            if (fact.getCitingEid() != null) {
-                eids.add(fact.getCitingEid());
+            if (!isBlank(fact.getCitingPublicationId())) {
+                publicationIds.add(fact.getCitingPublicationId());
             }
         }
-        Map<String, ScholardexPublicationView> byEid = publicationViewRepository.findAllByEidIn(eids).stream()
-                .filter(row -> row.getEid() != null)
-                .collect(Collectors.toMap(ScholardexPublicationView::getEid, row -> row, (a, b) -> a));
+        Set<String> existingIds = publicationViewRepository.findAllByIdIn(publicationIds).stream()
+                .map(ScholardexPublicationView::getId)
+                .collect(Collectors.toSet());
         List<Citation> out = new ArrayList<>();
-        for (ScopusCitationFact fact : facts) {
-            ScholardexPublicationView cited = byEid.get(fact.getCitedEid());
-            ScholardexPublicationView citing = byEid.get(fact.getCitingEid());
-            if (cited == null || citing == null) {
+        for (ScholardexCitationFact fact : facts) {
+            if (isBlank(fact.getCitedPublicationId()) || isBlank(fact.getCitingPublicationId())) {
+                continue;
+            }
+            if (!existingIds.contains(fact.getCitedPublicationId())
+                    || !existingIds.contains(fact.getCitingPublicationId())) {
                 continue;
             }
             Citation citation = new Citation();
             citation.setId(fact.getId());
-            citation.setCitedId(cited.getId());
-            citation.setCitingId(citing.getId());
+            citation.setCitedId(fact.getCitedPublicationId());
+            citation.setCitingId(fact.getCitingPublicationId());
             out.add(citation);
         }
         out.sort(Comparator.comparing(Citation::getCitedId, Comparator.nullsLast(String::compareTo))
                 .thenComparing(Citation::getCitingId, Comparator.nullsLast(String::compareTo)));
         return out;
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     private Publication toPublication(ScholardexPublicationView row) {

@@ -73,6 +73,7 @@ Done history moved to `TASKS-done.md`.
   Goal: make Scholardex the canonical identity and link graph layer across publications, authors, forums, and affiliations, supporting four sources (`SCOPUS`, `WOS`, `GSCHOLAR`, `USER_DEFINED`) with deterministic lineage, linking, and runtime reads optimized for indicator computation.
   Deliverable: unified canonical contracts + storage models + ingestion/linking pipelines + immediate runtime cutover so all operational reads/writes resolve through Scholardex entities and canonical relationship edges, not source-specific silo models.
   Exit criteria: publication/author/forum/affiliation identity is source-agnostic and deterministic; WoS-first onboarding is complete; Scholar (Publish or Perish) and user-defined imports are supported; runtime paths are cut over to Scholardex; source-specific legacy identity paths are removed from runtime; citations are canonical-ID based across all sources; all entity conflict types are captured in generic conflict storage; source-to-canonical mapping is queryable and replay-stable; canonical publication-author linkage is queryable and deterministic; canonical author-affiliation linkage is queryable and deterministic; affiliation-side traversal for scoring/reporting is fast-path capable.
+  Execution order override (locked): for remaining H19 implementation, complete citation migration first (`H19.9`) before finalizing Scopus runtime flow/data initialization and before closing runtime cutover (`H19.7`).
   Subtasks:
   - [x] `H19.1` Define canonical multi-source identity and ownership contract.
     Deliverable: locked contract for Scholardex entities (`publication`, `author`, `forum`, `affiliation`, `citation`) with per-source IDs, provenance/lineage fields, conflict rules, source-link mapping rules, and replay/idempotence semantics.
@@ -96,15 +97,14 @@ Done history moved to `TASKS-done.md`.
   - [x] `H19.6` Build WoS-first onboarding into Scholardex entities.
     Deliverable: WoS ingestion/linking pipeline that populates/links Scholardex publication/forum/author/affiliation identities using existing WoS canonical facts/views.
     Exit criteria: WoS-only journals/publications not present in Scopus are represented and queryable in Scholardex runtime reads.
-  - [x] `H19.7` Immediate runtime cutover to Scholardex read/write paths.
-    Deliverable: all runtime read/write entrypoints (user/admin/report/export/scoring lookups) use Scholardex canonical paths directly; source-silo runtime identity paths are removed.
-    Exit criteria: no runtime dependency remains on legacy source-specific identity stores for publication/author/forum/affiliation resolution.
-  - [ ] `H19.8` End-to-end validation, parity, and operability gates.
-    Deliverable: workflow and integration tests covering all four sources, identity-link conflicts, replay/idempotence, and cutover regressions; observability metrics and failure triage hooks.
-    Exit criteria: CI gates catch identity/linking regressions and operational dashboards expose source-level ingest/link health.
-  - [ ] `H19.9` Canonical citation model and migration from EID-only citation path.
+  - [x] `H19.9` Canonical citation model and migration from EID-only citation path.
     Deliverable: `scholardex.citation_facts` design and implementation keyed by canonical publication IDs, with migration/cutover from source/EID-bound citation reads.
     Exit criteria: WoS-only and Scholar-only publications participate in citation edges without EID dependency.
+    Status: completed (canonical citation facts + runtime citation read cutover).
+  - [x] `H19.7` Immediate runtime cutover to Scholardex read/write paths.
+    Deliverable: all runtime read/write entrypoints (user/admin/report/export/scoring lookups) use Scholardex canonical paths directly; source-silo runtime identity paths are removed.
+    Exit criteria: no runtime dependency remains on legacy source-specific identity stores for publication/author/forum/affiliation/citation resolution; citation runtime paths resolve via canonical citation facts.
+    Status: implementation largely complete for publication/author/forum/affiliation/citation; remaining closeout is decommission/validation hardening.
   - [ ] `H19.10` Generic identity conflict model + admin operations.
     Deliverable: `scholardex.identity_conflicts` contract and implementation covering publication/forum/author/affiliation ambiguity, plus operational listing/resolve/clear flows.
     Exit criteria: ambiguous merges across all canonical entity types are captured and manageable through one generic conflict surface.
@@ -117,13 +117,18 @@ Done history moved to `TASKS-done.md`.
   - [ ] `H19.13` Indicator/report query cutover to edge-backed traversals.
     Deliverable: scoring/report/export/user/admin query paths use canonical edge-backed traversals for publication-by-author and author-by-affiliation access, with performance parity/guardrail checks.
     Exit criteria: runtime indicator computation no longer depends on source-silo author/affiliation linkage paths and passes parity/performance gates.
+  - [ ] `H19.8` End-to-end validation, parity, and operability gates.
+    Deliverable: workflow and integration tests covering all four sources, identity-link conflicts, replay/idempotence, and cutover regressions; observability metrics and failure triage hooks.
+    Exit criteria: CI gates catch identity/linking regressions and operational dashboards expose source-level ingest/link health.
 
 - [ ] `H20` Google Scholar (PoP) user-onboarding into Scholardex.
   Goal: support user-triggered Google Scholar imports from Publish-or-Perish exports as first-class canonical ingestion into Scholardex identity/link models.
   Deliverable: user-operation onboarding flow for PoP exports (upload/import from user surface) with parser + ingest adapter into Scholar-source events/facts and linker integration with Scholardex entities.
   Exit criteria: Scholar imported records from user operations link deterministically and preserve source lineage without mutating non-owned fields; no separate non-user onboarding path is required in this slice.
+  Dependency: execute after `H19.9` citation canonicalization so imported Scholar citation edges are canonical-ID compatible at ingest time.
 
 - [ ] `H21` User-defined source onboarding into Scholardex.
   Goal: support user-triggered non-Scopus/WoS/Scholar publication imports as first-class canonical ingestion into Scholardex identity/link models.
   Deliverable: user-operation onboarding flow for user-defined imports modeled as source events/facts with deterministic IDs and moderation/approval metadata.
   Exit criteria: user-defined publications and related entities imported via user operations integrate with the same Scholardex identity and lineage contracts.
+  Dependency: execute after `H19.9` citation canonicalization to avoid EID-coupled citation gaps for user-only publications.

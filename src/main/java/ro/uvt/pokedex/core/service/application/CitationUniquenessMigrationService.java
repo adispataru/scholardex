@@ -7,8 +7,8 @@ import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.index.Index;
 import org.springframework.data.mongodb.core.index.IndexInfo;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.model.scopus.Citation;
-import ro.uvt.pokedex.core.repository.scopus.ScopusCitationRepository;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -17,20 +17,20 @@ import java.util.List;
 @Service
 public class CitationUniquenessMigrationService {
 
-    private static final String UNIQUE_INDEX_NAME = "uniq_cited_citing";
+    private static final String UNIQUE_INDEX_NAME = "uniq_scholardex_citation_edge";
 
     private final MongoTemplate mongoTemplate;
-    private final ScopusCitationRepository scopusCitationRepository;
+    private final ScholardexCitationFactRepository scholardexCitationFactRepository;
 
     public CitationUniquenessMigrationService(MongoTemplate mongoTemplate,
-                                              ScopusCitationRepository scopusCitationRepository) {
+                                              ScholardexCitationFactRepository scholardexCitationFactRepository) {
         this.mongoTemplate = mongoTemplate;
-        this.scopusCitationRepository = scopusCitationRepository;
+        this.scholardexCitationFactRepository = scholardexCitationFactRepository;
     }
 
     public DuplicateScanResult scanDuplicates() {
         Aggregation aggregation = Aggregation.newAggregation(
-                Aggregation.group("citedId", "citingId")
+                Aggregation.group("citedPublicationId", "citingPublicationId", "source")
                         .count().as("count")
                         .push("_id").as("ids"),
                 Aggregation.match(org.springframework.data.mongodb.core.query.Criteria.where("count").gt(1))
@@ -38,7 +38,7 @@ public class CitationUniquenessMigrationService {
 
         List<Document> grouped = mongoTemplate.aggregate(
                 aggregation,
-                Citation.class,
+                ScholardexCitationFact.class,
                 Document.class
         ).getMappedResults();
 
@@ -48,10 +48,11 @@ public class CitationUniquenessMigrationService {
             if (pair == null) {
                 continue;
             }
-            String citedId = pair.getString("citedId");
-            String citingId = pair.getString("citingId");
+            String citedId = pair.getString("citedPublicationId");
+            String citingId = pair.getString("citingPublicationId");
+            String source = pair.getString("source");
             List<String> ids = readIds(group.get("ids"));
-            duplicates.add(new DuplicatePair(citedId, citingId, ids));
+            duplicates.add(new DuplicatePair(citedId, citingId, source, ids));
         }
 
         return new DuplicateScanResult(duplicates);
@@ -65,7 +66,7 @@ public class CitationUniquenessMigrationService {
             if (candidate.idsToDelete().isEmpty()) {
                 continue;
             }
-            scopusCitationRepository.deleteAllById(candidate.idsToDelete());
+            scholardexCitationFactRepository.deleteAllById(candidate.idsToDelete());
             affectedPairs++;
             deletedRows += candidate.idsToDelete().size();
         }
@@ -73,10 +74,11 @@ public class CitationUniquenessMigrationService {
     }
 
     public void ensureUniqueIndex() {
-        mongoTemplate.indexOps(Citation.class).ensureIndex(
+        mongoTemplate.indexOps(ScholardexCitationFact.class).ensureIndex(
                 new Index()
-                        .on("citedId", Sort.Direction.ASC)
-                        .on("citingId", Sort.Direction.ASC)
+                        .on("citedPublicationId", Sort.Direction.ASC)
+                        .on("citingPublicationId", Sort.Direction.ASC)
+                        .on("source", Sort.Direction.ASC)
                         .unique()
                         .named(UNIQUE_INDEX_NAME)
         );
@@ -84,7 +86,7 @@ public class CitationUniquenessMigrationService {
 
     public VerificationResult verifyPostConditions() {
         DuplicateScanResult afterScan = scanDuplicates();
-        List<IndexInfo> indexInfo = mongoTemplate.indexOps(Citation.class).getIndexInfo();
+        List<IndexInfo> indexInfo = mongoTemplate.indexOps(ScholardexCitationFact.class).getIndexInfo();
         boolean uniqueIndexPresent = indexInfo.stream().anyMatch(this::isTargetUniqueIndex);
         return new VerificationResult(afterScan.duplicatePairs().isEmpty(), uniqueIndexPresent);
     }
@@ -113,9 +115,10 @@ public class CitationUniquenessMigrationService {
     private boolean isTargetUniqueIndex(IndexInfo info) {
         return UNIQUE_INDEX_NAME.equals(info.getName())
                 && info.isUnique()
-                && info.getIndexFields().size() == 2
-                && "citedId".equals(info.getIndexFields().get(0).getKey())
-                && "citingId".equals(info.getIndexFields().get(1).getKey());
+                && info.getIndexFields().size() == 3
+                && "citedPublicationId".equals(info.getIndexFields().get(0).getKey())
+                && "citingPublicationId".equals(info.getIndexFields().get(1).getKey())
+                && "source".equals(info.getIndexFields().get(2).getKey());
     }
 
     @SuppressWarnings("unchecked")
@@ -132,7 +135,7 @@ public class CitationUniquenessMigrationService {
         return values;
     }
 
-    public record DuplicatePair(String citedId, String citingId, List<String> ids) {
+    public record DuplicatePair(String citedId, String citingId, String source, List<String> ids) {
     }
 
     public record DuplicateScanResult(List<DuplicatePair> duplicatePairs) {

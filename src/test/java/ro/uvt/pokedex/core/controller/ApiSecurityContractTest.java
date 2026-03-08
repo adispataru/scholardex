@@ -1,7 +1,5 @@
 package ro.uvt.pokedex.core.controller;
 
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -16,15 +14,12 @@ import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.service.CustomUserDetailsService;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.CoreRankingQueryService;
-import ro.uvt.pokedex.core.service.application.ForumExportFacade;
 import ro.uvt.pokedex.core.service.application.ScopusAffiliationQueryService;
 import ro.uvt.pokedex.core.service.application.ScopusAuthorQueryService;
 import ro.uvt.pokedex.core.service.application.ScopusForumQueryService;
 import ro.uvt.pokedex.core.service.application.UrapRankingQueryService;
 import ro.uvt.pokedex.core.service.application.WosRankingQueryService;
 import ro.uvt.pokedex.core.controller.dto.CoreRankingPageResponse;
-import ro.uvt.pokedex.core.service.application.model.ForumExportRow;
-import ro.uvt.pokedex.core.service.application.model.ForumExportViewModel;
 import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationPageResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusAuthorPageResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusForumPageResponse;
@@ -45,7 +40,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest({
-        ExportController.class,
         UserController.class,
         WosRankingApiController.class,
         CoreRankingApiController.class,
@@ -64,8 +58,6 @@ class ApiSecurityContractTest {
     @MockitoBean
     private CustomUserDetailsService userDetailsService;
     @MockitoBean
-    private ForumExportFacade forumExportFacade;
-    @MockitoBean
     private UserService userService;
     @MockitoBean
     private WosRankingQueryService wosRankingQueryService;
@@ -81,23 +73,6 @@ class ApiSecurityContractTest {
     private ScopusAffiliationQueryService scopusAffiliationQueryService;
     @MockitoBean
     private PasswordEncoder passwordEncoder;
-    @MockitoBean
-    private MeterRegistry meterRegistry;
-    @MockitoBean
-    private Counter counter;
-
-    @Test
-    void unauthenticatedApiExportReturns401JsonEnvelope() throws Exception {
-        mockMvc.perform(get("/api/export"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(header().exists("X-Request-Id"))
-                .andExpect(content().contentType("application/json"))
-                .andExpect(jsonPath("$.status").value(401))
-                .andExpect(jsonPath("$.error").value("unauthorized"))
-                .andExpect(jsonPath("$.path").value("/api/export"))
-                .andExpect(jsonPath("$.timestamp").exists());
-    }
-
     @Test
     void nonAdminApiUserManagementReturns403JsonEnvelope() throws Exception {
         mockMvc.perform(get("/api/admin/users")
@@ -114,21 +89,11 @@ class ApiSecurityContractTest {
     @Test
     void adminCanAccessPrivilegedApiEndpoints() throws Exception {
         when(userService.getAllUsers()).thenReturn(Collections.emptyList());
-        when(meterRegistry.counter("core.export.forum.requests", "outcome", "success")).thenReturn(counter);
-        when(forumExportFacade.buildBookAndBookSeriesExport()).thenReturn(new ForumExportViewModel(
-                List.of(new ForumExportRow("Book A", "1234-5678", "8765-4321", "src-1", "Book"))
-        ));
 
         mockMvc.perform(get("/api/admin/users")
                         .with(user("admin@uvt.ro")
                                 .authorities(new SimpleGrantedAuthority("PLATFORM_ADMIN"))))
                 .andExpect(status().isOk());
-
-        mockMvc.perform(get("/api/export")
-                        .with(user("admin@uvt.ro")
-                                .authorities(new SimpleGrantedAuthority("PLATFORM_ADMIN"))))
-                .andExpect(status().isOk())
-                .andExpect(header().string("Content-Disposition", "attachment; filename=forums.xlsx"));
     }
 
     @Test

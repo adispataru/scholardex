@@ -67,6 +67,34 @@ class AdminInitializationSecurityContractTest {
     }
 
     @Test
+    void nonAdminCannotRunScopusCitationBackfill() throws Exception {
+        mockMvc.perform(post("/admin/initialization/scopus/backfillCanonicalCitations")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+    }
+
+    @Test
+    void nonAdminCannotRunScopusCanonicalBuild() throws Exception {
+        mockMvc.perform(post("/admin/initialization/scopus/buildCanonical")
+                        .with(csrf())
+                        .param("entity", "all")
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+    }
+
+    @Test
+    void nonAdminCannotResetScopusCanonicalCheckpoints() throws Exception {
+        mockMvc.perform(post("/admin/initialization/scopus/resetCanonicalCheckpoints")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+    }
+
+    @Test
     void nonAdminCannotRunWosEnrichmentApi() throws Exception {
         mockMvc.perform(post("/admin/initialization/wos/enrichment/run")
                         .with(csrf())

@@ -12,12 +12,14 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFac
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationSearchViewRepository;
@@ -30,8 +32,11 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusImportEventReposito
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
 import ro.uvt.pokedex.core.service.importing.ScopusDataService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
+import ro.uvt.pokedex.core.service.importing.scopus.CanonicalBuildOptions;
 import ro.uvt.pokedex.core.service.importing.scopus.ScholardexAffiliationCanonicalizationService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScholardexCanonicalBuildCheckpointService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScholardexCitationCanonicalizationService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusFactBuilderService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusProjectionBuilderService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService;
@@ -54,6 +59,8 @@ public class ScopusBigBangMigrationService {
     private final ScholardexAffiliationCanonicalizationService affiliationCanonicalizationService;
     private final ScholardexAuthorCanonicalizationService authorCanonicalizationService;
     private final ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
+    private final ScholardexCitationCanonicalizationService citationCanonicalizationService;
+    private final ScholardexCanonicalBuildCheckpointService canonicalBuildCheckpointService;
     private final ScholardexPublicationBackfillService publicationBackfillService;
     private final ScopusImportEventRepository importEventRepository;
     private final ScopusPublicationFactRepository publicationFactRepository;
@@ -65,6 +72,7 @@ public class ScopusBigBangMigrationService {
     private final ScopusAuthorSearchViewRepository authorSearchViewRepository;
     private final ScopusAffiliationSearchViewRepository affiliationSearchViewRepository;
     private final ScholardexPublicationFactRepository scholardexPublicationFactRepository;
+    private final ScholardexCitationFactRepository scholardexCitationFactRepository;
     private final ScholardexSourceLinkRepository scholardexSourceLinkRepository;
     private final ScholardexPublicationViewRepository publicationViewRepository;
     private final MongoTemplate mongoTemplate;
@@ -87,21 +95,32 @@ public class ScopusBigBangMigrationService {
     }
 
     public ScopusBigBangMigrationResult runBuildFactsStep() {
+        return runBuildFactsStep(null, true, null);
+    }
+
+    public ScopusBigBangMigrationResult runBuildFactsStep(
+            Integer startBatchOverride,
+            boolean useCheckpoint,
+            Integer chunkSizeOverride
+    ) {
         Instant startedAt = Instant.now();
         ImportProcessingResult facts = scopusFactBuilderService.buildFactsFromImportEvents();
-        affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts();
-        authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts();
-        publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts();
+        CanonicalBuildOptions options = new CanonicalBuildOptions(chunkSizeOverride, startBatchOverride, useCheckpoint, null);
+        ImportProcessingResult canonicalAffiliations = affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(options);
+        ImportProcessingResult canonicalAuthors = authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options);
+        ImportProcessingResult canonicalPublications = publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(options);
+        ImportProcessingResult canonicalCitations = citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options);
+        ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors, canonicalPublications, canonicalCitations));
         return new ScopusBigBangMigrationResult(
                 scopusDataFile,
                 startedAt,
                 Instant.now(),
                 null,
-                MigrationStepResult.executed("build-facts", facts),
+                MigrationStepResult.executed("build-facts", buildFactsCombined),
                 null,
                 null,
                 buildVerificationSummary()
-        );
+            );
     }
 
     public ScopusBigBangMigrationResult runBuildProjectionsStep() {
@@ -148,18 +167,21 @@ public class ScopusBigBangMigrationService {
         ImportProcessingResult publicationImport = scopusDataService.importScopusDataSync(scopusDataFile, 0, false);
         ImportProcessingResult citationImport = scopusDataService.importScopusDataCitationsSync(scopusDataFile);
         ImportProcessingResult facts = scopusFactBuilderService.buildFactsFromImportEvents();
-        affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts();
-        authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts();
-        publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts();
+        CanonicalBuildOptions options = CanonicalBuildOptions.defaults();
+        ImportProcessingResult canonicalAffiliations = affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(options);
+        ImportProcessingResult canonicalAuthors = authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options);
+        ImportProcessingResult canonicalPublications = publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(options);
+        ImportProcessingResult canonicalCitations = citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options);
         ImportProcessingResult projections = scopusProjectionBuilderService.rebuildViews();
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult indexResult =
                 scopusCanonicalIndexMaintenanceService.ensureIndexes();
+        ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors, canonicalPublications, canonicalCitations));
         return new ScopusBigBangMigrationResult(
                 scopusDataFile,
                 startedAt,
                 Instant.now(),
                 mergeImportResults("ingest", publicationImport, citationImport),
-                MigrationStepResult.executed("build-facts", facts),
+                MigrationStepResult.executed("build-facts", buildFactsCombined),
                 MigrationStepResult.executed("build-projections", projections),
                 new IndexStepResult(
                         true,
@@ -180,6 +202,7 @@ public class ScopusBigBangMigrationService {
                 publicationFactRepository.count(),
                 scholardexPublicationFactRepository.count(),
                 citationFactRepository.count(),
+                scholardexCitationFactRepository.count(),
                 forumFactRepository.count(),
                 authorFactRepository.count(),
                 affiliationFactRepository.count(),
@@ -208,7 +231,13 @@ public class ScopusBigBangMigrationService {
                 publicationImport.getSkippedCount() + citationImport.getSkippedCount(),
                 publicationImport.getErrorCount() + citationImport.getErrorCount(),
                 null,
-                samples
+                samples,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
         );
     }
 
@@ -233,7 +262,13 @@ public class ScopusBigBangMigrationService {
             int skipped,
             int errors,
             String note,
-            List<String> samples
+            List<String> samples,
+            Integer startBatch,
+            Integer endBatch,
+            Integer batchesProcessed,
+            Integer totalBatches,
+            Boolean resumedFromCheckpoint,
+            Integer checkpointLastCompletedBatch
     ) {
         static MigrationStepResult executed(String stepName, ImportProcessingResult result) {
             return new MigrationStepResult(
@@ -245,7 +280,13 @@ public class ScopusBigBangMigrationService {
                     result.getSkippedCount(),
                     result.getErrorCount(),
                     null,
-                    result.getErrorsSample()
+                    result.getErrorsSample(),
+                    result.getStartBatch(),
+                    result.getEndBatch(),
+                    result.getBatchesProcessed(),
+                    result.getTotalBatches(),
+                    result.getResumedFromCheckpoint(),
+                    result.getCheckpointLastCompletedBatch()
             );
         }
     }
@@ -266,6 +307,7 @@ public class ScopusBigBangMigrationService {
             long publicationFacts,
             long canonicalPublicationFacts,
             long citationFacts,
+            long canonicalCitationFacts,
             long forumFacts,
             long authorFacts,
             long affiliationFacts,
@@ -281,6 +323,41 @@ public class ScopusBigBangMigrationService {
         return publicationBackfillService.backfillFromLegacyProjection();
     }
 
+    public ImportProcessingResult runCitationIdentityBackfill() {
+        return citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(CanonicalBuildOptions.defaults());
+    }
+
+    public ImportProcessingResult runCanonicalBuildStep(
+            String entity,
+            Integer startBatchOverride,
+            boolean useCheckpoint,
+            Integer chunkSizeOverride
+    ) {
+        CanonicalBuildOptions options = new CanonicalBuildOptions(chunkSizeOverride, startBatchOverride, useCheckpoint, null);
+        if (entity == null || entity.isBlank() || "all".equalsIgnoreCase(entity)) {
+            ImportProcessingResult affiliations = affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(options);
+            ImportProcessingResult authors = authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options);
+            ImportProcessingResult publications = publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(options);
+            ImportProcessingResult citations = citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options);
+            return combine(affiliations, authors, publications, citations);
+        }
+        return switch (entity.trim().toLowerCase()) {
+            case "affiliation" -> affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(options);
+            case "author" -> authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options);
+            case "publication" -> publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(options);
+            case "citation" -> citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options);
+            default -> {
+                ImportProcessingResult result = new ImportProcessingResult(10);
+                result.markSkipped("unknown canonical build entity: " + entity);
+                yield result;
+            }
+        };
+    }
+
+    public void resetCanonicalBuildCheckpoints() {
+        canonicalBuildCheckpointService.resetAll();
+    }
+
     public CanonicalResetResult resetCanonicalState() {
         long importEvents = mongoTemplate.count(scopusSourceQuery(), "scopus.import_events");
         long publicationFacts = publicationFactRepository.count();
@@ -293,11 +370,13 @@ public class ScopusBigBangMigrationService {
         long affiliationViews = affiliationSearchViewRepository.count();
 
         List<String> canonicalPublicationIds = findCanonicalIdsBySource("scholardex.publication_facts");
+        List<String> canonicalCitationIds = findCanonicalIdsBySource("scholardex.citation_facts");
         List<String> canonicalAuthorIds = findCanonicalIdsBySource("scholardex.author_facts");
         List<String> canonicalAffiliationIds = findCanonicalIdsBySource("scholardex.affiliation_facts");
         List<String> canonicalForumIds = findCanonicalIdsBySource("scholardex.forum_facts");
 
         long canonicalPublicationFacts = canonicalPublicationIds.size();
+        long canonicalCitationFacts = canonicalCitationIds.size();
         long canonicalAuthorFacts = canonicalAuthorIds.size();
         long canonicalAffiliationFacts = canonicalAffiliationIds.size();
         long canonicalForumFacts = canonicalForumIds.size();
@@ -325,6 +404,7 @@ public class ScopusBigBangMigrationService {
 
         mongoTemplate.remove(scopusSourceQuery(), ScholardexAuthorshipFact.class);
         mongoTemplate.remove(scopusSourceQuery(), ScholardexAuthorAffiliationFact.class);
+        mongoTemplate.remove(scopusSourceQuery(), ScholardexCitationFact.class);
         mongoTemplate.remove(scopusSourceLinkQuery(), "scholardex.source_links");
         mongoTemplate.remove(scopusIncomingSourceQuery(), ScholardexIdentityConflict.class);
 
@@ -380,6 +460,7 @@ public class ScopusBigBangMigrationService {
                 authorViews,
                 affiliationViews,
                 canonicalPublicationFacts,
+                canonicalCitationFacts,
                 canonicalAuthorFacts,
                 canonicalAffiliationFacts,
                 canonicalForumFacts,
@@ -392,6 +473,76 @@ public class ScopusBigBangMigrationService {
                 authorshipFacts,
                 authorAffiliationFacts
         );
+    }
+
+    private ImportProcessingResult combine(ImportProcessingResult... results) {
+        ImportProcessingResult combined = new ImportProcessingResult(100);
+        if (results == null || results.length == 0) {
+            return combined;
+        }
+        int processed = 0;
+        int imported = 0;
+        int updated = 0;
+        int skipped = 0;
+        int errors = 0;
+        Integer startBatch = null;
+        Integer endBatch = null;
+        int totalBatches = 0;
+        int batchesProcessed = 0;
+        Integer checkpointLastCompletedBatch = null;
+        boolean resumedFromCheckpoint = false;
+
+        for (ImportProcessingResult result : results) {
+            if (result == null) {
+                continue;
+            }
+            processed += result.getProcessedCount();
+            imported += result.getImportedCount();
+            updated += result.getUpdatedCount();
+            skipped += result.getSkippedCount();
+            errors += result.getErrorCount();
+            if (result.getStartBatch() != null) {
+                startBatch = startBatch == null ? result.getStartBatch() : Math.min(startBatch, result.getStartBatch());
+            }
+            if (result.getEndBatch() != null) {
+                endBatch = endBatch == null ? result.getEndBatch() : Math.max(endBatch, result.getEndBatch());
+            }
+            if (result.getTotalBatches() != null) {
+                totalBatches += result.getTotalBatches();
+            }
+            if (result.getBatchesProcessed() != null) {
+                batchesProcessed += result.getBatchesProcessed();
+            }
+            if (result.getCheckpointLastCompletedBatch() != null) {
+                checkpointLastCompletedBatch = checkpointLastCompletedBatch == null
+                        ? result.getCheckpointLastCompletedBatch()
+                        : Math.max(checkpointLastCompletedBatch, result.getCheckpointLastCompletedBatch());
+            }
+            resumedFromCheckpoint = resumedFromCheckpoint || Boolean.TRUE.equals(result.getResumedFromCheckpoint());
+        }
+
+        for (int i = 0; i < processed; i++) {
+            combined.markProcessed();
+        }
+        for (int i = 0; i < imported; i++) {
+            combined.markImported();
+        }
+        for (int i = 0; i < updated; i++) {
+            combined.markUpdated();
+        }
+        for (int i = 0; i < skipped; i++) {
+            combined.markSkipped("combined");
+        }
+        for (int i = 0; i < errors; i++) {
+            combined.markError("combined");
+        }
+        combined.setStartBatch(startBatch);
+        combined.setEndBatch(endBatch);
+        combined.setTotalBatches(totalBatches == 0 ? null : totalBatches);
+        combined.setBatchesProcessed(batchesProcessed == 0 ? null : batchesProcessed);
+        combined.setCheckpointLastCompletedBatch(checkpointLastCompletedBatch);
+        combined.setResumedFromCheckpoint(resumedFromCheckpoint);
+        return combined;
     }
 
     private List<String> findCanonicalIdsBySource(String collectionName) {
@@ -431,6 +582,7 @@ public class ScopusBigBangMigrationService {
             long authorViews,
             long affiliationViews,
             long canonicalPublicationFacts,
+            long canonicalCitationFacts,
             long canonicalAuthorFacts,
             long canonicalAffiliationFacts,
             long canonicalForumFacts,

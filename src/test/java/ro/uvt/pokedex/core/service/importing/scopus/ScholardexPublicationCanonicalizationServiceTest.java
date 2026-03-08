@@ -21,6 +21,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
@@ -37,6 +38,8 @@ class ScholardexPublicationCanonicalizationServiceTest {
     private ScholardexSourceLinkRepository scholardexSourceLinkRepository;
     @Mock
     private ScholardexAuthorshipFactRepository scholardexAuthorshipFactRepository;
+    @Mock
+    private ScholardexCanonicalBuildCheckpointService checkpointService;
 
     private ScholardexPublicationCanonicalizationService service;
 
@@ -46,7 +49,8 @@ class ScholardexPublicationCanonicalizationServiceTest {
                 scopusPublicationFactRepository,
                 scholardexPublicationFactRepository,
                 scholardexSourceLinkRepository,
-                scholardexAuthorshipFactRepository
+                scholardexAuthorshipFactRepository,
+                checkpointService
         );
     }
 
@@ -102,6 +106,7 @@ class ScholardexPublicationCanonicalizationServiceTest {
 
         when(scopusPublicationFactRepository.findAll()).thenReturn(List.of(scopusFact));
         when(scholardexPublicationFactRepository.findByEid("2-s2.0-abc")).thenReturn(Optional.empty());
+        when(checkpointService.readCheckpoint(anyString())).thenReturn(Optional.empty());
         when(scholardexSourceLinkRepository.findByEntityTypeAndSourceAndSourceRecordId(any(), any(), any()))
                 .thenReturn(Optional.empty());
         when(scholardexAuthorshipFactRepository.findByPublicationIdAndAuthorIdAndSource(any(), any(), any()))
@@ -132,5 +137,33 @@ class ScholardexPublicationCanonicalizationServiceTest {
         assertEquals("au-1", bridged.pendingSourceIds().getFirst());
         assertEquals("au-1", bridged.entries().getFirst().sourceAuthorId());
         assertEquals(true, bridged.entries().getFirst().pendingResolution());
+    }
+
+    @Test
+    void upsertFromScopusFactFallsBackToExistingCanonicalRecordByNormalizedDoi() {
+        ScopusPublicationFact scopusFact = new ScopusPublicationFact();
+        scopusFact.setEid("2-s2.0-new");
+        scopusFact.setDoi("https://doi.org/10.1000/XYZ");
+        scopusFact.setTitle("A Title");
+        scopusFact.setSource("SCOPUS_JSON_BOOTSTRAP");
+        scopusFact.setSourceRecordId("2-s2.0-new");
+        scopusFact.setAuthors(List.of("au-1"));
+
+        ScholardexPublicationFact existingByDoi = new ScholardexPublicationFact();
+        existingByDoi.setId("spub_existing");
+        existingByDoi.setDoiNormalized("10.1000/xyz");
+
+        when(scholardexPublicationFactRepository.findByEid("2-s2.0-new")).thenReturn(Optional.empty());
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1000/xyz")).thenReturn(List.of(existingByDoi));
+        when(scholardexSourceLinkRepository.findByEntityTypeAndSourceAndSourceRecordId(any(), any(), any()))
+                .thenReturn(Optional.empty());
+        when(scholardexAuthorshipFactRepository.findByPublicationIdAndAuthorIdAndSource(any(), any(), any()))
+                .thenReturn(Optional.empty());
+
+        ImportProcessingResult result = new ImportProcessingResult(10);
+        service.upsertFromScopusFact(scopusFact, result);
+
+        assertEquals(1, result.getUpdatedCount());
+        verify(scholardexPublicationFactRepository).save(any(ScholardexPublicationFact.class));
     }
 }

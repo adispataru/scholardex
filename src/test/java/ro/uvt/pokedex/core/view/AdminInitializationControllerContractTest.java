@@ -54,6 +54,9 @@ class AdminInitializationControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/ensureIndexes")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/resetCanonicalState")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/resetCanonicalState")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/backfillCanonicalCitations")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/buildCanonical")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/resetCanonicalCheckpoints")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/initialization/wos/runBigBangMigration"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/runBigBang"))));
     }
@@ -323,11 +326,58 @@ class AdminInitializationControllerContractTest {
     }
 
     @Test
+    void runScopusCitationBackfillRedirectsToInitializationPage() throws Exception {
+        ImportProcessingResult result = new ImportProcessingResult(10);
+        result.markProcessed();
+        result.markImported();
+        when(scopusBigBangMigrationService.runCitationIdentityBackfill()).thenReturn(result);
+
+        mockMvc.perform(post("/admin/initialization/scopus/backfillCanonicalCitations"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+
+        verify(scopusBigBangMigrationService).runCitationIdentityBackfill();
+    }
+
+    @Test
+    void runScopusCanonicalBuildRedirectsToInitializationPage() throws Exception {
+        ImportProcessingResult result = new ImportProcessingResult(10);
+        result.markProcessed();
+        result.markImported();
+        result.setStartBatch(2);
+        result.setEndBatch(3);
+        result.setBatchesProcessed(2);
+        result.setTotalBatches(10);
+        result.setResumedFromCheckpoint(true);
+        result.setCheckpointLastCompletedBatch(1);
+        when(scopusBigBangMigrationService.runCanonicalBuildStep(eq("citation"), eq(2), eq(true), eq(500))).thenReturn(result);
+
+        mockMvc.perform(post("/admin/initialization/scopus/buildCanonical")
+                        .param("entity", "citation")
+                        .param("startBatchOverride", "2")
+                        .param("chunkSizeOverride", "500")
+                        .param("useCheckpoint", "true"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+
+        verify(scopusBigBangMigrationService).runCanonicalBuildStep("citation", 2, true, 500);
+    }
+
+    @Test
+    void resetScopusCanonicalCheckpointsRedirectsToInitializationPage() throws Exception {
+        mockMvc.perform(post("/admin/initialization/scopus/resetCanonicalCheckpoints"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+
+        verify(scopusBigBangMigrationService).resetCanonicalBuildCheckpoints();
+    }
+
+    @Test
     void resetScopusCanonicalStateRedirectsToInitializationPage() throws Exception {
         when(scopusBigBangMigrationService.resetCanonicalState())
                 .thenReturn(new ScopusBigBangMigrationService.CanonicalResetResult(
                         10, 5, 5, 2, 3, 4, 2, 3, 4,
-                        5, 3, 4, 2, 5, 3, 4, 2, 6, 1, 7, 8
+                        5, 5, 3, 4, 2, 5, 3, 4, 2, 6, 1, 7, 8
                 ));
 
         mockMvc.perform(post("/admin/initialization/scopus/resetCanonicalState")
@@ -353,11 +403,11 @@ class AdminInitializationControllerContractTest {
                 "data/scopus.json",
                 Instant.now(),
                 Instant.now(),
-                new ScopusBigBangMigrationService.MigrationStepResult("ingest", true, 10, 5, 0, 5, 0, null, List.of()),
-                new ScopusBigBangMigrationService.MigrationStepResult("build-facts", true, 10, 10, 0, 0, 0, null, List.of()),
-                new ScopusBigBangMigrationService.MigrationStepResult("build-projections", true, 10, 10, 0, 0, 0, null, List.of()),
+                new ScopusBigBangMigrationService.MigrationStepResult("ingest", true, 10, 5, 0, 5, 0, null, List.of(), null, null, null, null, null, null),
+                new ScopusBigBangMigrationService.MigrationStepResult("build-facts", true, 10, 10, 0, 0, 0, null, List.of(), 0, 0, 1, 1, false, -1),
+                new ScopusBigBangMigrationService.MigrationStepResult("build-projections", true, 10, 10, 0, 0, 0, null, List.of(), null, null, null, null, null, null),
                 new ScopusBigBangMigrationService.IndexStepResult(true, 1, 0, 0, 0, List.of(), List.of()),
-                new ScopusBigBangMigrationService.VerificationSummary(10, 5, 5, 5, 1, 1, 1, 1, 1, 1, 5, 5)
+                new ScopusBigBangMigrationService.VerificationSummary(10, 5, 5, 5, 5, 1, 1, 1, 1, 1, 1, 5, 5)
         );
     }
 }

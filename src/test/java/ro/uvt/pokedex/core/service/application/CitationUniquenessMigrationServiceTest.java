@@ -6,7 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import ro.uvt.pokedex.core.repository.scopus.ScopusCitationRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -24,13 +24,13 @@ class CitationUniquenessMigrationServiceTest {
     private MongoTemplate mongoTemplate;
 
     @Mock
-    private ScopusCitationRepository scopusCitationRepository;
+    private ScholardexCitationFactRepository scholardexCitationFactRepository;
 
     private CitationUniquenessMigrationService service;
 
     @BeforeEach
     void setUp() {
-        service = new CitationUniquenessMigrationService(mongoTemplate, scopusCitationRepository);
+        service = new CitationUniquenessMigrationService(mongoTemplate, scholardexCitationFactRepository);
     }
 
     @Test
@@ -52,15 +52,15 @@ class CitationUniquenessMigrationServiceTest {
 
         assertEquals(0, dedupeResult.affectedPairs());
         assertEquals(0, dedupeResult.deletedRows());
-        verify(scopusCitationRepository, never()).deleteAllById(org.mockito.ArgumentMatchers.anyIterable());
+        verify(scholardexCitationFactRepository, never()).deleteAllById(org.mockito.ArgumentMatchers.anyIterable());
     }
 
     @Test
     void applyDedupeDeletesAllButLowestIdPerPair() {
         CitationUniquenessMigrationService.DuplicatePair pair1 =
-                new CitationUniquenessMigrationService.DuplicatePair("p1", "p2", List.of("c3", "c1", "c2"));
+                new CitationUniquenessMigrationService.DuplicatePair("p1", "p2", "SCOPUS", List.of("c3", "c1", "c2"));
         CitationUniquenessMigrationService.DuplicatePair pair2 =
-                new CitationUniquenessMigrationService.DuplicatePair("p4", "p5", List.of("c10", "c9"));
+                new CitationUniquenessMigrationService.DuplicatePair("p4", "p5", "WOS", List.of("c10", "c9"));
         CitationUniquenessMigrationService.DuplicateScanResult scanResult =
                 new CitationUniquenessMigrationService.DuplicateScanResult(List.of(pair1, pair2));
 
@@ -69,8 +69,8 @@ class CitationUniquenessMigrationServiceTest {
 
         assertEquals(2, dedupeResult.affectedPairs());
         assertEquals(3, dedupeResult.deletedRows());
-        verify(scopusCitationRepository).deleteAllById(List.of("c2", "c3"));
-        verify(scopusCitationRepository).deleteAllById(List.of("c9"));
+        verify(scholardexCitationFactRepository).deleteAllById(List.of("c2", "c3"));
+        verify(scholardexCitationFactRepository).deleteAllById(List.of("c9"));
     }
 
     @Test
