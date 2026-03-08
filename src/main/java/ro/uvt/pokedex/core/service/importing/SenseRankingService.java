@@ -30,6 +30,10 @@ public class SenseRankingService {
 
     @Async("taskExecutor")
     public void importBookRankingsFromExcel(String excelFilePath) {
+        importBookRankingsFromExcelSync(excelFilePath);
+    }
+
+    public void importBookRankingsFromExcelSync(String excelFilePath) {
         try (FileInputStream fis = new FileInputStream(excelFilePath);
              XSSFWorkbook workbook = new XSSFWorkbook(fis)) {
 

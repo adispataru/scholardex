@@ -11,7 +11,8 @@ Scope: runtime operability posture for startup readiness, health signaling, back
   - `src/main/java/ro/uvt/pokedex/core/CoreApplication.java`
   - `src/main/java/ro/uvt/pokedex/core/config/AsyncConfiguration.java`
 - Reviewed high-impact operational flows:
-  - `src/main/java/ro/uvt/pokedex/core/DataLoaderNew.java`
+  - `src/main/java/ro/uvt/pokedex/core/service/application/AdminUserBootstrapRunner.java`
+  - `src/main/java/ro/uvt/pokedex/core/service/application/GeneralInitializationService.java`
   - `src/main/java/ro/uvt/pokedex/core/service/scopus/ScopusUpdateScheduler.java`
   - `src/main/java/ro/uvt/pokedex/core/controller/ExportController.java`
   - `src/main/java/ro/uvt/pokedex/core/controller/CustomErrorController.java`
@@ -21,7 +22,7 @@ Scope: runtime operability posture for startup readiness, health signaling, back
 | ID | Severity | Finding | Evidence | Impact | Initial direction |
 |---|---|---|---|---|---|
 | `O-H08-01` | high | **No actuator health/readiness/liveness baseline** | `build.gradle` has no `spring-boot-starter-actuator`; `application.properties` has no `management.endpoint.*`/`management.endpoints.*` exposure config. | No machine-readable runtime readiness/health contract for deployment/ops automation. | Add actuator baseline and explicit health/readiness exposure policy in H08-S04/S06. |
-| `O-H08-02` | high | **Startup performs heavy data/bootstrap work without explicit readiness gating** | `DataLoaderNew` `CommandLineRunner` executes admin/bootstrap/import routines at startup (`src/main/java/ro/uvt/pokedex/core/DataLoaderNew.java:42+`). | Slow/failing bootstrap can delay availability with weak startup diagnostics contract. | Define startup phase observability contract and split mandatory vs optional boot tasks. |
+| `O-H08-02` | high | **Startup bootstrap needs explicit readiness and diagnostics contract** | `AdminUserBootstrapRunner` executes admin bootstrap at startup; non-Scopus/WoS imports are moved to explicit admin operations in `GeneralInitializationService`. | Missing/failed admin bootstrap can degrade startup readiness; heavy imports should remain operationally explicit. | Keep startup phase observability contract and critical-vs-optional split; keep imports admin-triggered, not automatic startup work. |
 | `O-H08-03` | high | **Scheduled background worker has no explicit operability endpoint/signal beyond logs and DB status** | `ScopusUpdateScheduler` polls queue continuously via `@Scheduled` (`src/main/java/ro/uvt/pokedex/core/service/scopus/ScopusUpdateScheduler.java:57`) and records task status, but no health/lag counters or heartbeat endpoints. | Hard to detect degraded scheduler throughput/backlog from outside the app. | Add scheduler health signals (queue depth/lag/error rate) and expose via metrics/health contributors. |
 | `O-H08-04` | medium-high | **Async executor capacity is fixed and uninstrumented** | `AsyncConfiguration` uses `ThreadPoolTaskExecutor` with `core=2`, `max=2`, `queue=100` and no rejection/queue telemetry hooks (`src/main/java/ro/uvt/pokedex/core/config/AsyncConfiguration.java:12-19`). | Under load, saturation/backpressure is opaque and may silently degrade throughput. | Add executor monitoring and queue/rejection diagnostics contract; tune via config properties. |
 | `O-H08-05` | medium-high | **Critical external dependency path lacks readiness surface** | `CoreApplication` configures `WebClient` to external scopus python service via `scopus.python.base-url` (`src/main/java/ro/uvt/pokedex/core/CoreApplication.java:17-32`) without explicit dependency readiness indicator. | External dependency outages may appear as runtime failures without pre-flight readiness signal. | Add dependency-specific readiness checks and failure mode mapping. |

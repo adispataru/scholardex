@@ -41,12 +41,6 @@ public class StartupReadinessTracker {
     private final Map<String, StartupPhaseStatus> phases = new ConcurrentHashMap<>();
 
     public StartupReadinessTracker() {
-        phases.put("admin-user", new StartupPhaseStatus(true));
-        phases.put("domain-bootstrap", new StartupPhaseStatus(true));
-        phases.put("scopus-data-load", new StartupPhaseStatus(true));
-        phases.put("artistic-events-import", new StartupPhaseStatus(false));
-        phases.put("urap-import", new StartupPhaseStatus(false));
-        phases.put("cncsis-import", new StartupPhaseStatus(false));
     }
 
     public void phaseStart(String phase, boolean critical) {

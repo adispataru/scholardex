@@ -12,6 +12,7 @@ import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.config.WebSecurityConfig;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.CustomUserDetailsService;
+import ro.uvt.pokedex.core.service.application.GeneralInitializationService;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.ScopusBigBangMigrationService;
 
@@ -38,6 +39,8 @@ class AdminInitializationSecurityContractTest {
     private RankingMaintenanceFacade rankingMaintenanceFacade;
     @MockitoBean
     private ScopusBigBangMigrationService scopusBigBangMigrationService;
+    @MockitoBean
+    private GeneralInitializationService generalInitializationService;
 
     @Test
     void nonAdminCannotAccessInitializationPage() throws Exception {
@@ -123,6 +126,54 @@ class AdminInitializationSecurityContractTest {
     @Test
     void nonAdminCannotReadWosEnrichmentSummaryApi() throws Exception {
         mockMvc.perform(get("/admin/initialization/wos/enrichment/summary")
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+    }
+
+    @Test
+    void nonAdminCannotRunGeneralInitializationAll() throws Exception {
+        mockMvc.perform(post("/admin/initialization/general/runAll")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+    }
+
+    @Test
+    void nonAdminCannotRunGeneralInitializationSteps() throws Exception {
+        mockMvc.perform(post("/admin/initialization/general/adminUser")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+        mockMvc.perform(post("/admin/initialization/general/domain")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+        mockMvc.perform(post("/admin/initialization/general/artisticEvents")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+        mockMvc.perform(post("/admin/initialization/general/urap")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+        mockMvc.perform(post("/admin/initialization/general/cncsis")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+        mockMvc.perform(post("/admin/initialization/general/coreConference")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+        mockMvc.perform(post("/admin/initialization/general/sense")
+                        .with(csrf())
                         .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/custom-error?error=403"));

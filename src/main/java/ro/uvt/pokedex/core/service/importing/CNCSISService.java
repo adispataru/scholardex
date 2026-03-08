@@ -26,6 +26,10 @@ public class CNCSISService {
 
     @Async("taskExecutor")
     public void importPublisherListFromExcel(String excelFilePath) {
+        importPublisherListFromExcelSync(excelFilePath);
+    }
+
+    public void importPublisherListFromExcelSync(String excelFilePath) {
         if(cncsisPublisherRepository.count() > 0) return;
         try (FileInputStream fis = new FileInputStream(excelFilePath);
              XSSFWorkbook workbook = new XSSFWorkbook(fis)) {

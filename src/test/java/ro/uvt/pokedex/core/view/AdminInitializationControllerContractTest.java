@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
+import ro.uvt.pokedex.core.service.application.GeneralInitializationService;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.ScopusBigBangMigrationService;
 import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
@@ -41,6 +42,8 @@ class AdminInitializationControllerContractTest {
     private RankingMaintenanceFacade rankingMaintenanceFacade;
     @MockitoBean
     private ScopusBigBangMigrationService scopusBigBangMigrationService;
+    @MockitoBean
+    private GeneralInitializationService generalInitializationService;
 
     @Test
     void initializationPageRendersTemplate() throws Exception {
@@ -59,8 +62,98 @@ class AdminInitializationControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/buildCanonical")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/reconcileEdges")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/resetCanonicalCheckpoints")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/runAll")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/adminUser")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/domain")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/artisticEvents")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/urap")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/cncsis")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/coreConference")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/sense")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/initialization/wos/runBigBangMigration"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/runBigBang"))));
+    }
+
+    @Test
+    void runGeneralInitializationAllRedirectsToInitializationPage() throws Exception {
+        when(generalInitializationService.runAll())
+                .thenReturn(new GeneralInitializationService.GeneralInitializationRunSummary(
+                        "run-all",
+                        Instant.now(),
+                        List.of(
+                                new GeneralInitializationService.GeneralInitializationStepResult(
+                                        "admin-user", true, true, 10L, Instant.now(), Instant.now(), "ok"
+                                )
+                        )
+                ));
+
+        mockMvc.perform(post("/admin/initialization/general/runAll"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+
+        verify(generalInitializationService).runAll();
+    }
+
+    @Test
+    void runGeneralInitializationStepRedirectsToInitializationPage() throws Exception {
+        when(generalInitializationService.runAdminUserBootstrap())
+                .thenReturn(new GeneralInitializationService.GeneralInitializationStepResult(
+                        "admin-user", true, true, 10L, Instant.now(), Instant.now(), "ok"
+                ));
+        when(generalInitializationService.runSpecialDomainBootstrap())
+                .thenReturn(new GeneralInitializationService.GeneralInitializationStepResult(
+                        "special-domain-all", true, true, 10L, Instant.now(), Instant.now(), "ok"
+                ));
+        when(generalInitializationService.runArtisticEventsImport())
+                .thenReturn(new GeneralInitializationService.GeneralInitializationStepResult(
+                        "artistic-events", true, false, 10L, Instant.now(), Instant.now(), "ok"
+                ));
+        when(generalInitializationService.runUrapImport())
+                .thenReturn(new GeneralInitializationService.GeneralInitializationStepResult(
+                        "urap", true, false, 10L, Instant.now(), Instant.now(), "ok"
+                ));
+        when(generalInitializationService.runCncsisImport())
+                .thenReturn(new GeneralInitializationService.GeneralInitializationStepResult(
+                        "cncsis", true, false, 10L, Instant.now(), Instant.now(), "ok"
+                ));
+        when(generalInitializationService.runCoreConferenceImport())
+                .thenReturn(new GeneralInitializationService.GeneralInitializationStepResult(
+                        "core-conference", true, false, 10L, Instant.now(), Instant.now(), "ok"
+                ));
+        when(generalInitializationService.runSenseImport())
+                .thenReturn(new GeneralInitializationService.GeneralInitializationStepResult(
+                        "sense", true, false, 10L, Instant.now(), Instant.now(), "ok"
+                ));
+
+        mockMvc.perform(post("/admin/initialization/general/adminUser"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+        mockMvc.perform(post("/admin/initialization/general/domain"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+        mockMvc.perform(post("/admin/initialization/general/artisticEvents"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+        mockMvc.perform(post("/admin/initialization/general/urap"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+        mockMvc.perform(post("/admin/initialization/general/cncsis"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+        mockMvc.perform(post("/admin/initialization/general/coreConference"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+        mockMvc.perform(post("/admin/initialization/general/sense"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+
+        verify(generalInitializationService).runAdminUserBootstrap();
+        verify(generalInitializationService).runSpecialDomainBootstrap();
+        verify(generalInitializationService).runArtisticEventsImport();
+        verify(generalInitializationService).runUrapImport();
+        verify(generalInitializationService).runCncsisImport();
+        verify(generalInitializationService).runCoreConferenceImport();
+        verify(generalInitializationService).runSenseImport();
     }
 
     @Test

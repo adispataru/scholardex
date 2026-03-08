@@ -10,7 +10,8 @@ Scope: runtime diagnostics surface for logging, metrics, health/readiness, and o
   - `src/main/resources/application.properties`
 - Reviewed runtime hooks and transport error surfaces:
   - `src/main/java/ro/uvt/pokedex/core/CoreApplication.java`
-  - `src/main/java/ro/uvt/pokedex/core/DataLoaderNew.java`
+  - `src/main/java/ro/uvt/pokedex/core/service/application/AdminUserBootstrapRunner.java`
+  - `src/main/java/ro/uvt/pokedex/core/service/application/GeneralInitializationService.java`
   - `src/main/java/ro/uvt/pokedex/core/service/scopus/ScopusUpdateScheduler.java`
   - `src/main/java/ro/uvt/pokedex/core/controller/CustomErrorController.java`
   - `src/main/java/ro/uvt/pokedex/core/handlers/CustomAccessDeniedHandler.java`
@@ -27,7 +28,7 @@ Scope: runtime diagnostics surface for logging, metrics, health/readiness, and o
 | Correlation/request tracing | Missing | no MDC/request-id/trace-id usage found in `src/main/java/**` |
 | Metrics instrumentation | Missing | no Micrometer/Actuator dependencies or `@Timed`/counter/gauge usage in `build.gradle` and code |
 | Health/readiness/liveness endpoints | Missing explicit operational setup | no actuator dependency and no `management.*` exposure config in `application.properties` |
-| Startup signalization | Present but coarse | `DataLoaderNew` startup import/bootstrap runs on `CommandLineRunner` |
+| Startup signalization | Present for critical bootstrap, imports moved to admin ops | `AdminUserBootstrapRunner` runs startup admin bootstrap on `CommandLineRunner`; `GeneralInitializationService` handles explicit admin-triggered non-Scopus/WoS imports |
 | Background job observability | Partial | `ScopusUpdateScheduler` logs failures and writes task status (`PENDING/IN_PROGRESS/FAILED/COMPLETED`) |
 | Error routing observability | Partial | `CustomErrorController` maps status to error templates; no centralized structured exception logging contract |
 | Runtime guardrail scripts | Present for architecture/tests, not observability-specific yet | `verify-architecture-boundaries`, `verify-test-runtime`, H07 guardrails |
@@ -68,8 +69,9 @@ Resulting implication:
 ## 3.4 Operational touchpoints
 
 1. Startup bootstrap:
-- `DataLoaderNew` executes admin bootstrap + data imports + ranking/cncsis/urap setup during application startup.
-- This is high impact for startup time and failure diagnosis.
+- Startup executes admin bootstrap via `AdminUserBootstrapRunner` (`GeneralInitializationService.runAdminUserBootstrap()`).
+- Heavy imports (URAP/CNCSIS/CORE/SENSE/artistic events/domain bootstrap) are explicit admin initialization actions via `GeneralInitializationService`.
+- Startup health includes admin-user existence checks, so admin bootstrap remains a high-impact startup diagnostic path.
 
 2. Scheduled background updates:
 - `ScopusUpdateScheduler` polls queue every `${scopus.update.poll-ms:60000}`.

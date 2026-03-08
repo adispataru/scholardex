@@ -2,10 +2,24 @@ package ro.uvt.pokedex.core.observability;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.health.contributor.Status;
+import ro.uvt.pokedex.core.model.user.UserRole;
+import ro.uvt.pokedex.core.repository.UserRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class StartupHealthIndicatorTest {
+
+    @Test
+    void noPreseededCriticalPhasesKeepsHealthUpByDefault() {
+        StartupReadinessTracker tracker = new StartupReadinessTracker();
+        UserRepository userRepository = mock(UserRepository.class);
+        when(userRepository.existsByRolesContaining(UserRole.PLATFORM_ADMIN)).thenReturn(true);
+        StartupHealthIndicator indicator = new StartupHealthIndicator(tracker, userRepository);
+
+        assertThat(indicator.health().getStatus()).isEqualTo(Status.UP);
+    }
 
     @Test
     void criticalSuccessMarksHealthUp() {
@@ -16,8 +30,10 @@ class StartupHealthIndicatorTest {
         tracker.phaseSuccess("domain-bootstrap", 10);
         tracker.phaseStart("scopus-data-load", true);
         tracker.phaseSuccess("scopus-data-load", 10);
+        UserRepository userRepository = mock(UserRepository.class);
+        when(userRepository.existsByRolesContaining(UserRole.PLATFORM_ADMIN)).thenReturn(true);
 
-        StartupHealthIndicator indicator = new StartupHealthIndicator(tracker);
+        StartupHealthIndicator indicator = new StartupHealthIndicator(tracker, userRepository);
 
         assertThat(indicator.health().getStatus()).isEqualTo(Status.UP);
         assertThat(indicator.health().getDetails()).containsKey("phases");
@@ -28,8 +44,10 @@ class StartupHealthIndicatorTest {
         StartupReadinessTracker tracker = new StartupReadinessTracker();
         tracker.phaseStart("admin-user", true);
         tracker.phaseFailure("admin-user", 5, "failed");
+        UserRepository userRepository = mock(UserRepository.class);
+        when(userRepository.existsByRolesContaining(UserRole.PLATFORM_ADMIN)).thenReturn(true);
 
-        StartupHealthIndicator indicator = new StartupHealthIndicator(tracker);
+        StartupHealthIndicator indicator = new StartupHealthIndicator(tracker, userRepository);
 
         assertThat(indicator.health().getStatus()).isEqualTo(Status.OUT_OF_SERVICE);
     }
@@ -45,9 +63,23 @@ class StartupHealthIndicatorTest {
         tracker.phaseSuccess("scopus-data-load", 10);
         tracker.phaseStart("urap-import", false);
         tracker.phaseFailure("urap-import", 2, "optional failed");
+        UserRepository userRepository = mock(UserRepository.class);
+        when(userRepository.existsByRolesContaining(UserRole.PLATFORM_ADMIN)).thenReturn(true);
 
-        StartupHealthIndicator indicator = new StartupHealthIndicator(tracker);
+        StartupHealthIndicator indicator = new StartupHealthIndicator(tracker, userRepository);
 
         assertThat(indicator.health().getStatus()).isEqualTo(Status.UP);
+    }
+
+    @Test
+    void missingAdminUserMarksOutOfService() {
+        StartupReadinessTracker tracker = new StartupReadinessTracker();
+        UserRepository userRepository = mock(UserRepository.class);
+        when(userRepository.existsByRolesContaining(UserRole.PLATFORM_ADMIN)).thenReturn(false);
+
+        StartupHealthIndicator indicator = new StartupHealthIndicator(tracker, userRepository);
+
+        assertThat(indicator.health().getStatus()).isEqualTo(Status.OUT_OF_SERVICE);
+        assertThat(indicator.health().getDetails()).containsEntry("adminUserPresent", false);
     }
 }

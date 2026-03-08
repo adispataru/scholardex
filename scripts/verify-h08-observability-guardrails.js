@@ -174,7 +174,7 @@ if (runRg('class StartupHealthIndicator', startupHealthFile).length === 0) {
 }
 
 const metricsMarkers = [
-  { file: 'src/main/java/ro/uvt/pokedex/core/DataLoaderNew.java', pattern: 'core\\.startup\\.phase\\.duration' },
+  { file: 'src/main/java/ro/uvt/pokedex/core/service/application/GeneralInitializationService.java', pattern: 'core\\.startup\\.phase\\.duration' },
   { file: 'src/main/java/ro/uvt/pokedex/core/service/scopus/ScopusUpdateScheduler.java', pattern: 'core\\.scheduler\\.scopus\\.poll\\.duration' },
   { file: 'src/main/java/ro/uvt/pokedex/core/observability/H19CanonicalMetrics.java', pattern: 'core\\.h19\\.canonical\\.build\\.duration' },
   { file: 'src/main/java/ro/uvt/pokedex/core/observability/H19CanonicalMetrics.java', pattern: 'core\\.h19\\.source_link\\.transitions' },

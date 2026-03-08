@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import ro.uvt.pokedex.core.service.application.GeneralInitializationService;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.ScopusBigBangMigrationService;
 import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
@@ -18,12 +19,59 @@ import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
 @RequiredArgsConstructor
 public class AdminInitializationController {
 
+    private final GeneralInitializationService generalInitializationService;
     private final RankingMaintenanceFacade rankingMaintenanceFacade;
     private final ScopusBigBangMigrationService scopusBigBangMigrationService;
 
     @GetMapping
     public String showInitializationPage() {
         return "admin/initialization";
+    }
+
+    @PostMapping("/general/runAll")
+    public String runGeneralInitializationAll(RedirectAttributes redirectAttributes) {
+        var summary = generalInitializationService.runAll();
+        redirectAttributes.addFlashAttribute(
+                "successMessage",
+                "General initialization complete. success=" + summary.successCount()
+                        + ", failed=" + summary.failureCount() + "."
+        );
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/general/adminUser")
+    public String runGeneralAdminUser(RedirectAttributes redirectAttributes) {
+        return redirectAfterGeneralStep(generalInitializationService.runAdminUserBootstrap(), redirectAttributes);
+    }
+
+    @PostMapping("/general/domain")
+    public String runGeneralDomainBootstrap(RedirectAttributes redirectAttributes) {
+        return redirectAfterGeneralStep(generalInitializationService.runSpecialDomainBootstrap(), redirectAttributes);
+    }
+
+    @PostMapping("/general/artisticEvents")
+    public String runGeneralArtisticEvents(RedirectAttributes redirectAttributes) {
+        return redirectAfterGeneralStep(generalInitializationService.runArtisticEventsImport(), redirectAttributes);
+    }
+
+    @PostMapping("/general/urap")
+    public String runGeneralUrap(RedirectAttributes redirectAttributes) {
+        return redirectAfterGeneralStep(generalInitializationService.runUrapImport(), redirectAttributes);
+    }
+
+    @PostMapping("/general/cncsis")
+    public String runGeneralCncsis(RedirectAttributes redirectAttributes) {
+        return redirectAfterGeneralStep(generalInitializationService.runCncsisImport(), redirectAttributes);
+    }
+
+    @PostMapping("/general/coreConference")
+    public String runGeneralCoreConference(RedirectAttributes redirectAttributes) {
+        return redirectAfterGeneralStep(generalInitializationService.runCoreConferenceImport(), redirectAttributes);
+    }
+
+    @PostMapping("/general/sense")
+    public String runGeneralSense(RedirectAttributes redirectAttributes) {
+        return redirectAfterGeneralStep(generalInitializationService.runSenseImport(), redirectAttributes);
     }
 
     @GetMapping("/wos/enrichment")
@@ -414,5 +462,21 @@ public class AdminInitializationController {
                 + ", failed=" + summary.failed()
                 + ", skipped=" + summary.skipped()
                 + "].";
+    }
+
+    private String redirectAfterGeneralStep(
+            GeneralInitializationService.GeneralInitializationStepResult step,
+            RedirectAttributes redirectAttributes
+    ) {
+        String message = "General step '" + step.step() + "' "
+                + (step.success() ? "completed" : "failed")
+                + ". durationMs=" + step.durationMs()
+                + ", details=" + step.message();
+        if (step.success()) {
+            redirectAttributes.addFlashAttribute("successMessage", message);
+        } else {
+            redirectAttributes.addFlashAttribute("errorMessage", message);
+        }
+        return "redirect:/admin/initialization";
     }
 }

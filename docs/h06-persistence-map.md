@@ -13,7 +13,8 @@ Scope: Mongo-backed model/repository/service/write-read ownership baseline.
   - `core/view/**`
   - `core/controller/**`
 - Verified startup data bootstrap and scheduled sync flows:
-  - `DataLoaderNew`
+  - `AdminUserBootstrapRunner`
+  - `GeneralInitializationService`
   - `ScopusDataService`
   - `ScopusUpdateScheduler`
 
@@ -21,7 +22,7 @@ Scope: Mongo-backed model/repository/service/write-read ownership baseline.
 
 - Database style: Spring Data Mongo repositories only (`MongoRepository<..., String>`).
 - Schema migration framework: none detected (no Flyway/Liquibase changelog path in repo).
-- Data bootstrap style: startup import and cache warm-up in `DataLoaderNew`.
+- Data bootstrap style: startup admin-user bootstrap via `AdminUserBootstrapRunner`; non-Scopus/WoS imports are explicit admin-initialization operations via `GeneralInitializationService`.
 - Async/scheduled writes:
   - async Scopus import (`ScopusDataService`)
   - scheduled Scopus task polling (`ScopusUpdateScheduler`)
@@ -90,7 +91,7 @@ These methods are currently the highest-impact persistence contract surface for 
 |---|---|---|
 | `User`, `Researcher` | `UserService`, `ResearcherServiceImpl`, startup `AdminUserService` | service-owned writes are present. |
 | `Publication`, `Citation`, `Author`, `Forum`, `Affiliation`, `Funding` | `ScopusDataService`, `ScopusUpdateScheduler`, plus selective facade writes (`UserReportFacade`, `GroupCnfisExportFacade`, `UserPublicationFacade`) | write paths are spread across import/scheduler/facade flows. |
-| Reporting metadata (`Domain`, `Indicator`, `IndividualReport`, `GroupReport`) | Mixed: direct controller writes (`AdminViewController`, `AdminIndividualReportsController`, `AdminGroupReportsController`), plus startup domain seed in `DataLoaderNew` | controller-level direct writes remain a persistence ownership smell for later H06 slices. |
+| Reporting metadata (`Domain`, `Indicator`, `IndividualReport`, `GroupReport`) | Mixed: direct controller writes (`AdminViewController`, `AdminIndividualReportsController`, `AdminGroupReportsController`), plus admin-initialization domain seed in `GeneralInitializationService` | controller-level direct writes remain a persistence ownership smell for later H06 slices. |
 | Group management (`Group`) | `GroupManagementFacade` + import `GroupService` | mostly service/facade owned. |
 | Activities (`Activity`, `ActivityIndicator`, `ActivityInstance`) | `AdminActivityController`, `ActivityInstanceController` | direct controller writes are current baseline. |
 | Rankings (`WoSRanking`, `CoreConferenceRanking`, `SenseBookRanking`, `URAPUniversityRanking`, `CNCSISPublisher`) | importer services (`RankingService`, `CoreConferenceRankingService`, `SenseRankingService`, `URAPRankingService`, `CNCSISService`), plus maintenance/caching (`RankingMaintenanceFacade`, `CacheService`) | ranking writes have both import-time and maintenance-time paths. |
@@ -110,12 +111,13 @@ These methods are currently the highest-impact persistence contract surface for 
 
 ## 7. Bootstrap and Lifecycle Flows
 
-- Startup (`DataLoaderNew`):
+- Startup (`AdminUserBootstrapRunner`):
   - ensure default admin user
-  - Scopus data load-if-empty
+- Admin initialization (`GeneralInitializationService`, explicit admin actions):
   - domain `"ALL"` seed
   - artistic events import
   - URAP + CNCSIS imports
+  - CORE conference + SENSE imports
 - Scheduled:
   - `ScopusUpdateScheduler` processes publication/citation update tasks and upserts Scopus entities.
 - Cache persistence hooks:

@@ -31,6 +31,10 @@ public class CoreConferenceRankingService {
     private CacheService cacheService;
     @Async("taskExecutor")
     public void loadRankingsFromCSV(String directoryPath) {
+        loadRankingsFromCSVSync(directoryPath);
+    }
+
+    public void loadRankingsFromCSVSync(String directoryPath) {
         File dir = new File(directoryPath);
         File[] files = dir.listFiles((d, name) -> name.matches("CORE\\d{4}-all\\.csv"));
         ImportProcessingResult totalResult = new ImportProcessingResult(20);

@@ -72,7 +72,7 @@ Examples:
 ## C7. Minimum Metrics Coverage Contract
 
 Critical operational hotspots must have at least one metric each:
-1. startup/bootstrap path (`DataLoaderNew`/startup phases),
+1. startup/bootstrap path (`AdminUserBootstrapRunner` + startup phases),
 2. scheduler queue processing (`ScopusUpdateScheduler`),
 3. export streaming endpoints,
 4. external integration calls (scopus python service path).
