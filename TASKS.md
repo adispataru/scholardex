@@ -70,9 +70,9 @@ Done history moved to `TASKS-done.md`.
     Exit criteria: automated tests cover success paths and key failure/edge cases.
 
 - [ ] `H19` Multi-source Scholardex identity and ingestion architecture.
-  Goal: make Scholardex the canonical identity layer across publications, authors, forums, and affiliations, supporting four sources (`SCOPUS`, `WOS`, `GSCHOLAR`, `USER_DEFINED`) with deterministic lineage, linking, and runtime reads.
-  Deliverable: unified canonical contracts + storage models + ingestion/linking pipelines + immediate runtime cutover so all operational reads/writes resolve through Scholardex entities, not source-specific silo models.
-  Exit criteria: publication/author/forum/affiliation identity is source-agnostic and deterministic; WoS-first onboarding is complete; Scholar (Publish or Perish) and user-defined imports are supported; runtime paths are cut over to Scholardex; source-specific legacy identity paths are removed from runtime; citations are canonical-ID based across all sources; all entity conflict types are captured in generic conflict storage; source-to-canonical mapping is queryable and replay-stable.
+  Goal: make Scholardex the canonical identity and link graph layer across publications, authors, forums, and affiliations, supporting four sources (`SCOPUS`, `WOS`, `GSCHOLAR`, `USER_DEFINED`) with deterministic lineage, linking, and runtime reads optimized for indicator computation.
+  Deliverable: unified canonical contracts + storage models + ingestion/linking pipelines + immediate runtime cutover so all operational reads/writes resolve through Scholardex entities and canonical relationship edges, not source-specific silo models.
+  Exit criteria: publication/author/forum/affiliation identity is source-agnostic and deterministic; WoS-first onboarding is complete; Scholar (Publish or Perish) and user-defined imports are supported; runtime paths are cut over to Scholardex; source-specific legacy identity paths are removed from runtime; citations are canonical-ID based across all sources; all entity conflict types are captured in generic conflict storage; source-to-canonical mapping is queryable and replay-stable; canonical publication-author linkage is queryable and deterministic; canonical author-affiliation linkage is queryable and deterministic; affiliation-side traversal for scoring/reporting is fast-path capable.
   Subtasks:
   - [x] `H19.1` Define canonical multi-source identity and ownership contract.
     Deliverable: locked contract for Scholardex entities (`publication`, `author`, `forum`, `affiliation`, `citation`) with per-source IDs, provenance/lineage fields, conflict rules, source-link mapping rules, and replay/idempotence semantics.
@@ -85,14 +85,14 @@ Done history moved to `TASKS-done.md`.
     Handover:
     - Contract source of truth: `docs/h19.2-forum-keying-merge-contract.md`.
   - [x] `H19.3` Implement Scholardex publication identity model v2.
-    Deliverable: publication model supporting source IDs (`eid`, `wosId`, `googleScholarId`, `userSourceId`) plus canonical `scholardexPublicationId` and lineage metadata.
-    Exit criteria: all publication ingest/build paths can persist and resolve the new identity model without ambiguity.
+    Deliverable: publication model supporting source IDs (`eid`, `wosId`, `googleScholarId`, `userSourceId`) plus canonical `scholardexPublicationId` and lineage metadata, with canonical `authorIds` aligned to relationship-edge contracts.
+    Exit criteria: all publication ingest/build paths can persist and resolve the new identity model without ambiguity, and publication author linkage is consistent with canonical authorship edges.
   - [ ] `H19.4` Implement Scholardex author identity model v2 (researcher-linked).
-    Deliverable: author model that supports multiple source author IDs (Scopus/WoS/Scholar/User) as source-identity canonical facts, with researcher linkage maintained on the researcher side via `primaryScholardexAuthorId` and deterministic merge rules.
-    Exit criteria: author linking and lookup are source-agnostic and deterministic for scoring/reporting entrypoints.
+    Deliverable: author model that supports multiple source author IDs (Scopus/WoS/Scholar/User) as source-identity canonical facts, with canonical `affiliationIds` aligned to relationship-edge contracts, researcher linkage maintained on the researcher side via `primaryScholardexAuthorId`, and deterministic merge rules.
+    Exit criteria: author linking and lookup are source-agnostic and deterministic for scoring/reporting entrypoints, and author-affiliation linkage is consistent with canonical author-affiliation edges.
   - [ ] `H19.5` Implement Scholardex affiliation identity model v2.
-    Deliverable: affiliation model that supports multiple source affiliation IDs and alias resolution across Scopus/WoS/Scholar/User.
-    Exit criteria: affiliation linking resolves deterministically and deduplicates source aliases.
+    Deliverable: affiliation model that supports multiple source affiliation IDs and alias resolution across Scopus/WoS/Scholar/User, with reverse-link query support via canonical edge/index contracts (no forum-style reverse arrays required).
+    Exit criteria: affiliation linking resolves deterministically, deduplicates source aliases, and supports fast affiliation-side traversal for scoring/reporting entrypoints.
   - [ ] `H19.6` Build WoS-first onboarding into Scholardex entities.
     Deliverable: WoS ingestion/linking pipeline that populates/links Scholardex publication/forum/author/affiliation identities using existing WoS canonical facts/views.
     Exit criteria: WoS-only journals/publications not present in Scopus are represented and queryable in Scholardex runtime reads.
@@ -117,3 +117,9 @@ Done history moved to `TASKS-done.md`.
   - [ ] `H19.13` Source-link ledger + replay/traceability integration.
     Deliverable: `scholardex.source_links` contract and implementation mapping `(entityType, source, sourceRecordId)` to canonical entity IDs with deterministic state transitions.
     Exit criteria: traceability/replay workflows can resolve source record to canonical entity deterministically in one query path.
+  - [ ] `H19.14` Canonical relationship-edge model for indicator runtime.
+    Deliverable: authoritative `scholardex.authorship_facts` (`publication -> author`) and `scholardex.author_affiliation_facts` (`author -> affiliation`) with deterministic ids, lineage, idempotence, and conflict policy.
+    Exit criteria: canonical edge writes/replays are deterministic, conflict-safe, and consistent with `publication_facts.authorIds` and `author_facts.affiliationIds`.
+  - [ ] `H19.15` Indicator/report query cutover to edge-backed traversals.
+    Deliverable: scoring/report/export/user/admin query paths use canonical edge-backed traversals for publication-by-author and author-by-affiliation access, with performance parity/guardrail checks.
+    Exit criteria: runtime indicator computation no longer depends on source-silo author/affiliation linkage paths and passes parity/performance gates.

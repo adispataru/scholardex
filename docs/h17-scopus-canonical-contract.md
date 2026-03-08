@@ -390,5 +390,8 @@ Transition compatibility:
 ## H19.1 Reference
 - H19.1 introduces authoritative multi-source Scholardex identity contracts for publication/author/forum/affiliation.
 - H17 contracts remain valid as source-specific ingestion/fact/view contracts and must align with H19.1 ownership and lineage rules.
+- H19.1 also locks canonical relationship-edge authority for runtime traversal:
+  - `scholardex.authorship_facts` for publication-author linking.
+  - `scholardex.author_affiliation_facts` for author-affiliation linking.
 - Source of truth for these H19.1-level decisions:
   - `docs/h19.1-multisource-identity-contract.md`
