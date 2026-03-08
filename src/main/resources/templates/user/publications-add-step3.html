@@ -74,7 +74,13 @@
                     </div>
                     <div class="form-group">
                         <!--                        <label for="venue">Forum</label>-->
-                        <input type="hidden" class="form-control" id="authors" th:field="*{authors}">
+                        <input type="hidden" class="form-control" id="authors" th:field="*{authorIdsCsv}">
+                        <input type="hidden" class="form-control" th:field="*{wizardForumPublicationName}">
+                        <input type="hidden" class="form-control" th:field="*{wizardForumIssn}">
+                        <input type="hidden" class="form-control" th:field="*{wizardForumEIssn}">
+                        <input type="hidden" class="form-control" th:field="*{wizardForumIsbn}">
+                        <input type="hidden" class="form-control" th:field="*{wizardForumAggregationType}">
+                        <input type="hidden" class="form-control" th:field="*{wizardForumPublisher}">
                     </div>
                     <button type="submit" class="btn btn-primary">Save</button>
                 </form>

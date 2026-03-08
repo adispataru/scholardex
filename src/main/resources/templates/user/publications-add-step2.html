@@ -35,6 +35,12 @@
                         <form th:action="@{/user/publications/add/step2}" method="post">
                             <div class="form-group">
                                 <input type="hidden" name="forumId" th:value="${forumId}"/>
+                                <input type="hidden" name="wizardForumPublicationName" th:value="${wizardForumPublicationName}"/>
+                                <input type="hidden" name="wizardForumIssn" th:value="${wizardForumIssn}"/>
+                                <input type="hidden" name="wizardForumEIssn" th:value="${wizardForumEIssn}"/>
+                                <input type="hidden" name="wizardForumIsbn" th:value="${wizardForumIsbn}"/>
+                                <input type="hidden" name="wizardForumAggregationType" th:value="${wizardForumAggregationType}"/>
+                                <input type="hidden" name="wizardForumPublisher" th:value="${wizardForumPublisher}"/>
                             </div>
                             <div class="form-group">
                                 <label for="author-search">Author</label>
