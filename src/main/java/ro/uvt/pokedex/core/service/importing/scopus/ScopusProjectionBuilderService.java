@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationSearchView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
@@ -11,8 +12,8 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorSearchView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumSearchView;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationSearchViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorFactRepository;
@@ -20,13 +21,11 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorSearchViewRep
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumSearchViewRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -44,7 +43,7 @@ public class ScopusProjectionBuilderService {
     private final ScopusForumFactRepository forumFactRepository;
     private final ScopusAuthorFactRepository authorFactRepository;
     private final ScopusAffiliationFactRepository affiliationFactRepository;
-    private final ScopusPublicationFactRepository publicationFactRepository;
+    private final ScholardexPublicationFactRepository publicationFactRepository;
     private final ScopusCitationFactRepository citationFactRepository;
     private final ScopusForumSearchViewRepository forumSearchViewRepository;
     private final ScopusAuthorSearchViewRepository authorSearchViewRepository;
@@ -55,7 +54,7 @@ public class ScopusProjectionBuilderService {
             ScopusForumFactRepository forumFactRepository,
             ScopusAuthorFactRepository authorFactRepository,
             ScopusAffiliationFactRepository affiliationFactRepository,
-            ScopusPublicationFactRepository publicationFactRepository,
+            ScholardexPublicationFactRepository publicationFactRepository,
             ScopusCitationFactRepository citationFactRepository,
             ScopusForumSearchViewRepository forumSearchViewRepository,
             ScopusAuthorSearchViewRepository authorSearchViewRepository,
@@ -105,13 +104,12 @@ public class ScopusProjectionBuilderService {
             affiliationSearchViewRepository.saveAll(affiliationViews);
             markImported(result, affiliationViews.size());
 
-            List<ScopusPublicationFact> publicationFacts = new ArrayList<>(publicationFactRepository.findAll());
-            publicationFacts.sort(Comparator.comparing(ScopusPublicationFact::getEid, Comparator.nullsLast(String::compareTo)));
+            List<ScholardexPublicationFact> publicationFacts = new ArrayList<>(publicationFactRepository.findAll());
+            publicationFacts.sort(Comparator.comparing(ScholardexPublicationFact::getEid, Comparator.nullsLast(String::compareTo)));
             Map<String, List<String>> citingByCited = buildCitingMap();
-            Map<String, ScholardexPublicationView> previousByEid = buildPreviousByEid();
             List<ScholardexPublicationView> publicationViews = new ArrayList<>(publicationFacts.size());
-            for (ScopusPublicationFact fact : publicationFacts) {
-                publicationViews.add(toPublicationView(fact, previousByEid.get(fact.getEid()), citingByCited, buildVersion, buildAt));
+            for (ScholardexPublicationFact fact : publicationFacts) {
+                publicationViews.add(toPublicationView(fact, citingByCited, buildVersion, buildAt));
             }
             publicationViewRepository.deleteAll();
             publicationViewRepository.saveAll(publicationViews);
@@ -166,8 +164,7 @@ public class ScopusProjectionBuilderService {
     }
 
     private ScholardexPublicationView toPublicationView(
-            ScopusPublicationFact fact,
-            ScholardexPublicationView previous,
+            ScholardexPublicationFact fact,
             Map<String, List<String>> citingByCited,
             String buildVersion,
             Instant buildAt
@@ -197,24 +194,20 @@ public class ScopusProjectionBuilderService {
         view.setArticleNumber(fact.getArticleNumber());
         view.setPageRange(fact.getPageRange());
         view.setApproved(Boolean.TRUE.equals(fact.getApproved()));
-        view.setAuthorIds(fact.getAuthors() == null ? List.of() : new ArrayList<>(fact.getAuthors()));
-        view.setAffiliationIds(fact.getAffiliations() == null ? List.of() : new ArrayList<>(fact.getAffiliations()));
+        view.setAuthorIds(fact.getAuthorIds() == null ? List.of() : new ArrayList<>(fact.getAuthorIds()));
+        view.setAffiliationIds(fact.getAffiliationIds() == null ? List.of() : new ArrayList<>(fact.getAffiliationIds()));
         view.setForumId(fact.getForumId());
         List<String> citingEids = citingByCited.getOrDefault(fact.getEid(), List.of());
         view.setCitingPublicationIds(new ArrayList<>(citingEids));
         view.setCitedByCount(fact.getCitedByCount() == null ? citingEids.size() : fact.getCitedByCount());
-        // Preserve enrichment-owned fields and lineage across Scopus projection rebuilds.
-        view.setWosId(previous == null ? null : previous.getWosId());
-        view.setGoogleScholarId(previous == null ? null : previous.getGoogleScholarId());
+        view.setWosId(fact.getWosId());
+        view.setGoogleScholarId(fact.getGoogleScholarId());
         view.setBuildVersion(buildVersion);
         view.setBuildAt(buildAt);
         view.setUpdatedAt(buildAt);
         view.setScopusLineage(fact.getSourceEventId());
-        view.setWosLineage(previous == null ? null : previous.getWosLineage());
-        view.setScholarLineage(previous == null ? null : previous.getScholarLineage());
-        view.setLinkerVersion(previous == null ? null : previous.getLinkerVersion());
-        view.setLinkerRunId(previous == null ? null : previous.getLinkerRunId());
-        view.setLinkedAt(previous == null ? null : previous.getLinkedAt());
+        view.setWosLineage(fact.getWosId() == null ? null : fact.getSource());
+        view.setScholarLineage(fact.getGoogleScholarId() == null ? null : fact.getSource());
         return view;
     }
 
@@ -232,16 +225,6 @@ public class ScopusProjectionBuilderService {
             List<String> values = out.get(fact.getCitedEid());
             if (!values.contains(fact.getCitingEid())) {
                 values.add(fact.getCitingEid());
-            }
-        }
-        return out;
-    }
-
-    private Map<String, ScholardexPublicationView> buildPreviousByEid() {
-        Map<String, ScholardexPublicationView> out = new HashMap<>();
-        for (ScholardexPublicationView row : publicationViewRepository.findAll()) {
-            if (row.getEid() != null && !row.getEid().isBlank()) {
-                out.put(row.getEid(), row);
             }
         }
         return out;

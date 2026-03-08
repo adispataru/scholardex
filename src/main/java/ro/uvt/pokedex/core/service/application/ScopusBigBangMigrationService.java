@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationSearchViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorFactRepository;
@@ -17,6 +19,7 @@ import ro.uvt.pokedex.core.service.importing.ScopusDataService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusFactBuilderService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusProjectionBuilderService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -33,6 +36,8 @@ public class ScopusBigBangMigrationService {
     private final ScopusFactBuilderService scopusFactBuilderService;
     private final ScopusProjectionBuilderService scopusProjectionBuilderService;
     private final ScopusCanonicalIndexMaintenanceService scopusCanonicalIndexMaintenanceService;
+    private final ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
+    private final ScholardexPublicationBackfillService publicationBackfillService;
     private final ScopusImportEventRepository importEventRepository;
     private final ScopusPublicationFactRepository publicationFactRepository;
     private final ScopusCitationFactRepository citationFactRepository;
@@ -42,6 +47,8 @@ public class ScopusBigBangMigrationService {
     private final ScopusForumSearchViewRepository forumSearchViewRepository;
     private final ScopusAuthorSearchViewRepository authorSearchViewRepository;
     private final ScopusAffiliationSearchViewRepository affiliationSearchViewRepository;
+    private final ScholardexPublicationFactRepository scholardexPublicationFactRepository;
+    private final ScholardexSourceLinkRepository scholardexSourceLinkRepository;
     private final ScholardexPublicationViewRepository publicationViewRepository;
 
     public ScopusBigBangMigrationResult runIngestStep() {
@@ -64,6 +71,7 @@ public class ScopusBigBangMigrationService {
     public ScopusBigBangMigrationResult runBuildFactsStep() {
         Instant startedAt = Instant.now();
         ImportProcessingResult facts = scopusFactBuilderService.buildFactsFromImportEvents();
+        publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts();
         return new ScopusBigBangMigrationResult(
                 scopusDataFile,
                 startedAt,
@@ -120,6 +128,7 @@ public class ScopusBigBangMigrationService {
         ImportProcessingResult publicationImport = scopusDataService.importScopusDataSync(scopusDataFile, 0, false);
         ImportProcessingResult citationImport = scopusDataService.importScopusDataCitationsSync(scopusDataFile);
         ImportProcessingResult facts = scopusFactBuilderService.buildFactsFromImportEvents();
+        publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts();
         ImportProcessingResult projections = scopusProjectionBuilderService.rebuildViews();
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult indexResult =
                 scopusCanonicalIndexMaintenanceService.ensureIndexes();
@@ -147,6 +156,7 @@ public class ScopusBigBangMigrationService {
         return new VerificationSummary(
                 importEventRepository.count(),
                 publicationFactRepository.count(),
+                scholardexPublicationFactRepository.count(),
                 citationFactRepository.count(),
                 forumFactRepository.count(),
                 authorFactRepository.count(),
@@ -154,6 +164,7 @@ public class ScopusBigBangMigrationService {
                 forumSearchViewRepository.count(),
                 authorSearchViewRepository.count(),
                 affiliationSearchViewRepository.count(),
+                scholardexSourceLinkRepository.count(),
                 publicationViewRepository.count()
         );
     }
@@ -231,6 +242,7 @@ public class ScopusBigBangMigrationService {
     public record VerificationSummary(
             long importEvents,
             long publicationFacts,
+            long canonicalPublicationFacts,
             long citationFacts,
             long forumFacts,
             long authorFacts,
@@ -238,7 +250,12 @@ public class ScopusBigBangMigrationService {
             long forumViews,
             long authorViews,
             long affiliationViews,
+            long publicationSourceLinks,
             long publicationViews
     ) {
+    }
+
+    public ImportProcessingResult runPublicationIdentityBackfill() {
+        return publicationBackfillService.backfillFromLegacyProjection();
     }
 }

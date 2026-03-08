@@ -4,8 +4,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.model.scopus.canonical.PublicationLinkConflict;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.repository.scopus.canonical.PublicationLinkConflictRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
 
 import java.time.Instant;
@@ -25,11 +31,15 @@ public class PublicationEnrichmentLinkerService {
     private static final String CONFLICT_KEY_ASSIGNED = "ENRICHMENT_KEY_ALREADY_ASSIGNED";
     private static final String CONFLICT_AMBIGUOUS_DOI = "AMBIGUOUS_DOI_MATCH";
     private static final String CONFLICT_TARGET_HAS_OTHER_KEY = "TARGET_HAS_DIFFERENT_ENRICHMENT_KEY";
+    private static final String STATUS_OPEN = "OPEN";
 
     private static final Pattern DOI_URL_PREFIX = Pattern.compile("^https?://(dx\\.)?doi\\.org/", Pattern.CASE_INSENSITIVE);
     private static final Pattern DOI_PREFIX = Pattern.compile("^doi:", Pattern.CASE_INSENSITIVE);
 
+    private final ScholardexPublicationFactRepository publicationFactRepository;
     private final ScholardexPublicationViewRepository publicationViewRepository;
+    private final ScholardexSourceLinkRepository sourceLinkRepository;
+    private final ScholardexIdentityConflictRepository identityConflictRepository;
     private final PublicationLinkConflictRepository conflictRepository;
 
     public LinkResult linkWosEnrichment(Publication publication, String source, String linkerVersion, String linkerRunId) {
@@ -51,16 +61,15 @@ public class PublicationEnrichmentLinkerService {
             return new LinkResult(LinkState.UNMATCHED, resolution.reason, null, null);
         }
 
-        ScholardexPublicationView target = resolution.target;
+        ScholardexPublicationFact target = resolution.target;
         if (target.getWosId() != null && !target.getWosId().isBlank() && !target.getWosId().equals(incomingWosId)) {
             saveConflict(KEY_WOS, incomingWosId, source, linkerVersion, linkerRunId, publication, target.getId(),
                     CONFLICT_TARGET_HAS_OTHER_KEY, List.of(target.getId()));
             return new LinkResult(LinkState.CONFLICT, CONFLICT_TARGET_HAS_OTHER_KEY, target.getId(), null);
         }
 
-        List<ScholardexPublicationView> existing = publicationViewRepository.findAllByWosId(incomingWosId);
-        List<String> conflictingIds = existing.stream()
-                .map(ScholardexPublicationView::getId)
+        List<String> conflictingIds = publicationFactRepository.findByWosId(incomingWosId).stream()
+                .map(ScholardexPublicationFact::getId)
                 .filter(id -> id != null && !id.equals(target.getId()))
                 .toList();
         if (!conflictingIds.isEmpty()) {
@@ -70,12 +79,14 @@ public class PublicationEnrichmentLinkerService {
         }
 
         target.setWosId(incomingWosId);
-        target.setWosLineage(source);
-        target.setLinkerVersion(linkerVersion);
-        target.setLinkerRunId(linkerRunId);
-        target.setLinkedAt(Instant.now());
+        target.setSource(source);
+        target.setSourceRecordId(incomingWosId);
+        target.setSourceBatchId(linkerRunId);
+        target.setSourceCorrelationId(linkerVersion);
         target.setUpdatedAt(Instant.now());
-        publicationViewRepository.save(target);
+        publicationFactRepository.save(target);
+        upsertSourceLink(source, incomingWosId, target.getId(), linkerVersion, linkerRunId, "wos-link");
+        syncProjectionIdentityFields(target.getId(), incomingWosId, null, source, linkerVersion, linkerRunId);
         return new LinkResult(LinkState.LINKED, "linked", target.getId(), null);
     }
 
@@ -105,7 +116,7 @@ public class PublicationEnrichmentLinkerService {
             return new LinkResult(LinkState.UNMATCHED, resolution.reason, null, null);
         }
 
-        ScholardexPublicationView target = resolution.target;
+        ScholardexPublicationFact target = resolution.target;
         if (target.getGoogleScholarId() != null
                 && !target.getGoogleScholarId().isBlank()
                 && !target.getGoogleScholarId().equals(incomingScholarId)) {
@@ -114,9 +125,8 @@ public class PublicationEnrichmentLinkerService {
             return new LinkResult(LinkState.CONFLICT, CONFLICT_TARGET_HAS_OTHER_KEY, target.getId(), null);
         }
 
-        List<ScholardexPublicationView> existing = publicationViewRepository.findAllByGoogleScholarId(incomingScholarId);
-        List<String> conflictingIds = existing.stream()
-                .map(ScholardexPublicationView::getId)
+        List<String> conflictingIds = publicationFactRepository.findByGoogleScholarId(incomingScholarId).stream()
+                .map(ScholardexPublicationFact::getId)
                 .filter(id -> id != null && !id.equals(target.getId()))
                 .toList();
         if (!conflictingIds.isEmpty()) {
@@ -126,19 +136,21 @@ public class PublicationEnrichmentLinkerService {
         }
 
         target.setGoogleScholarId(incomingScholarId);
-        target.setScholarLineage(source);
-        target.setLinkerVersion(linkerVersion);
-        target.setLinkerRunId(linkerRunId);
-        target.setLinkedAt(Instant.now());
+        target.setSource(source);
+        target.setSourceRecordId(incomingScholarId);
+        target.setSourceBatchId(linkerRunId);
+        target.setSourceCorrelationId(linkerVersion);
         target.setUpdatedAt(Instant.now());
-        publicationViewRepository.save(target);
+        publicationFactRepository.save(target);
+        upsertSourceLink(source, incomingScholarId, target.getId(), linkerVersion, linkerRunId, "scholar-link");
+        syncProjectionIdentityFields(target.getId(), null, incomingScholarId, source, linkerVersion, linkerRunId);
         return new LinkResult(LinkState.LINKED, "linked", target.getId(), null);
     }
 
     private Resolution resolveTarget(Publication publication) {
         String publicationId = normalizeBlank(publication.getId());
         if (publicationId != null) {
-            Optional<ScholardexPublicationView> byId = publicationViewRepository.findById(publicationId);
+            Optional<ScholardexPublicationFact> byId = publicationFactRepository.findById(publicationId);
             if (byId.isPresent()) {
                 return Resolution.linked(byId.get());
             }
@@ -146,7 +158,7 @@ public class PublicationEnrichmentLinkerService {
 
         String eid = normalizeBlank(publication.getEid());
         if (eid != null) {
-            Optional<ScholardexPublicationView> byEid = publicationViewRepository.findByEid(eid);
+            Optional<ScholardexPublicationFact> byEid = publicationFactRepository.findByEid(eid);
             if (byEid.isPresent()) {
                 return Resolution.linked(byEid.get());
             }
@@ -154,12 +166,12 @@ public class PublicationEnrichmentLinkerService {
 
         String doiNormalized = normalizeDoi(publication.getDoi());
         if (doiNormalized != null) {
-            List<ScholardexPublicationView> byDoi = publicationViewRepository.findAllByDoiNormalized(doiNormalized);
+            List<ScholardexPublicationFact> byDoi = publicationFactRepository.findAllByDoiNormalized(doiNormalized);
             if (byDoi.size() == 1) {
                 return Resolution.linked(byDoi.getFirst());
             }
             if (byDoi.size() > 1) {
-                return Resolution.conflict("ambiguous-doi", byDoi.stream().map(ScholardexPublicationView::getId).toList());
+                return Resolution.conflict("ambiguous-doi", byDoi.stream().map(ScholardexPublicationFact::getId).toList());
             }
         }
 
@@ -175,6 +187,8 @@ public class PublicationEnrichmentLinkerService {
                               String targetPublicationId,
                               String reason,
                               List<String> candidateIds) {
+        saveGenericConflict(source, publication, reason, candidateIds);
+
         PublicationLinkConflict conflict = new PublicationLinkConflict();
         conflict.setConflictType("ENRICHMENT_LINK_CONFLICT");
         conflict.setConflictReason(reason);
@@ -190,6 +204,88 @@ public class PublicationEnrichmentLinkerService {
         conflict.setLinkerRunId(linkerRunId);
         conflict.setDetectedAt(Instant.now());
         conflictRepository.save(conflict);
+    }
+
+    private void saveGenericConflict(String source, Publication publication, String reason, List<String> candidateIds) {
+        String recordId = normalizeBlank(publication.getId());
+        if (recordId == null) {
+            recordId = normalizeBlank(publication.getEid());
+        }
+        if (recordId == null) {
+            recordId = normalizeDoi(publication.getDoi());
+        }
+        if (recordId == null) {
+            recordId = "unknown";
+        }
+        ScholardexIdentityConflict conflict = identityConflictRepository
+                .findByEntityTypeAndIncomingSourceAndIncomingSourceRecordIdAndReasonCodeAndStatus(
+                        ScholardexEntityType.PUBLICATION, source, recordId, reason, STATUS_OPEN)
+                .orElseGet(ScholardexIdentityConflict::new);
+        conflict.setEntityType(ScholardexEntityType.PUBLICATION);
+        conflict.setIncomingSource(source);
+        conflict.setIncomingSourceRecordId(recordId);
+        conflict.setReasonCode(reason);
+        conflict.setStatus(STATUS_OPEN);
+        conflict.setCandidateCanonicalIds(candidateIds == null ? List.of() : new ArrayList<>(candidateIds));
+        if (conflict.getDetectedAt() == null) {
+            conflict.setDetectedAt(Instant.now());
+        }
+        identityConflictRepository.save(conflict);
+    }
+
+    private void upsertSourceLink(
+            String source,
+            String sourceRecordId,
+            String canonicalId,
+            String linkerVersion,
+            String linkerRunId,
+            String reason
+    ) {
+        if (source == null || source.isBlank() || sourceRecordId == null || sourceRecordId.isBlank()) {
+            return;
+        }
+        ScholardexSourceLink link = sourceLinkRepository
+                .findByEntityTypeAndSourceAndSourceRecordId(ScholardexEntityType.PUBLICATION, source, sourceRecordId)
+                .orElseGet(ScholardexSourceLink::new);
+        Instant now = Instant.now();
+        link.setEntityType(ScholardexEntityType.PUBLICATION);
+        link.setSource(source);
+        link.setSourceRecordId(sourceRecordId);
+        link.setCanonicalEntityId(canonicalId);
+        link.setLinkState("LINKED");
+        link.setLinkReason(reason);
+        link.setSourceBatchId(linkerRunId);
+        link.setSourceCorrelationId(linkerVersion);
+        if (link.getLinkedAt() == null) {
+            link.setLinkedAt(now);
+        }
+        link.setUpdatedAt(now);
+        sourceLinkRepository.save(link);
+    }
+
+    private void syncProjectionIdentityFields(
+            String canonicalId,
+            String wosId,
+            String googleScholarId,
+            String source,
+            String linkerVersion,
+            String linkerRunId
+    ) {
+        publicationViewRepository.findById(canonicalId).ifPresent(view -> {
+            if (wosId != null) {
+                view.setWosId(wosId);
+                view.setWosLineage(source);
+            }
+            if (googleScholarId != null) {
+                view.setGoogleScholarId(googleScholarId);
+                view.setScholarLineage(source);
+            }
+            view.setLinkerVersion(linkerVersion);
+            view.setLinkerRunId(linkerRunId);
+            view.setLinkedAt(Instant.now());
+            view.setUpdatedAt(Instant.now());
+            publicationViewRepository.save(view);
+        });
     }
 
     private String normalizeBlank(String value) {
@@ -211,8 +307,8 @@ public class PublicationEnrichmentLinkerService {
         return normalized.isEmpty() ? null : normalized;
     }
 
-    private record Resolution(LinkState state, String reason, ScholardexPublicationView target, List<String> candidateIds) {
-        static Resolution linked(ScholardexPublicationView view) {
+    private record Resolution(LinkState state, String reason, ScholardexPublicationFact target, List<String> candidateIds) {
+        static Resolution linked(ScholardexPublicationFact view) {
             return new Resolution(LinkState.LINKED, "resolved", view, List.of(view.getId()));
         }
 

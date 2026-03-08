@@ -330,7 +330,7 @@ class AdminInitializationControllerContractTest {
                 new ScopusBigBangMigrationService.MigrationStepResult("build-facts", true, 10, 10, 0, 0, 0, null, List.of()),
                 new ScopusBigBangMigrationService.MigrationStepResult("build-projections", true, 10, 10, 0, 0, 0, null, List.of()),
                 new ScopusBigBangMigrationService.IndexStepResult(true, 1, 0, 0, 0, List.of(), List.of()),
-                new ScopusBigBangMigrationService.VerificationSummary(10, 5, 5, 1, 1, 1, 1, 1, 1, 5)
+                new ScopusBigBangMigrationService.VerificationSummary(10, 5, 5, 5, 1, 1, 1, 1, 1, 1, 5, 5)
         );
     }
 }

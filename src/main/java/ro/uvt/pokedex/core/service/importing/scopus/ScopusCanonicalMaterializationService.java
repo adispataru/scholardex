@@ -13,6 +13,7 @@ public class ScopusCanonicalMaterializationService {
     private static final Logger log = LoggerFactory.getLogger(ScopusCanonicalMaterializationService.class);
 
     private final ScopusFactBuilderService factBuilderService;
+    private final ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
     private final ScopusProjectionBuilderService projectionBuilderService;
 
     public void rebuildFactsAndViews(String trigger) {
@@ -21,12 +22,15 @@ public class ScopusCanonicalMaterializationService {
 
     public void rebuildFactsAndViews(String trigger, String batchId) {
         ImportProcessingResult factResult = factBuilderService.buildFactsFromImportEvents(batchId);
+        ImportProcessingResult canonicalPublicationResult = publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts();
         ImportProcessingResult projectionResult = projectionBuilderService.rebuildViews();
-        log.info("Scopus canonical materialization complete: trigger={}, batchId={}, factProcessed={}, factErrors={}, projectionProcessed={}, projectionErrors={}",
+        log.info("Scopus canonical materialization complete: trigger={}, batchId={}, factProcessed={}, factErrors={}, canonicalPublicationProcessed={}, canonicalPublicationErrors={}, projectionProcessed={}, projectionErrors={}",
                 trigger,
                 batchId,
                 factResult.getProcessedCount(),
                 factResult.getErrorCount(),
+                canonicalPublicationResult.getProcessedCount(),
+                canonicalPublicationResult.getErrorCount(),
                 projectionResult.getProcessedCount(),
                 projectionResult.getErrorCount());
     }

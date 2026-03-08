@@ -11,6 +11,9 @@ import org.springframework.data.mongodb.core.index.IndexField;
 import org.springframework.data.mongodb.core.index.IndexInfo;
 import org.springframework.data.mongodb.core.index.IndexOperations;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationSearchView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
@@ -58,6 +61,12 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
     private IndexOperations affiliationViewOps;
     @Mock
     private IndexOperations mergedPublicationViewOps;
+    @Mock
+    private IndexOperations canonicalPublicationFactOps;
+    @Mock
+    private IndexOperations sourceLinkOps;
+    @Mock
+    private IndexOperations identityConflictOps;
 
     private ScopusCanonicalIndexMaintenanceService service;
 
@@ -74,6 +83,9 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         when(mongoTemplate.indexOps(ScopusForumSearchView.class)).thenReturn(forumViewOps);
         when(mongoTemplate.indexOps(ScopusAuthorSearchView.class)).thenReturn(authorViewOps);
         when(mongoTemplate.indexOps(ScopusAffiliationSearchView.class)).thenReturn(affiliationViewOps);
+        when(mongoTemplate.indexOps(ScholardexPublicationFact.class)).thenReturn(canonicalPublicationFactOps);
+        when(mongoTemplate.indexOps(ScholardexSourceLink.class)).thenReturn(sourceLinkOps);
+        when(mongoTemplate.indexOps(ScholardexIdentityConflict.class)).thenReturn(identityConflictOps);
         when(mongoTemplate.indexOps(ScholardexPublicationView.class)).thenReturn(mergedPublicationViewOps);
     }
 
@@ -89,11 +101,14 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         when(forumViewOps.getIndexInfo()).thenReturn(List.of());
         when(authorViewOps.getIndexInfo()).thenReturn(List.of());
         when(affiliationViewOps.getIndexInfo()).thenReturn(List.of());
+        when(canonicalPublicationFactOps.getIndexInfo()).thenReturn(List.of());
+        when(sourceLinkOps.getIndexInfo()).thenReturn(List.of());
+        when(identityConflictOps.getIndexInfo()).thenReturn(List.of());
         when(mergedPublicationViewOps.getIndexInfo()).thenReturn(List.of());
 
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult result = service.ensureIndexes();
 
-        assertEquals(41, result.created().size());
+        assertEquals(54, result.created().size());
         assertTrue(result.present().isEmpty());
         assertTrue(result.invalid().isEmpty());
         assertTrue(result.errors().isEmpty());
@@ -153,6 +168,26 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
                 info(ScopusCanonicalIndexMaintenanceService.IDX_AFFILIATION_VIEW_COUNTRY, false, "country"),
                 info(ScopusCanonicalIndexMaintenanceService.IDX_AFFILIATION_VIEW_AFID, false, "_id")
         ));
+        when(canonicalPublicationFactOps.getIndexInfo()).thenReturn(List.of(
+                info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_PUBLICATION_EID, true, true, "eid"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_PUBLICATION_WOS, true, true, "wosId"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_PUBLICATION_GS, true, true, "googleScholarId"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_PUBLICATION_USER, true, true, "userSourceId"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_PUBLICATION_DOI_NORMALIZED, false, "doiNormalized"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_PUBLICATION_TITLE_NORMALIZED, false, "titleNormalized"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_PUBLICATION_FORUM, false, "forumId"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_PUBLICATION_AUTHORS, false, "authorIds"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_PUBLICATION_AFFILIATIONS, false, "affiliationIds")
+        ));
+        when(sourceLinkOps.getIndexInfo()).thenReturn(List.of(
+                info(ScopusCanonicalIndexMaintenanceService.IDX_SOURCE_LINK_UNIQ, true, "entityType", "source", "sourceRecordId"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_SOURCE_LINK_CANONICAL, false, "canonicalEntityId")
+        ));
+        when(identityConflictOps.getIndexInfo()).thenReturn(List.of(
+                info(ScopusCanonicalIndexMaintenanceService.IDX_IDENTITY_CONFLICT_OPEN, true,
+                        "entityType", "incomingSource", "incomingSourceRecordId", "reasonCode", "status"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_IDENTITY_CONFLICT_STATUS, false, "status", "entityType")
+        ));
         when(mergedPublicationViewOps.getIndexInfo()).thenReturn(List.of(
                 info(ScopusCanonicalIndexMaintenanceService.IDX_MERGED_PUBLICATION_EID, false, "eid"),
                 info(ScopusCanonicalIndexMaintenanceService.IDX_MERGED_PUBLICATION_DOI_NORMALIZED, false, "doiNormalized"),
@@ -167,7 +202,7 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
 
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult result = service.ensureIndexes();
 
-        assertEquals(41, result.present().size());
+        assertEquals(54, result.present().size());
         assertTrue(result.created().isEmpty());
         assertTrue(result.invalid().isEmpty());
         assertTrue(result.errors().isEmpty());
@@ -181,15 +216,22 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         verify(forumViewOps, never()).ensureIndex(any());
         verify(authorViewOps, never()).ensureIndex(any());
         verify(affiliationViewOps, never()).ensureIndex(any());
+        verify(canonicalPublicationFactOps, never()).ensureIndex(any());
+        verify(sourceLinkOps, never()).ensureIndex(any());
+        verify(identityConflictOps, never()).ensureIndex(any());
         verify(mergedPublicationViewOps, never()).ensureIndex(any());
     }
 
     private IndexInfo info(String name, boolean unique, String... keys) {
+        return info(name, unique, false, keys);
+    }
+
+    private IndexInfo info(String name, boolean unique, boolean sparse, String... keys) {
         return new IndexInfo(
                 java.util.Arrays.stream(keys).map(k -> IndexField.create(k, Sort.Direction.ASC)).toList(),
                 name,
                 unique,
-                false,
+                sparse,
                 null
         );
     }

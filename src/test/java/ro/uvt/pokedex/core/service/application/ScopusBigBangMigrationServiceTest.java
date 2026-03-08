@@ -7,6 +7,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationSearchViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorFactRepository;
@@ -20,6 +22,7 @@ import ro.uvt.pokedex.core.service.importing.ScopusDataService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusFactBuilderService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusProjectionBuilderService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService;
 
 import java.util.List;
 
@@ -33,6 +36,8 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ScopusFactBuilderService scopusFactBuilderService;
     @Mock private ScopusProjectionBuilderService scopusProjectionBuilderService;
     @Mock private ScopusCanonicalIndexMaintenanceService indexMaintenanceService;
+    @Mock private ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
+    @Mock private ScholardexPublicationBackfillService publicationBackfillService;
     @Mock private ScopusImportEventRepository importEventRepository;
     @Mock private ScopusPublicationFactRepository publicationFactRepository;
     @Mock private ScopusCitationFactRepository citationFactRepository;
@@ -42,6 +47,8 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ScopusForumSearchViewRepository forumSearchViewRepository;
     @Mock private ScopusAuthorSearchViewRepository authorSearchViewRepository;
     @Mock private ScopusAffiliationSearchViewRepository affiliationSearchViewRepository;
+    @Mock private ScholardexPublicationFactRepository scholardexPublicationFactRepository;
+    @Mock private ScholardexSourceLinkRepository scholardexSourceLinkRepository;
     @Mock private ScholardexPublicationViewRepository publicationViewRepository;
 
     private ScopusBigBangMigrationService service;
@@ -53,6 +60,8 @@ class ScopusBigBangMigrationServiceTest {
                 scopusFactBuilderService,
                 scopusProjectionBuilderService,
                 indexMaintenanceService,
+                publicationCanonicalizationService,
+                publicationBackfillService,
                 importEventRepository,
                 publicationFactRepository,
                 citationFactRepository,
@@ -62,6 +71,8 @@ class ScopusBigBangMigrationServiceTest {
                 forumSearchViewRepository,
                 authorSearchViewRepository,
                 affiliationSearchViewRepository,
+                scholardexPublicationFactRepository,
+                scholardexSourceLinkRepository,
                 publicationViewRepository
         );
         ReflectionTestUtils.setField(service, "scopusDataFile", "/tmp/scopus.json");
@@ -86,12 +97,14 @@ class ScopusBigBangMigrationServiceTest {
         when(importEventRepository.count()).thenReturn(100L);
         when(publicationFactRepository.count()).thenReturn(50L);
         when(citationFactRepository.count()).thenReturn(80L);
+        when(scholardexPublicationFactRepository.count()).thenReturn(55L);
         when(forumFactRepository.count()).thenReturn(10L);
         when(authorFactRepository.count()).thenReturn(40L);
         when(affiliationFactRepository.count()).thenReturn(12L);
         when(forumSearchViewRepository.count()).thenReturn(10L);
         when(authorSearchViewRepository.count()).thenReturn(40L);
         when(affiliationSearchViewRepository.count()).thenReturn(12L);
+        when(scholardexSourceLinkRepository.count()).thenReturn(77L);
         when(publicationViewRepository.count()).thenReturn(50L);
 
         ScopusBigBangMigrationService.ScopusBigBangMigrationResult full = service.runFull();

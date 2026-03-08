@@ -10,6 +10,9 @@ import org.springframework.data.mongodb.core.index.IndexInfo;
 import org.springframework.data.mongodb.core.index.IndexOperations;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationSearchView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
@@ -83,6 +86,22 @@ public class ScopusCanonicalIndexMaintenanceService {
     static final String IDX_MERGED_PUBLICATION_WOS = "idx_scholardex_publication_wosid";
     static final String IDX_MERGED_PUBLICATION_GOOGLE_SCHOLAR = "idx_scholardex_publication_google_scholar_id";
 
+    static final String IDX_CANON_PUBLICATION_DOI_NORMALIZED = "idx_scholardex_publication_fact_doi_normalized";
+    static final String IDX_CANON_PUBLICATION_TITLE_NORMALIZED = "idx_scholardex_publication_fact_title_normalized";
+    static final String IDX_CANON_PUBLICATION_EID = "uniq_scholardex_publication_fact_eid";
+    static final String IDX_CANON_PUBLICATION_WOS = "uniq_scholardex_publication_fact_wos_id";
+    static final String IDX_CANON_PUBLICATION_GS = "uniq_scholardex_publication_fact_google_scholar_id";
+    static final String IDX_CANON_PUBLICATION_USER = "uniq_scholardex_publication_fact_user_source_id";
+    static final String IDX_CANON_PUBLICATION_FORUM = "idx_scholardex_publication_fact_forum";
+    static final String IDX_CANON_PUBLICATION_AUTHORS = "idx_scholardex_publication_fact_authors";
+    static final String IDX_CANON_PUBLICATION_AFFILIATIONS = "idx_scholardex_publication_fact_affiliations";
+
+    static final String IDX_SOURCE_LINK_UNIQ = "uniq_scholardex_source_link";
+    static final String IDX_SOURCE_LINK_CANONICAL = "idx_scholardex_source_link_canonical";
+
+    static final String IDX_IDENTITY_CONFLICT_OPEN = "uniq_scholardex_open_identity_conflict";
+    static final String IDX_IDENTITY_CONFLICT_STATUS = "idx_scholardex_identity_conflict_status";
+
     private final MongoTemplate mongoTemplate;
 
     public ScopusCanonicalIndexMaintenanceService(MongoTemplate mongoTemplate) {
@@ -105,6 +124,9 @@ public class ScopusCanonicalIndexMaintenanceService {
         ensureForumViewIndexes(created, present, invalid, errors);
         ensureAuthorViewIndexes(created, present, invalid, errors);
         ensureAffiliationViewIndexes(created, present, invalid, errors);
+        ensureCanonicalPublicationFactIndexes(created, present, invalid, errors);
+        ensureSourceLinkIndexes(created, present, invalid, errors);
+        ensureIdentityConflictIndexes(created, present, invalid, errors);
         ensureMergedPublicationViewIndexes(created, present, invalid, errors);
 
         ScopusCanonicalIndexEnsureResult result = new ScopusCanonicalIndexEnsureResult(created, present, invalid, errors);
@@ -241,6 +263,45 @@ public class ScopusCanonicalIndexMaintenanceService {
                 created, present, invalid, errors);
     }
 
+    private void ensureCanonicalPublicationFactIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ScholardexPublicationFact.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_PUBLICATION_EID, true, true, List.of(field("eid"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_PUBLICATION_WOS, true, true, List.of(field("wosId"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_PUBLICATION_GS, true, true, List.of(field("googleScholarId"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_PUBLICATION_USER, true, true, List.of(field("userSourceId"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_PUBLICATION_DOI_NORMALIZED, false, List.of(field("doiNormalized"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_PUBLICATION_TITLE_NORMALIZED, false, List.of(field("titleNormalized"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_PUBLICATION_FORUM, false, List.of(field("forumId"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_PUBLICATION_AUTHORS, false, List.of(field("authorIds"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_PUBLICATION_AFFILIATIONS, false, List.of(field("affiliationIds"))),
+                created, present, invalid, errors);
+    }
+
+    private void ensureSourceLinkIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ScholardexSourceLink.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_SOURCE_LINK_UNIQ, true, List.of(field("entityType"), field("source"), field("sourceRecordId"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_SOURCE_LINK_CANONICAL, false, List.of(field("canonicalEntityId"))),
+                created, present, invalid, errors);
+    }
+
+    private void ensureIdentityConflictIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ScholardexIdentityConflict.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_IDENTITY_CONFLICT_OPEN, true,
+                        List.of(field("entityType"), field("incomingSource"), field("incomingSourceRecordId"), field("reasonCode"), field("status"))),
+                created, present, invalid, errors);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_IDENTITY_CONFLICT_STATUS, false, List.of(field("status"), field("entityType"))),
+                created, present, invalid, errors);
+    }
+
     private void ensureNamedIndex(
             IndexOperations ops,
             IndexDefinition definition,
@@ -270,6 +331,9 @@ public class ScopusCanonicalIndexMaintenanceService {
             if (definition.unique()) {
                 index.unique();
             }
+            if (definition.sparse()) {
+                index.sparse();
+            }
             ops.ensureIndex(index);
             created.add(definition.name());
         } catch (Exception e) {
@@ -281,7 +345,11 @@ public class ScopusCanonicalIndexMaintenanceService {
         return IndexField.create(key, Sort.Direction.ASC);
     }
 
-    private record IndexDefinition(String name, boolean unique, List<IndexField> fields) {
+    private record IndexDefinition(String name, boolean unique, boolean sparse, List<IndexField> fields) {
+        private IndexDefinition(String name, boolean unique, List<IndexField> fields) {
+            this(name, unique, false, fields);
+        }
+
         boolean matchesByNameAndShape(IndexInfo info) {
             if (info == null) {
                 return false;
@@ -294,6 +362,9 @@ public class ScopusCanonicalIndexMaintenanceService {
                 return false;
             }
             if (unique != info.isUnique()) {
+                return false;
+            }
+            if (sparse != info.isSparse()) {
                 return false;
             }
             if (info.getIndexFields().size() != fields.size()) {
