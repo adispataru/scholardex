@@ -6,12 +6,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorshipFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
+import ro.uvt.pokedex.core.service.application.ScholardexEdgeWriterService;
 import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
@@ -37,7 +36,7 @@ class ScholardexPublicationCanonicalizationServiceTest {
     @Mock
     private ScholardexSourceLinkService sourceLinkService;
     @Mock
-    private ScholardexAuthorshipFactRepository scholardexAuthorshipFactRepository;
+    private ScholardexEdgeWriterService edgeWriterService;
     @Mock
     private ScholardexCanonicalBuildCheckpointService checkpointService;
 
@@ -49,7 +48,7 @@ class ScholardexPublicationCanonicalizationServiceTest {
                 scopusPublicationFactRepository,
                 scholardexPublicationFactRepository,
                 sourceLinkService,
-                scholardexAuthorshipFactRepository,
+                edgeWriterService,
                 checkpointService
         );
     }
@@ -109,8 +108,8 @@ class ScholardexPublicationCanonicalizationServiceTest {
         when(checkpointService.readCheckpoint(anyString())).thenReturn(Optional.empty());
         when(sourceLinkService.findByKey(any(), any(), any()))
                 .thenReturn(Optional.empty());
-        when(scholardexAuthorshipFactRepository.findByPublicationIdAndAuthorIdAndSource(any(), any(), any()))
-                .thenReturn(Optional.empty());
+        when(edgeWriterService.upsertAuthorshipEdge(any()))
+                .thenReturn(new ScholardexEdgeWriterService.EdgeWriteResult(true, "edge-1", true, null));
 
         ImportProcessingResult result = service.rebuildCanonicalPublicationFactsFromScopusFacts();
 
@@ -118,7 +117,7 @@ class ScholardexPublicationCanonicalizationServiceTest {
         assertEquals(1, result.getImportedCount());
         verify(scholardexPublicationFactRepository).save(any(ScholardexPublicationFact.class));
         verify(sourceLinkService, atLeastOnce()).link(any(), anyString(), anyString(), anyString(), anyString(), any(), any(), any(), eq(false));
-        verify(scholardexAuthorshipFactRepository).save(any(ScholardexAuthorshipFact.class));
+        verify(edgeWriterService, atLeastOnce()).upsertAuthorshipEdge(any());
         verify(sourceLinkService, atLeastOnce()).findByKey(
                 eq(ScholardexEntityType.AUTHOR), eq("SCOPUS_JSON_BOOTSTRAP"), eq("au-1"));
     }
@@ -157,8 +156,8 @@ class ScholardexPublicationCanonicalizationServiceTest {
         when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1000/xyz")).thenReturn(List.of(existingByDoi));
         when(sourceLinkService.findByKey(any(), any(), any()))
                 .thenReturn(Optional.empty());
-        when(scholardexAuthorshipFactRepository.findByPublicationIdAndAuthorIdAndSource(any(), any(), any()))
-                .thenReturn(Optional.empty());
+        when(edgeWriterService.upsertAuthorshipEdge(any()))
+                .thenReturn(new ScholardexEdgeWriterService.EdgeWriteResult(true, "edge-1", true, null));
 
         ImportProcessingResult result = new ImportProcessingResult(10);
         service.upsertFromScopusFact(scopusFact, result);

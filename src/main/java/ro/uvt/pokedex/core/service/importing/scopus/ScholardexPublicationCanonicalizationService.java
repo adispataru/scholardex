@@ -6,14 +6,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.dao.DuplicateKeyException;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCanonicalBuildCheckpoint;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorshipFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
+import ro.uvt.pokedex.core.service.application.ScholardexEdgeWriterService;
 import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
@@ -54,7 +53,7 @@ public class ScholardexPublicationCanonicalizationService {
     private final ScopusPublicationFactRepository scopusPublicationFactRepository;
     private final ScholardexPublicationFactRepository scholardexPublicationFactRepository;
     private final ScholardexSourceLinkService sourceLinkService;
-    private final ScholardexAuthorshipFactRepository scholardexAuthorshipFactRepository;
+    private final ScholardexEdgeWriterService edgeWriterService;
     private final ScholardexCanonicalBuildCheckpointService checkpointService;
 
     public ImportProcessingResult rebuildCanonicalPublicationFactsFromScopusFacts() {
@@ -198,7 +197,7 @@ public class ScholardexPublicationCanonicalizationService {
             created = false;
         }
         upsertSourceLink(fact, LINK_REASON_SCOPUS_BRIDGE);
-        upsertAuthorshipEdges(fact, authorBridgeResult, now);
+        upsertAuthorshipEdges(fact, authorBridgeResult);
 
         if (result != null) {
             if (created) {
@@ -347,65 +346,37 @@ public class ScholardexPublicationCanonicalizationService {
         fact.setUpdatedAt(now);
     }
 
-    private void upsertAuthorshipEdges(ScholardexPublicationFact fact, AuthorBridgeResult bridge, Instant now) {
+    private void upsertAuthorshipEdges(ScholardexPublicationFact fact, AuthorBridgeResult bridge) {
         if (fact == null || isBlank(fact.getId()) || bridge == null || bridge.entries().isEmpty()) {
             return;
         }
         for (AuthorBridgeEntry entry : bridge.entries()) {
-            ScholardexAuthorshipFact edge = scholardexAuthorshipFactRepository
-                    .findByPublicationIdAndAuthorIdAndSource(fact.getId(), entry.canonicalAuthorId(), fact.getSource())
-                    .orElseGet(ScholardexAuthorshipFact::new);
-            if (edge.getCreatedAt() == null) {
-                edge.setCreatedAt(now);
+            if (isBlank(fact.getSource())) {
+                continue;
             }
-            edge.setPublicationId(fact.getId());
-            edge.setAuthorId(entry.canonicalAuthorId());
-            edge.setSource(fact.getSource());
-            edge.setSourceRecordId(buildAuthorshipSourceRecordId(fact.getSourceRecordId(), entry.sourceAuthorId()));
-            edge.setSourceEventId(fact.getSourceEventId());
-            edge.setSourceBatchId(fact.getSourceBatchId());
-            edge.setSourceCorrelationId(fact.getSourceCorrelationId());
-            edge.setLinkState(entry.pendingResolution() ? ScholardexSourceLinkService.STATE_UNMATCHED : ScholardexSourceLinkService.STATE_LINKED);
-            edge.setLinkReason(entry.pendingResolution() ? LINK_REASON_AUTHOR_FALLBACK : LINK_REASON_AUTHORSHIP_BRIDGE);
-            edge.setUpdatedAt(now);
-            scholardexAuthorshipFactRepository.save(edge);
-            upsertAuthorshipSourceLink(edge);
+            String linkState = entry.pendingResolution()
+                    ? ScholardexSourceLinkService.STATE_UNMATCHED
+                    : ScholardexSourceLinkService.STATE_LINKED;
+            String linkReason = entry.pendingResolution()
+                    ? LINK_REASON_AUTHOR_FALLBACK
+                    : LINK_REASON_AUTHORSHIP_BRIDGE;
+            edgeWriterService.upsertAuthorshipEdge(new ScholardexEdgeWriterService.EdgeWriteCommand(
+                    fact.getId(),
+                    entry.canonicalAuthorId(),
+                    fact.getSource(),
+                    buildAuthorshipSourceRecordId(fact.getSourceRecordId(), entry.sourceAuthorId()),
+                    fact.getSourceEventId(),
+                    fact.getSourceBatchId(),
+                    fact.getSourceCorrelationId(),
+                    linkState,
+                    linkReason,
+                    false
+            ));
         }
     }
 
     public void syncAuthorshipEdges(ScholardexPublicationFact fact, AuthorBridgeResult bridge) {
-        upsertAuthorshipEdges(fact, bridge, Instant.now());
-    }
-
-    private void upsertAuthorshipSourceLink(ScholardexAuthorshipFact edge) {
-        if (edge == null || isBlank(edge.getSource()) || isBlank(edge.getSourceRecordId())) {
-            return;
-        }
-        if (ScholardexSourceLinkService.STATE_LINKED.equals(edge.getLinkState())) {
-            sourceLinkService.link(
-                    ScholardexEntityType.AUTHORSHIP,
-                    edge.getSource(),
-                    edge.getSourceRecordId(),
-                    edge.getId(),
-                    edge.getLinkReason(),
-                    edge.getSourceEventId(),
-                    edge.getSourceBatchId(),
-                    edge.getSourceCorrelationId(),
-                    false
-            );
-            return;
-        }
-        sourceLinkService.markUnmatched(
-                ScholardexEntityType.AUTHORSHIP,
-                edge.getSource(),
-                edge.getSourceRecordId(),
-                edge.getId(),
-                edge.getLinkReason(),
-                edge.getSourceEventId(),
-                edge.getSourceBatchId(),
-                edge.getSourceCorrelationId(),
-                false
-        );
+        upsertAuthorshipEdges(fact, bridge);
     }
 
     private String buildAuthorshipSourceRecordId(String publicationSourceRecordId, String sourceAuthorId) {

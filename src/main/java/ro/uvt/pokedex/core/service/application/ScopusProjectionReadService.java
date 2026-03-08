@@ -8,7 +8,6 @@ import ro.uvt.pokedex.core.model.scopus.Citation;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
@@ -55,6 +54,7 @@ public class ScopusProjectionReadService {
     private final ScholardexAffiliationFactRepository canonicalAffiliationFactRepository;
     private final ScholardexForumFactRepository canonicalForumFactRepository;
     private final ScholardexAuthorAffiliationFactRepository canonicalAuthorAffiliationFactRepository;
+    private final ScholardexEdgeWriterService edgeWriterService;
 
     public List<Publication> findAllPublicationsByAuthorsIn(Collection<String> authorIds) {
         List<String> resolvedAuthorIds = resolveCanonicalIds(ScholardexEntityType.AUTHOR, authorIds);
@@ -278,20 +278,18 @@ public class ScopusProjectionReadService {
         }
 
         for (String affiliationId : affiliationIds) {
-            ScholardexAuthorAffiliationFact edge = canonicalAuthorAffiliationFactRepository
-                    .findByAuthorIdAndAffiliationIdAndSource(canonicalId, affiliationId, "MANUAL_AUTHOR_EDIT")
-                    .orElseGet(ScholardexAuthorAffiliationFact::new);
-            if (edge.getCreatedAt() == null) {
-                edge.setCreatedAt(now);
-            }
-            edge.setAuthorId(canonicalId);
-            edge.setAffiliationId(affiliationId);
-            edge.setSource("MANUAL_AUTHOR_EDIT");
-            edge.setSourceRecordId(canonicalId + "::affiliation::" + affiliationId);
-            edge.setLinkState("LINKED");
-            edge.setLinkReason("manual-author-save");
-            edge.setUpdatedAt(now);
-            canonicalAuthorAffiliationFactRepository.save(edge);
+            edgeWriterService.upsertAuthorAffiliationEdge(new ScholardexEdgeWriterService.EdgeWriteCommand(
+                    canonicalId,
+                    affiliationId,
+                    "MANUAL_AUTHOR_EDIT",
+                    canonicalId + "::affiliation::" + affiliationId,
+                    null,
+                    null,
+                    null,
+                    ScholardexSourceLinkService.STATE_LINKED,
+                    "manual-author-save",
+                    false
+            ));
         }
 
         Author out = new Author();

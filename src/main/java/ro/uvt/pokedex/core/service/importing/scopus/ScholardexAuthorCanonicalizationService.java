@@ -5,18 +5,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCanonicalBuildCheckpoint;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorFactRepository;
+import ro.uvt.pokedex.core.service.application.ScholardexEdgeWriterService;
 import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -54,8 +53,8 @@ public class ScholardexAuthorCanonicalizationService {
 
     private final ScopusAuthorFactRepository scopusAuthorFactRepository;
     private final ScholardexAuthorFactRepository scholardexAuthorFactRepository;
-    private final ScholardexAuthorAffiliationFactRepository authorAffiliationFactRepository;
     private final ScholardexSourceLinkService sourceLinkService;
+    private final ScholardexEdgeWriterService edgeWriterService;
     private final ScholardexIdentityConflictRepository identityConflictRepository;
     private final ScholardexCanonicalBuildCheckpointService checkpointService;
 
@@ -216,7 +215,7 @@ public class ScholardexAuthorCanonicalizationService {
         target.setUpdatedAt(now);
         scholardexAuthorFactRepository.save(target);
         upsertAuthorSourceLink(sourceFact, sourceRecordId, target.getId());
-        upsertAuthorAffiliationEdges(target, sourceFact, affiliationBridge, now);
+        upsertAuthorAffiliationEdges(target, sourceFact, affiliationBridge);
 
         if (result != null) {
             if (created) {
@@ -316,60 +315,31 @@ public class ScholardexAuthorCanonicalizationService {
     private void upsertAuthorAffiliationEdges(
             ScholardexAuthorFact authorFact,
             ScopusAuthorFact sourceFact,
-            AffiliationBridgeResult affiliationBridge,
-            Instant now
+            AffiliationBridgeResult affiliationBridge
     ) {
         for (AffiliationBridgeEntry entry : affiliationBridge.entries()) {
-            ScholardexAuthorAffiliationFact edge = authorAffiliationFactRepository
-                    .findByAuthorIdAndAffiliationIdAndSource(authorFact.getId(), entry.canonicalAffiliationId(), sourceFact.getSource())
-                    .orElseGet(ScholardexAuthorAffiliationFact::new);
-            if (edge.getCreatedAt() == null) {
-                edge.setCreatedAt(now);
+            if (isBlank(sourceFact.getSource())) {
+                continue;
             }
-            edge.setAuthorId(authorFact.getId());
-            edge.setAffiliationId(entry.canonicalAffiliationId());
-            edge.setSource(sourceFact.getSource());
-            edge.setSourceRecordId(buildAuthorAffiliationSourceRecordId(sourceFact.getSourceRecordId(), entry.sourceAffiliationId()));
-            edge.setSourceEventId(sourceFact.getSourceEventId());
-            edge.setSourceBatchId(sourceFact.getSourceBatchId());
-            edge.setSourceCorrelationId(sourceFact.getSourceCorrelationId());
-            edge.setLinkState(entry.pendingResolution() ? ScholardexSourceLinkService.STATE_UNMATCHED : ScholardexSourceLinkService.STATE_LINKED);
-            edge.setLinkReason(entry.pendingResolution() ? LINK_REASON_AFFILIATION_FALLBACK : LINK_REASON_AUTHOR_AFFILIATION_BRIDGE);
-            edge.setUpdatedAt(now);
-            authorAffiliationFactRepository.save(edge);
-            upsertAuthorAffiliationSourceLink(edge);
-        }
-    }
-
-    private void upsertAuthorAffiliationSourceLink(ScholardexAuthorAffiliationFact edge) {
-        if (isBlank(edge.getSource()) || isBlank(edge.getSourceRecordId())) {
-            return;
-        }
-        if (ScholardexSourceLinkService.STATE_LINKED.equals(edge.getLinkState())) {
-            sourceLinkService.link(
-                    ScholardexEntityType.AUTHOR_AFFILIATION,
-                    edge.getSource(),
-                    edge.getSourceRecordId(),
-                    edge.getId(),
-                    edge.getLinkReason(),
-                    edge.getSourceEventId(),
-                    edge.getSourceBatchId(),
-                    edge.getSourceCorrelationId(),
+            String linkState = entry.pendingResolution()
+                    ? ScholardexSourceLinkService.STATE_UNMATCHED
+                    : ScholardexSourceLinkService.STATE_LINKED;
+            String linkReason = entry.pendingResolution()
+                    ? LINK_REASON_AFFILIATION_FALLBACK
+                    : LINK_REASON_AUTHOR_AFFILIATION_BRIDGE;
+            edgeWriterService.upsertAuthorAffiliationEdge(new ScholardexEdgeWriterService.EdgeWriteCommand(
+                    authorFact.getId(),
+                    entry.canonicalAffiliationId(),
+                    sourceFact.getSource(),
+                    buildAuthorAffiliationSourceRecordId(sourceFact.getSourceRecordId(), entry.sourceAffiliationId()),
+                    sourceFact.getSourceEventId(),
+                    sourceFact.getSourceBatchId(),
+                    sourceFact.getSourceCorrelationId(),
+                    linkState,
+                    linkReason,
                     false
-            );
-            return;
+            ));
         }
-        sourceLinkService.markUnmatched(
-                ScholardexEntityType.AUTHOR_AFFILIATION,
-                edge.getSource(),
-                edge.getSourceRecordId(),
-                edge.getId(),
-                edge.getLinkReason(),
-                edge.getSourceEventId(),
-                edge.getSourceBatchId(),
-                edge.getSourceCorrelationId(),
-                false
-        );
     }
 
     private void saveConflict(ScopusAuthorFact sourceFact, String sourceRecordId, String reason, List<String> candidates) {

@@ -111,7 +111,7 @@ Done history moved to `TASKS-done.md`.
   - [x] `H19.11` Source-link ledger + replay/traceability integration.
     Deliverable: `scholardex.source_links` contract and implementation mapping `(entityType, source, sourceRecordId)` to canonical entity IDs with deterministic state transitions.
     Exit criteria: traceability/replay workflows can resolve source record to canonical entity deterministically in one query path.
-  - [ ] `H19.12` Canonical relationship-edge model for indicator runtime.
+  - [x] `H19.12` Canonical relationship-edge model for indicator runtime.
     Deliverable: authoritative `scholardex.authorship_facts` (`publication -> author`) and `scholardex.author_affiliation_facts` (`author -> affiliation`) with deterministic ids, lineage, idempotence, and conflict policy.
     Exit criteria: canonical edge writes/replays are deterministic, conflict-safe, and consistent with `publication_facts.authorIds` and `author_facts.affiliationIds`.
   - [ ] `H19.13` Indicator/report query cutover to edge-backed traversals.

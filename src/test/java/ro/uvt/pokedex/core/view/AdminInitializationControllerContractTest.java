@@ -57,6 +57,7 @@ class AdminInitializationControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/resetCanonicalState")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/backfillCanonicalCitations")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/buildCanonical")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/reconcileEdges")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/resetCanonicalCheckpoints")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/initialization/wos/runBigBangMigration"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/runBigBang"))));
@@ -351,7 +352,7 @@ class AdminInitializationControllerContractTest {
         result.setTotalBatches(10);
         result.setResumedFromCheckpoint(true);
         result.setCheckpointLastCompletedBatch(1);
-        when(scopusBigBangMigrationService.runCanonicalBuildStep(eq("citation"), eq(2), eq(true), eq(500), eq(false))).thenReturn(result);
+        when(scopusBigBangMigrationService.runCanonicalBuildStep(eq("citation"), eq(2), eq(true), eq(500), eq(false), eq(false))).thenReturn(result);
 
         mockMvc.perform(post("/admin/initialization/scopus/buildCanonical")
                         .param("entity", "citation")
@@ -361,7 +362,7 @@ class AdminInitializationControllerContractTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/initialization"));
 
-        verify(scopusBigBangMigrationService).runCanonicalBuildStep("citation", 2, true, 500, false);
+        verify(scopusBigBangMigrationService).runCanonicalBuildStep("citation", 2, true, 500, false, false);
     }
 
     @Test
@@ -374,6 +375,20 @@ class AdminInitializationControllerContractTest {
                 .andExpect(redirectedUrl("/admin/initialization"));
 
         verify(scopusBigBangMigrationService).runSourceLinkReconcileStep();
+    }
+
+    @Test
+    void runScopusEdgeReconcileRedirectsToInitializationPage() throws Exception {
+        ImportProcessingResult result = new ImportProcessingResult(10);
+        result.markProcessed();
+        result.markUpdated();
+        when(scopusBigBangMigrationService.runEdgeReconcileStep()).thenReturn(result);
+
+        mockMvc.perform(post("/admin/initialization/scopus/reconcileEdges"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+
+        verify(scopusBigBangMigrationService).runEdgeReconcileStep();
     }
 
     @Test

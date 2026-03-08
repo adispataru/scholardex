@@ -62,6 +62,7 @@ public class ScopusBigBangMigrationService {
     private final ScholardexCitationCanonicalizationService citationCanonicalizationService;
     private final ScholardexCanonicalBuildCheckpointService canonicalBuildCheckpointService;
     private final ScholardexSourceLinkService sourceLinkService;
+    private final ScholardexEdgeReconciliationService edgeReconciliationService;
     private final ScholardexPublicationBackfillService publicationBackfillService;
     private final ScopusImportEventRepository importEventRepository;
     private final ScopusPublicationFactRepository publicationFactRepository;
@@ -106,7 +107,7 @@ public class ScopusBigBangMigrationService {
     ) {
         Instant startedAt = Instant.now();
         ImportProcessingResult facts = scopusFactBuilderService.buildFactsFromImportEvents();
-        CanonicalBuildOptions options = new CanonicalBuildOptions(chunkSizeOverride, startBatchOverride, useCheckpoint, null, false);
+        CanonicalBuildOptions options = new CanonicalBuildOptions(chunkSizeOverride, startBatchOverride, useCheckpoint, null, false, false);
         ImportProcessingResult canonicalAffiliations = affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(options);
         ImportProcessingResult canonicalAuthors = authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options);
         ImportProcessingResult canonicalPublications = publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(options);
@@ -333,9 +334,10 @@ public class ScopusBigBangMigrationService {
             Integer startBatchOverride,
             boolean useCheckpoint,
             Integer chunkSizeOverride,
-            boolean reconcileSourceLinks
+            boolean reconcileSourceLinks,
+            boolean reconcileEdges
     ) {
-        CanonicalBuildOptions options = new CanonicalBuildOptions(chunkSizeOverride, startBatchOverride, useCheckpoint, null, reconcileSourceLinks);
+        CanonicalBuildOptions options = new CanonicalBuildOptions(chunkSizeOverride, startBatchOverride, useCheckpoint, null, reconcileSourceLinks, reconcileEdges);
         if (entity == null || entity.isBlank() || "all".equalsIgnoreCase(entity)) {
             ImportProcessingResult affiliations = affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(options);
             ImportProcessingResult authors = authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options);
@@ -344,6 +346,9 @@ public class ScopusBigBangMigrationService {
             ImportProcessingResult combined = combine(affiliations, authors, publications, citations);
             if (reconcileSourceLinks) {
                 applySourceLinkReconcileSummary(combined, sourceLinkService.reconcileLinks());
+            }
+            if (reconcileEdges) {
+                applyEdgeReconcileSummary(combined, edgeReconciliationService.reconcileEdges());
             }
             return combined;
         }
@@ -361,11 +366,18 @@ public class ScopusBigBangMigrationService {
         if (reconcileSourceLinks) {
             applySourceLinkReconcileSummary(result, sourceLinkService.reconcileLinks());
         }
+        if (reconcileEdges) {
+            applyEdgeReconcileSummary(result, edgeReconciliationService.reconcileEdges());
+        }
         return result;
     }
 
     public ScholardexSourceLinkService.ImportRepairSummary runSourceLinkReconcileStep() {
         return sourceLinkService.reconcileLinks();
+    }
+
+    public ImportProcessingResult runEdgeReconcileStep() {
+        return edgeReconciliationService.reconcileEdges();
     }
 
     public void resetCanonicalBuildCheckpoints() {
@@ -387,6 +399,24 @@ public class ScopusBigBangMigrationService {
         }
         for (int i = 0; i < repairSummary.errors(); i++) {
             result.markError("source-link-reconcile-error");
+        }
+    }
+
+    private void applyEdgeReconcileSummary(
+            ImportProcessingResult result,
+            ImportProcessingResult reconcileResult
+    ) {
+        if (result == null || reconcileResult == null) {
+            return;
+        }
+        for (int i = 0; i < reconcileResult.getUpdatedCount(); i++) {
+            result.markUpdated();
+        }
+        for (int i = 0; i < reconcileResult.getSkippedCount(); i++) {
+            result.markSkipped("edge-reconcile-skipped");
+        }
+        for (int i = 0; i < reconcileResult.getErrorCount(); i++) {
+            result.markError("edge-reconcile-error");
         }
     }
 
