@@ -147,6 +147,135 @@ public class ScholardexEdgeWriterService {
         return EdgeWriteResult.accepted(edge.getId(), created);
     }
 
+    public BatchEdgeWriteResult batchUpsertAuthorAffiliationEdges(
+            List<EdgeWriteCommand> commands,
+            java.util.Map<String, ScholardexAuthorAffiliationFact> preloadedByNaturalKey,
+            java.util.Map<ScholardexSourceLinkService.SourceLinkKey, ScholardexSourceLink> preloadedSourceLinks
+    ) {
+        if (commands == null || commands.isEmpty()) {
+            return new BatchEdgeWriteResult(0, 0, 0, 0, 0);
+        }
+        java.util.Map<String, ScholardexAuthorAffiliationFact> working = new java.util.LinkedHashMap<>();
+        if (preloadedByNaturalKey != null) {
+            working.putAll(preloadedByNaturalKey);
+        }
+        java.util.Map<String, ScholardexAuthorAffiliationFact> pendingSaves = new java.util.LinkedHashMap<>();
+        java.util.List<ScholardexSourceLinkService.SourceLinkUpsertCommand> linkCommands = new java.util.ArrayList<>();
+
+        int accepted = 0;
+        int rejected = 0;
+        int createdCount = 0;
+        int updatedCount = 0;
+        int conflicts = 0;
+
+        for (EdgeWriteCommand command : commands) {
+            if (isBlank(command.leftId()) || isBlank(command.rightId()) || isBlank(command.source())) {
+                rejected++;
+                continue;
+            }
+            String key = edgeNaturalKey(command.leftId(), command.rightId(), command.source());
+            ScholardexAuthorAffiliationFact edge = working.get(key);
+            if (edge == null) {
+                edge = authorAffiliationFactRepository
+                        .findByAuthorIdAndAffiliationIdAndSource(command.leftId(), command.rightId(), command.source())
+                        .orElse(null);
+                if (edge != null) {
+                    working.put(key, edge);
+                }
+            }
+            boolean created = edge == null || edge.getId() == null;
+            String deterministicId = buildAuthorAffiliationId(command.leftId(), command.rightId(), command.source());
+            if (edge == null) {
+                edge = new ScholardexAuthorAffiliationFact();
+            }
+            if (created) {
+                edge.setId(deterministicId);
+            } else if (!isBlank(edge.getId()) && !edge.getId().equals(deterministicId)) {
+                openEdgeConflict(
+                        ScholardexEntityType.AUTHOR_AFFILIATION,
+                        command.source(),
+                        command.sourceRecordId(),
+                        REASON_EDGE_CANONICAL_ID_MISMATCH,
+                        List.of(edge.getId(), deterministicId),
+                        command.sourceEventId(),
+                        command.sourceBatchId(),
+                        command.sourceCorrelationId()
+                );
+                conflicts++;
+            }
+
+            Instant now = Instant.now();
+            if (edge.getCreatedAt() == null) {
+                edge.setCreatedAt(now);
+            }
+            edge.setAuthorId(command.leftId());
+            edge.setAffiliationId(command.rightId());
+            edge.setSource(command.source());
+            edge.setSourceRecordId(command.sourceRecordId());
+            edge.setSourceEventId(command.sourceEventId());
+            edge.setSourceBatchId(command.sourceBatchId());
+            edge.setSourceCorrelationId(command.sourceCorrelationId());
+            edge.setLinkState(command.linkState());
+            edge.setLinkReason(command.linkReason());
+            edge.setUpdatedAt(now);
+
+            working.put(key, edge);
+            pendingSaves.put(key, edge);
+            linkCommands.add(new ScholardexSourceLinkService.SourceLinkUpsertCommand(
+                    ScholardexEntityType.AUTHOR_AFFILIATION,
+                    command.source(),
+                    command.sourceRecordId(),
+                    edge.getId(),
+                    command.linkState(),
+                    command.linkReason(),
+                    command.sourceEventId(),
+                    command.sourceBatchId(),
+                    command.sourceCorrelationId(),
+                    command.explicitReplayAttempt()
+            ));
+
+            accepted++;
+            if (created) {
+                createdCount++;
+            } else {
+                updatedCount++;
+            }
+        }
+
+        if (!pendingSaves.isEmpty()) {
+            authorAffiliationFactRepository.saveAll(pendingSaves.values());
+        }
+
+        ScholardexSourceLinkService.BatchWriteResult sourceLinkResults =
+                sourceLinkService.batchUpsertWithState(linkCommands, preloadedSourceLinks, false);
+        if (sourceLinkResults.rejectedCount() > 0) {
+            for (ScholardexSourceLinkService.SourceLinkBatchItemResult item : sourceLinkResults.results()) {
+                if (item.accepted()) {
+                    continue;
+                }
+                openEdgeConflict(
+                        ScholardexEntityType.AUTHOR_AFFILIATION,
+                        item.command().source(),
+                        item.command().sourceRecordId(),
+                        REASON_EDGE_RELINK_REJECTED,
+                        item.command().canonicalEntityId() == null ? List.of() : List.of(item.command().canonicalEntityId()),
+                        item.command().sourceEventId(),
+                        item.command().sourceBatchId(),
+                        item.command().sourceCorrelationId()
+                );
+                conflicts++;
+            }
+        }
+
+        return new BatchEdgeWriteResult(
+                accepted,
+                rejected + (int) sourceLinkResults.rejectedCount(),
+                createdCount,
+                updatedCount,
+                conflicts
+        );
+    }
+
     public String buildAuthorshipId(String publicationId, String authorId, String source) {
         return "sae_" + shortHash(publicationId + "|" + authorId + "|" + source);
     }
@@ -287,6 +416,10 @@ public class ScholardexEdgeWriterService {
         return value == null || value.trim().isEmpty();
     }
 
+    private String edgeNaturalKey(String authorId, String affiliationId, String source) {
+        return normalize(authorId) + "|" + normalize(affiliationId) + "|" + normalize(source);
+    }
+
     public record EdgeWriteCommand(
             String leftId,
             String rightId,
@@ -309,5 +442,14 @@ public class ScholardexEdgeWriterService {
         static EdgeWriteResult invalid(String reason) {
             return new EdgeWriteResult(false, null, false, reason);
         }
+    }
+
+    public record BatchEdgeWriteResult(
+            int accepted,
+            int rejected,
+            int created,
+            int updated,
+            int conflicts
+    ) {
     }
 }

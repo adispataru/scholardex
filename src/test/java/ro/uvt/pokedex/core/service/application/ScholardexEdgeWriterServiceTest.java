@@ -14,6 +14,8 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorAffiliati
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorshipFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -99,5 +101,34 @@ class ScholardexEdgeWriterServiceTest {
 
         verify(identityConflictRepository).save(any(ScholardexIdentityConflict.class));
         verify(authorAffiliationFactRepository).save(any(ScholardexAuthorAffiliationFact.class));
+    }
+
+    @Test
+    void batchUpsertAuthorAffiliationEdgesPersistsInBulk() {
+        ScholardexEdgeWriterService service = new ScholardexEdgeWriterService(
+                authorshipFactRepository,
+                authorAffiliationFactRepository,
+                sourceLinkService,
+                identityConflictRepository
+        );
+        when(authorAffiliationFactRepository.findByAuthorIdAndAffiliationIdAndSource("a1", "f1", "SCOPUS"))
+                .thenReturn(Optional.empty());
+        when(sourceLinkService.batchUpsertWithState(any(), any(), anyBoolean()))
+                .thenReturn(new ScholardexSourceLinkService.BatchWriteResult(List.of()));
+
+        ScholardexEdgeWriterService.BatchEdgeWriteResult result = service.batchUpsertAuthorAffiliationEdges(
+                List.of(new ScholardexEdgeWriterService.EdgeWriteCommand(
+                        "a1", "f1", "SCOPUS", "rec-1", "evt", "b1", "c1",
+                        ScholardexSourceLinkService.STATE_LINKED,
+                        "bridge",
+                        false
+                )),
+                Map.of(),
+                Map.of()
+        );
+
+        assertEquals(1, result.accepted());
+        verify(authorAffiliationFactRepository).saveAll(any());
+        verify(sourceLinkService).batchUpsertWithState(any(), any(), anyBoolean());
     }
 }

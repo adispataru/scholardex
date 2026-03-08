@@ -17,6 +17,8 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepos
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -81,6 +83,23 @@ public class ScholardexSourceLinkService {
             return List.of();
         }
         return sourceLinkRepository.findByEntityTypeAndSourceRecordId(entityType, sourceRecordId.trim());
+    }
+
+    public List<ScholardexSourceLink> findByEntityTypeAndSourceRecordIds(ScholardexEntityType entityType, Collection<String> sourceRecordIds) {
+        if (entityType == null || sourceRecordIds == null || sourceRecordIds.isEmpty()) {
+            return List.of();
+        }
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        for (String sourceRecordId : sourceRecordIds) {
+            String token = normalize(sourceRecordId);
+            if (token != null) {
+                normalized.add(token);
+            }
+        }
+        if (normalized.isEmpty()) {
+            return List.of();
+        }
+        return sourceLinkRepository.findByEntityTypeAndSourceRecordIdIn(entityType, normalized);
     }
 
     public Page<ScholardexSourceLink> findPaged(
@@ -250,6 +269,111 @@ public class ScholardexSourceLinkService {
         sourceLinkRepository.save(target);
         H19CanonicalMetrics.recordSourceLinkTransition(entityType.name(), existingState, normalizedState, "accepted");
         return SourceLinkWriteResult.accepted(target);
+    }
+
+    public BatchWriteResult batchUpsertWithState(
+            Collection<SourceLinkUpsertCommand> commands,
+            Map<SourceLinkKey, ScholardexSourceLink> preloadedByKey
+    ) {
+        return batchUpsertWithState(commands, preloadedByKey, true);
+    }
+
+    public BatchWriteResult batchUpsertWithState(
+            Collection<SourceLinkUpsertCommand> commands,
+            Map<SourceLinkKey, ScholardexSourceLink> preloadedByKey,
+            boolean allowFallbackLookup
+    ) {
+        if (commands == null || commands.isEmpty()) {
+            return new BatchWriteResult(List.of());
+        }
+        Map<SourceLinkKey, ScholardexSourceLink> working = new LinkedHashMap<>();
+        if (preloadedByKey != null) {
+            working.putAll(preloadedByKey);
+        }
+        Map<SourceLinkKey, ScholardexSourceLink> pendingSaves = new LinkedHashMap<>();
+        List<SourceLinkBatchItemResult> results = new ArrayList<>();
+
+        for (SourceLinkUpsertCommand command : commands) {
+            String normalizedState = normalizeState(command.targetState());
+            String normalizedSource = normalizeSource(command.source());
+            String normalizedRecordId = normalize(command.sourceRecordId());
+            String normalizedCanonicalId = normalize(command.canonicalEntityId());
+            if (command.entityType() == null || normalizedState == null || normalizedSource == null || normalizedRecordId == null) {
+                H19CanonicalMetrics.recordSourceLinkTransition(
+                        command.entityType() == null ? null : command.entityType().name(),
+                        null,
+                        normalizedState,
+                        "rejected"
+                );
+                results.add(new SourceLinkBatchItemResult(command, false, "invalid-source-link-key", null));
+                continue;
+            }
+            if (STATE_LINKED.equals(normalizedState) && normalizedCanonicalId == null) {
+                H19CanonicalMetrics.recordSourceLinkTransition(command.entityType().name(), null, normalizedState, "rejected");
+                results.add(new SourceLinkBatchItemResult(command, false, "linked-requires-canonical-id", null));
+                continue;
+            }
+
+            SourceLinkKey key = SourceLinkKey.of(command.entityType(), normalizedSource, normalizedRecordId);
+            ScholardexSourceLink existing = working.get(key);
+            if (existing == null && allowFallbackLookup) {
+                existing = findByKey(command.entityType(), normalizedSource, normalizedRecordId).orElse(null);
+                if (existing != null) {
+                    working.put(key, existing);
+                }
+            }
+            String existingState = normalizeState(existing == null ? null : existing.getLinkState());
+            String existingCanonicalId = normalize(existing == null ? null : existing.getCanonicalEntityId());
+
+            if (!isTransitionAllowed(existingState, normalizedState, command.explicitReplayAttempt())) {
+                H19CanonicalMetrics.recordSourceLinkTransition(command.entityType().name(), existingState, normalizedState, "rejected");
+                results.add(new SourceLinkBatchItemResult(command, false, "invalid-state-transition:" + existingState + "->" + normalizedState, null));
+                continue;
+            }
+            if (STATE_LINKED.equals(existingState) && STATE_LINKED.equals(normalizedState)
+                    && existingCanonicalId != null && normalizedCanonicalId != null
+                    && !existingCanonicalId.equals(normalizedCanonicalId)) {
+                openRelinkConflict(
+                        command.entityType(),
+                        normalizedSource,
+                        normalizedRecordId,
+                        command.sourceEventId(),
+                        command.sourceBatchId(),
+                        command.sourceCorrelationId(),
+                        existingCanonicalId,
+                        normalizedCanonicalId
+                );
+                H19CanonicalMetrics.recordSourceLinkTransition(command.entityType().name(), existingState, normalizedState, "rejected");
+                results.add(new SourceLinkBatchItemResult(command, false, "linked-canonical-id-immutable", null));
+                continue;
+            }
+
+            Instant now = Instant.now();
+            ScholardexSourceLink target = existing == null ? new ScholardexSourceLink() : existing;
+            target.setEntityType(command.entityType());
+            target.setSource(normalizedSource);
+            target.setSourceRecordId(normalizedRecordId);
+            target.setCanonicalEntityId(STATE_LINKED.equals(normalizedState) || STATE_UNMATCHED.equals(normalizedState)
+                    ? normalizedCanonicalId : null);
+            target.setLinkState(normalizedState);
+            target.setLinkReason(normalize(command.reason()));
+            target.setSourceEventId(normalize(command.sourceEventId()));
+            target.setSourceBatchId(normalize(command.sourceBatchId()));
+            target.setSourceCorrelationId(normalize(command.sourceCorrelationId()));
+            if (target.getLinkedAt() == null) {
+                target.setLinkedAt(now);
+            }
+            target.setUpdatedAt(now);
+            working.put(key, target);
+            pendingSaves.put(key, target);
+            H19CanonicalMetrics.recordSourceLinkTransition(command.entityType().name(), existingState, normalizedState, "accepted");
+            results.add(new SourceLinkBatchItemResult(command, true, null, target));
+        }
+
+        if (!pendingSaves.isEmpty()) {
+            sourceLinkRepository.saveAll(pendingSaves.values());
+        }
+        return new BatchWriteResult(results);
     }
 
     public ReplayEligibilitySummary replayEligibilitySummary() {
@@ -459,5 +583,43 @@ public class ScholardexSourceLinkService {
     }
 
     public record ImportRepairSummary(long updated, long skipped, long errors) {
+    }
+
+    public record SourceLinkKey(ScholardexEntityType entityType, String source, String sourceRecordId) {
+        public static SourceLinkKey of(ScholardexEntityType entityType, String source, String sourceRecordId) {
+            return new SourceLinkKey(entityType, source, sourceRecordId);
+        }
+    }
+
+    public record SourceLinkUpsertCommand(
+            ScholardexEntityType entityType,
+            String source,
+            String sourceRecordId,
+            String canonicalEntityId,
+            String targetState,
+            String reason,
+            String sourceEventId,
+            String sourceBatchId,
+            String sourceCorrelationId,
+            boolean explicitReplayAttempt
+    ) {
+    }
+
+    public record SourceLinkBatchItemResult(
+            SourceLinkUpsertCommand command,
+            boolean accepted,
+            String reason,
+            ScholardexSourceLink link
+    ) {
+    }
+
+    public record BatchWriteResult(List<SourceLinkBatchItemResult> results) {
+        public long acceptedCount() {
+            return results.stream().filter(SourceLinkBatchItemResult::accepted).count();
+        }
+
+        public long rejectedCount() {
+            return results.size() - acceptedCount();
+        }
     }
 }

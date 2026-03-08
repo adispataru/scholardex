@@ -318,7 +318,7 @@ class ScopusDumper:
                 dst = n_dst
             else:
                 print("Merging files ...")
-                dst = dst.merge(n_dst, how='outer')
+                dst = pd.concat([dst, n_dst], ignore_index=True, sort=False)
             if 'eid' in dst.columns:
                 dst = dst.drop_duplicates(subset=['eid'], keep='last')
             else:

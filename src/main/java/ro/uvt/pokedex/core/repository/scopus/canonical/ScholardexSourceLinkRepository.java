@@ -7,6 +7,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,6 +21,11 @@ public interface ScholardexSourceLinkRepository extends MongoRepository<Scholard
     List<ScholardexSourceLink> findByEntityTypeAndSourceRecordId(
             ScholardexEntityType entityType,
             String sourceRecordId
+    );
+
+    List<ScholardexSourceLink> findByEntityTypeAndSourceRecordIdIn(
+            ScholardexEntityType entityType,
+            Collection<String> sourceRecordIds
     );
 
     List<ScholardexSourceLink> findByEntityTypeAndCanonicalEntityId(

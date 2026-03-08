@@ -11,6 +11,8 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -112,5 +114,36 @@ class ScholardexSourceLinkServiceTest {
         );
         assertTrue(accepted.accepted());
     }
-}
 
+    @Test
+    void batchUpsertUsesPreloadedStateAndReturnsPerItemResults() {
+        ScholardexSourceLinkService service = new ScholardexSourceLinkService(sourceLinkRepository, identityConflictRepository);
+        ScholardexSourceLink existing = new ScholardexSourceLink();
+        existing.setEntityType(ScholardexEntityType.AUTHOR);
+        existing.setSource("SCOPUS");
+        existing.setSourceRecordId("a-1");
+        existing.setCanonicalEntityId("sauth_1");
+        existing.setLinkState("LINKED");
+
+        ScholardexSourceLinkService.SourceLinkKey key =
+                ScholardexSourceLinkService.SourceLinkKey.of(ScholardexEntityType.AUTHOR, "SCOPUS", "a-1");
+        ScholardexSourceLinkService.BatchWriteResult result = service.batchUpsertWithState(
+                List.of(
+                        new ScholardexSourceLinkService.SourceLinkUpsertCommand(
+                                ScholardexEntityType.AUTHOR, "SCOPUS", "a-1", "sauth_1", "LINKED",
+                                "bridge", null, null, null, false
+                        ),
+                        new ScholardexSourceLinkService.SourceLinkUpsertCommand(
+                                ScholardexEntityType.AUTHOR, "SCOPUS", "a-1", "sauth_2", "LINKED",
+                                "bridge", null, null, null, true
+                        )
+                ),
+                Map.of(key, existing)
+        );
+
+        assertEquals(1, result.acceptedCount());
+        assertEquals(1, result.rejectedCount());
+        verify(sourceLinkRepository).saveAll(any());
+        verify(identityConflictRepository).save(any(ScholardexIdentityConflict.class));
+    }
+}
