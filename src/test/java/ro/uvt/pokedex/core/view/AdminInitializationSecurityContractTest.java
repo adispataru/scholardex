@@ -57,6 +57,16 @@ class AdminInitializationSecurityContractTest {
     }
 
     @Test
+    void nonAdminCannotResetScopusCanonicalState() throws Exception {
+        mockMvc.perform(post("/admin/initialization/scopus/resetCanonicalState")
+                        .with(csrf())
+                        .param("confirmation", "RESET")
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+    }
+
+    @Test
     void nonAdminCannotRunWosEnrichmentApi() throws Exception {
         mockMvc.perform(post("/admin/initialization/wos/enrichment/run")
                         .with(csrf())

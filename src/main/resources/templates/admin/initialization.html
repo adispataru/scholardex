@@ -131,6 +131,18 @@
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                             </form>
                         </div>
+                        <hr>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>Maintenance: clear canonical Scopus state (events, facts, views)</div>
+                            <form th:action="@{/admin/initialization/scopus/resetCanonicalState}" method="post" class="d-flex align-items-center">
+                                <input type="text"
+                                       name="confirmation"
+                                       class="form-control form-control-sm mr-2"
+                                       style="width: 180px;"
+                                       placeholder="Type RESET">
+                                <button type="submit" class="btn btn-danger btn-sm">Clear state</button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>

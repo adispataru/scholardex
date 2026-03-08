@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
@@ -54,6 +55,7 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ScholardexPublicationFactRepository scholardexPublicationFactRepository;
     @Mock private ScholardexSourceLinkRepository scholardexSourceLinkRepository;
     @Mock private ScholardexPublicationViewRepository publicationViewRepository;
+    @Mock private MongoTemplate mongoTemplate;
 
     private ScopusBigBangMigrationService service;
 
@@ -79,7 +81,8 @@ class ScopusBigBangMigrationServiceTest {
                 affiliationSearchViewRepository,
                 scholardexPublicationFactRepository,
                 scholardexSourceLinkRepository,
-                publicationViewRepository
+                publicationViewRepository,
+                mongoTemplate
         );
         ReflectionTestUtils.setField(service, "scopusDataFile", "/tmp/scopus.json");
     }

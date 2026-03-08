@@ -2,7 +2,20 @@ package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
@@ -54,6 +67,7 @@ public class ScopusBigBangMigrationService {
     private final ScholardexPublicationFactRepository scholardexPublicationFactRepository;
     private final ScholardexSourceLinkRepository scholardexSourceLinkRepository;
     private final ScholardexPublicationViewRepository publicationViewRepository;
+    private final MongoTemplate mongoTemplate;
 
     public ScopusBigBangMigrationResult runIngestStep() {
         Instant startedAt = Instant.now();
@@ -265,5 +279,169 @@ public class ScopusBigBangMigrationService {
 
     public ImportProcessingResult runPublicationIdentityBackfill() {
         return publicationBackfillService.backfillFromLegacyProjection();
+    }
+
+    public CanonicalResetResult resetCanonicalState() {
+        long importEvents = mongoTemplate.count(scopusSourceQuery(), "scopus.import_events");
+        long publicationFacts = publicationFactRepository.count();
+        long citationFacts = citationFactRepository.count();
+        long forumFacts = forumFactRepository.count();
+        long authorFacts = authorFactRepository.count();
+        long affiliationFacts = affiliationFactRepository.count();
+        long forumViews = forumSearchViewRepository.count();
+        long authorViews = authorSearchViewRepository.count();
+        long affiliationViews = affiliationSearchViewRepository.count();
+
+        List<String> canonicalPublicationIds = findCanonicalIdsBySource("scholardex.publication_facts");
+        List<String> canonicalAuthorIds = findCanonicalIdsBySource("scholardex.author_facts");
+        List<String> canonicalAffiliationIds = findCanonicalIdsBySource("scholardex.affiliation_facts");
+        List<String> canonicalForumIds = findCanonicalIdsBySource("scholardex.forum_facts");
+
+        long canonicalPublicationFacts = canonicalPublicationIds.size();
+        long canonicalAuthorFacts = canonicalAuthorIds.size();
+        long canonicalAffiliationFacts = canonicalAffiliationIds.size();
+        long canonicalForumFacts = canonicalForumIds.size();
+
+        long publicationViews = publicationViewRepository.count();
+        long canonicalAuthorViews = mongoTemplate.count(new Query(), ScholardexAuthorView.class);
+        long canonicalAffiliationViews = mongoTemplate.count(new Query(), ScholardexAffiliationView.class);
+        long canonicalForumViews = mongoTemplate.count(new Query(), ScholardexForumView.class);
+
+        long sourceLinks = mongoTemplate.count(scopusSourceLinkQuery(), "scholardex.source_links");
+        long identityConflicts = mongoTemplate.count(scopusIncomingSourceQuery(), ScholardexIdentityConflict.class);
+        long authorshipFacts = mongoTemplate.count(scopusSourceQuery(), ScholardexAuthorshipFact.class);
+        long authorAffiliationFacts = mongoTemplate.count(scopusSourceQuery(), ScholardexAuthorAffiliationFact.class);
+
+        mongoTemplate.remove(scopusSourceQuery(), "scopus.import_events");
+
+        affiliationSearchViewRepository.deleteAll();
+        authorSearchViewRepository.deleteAll();
+        forumSearchViewRepository.deleteAll();
+        affiliationFactRepository.deleteAll();
+        authorFactRepository.deleteAll();
+        forumFactRepository.deleteAll();
+        citationFactRepository.deleteAll();
+        publicationFactRepository.deleteAll();
+
+        mongoTemplate.remove(scopusSourceQuery(), ScholardexAuthorshipFact.class);
+        mongoTemplate.remove(scopusSourceQuery(), ScholardexAuthorAffiliationFact.class);
+        mongoTemplate.remove(scopusSourceLinkQuery(), "scholardex.source_links");
+        mongoTemplate.remove(scopusIncomingSourceQuery(), ScholardexIdentityConflict.class);
+
+        if (!canonicalPublicationIds.isEmpty()) {
+            mongoTemplate.remove(
+                    Query.query(Criteria.where("_id").in(canonicalPublicationIds)),
+                    ScholardexPublicationFact.class
+            );
+            mongoTemplate.remove(
+                    Query.query(Criteria.where("_id").in(canonicalPublicationIds)),
+                    "scholardex.publication_view"
+            );
+        }
+        if (!canonicalAuthorIds.isEmpty()) {
+            mongoTemplate.remove(
+                    Query.query(Criteria.where("_id").in(canonicalAuthorIds)),
+                    ScholardexAuthorFact.class
+            );
+            mongoTemplate.remove(
+                    Query.query(Criteria.where("_id").in(canonicalAuthorIds)),
+                    ScholardexAuthorView.class
+            );
+        }
+        if (!canonicalAffiliationIds.isEmpty()) {
+            mongoTemplate.remove(
+                    Query.query(Criteria.where("_id").in(canonicalAffiliationIds)),
+                    ScholardexAffiliationFact.class
+            );
+            mongoTemplate.remove(
+                    Query.query(Criteria.where("_id").in(canonicalAffiliationIds)),
+                    ScholardexAffiliationView.class
+            );
+        }
+        if (!canonicalForumIds.isEmpty()) {
+            mongoTemplate.remove(
+                    Query.query(Criteria.where("_id").in(canonicalForumIds)),
+                    ScholardexForumFact.class
+            );
+            mongoTemplate.remove(
+                    Query.query(Criteria.where("_id").in(canonicalForumIds)),
+                    ScholardexForumView.class
+            );
+        }
+
+        return new CanonicalResetResult(
+                importEvents,
+                publicationFacts,
+                citationFacts,
+                forumFacts,
+                authorFacts,
+                affiliationFacts,
+                forumViews,
+                authorViews,
+                affiliationViews,
+                canonicalPublicationFacts,
+                canonicalAuthorFacts,
+                canonicalAffiliationFacts,
+                canonicalForumFacts,
+                publicationViews,
+                canonicalAuthorViews,
+                canonicalAffiliationViews,
+                canonicalForumViews,
+                sourceLinks,
+                identityConflicts,
+                authorshipFacts,
+                authorAffiliationFacts
+        );
+    }
+
+    private List<String> findCanonicalIdsBySource(String collectionName) {
+        Query query = Query.query(scopusSourceCriteria());
+        query.fields().include("_id");
+        return mongoTemplate.find(query, org.bson.Document.class, collectionName).stream()
+                .map(doc -> doc.get("_id"))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .toList();
+    }
+
+    private Query scopusSourceQuery() {
+        return Query.query(scopusSourceCriteria());
+    }
+
+    private Criteria scopusSourceCriteria() {
+        return Criteria.where("source").regex("^SCOPUS");
+    }
+
+    private Query scopusSourceLinkQuery() {
+        return Query.query(Criteria.where("source").regex("^SCOPUS"));
+    }
+
+    private Query scopusIncomingSourceQuery() {
+        return Query.query(Criteria.where("incomingSource").regex("^SCOPUS"));
+    }
+
+    public record CanonicalResetResult(
+            long importEvents,
+            long publicationFacts,
+            long citationFacts,
+            long forumFacts,
+            long authorFacts,
+            long affiliationFacts,
+            long forumViews,
+            long authorViews,
+            long affiliationViews,
+            long canonicalPublicationFacts,
+            long canonicalAuthorFacts,
+            long canonicalAffiliationFacts,
+            long canonicalForumFacts,
+            long publicationViews,
+            long canonicalAuthorViews,
+            long canonicalAffiliationViews,
+            long canonicalForumViews,
+            long sourceLinks,
+            long identityConflicts,
+            long authorshipFacts,
+            long authorAffiliationFacts
+    ) {
     }
 }

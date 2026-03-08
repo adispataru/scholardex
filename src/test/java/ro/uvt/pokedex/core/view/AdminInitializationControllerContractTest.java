@@ -53,6 +53,7 @@ class AdminInitializationControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/rebuildProjections")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/ensureIndexes")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/wos/resetCanonicalState")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/resetCanonicalState")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/initialization/wos/runBigBangMigration"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/runBigBang"))));
     }
@@ -319,6 +320,32 @@ class AdminInitializationControllerContractTest {
                 .andExpect(redirectedUrl("/admin/initialization"));
 
         verify(scopusBigBangMigrationService).runFull();
+    }
+
+    @Test
+    void resetScopusCanonicalStateRedirectsToInitializationPage() throws Exception {
+        when(scopusBigBangMigrationService.resetCanonicalState())
+                .thenReturn(new ScopusBigBangMigrationService.CanonicalResetResult(
+                        10, 5, 5, 2, 3, 4, 2, 3, 4,
+                        5, 3, 4, 2, 5, 3, 4, 2, 6, 1, 7, 8
+                ));
+
+        mockMvc.perform(post("/admin/initialization/scopus/resetCanonicalState")
+                        .param("confirmation", "RESET"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+
+        verify(scopusBigBangMigrationService).resetCanonicalState();
+    }
+
+    @Test
+    void resetScopusCanonicalStateWithoutResetConfirmationDoesNotExecute() throws Exception {
+        mockMvc.perform(post("/admin/initialization/scopus/resetCanonicalState")
+                        .param("confirmation", "reset"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+
+        org.mockito.Mockito.verifyNoInteractions(scopusBigBangMigrationService);
     }
 
     private ScopusBigBangMigrationService.ScopusBigBangMigrationResult buildScopusResult() {

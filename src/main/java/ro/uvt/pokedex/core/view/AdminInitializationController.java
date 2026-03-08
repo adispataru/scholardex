@@ -233,6 +233,47 @@ public class AdminInitializationController {
         return "redirect:/admin/initialization";
     }
 
+    @PostMapping("/scopus/resetCanonicalState")
+    public String resetScopusCanonicalState(
+            @RequestParam(name = "confirmation", required = false) String confirmation,
+            RedirectAttributes redirectAttributes
+    ) {
+        if (!"RESET".equals(confirmation == null ? null : confirmation.trim())) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "Scopus canonical reset aborted. Type RESET in the confirmation field to proceed."
+            );
+            return "redirect:/admin/initialization";
+        }
+        var result = scopusBigBangMigrationService.resetCanonicalState();
+        redirectAttributes.addFlashAttribute(
+                "successMessage",
+                "Scopus canonical state cleared. importEvents=" + result.importEvents()
+                        + ", publicationFacts=" + result.publicationFacts()
+                        + ", citationFacts=" + result.citationFacts()
+                        + ", forumFacts=" + result.forumFacts()
+                        + ", authorFacts=" + result.authorFacts()
+                        + ", affiliationFacts=" + result.affiliationFacts()
+                        + ", forumViews=" + result.forumViews()
+                        + ", authorViews=" + result.authorViews()
+                        + ", affiliationViews=" + result.affiliationViews()
+                        + ", canonicalPublicationFacts=" + result.canonicalPublicationFacts()
+                        + ", canonicalAuthorFacts=" + result.canonicalAuthorFacts()
+                        + ", canonicalAffiliationFacts=" + result.canonicalAffiliationFacts()
+                        + ", canonicalForumFacts=" + result.canonicalForumFacts()
+                        + ", publicationViews=" + result.publicationViews()
+                        + ", canonicalAuthorViews=" + result.canonicalAuthorViews()
+                        + ", canonicalAffiliationViews=" + result.canonicalAffiliationViews()
+                        + ", canonicalForumViews=" + result.canonicalForumViews()
+                        + ", sourceLinks=" + result.sourceLinks()
+                        + ", identityConflicts=" + result.identityConflicts()
+                        + ", authorshipFacts=" + result.authorshipFacts()
+                        + ", authorAffiliationFacts=" + result.authorAffiliationFacts()
+                        + "."
+        );
+        return "redirect:/admin/initialization";
+    }
+
     private String formatWosStep(String label, ro.uvt.pokedex.core.service.application.WosBigBangMigrationService.MigrationStepResult step) {
         String checkpointInfo = "";
         if (step.startBatch() != null || step.endBatch() != null || step.batchesProcessed() != null) {
