@@ -2,6 +2,7 @@ package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
@@ -257,6 +258,7 @@ public class ScholardexEdgeWriterService {
             conflict.setDetectedAt(Instant.now());
         }
         identityConflictRepository.save(conflict);
+        H19CanonicalMetrics.recordConflictCreated(entityType.name(), normalizedSource, reasonCode);
     }
 
     private String shortHash(String value) {
@@ -309,4 +311,3 @@ public class ScholardexEdgeWriterService {
         }
     }
 }
-

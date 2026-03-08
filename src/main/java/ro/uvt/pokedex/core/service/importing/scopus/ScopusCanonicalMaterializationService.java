@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
 import ro.uvt.pokedex.core.service.application.ScholardexEdgeReconciliationService;
 import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
@@ -32,6 +33,8 @@ public class ScopusCanonicalMaterializationService {
     }
 
     public void rebuildFactsAndViews(String trigger, String batchId, CanonicalBuildOptions canonicalOptions) {
+        String runId = java.util.UUID.randomUUID().toString();
+        long startedAtNanos = System.nanoTime();
         ImportProcessingResult factResult = factBuilderService.buildFactsFromImportEvents(batchId);
         CanonicalBuildOptions effectiveOptions = canonicalOptions == null ? CanonicalBuildOptions.defaults() : canonicalOptions;
         ImportProcessingResult canonicalAffiliationResult = affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(effectiveOptions);
@@ -45,9 +48,21 @@ public class ScopusCanonicalMaterializationService {
                 ? edgeReconciliationService.reconcileEdges()
                 : new ImportProcessingResult(0);
         ImportProcessingResult projectionResult = projectionBuilderService.rebuildViews();
-        log.info("Scopus canonical materialization complete: trigger={}, batchId={}, factProcessed={}, factErrors={}, canonicalAffiliationProcessed={}, canonicalAffiliationErrors={}, canonicalAffiliationBatches={}, canonicalAuthorProcessed={}, canonicalAuthorErrors={}, canonicalAuthorBatches={}, canonicalPublicationProcessed={}, canonicalPublicationErrors={}, canonicalPublicationBatches={}, canonicalCitationProcessed={}, canonicalCitationErrors={}, canonicalCitationBatches={}, sourceLinkReconcileUpdated={}, sourceLinkReconcileSkipped={}, sourceLinkReconcileErrors={}, edgeReconcileUpdated={}, edgeReconcileSkipped={}, edgeReconcileErrors={}, projectionProcessed={}, projectionErrors={}",
-                trigger,
+        String outcome = (factResult.getErrorCount()
+                + canonicalAffiliationResult.getErrorCount()
+                + canonicalAuthorResult.getErrorCount()
+                + canonicalPublicationResult.getErrorCount()
+                + canonicalCitationResult.getErrorCount()
+                + projectionResult.getErrorCount()) > 0 ? "failure" : "success";
+        long durationNanos = System.nanoTime() - startedAtNanos;
+        H19CanonicalMetrics.recordCanonicalBuildRun("all", "SCOPUS", outcome, durationNanos);
+        log.info("H19_TRIAGE canonical_materialization runId={} batchId={} correlationId={} trigger={} source=SCOPUS entity=all outcome={} durationMs={} factProcessed={} factErrors={} canonicalAffiliationProcessed={} canonicalAffiliationErrors={} canonicalAffiliationBatches={} canonicalAuthorProcessed={} canonicalAuthorErrors={} canonicalAuthorBatches={} canonicalPublicationProcessed={} canonicalPublicationErrors={} canonicalPublicationBatches={} canonicalCitationProcessed={} canonicalCitationErrors={} canonicalCitationBatches={} sourceLinkReconcileUpdated={} sourceLinkReconcileSkipped={} sourceLinkReconcileErrors={} edgeReconcileUpdated={} edgeReconcileSkipped={} edgeReconcileErrors={} projectionProcessed={} projectionErrors={}",
+                runId,
                 batchId,
+                trigger,
+                trigger,
+                outcome,
+                durationNanos / 1_000_000L,
                 factResult.getProcessedCount(),
                 factResult.getErrorCount(),
                 canonicalAffiliationResult.getProcessedCount(),

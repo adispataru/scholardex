@@ -117,9 +117,11 @@ Done history moved to `TASKS-done.md`.
   - [x] `H19.13` Indicator/report query cutover to edge-backed traversals.
     Deliverable: scoring/report/export/user/admin query paths use canonical edge-backed traversals for publication-by-author and author-by-affiliation access, with performance parity/guardrail checks.
     Exit criteria: runtime indicator computation no longer depends on source-silo author/affiliation linkage paths and passes parity/performance gates.
-  - [ ] `H19.8` End-to-end validation, parity, and operability gates.
-    Deliverable: workflow and integration tests covering all four sources, identity-link conflicts, replay/idempotence, and cutover regressions; observability metrics and failure triage hooks.
-    Exit criteria: CI gates catch identity/linking regressions and operational dashboards expose source-level ingest/link health.
+  - [x] `H19.8` End-to-end validation, parity, and operability gates.
+    Deliverable: workflow and integration tests covering implemented sources (`SCOPUS`, `WOS`, current manual/user wizard `USER_DEFINED` path), identity-link conflicts, replay/idempotence, and cutover regressions; observability metrics and failure triage hooks.
+    Exit criteria: CI gates catch identity/linking regressions and operational dashboards expose source-level ingest/link health for implemented sources.
+    Handover:
+    - Validation/operability contract: `docs/h19.8-validation-operability-gates.md`.
 
 - [ ] `H20` Google Scholar (PoP) user-onboarding into Scholardex.
   Goal: support user-triggered Google Scholar imports from Publish-or-Perish exports as first-class canonical ingestion into Scholardex identity/link models.

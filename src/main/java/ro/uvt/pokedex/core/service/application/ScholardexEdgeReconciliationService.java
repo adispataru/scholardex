@@ -1,7 +1,10 @@
 package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
@@ -27,6 +30,8 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class ScholardexEdgeReconciliationService {
 
+    private static final Logger log = LoggerFactory.getLogger(ScholardexEdgeReconciliationService.class);
+
     private static final String STATUS_OPEN = "OPEN";
     public static final String REASON_EDGE_ARRAY_DIVERGENCE_AMBIGUOUS = "EDGE_ARRAY_DIVERGENCE_AMBIGUOUS";
     private static final String REASON_RECONCILE = "edge-reconcile";
@@ -39,9 +44,21 @@ public class ScholardexEdgeReconciliationService {
     private final ScholardexEdgeWriterService edgeWriterService;
 
     public ImportProcessingResult reconcileEdges() {
+        long startedAtNanos = System.nanoTime();
+        String runId = java.util.UUID.randomUUID().toString();
         ImportProcessingResult result = new ImportProcessingResult(20);
         reconcilePublicationAuthorEdges(result);
         reconcileAuthorAffiliationEdges(result);
+        String outcome = result.getErrorCount() > 0 ? "failure" : "success";
+        H19CanonicalMetrics.recordReconcileRun("edges", outcome, System.nanoTime() - startedAtNanos);
+        log.info("H19_TRIAGE edge_reconcile runId={} batchId={} correlationId={} entity=EDGE source=CANONICAL outcome={} updated={} skipped={} errors={}",
+                runId,
+                "N/A",
+                "N/A",
+                outcome,
+                result.getUpdatedCount(),
+                result.getSkippedCount(),
+                result.getErrorCount());
         return result;
     }
 
@@ -237,6 +254,7 @@ public class ScholardexEdgeReconciliationService {
             conflict.setDetectedAt(Instant.now());
         }
         identityConflictRepository.save(conflict);
+        H19CanonicalMetrics.recordConflictCreated(entityType.name(), source, REASON_EDGE_ARRAY_DIVERGENCE_AMBIGUOUS);
     }
 
     private boolean needsAuthorshipRepair(

@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCanonicalBuildCheckpoint;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
@@ -147,6 +148,12 @@ public class ScholardexCitationCanonicalizationService {
                 resumedFromCheckpoint,
                 checkpointLastCompletedBatch,
                 nanosToMillis(System.nanoTime() - startedAtNanos));
+        H19CanonicalMetrics.recordCanonicalBuildRun(
+                "citation",
+                "SCOPUS",
+                result.getErrorCount() > 0 ? "failure" : "success",
+                System.nanoTime() - startedAtNanos
+        );
         return result;
     }
 
@@ -306,6 +313,7 @@ public class ScholardexCitationCanonicalizationService {
             conflict.setDetectedAt(Instant.now());
         }
         scholardexIdentityConflictRepository.save(conflict);
+        H19CanonicalMetrics.recordConflictCreated(ScholardexEntityType.CITATION.name(), incomingSource, reasonCode);
     }
 
     private String buildCanonicalCitationId(String citedPublicationId, String citingPublicationId, String source) {

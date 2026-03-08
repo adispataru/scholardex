@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.dao.DuplicateKeyException;
+import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCanonicalBuildCheckpoint;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
@@ -144,6 +145,12 @@ public class ScholardexPublicationCanonicalizationService {
                 resumedFromCheckpoint,
                 checkpointLastCompletedBatch,
                 nanosToMillis(System.nanoTime() - startedAtNanos));
+        H19CanonicalMetrics.recordCanonicalBuildRun(
+                "publication",
+                SOURCE_SCOPUS,
+                result.getErrorCount() > 0 ? "failure" : "success",
+                System.nanoTime() - startedAtNanos
+        );
         return result;
     }
 

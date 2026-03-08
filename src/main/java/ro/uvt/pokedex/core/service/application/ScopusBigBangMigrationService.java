@@ -2,10 +2,13 @@ package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
@@ -48,6 +51,8 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class ScopusBigBangMigrationService {
+
+    private static final Logger log = LoggerFactory.getLogger(ScopusBigBangMigrationService.class);
 
     @Value("${scopus.data.file}")
     private String scopusDataFile;
@@ -337,6 +342,8 @@ public class ScopusBigBangMigrationService {
             boolean reconcileSourceLinks,
             boolean reconcileEdges
     ) {
+        long startedAtNanos = System.nanoTime();
+        String runId = java.util.UUID.randomUUID().toString();
         CanonicalBuildOptions options = new CanonicalBuildOptions(chunkSizeOverride, startBatchOverride, useCheckpoint, null, reconcileSourceLinks, reconcileEdges);
         if (entity == null || entity.isBlank() || "all".equalsIgnoreCase(entity)) {
             ImportProcessingResult affiliations = affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(options);
@@ -350,6 +357,20 @@ public class ScopusBigBangMigrationService {
             if (reconcileEdges) {
                 applyEdgeReconcileSummary(combined, edgeReconciliationService.reconcileEdges());
             }
+            String outcome = combined.getErrorCount() > 0 ? "failure" : "success";
+            H19CanonicalMetrics.recordCanonicalBuildRun("all", "SCOPUS", outcome, System.nanoTime() - startedAtNanos);
+            log.info("H19_TRIAGE canonical_build runId={} batchId={} correlationId={} entity={} source=SCOPUS outcome={} processed={} imported={} updated={} skipped={} errors={} totalMs={}",
+                    runId,
+                    startBatchOverride,
+                    "N/A",
+                    "all",
+                    outcome,
+                    combined.getProcessedCount(),
+                    combined.getImportedCount(),
+                    combined.getUpdatedCount(),
+                    combined.getSkippedCount(),
+                    combined.getErrorCount(),
+                    (System.nanoTime() - startedAtNanos) / 1_000_000L);
             return combined;
         }
         ImportProcessingResult result = switch (entity.trim().toLowerCase()) {
@@ -369,15 +390,47 @@ public class ScopusBigBangMigrationService {
         if (reconcileEdges) {
             applyEdgeReconcileSummary(result, edgeReconciliationService.reconcileEdges());
         }
+        String outcome = result.getErrorCount() > 0 ? "failure" : "success";
+        H19CanonicalMetrics.recordCanonicalBuildRun(entity.trim().toLowerCase(), "SCOPUS", outcome, System.nanoTime() - startedAtNanos);
+        log.info("H19_TRIAGE canonical_build runId={} batchId={} correlationId={} entity={} source=SCOPUS outcome={} processed={} imported={} updated={} skipped={} errors={} totalMs={}",
+                runId,
+                startBatchOverride,
+                "N/A",
+                entity.trim().toLowerCase(),
+                outcome,
+                result.getProcessedCount(),
+                result.getImportedCount(),
+                result.getUpdatedCount(),
+                result.getSkippedCount(),
+                result.getErrorCount(),
+                (System.nanoTime() - startedAtNanos) / 1_000_000L);
         return result;
     }
 
     public ScholardexSourceLinkService.ImportRepairSummary runSourceLinkReconcileStep() {
-        return sourceLinkService.reconcileLinks();
+        ScholardexSourceLinkService.ImportRepairSummary summary = sourceLinkService.reconcileLinks();
+        log.info("H19_TRIAGE source_link_reconcile runId={} batchId={} correlationId={} entity=SOURCE_LINK source=ALL outcome={} updated={} skipped={} errors={}",
+                java.util.UUID.randomUUID().toString(),
+                "N/A",
+                "N/A",
+                summary.errors() > 0 ? "failure" : "success",
+                summary.updated(),
+                summary.skipped(),
+                summary.errors());
+        return summary;
     }
 
     public ImportProcessingResult runEdgeReconcileStep() {
-        return edgeReconciliationService.reconcileEdges();
+        ImportProcessingResult result = edgeReconciliationService.reconcileEdges();
+        log.info("H19_TRIAGE edge_reconcile runId={} batchId={} correlationId={} entity=EDGE source=CANONICAL outcome={} updated={} skipped={} errors={}",
+                java.util.UUID.randomUUID().toString(),
+                "N/A",
+                "N/A",
+                result.getErrorCount() > 0 ? "failure" : "success",
+                result.getUpdatedCount(),
+                result.getSkippedCount(),
+                result.getErrorCount());
+        return result;
     }
 
     public void resetCanonicalBuildCheckpoints() {

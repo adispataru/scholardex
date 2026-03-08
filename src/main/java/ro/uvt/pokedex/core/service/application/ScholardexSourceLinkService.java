@@ -1,11 +1,14 @@
 package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
@@ -23,6 +26,8 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class ScholardexSourceLinkService {
+
+    private static final Logger log = LoggerFactory.getLogger(ScholardexSourceLinkService.class);
 
     public static final String STATE_LINKED = "LINKED";
     public static final String STATE_CONFLICT = "CONFLICT";
@@ -197,9 +202,16 @@ public class ScholardexSourceLinkService {
         String normalizedRecordId = normalize(sourceRecordId);
         String normalizedCanonicalId = normalize(canonicalEntityId);
         if (entityType == null || normalizedState == null || normalizedSource == null || normalizedRecordId == null) {
+            H19CanonicalMetrics.recordSourceLinkTransition(
+                    entityType == null ? null : entityType.name(),
+                    null,
+                    normalizedState,
+                    "rejected"
+            );
             return SourceLinkWriteResult.rejected("invalid-source-link-key");
         }
         if (STATE_LINKED.equals(normalizedState) && normalizedCanonicalId == null) {
+            H19CanonicalMetrics.recordSourceLinkTransition(entityType.name(), null, normalizedState, "rejected");
             return SourceLinkWriteResult.rejected("linked-requires-canonical-id");
         }
 
@@ -208,12 +220,14 @@ public class ScholardexSourceLinkService {
         String existingCanonicalId = normalize(existing == null ? null : existing.getCanonicalEntityId());
 
         if (!isTransitionAllowed(existingState, normalizedState, explicitReplayAttempt)) {
+            H19CanonicalMetrics.recordSourceLinkTransition(entityType.name(), existingState, normalizedState, "rejected");
             return SourceLinkWriteResult.rejected("invalid-state-transition:" + existingState + "->" + normalizedState);
         }
         if (STATE_LINKED.equals(existingState) && STATE_LINKED.equals(normalizedState)
                 && existingCanonicalId != null && normalizedCanonicalId != null
                 && !existingCanonicalId.equals(normalizedCanonicalId)) {
             openRelinkConflict(entityType, normalizedSource, normalizedRecordId, sourceEventId, sourceBatchId, sourceCorrelationId, existingCanonicalId, normalizedCanonicalId);
+            H19CanonicalMetrics.recordSourceLinkTransition(entityType.name(), existingState, normalizedState, "rejected");
             return SourceLinkWriteResult.rejected("linked-canonical-id-immutable");
         }
 
@@ -234,6 +248,7 @@ public class ScholardexSourceLinkService {
         }
         target.setUpdatedAt(now);
         sourceLinkRepository.save(target);
+        H19CanonicalMetrics.recordSourceLinkTransition(entityType.name(), existingState, normalizedState, "accepted");
         return SourceLinkWriteResult.accepted(target);
     }
 
@@ -245,6 +260,7 @@ public class ScholardexSourceLinkService {
     }
 
     public ImportRepairSummary reconcileLinks() {
+        long startedAtNanos = System.nanoTime();
         List<ScholardexSourceLink> all = sourceLinkRepository.findAll();
         long updated = 0L;
         long skipped = 0L;
@@ -293,6 +309,16 @@ public class ScholardexSourceLinkService {
                 errors++;
             }
         }
+        String outcome = errors > 0 ? "failure" : "success";
+        H19CanonicalMetrics.recordReconcileRun("source-links", outcome, System.nanoTime() - startedAtNanos);
+        log.info("H19_TRIAGE source_link_reconcile runId={} batchId={} correlationId={} entity=SOURCE_LINK source=ALL outcome={} updated={} skipped={} errors={}",
+                java.util.UUID.randomUUID().toString(),
+                "N/A",
+                "N/A",
+                outcome,
+                updated,
+                skipped,
+                errors);
         return new ImportRepairSummary(updated, skipped, errors);
     }
 
@@ -362,6 +388,7 @@ public class ScholardexSourceLinkService {
             conflict.setDetectedAt(Instant.now());
         }
         identityConflictRepository.save(conflict);
+        H19CanonicalMetrics.recordConflictCreated(entityType.name(), source, REASON_RELINK_REJECTED);
     }
 
     private ScholardexEntityType parseEntityType(String value) {

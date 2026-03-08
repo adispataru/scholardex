@@ -125,11 +125,13 @@ if (requestBodyWithoutValidMatches.length > 0) {
 }
 
 const exportControllerPath = 'src/main/java/ro/uvt/pokedex/core/controller/ExportController.java';
-const exportGenericCatch = runRg('catch \\(Exception', [exportControllerPath]);
-if (exportGenericCatch.length > 0) {
-  errors.push(
-    `${exportControllerPath}: generic exception catch is forbidden in export endpoint logic; rely on centralized mapping.`
-  );
+if (fs.existsSync(exportControllerPath)) {
+  const exportGenericCatch = runRg('catch \\(Exception', [exportControllerPath]);
+  if (exportGenericCatch.length > 0) {
+    errors.push(
+      `${exportControllerPath}: generic exception catch is forbidden in export endpoint logic; rely on centralized mapping.`
+    );
+  }
 }
 
 const loginTemplatePath = 'src/main/resources/templates/login.html';

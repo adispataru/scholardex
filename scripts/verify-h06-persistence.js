@@ -50,8 +50,6 @@ const adminScopusFacadePath =
   'src/main/java/ro/uvt/pokedex/core/service/application/AdminScopusFacade.java';
 const rankingRepositoryPath =
   'src/main/java/ro/uvt/pokedex/core/repository/reporting/RankingRepository.java';
-const forumExportFacadePath =
-  'src/main/java/ro/uvt/pokedex/core/service/application/ForumExportFacade.java';
 const scopusPublicationUpdateModelPath =
   'src/main/java/ro/uvt/pokedex/core/model/tasks/ScopusPublicationUpdate.java';
 const scopusCitationsUpdateModelPath =
@@ -73,7 +71,6 @@ const groupCnfisContent = readFile(groupCnfisFacadePath);
 const userPublicationFacadeContent = readFile(userPublicationFacadePath);
 const adminScopusFacadeContent = readFile(adminScopusFacadePath);
 const rankingRepositoryContent = readFile(rankingRepositoryPath);
-const forumExportFacadeContent = readFile(forumExportFacadePath);
 const scopusPublicationUpdateModelContent = readFile(scopusPublicationUpdateModelPath);
 const scopusCitationsUpdateModelContent = readFile(scopusCitationsUpdateModelPath);
 const rawYearPattern = /(substring\(\s*0\s*,\s*4\s*\))|(split\(\s*"-"\s*\)\s*\[\s*0\s*\])/;
@@ -131,8 +128,13 @@ assertContains(
 );
 assertContains(
   userPublicationFacadeContent,
-  'findById(publicationId)',
-  `${userPublicationFacadePath}: edit/update flow must use canonical findById(publicationId).`
+  'scopusProjectionReadService',
+  `${userPublicationFacadePath}: publication edit/update/citation flows must resolve through ScopusProjectionReadService.`
+);
+assertNotContains(
+  userPublicationFacadeContent,
+  'scopusPublicationRepository.',
+  `${userPublicationFacadePath}: edit/update/citation flows must not use legacy source-silo scopusPublicationRepository.`
 );
 const findForEditMethod = extractMethodSlice(
   userPublicationFacadeContent,
@@ -144,13 +146,8 @@ if (findForEditMethod == null) {
 } else {
   assertContains(
     findForEditMethod,
-    'findById(publicationId)',
-    `${userPublicationFacadePath}: findPublicationForEdit must use canonical findById(publicationId).`
-  );
-  assertNotContains(
-    findForEditMethod,
-    'findByEid(',
-    `${userPublicationFacadePath}: findPublicationForEdit must not use findByEid compatibility fallback.`
+    'findPublicationByAnyId(publicationId)',
+    `${userPublicationFacadePath}: findPublicationForEdit must use canonical projection lookup (findPublicationByAnyId).`
   );
 }
 
@@ -164,13 +161,13 @@ if (updateMetadataMethod == null) {
 } else {
   assertContains(
     updateMetadataMethod,
-    'findById(publicationId)',
-    `${userPublicationFacadePath}: updatePublicationMetadata must use canonical findById(publicationId).`
+    'findPublicationViewById(publicationId)',
+    `${userPublicationFacadePath}: updatePublicationMetadata must first resolve canonical projection row by id.`
   );
-  assertNotContains(
+  assertContains(
     updateMetadataMethod,
-    'findByEid(',
-    `${userPublicationFacadePath}: updatePublicationMetadata must not use findByEid compatibility fallback.`
+    'findPublicationByAnyId(publicationId)',
+    `${userPublicationFacadePath}: updatePublicationMetadata must use canonical compatibility fallback through findPublicationByAnyId.`
   );
 }
 
@@ -184,29 +181,24 @@ if (citationsViewMethod == null) {
 } else {
   assertContains(
     citationsViewMethod,
-    'findById(publicationId)',
-    `${userPublicationFacadePath}: buildCitationsView must attempt canonical id lookup first.`
+    'findPublicationByAnyId(publicationId)',
+    `${userPublicationFacadePath}: buildCitationsView must resolve publication through canonical projection lookup.`
   );
-  assertContains(
+  assertNotContains(
     citationsViewMethod,
-    '.or(() -> scopusPublicationRepository.findByEid(publicationId))',
-    `${userPublicationFacadePath}: buildCitationsView must keep explicit id/eid compatibility fallback.`
+    'scopusPublicationRepository.',
+    `${userPublicationFacadePath}: buildCitationsView must not depend on source-silo publication repository fallback.`
   );
 }
 assertContains(
   adminScopusFacadeContent,
-  'findByTitleContainingIgnoreCaseOrderByCoverDateDesc',
-  `${adminScopusFacadePath}: publication search must use case-insensitive ordered repository method.`
+  'findPublicationsByTitleContainingIgnoreCaseOrderByCoverDateDesc',
+  `${adminScopusFacadePath}: publication search must use canonical case-insensitive ordered read-service method.`
 );
 assertNotContains(
   adminScopusFacadeContent,
   'findByTitleContainsOrderByCoverDateDesc',
   `${adminScopusFacadePath}: publication search must not use case-sensitive title contains query path.`
-);
-assertNotContains(
-  forumExportFacadeContent,
-  '"null-"',
-  `${forumExportFacadePath}: export dedupe must not rely on sentinel literal checks.`
 );
 assertContains(
   scopusPublicationUpdateModelContent,

@@ -176,11 +176,27 @@ if (runRg('class StartupHealthIndicator', startupHealthFile).length === 0) {
 const metricsMarkers = [
   { file: 'src/main/java/ro/uvt/pokedex/core/DataLoaderNew.java', pattern: 'core\\.startup\\.phase\\.duration' },
   { file: 'src/main/java/ro/uvt/pokedex/core/service/scopus/ScopusUpdateScheduler.java', pattern: 'core\\.scheduler\\.scopus\\.poll\\.duration' },
-  { file: 'src/main/java/ro/uvt/pokedex/core/controller/ExportController.java', pattern: 'core\\.export\\.forum\\.requests' }
+  { file: 'src/main/java/ro/uvt/pokedex/core/observability/H19CanonicalMetrics.java', pattern: 'core\\.h19\\.canonical\\.build\\.duration' },
+  { file: 'src/main/java/ro/uvt/pokedex/core/observability/H19CanonicalMetrics.java', pattern: 'core\\.h19\\.source_link\\.transitions' },
+  { file: 'src/main/java/ro/uvt/pokedex/core/observability/H19CanonicalMetrics.java', pattern: 'core\\.h19\\.identity_conflict\\.created' },
+  { file: 'src/main/java/ro/uvt/pokedex/core/observability/ScholardexOperabilityGaugeBinder.java', pattern: 'core\\.h19\\.identity_conflicts\\.open' },
+  { file: 'src/main/java/ro/uvt/pokedex/core/observability/ScholardexOperabilityGaugeBinder.java', pattern: 'core\\.h19\\.source_links\\.state' }
 ];
 for (const marker of metricsMarkers) {
   if (runRg(marker.pattern, [marker.file]).length === 0) {
     errors.push(`${marker.file} missing expected metrics marker: ${marker.pattern}`);
+  }
+}
+
+const h19TriageLogMarkers = [
+  { file: 'src/main/java/ro/uvt/pokedex/core/service/importing/scopus/ScopusCanonicalMaterializationService.java', pattern: 'H19_TRIAGE canonical_materialization' },
+  { file: 'src/main/java/ro/uvt/pokedex/core/service/application/ScopusBigBangMigrationService.java', pattern: 'H19_TRIAGE canonical_build' },
+  { file: 'src/main/java/ro/uvt/pokedex/core/service/application/ScholardexSourceLinkService.java', pattern: 'H19_TRIAGE source_link_reconcile' },
+  { file: 'src/main/java/ro/uvt/pokedex/core/service/application/ScholardexEdgeReconciliationService.java', pattern: 'H19_TRIAGE edge_reconcile' }
+];
+for (const marker of h19TriageLogMarkers) {
+  if (runRg(marker.pattern, [marker.file]).length === 0) {
+    errors.push(`${marker.file} missing expected H19 triage log marker: ${marker.pattern}`);
   }
 }
 

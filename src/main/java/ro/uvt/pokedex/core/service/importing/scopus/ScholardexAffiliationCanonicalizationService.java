@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCanonicalBuildCheckpoint;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
@@ -138,6 +139,12 @@ public class ScholardexAffiliationCanonicalizationService {
                 resumedFromCheckpoint,
                 checkpointLastCompletedBatch,
                 nanosToMillis(System.nanoTime() - startedAtNanos));
+        H19CanonicalMetrics.recordCanonicalBuildRun(
+                "affiliation",
+                "SCOPUS",
+                result.getErrorCount() > 0 ? "failure" : "success",
+                System.nanoTime() - startedAtNanos
+        );
         return result;
     }
 
@@ -268,6 +275,7 @@ public class ScholardexAffiliationCanonicalizationService {
             conflict.setDetectedAt(Instant.now());
         }
         identityConflictRepository.save(conflict);
+        H19CanonicalMetrics.recordConflictCreated(ScholardexEntityType.AFFILIATION.name(), sourceFact.getSource(), reason);
     }
 
     private String normalizeName(String value) {

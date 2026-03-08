@@ -104,6 +104,21 @@ class ScopusCutoverGuardrailTest {
                 "Group CNFIS flow must not directly persist publication enrichment.");
     }
 
+    @Test
+    void projectionReadServiceUsesCanonicalEdgeBackedTraversals() throws Exception {
+        Path readServiceFile = Path.of("src/main/java/ro/uvt/pokedex/core/service/application/ScopusProjectionReadService.java");
+        String content = Files.readString(readServiceFile);
+
+        assertTrue(content.contains("canonicalAuthorshipFactRepository.findByAuthorIdIn"),
+                "Author -> publication traversal must remain edge-backed via authorship facts.");
+        assertTrue(content.contains("canonicalAuthorAffiliationFactRepository.findByAffiliationId"),
+                "Affiliation -> author traversal must remain edge-backed via author-affiliation facts.");
+        assertFalse(content.contains("findByAuthorIdsContaining"),
+                "Author -> publication traversal must not regress to publication-view author arrays.");
+        assertFalse(content.contains("findByAffiliationIdsContaining"),
+                "Affiliation traversal must not regress to publication-view affiliation arrays.");
+    }
+
     private void assertNoLegacyScopusRepositoryUsage(String content, Path file) {
         assertFalse(content.contains("scopusPublicationRepository."),
                 "Legacy publication repository call found in " + file);

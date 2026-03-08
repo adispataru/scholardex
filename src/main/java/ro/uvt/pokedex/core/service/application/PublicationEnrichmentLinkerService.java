@@ -2,6 +2,7 @@ package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.model.scopus.canonical.PublicationLinkConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
@@ -225,6 +226,7 @@ public class PublicationEnrichmentLinkerService {
             conflict.setDetectedAt(Instant.now());
         }
         identityConflictRepository.save(conflict);
+        H19CanonicalMetrics.recordConflictCreated(ScholardexEntityType.PUBLICATION.name(), source, reason);
     }
 
     private void upsertSourceLink(

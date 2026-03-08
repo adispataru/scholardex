@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCanonicalBuildCheckpoint;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
@@ -147,6 +148,12 @@ public class ScholardexAuthorCanonicalizationService {
                 resumedFromCheckpoint,
                 checkpointLastCompletedBatch,
                 nanosToMillis(System.nanoTime() - startedAtNanos));
+        H19CanonicalMetrics.recordCanonicalBuildRun(
+                "author",
+                SOURCE_SCOPUS,
+                result.getErrorCount() > 0 ? "failure" : "success",
+                System.nanoTime() - startedAtNanos
+        );
         return result;
     }
 
@@ -365,6 +372,7 @@ public class ScholardexAuthorCanonicalizationService {
             conflict.setDetectedAt(Instant.now());
         }
         identityConflictRepository.save(conflict);
+        H19CanonicalMetrics.recordConflictCreated(ScholardexEntityType.AUTHOR.name(), sourceFact.getSource(), reason);
     }
 
     private String buildCanonicalAffiliationFallbackId(String sourceToken, String sourceAffiliationId) {
