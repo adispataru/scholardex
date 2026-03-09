@@ -25,6 +25,7 @@ public class ScopusPublicationFact {
     private String creator;
     private Integer authorCount;
     private List<String> authors = new ArrayList<>();
+    private List<String> authorAffiliationSourceIds = new ArrayList<>();
     private List<String> correspondingAuthors = new ArrayList<>();
     private List<String> affiliations = new ArrayList<>();
     private String forumId;
@@ -46,6 +47,8 @@ public class ScopusPublicationFact {
     private String sourceRecordId;
     private String sourceBatchId;
     private String sourceCorrelationId;
+    private String lastPayloadHash;
+    private Instant lastMaterializedAt;
     private Instant createdAt;
     private Instant updatedAt;
 }

@@ -253,6 +253,8 @@ public class AdminInitializationController {
             @RequestParam(name = "useCheckpoint", defaultValue = "true") boolean useCheckpoint,
             @RequestParam(name = "reconcileSourceLinks", defaultValue = "false") boolean reconcileSourceLinks,
             @RequestParam(name = "reconcileEdges", defaultValue = "false") boolean reconcileEdges,
+            @RequestParam(name = "fullRescan", defaultValue = "false") boolean fullRescan,
+            @RequestParam(name = "drainQueues", defaultValue = "true") boolean drainQueues,
             @RequestParam(name = "chunkSizeOverride", required = false) Integer chunkSizeOverride,
             RedirectAttributes redirectAttributes
     ) {
@@ -262,7 +264,9 @@ public class AdminInitializationController {
                 useCheckpoint,
                 chunkSizeOverride,
                 reconcileSourceLinks,
-                reconcileEdges
+                reconcileEdges,
+                fullRescan,
+                drainQueues
         );
         redirectAttributes.addFlashAttribute("successMessage",
                 "Scopus canonical build complete (entity=" + (entity == null || entity.isBlank() ? "all" : entity) + "). processed=" + result.getProcessedCount()
@@ -276,7 +280,45 @@ public class AdminInitializationController {
                         + ", totalBatches=" + result.getTotalBatches()
                         + ", resumedFromCheckpoint=" + result.getResumedFromCheckpoint()
                         + ", checkpointLastCompletedBatch=" + result.getCheckpointLastCompletedBatch()
+                        + ", fullRescan=" + fullRescan
+                        + ", drainQueues=" + drainQueues
                         + ".");
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/scopus/rebuildTouchQueuesFromEvents")
+    public String rebuildScopusTouchQueuesFromEvents(RedirectAttributes redirectAttributes) {
+        var backlog = scopusBigBangMigrationService.rebuildTouchQueuesFromEvents();
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Scopus touch queues rebuilt. publications=" + backlog.publications()
+                        + ", authors=" + backlog.authors()
+                        + ", affiliations=" + backlog.affiliations()
+                        + ", forums=" + backlog.forums()
+                        + ", citations=" + backlog.citations() + ".");
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/scopus/drainTouchQueues")
+    public String drainScopusTouchQueues(RedirectAttributes redirectAttributes) {
+        var backlog = scopusBigBangMigrationService.drainAllTouchQueues();
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Scopus touch queues drain completed. publications=" + backlog.publications()
+                        + ", authors=" + backlog.authors()
+                        + ", affiliations=" + backlog.affiliations()
+                        + ", forums=" + backlog.forums()
+                        + ", citations=" + backlog.citations() + ".");
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/scopus/showTouchQueueBacklog")
+    public String showScopusTouchQueueBacklog(RedirectAttributes redirectAttributes) {
+        var backlog = scopusBigBangMigrationService.showTouchQueueBacklog();
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Scopus touch queue backlog. publications=" + backlog.publications()
+                        + ", authors=" + backlog.authors()
+                        + ", affiliations=" + backlog.affiliations()
+                        + ", forums=" + backlog.forums()
+                        + ", citations=" + backlog.citations() + ".");
         return "redirect:/admin/initialization";
     }
 
@@ -397,6 +439,13 @@ public class AdminInitializationController {
                         + ", identityConflicts=" + result.identityConflicts()
                         + ", authorshipFacts=" + result.authorshipFacts()
                         + ", authorAffiliationFacts=" + result.authorAffiliationFacts()
+                        + ", publicationAuthorAffiliationFacts=" + result.publicationAuthorAffiliationFacts()
+                        + ", canonicalBuildCheckpoints=" + result.canonicalBuildCheckpoints()
+                        + ", publicationTouches=" + result.publicationTouches()
+                        + ", authorTouches=" + result.authorTouches()
+                        + ", affiliationTouches=" + result.affiliationTouches()
+                        + ", forumTouches=" + result.forumTouches()
+                        + ", citationTouches=" + result.citationTouches()
                         + "."
         );
         return "redirect:/admin/initialization";

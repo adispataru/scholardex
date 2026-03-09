@@ -31,7 +31,7 @@ class ScopusImportEventIngestionServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ScopusImportEventIngestionService(repository, new ObjectMapper());
+        service = new ScopusImportEventIngestionService(repository, new ObjectMapper(), null, null);
     }
 
     @Test

@@ -81,8 +81,15 @@ class ScopusCutoverGuardrailTest {
                 "private void processCitations(",
                 "private void applyIngestionOutcome("
         );
-        assertTrue(processCitations.contains("importEventIngestionService.ingest("),
-                "Citation processing must emit canonical import events.");
+        assertTrue(
+                processCitations.contains("importEventIngestionService.ingest(")
+                        || processCitations.contains("importEventIngestionService.ingestBatch("),
+                "Citation processing must emit canonical import events (single or batched)."
+        );
+        assertTrue(processCitations.contains("ScopusImportEntityType.PUBLICATION"),
+                "Citation processing must emit publication events for citing items.");
+        assertFalse(processCitations.contains("payload.put(\"citingItem\""),
+                "Citation processing must keep citation payload edge-only (no citingItem blob).");
         assertFalse(processCitations.contains("citationRepository."),
                 "Citation processing must not write legacy citation repository.");
     }
@@ -117,6 +124,18 @@ class ScopusCutoverGuardrailTest {
                 "Author -> publication traversal must not regress to publication-view author arrays.");
         assertFalse(content.contains("findByAffiliationIdsContaining"),
                 "Affiliation traversal must not regress to publication-view affiliation arrays.");
+    }
+
+    @Test
+    void schedulerCitationPayloadRemainsEdgeOnly() throws Exception {
+        Path schedulerFile = Path.of("src/main/java/ro/uvt/pokedex/core/service/scopus/ScopusUpdateScheduler.java");
+        String content = Files.readString(schedulerFile);
+        assertTrue(content.contains("ScopusImportEntityType.PUBLICATION"),
+                "Scheduler citations flow must still emit publication events for citing records.");
+        assertTrue(content.contains("ScopusImportEntityType.CITATION"),
+                "Scheduler citations flow must emit citation edge events.");
+        assertFalse(content.contains("citationPayload.put(\"citingItem\""),
+                "Scheduler citation payload must remain edge-only.");
     }
 
     private void assertNoLegacyScopusRepositoryUsage(String content, Path file) {

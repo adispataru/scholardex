@@ -5,9 +5,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
 import ro.uvt.pokedex.core.service.application.ScholardexEdgeWriterService;
@@ -20,6 +24,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
@@ -34,11 +39,15 @@ class ScholardexPublicationCanonicalizationServiceTest {
     @Mock
     private ScholardexPublicationFactRepository scholardexPublicationFactRepository;
     @Mock
+    private ScholardexIdentityConflictRepository identityConflictRepository;
+    @Mock
     private ScholardexSourceLinkService sourceLinkService;
     @Mock
     private ScholardexEdgeWriterService edgeWriterService;
     @Mock
     private ScholardexCanonicalBuildCheckpointService checkpointService;
+    @Mock
+    private ScopusTouchQueueService touchQueueService;
 
     private ScholardexPublicationCanonicalizationService service;
 
@@ -47,9 +56,11 @@ class ScholardexPublicationCanonicalizationServiceTest {
         service = new ScholardexPublicationCanonicalizationService(
                 scopusPublicationFactRepository,
                 scholardexPublicationFactRepository,
+                identityConflictRepository,
                 sourceLinkService,
                 edgeWriterService,
-                checkpointService
+                checkpointService,
+                touchQueueService
         );
     }
 
@@ -103,23 +114,29 @@ class ScholardexPublicationCanonicalizationServiceTest {
         scopusFact.setSourceRecordId("2-s2.0-abc");
         scopusFact.setAuthors(List.of("au-1"));
 
-        when(scopusPublicationFactRepository.findAll()).thenReturn(List.of(scopusFact));
-        when(scholardexPublicationFactRepository.findByEid("2-s2.0-abc")).thenReturn(Optional.empty());
+        when(scopusPublicationFactRepository.count()).thenReturn(1L);
+        when(scopusPublicationFactRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(scopusFact)));
+        when(scholardexPublicationFactRepository.findAllByEidIn(any())).thenReturn(List.of());
+        when(scholardexPublicationFactRepository.findAllByDoiNormalizedIn(any())).thenReturn(List.of());
         when(checkpointService.readCheckpoint(anyString())).thenReturn(Optional.empty());
         when(sourceLinkService.findByKey(any(), any(), any()))
                 .thenReturn(Optional.empty());
-        when(edgeWriterService.upsertAuthorshipEdge(any()))
-                .thenReturn(new ScholardexEdgeWriterService.EdgeWriteResult(true, "edge-1", true, null));
+        when(edgeWriterService.batchUpsertAuthorshipEdges(any(), any(), any(), eq(false)))
+                .thenReturn(new ScholardexEdgeWriterService.BatchEdgeWriteResult(1, 0, 1, 0, 0));
 
-        ImportProcessingResult result = service.rebuildCanonicalPublicationFactsFromScopusFacts();
+        ImportProcessingResult result = service.rebuildCanonicalPublicationFactsFromScopusFacts(fullRescanOptions());
 
         assertEquals(1, result.getProcessedCount());
         assertEquals(1, result.getImportedCount());
-        verify(scholardexPublicationFactRepository).save(any(ScholardexPublicationFact.class));
-        verify(sourceLinkService, atLeastOnce()).link(any(), anyString(), anyString(), anyString(), anyString(), any(), any(), any(), eq(false));
-        verify(edgeWriterService, atLeastOnce()).upsertAuthorshipEdge(any());
+        verify(scholardexPublicationFactRepository).insert(anyList());
+        verify(sourceLinkService, atLeastOnce()).batchUpsertWithState(any(), any(), eq(false));
+        verify(edgeWriterService, atLeastOnce()).batchUpsertAuthorshipEdges(any(), any(), any(), eq(false));
         verify(sourceLinkService, atLeastOnce()).findByKey(
                 eq(ScholardexEntityType.AUTHOR), eq("SCOPUS_JSON_BOOTSTRAP"), eq("au-1"));
+    }
+
+    private CanonicalBuildOptions fullRescanOptions() {
+        return new CanonicalBuildOptions(null, null, true, null, false, false, false, false, true);
     }
 
     @Test
@@ -156,13 +173,41 @@ class ScholardexPublicationCanonicalizationServiceTest {
         when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1000/xyz")).thenReturn(List.of(existingByDoi));
         when(sourceLinkService.findByKey(any(), any(), any()))
                 .thenReturn(Optional.empty());
-        when(edgeWriterService.upsertAuthorshipEdge(any()))
-                .thenReturn(new ScholardexEdgeWriterService.EdgeWriteResult(true, "edge-1", true, null));
+        when(edgeWriterService.batchUpsertAuthorshipEdges(any(), any(), any(), eq(false)))
+                .thenReturn(new ScholardexEdgeWriterService.BatchEdgeWriteResult(1, 0, 1, 0, 0));
 
         ImportProcessingResult result = new ImportProcessingResult(10);
         service.upsertFromScopusFact(scopusFact, result);
 
         assertEquals(1, result.getUpdatedCount());
-        verify(scholardexPublicationFactRepository).save(any(ScholardexPublicationFact.class));
+        verify(scholardexPublicationFactRepository).saveAll(any());
+    }
+
+    @Test
+    void upsertFromScopusFactEmitsPublicationAuthorAffiliationEdgesWhenMappingsResolve() {
+        ScopusPublicationFact scopusFact = new ScopusPublicationFact();
+        scopusFact.setEid("2-s2.0-edge");
+        scopusFact.setSource("SCOPUS");
+        scopusFact.setSourceRecordId("2-s2.0-edge");
+        scopusFact.setAuthors(List.of("au-1"));
+        scopusFact.setAuthorAffiliationSourceIds(List.of("af1"));
+
+        ScholardexSourceLink authorLink = new ScholardexSourceLink();
+        authorLink.setCanonicalEntityId("sauth_1");
+        ScholardexSourceLink affiliationLink = new ScholardexSourceLink();
+        affiliationLink.setCanonicalEntityId("saff_1");
+
+        when(sourceLinkService.findByKey(eq(ScholardexEntityType.AUTHOR), eq("SCOPUS"), eq("au-1")))
+                .thenReturn(Optional.of(authorLink));
+        when(sourceLinkService.findByKey(eq(ScholardexEntityType.AFFILIATION), eq("SCOPUS"), eq("af1")))
+                .thenReturn(Optional.of(affiliationLink));
+        when(edgeWriterService.batchUpsertAuthorshipEdges(any(), any(), any(), eq(false)))
+                .thenReturn(new ScholardexEdgeWriterService.BatchEdgeWriteResult(1, 0, 1, 0, 0));
+        when(edgeWriterService.batchUpsertPublicationAuthorAffiliationEdges(any(), any(), any(), eq(false)))
+                .thenReturn(new ScholardexEdgeWriterService.BatchEdgeWriteResult(1, 0, 1, 0, 0));
+
+        service.upsertFromScopusFact(scopusFact, new ImportProcessingResult(10));
+
+        verify(edgeWriterService).batchUpsertPublicationAuthorAffiliationEdges(any(), any(), any(), eq(false));
     }
 }

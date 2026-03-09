@@ -18,6 +18,18 @@ public interface ScholardexSourceLinkRepository extends MongoRepository<Scholard
             String sourceRecordId
     );
 
+    List<ScholardexSourceLink> findAllByEntityTypeAndSourceAndSourceRecordId(
+            ScholardexEntityType entityType,
+            String source,
+            String sourceRecordId
+    );
+
+    Optional<ScholardexSourceLink> findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
+            ScholardexEntityType entityType,
+            String source,
+            String sourceRecordId
+    );
+
     List<ScholardexSourceLink> findByEntityTypeAndSourceRecordId(
             ScholardexEntityType entityType,
             String sourceRecordId

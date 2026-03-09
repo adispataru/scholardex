@@ -20,7 +20,8 @@ public class ScopusCitationFact {
     private String sourceRecordId;
     private String sourceBatchId;
     private String sourceCorrelationId;
+    private String lastPayloadHash;
+    private Instant lastMaterializedAt;
     private Instant createdAt;
     private Instant updatedAt;
 }
-

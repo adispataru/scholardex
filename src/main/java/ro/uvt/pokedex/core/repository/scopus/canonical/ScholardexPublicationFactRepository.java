@@ -13,5 +13,6 @@ public interface ScholardexPublicationFactRepository extends MongoRepository<Sch
     Optional<ScholardexPublicationFact> findByGoogleScholarId(String googleScholarId);
     Optional<ScholardexPublicationFact> findByUserSourceId(String userSourceId);
     List<ScholardexPublicationFact> findAllByDoiNormalized(String doiNormalized);
+    List<ScholardexPublicationFact> findAllByDoiNormalizedIn(Collection<String> doiNormalizedValues);
     List<ScholardexPublicationFact> findAllByEidIn(Collection<String> eids);
 }

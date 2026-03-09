@@ -98,6 +98,25 @@ class AdminInitializationSecurityContractTest {
     }
 
     @Test
+    void nonAdminCannotRunTouchQueueMaintenance() throws Exception {
+        mockMvc.perform(post("/admin/initialization/scopus/showTouchQueueBacklog")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+        mockMvc.perform(post("/admin/initialization/scopus/rebuildTouchQueuesFromEvents")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+        mockMvc.perform(post("/admin/initialization/scopus/drainTouchQueues")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+    }
+
+    @Test
     void nonAdminCannotRunWosEnrichmentApi() throws Exception {
         mockMvc.perform(post("/admin/initialization/wos/enrichment/run")
                         .with(csrf())

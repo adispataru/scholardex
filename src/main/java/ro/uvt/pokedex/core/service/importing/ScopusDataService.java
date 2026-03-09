@@ -14,6 +14,7 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusImportEventReposito
 import ro.uvt.pokedex.core.repository.scopus.*;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
+import ro.uvt.pokedex.core.service.importing.scopus.CanonicalBuildOptions;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusImportEventIngestionService;
 import ro.uvt.pokedex.core.service.integration.IntegrationErrorCode;
@@ -30,6 +31,10 @@ public class ScopusDataService {
     private static final int DEFAULT_ERROR_SAMPLE_SIZE = 20;
     private static final String PAYLOAD_FORMAT_JSON_OBJECT = "json-object";
     private static final String SOURCE_SCOPUS_JSON_BOOTSTRAP = "SCOPUS_JSON_BOOTSTRAP";
+    private static final int INGEST_HEARTBEAT = 5_000;
+    private static final int CITATION_INGEST_BATCH_SIZE = 1_000;
+    private static final CanonicalBuildOptions BOOTSTRAP_FULL_RESCAN_OPTIONS =
+            new CanonicalBuildOptions(null, null, true, null, false, false, false, false, true);
 
     @Autowired
     private ScopusPublicationRepository publicationRepository;
@@ -66,7 +71,7 @@ public class ScopusDataService {
         if (importEventRepository.count() == 0) {
             importScopusDataSync(scopusDataFile, 0, false);
             importScopusDataCitationsSync(scopusDataFile);
-            canonicalMaterializationService.rebuildFactsAndViews("bootstrap-empty-load");
+            canonicalMaterializationService.rebuildFactsAndViews("bootstrap-empty-load", null, BOOTSTRAP_FULL_RESCAN_OPTIONS);
             return true;
         }
         return false;
@@ -80,7 +85,7 @@ public class ScopusDataService {
     public void loadAdditionalScopusDataSync(String scopusDataFile) {
         importScopusDataSync(scopusDataFile, 0, true);
         importScopusDataCitationsSync(scopusDataFile);
-        canonicalMaterializationService.rebuildFactsAndViews("bootstrap-additional-load");
+        canonicalMaterializationService.rebuildFactsAndViews("bootstrap-additional-load", null, BOOTSTRAP_FULL_RESCAN_OPTIONS);
     }
 
     @Async("taskExecutor")
@@ -96,6 +101,7 @@ public class ScopusDataService {
             int dataSize = rootNode.get("eid").size();
             String batchId = "bootstrap-publications-" + new File(jsonFilePath).getName() + "-" + System.currentTimeMillis();
             logger.info("Processing starting at {} of {} publications from JSON file.", count, dataSize);
+            long startedAtNanos = System.nanoTime();
             for (int i = (int) count; i < dataSize; i++) {
                 result.markProcessed();
                 try {
@@ -108,7 +114,8 @@ public class ScopusDataService {
                             batchId,
                             "bootstrap-publication-" + i,
                             PAYLOAD_FORMAT_JSON_OBJECT,
-                            payload
+                            payload,
+                            false
                     );
                     applyIngestionOutcome(result, outcome, "publication index=" + i + ", eid=" + eid);
                 } catch (IntegrationException ex) {
@@ -118,7 +125,19 @@ public class ScopusDataService {
                 }
                 if(dataSize >= 10 && i % (dataSize / 10) == 0)
                     logger.info("Processed {}% publications.", (i* 100.0)/dataSize );
+                if (result.getProcessedCount() % INGEST_HEARTBEAT == 0) {
+                    long elapsedMs = (System.nanoTime() - startedAtNanos) / 1_000_000L;
+                    double rate = elapsedMs == 0 ? 0.0 : (result.getProcessedCount() * 1000.0) / elapsedMs;
+                    logger.info("Scopus publication ingest progress: processed={} imported={} skipped={} errors={} elapsedMs={} ratePerSec={}",
+                            result.getProcessedCount(),
+                            result.getImportedCount(),
+                            result.getSkippedCount(),
+                            result.getErrorCount(),
+                            elapsedMs,
+                            String.format(Locale.ROOT, "%.2f", rate));
+                }
             }
+            long elapsedMs = (System.nanoTime() - startedAtNanos) / 1_000_000L;
             logger.info("Scopus publication import finished: processed={}, imported={}, updated={}, skipped={}, errors={}, sample={}",
                     result.getProcessedCount(),
                     result.getImportedCount(),
@@ -126,6 +145,9 @@ public class ScopusDataService {
                     result.getSkippedCount(),
                     result.getErrorCount(),
                     result.getErrorsSample());
+            logger.info("Scopus publication ingest timings: elapsedMs={}, ratePerSec={}",
+                    elapsedMs,
+                    String.format(Locale.ROOT, "%.2f", elapsedMs == 0 ? 0.0 : (result.getProcessedCount() * 1000.0) / elapsedMs));
         } catch (IOException e) {
             logger.error("Error reading the JSON file: ", e);
             result.markError("scopus-publication-import-io-error=" + e.getMessage());
@@ -146,15 +168,20 @@ public class ScopusDataService {
             int dataSize = rootNode.get("eid").size();
             String batchId = "bootstrap-citations-" + new File(jsonFilePath).getName() + "-" + System.currentTimeMillis();
             logger.info("Processing citations from {} publications from JSON file.", dataSize);
+            long startedAtNanos = System.nanoTime();
 
             Map<String, List<JsonNode>> citations = extractCitationsFromJson(rootNode, dataSize);
-            processCitations(citations, batchId, result);
+            processCitations(citations, batchId, result, startedAtNanos);
             logger.info("Scopus citation import finished: processed={}, imported={}, skipped={}, errors={}, sample={}",
                     result.getProcessedCount(),
                     result.getImportedCount(),
                     result.getSkippedCount(),
                     result.getErrorCount(),
                     result.getErrorsSample());
+            long elapsedMs = (System.nanoTime() - startedAtNanos) / 1_000_000L;
+            logger.info("Scopus citation ingest timings: elapsedMs={}, ratePerSec={}",
+                    elapsedMs,
+                    String.format(Locale.ROOT, "%.2f", elapsedMs == 0 ? 0.0 : (result.getProcessedCount() * 1000.0) / elapsedMs));
         } catch (IOException e) {
             logger.error("Error reading the JSON file: ", e);
             result.markError("scopus-citation-import-io-error=" + e.getMessage());
@@ -182,34 +209,126 @@ public class ScopusDataService {
         return citations;
     }
 
-    private void processCitations(Map<String, List<JsonNode>> citations, String batchId, ImportProcessingResult result) {
-        citations.forEach((key, citationNodes) -> {
-            for (int i = 0; i < citationNodes.size(); i++) {
-                JsonNode citationNode = citationNodes.get(i);
+    private void processCitations(Map<String, List<JsonNode>> citations, String batchId, ImportProcessingResult result, long startedAtNanos) {
+        List<ScopusImportEventIngestionService.BatchIngestionItem> pendingPublicationEvents = new ArrayList<>(CITATION_INGEST_BATCH_SIZE);
+        List<ScopusImportEventIngestionService.BatchIngestionItem> pendingCitationEvents = new ArrayList<>(CITATION_INGEST_BATCH_SIZE);
+        long cumulativePublicationSerializeMs = 0L;
+        long cumulativePublicationDbMs = 0L;
+        long cumulativeCitationSerializeMs = 0L;
+        long cumulativeCitationDbMs = 0L;
+        long cumulativeTouchMs = 0L;
+        int sequence = 0;
+
+        for (Map.Entry<String, List<JsonNode>> entry : citations.entrySet()) {
+            String citedEid = entry.getKey();
+            List<JsonNode> citationNodes = entry.getValue();
+            if (citationNodes == null) {
+                continue;
+            }
+            for (JsonNode citationNode : citationNodes) {
                 result.markProcessed();
+                sequence++;
                 try {
                     String citingEid = readRequiredText(citationNode, "eid", "citation-citing-eid");
+                    pendingPublicationEvents.add(new ScopusImportEventIngestionService.BatchIngestionItem(
+                            citingEid,
+                            "bootstrap-citation-publication-" + citedEid + "-" + sequence,
+                            citationNode
+                    ));
                     Map<String, Object> payload = new LinkedHashMap<>();
-                    payload.put("citedEid", key);
+                    payload.put("citedEid", citedEid);
                     payload.put("citingEid", citingEid);
-                    payload.put("citingItem", citationNode);
-                    ScopusImportEventIngestionService.EventIngestionOutcome outcome = importEventIngestionService.ingest(
-                            ScopusImportEntityType.CITATION,
-                            SOURCE_SCOPUS_JSON_BOOTSTRAP,
-                            key + "->" + citingEid,
-                            batchId,
-                            "bootstrap-citation-" + key + "-" + i,
-                            PAYLOAD_FORMAT_JSON_OBJECT,
+                    pendingCitationEvents.add(new ScopusImportEventIngestionService.BatchIngestionItem(
+                            citedEid + "->" + citingEid,
+                            "bootstrap-citation-" + citedEid + "-" + sequence,
                             payload
-                    );
-                    applyIngestionOutcome(result, outcome, "citation citedEid=" + key + ", citingEid=" + citingEid);
+                    ));
                 } catch (IntegrationException ex) {
-                    result.markSkipped("citedEid=" + key + ", code=" + ex.getErrorCode() + ", msg=" + ex.getMessage());
+                    result.markSkipped("citedEid=" + citedEid + ", code=" + ex.getErrorCode() + ", msg=" + ex.getMessage());
                 } catch (RuntimeException ex) {
-                    result.markSkipped("citedEid=" + key + ", code=" + IntegrationErrorCode.PERSISTENCE_ERROR + ", msg=" + ex.getMessage());
+                    result.markSkipped("citedEid=" + citedEid + ", code=" + IntegrationErrorCode.PERSISTENCE_ERROR + ", msg=" + ex.getMessage());
+                }
+
+                if (pendingCitationEvents.size() >= CITATION_INGEST_BATCH_SIZE) {
+                    CitationBatchOutcome batchOutcome = flushCitationBatch(pendingPublicationEvents, pendingCitationEvents, batchId);
+                    applyBatchOutcome(result, batchOutcome.citationOutcome());
+                    cumulativePublicationSerializeMs += batchOutcome.publicationOutcome().serializeMs();
+                    cumulativePublicationDbMs += batchOutcome.publicationOutcome().dbInsertEventMs();
+                    cumulativeCitationSerializeMs += batchOutcome.citationOutcome().serializeMs();
+                    cumulativeCitationDbMs += batchOutcome.citationOutcome().dbInsertEventMs();
+                    cumulativeTouchMs += batchOutcome.publicationOutcome().touchQueueUpsertMs() + batchOutcome.citationOutcome().touchQueueUpsertMs();
+                    pendingPublicationEvents.clear();
+                    pendingCitationEvents.clear();
+                }
+
+                if (result.getProcessedCount() % INGEST_HEARTBEAT == 0) {
+                    long elapsedMs = (System.nanoTime() - startedAtNanos) / 1_000_000L;
+                    double rate = elapsedMs == 0 ? 0.0 : (result.getProcessedCount() * 1000.0) / elapsedMs;
+                    logger.info("Scopus citation ingest progress: processed={} imported={} skipped={} errors={} elapsedMs={} ratePerSec={} timingsMs[publicationSerialize={}, citationSerialize={}, publicationEventInsert={}, citationEventInsert={}, touchQueueUpsert={}, total={}]",
+                            result.getProcessedCount(),
+                            result.getImportedCount(),
+                            result.getSkippedCount(),
+                            result.getErrorCount(),
+                            elapsedMs,
+                            String.format(Locale.ROOT, "%.2f", rate),
+                            cumulativePublicationSerializeMs,
+                            cumulativeCitationSerializeMs,
+                            cumulativePublicationDbMs,
+                            cumulativeCitationDbMs,
+                            cumulativeTouchMs,
+                            cumulativePublicationSerializeMs + cumulativeCitationSerializeMs + cumulativePublicationDbMs + cumulativeCitationDbMs + cumulativeTouchMs);
                 }
             }
-        });
+        }
+        if (!pendingCitationEvents.isEmpty()) {
+            CitationBatchOutcome batchOutcome = flushCitationBatch(pendingPublicationEvents, pendingCitationEvents, batchId);
+            applyBatchOutcome(result, batchOutcome.citationOutcome());
+        }
+    }
+
+    private CitationBatchOutcome flushCitationBatch(
+            List<ScopusImportEventIngestionService.BatchIngestionItem> pendingPublicationEvents,
+            List<ScopusImportEventIngestionService.BatchIngestionItem> pendingCitationEvents,
+            String batchId
+    ) {
+        ScopusImportEventIngestionService.BatchIngestionOutcome publicationOutcome = importEventIngestionService.ingestBatch(
+                ScopusImportEntityType.PUBLICATION,
+                SOURCE_SCOPUS_JSON_BOOTSTRAP,
+                batchId,
+                PAYLOAD_FORMAT_JSON_OBJECT,
+                pendingPublicationEvents,
+                false
+        );
+        ScopusImportEventIngestionService.BatchIngestionOutcome citationOutcome = importEventIngestionService.ingestBatch(
+                ScopusImportEntityType.CITATION,
+                SOURCE_SCOPUS_JSON_BOOTSTRAP,
+                batchId,
+                PAYLOAD_FORMAT_JSON_OBJECT,
+                pendingCitationEvents,
+                false
+        );
+        return new CitationBatchOutcome(publicationOutcome, citationOutcome);
+    }
+
+    private void applyBatchOutcome(
+            ImportProcessingResult result,
+            ScopusImportEventIngestionService.BatchIngestionOutcome batchOutcome
+    ) {
+        for (int i = 0; i < batchOutcome.imported(); i++) {
+            result.markImported();
+        }
+        for (int i = 0; i < batchOutcome.skipped(); i++) {
+            result.markSkipped("citation-batch-duplicate");
+        }
+        for (int i = 0; i < batchOutcome.errors(); i++) {
+            result.markError("citation-batch-error");
+        }
+    }
+
+    private record CitationBatchOutcome(
+            ScopusImportEventIngestionService.BatchIngestionOutcome publicationOutcome,
+            ScopusImportEventIngestionService.BatchIngestionOutcome citationOutcome
+    ) {
     }
 
     private void applyIngestionOutcome(ImportProcessingResult result,

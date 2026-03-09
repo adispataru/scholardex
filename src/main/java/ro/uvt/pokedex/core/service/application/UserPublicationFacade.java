@@ -31,11 +31,12 @@ public class UserPublicationFacade {
         List<Author> byId = scopusProjectionReadService.findAuthorsByIdIn(
                 researcherAuthorLookupService.resolveAuthorLookupKeys(researcher)
         );
-        Map<String, Publication> publicationsById = new LinkedHashMap<>();
-        byId.forEach(author -> scopusProjectionReadService.findAllPublicationsByAuthorsContaining(author.getId())
-                .forEach(publication -> publicationsById.putIfAbsent(publication.getId(), publication)));
-        List<Publication> publications = new ArrayList<>(publicationsById.values());
-        PublicationOrderingSupport.sortPublicationsInPlace(publications);
+        List<String> canonicalAuthorIds = byId.stream()
+                .map(Author::getId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        List<Publication> publications = scopusProjectionReadService.findAllPublicationsByAuthorsIn(canonicalAuthorIds);
 
         int hIndex = computeHIndex(publications);
 

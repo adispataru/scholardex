@@ -28,6 +28,7 @@ import ro.uvt.pokedex.core.service.importing.scopus.ScholardexCanonicalBuildChec
 import ro.uvt.pokedex.core.service.importing.scopus.ScholardexCitationCanonicalizationService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusFactBuilderService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusProjectionBuilderService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScopusTouchQueueService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService;
 
 import java.util.List;
@@ -47,6 +48,7 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
     @Mock private ScholardexCitationCanonicalizationService citationCanonicalizationService;
     @Mock private ScholardexCanonicalBuildCheckpointService canonicalBuildCheckpointService;
+    @Mock private ScopusTouchQueueService touchQueueService;
     @Mock private ScholardexSourceLinkService sourceLinkService;
     @Mock private ScholardexEdgeReconciliationService edgeReconciliationService;
     @Mock private ScholardexPublicationBackfillService publicationBackfillService;
@@ -79,6 +81,7 @@ class ScopusBigBangMigrationServiceTest {
                 publicationCanonicalizationService,
                 citationCanonicalizationService,
                 canonicalBuildCheckpointService,
+                touchQueueService,
                 sourceLinkService,
                 edgeReconciliationService,
                 publicationBackfillService,

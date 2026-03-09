@@ -21,6 +21,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
@@ -33,6 +34,11 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumSearchView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusFundingFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEvent;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationTouch;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorTouch;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationTouch;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumTouch;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationTouch;
 
 import java.util.List;
 
@@ -94,6 +100,18 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
     private IndexOperations authorshipFactOps;
     @Mock
     private IndexOperations canonicalCitationFactOps;
+    @Mock
+    private IndexOperations publicationAuthorAffiliationFactOps;
+    @Mock
+    private IndexOperations affiliationTouchOps;
+    @Mock
+    private IndexOperations authorTouchOps;
+    @Mock
+    private IndexOperations forumTouchOps;
+    @Mock
+    private IndexOperations publicationTouchOps;
+    @Mock
+    private IndexOperations citationTouchOps;
 
     private ScopusCanonicalIndexMaintenanceService service;
 
@@ -107,6 +125,11 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         when(mongoTemplate.indexOps(ScopusAuthorFact.class)).thenReturn(authorFactOps);
         when(mongoTemplate.indexOps(ScopusAffiliationFact.class)).thenReturn(affiliationFactOps);
         when(mongoTemplate.indexOps(ScopusFundingFact.class)).thenReturn(fundingFactOps);
+        when(mongoTemplate.indexOps(ScopusAffiliationTouch.class)).thenReturn(affiliationTouchOps);
+        when(mongoTemplate.indexOps(ScopusAuthorTouch.class)).thenReturn(authorTouchOps);
+        when(mongoTemplate.indexOps(ScopusForumTouch.class)).thenReturn(forumTouchOps);
+        when(mongoTemplate.indexOps(ScopusPublicationTouch.class)).thenReturn(publicationTouchOps);
+        when(mongoTemplate.indexOps(ScopusCitationTouch.class)).thenReturn(citationTouchOps);
         when(mongoTemplate.indexOps(ScopusForumSearchView.class)).thenReturn(forumViewOps);
         when(mongoTemplate.indexOps(ScopusAuthorSearchView.class)).thenReturn(authorViewOps);
         when(mongoTemplate.indexOps(ScopusAffiliationSearchView.class)).thenReturn(affiliationViewOps);
@@ -120,6 +143,7 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         when(mongoTemplate.indexOps(ScholardexAuthorshipFact.class)).thenReturn(authorshipFactOps);
         when(mongoTemplate.indexOps(ScholardexCitationFact.class)).thenReturn(canonicalCitationFactOps);
         when(mongoTemplate.indexOps(ScholardexAuthorAffiliationFact.class)).thenReturn(authorAffiliationFactOps);
+        when(mongoTemplate.indexOps(ScholardexPublicationAuthorAffiliationFact.class)).thenReturn(publicationAuthorAffiliationFactOps);
         when(mongoTemplate.indexOps(ScholardexSourceLink.class)).thenReturn(sourceLinkOps);
         when(mongoTemplate.indexOps(ScholardexIdentityConflict.class)).thenReturn(identityConflictOps);
         when(mongoTemplate.indexOps(ScholardexPublicationView.class)).thenReturn(mergedPublicationViewOps);
@@ -134,6 +158,11 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         when(authorFactOps.getIndexInfo()).thenReturn(List.of());
         when(affiliationFactOps.getIndexInfo()).thenReturn(List.of());
         when(fundingFactOps.getIndexInfo()).thenReturn(List.of());
+        when(affiliationTouchOps.getIndexInfo()).thenReturn(List.of());
+        when(authorTouchOps.getIndexInfo()).thenReturn(List.of());
+        when(forumTouchOps.getIndexInfo()).thenReturn(List.of());
+        when(publicationTouchOps.getIndexInfo()).thenReturn(List.of());
+        when(citationTouchOps.getIndexInfo()).thenReturn(List.of());
         when(forumViewOps.getIndexInfo()).thenReturn(List.of());
         when(authorViewOps.getIndexInfo()).thenReturn(List.of());
         when(affiliationViewOps.getIndexInfo()).thenReturn(List.of());
@@ -147,13 +176,14 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         when(authorshipFactOps.getIndexInfo()).thenReturn(List.of());
         when(canonicalCitationFactOps.getIndexInfo()).thenReturn(List.of());
         when(authorAffiliationFactOps.getIndexInfo()).thenReturn(List.of());
+        when(publicationAuthorAffiliationFactOps.getIndexInfo()).thenReturn(List.of());
         when(sourceLinkOps.getIndexInfo()).thenReturn(List.of());
         when(identityConflictOps.getIndexInfo()).thenReturn(List.of());
         when(mergedPublicationViewOps.getIndexInfo()).thenReturn(List.of());
 
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult result = service.ensureIndexes();
 
-        assertEquals(92, result.created().size());
+        assertEquals(106, result.created().size());
         assertTrue(result.present().isEmpty());
         assertTrue(result.invalid().isEmpty());
         assertTrue(result.errors().isEmpty());
@@ -196,6 +226,26 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         when(fundingFactOps.getIndexInfo()).thenReturn(List.of(
                 info(ScopusCanonicalIndexMaintenanceService.IDX_FUNDING_UNIQ, true, "fundingKey"),
                 info(ScopusCanonicalIndexMaintenanceService.IDX_FUNDING_SPONSOR, false, "sponsor")
+        ));
+        when(affiliationTouchOps.getIndexInfo()).thenReturn(List.of(
+                info(ScopusCanonicalIndexMaintenanceService.IDX_TOUCH_AFFILIATION_UNIQ, true, "source", "afid"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_TOUCH_AFFILIATION_TOUCHED, false, "touchedAt")
+        ));
+        when(authorTouchOps.getIndexInfo()).thenReturn(List.of(
+                info(ScopusCanonicalIndexMaintenanceService.IDX_TOUCH_AUTHOR_UNIQ, true, "source", "authorId"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_TOUCH_AUTHOR_TOUCHED, false, "touchedAt")
+        ));
+        when(forumTouchOps.getIndexInfo()).thenReturn(List.of(
+                info(ScopusCanonicalIndexMaintenanceService.IDX_TOUCH_FORUM_UNIQ, true, "source", "sourceId"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_TOUCH_FORUM_TOUCHED, false, "touchedAt")
+        ));
+        when(publicationTouchOps.getIndexInfo()).thenReturn(List.of(
+                info(ScopusCanonicalIndexMaintenanceService.IDX_TOUCH_PUBLICATION_UNIQ, true, "source", "eid"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_TOUCH_PUBLICATION_TOUCHED, false, "touchedAt")
+        ));
+        when(citationTouchOps.getIndexInfo()).thenReturn(List.of(
+                info(ScopusCanonicalIndexMaintenanceService.IDX_TOUCH_CITATION_UNIQ, true, "source", "citedEid", "citingEid"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_TOUCH_CITATION_TOUCHED, false, "touchedAt")
         ));
         when(forumViewOps.getIndexInfo()).thenReturn(List.of(
                 info(ScopusCanonicalIndexMaintenanceService.IDX_FORUM_VIEW_NAME, false, "publicationName"),
@@ -275,6 +325,12 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
                 info(ScopusCanonicalIndexMaintenanceService.IDX_AUTHOR_AFFILIATION_AUTHOR, false, "authorId"),
                 info(ScopusCanonicalIndexMaintenanceService.IDX_AUTHOR_AFFILIATION_AFFILIATION, false, "affiliationId")
         ));
+        when(publicationAuthorAffiliationFactOps.getIndexInfo()).thenReturn(List.of(
+                info(ScopusCanonicalIndexMaintenanceService.IDX_PUBLICATION_AUTHOR_AFFILIATION_UNIQ_EDGE, true, "publicationId", "authorId", "affiliationId", "source"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_PUBLICATION_AUTHOR_AFFILIATION_PUBLICATION, false, "publicationId"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_PUBLICATION_AUTHOR_AFFILIATION_AUTHOR, false, "authorId"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_PUBLICATION_AUTHOR_AFFILIATION_AFFILIATION, false, "affiliationId")
+        ));
         when(sourceLinkOps.getIndexInfo()).thenReturn(List.of(
                 info(ScopusCanonicalIndexMaintenanceService.IDX_SOURCE_LINK_UNIQ, true, "entityType", "source", "sourceRecordId"),
                 info(ScopusCanonicalIndexMaintenanceService.IDX_SOURCE_LINK_CANONICAL, false, "canonicalEntityId"),
@@ -303,7 +359,7 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
 
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult result = service.ensureIndexes();
 
-        assertEquals(92, result.present().size());
+        assertEquals(106, result.present().size());
         assertTrue(result.created().isEmpty());
         assertTrue(result.invalid().isEmpty());
         assertTrue(result.errors().isEmpty());
@@ -314,6 +370,11 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         verify(authorFactOps, never()).ensureIndex(any());
         verify(affiliationFactOps, never()).ensureIndex(any());
         verify(fundingFactOps, never()).ensureIndex(any());
+        verify(affiliationTouchOps, never()).ensureIndex(any());
+        verify(authorTouchOps, never()).ensureIndex(any());
+        verify(forumTouchOps, never()).ensureIndex(any());
+        verify(publicationTouchOps, never()).ensureIndex(any());
+        verify(citationTouchOps, never()).ensureIndex(any());
         verify(forumViewOps, never()).ensureIndex(any());
         verify(authorViewOps, never()).ensureIndex(any());
         verify(affiliationViewOps, never()).ensureIndex(any());
@@ -327,6 +388,7 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         verify(authorshipFactOps, never()).ensureIndex(any());
         verify(canonicalCitationFactOps, never()).ensureIndex(any());
         verify(authorAffiliationFactOps, never()).ensureIndex(any());
+        verify(publicationAuthorAffiliationFactOps, never()).ensureIndex(any());
         verify(sourceLinkOps, never()).ensureIndex(any());
         verify(identityConflictOps, never()).ensureIndex(any());
         verify(mergedPublicationViewOps, never()).ensureIndex(any());

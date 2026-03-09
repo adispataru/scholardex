@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import os
 import sys
 
@@ -19,6 +19,10 @@ class ScopusDumper:
     def __parse_cover_date(self, value):
         if value is None:
             return None
+        if isinstance(value, date):
+            return value
+        if isinstance(value, datetime):
+            return value.date()
         try:
             if pd.isna(value):
                 return None
@@ -27,6 +31,10 @@ class ScopusDumper:
         raw = str(value).strip()
         if raw == "":
             return None
+        if "T" in raw:
+            raw = raw.split("T", 1)[0]
+        if " " in raw:
+            raw = raw.split(" ", 1)[0]
         for fmt in ("%Y-%m-%d", "%Y-%m", "%Y"):
             try:
                 parsed = datetime.strptime(raw, fmt).date()
@@ -43,10 +51,23 @@ class ScopusDumper:
         if not baseline_json_path or not os.path.isfile(baseline_json_path):
             return pd.DataFrame()
         try:
-            return pd.read_json(baseline_json_path)
+            return pd.read_json(baseline_json_path, convert_dates=False)
         except Exception as inst:
             print("Failed to load baseline json {} because {}!".format(type(inst), inst.args))
             return pd.DataFrame()
+
+    def __resolve_baseline_json_path(self, baseline_json_path):
+        script_dir = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
+        candidates = [
+            baseline_json_path,
+            os.path.join("_checkpoint", "complete_scopus_with_citing_and_date_sp.json"),
+            os.path.join(script_dir, baseline_json_path),
+            os.path.join(script_dir, "_checkpoint", "complete_scopus_with_citing_and_date_sp.json")
+        ]
+        for candidate in candidates:
+            if candidate and os.path.isfile(candidate):
+                return candidate
+        return baseline_json_path
 
     def __infer_last_publication_date(self, records):
         latest = None
@@ -249,7 +270,7 @@ class ScopusDumper:
         dst['citing articles'] = citing
         return dst
 
-    def __verify_citation(self, dst, fix=True):
+    def __verify_citation(self, dst, fix=True, incremental_mode=False):
         missing_cite = 0
         if 'citing articles' not in dst.columns:
             return dst
@@ -265,7 +286,12 @@ class ScopusDumper:
                     except (TypeError, ValueError):
                         missing_cite += 1
                         continue
-                    if citedby_count != len(row_citations):
+                    if incremental_mode:
+                        # In incremental mode, citing articles are date-filtered subset and
+                        # are expected to be <= total citedby_count; exact match is not required.
+                        if len(row_citations) > citedby_count:
+                            print('Subset citation count exceeds citedby_count at index {}: {} -> {}'.format(index, citedby_count, len(row_citations)))
+                    elif citedby_count != len(row_citations):
                         print('Mismatch found at index {}: {} -> {}'.format(index, row['citedby_count'], len(row_citations)))
                         if fix:
                             dst.loc[index, 'citedby_count'] = len(row_citations)
@@ -273,8 +299,8 @@ class ScopusDumper:
         return dst
 
     def dump(self, subscriber=True, refresh=True, cite=False,
-             baseline_json_path='complete_scopus_with_citing_and_date_verified_sp.json',
-             incremental_output_path='_checkpoint/complete_scopus_incremental_sp.json'):
+             baseline_json_path='/home/adrian/scopus/complete_scopus_with_citing_and_date_verified_sp.json',
+             incremental_output_path='/home/adrian/scopus/_checkpoint/complete_scopus_incremental_sp.json'):
         self._affil_search()
         self.__affil_author()
 
@@ -284,14 +310,39 @@ class ScopusDumper:
         if not os.path.exists('dump'):
             os.makedirs('dump')
 
-        baseline_dst = self.__load_existing_verified_json(baseline_json_path)
+        resolved_baseline_path = self.__resolve_baseline_json_path(baseline_json_path)
+        baseline_exists = os.path.isfile(resolved_baseline_path)
+        if not baseline_exists:
+            print("Baseline file not found at: {}".format(resolved_baseline_path))
+        baseline_dst = self.__load_existing_verified_json(resolved_baseline_path)
+        used_csv_fallback = False
+        if baseline_exists and baseline_dst.empty:
+            print("Baseline file exists but loaded 0 rows (empty or unreadable JSON structure): {}".format(resolved_baseline_path))
+        if baseline_dst.empty and self.__db_check():
+            print("Falling back to dump/full_scopus_dump.csv for date/eid inference.")
+            try:
+                baseline_dst = pd.read_csv('dump/full_scopus_dump.csv')
+                used_csv_fallback = True
+            except Exception as inst:
+                print("Failed to load csv fallback {} because {}!".format(type(inst), inst.args))
+
         baseline_records = baseline_dst.to_dict('records') if not baseline_dst.empty else []
         baseline_eids = {str(row.get('eid')) for row in baseline_records if row.get('eid') is not None}
         last_publication_date = self.__infer_last_publication_date(baseline_records)
+        if len(baseline_records) > 0 and last_publication_date is None:
+            print("Baseline loaded ({} rows) but no parseable 'coverDate' values were found.".format(len(baseline_records)))
         publication_overlap_start = last_publication_date - timedelta(days=365) if last_publication_date else None
         last_citation_per_eid = self.__infer_last_citation_date_per_eid(baseline_records)
+        print("Baseline path: {} | baseline exists: {} | baseline rows: {} | inferred last publication date: {} | csv fallback used: {}".format(
+            resolved_baseline_path,
+            baseline_exists,
+            len(baseline_records),
+            last_publication_date,
+            used_csv_fallback
+        ))
 
         incremental_query = self.__build_publication_incremental_query(last_publication_date)
+        print("Incremental publication query: {}".format(incremental_query))
         n_dst = self.__scopus_dump(subscriber, refresh, query=incremental_query)
         incremental_dst = self.__filter_by_cover_date(n_dst, publication_overlap_start)
 
@@ -350,7 +401,7 @@ class ScopusDumper:
             ddst = c_dst[c_dst['citing articles'] == 'fail']['eid']
             if len(ddst) > 0:
                 c_dst = self.__check_citation(c_dst, ddst, subscriber, refresh, citation_lower_bounds)
-        c_dst = self.__verify_citation(c_dst)
+        c_dst = self.__verify_citation(c_dst, incremental_mode=True)
         print("Dump verified ..")
         c_dst.to_csv('complete_scopus_with_citing_and_date_verified_sp.csv', index=False)
         c_dst.to_pickle('complete_scopus_with_citing_and_date_verified_sp.pkl')

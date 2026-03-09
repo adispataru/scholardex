@@ -81,7 +81,9 @@ public class ScopusProjectionBuilderService {
         ImportProcessingResult result = new ImportProcessingResult(20);
         Instant buildAt = Instant.now();
         String buildVersion = buildAt.toString();
+        long totalStartedAtNanos = System.nanoTime();
         try {
+            long forumStartedAtNanos = System.nanoTime();
             List<ScopusForumFact> forumFacts = new ArrayList<>(forumFactRepository.findAll());
             forumFacts.sort(Comparator.comparing(ScopusForumFact::getSourceId, Comparator.nullsLast(String::compareTo)));
             List<ScholardexForumView> forumViews = forumFacts.stream()
@@ -91,7 +93,9 @@ public class ScopusProjectionBuilderService {
             forumViewRepository.deleteAll();
             forumViewRepository.saveAll(forumViews);
             markImported(result, forumViews.size());
+            long forumMs = nanosToMillis(System.nanoTime() - forumStartedAtNanos);
 
+            long authorStartedAtNanos = System.nanoTime();
             List<ScholardexAuthorFact> authorFacts = new ArrayList<>(authorFactRepository.findAll());
             authorFacts.sort(Comparator.comparing(ScholardexAuthorFact::getId, Comparator.nullsLast(String::compareTo)));
             List<ScholardexAuthorView> authorViews = authorFacts.stream()
@@ -100,7 +104,9 @@ public class ScopusProjectionBuilderService {
             authorViewRepository.deleteAll();
             authorViewRepository.saveAll(authorViews);
             markImported(result, authorViews.size());
+            long authorMs = nanosToMillis(System.nanoTime() - authorStartedAtNanos);
 
+            long affiliationStartedAtNanos = System.nanoTime();
             List<ScholardexAffiliationFact> affiliationFacts = new ArrayList<>(affiliationFactRepository.findAll());
             affiliationFacts.sort(Comparator.comparing(ScholardexAffiliationFact::getId, Comparator.nullsLast(String::compareTo)));
             List<ScholardexAffiliationView> affiliationViews = affiliationFacts.stream()
@@ -109,10 +115,14 @@ public class ScopusProjectionBuilderService {
             affiliationViewRepository.deleteAll();
             affiliationViewRepository.saveAll(affiliationViews);
             markImported(result, affiliationViews.size());
+            long affiliationMs = nanosToMillis(System.nanoTime() - affiliationStartedAtNanos);
 
+            long publicationStartedAtNanos = System.nanoTime();
             List<ScholardexPublicationFact> publicationFacts = new ArrayList<>(publicationFactRepository.findAll());
             publicationFacts.sort(Comparator.comparing(ScholardexPublicationFact::getEid, Comparator.nullsLast(String::compareTo)));
+            long citationMapStartedAtNanos = System.nanoTime();
             Map<String, List<String>> citingByCited = buildCitingMap();
+            long citationMapMs = nanosToMillis(System.nanoTime() - citationMapStartedAtNanos);
             List<ScholardexPublicationView> publicationViews = new ArrayList<>(publicationFacts.size());
             for (ScholardexPublicationFact fact : publicationFacts) {
                 publicationViews.add(toPublicationView(fact, citingByCited, buildVersion, buildAt));
@@ -120,9 +130,12 @@ public class ScopusProjectionBuilderService {
             publicationViewRepository.deleteAll();
             publicationViewRepository.saveAll(publicationViews);
             markImported(result, publicationViews.size());
+            long publicationMs = nanosToMillis(System.nanoTime() - publicationStartedAtNanos);
 
-            log.info("Scopus projection rebuild complete: buildVersion={}, forums={}, authors={}, affiliations={}, publications={}",
-                    buildVersion, forumViews.size(), authorViews.size(), affiliationViews.size(), publicationViews.size());
+            long totalMs = nanosToMillis(System.nanoTime() - totalStartedAtNanos);
+            log.info("Scopus projection rebuild complete: buildVersion={}, forums={}, authors={}, affiliations={}, publications={} timingsMs[forums={}, authors={}, affiliations={}, citationMap={}, publications={}, total={}]",
+                    buildVersion, forumViews.size(), authorViews.size(), affiliationViews.size(), publicationViews.size(),
+                    forumMs, authorMs, affiliationMs, citationMapMs, publicationMs, totalMs);
         } catch (Exception e) {
             result.markError("scopus-projection-rebuild-error=" + e.getMessage());
             log.error("Scopus projection rebuild failed", e);
@@ -270,6 +283,10 @@ public class ScopusProjectionBuilderService {
             result.markProcessed();
             result.markImported();
         }
+    }
+
+    private long nanosToMillis(long nanos) {
+        return nanos / 1_000_000L;
     }
 
     private List<String> safeList(List<String> values) {

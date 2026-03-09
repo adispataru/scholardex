@@ -24,6 +24,9 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepo
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.time.Instant;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -348,6 +351,9 @@ public class ScopusFactBuilderService {
         if (created) {
             fact = new ScopusPublicationFact();
             state.publicationByEid.put(eid, fact);
+        } else if (samePayloadHash(fact.getLastPayloadHash(), event.getPayloadHash())) {
+            result.markSkipped(sample(event, "publication payload unchanged"));
+            return;
         }
 
         Instant now = Instant.now();
@@ -367,6 +373,7 @@ public class ScopusFactBuilderService {
         fact.setCreator(text(payload, "creator"));
         fact.setAuthorCount(intValue(payload, "author_count"));
         fact.setAuthors(distinctNonBlank(splitSemicolon(text(payload, "author_ids"))));
+        fact.setAuthorAffiliationSourceIds(splitSemicolon(text(payload, "author_afids")));
         fact.setCorrespondingAuthors(distinctNonBlank(splitSemicolon(text(payload, "correspondingAuthors"))));
         fact.setAffiliations(distinctNonBlank(splitSemicolon(text(payload, "afid"))));
         fact.setForumId(text(payload, "source_id"));
@@ -384,6 +391,8 @@ public class ScopusFactBuilderService {
         fact.setPageRange(text(payload, "pageRange"));
         fact.setApproved(boolValue(payload, "approved"));
         applyLineage(fact, event);
+        fact.setLastPayloadHash(event.getPayloadHash());
+        fact.setLastMaterializedAt(now);
         fact.setUpdatedAt(now);
         state.pendingPublicationSaves.put(eid, fact);
         markImportOrUpdate(result, created);
@@ -422,6 +431,9 @@ public class ScopusFactBuilderService {
         if (created) {
             fact = new ScopusCitationFact();
             citationByEdge.put(edgeKey, fact);
+        } else if (samePayloadHash(fact.getLastPayloadHash(), event.getPayloadHash())) {
+            result.markSkipped(sample(event, "citation payload unchanged"));
+            return;
         }
 
         Instant now = Instant.now();
@@ -431,6 +443,8 @@ public class ScopusFactBuilderService {
         fact.setCitedEid(citedEid);
         fact.setCitingEid(citingEid);
         applyLineage(fact, event);
+        fact.setLastPayloadHash(event.getPayloadHash());
+        fact.setLastMaterializedAt(now);
         fact.setUpdatedAt(now);
         pendingCitationSaves.put(edgeKey, fact);
         markImportOrUpdate(result, created);
@@ -453,6 +467,15 @@ public class ScopusFactBuilderService {
             fact = new ScopusForumFact();
             state.forumBySourceId.put(sourceId, fact);
         }
+        String payloadHash = hashKey("forum",
+                sourceId,
+                text(payload, "publicationName"),
+                normalizeIssn(text(payload, "issn")),
+                normalizeIssn(text(payload, "eIssn")),
+                text(payload, "aggregationType"));
+        if (!created && samePayloadHash(fact.getLastPayloadHash(), payloadHash)) {
+            return;
+        }
 
         Instant now = Instant.now();
         if (fact.getCreatedAt() == null) {
@@ -464,6 +487,8 @@ public class ScopusFactBuilderService {
         fact.setEIssn(normalizeIssn(text(payload, "eIssn")));
         fact.setAggregationType(text(payload, "aggregationType"));
         applyLineage(fact, event);
+        fact.setLastPayloadHash(payloadHash);
+        fact.setLastMaterializedAt(now);
         fact.setUpdatedAt(now);
         state.pendingForumSaves.put(sourceId, fact);
         markImportOrUpdate(result, created);
@@ -492,6 +517,13 @@ public class ScopusFactBuilderService {
                 fact = new ScopusAuthorFact();
                 state.authorById.put(authorId, fact);
             }
+            String payloadHash = hashKey("author",
+                    authorId,
+                    trim(authorNames.get(i)),
+                    String.join(",", distinctNonBlank(splitDash(authorAfids.get(i)))));
+            if (!created && samePayloadHash(fact.getLastPayloadHash(), payloadHash)) {
+                continue;
+            }
 
             Instant now = Instant.now();
             if (fact.getCreatedAt() == null) {
@@ -501,6 +533,8 @@ public class ScopusFactBuilderService {
             fact.setName(trim(authorNames.get(i)));
             fact.setAffiliationIds(distinctNonBlank(splitDash(authorAfids.get(i))));
             applyLineage(fact, event);
+            fact.setLastPayloadHash(payloadHash);
+            fact.setLastMaterializedAt(now);
             fact.setUpdatedAt(now);
             state.pendingAuthorSaves.put(authorId, fact);
             markImportOrUpdate(result, created);
@@ -530,6 +564,14 @@ public class ScopusFactBuilderService {
                 fact = new ScopusAffiliationFact();
                 state.affiliationById.put(afid, fact);
             }
+            String payloadHash = hashKey("affiliation",
+                    afid,
+                    arrayValue(names, i),
+                    arrayValue(cities, i),
+                    arrayValue(countries, i));
+            if (!created && samePayloadHash(fact.getLastPayloadHash(), payloadHash)) {
+                continue;
+            }
 
             Instant now = Instant.now();
             if (fact.getCreatedAt() == null) {
@@ -540,6 +582,8 @@ public class ScopusFactBuilderService {
             fact.setCity(arrayValue(cities, i));
             fact.setCountry(arrayValue(countries, i));
             applyLineage(fact, event);
+            fact.setLastPayloadHash(payloadHash);
+            fact.setLastMaterializedAt(now);
             fact.setUpdatedAt(now);
             state.pendingAffiliationSaves.put(afid, fact);
             markImportOrUpdate(result, created);
@@ -564,6 +608,10 @@ public class ScopusFactBuilderService {
             fact = new ScopusFundingFact();
             state.fundingByKey.put(fundingKey, fact);
         }
+        String payloadHash = hashKey("funding", acronym, text(payload, "fund_no"), text(payload, "fund_sponsor"));
+        if (!created && samePayloadHash(fact.getLastPayloadHash(), payloadHash)) {
+            return;
+        }
 
         Instant now = Instant.now();
         if (fact.getCreatedAt() == null) {
@@ -574,6 +622,8 @@ public class ScopusFactBuilderService {
         fact.setSponsor(text(payload, "fund_sponsor"));
         fact.setFundingKey(fundingKey);
         applyLineage(fact, event);
+        fact.setLastPayloadHash(payloadHash);
+        fact.setLastMaterializedAt(now);
         fact.setUpdatedAt(now);
         state.pendingFundingSaves.put(fundingKey, fact);
         markImportOrUpdate(result, created);
@@ -784,6 +834,33 @@ public class ScopusFactBuilderService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private boolean samePayloadHash(String previous, String current) {
+        return !isBlank(previous) && !isBlank(current) && previous.equals(current);
+    }
+
+    private String hashKey(String... values) {
+        StringBuilder material = new StringBuilder();
+        if (values != null) {
+            for (String value : values) {
+                if (material.length() > 0) {
+                    material.append('|');
+                }
+                material.append(trim(value));
+            }
+        }
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] bytes = digest.digest(material.toString().getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder(bytes.length * 2);
+            for (byte b : bytes) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available", e);
+        }
     }
 
     private record PublicationWorkItem(ScopusImportEvent event, JsonNode payload) {

@@ -5,14 +5,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorshipFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationAuthorAffiliationFactRepository;
 
 import java.util.List;
 import java.util.Map;
@@ -35,17 +38,23 @@ class ScholardexEdgeWriterServiceTest {
     @Mock
     private ScholardexAuthorAffiliationFactRepository authorAffiliationFactRepository;
     @Mock
+    private ScholardexPublicationAuthorAffiliationFactRepository publicationAuthorAffiliationFactRepository;
+    @Mock
     private ScholardexSourceLinkService sourceLinkService;
     @Mock
     private ScholardexIdentityConflictRepository identityConflictRepository;
+    @Mock
+    private MongoTemplate mongoTemplate;
 
     @Test
     void upsertAuthorshipEdgeCreatesDeterministicEdgeAndSourceLink() {
         ScholardexEdgeWriterService service = new ScholardexEdgeWriterService(
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                publicationAuthorAffiliationFactRepository,
                 sourceLinkService,
-                identityConflictRepository
+                identityConflictRepository,
+                mongoTemplate
         );
         when(authorshipFactRepository.findByPublicationIdAndAuthorIdAndSource("p1", "a1", "SCOPUS"))
                 .thenReturn(Optional.empty());
@@ -77,8 +86,10 @@ class ScholardexEdgeWriterServiceTest {
         ScholardexEdgeWriterService service = new ScholardexEdgeWriterService(
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                publicationAuthorAffiliationFactRepository,
                 sourceLinkService,
-                identityConflictRepository
+                identityConflictRepository,
+                mongoTemplate
         );
         ScholardexAuthorAffiliationFact existing = new ScholardexAuthorAffiliationFact();
         existing.setId("legacy_edge_id");
@@ -108,8 +119,10 @@ class ScholardexEdgeWriterServiceTest {
         ScholardexEdgeWriterService service = new ScholardexEdgeWriterService(
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                publicationAuthorAffiliationFactRepository,
                 sourceLinkService,
-                identityConflictRepository
+                identityConflictRepository,
+                mongoTemplate
         );
         when(authorAffiliationFactRepository.findByAuthorIdAndAffiliationIdAndSource("a1", "f1", "SCOPUS"))
                 .thenReturn(Optional.empty());
@@ -130,5 +143,41 @@ class ScholardexEdgeWriterServiceTest {
         assertEquals(1, result.accepted());
         verify(authorAffiliationFactRepository).saveAll(any());
         verify(sourceLinkService).batchUpsertWithState(any(), any(), anyBoolean());
+    }
+
+    @Test
+    void upsertPublicationAuthorAffiliationEdgeCreatesDeterministicEdgeAndSourceLink() {
+        ScholardexEdgeWriterService service = new ScholardexEdgeWriterService(
+                authorshipFactRepository,
+                authorAffiliationFactRepository,
+                publicationAuthorAffiliationFactRepository,
+                sourceLinkService,
+                identityConflictRepository,
+                mongoTemplate
+        );
+        when(publicationAuthorAffiliationFactRepository.findByPublicationIdAndAuthorIdAndAffiliationIdAndSource("p1", "a1", "f1", "SCOPUS"))
+                .thenReturn(Optional.empty());
+        when(sourceLinkService.link(eq(ScholardexEntityType.PUBLICATION_AUTHOR_AFFILIATION), eq("SCOPUS"), eq("rec-3"), anyString(), eq("bridge"), any(), any(), any(), anyBoolean()))
+                .thenReturn(ScholardexSourceLinkService.SourceLinkWriteResult.accepted(new ScholardexSourceLink()));
+
+        ScholardexEdgeWriterService.EdgeWriteResult result = service.upsertPublicationAuthorAffiliationEdge(
+                new ScholardexEdgeWriterService.EdgeWriteCommand(
+                        "p1",
+                        "a1",
+                        "f1",
+                        "SCOPUS",
+                        "rec-3",
+                        "evt",
+                        "b1",
+                        "c1",
+                        ScholardexSourceLinkService.STATE_LINKED,
+                        "bridge",
+                        false
+                )
+        );
+
+        assertTrue(result.accepted());
+        assertTrue(result.canonicalEdgeId().startsWith("spaaf_"));
+        verify(publicationAuthorAffiliationFactRepository).save(any(ScholardexPublicationAuthorAffiliationFact.class));
     }
 }

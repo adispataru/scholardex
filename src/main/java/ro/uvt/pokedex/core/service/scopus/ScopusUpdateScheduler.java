@@ -313,7 +313,6 @@ public class ScopusUpdateScheduler {
                     Map<String, Object> citationPayload = new LinkedHashMap<>();
                     citationPayload.put("citedEid", citedEid);
                     citationPayload.put("citingEid", citingEid);
-                    citationPayload.put("citingItem", item);
 
                     ScopusImportEventIngestionService.EventIngestionOutcome citationOutcome = importEventIngestionService.ingest(
                             ScopusImportEntityType.CITATION,

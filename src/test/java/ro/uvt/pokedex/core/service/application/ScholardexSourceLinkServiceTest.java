@@ -35,7 +35,7 @@ class ScholardexSourceLinkServiceTest {
     @Test
     void linkNormalizesAliasAndWritesCanonicalState() {
         ScholardexSourceLinkService service = new ScholardexSourceLinkService(sourceLinkRepository, identityConflictRepository);
-        when(sourceLinkRepository.findByEntityTypeAndSourceAndSourceRecordId(
+        when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
                 ScholardexEntityType.FORUM, "WOS", "journal-1")).thenReturn(Optional.empty());
 
         ScholardexSourceLinkService.SourceLinkWriteResult result = service.link(
@@ -68,7 +68,7 @@ class ScholardexSourceLinkServiceTest {
         existing.setSourceRecordId("WOS:1");
         existing.setCanonicalEntityId("spub_old");
         existing.setLinkState("LINKED");
-        when(sourceLinkRepository.findByEntityTypeAndSourceAndSourceRecordId(
+        when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
                 ScholardexEntityType.PUBLICATION, "WOS", "WOS:1")).thenReturn(Optional.of(existing));
         when(identityConflictRepository.findByEntityTypeAndIncomingSourceAndIncomingSourceRecordIdAndReasonCodeAndStatus(
                 eq(ScholardexEntityType.PUBLICATION), eq("WOS"), eq("WOS:1"), eq("SOURCE_LINK_RELINK_REJECTED"), eq("OPEN")
@@ -99,7 +99,7 @@ class ScholardexSourceLinkServiceTest {
         existing.setSource("SCOPUS");
         existing.setSourceRecordId("123");
         existing.setLinkState("SKIPPED");
-        when(sourceLinkRepository.findByEntityTypeAndSourceAndSourceRecordId(
+        when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
                 ScholardexEntityType.AUTHOR, "SCOPUS", "123")).thenReturn(Optional.of(existing));
 
         ScholardexSourceLinkService.SourceLinkWriteResult rejected = service.link(

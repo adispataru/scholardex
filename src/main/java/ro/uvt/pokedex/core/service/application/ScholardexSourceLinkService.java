@@ -59,14 +59,16 @@ public class ScholardexSourceLinkService {
         String normalizedSource = normalizeSource(source);
         if (normalizedSource != null) {
             Optional<ScholardexSourceLink> normalized = sourceLinkRepository
-                    .findByEntityTypeAndSourceAndSourceRecordId(entityType, normalizedSource, normalizedRecordId);
+                    .findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
+                            entityType, normalizedSource, normalizedRecordId);
             if (normalized.isPresent()) {
                 return normalized;
             }
         }
         String rawSource = normalize(source);
         if (rawSource != null && (normalizedSource == null || !normalizedSource.equals(rawSource))) {
-            return sourceLinkRepository.findByEntityTypeAndSourceAndSourceRecordId(entityType, rawSource, normalizedRecordId);
+            return sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
+                    entityType, rawSource, normalizedRecordId);
         }
         return Optional.empty();
     }
