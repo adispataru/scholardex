@@ -385,17 +385,19 @@ public class ScopusProjectionReadService {
         if (candidateIds == null || candidateIds.isEmpty()) {
             return List.of();
         }
-        LinkedHashSet<String> resolved = new LinkedHashSet<>();
+        LinkedHashSet<String> normalizedCandidates = new LinkedHashSet<>();
         for (String id : candidateIds) {
             String normalized = normalizeBlank(id);
-            if (normalized == null) {
-                continue;
+            if (normalized != null) {
+                normalizedCandidates.add(normalized);
             }
-            resolved.add(normalized);
-            List<ScholardexSourceLink> mapped = sourceLinkService.findByEntityTypeAndSourceRecordId(entityType, normalized);
-            if (mapped == null || mapped.isEmpty()) {
-                continue;
-            }
+        }
+        if (normalizedCandidates.isEmpty()) {
+            return List.of();
+        }
+        LinkedHashSet<String> resolved = new LinkedHashSet<>(normalizedCandidates);
+        List<ScholardexSourceLink> mapped = sourceLinkService.findByEntityTypeAndSourceRecordIds(entityType, normalizedCandidates);
+        if (mapped != null && !mapped.isEmpty()) {
             mapped.stream()
                     .map(ScholardexSourceLink::getCanonicalEntityId)
                     .filter(candidate -> candidate != null && !candidate.isBlank())

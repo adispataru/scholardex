@@ -1,6 +1,8 @@
 package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.scopus.Author;
@@ -17,29 +19,46 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Service
 @RequiredArgsConstructor
 public class UserPublicationFacade {
+    private static final Logger log = LoggerFactory.getLogger(UserPublicationFacade.class);
+
     private final ResearcherService researcherService;
     private final ScopusProjectionReadService scopusProjectionReadService;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
 
     public Optional<UserPublicationsViewModel> buildUserPublicationsView(String researcherId) {
+        long startedAtNanos = System.nanoTime();
+        log.info("User publications load started: researcherId={}", researcherId);
+
         Optional<Researcher> researcherById = researcherService.findResearcherById(researcherId);
         if (researcherById.isEmpty()) {
+            log.info("User publications load finished: researcherId={} status=not-found totalMs={}",
+                    researcherId, nanosToMillis(System.nanoTime() - startedAtNanos));
             return Optional.empty();
         }
 
         Researcher researcher = researcherById.get();
+        long lookupKeysStartedAtNanos = System.nanoTime();
+        List<String> authorLookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(researcher);
+        long lookupKeysMs = nanosToMillis(System.nanoTime() - lookupKeysStartedAtNanos);
+
+        long authorsFetchStartedAtNanos = System.nanoTime();
         List<Author> byId = scopusProjectionReadService.findAuthorsByIdIn(
-                researcherAuthorLookupService.resolveAuthorLookupKeys(researcher)
+                authorLookupKeys
         );
+        long authorsFetchMs = nanosToMillis(System.nanoTime() - authorsFetchStartedAtNanos);
+
+        long publicationsFetchStartedAtNanos = System.nanoTime();
         List<String> canonicalAuthorIds = byId.stream()
                 .map(Author::getId)
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
         List<Publication> publications = scopusProjectionReadService.findAllPublicationsByAuthorsIn(canonicalAuthorIds);
+        long publicationsFetchMs = nanosToMillis(System.nanoTime() - publicationsFetchStartedAtNanos);
 
         int hIndex = computeHIndex(publications);
 
+        long relatedLookupStartedAtNanos = System.nanoTime();
         Set<String> authorKeys = new HashSet<>();
         Set<String> forumKeys = new HashSet<>();
         AtomicInteger numCitations = new AtomicInteger();
@@ -56,6 +75,22 @@ public class UserPublicationFacade {
         Map<String, Forum> forumMap = new HashMap<>();
         List<Forum> forums = scopusProjectionReadService.findForumsByIdIn(forumKeys);
         forums.forEach(f -> forumMap.put(f.getId(), f));
+        long relatedLookupMs = nanosToMillis(System.nanoTime() - relatedLookupStartedAtNanos);
+
+        long totalMs = nanosToMillis(System.nanoTime() - startedAtNanos);
+        log.info("User publications load finished: researcherId={} lookupKeys={} resolvedAuthors={} canonicalAuthors={} publications={} forums={} citations={} timingsMs[lookupKeys={}, authorsFetch={}, publicationsFetch={}, relatedLookup={}, total={}]",
+                researcherId,
+                authorLookupKeys.size(),
+                byId.size(),
+                canonicalAuthorIds.size(),
+                publications.size(),
+                forums.size(),
+                numCitations.get(),
+                lookupKeysMs,
+                authorsFetchMs,
+                publicationsFetchMs,
+                relatedLookupMs,
+                totalMs);
 
         return Optional.of(new UserPublicationsViewModel(
                 publications,
@@ -146,5 +181,9 @@ public class UserPublicationFacade {
         }
 
         return 0;
+    }
+
+    private long nanosToMillis(long nanos) {
+        return nanos / 1_000_000L;
     }
 }
