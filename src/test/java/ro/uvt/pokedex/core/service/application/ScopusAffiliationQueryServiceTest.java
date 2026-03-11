@@ -26,11 +26,11 @@ class ScopusAffiliationQueryServiceTest {
     @Mock
     private MongoTemplate mongoTemplate;
 
-    private ScopusAffiliationQueryService service;
+    private MongoScopusAffiliationReadPort service;
 
     @BeforeEach
     void setUp() {
-        service = new ScopusAffiliationQueryService(mongoTemplate);
+        service = new MongoScopusAffiliationReadPort(mongoTemplate);
     }
 
     @Test

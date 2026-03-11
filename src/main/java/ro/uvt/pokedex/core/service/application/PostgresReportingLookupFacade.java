@@ -1,9 +1,9 @@
 package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.WoSRanking;
@@ -12,13 +12,14 @@ import ro.uvt.pokedex.core.model.reporting.wos.MetricType;
 import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
-import ro.uvt.pokedex.core.model.reporting.wos.WosScoringView;
 import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
-import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
 
+import javax.sql.DataSource;
+import java.sql.Array;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -30,7 +31,8 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
-public class ProjectionBackedReportingLookupFacade implements ReportingLookupPort {
+@ConditionalOnBean(DataSource.class)
+public class PostgresReportingLookupFacade implements ReportingLookupPort {
 
     private static final Set<EditionNormalized> OPERATIONAL_EDITIONS = EnumSet.of(
             EditionNormalized.SCIE,
@@ -38,9 +40,7 @@ public class ProjectionBackedReportingLookupFacade implements ReportingLookupPor
     );
 
     private final CacheService cacheService;
-    private final WosMetricFactRepository metricFactRepository;
-    private final WosCategoryFactRepository categoryFactRepository;
-    private final MongoTemplate mongoTemplate;
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     @Override
     public Forum getForum(String forumId) {
@@ -54,24 +54,80 @@ public class ProjectionBackedReportingLookupFacade implements ReportingLookupPor
             return List.of();
         }
 
-        Query viewQuery = new Query().addCriteria(new Criteria().orOperator(
-                Criteria.where("issnNorm").is(normalizedIssn),
-                Criteria.where("eIssnNorm").is(normalizedIssn),
-                Criteria.where("alternativeIssnsNorm").is(normalizedIssn)
-        ));
-        List<WosRankingView> views = mongoTemplate.find(viewQuery, WosRankingView.class);
+        List<WosRankingView> views = namedParameterJdbcTemplate.query(
+                """
+                        SELECT journal_id, name, issn, e_issn, alternative_issns, alternative_names
+                        FROM reporting_read.wos_ranking_view
+                        WHERE issn_norm = :issn
+                           OR e_issn_norm = :issn
+                           OR :issn = ANY(alternative_issns_norm)
+                        """,
+                new MapSqlParameterSource("issn", normalizedIssn),
+                this::mapRankingView
+        );
+
         if (views.isEmpty()) {
             return List.of();
         }
 
         List<String> journalIds = views.stream().map(WosRankingView::getId).toList();
-        List<WosMetricFact> metricFacts = metricFactRepository.findAllByJournalIdIn(journalIds);
-        List<WosCategoryFact> categoryFacts = categoryFactRepository.findAllByJournalIdInAndEditionNormalizedIn(journalIds, OPERATIONAL_EDITIONS);
+
+        List<WosMetricFact> metricFacts = namedParameterJdbcTemplate.query(
+                """
+                        SELECT journal_id, year, metric_type, value
+                        FROM reporting_read.wos_metric_fact
+                        WHERE journal_id IN (:journalIds)
+                        """,
+                new MapSqlParameterSource("journalIds", journalIds),
+                (rs, rowNum) -> {
+                    WosMetricFact fact = new WosMetricFact();
+                    fact.setJournalId(rs.getString("journal_id"));
+                    fact.setYear(rs.getObject("year", Integer.class));
+                    String metricType = rs.getString("metric_type");
+                    if (metricType != null) {
+                        fact.setMetricType(MetricType.valueOf(metricType));
+                    }
+                    fact.setValue(rs.getObject("value", Double.class));
+                    return fact;
+                }
+        );
+
+        List<WosCategoryFact> categoryFacts = namedParameterJdbcTemplate.query(
+                """
+                        SELECT journal_id, year, category_name_canonical, edition_normalized,
+                               metric_type, quarter, quartile_rank, rank
+                        FROM reporting_read.wos_category_fact
+                        WHERE journal_id IN (:journalIds)
+                          AND edition_normalized IN (:editions)
+                        """,
+                new MapSqlParameterSource()
+                        .addValue("journalIds", journalIds)
+                        .addValue("editions", OPERATIONAL_EDITIONS.stream().map(Enum::name).toList()),
+                (rs, rowNum) -> {
+                    WosCategoryFact fact = new WosCategoryFact();
+                    fact.setJournalId(rs.getString("journal_id"));
+                    fact.setYear(rs.getObject("year", Integer.class));
+                    fact.setCategoryNameCanonical(rs.getString("category_name_canonical"));
+                    String edition = rs.getString("edition_normalized");
+                    if (edition != null) {
+                        fact.setEditionNormalized(EditionNormalized.valueOf(edition));
+                    }
+                    String metricType = rs.getString("metric_type");
+                    if (metricType != null) {
+                        fact.setMetricType(MetricType.valueOf(metricType));
+                    }
+                    fact.setQuarter(rs.getString("quarter"));
+                    fact.setQuartileRank(rs.getObject("quartile_rank", Integer.class));
+                    fact.setRank(rs.getObject("rank", Integer.class));
+                    return fact;
+                }
+        );
 
         Map<String, List<WosMetricFact>> scoresByJournal = new HashMap<>();
         for (WosMetricFact metricFact : metricFacts) {
             scoresByJournal.computeIfAbsent(metricFact.getJournalId(), ignored -> new ArrayList<>()).add(metricFact);
         }
+
         Map<String, List<WosCategoryFact>> categoriesByJournal = new HashMap<>();
         for (WosCategoryFact categoryFact : categoryFacts) {
             categoriesByJournal.computeIfAbsent(categoryFact.getJournalId(), ignored -> new ArrayList<>()).add(categoryFact);
@@ -108,21 +164,53 @@ public class ProjectionBackedReportingLookupFacade implements ReportingLookupPor
                 ? OPERATIONAL_EDITIONS
                 : Set.of(parsedCategory.editionNormalized());
 
-        Query scoringQuery = new Query().addCriteria(new Criteria().andOperator(
-                Criteria.where("metricType").is(MetricType.AIS),
-                Criteria.where("year").is(year),
-                Criteria.where("quarter").is(WoSRanking.Quarter.Q1.toString()),
-                Criteria.where("categoryNameCanonical").is(parsedCategory.categoryNameCanonical()),
-                Criteria.where("editionNormalized").in(editions)
-        ));
+        Integer count = namedParameterJdbcTemplate.queryForObject(
+                """
+                        SELECT COUNT(DISTINCT journal_id)
+                        FROM reporting_read.wos_scoring_view
+                        WHERE metric_type = :metricType
+                          AND year = :year
+                          AND quarter = :quarter
+                          AND category_name_canonical = :category
+                          AND edition_normalized IN (:editions)
+                        """,
+                new MapSqlParameterSource()
+                        .addValue("metricType", MetricType.AIS.name())
+                        .addValue("year", year)
+                        .addValue("quarter", WoSRanking.Quarter.Q1.name())
+                        .addValue("category", parsedCategory.categoryNameCanonical())
+                        .addValue("editions", editions.stream().map(Enum::name).toList()),
+                Integer.class
+        );
 
-        List<String> journalIds = mongoTemplate.findDistinct(scoringQuery, "journalId", WosScoringView.class, String.class);
-        return journalIds.size();
+        return count == null ? 0 : count;
     }
 
     @Override
     public Set<String> getUniversityAuthorIds() {
         return cacheService.getUniversityAuthorIds();
+    }
+
+    private WosRankingView mapRankingView(ResultSet rs, int ignored) throws SQLException {
+        WosRankingView view = new WosRankingView();
+        view.setId(rs.getString("journal_id"));
+        view.setName(rs.getString("name"));
+        view.setIssn(rs.getString("issn"));
+        view.setEIssn(rs.getString("e_issn"));
+        view.setAlternativeIssns(toStringList(rs.getArray("alternative_issns")));
+        view.setAlternativeNames(toStringList(rs.getArray("alternative_names")));
+        return view;
+    }
+
+    private List<String> toStringList(Array sqlArray) throws SQLException {
+        if (sqlArray == null) {
+            return List.of();
+        }
+        Object value = sqlArray.getArray();
+        if (value instanceof String[] items) {
+            return List.of(items);
+        }
+        return List.of();
     }
 
     private WoSRanking toLegacyRanking(
@@ -140,7 +228,7 @@ public class ProjectionBackedReportingLookupFacade implements ReportingLookupPor
 
         WoSRanking.Score score = new WoSRanking.Score();
         for (WosMetricFact metricFact : scoreFacts) {
-            if (metricFact.getYear() == null || metricFact.getValue() == null) {
+            if (metricFact.getYear() == null || metricFact.getValue() == null || metricFact.getMetricType() == null) {
                 continue;
             }
             switch (metricFact.getMetricType()) {

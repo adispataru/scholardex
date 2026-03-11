@@ -26,11 +26,11 @@ class ScopusForumQueryServiceTest {
     @Mock
     private MongoTemplate mongoTemplate;
 
-    private ScopusForumQueryService service;
+    private MongoScopusForumReadPort service;
 
     @BeforeEach
     void setUp() {
-        service = new ScopusForumQueryService(mongoTemplate);
+        service = new MongoScopusForumReadPort(mongoTemplate);
     }
 
     @Test

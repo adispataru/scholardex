@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -136,6 +137,22 @@ class ScopusCutoverGuardrailTest {
                 "Scheduler citations flow must emit citation edge events.");
         assertFalse(content.contains("citationPayload.put(\"citingItem\""),
                 "Scheduler citation payload must remain edge-only.");
+    }
+
+    @Test
+    void h22_4CutoverUsesSingleReadStoreSwitchAndStartupGuard() throws Exception {
+        String appProps = new String(
+                Files.readAllBytes(Path.of("src/main/resources/application.properties")),
+                StandardCharsets.ISO_8859_1
+        );
+        assertTrue(appProps.contains("app.reporting.read-store"),
+                "Cutover must define a single read-store selector property.");
+
+        String guardContent = Files.readString(Path.of("src/main/java/ro/uvt/pokedex/core/service/application/PostgresReadCutoverGuard.java"));
+        assertTrue(guardContent.contains("projection_checkpoint"),
+                "Postgres cutover must verify projection checkpoint state at startup.");
+        assertTrue(guardContent.contains("slice_name IN ('wos', 'scopus')"),
+                "Postgres cutover guard must enforce first-wave all-or-nothing readiness.");
     }
 
     private void assertNoLegacyScopusRepositoryUsage(String content, Path file) {

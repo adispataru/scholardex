@@ -13,7 +13,8 @@ import ro.uvt.pokedex.core.model.scopus.Publication;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.when;
 
@@ -24,7 +25,7 @@ class AdminScopusFacadeTest {
     private ScopusProjectionReadService scopusProjectionReadService;
 
     @InjectMocks
-    private AdminScopusFacade facade;
+    private MongoAdminScopusReadPort mongoAdminScopusReadPort;
 
     @Test
     void buildPublicationSearchViewReturnsPublicationsAndAuthorMap() {
@@ -33,7 +34,7 @@ class AdminScopusFacadeTest {
         when(scopusProjectionReadService.findPublicationsByTitleContainingIgnoreCaseOrderByCoverDateDesc("paper")).thenReturn(List.of(publication));
         when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
 
-        var vm = facade.buildPublicationSearchView("paper");
+        var vm = mongoAdminScopusReadPort.buildPublicationSearchView("paper");
 
         assertEquals(1, vm.publications().size());
         assertEquals(1, vm.authorMap().size());
@@ -48,7 +49,7 @@ class AdminScopusFacadeTest {
         when(scopusProjectionReadService.findPublicationsByTitleContainingIgnoreCaseOrderByCoverDateDesc("paper")).thenReturn(List.of(p1, p3, p2));
         when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author("a1", "Author One")));
 
-        var vm = facade.buildPublicationSearchView("paper");
+        var vm = mongoAdminScopusReadPort.buildPublicationSearchView("paper");
 
         assertEquals(List.of("p2", "p1", "p3"), vm.publications().stream().map(Publication::getId).toList());
     }
@@ -57,7 +58,7 @@ class AdminScopusFacadeTest {
     void buildPublicationCitationsViewReturnsEmptyWhenPublicationMissing() {
         when(scopusProjectionReadService.findPublicationByAnyId("missing")).thenReturn(Optional.empty());
 
-        var vm = facade.buildPublicationCitationsView("missing");
+        var vm = mongoAdminScopusReadPort.buildPublicationCitationsView("missing");
 
         assertTrue(vm.isEmpty());
     }
@@ -80,7 +81,7 @@ class AdminScopusFacadeTest {
         when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum2));
         when(scopusProjectionReadService.findForumById("f1")).thenReturn(Optional.of(forum1));
 
-        var vm = facade.buildPublicationCitationsView("p1");
+        var vm = mongoAdminScopusReadPort.buildPublicationCitationsView("p1");
 
         assertTrue(vm.isPresent());
         assertEquals(1, vm.get().citations().size());
@@ -113,7 +114,7 @@ class AdminScopusFacadeTest {
         when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum("f2", "Forum Two")));
         when(scopusProjectionReadService.findForumById("f1")).thenReturn(Optional.of(forum("f1", "Forum One")));
 
-        var vm = facade.buildPublicationCitationsView("p1");
+        var vm = mongoAdminScopusReadPort.buildPublicationCitationsView("p1");
 
         assertTrue(vm.isPresent());
         assertEquals(List.of("c2", "c3", "c1"), vm.get().citations().stream().map(Publication::getId).toList());

@@ -30,11 +30,11 @@ class ScopusAuthorQueryServiceTest {
     @Mock
     private ScholardexAffiliationViewRepository affiliationViewRepository;
 
-    private ScopusAuthorQueryService service;
+    private MongoScopusAuthorReadPort service;
 
     @BeforeEach
     void setUp() {
-        service = new ScopusAuthorQueryService(mongoTemplate, affiliationViewRepository);
+        service = new MongoScopusAuthorReadPort(mongoTemplate, affiliationViewRepository);
     }
 
     @Test

@@ -110,9 +110,16 @@ Done history moved to `TASKS-done.md`.
     - Projection state migration: `src/main/resources/db/migration/V4__h22_3_projection_state_tables.sql`.
     - Projector service: `JdbcPostgresReportingProjectionService` + `PostgresReportingProjectionService`.
     - Verification tests: `PostgresReportingProjectionServiceIntegrationTest`, `JdbcPostgresReportingProjectionServiceTest`, `PostgresReportingReadSchemaMigrationIntegrationTest`.
-  - [ ] `H22.4` Query-layer cutover to SQL-backed WoS scoring/report reads.
+  - [x] `H22.4` Query-layer cutover to SQL-backed WoS scoring/report reads.
     Deliverable: service/facade read paths for WoS scoring and report retrieval switched from Mongo-assembled joins to SQL-backed queries.
     Exit criteria: runtime scoring/report entrypoints no longer depend on Mongo join assembly for targeted paths.
+    Status: completed on 2026-03-11.
+    Handover:
+    - Cutover contract: `docs/h22.4-query-layer-cutover-contract.md`.
+    - Runtime selector and startup guard: `ReportingReadStore`, `ReportingReadStoreSelector`, `PostgresReadCutoverGuard`.
+    - Switchable first-wave facades/services: `SwitchableReportingLookupFacade`, `ScopusAuthorQueryService`, `ScopusForumQueryService`, `ScopusAffiliationQueryService`, `AdminScopusFacade`.
+    - SQL adapters: `PostgresReportingLookupFacade`, `PostgresScopusAuthorReadPort`, `PostgresScopusForumReadPort`, `PostgresScopusAffiliationReadPort`, `PostgresAdminScopusReadPort`.
+    - Verification tests: `ReportingReadStoreRoutingTest`, `PostgresReportingLookupFacadeTest`, `ScopusCutoverGuardrailTest`.
   - [ ] `H22.5` Materialized views and refresh strategy for heavy reads.
     Deliverable: SQL materialized views (or equivalent precomputed read structures) for citation-heavy and ranking-heavy reporting queries, with refresh policy.
     Exit criteria: heavy reporting workloads meet target latency with deterministic refresh semantics.
