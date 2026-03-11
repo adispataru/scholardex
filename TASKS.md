@@ -69,60 +69,6 @@ Done history moved to `TASKS-done.md`.
     Deliverable: tests for preservation logic, computation correctness, and admin trigger flow.
     Exit criteria: automated tests cover success paths and key failure/edge cases.
 
-- [ ] `H19` Multi-source Scholardex identity and ingestion architecture.
-  Goal: make Scholardex the canonical identity and link graph layer across publications, authors, forums, and affiliations, supporting four sources (`SCOPUS`, `WOS`, `GSCHOLAR`, `USER_DEFINED`) with deterministic lineage, linking, and runtime reads optimized for indicator computation.
-  Deliverable: unified canonical contracts + storage models + ingestion/linking pipelines + immediate runtime cutover so all operational reads/writes resolve through Scholardex entities and canonical relationship edges, not source-specific silo models.
-  Exit criteria: publication/author/forum/affiliation identity is source-agnostic and deterministic; WoS-first onboarding is complete; Scholar (Publish or Perish) and user-defined imports are supported; runtime paths are cut over to Scholardex; source-specific legacy identity paths are removed from runtime; citations are canonical-ID based across all sources; all entity conflict types are captured in generic conflict storage; source-to-canonical mapping is queryable and replay-stable; canonical publication-author linkage is queryable and deterministic; canonical author-affiliation linkage is queryable and deterministic; affiliation-side traversal for scoring/reporting is fast-path capable.
-  Execution order override (locked): for remaining H19 implementation, complete citation migration first (`H19.9`) before finalizing Scopus runtime flow/data initialization and before closing runtime cutover (`H19.7`).
-  Subtasks:
-  - [x] `H19.1` Define canonical multi-source identity and ownership contract.
-    Deliverable: locked contract for Scholardex entities (`publication`, `author`, `forum`, `affiliation`, `citation`) with per-source IDs, provenance/lineage fields, conflict rules, source-link mapping rules, and replay/idempotence semantics.
-    Exit criteria: one contract document is implementation-ready and explicitly defines source ownership boundaries for Scopus/WoS/Scholar/User-defined.
-    Handover:
-    - Contract source of truth: `docs/h19.1-multisource-identity-contract.md`.
-  - [x] `H19.2` Define canonical keying and merge policy for journal/forum identity.
-    Deliverable: deterministic forum identity policy that links WoS journal identity and Scopus forum identity into Scholardex forum records, with normalization and collision handling rules.
-    Exit criteria: deterministic link keys and conflict quarantine behavior are documented and testable.
-    Handover:
-    - Contract source of truth: `docs/h19.2-forum-keying-merge-contract.md`.
-  - [x] `H19.3` Implement Scholardex publication identity model v2.
-    Deliverable: publication model supporting source IDs (`eid`, `wosId`, `googleScholarId`, `userSourceId`) plus canonical `scholardexPublicationId` and lineage metadata, with canonical `authorIds` aligned to relationship-edge contracts.
-    Exit criteria: all publication ingest/build paths can persist and resolve the new identity model without ambiguity, and publication author linkage is consistent with canonical authorship edges.
-  - [x] `H19.4` Implement Scholardex author identity model v2 (researcher-linked).
-    Deliverable: author model that supports multiple source author IDs (Scopus/WoS/Scholar/User) as source-identity canonical facts, with canonical `affiliationIds` aligned to relationship-edge contracts, researcher linkage maintained on the researcher side via `primaryScholardexAuthorId`, and deterministic merge rules.
-    Exit criteria: author linking and lookup are source-agnostic and deterministic for scoring/reporting entrypoints, and author-affiliation linkage is consistent with canonical author-affiliation edges.
-  - [x] `H19.5` Implement Scholardex affiliation identity model v2.
-    Deliverable: affiliation model that supports multiple source affiliation IDs and alias resolution across Scopus/WoS/Scholar/User, with reverse-link query support via canonical edge/index contracts (no forum-style reverse arrays required).
-    Exit criteria: affiliation linking resolves deterministically, deduplicates source aliases, and supports fast affiliation-side traversal for scoring/reporting entrypoints.
-  - [x] `H19.6` Build WoS-first onboarding into Scholardex entities.
-    Deliverable: WoS ingestion/linking pipeline that populates/links Scholardex publication/forum/author/affiliation identities using existing WoS canonical facts/views.
-    Exit criteria: WoS-only journals/publications not present in Scopus are represented and queryable in Scholardex runtime reads.
-  - [x] `H19.9` Canonical citation model and migration from EID-only citation path.
-    Deliverable: `scholardex.citation_facts` design and implementation keyed by canonical publication IDs, with migration/cutover from source/EID-bound citation reads.
-    Exit criteria: WoS-only and Scholar-only publications participate in citation edges without EID dependency.
-    Status: completed (canonical citation facts + runtime citation read cutover).
-  - [x] `H19.7` Immediate runtime cutover to Scholardex read/write paths.
-    Deliverable: all runtime read/write entrypoints (user/admin/report/export/scoring lookups) use Scholardex canonical paths directly; source-silo runtime identity paths are removed.
-    Exit criteria: no runtime dependency remains on legacy source-specific identity stores for publication/author/forum/affiliation/citation resolution; citation runtime paths resolve via canonical citation facts.
-    Status: implementation largely complete for publication/author/forum/affiliation/citation; remaining closeout is decommission/validation hardening.
-  - [x] `H19.10` Generic identity conflict model + admin operations.
-    Deliverable: `scholardex.identity_conflicts` contract and implementation covering publication/forum/author/affiliation ambiguity, plus operational listing/resolve/clear flows.
-    Exit criteria: ambiguous merges across all canonical entity types are captured and manageable through one generic conflict surface.
-  - [x] `H19.11` Source-link ledger + replay/traceability integration.
-    Deliverable: `scholardex.source_links` contract and implementation mapping `(entityType, source, sourceRecordId)` to canonical entity IDs with deterministic state transitions.
-    Exit criteria: traceability/replay workflows can resolve source record to canonical entity deterministically in one query path.
-  - [x] `H19.12` Canonical relationship-edge model for indicator runtime.
-    Deliverable: authoritative `scholardex.authorship_facts` (`publication -> author`) and `scholardex.author_affiliation_facts` (`author -> affiliation`) with deterministic ids, lineage, idempotence, and conflict policy.
-    Exit criteria: canonical edge writes/replays are deterministic, conflict-safe, and consistent with `publication_facts.authorIds` and `author_facts.affiliationIds`.
-  - [x] `H19.13` Indicator/report query cutover to edge-backed traversals.
-    Deliverable: scoring/report/export/user/admin query paths use canonical edge-backed traversals for publication-by-author and author-by-affiliation access, with performance parity/guardrail checks.
-    Exit criteria: runtime indicator computation no longer depends on source-silo author/affiliation linkage paths and passes parity/performance gates.
-  - [x] `H19.8` End-to-end validation, parity, and operability gates.
-    Deliverable: workflow and integration tests covering implemented sources (`SCOPUS`, `WOS`, current manual/user wizard `USER_DEFINED` path), identity-link conflicts, replay/idempotence, and cutover regressions; observability metrics and failure triage hooks.
-    Exit criteria: CI gates catch identity/linking regressions and operational dashboards expose source-level ingest/link health for implemented sources.
-    Handover:
-    - Validation/operability contract: `docs/h19.8-validation-operability-gates.md`.
-
 - [ ] `H20` Google Scholar (PoP) user-onboarding into Scholardex.
   Goal: support user-triggered Google Scholar imports from Publish-or-Perish exports as first-class canonical ingestion into Scholardex identity/link models.
   Deliverable: user-operation onboarding flow for PoP exports (upload/import from user surface) with parser + ingest adapter into Scholar-source events/facts and linker integration with Scholardex entities.
@@ -134,3 +80,30 @@ Done history moved to `TASKS-done.md`.
   Deliverable: user-operation onboarding flow for user-defined imports modeled as source events/facts with deterministic IDs and moderation/approval metadata.
   Exit criteria: user-defined publications and related entities imported via user operations integrate with the same Scholardex identity and lineage contracts.
   Dependency: execute after `H19.9` citation canonicalization to avoid EID-coupled citation gaps for user-only publications.
+
+- [ ] `H22` Postgres reporting core + Mongo ingest baseline migration.
+  Goal: improve WoS scoring/reporting read and compute latency by moving reporting read models to PostgreSQL while keeping MongoDB as the ingestion/event/queue write model.
+  Deliverable: architecture contract, SQL read schema, projection/sync pipeline, SQL query cutover for WoS scoring/reporting flows, and operability/rollback guardrails.
+  Exit criteria: Mongo remains authoritative for raw import events/queues; WoS/scoring/report read models are served from PostgreSQL; SQL joins/materialized views back WoS scoring and citation-heavy report paths; parity and performance gates pass before full cutover.
+  Subtasks:
+  - [ ] `H22.1` Architecture contract and bounded-context map.
+    Deliverable: decision-locked contract separating Mongo write/ingest boundaries from PostgreSQL reporting read boundaries, including ownership and data-flow rules.
+    Exit criteria: all affected read/write surfaces have explicit ownership, sync direction, and compatibility policy.
+  - [ ] `H22.2` PostgreSQL schema for WoS/scoring/reporting read core.
+    Deliverable: normalized SQL schema (tables, keys, indexes, constraints) for WoS ranking/scoring and reporting read models.
+    Exit criteria: schema supports deterministic joins for existing scoring/reporting contracts and enforces required uniqueness/integrity constraints.
+  - [ ] `H22.3` Projection/sync pipeline from canonical Mongo to PostgreSQL.
+    Deliverable: deterministic projector/backfill flow that materializes PostgreSQL read models from canonical Mongo collections with replay-safe behavior.
+    Exit criteria: full rebuild and incremental sync both produce stable SQL read state with lineage/traceability.
+  - [ ] `H22.4` Query-layer cutover to SQL-backed WoS scoring/report reads.
+    Deliverable: service/facade read paths for WoS scoring and report retrieval switched from Mongo-assembled joins to SQL-backed queries.
+    Exit criteria: runtime scoring/report entrypoints no longer depend on Mongo join assembly for targeted paths.
+  - [ ] `H22.5` Materialized views and refresh strategy for heavy reads.
+    Deliverable: SQL materialized views (or equivalent precomputed read structures) for citation-heavy and ranking-heavy reporting queries, with refresh policy.
+    Exit criteria: heavy reporting workloads meet target latency with deterministic refresh semantics.
+  - [ ] `H22.6` Dual-read parity and performance gate.
+    Deliverable: automated parity + latency comparison gates between legacy Mongo reads and new SQL reads across representative workloads.
+    Exit criteria: correctness parity is proven and latency/error budgets are met before final read cutover.
+  - [ ] `H22.7` Operationalization, rollback, and rebuild playbook.
+    Deliverable: documented runbooks for deployment, monitoring, rollback, and full read-model rebuild/backfill in production-like environments.
+    Exit criteria: on-call workflows can detect, mitigate, and recover from projector/read-model failures without data-loss ambiguity.
