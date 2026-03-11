@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ro.uvt.pokedex.core.service.application.GeneralInitializationService;
 import ro.uvt.pokedex.core.service.application.DualReadGateService;
+import ro.uvt.pokedex.core.service.application.H22OperationalStatusService;
 import ro.uvt.pokedex.core.service.application.PostgresMaterializedViewRefreshService;
 import ro.uvt.pokedex.core.service.application.PostgresReportingProjectionService;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
@@ -29,6 +30,7 @@ public class AdminInitializationController {
     private final ObjectProvider<PostgresReportingProjectionService> postgresReportingProjectionServiceProvider;
     private final ObjectProvider<PostgresMaterializedViewRefreshService> postgresMaterializedViewRefreshServiceProvider;
     private final ObjectProvider<DualReadGateService> dualReadGateServiceProvider;
+    private final ObjectProvider<H22OperationalStatusService> h22OperationalStatusServiceProvider;
 
     @GetMapping
     public String showInitializationPage() {
@@ -640,6 +642,37 @@ public class AdminInitializationController {
         DualReadGateService service = dualReadGateServiceProvider.getIfAvailable();
         if (service == null) {
             return new DualReadGateService.DualReadGateStatusSnapshot(null);
+        }
+        return service.latestStatus();
+    }
+
+    @PostMapping("/postgres/operational/showStatus")
+    public String showPostgresOperationalStatus(RedirectAttributes redirectAttributes) {
+        H22OperationalStatusService service = h22OperationalStatusServiceProvider.getIfAvailable();
+        if (service == null) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "H22 operational status service is disabled."
+            );
+            return "redirect:/admin/initialization";
+        }
+        var snapshot = service.latestStatus();
+        redirectAttributes.addFlashAttribute("successMessage",
+                "H22 operational status: state=" + snapshot.overallState()
+                        + ", readStore=" + snapshot.readStore()
+                        + ", projection=" + snapshot.projection().status()
+                        + ", materialized=" + snapshot.materializedViewRefresh().status()
+                        + ", dualReadGate=" + snapshot.dualReadGate().status()
+                        + ".");
+        return "redirect:/admin/initialization";
+    }
+
+    @GetMapping("/postgres/operational/status")
+    @ResponseBody
+    public H22OperationalStatusService.H22OperationalStatusSnapshot postgresOperationalStatusApi() {
+        H22OperationalStatusService service = h22OperationalStatusServiceProvider.getIfAvailable();
+        if (service == null) {
+            return H22OperationalStatusService.H22OperationalStatusSnapshot.unavailable();
         }
         return service.latestStatus();
     }

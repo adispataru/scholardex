@@ -66,7 +66,7 @@ class UserPublicationFacadeTest {
 
         when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
         when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
-        when(scopusProjectionReadService.findAllPublicationsByAuthorsContaining("a1")).thenReturn(List.of(p));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(anyCollection())).thenReturn(List.of(p));
         when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
 
         var vmOpt = facade.buildUserPublicationsView("r1");
@@ -100,8 +100,7 @@ class UserPublicationFacadeTest {
 
         when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
         when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author1, author2));
-        when(scopusProjectionReadService.findAllPublicationsByAuthorsContaining("a1")).thenReturn(List.of(shared));
-        when(scopusProjectionReadService.findAllPublicationsByAuthorsContaining("a2")).thenReturn(List.of(shared));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(anyCollection())).thenReturn(List.of(shared));
         when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum("f1")));
 
         var vmOpt = facade.buildUserPublicationsView("r1");
@@ -125,7 +124,7 @@ class UserPublicationFacadeTest {
 
         when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
         when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
-        when(scopusProjectionReadService.findAllPublicationsByAuthorsContaining("a1"))
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(anyCollection()))
                 .thenReturn(List.of(malformed, sameYearHigherTitle, newest));
         when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum("f1")));
 

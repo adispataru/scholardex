@@ -83,10 +83,11 @@ class ReportingReadStoreRoutingTest {
 
         MongoAdminScopusReadPort mongoPort = mock(MongoAdminScopusReadPort.class);
         PostgresAdminScopusReadPort postgresPort = mock(PostgresAdminScopusReadPort.class);
+        ScopusProjectionReadService scopusProjectionReadService = mock(ScopusProjectionReadService.class);
         when(postgresPort.buildPublicationSearchView("paper"))
                 .thenReturn(new AdminScopusPublicationSearchViewModel(List.of(), Map.of()));
 
-        AdminScopusFacade facade = new AdminScopusFacade(selector, mongoPort, provider(postgresPort));
+        AdminScopusFacade facade = new AdminScopusFacade(selector, mongoPort, provider(postgresPort), scopusProjectionReadService);
 
         assertEquals(0, facade.buildPublicationSearchView("paper").publications().size());
     }

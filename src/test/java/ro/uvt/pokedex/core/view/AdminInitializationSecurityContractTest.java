@@ -14,6 +14,7 @@ import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.CustomUserDetailsService;
 import ro.uvt.pokedex.core.service.application.GeneralInitializationService;
 import ro.uvt.pokedex.core.service.application.DualReadGateService;
+import ro.uvt.pokedex.core.service.application.H22OperationalStatusService;
 import ro.uvt.pokedex.core.service.application.PostgresMaterializedViewRefreshService;
 import ro.uvt.pokedex.core.service.application.PostgresReportingProjectionService;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
@@ -50,6 +51,8 @@ class AdminInitializationSecurityContractTest {
     private PostgresMaterializedViewRefreshService postgresMaterializedViewRefreshService;
     @MockitoBean
     private DualReadGateService dualReadGateService;
+    @MockitoBean
+    private H22OperationalStatusService h22OperationalStatusService;
 
     @Test
     void nonAdminCannotAccessInitializationPage() throws Exception {
@@ -187,6 +190,19 @@ class AdminInitializationSecurityContractTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/custom-error?error=403"));
         mockMvc.perform(get("/admin/initialization/postgres/dualReadGate/status")
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+    }
+
+    @Test
+    void nonAdminCannotReadPostgresOperationalStatus() throws Exception {
+        mockMvc.perform(post("/admin/initialization/postgres/operational/showStatus")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+        mockMvc.perform(get("/admin/initialization/postgres/operational/status")
                         .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/custom-error?error=403"));

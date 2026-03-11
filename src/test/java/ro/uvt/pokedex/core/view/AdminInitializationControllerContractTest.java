@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.service.application.GeneralInitializationService;
 import ro.uvt.pokedex.core.service.application.DualReadGateService;
+import ro.uvt.pokedex.core.service.application.H22OperationalStatusService;
 import ro.uvt.pokedex.core.service.application.PostgresMaterializedViewRefreshService;
 import ro.uvt.pokedex.core.service.application.PostgresReportingProjectionService;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
@@ -54,6 +55,8 @@ class AdminInitializationControllerContractTest {
     private PostgresMaterializedViewRefreshService postgresMaterializedViewRefreshService;
     @MockitoBean
     private DualReadGateService dualReadGateService;
+    @MockitoBean
+    private H22OperationalStatusService h22OperationalStatusService;
 
     @Test
     void initializationPageRendersTemplate() throws Exception {
@@ -85,6 +88,9 @@ class AdminInitializationControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/dualReadGate/run")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/dualReadGate/showStatus")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/dualReadGate/status")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/operational/showStatus")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/operational/status")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("docs/h22.7-operational-rollback-rebuild-playbook.md")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/runAll")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/adminUser")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/domain")))
@@ -365,6 +371,30 @@ class AdminInitializationControllerContractTest {
 
         verify(dualReadGateService).runFullGate();
         verify(dualReadGateService, times(2)).latestStatus();
+    }
+
+    @Test
+    void showPostgresOperationalStatusActionsRedirectToInitializationPage() throws Exception {
+        when(h22OperationalStatusService.latestStatus())
+                .thenReturn(new H22OperationalStatusService.H22OperationalStatusSnapshot(
+                        "GREEN",
+                        "postgres",
+                        new H22OperationalStatusService.ComponentStatus("SUCCESS", "projection-1", Instant.now(), Instant.now(), null),
+                        new H22OperationalStatusService.ComponentStatus("SUCCESS", "mv-1", Instant.now(), Instant.now(), null),
+                        new H22OperationalStatusService.ComponentStatus("SUCCESS", "gate-1", Instant.now(), Instant.now(), null),
+                        Instant.now()
+                ));
+
+        mockMvc.perform(post("/admin/initialization/postgres/operational/showStatus"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+        mockMvc.perform(get("/admin/initialization/postgres/operational/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.overallState").value("GREEN"))
+                .andExpect(jsonPath("$.readStore").value("postgres"))
+                .andExpect(jsonPath("$.projection.status").value("SUCCESS"));
+
+        verify(h22OperationalStatusService, times(2)).latestStatus();
     }
 
     @Test

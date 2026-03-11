@@ -370,6 +370,27 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">H22 Operational Status (H22.7)</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small">Consolidated view over projection, materialized-view refresh, dual-read gate, and active read-store selector.</p>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>Show consolidated operational status</div>
+                            <form th:action="@{/admin/initialization/postgres/operational/showStatus}" method="post">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">Show status</button>
+                            </form>
+                        </div>
+                        <div class="small text-muted mb-1">
+                            JSON status endpoint: <code>/admin/initialization/postgres/operational/status</code>
+                        </div>
+                        <div class="small text-muted">
+                            Runbook: <code>docs/h22.7-operational-rollback-rebuild-playbook.md</code>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div th:replace="~{fragments :: app-footer}"></div>
         </div>

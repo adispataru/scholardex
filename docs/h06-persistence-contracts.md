@@ -133,7 +133,7 @@ Define explicit persistence contracts for data identity, date/time shape, query 
 - `C5` ordering contract rollout is complete for `R3` hotspot outputs:
   - deterministic publication comparator adopted (`coverDate desc`, `title asc`, `id asc`) across user/admin/group publication and citation lists.
   - hybrid policy applied:
-    - repository-level ordering for admin title search (`findByTitleContainsOrderByCoverDateDesc`),
+    - canonical case-insensitive ordered read-service method for admin title search (`findPublicationsByTitleContainingIgnoreCaseOrderByCoverDateDesc`),
     - service-level sorting for aggregated multi-query flows.
 - Duplicate amplification control for author-iterative publication aggregation is implemented:
   - user publication aggregation dedupes by publication ID before downstream metrics (h-index, citation totals, lookup maps).

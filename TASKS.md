@@ -140,6 +140,12 @@ Done history moved to `TASKS-done.md`.
     - Runtime gate service: `DualReadGateService`, `JdbcDualReadGateService`.
     - Admin controls: `AdminInitializationController` + `templates/admin/initialization.html` H22.6 section.
     - Verification tests: `JdbcDualReadGateServiceTest`, `AdminInitializationControllerContractTest`, `AdminInitializationSecurityContractTest`, `PostgresReportingReadSchemaMigrationIntegrationTest`.
-  - [ ] `H22.7` Operationalization, rollback, and rebuild playbook.
+  - [x] `H22.7` Operationalization, rollback, and rebuild playbook.
     Deliverable: documented runbooks for deployment, monitoring, rollback, and full read-model rebuild/backfill in production-like environments.
     Exit criteria: on-call workflows can detect, mitigate, and recover from projector/read-model failures without data-loss ambiguity.
+    Status: completed on 2026-03-12.
+    Handover:
+    - Runbook: `docs/h22.7-operational-rollback-rebuild-playbook.md`.
+    - Consolidated ops service: `H22OperationalStatusService`, `DefaultH22OperationalStatusService`.
+    - Admin operational endpoints: `/admin/initialization/postgres/operational/showStatus`, `/admin/initialization/postgres/operational/status`.
+    - Verification tests: `DefaultH22OperationalStatusServiceTest`, `AdminInitializationControllerContractTest`, `AdminInitializationSecurityContractTest`.

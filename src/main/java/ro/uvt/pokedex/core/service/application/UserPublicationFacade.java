@@ -54,6 +54,15 @@ public class UserPublicationFacade {
                 .distinct()
                 .toList();
         List<Publication> publications = scopusProjectionReadService.findAllPublicationsByAuthorsIn(canonicalAuthorIds);
+        Map<String, Publication> dedupedPublicationsById = new LinkedHashMap<>();
+        for (Publication publication : publications) {
+            if (publication.getId() == null || publication.getId().isBlank()) {
+                continue;
+            }
+            dedupedPublicationsById.putIfAbsent(publication.getId(), publication);
+        }
+        publications = new ArrayList<>(dedupedPublicationsById.values());
+        PublicationOrderingSupport.sortPublicationsInPlace(publications);
         long publicationsFetchMs = nanosToMillis(System.nanoTime() - publicationsFetchStartedAtNanos);
 
         int hIndex = computeHIndex(publications);
