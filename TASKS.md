@@ -101,9 +101,15 @@ Done history moved to `TASKS-done.md`.
     - Schema contract: `docs/h22.2-postgres-reporting-schema-contract.md`.
     - Flyway migrations: `src/main/resources/db/migration/V1__h22_2_create_pg_enums.sql`, `src/main/resources/db/migration/V2__h22_2_create_reporting_core_tables.sql`, `src/main/resources/db/migration/V3__h22_2_create_reporting_core_indexes.sql`.
     - Migration verification test: `PostgresReportingReadSchemaMigrationIntegrationTest`.
-  - [ ] `H22.3` Projection/sync pipeline from canonical Mongo to PostgreSQL.
+  - [x] `H22.3` Projection/sync pipeline from canonical Mongo to PostgreSQL.
     Deliverable: deterministic projector/backfill flow that materializes PostgreSQL read models from canonical Mongo collections with replay-safe behavior.
     Exit criteria: full rebuild and incremental sync both produce stable SQL read state with lineage/traceability.
+    Status: completed on 2026-03-11.
+    Handover:
+    - Projection contract: `docs/h22.3-postgres-projection-contract.md`.
+    - Projection state migration: `src/main/resources/db/migration/V4__h22_3_projection_state_tables.sql`.
+    - Projector service: `JdbcPostgresReportingProjectionService` + `PostgresReportingProjectionService`.
+    - Verification tests: `PostgresReportingProjectionServiceIntegrationTest`, `JdbcPostgresReportingProjectionServiceTest`, `PostgresReportingReadSchemaMigrationIntegrationTest`.
   - [ ] `H22.4` Query-layer cutover to SQL-backed WoS scoring/report reads.
     Deliverable: service/facade read paths for WoS scoring and report retrieval switched from Mongo-assembled joins to SQL-backed queries.
     Exit criteria: runtime scoring/report entrypoints no longer depend on Mongo join assembly for targeted paths.

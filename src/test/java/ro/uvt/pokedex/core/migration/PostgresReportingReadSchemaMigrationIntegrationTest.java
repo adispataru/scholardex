@@ -57,6 +57,9 @@ class PostgresReportingReadSchemaMigrationIntegrationTest {
             assertTrue(objectExists(connection, "reporting_read", "scholardex_citation_fact", "TABLE"));
             assertTrue(objectExists(connection, "reporting_read", "scholardex_authorship_fact", "TABLE"));
             assertTrue(objectExists(connection, "reporting_read", "scholardex_author_affiliation_fact", "TABLE"));
+            assertTrue(objectExists(connection, "reporting_read", "projection_checkpoint", "TABLE"));
+            assertTrue(objectExists(connection, "reporting_read", "projection_run", "TABLE"));
+            assertTrue(objectExists(connection, "reporting_read", "projection_slice_run", "TABLE"));
 
             assertTrue(indexExists(connection, "reporting_read", "idx_wos_scoring_lookup"));
             assertTrue(indexExists(connection, "reporting_read", "idx_wos_scoring_journal_timeline"));
@@ -68,6 +71,8 @@ class PostgresReportingReadSchemaMigrationIntegrationTest {
             assertTrue(indexExists(connection, "reporting_read", "idx_scholardex_citation_cited"));
             assertTrue(indexExists(connection, "reporting_read", "idx_scholardex_authorship_author"));
             assertTrue(indexExists(connection, "reporting_read", "idx_scholardex_author_affiliation_affiliation"));
+            assertTrue(indexExists(connection, "reporting_read", "idx_projection_run_started_at"));
+            assertTrue(indexExists(connection, "reporting_read", "idx_projection_slice_run_run_id"));
         }
     }
 

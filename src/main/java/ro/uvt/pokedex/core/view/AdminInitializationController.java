@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.view;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ro.uvt.pokedex.core.service.application.GeneralInitializationService;
+import ro.uvt.pokedex.core.service.application.PostgresReportingProjectionService;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.ScopusBigBangMigrationService;
 import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
@@ -22,6 +24,7 @@ public class AdminInitializationController {
     private final GeneralInitializationService generalInitializationService;
     private final RankingMaintenanceFacade rankingMaintenanceFacade;
     private final ScopusBigBangMigrationService scopusBigBangMigrationService;
+    private final ObjectProvider<PostgresReportingProjectionService> postgresReportingProjectionServiceProvider;
 
     @GetMapping
     public String showInitializationPage() {
@@ -399,6 +402,105 @@ public class AdminInitializationController {
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Scopus big-bang failed: " + e.getMessage());
         }
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/postgres/projection/runFull")
+    public String runPostgresProjectionFullRebuild(RedirectAttributes redirectAttributes) {
+        PostgresReportingProjectionService service = postgresReportingProjectionServiceProvider.getIfAvailable();
+        if (service == null) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "Postgres projection service is disabled. Enable core.h22.projection.enabled in postgres profile."
+            );
+            return "redirect:/admin/initialization";
+        }
+
+        var run = service.runFullRebuild();
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Postgres projection full rebuild " + run.status().toLowerCase()
+                        + ". runId=" + run.runId()
+                        + ", slices=" + run.slices().size()
+                        + ", error=" + (run.errorSample() == null ? "none" : run.errorSample()) + ".");
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/postgres/projection/runIncremental")
+    public String runPostgresProjectionIncremental(RedirectAttributes redirectAttributes) {
+        PostgresReportingProjectionService service = postgresReportingProjectionServiceProvider.getIfAvailable();
+        if (service == null) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "Postgres projection service is disabled. Enable core.h22.projection.enabled in postgres profile."
+            );
+            return "redirect:/admin/initialization";
+        }
+
+        var run = service.runIncrementalSync();
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Postgres projection incremental sync " + run.status().toLowerCase()
+                        + ". runId=" + run.runId()
+                        + ", slices=" + run.slices().size()
+                        + ", error=" + (run.errorSample() == null ? "none" : run.errorSample()) + ".");
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/postgres/projection/showStatus")
+    public String showPostgresProjectionStatus(RedirectAttributes redirectAttributes) {
+        PostgresReportingProjectionService service = postgresReportingProjectionServiceProvider.getIfAvailable();
+        if (service == null) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "Postgres projection service is disabled. Enable core.h22.projection.enabled in postgres profile."
+            );
+            return "redirect:/admin/initialization";
+        }
+        var snapshot = service.latestRunStatus();
+        var latestRun = snapshot.latestRun();
+        redirectAttributes.addFlashAttribute("successMessage",
+                latestRun == null
+                        ? "Postgres projection status: no run recorded yet."
+                        : "Postgres projection status: runId=" + latestRun.runId()
+                        + ", mode=" + latestRun.mode()
+                        + ", status=" + latestRun.status()
+                        + ", slices=" + latestRun.slices().size()
+                        + ", checkpoints=" + snapshot.checkpoints().size() + ".");
+        return "redirect:/admin/initialization";
+    }
+
+    @GetMapping("/postgres/projection/status")
+    @ResponseBody
+    public PostgresReportingProjectionService.ProjectionStatusSnapshot postgresProjectionStatusApi() {
+        PostgresReportingProjectionService service = postgresReportingProjectionServiceProvider.getIfAvailable();
+        if (service == null) {
+            return new PostgresReportingProjectionService.ProjectionStatusSnapshot(null, java.util.Map.of());
+        }
+        return service.latestRunStatus();
+    }
+
+    @PostMapping("/postgres/projection/resetState")
+    public String resetPostgresProjectionState(
+            @RequestParam(name = "confirmation", required = false) String confirmation,
+            RedirectAttributes redirectAttributes
+    ) {
+        if (!"RESET".equals(confirmation == null ? null : confirmation.trim())) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "Postgres projection reset aborted. Type RESET in the confirmation field to proceed."
+            );
+            return "redirect:/admin/initialization";
+        }
+        PostgresReportingProjectionService service = postgresReportingProjectionServiceProvider.getIfAvailable();
+        if (service == null) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "Postgres projection service is disabled. Enable core.h22.projection.enabled in postgres profile."
+            );
+            return "redirect:/admin/initialization";
+        }
+
+        service.resetProjectionState();
+        redirectAttributes.addFlashAttribute("successMessage", "Postgres projection checkpoints reset.");
         return "redirect:/admin/initialization";
     }
 

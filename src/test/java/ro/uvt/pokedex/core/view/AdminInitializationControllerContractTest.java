@@ -9,6 +9,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.service.application.GeneralInitializationService;
+import ro.uvt.pokedex.core.service.application.PostgresReportingProjectionService;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.ScopusBigBangMigrationService;
 import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
@@ -44,6 +45,8 @@ class AdminInitializationControllerContractTest {
     private ScopusBigBangMigrationService scopusBigBangMigrationService;
     @MockitoBean
     private GeneralInitializationService generalInitializationService;
+    @MockitoBean
+    private PostgresReportingProjectionService postgresReportingProjectionService;
 
     @Test
     void initializationPageRendersTemplate() throws Exception {
@@ -65,6 +68,10 @@ class AdminInitializationControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/drainTouchQueues")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/reconcileEdges")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/resetCanonicalCheckpoints")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/projection/runFull")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/projection/runIncremental")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/projection/showStatus")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/projection/resetState")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/runAll")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/adminUser")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/domain")))
@@ -191,6 +198,62 @@ class AdminInitializationControllerContractTest {
                 .andExpect(redirectedUrl("/admin/initialization"));
 
         verify(rankingMaintenanceFacade).runWosBigBangMigration(true, "v2026", 200, true);
+    }
+
+    @Test
+    void runPostgresProjectionActionsRedirectToInitializationPage() throws Exception {
+        when(postgresReportingProjectionService.runFullRebuild())
+                .thenReturn(new PostgresReportingProjectionService.ProjectionRunSummary(
+                        "run-full",
+                        "FULL_REBUILD",
+                        "SUCCESS",
+                        Instant.now(),
+                        Instant.now(),
+                        List.of(),
+                        null
+                ));
+        when(postgresReportingProjectionService.runIncrementalSync())
+                .thenReturn(new PostgresReportingProjectionService.ProjectionRunSummary(
+                        "run-inc",
+                        "INCREMENTAL_SYNC",
+                        "SUCCESS",
+                        Instant.now(),
+                        Instant.now(),
+                        List.of(),
+                        null
+                ));
+        when(postgresReportingProjectionService.latestRunStatus())
+                .thenReturn(new PostgresReportingProjectionService.ProjectionStatusSnapshot(
+                        new PostgresReportingProjectionService.ProjectionRunSummary(
+                                "run-inc",
+                                "INCREMENTAL_SYNC",
+                                "SUCCESS",
+                                Instant.now(),
+                                Instant.now(),
+                                List.of(),
+                                null
+                        ),
+                        java.util.Map.of()
+                ));
+
+        mockMvc.perform(post("/admin/initialization/postgres/projection/runFull"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+        mockMvc.perform(post("/admin/initialization/postgres/projection/runIncremental"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+        mockMvc.perform(post("/admin/initialization/postgres/projection/showStatus"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+        mockMvc.perform(post("/admin/initialization/postgres/projection/resetState")
+                        .param("confirmation", "RESET"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+
+        verify(postgresReportingProjectionService).runFullRebuild();
+        verify(postgresReportingProjectionService).runIncrementalSync();
+        verify(postgresReportingProjectionService).latestRunStatus();
+        verify(postgresReportingProjectionService).resetProjectionState();
     }
 
     @Test

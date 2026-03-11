@@ -273,6 +273,44 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Postgres Reporting Projection (H22.3)</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small">Admin-triggered projection from canonical Mongo collections into <code>reporting_read</code> PostgreSQL schema.</p>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>Run full rebuild (WoS + Scopus slices)</div>
+                            <form th:action="@{/admin/initialization/postgres/projection/runFull}" method="post">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">Run full rebuild</button>
+                            </form>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>Run incremental sync (fingerprint-gated slices)</div>
+                            <form th:action="@{/admin/initialization/postgres/projection/runIncremental}" method="post">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">Run incremental</button>
+                            </form>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>Show latest projection status</div>
+                            <form th:action="@{/admin/initialization/postgres/projection/showStatus}" method="post">
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">Show status</button>
+                            </form>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>Maintenance: reset projection checkpoints</div>
+                            <form th:action="@{/admin/initialization/postgres/projection/resetState}" method="post" class="d-flex align-items-center">
+                                <input type="text"
+                                       name="confirmation"
+                                       class="form-control form-control-sm mr-2"
+                                       style="width: 180px;"
+                                       placeholder="Type RESET">
+                                <button type="submit" class="btn btn-outline-danger btn-sm">Reset state</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div th:replace="~{fragments :: app-footer}"></div>
         </div>
