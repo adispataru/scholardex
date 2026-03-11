@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ro.uvt.pokedex.core.service.application.GeneralInitializationService;
+import ro.uvt.pokedex.core.service.application.PostgresMaterializedViewRefreshService;
 import ro.uvt.pokedex.core.service.application.PostgresReportingProjectionService;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.ScopusBigBangMigrationService;
@@ -25,6 +26,7 @@ public class AdminInitializationController {
     private final RankingMaintenanceFacade rankingMaintenanceFacade;
     private final ScopusBigBangMigrationService scopusBigBangMigrationService;
     private final ObjectProvider<PostgresReportingProjectionService> postgresReportingProjectionServiceProvider;
+    private final ObjectProvider<PostgresMaterializedViewRefreshService> postgresMaterializedViewRefreshServiceProvider;
 
     @GetMapping
     public String showInitializationPage() {
@@ -502,6 +504,90 @@ public class AdminInitializationController {
         service.resetProjectionState();
         redirectAttributes.addFlashAttribute("successMessage", "Postgres projection checkpoints reset.");
         return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/postgres/materialized/refreshAll")
+    public String refreshPostgresMaterializedViewsAll(RedirectAttributes redirectAttributes) {
+        PostgresMaterializedViewRefreshService service = postgresMaterializedViewRefreshServiceProvider.getIfAvailable();
+        if (service == null) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "Postgres materialized-view refresh service is disabled. Enable postgres profile."
+            );
+            return "redirect:/admin/initialization";
+        }
+
+        var run = service.refreshAllManual();
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Postgres materialized-view refresh " + run.status().toLowerCase()
+                        + ". runId=" + run.runId()
+                        + ", views=" + run.views().size()
+                        + ", error=" + (run.errorSample() == null ? "none" : run.errorSample()) + ".");
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/postgres/materialized/refreshSlice")
+    public String refreshPostgresMaterializedViewsSlice(
+            @RequestParam(name = "slice", required = false) String slice,
+            RedirectAttributes redirectAttributes
+    ) {
+        PostgresMaterializedViewRefreshService service = postgresMaterializedViewRefreshServiceProvider.getIfAvailable();
+        if (service == null) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "Postgres materialized-view refresh service is disabled. Enable postgres profile."
+            );
+            return "redirect:/admin/initialization";
+        }
+
+        String normalized = slice == null ? "" : slice.trim().toLowerCase();
+        if (!"wos".equals(normalized) && !"scopus".equals(normalized)) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "Invalid materialized-view slice. Allowed values: wos, scopus."
+            );
+            return "redirect:/admin/initialization";
+        }
+
+        var run = service.refreshManualForSlices(java.util.Set.of(normalized));
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Postgres materialized-view slice refresh " + run.status().toLowerCase()
+                        + ". runId=" + run.runId()
+                        + ", slice=" + normalized
+                        + ", views=" + run.views().size()
+                        + ", error=" + (run.errorSample() == null ? "none" : run.errorSample()) + ".");
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/postgres/materialized/showStatus")
+    public String showPostgresMaterializedViewRefreshStatus(RedirectAttributes redirectAttributes) {
+        PostgresMaterializedViewRefreshService service = postgresMaterializedViewRefreshServiceProvider.getIfAvailable();
+        if (service == null) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "Postgres materialized-view refresh service is disabled. Enable postgres profile."
+            );
+            return "redirect:/admin/initialization";
+        }
+        var latestRun = service.latestStatus().latestRun();
+        redirectAttributes.addFlashAttribute("successMessage",
+                latestRun == null
+                        ? "Postgres materialized-view refresh status: no run recorded yet."
+                        : "Postgres materialized-view refresh status: runId=" + latestRun.runId()
+                        + ", trigger=" + latestRun.triggerMode()
+                        + ", status=" + latestRun.status()
+                        + ", views=" + latestRun.views().size() + ".");
+        return "redirect:/admin/initialization";
+    }
+
+    @GetMapping("/postgres/materialized/status")
+    @ResponseBody
+    public PostgresMaterializedViewRefreshService.MaterializedViewRefreshStatusSnapshot postgresMaterializedStatusApi() {
+        PostgresMaterializedViewRefreshService service = postgresMaterializedViewRefreshServiceProvider.getIfAvailable();
+        if (service == null) {
+            return new PostgresMaterializedViewRefreshService.MaterializedViewRefreshStatusSnapshot(null);
+        }
+        return service.latestStatus();
     }
 
     @PostMapping("/scopus/resetCanonicalState")

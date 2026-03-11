@@ -120,9 +120,16 @@ Done history moved to `TASKS-done.md`.
     - Switchable first-wave facades/services: `SwitchableReportingLookupFacade`, `ScopusAuthorQueryService`, `ScopusForumQueryService`, `ScopusAffiliationQueryService`, `AdminScopusFacade`.
     - SQL adapters: `PostgresReportingLookupFacade`, `PostgresScopusAuthorReadPort`, `PostgresScopusForumReadPort`, `PostgresScopusAffiliationReadPort`, `PostgresAdminScopusReadPort`.
     - Verification tests: `ReportingReadStoreRoutingTest`, `PostgresReportingLookupFacadeTest`, `ScopusCutoverGuardrailTest`.
-  - [ ] `H22.5` Materialized views and refresh strategy for heavy reads.
+  - [x] `H22.5` Materialized views and refresh strategy for heavy reads.
     Deliverable: SQL materialized views (or equivalent precomputed read structures) for citation-heavy and ranking-heavy reporting queries, with refresh policy.
     Exit criteria: heavy reporting workloads meet target latency with deterministic refresh semantics.
+    Status: completed on 2026-03-12.
+    Handover:
+    - Contract: `docs/h22.5-materialized-views-refresh-contract.md`.
+    - Migrations: `V5__h22_5_create_materialized_views.sql`, `V6__h22_5_mv_refresh_state_tables.sql`.
+    - Refresh orchestration: `PostgresMaterializedViewRefreshService`, `JdbcPostgresMaterializedViewRefreshService`.
+    - Projection coupling: `JdbcPostgresReportingProjectionService` refreshes slice-mapped MVs after successful slice rebuilds.
+    - SQL read cutover updates: `PostgresReportingLookupFacade#getTopRankings` and `PostgresAdminScopusReadPort#buildPublicationCitationsView` now consume H22.5 MVs.
   - [ ] `H22.6` Dual-read parity and performance gate.
     Deliverable: automated parity + latency comparison gates between legacy Mongo reads and new SQL reads across representative workloads.
     Exit criteria: correctness parity is proven and latency/error budgets are met before final read cutover.

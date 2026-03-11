@@ -311,6 +311,41 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Postgres Materialized Views (H22.5)</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small">Refresh heavy-read materialized views in <code>reporting_read</code> PostgreSQL schema.</p>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>Refresh all materialized views</div>
+                            <form th:action="@{/admin/initialization/postgres/materialized/refreshAll}" method="post">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">Refresh all</button>
+                            </form>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>Refresh WoS materialized views</div>
+                            <form th:action="@{/admin/initialization/postgres/materialized/refreshSlice}" method="post">
+                                <input type="hidden" name="slice" value="wos">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">Refresh WoS</button>
+                            </form>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>Refresh Scopus materialized views</div>
+                            <form th:action="@{/admin/initialization/postgres/materialized/refreshSlice}" method="post">
+                                <input type="hidden" name="slice" value="scopus">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">Refresh Scopus</button>
+                            </form>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>Show latest materialized-view refresh status</div>
+                            <form th:action="@{/admin/initialization/postgres/materialized/showStatus}" method="post">
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">Show status</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div th:replace="~{fragments :: app-footer}"></div>
         </div>

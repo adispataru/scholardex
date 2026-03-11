@@ -13,6 +13,7 @@ import ro.uvt.pokedex.core.config.WebSecurityConfig;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.CustomUserDetailsService;
 import ro.uvt.pokedex.core.service.application.GeneralInitializationService;
+import ro.uvt.pokedex.core.service.application.PostgresMaterializedViewRefreshService;
 import ro.uvt.pokedex.core.service.application.PostgresReportingProjectionService;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.ScopusBigBangMigrationService;
@@ -44,6 +45,8 @@ class AdminInitializationSecurityContractTest {
     private GeneralInitializationService generalInitializationService;
     @MockitoBean
     private PostgresReportingProjectionService postgresReportingProjectionService;
+    @MockitoBean
+    private PostgresMaterializedViewRefreshService postgresMaterializedViewRefreshService;
 
     @Test
     void nonAdminCannotAccessInitializationPage() throws Exception {
@@ -139,6 +142,30 @@ class AdminInitializationSecurityContractTest {
         mockMvc.perform(post("/admin/initialization/postgres/projection/resetState")
                         .with(csrf())
                         .param("confirmation", "RESET")
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+    }
+
+    @Test
+    void nonAdminCannotRunPostgresMaterializedViewMaintenance() throws Exception {
+        mockMvc.perform(post("/admin/initialization/postgres/materialized/refreshAll")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+        mockMvc.perform(post("/admin/initialization/postgres/materialized/refreshSlice")
+                        .with(csrf())
+                        .param("slice", "wos")
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+        mockMvc.perform(post("/admin/initialization/postgres/materialized/showStatus")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+        mockMvc.perform(get("/admin/initialization/postgres/materialized/status")
                         .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/custom-error?error=403"));

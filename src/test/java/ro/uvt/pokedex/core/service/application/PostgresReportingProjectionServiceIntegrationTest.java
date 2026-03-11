@@ -51,6 +51,7 @@ class PostgresReportingProjectionServiceIntegrationTest {
     private MongoTemplate mongoTemplate;
     private JdbcTemplate jdbcTemplate;
     private JdbcPostgresReportingProjectionService projectionService;
+    private JdbcPostgresMaterializedViewRefreshService materializedViewRefreshService;
 
     @BeforeEach
     void setup() {
@@ -74,6 +75,7 @@ class PostgresReportingProjectionServiceIntegrationTest {
         dataSource.setPassword(POSTGRES.getPassword());
 
         jdbcTemplate = new JdbcTemplate(dataSource);
+        materializedViewRefreshService = new JdbcPostgresMaterializedViewRefreshService(jdbcTemplate);
 
         PostgresReportingProjectionProperties properties = new PostgresReportingProjectionProperties();
         properties.setEnabled(true);
@@ -85,7 +87,8 @@ class PostgresReportingProjectionServiceIntegrationTest {
                 mongoTemplate,
                 jdbcTemplate,
                 new DataSourceTransactionManager(dataSource),
-                properties
+                properties,
+                materializedViewRefreshService
         );
     }
 
@@ -113,6 +116,8 @@ class PostgresReportingProjectionServiceIntegrationTest {
         assertEquals(1L, tableCount("reporting_read.scholardex_citation_fact"));
         assertEquals(1L, tableCount("reporting_read.scholardex_authorship_fact"));
         assertEquals(1L, tableCount("reporting_read.scholardex_author_affiliation_fact"));
+        assertEquals(1L, tableCount("reporting_read.mv_wos_top_rankings_q1_ais"));
+        assertEquals(1L, tableCount("reporting_read.mv_scholardex_citation_context"));
 
         PostgresReportingProjectionService.ProjectionRunSummary incrementalNoChange = projectionService.runIncrementalSync();
         assertEquals("SUCCESS", incrementalNoChange.status());
@@ -140,6 +145,7 @@ class PostgresReportingProjectionServiceIntegrationTest {
 
         long checkpoints = tableCount("reporting_read.projection_checkpoint");
         assertEquals(2L, checkpoints);
+        assertEquals(1L, tableCount("reporting_read.mv_scholardex_citation_context"));
     }
 
     @Test
@@ -152,6 +158,8 @@ class PostgresReportingProjectionServiceIntegrationTest {
                 "SELECT source_fingerprint FROM reporting_read.projection_checkpoint WHERE slice_name = 'scopus'",
                 String.class
         );
+
+        jdbcTemplate.execute("DROP INDEX reporting_read.uq_mv_scholardex_citation_context_edge");
 
         ScholardexCitationFact invalidCitation = new ScholardexCitationFact();
         invalidCitation.setId("cit-invalid");

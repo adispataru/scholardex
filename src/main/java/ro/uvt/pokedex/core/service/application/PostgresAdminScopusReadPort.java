@@ -73,21 +73,36 @@ public class PostgresAdminScopusReadPort implements AdminScopusReadPort {
         Publication publication = publicationOpt.get();
 
         List<Citation> allByCited = namedParameterJdbcTemplate.query(
-                "SELECT id, cited_publication_id, citing_publication_id FROM reporting_read.scholardex_citation_fact WHERE cited_publication_id = :citedId",
+                "SELECT cited_publication_id, citing_publication_id FROM reporting_read.mv_scholardex_citation_context WHERE cited_publication_id = :citedId",
                 new MapSqlParameterSource("citedId", publication.getId()),
                 (rs, rowNum) -> {
                     Citation citation = new Citation();
-                    citation.setId(rs.getString("id"));
                     citation.setCitedId(rs.getString("cited_publication_id"));
                     citation.setCitingId(rs.getString("citing_publication_id"));
                     return citation;
                 }
         );
 
-        List<String> citingIds = allByCited.stream().map(Citation::getCitingId).toList();
-        List<Publication> citations = citingIds.isEmpty()
-                ? List.of()
-                : findPublicationsByIdIn(citingIds);
+        List<Publication> citations = namedParameterJdbcTemplate.query(
+                """
+                        SELECT citing_publication_id, citing_title, citing_cover_date, citing_forum_id,
+                               citing_author_ids, citing_eid, citing_wos_id, citing_google_scholar_id
+                        FROM reporting_read.mv_scholardex_citation_context
+                        WHERE cited_publication_id = :citedId
+                        """,
+                new MapSqlParameterSource("citedId", publication.getId()),
+                (rs, rowNum) -> {
+                    Publication citing = new Publication();
+                    citing.setId(rs.getString("citing_publication_id"));
+                    citing.setTitle(rs.getString("citing_title"));
+                    citing.setCoverDate(rs.getString("citing_cover_date"));
+                    citing.setForum(rs.getString("citing_forum_id"));
+                    citing.setAuthors(toStringList(rs.getArray("citing_author_ids")));
+                    citing.setEid(rs.getString("citing_eid"));
+                    citing.setWosId(rs.getString("citing_wos_id"));
+                    return citing;
+                }
+        );
         PublicationOrderingSupport.sortPublicationsInPlace(citations);
 
         Set<String> authorKeys = new HashSet<>(publication.getAuthors());

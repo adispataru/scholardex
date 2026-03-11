@@ -9,6 +9,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.service.application.GeneralInitializationService;
+import ro.uvt.pokedex.core.service.application.PostgresMaterializedViewRefreshService;
 import ro.uvt.pokedex.core.service.application.PostgresReportingProjectionService;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.ScopusBigBangMigrationService;
@@ -21,6 +22,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -47,6 +49,8 @@ class AdminInitializationControllerContractTest {
     private GeneralInitializationService generalInitializationService;
     @MockitoBean
     private PostgresReportingProjectionService postgresReportingProjectionService;
+    @MockitoBean
+    private PostgresMaterializedViewRefreshService postgresMaterializedViewRefreshService;
 
     @Test
     void initializationPageRendersTemplate() throws Exception {
@@ -72,6 +76,9 @@ class AdminInitializationControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/projection/runIncremental")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/projection/showStatus")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/projection/resetState")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/materialized/refreshAll")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/materialized/refreshSlice")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/materialized/showStatus")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/runAll")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/adminUser")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/domain")))
@@ -254,6 +261,63 @@ class AdminInitializationControllerContractTest {
         verify(postgresReportingProjectionService).runIncrementalSync();
         verify(postgresReportingProjectionService).latestRunStatus();
         verify(postgresReportingProjectionService).resetProjectionState();
+    }
+
+    @Test
+    void runPostgresMaterializedViewActionsRedirectToInitializationPage() throws Exception {
+        when(postgresMaterializedViewRefreshService.refreshAllManual())
+                .thenReturn(new PostgresMaterializedViewRefreshService.MaterializedViewRefreshRunSummary(
+                        "mv-run-all",
+                        "MANUAL",
+                        null,
+                        "SUCCESS",
+                        Instant.now(),
+                        Instant.now(),
+                        List.of(),
+                        null
+                ));
+        when(postgresMaterializedViewRefreshService.refreshManualForSlices(java.util.Set.of("wos")))
+                .thenReturn(new PostgresMaterializedViewRefreshService.MaterializedViewRefreshRunSummary(
+                        "mv-run-wos",
+                        "MANUAL",
+                        null,
+                        "SUCCESS",
+                        Instant.now(),
+                        Instant.now(),
+                        List.of(),
+                        null
+                ));
+        when(postgresMaterializedViewRefreshService.latestStatus())
+                .thenReturn(new PostgresMaterializedViewRefreshService.MaterializedViewRefreshStatusSnapshot(
+                        new PostgresMaterializedViewRefreshService.MaterializedViewRefreshRunSummary(
+                                "mv-run-last",
+                                "MANUAL",
+                                null,
+                                "SUCCESS",
+                                Instant.now(),
+                                Instant.now(),
+                                List.of(),
+                                null
+                        )
+                ));
+
+        mockMvc.perform(post("/admin/initialization/postgres/materialized/refreshAll"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+        mockMvc.perform(post("/admin/initialization/postgres/materialized/refreshSlice")
+                        .param("slice", "wos"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+        mockMvc.perform(post("/admin/initialization/postgres/materialized/showStatus"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+        mockMvc.perform(get("/admin/initialization/postgres/materialized/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latestRun.runId").value("mv-run-last"));
+
+        verify(postgresMaterializedViewRefreshService).refreshAllManual();
+        verify(postgresMaterializedViewRefreshService).refreshManualForSlices(java.util.Set.of("wos"));
+        verify(postgresMaterializedViewRefreshService, times(2)).latestStatus();
     }
 
     @Test

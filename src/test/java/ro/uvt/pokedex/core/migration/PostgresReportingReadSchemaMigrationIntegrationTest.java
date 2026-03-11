@@ -60,6 +60,10 @@ class PostgresReportingReadSchemaMigrationIntegrationTest {
             assertTrue(objectExists(connection, "reporting_read", "projection_checkpoint", "TABLE"));
             assertTrue(objectExists(connection, "reporting_read", "projection_run", "TABLE"));
             assertTrue(objectExists(connection, "reporting_read", "projection_slice_run", "TABLE"));
+            assertTrue(objectExists(connection, "reporting_read", "mv_refresh_run", "TABLE"));
+            assertTrue(objectExists(connection, "reporting_read", "mv_refresh_view_run", "TABLE"));
+            assertTrue(materializedViewExists(connection, "reporting_read", "mv_wos_top_rankings_q1_ais"));
+            assertTrue(materializedViewExists(connection, "reporting_read", "mv_scholardex_citation_context"));
 
             assertTrue(indexExists(connection, "reporting_read", "idx_wos_scoring_lookup"));
             assertTrue(indexExists(connection, "reporting_read", "idx_wos_scoring_journal_timeline"));
@@ -73,6 +77,11 @@ class PostgresReportingReadSchemaMigrationIntegrationTest {
             assertTrue(indexExists(connection, "reporting_read", "idx_scholardex_author_affiliation_affiliation"));
             assertTrue(indexExists(connection, "reporting_read", "idx_projection_run_started_at"));
             assertTrue(indexExists(connection, "reporting_read", "idx_projection_slice_run_run_id"));
+            assertTrue(indexExists(connection, "reporting_read", "uq_mv_wos_top_rankings_q1_ais"));
+            assertTrue(indexExists(connection, "reporting_read", "uq_mv_scholardex_citation_context_edge"));
+            assertTrue(indexExists(connection, "reporting_read", "idx_mv_scholardex_citation_context_cited"));
+            assertTrue(indexExists(connection, "reporting_read", "idx_mv_refresh_run_started_at"));
+            assertTrue(indexExists(connection, "reporting_read", "idx_mv_refresh_view_run_run_id"));
         }
     }
 
@@ -185,6 +194,9 @@ class PostgresReportingReadSchemaMigrationIntegrationTest {
                     VALUES ('c1', 'p1', 'p2', 'SCOPUS');
                     """);
 
+            execute(connection, "REFRESH MATERIALIZED VIEW CONCURRENTLY reporting_read.mv_wos_top_rankings_q1_ais;");
+            execute(connection, "REFRESH MATERIALIZED VIEW CONCURRENTLY reporting_read.mv_scholardex_citation_context;");
+
             long issnMatches = queryLong(connection, """
                     SELECT COUNT(*)
                     FROM reporting_read.wos_ranking_view
@@ -205,6 +217,15 @@ class PostgresReportingReadSchemaMigrationIntegrationTest {
                     """);
             assertEquals(2L, topRankings);
 
+            long topRankingsFromMv = queryLong(connection, """
+                    SELECT COALESCE(SUM(top_journal_count), 0)
+                    FROM reporting_read.mv_wos_top_rankings_q1_ais
+                    WHERE year = 2023
+                      AND category_name_canonical = 'COMPUTER SCIENCE'
+                      AND edition_normalized IN ('SCIE', 'SSCI');
+                    """);
+            assertEquals(2L, topRankingsFromMv);
+
             long publicationByAnyId = queryLong(connection, """
                     SELECT COUNT(*)
                     FROM reporting_read.scholardex_publication_view
@@ -218,6 +239,13 @@ class PostgresReportingReadSchemaMigrationIntegrationTest {
                     WHERE cited_publication_id = 'p1';
                     """);
             assertEquals(1L, citationTraversal);
+
+            long citationTraversalFromMv = queryLong(connection, """
+                    SELECT COUNT(*)
+                    FROM reporting_read.mv_scholardex_citation_context
+                    WHERE cited_publication_id = 'p1';
+                    """);
+            assertEquals(1L, citationTraversalFromMv);
         }
     }
 
@@ -272,6 +300,21 @@ class PostgresReportingReadSchemaMigrationIntegrationTest {
                 """)) {
             statement.setString(1, schema);
             statement.setString(2, indexName);
+            try (ResultSet rs = statement.executeQuery()) {
+                rs.next();
+                return rs.getLong(1) == 1;
+            }
+        }
+    }
+
+    private boolean materializedViewExists(Connection connection, String schema, String viewName) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT COUNT(*)
+                FROM pg_matviews
+                WHERE schemaname = ? AND matviewname = ?
+                """)) {
+            statement.setString(1, schema);
+            statement.setString(2, viewName);
             try (ResultSet rs = statement.executeQuery()) {
                 rs.next();
                 return rs.getLong(1) == 1;

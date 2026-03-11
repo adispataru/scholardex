@@ -166,18 +166,14 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
 
         Integer count = namedParameterJdbcTemplate.queryForObject(
                 """
-                        SELECT COUNT(DISTINCT journal_id)
-                        FROM reporting_read.wos_scoring_view
-                        WHERE metric_type = :metricType
-                          AND year = :year
-                          AND quarter = :quarter
+                        SELECT COALESCE(SUM(top_journal_count), 0)
+                        FROM reporting_read.mv_wos_top_rankings_q1_ais
+                        WHERE year = :year
                           AND category_name_canonical = :category
                           AND edition_normalized IN (:editions)
                         """,
                 new MapSqlParameterSource()
-                        .addValue("metricType", MetricType.AIS.name())
                         .addValue("year", year)
-                        .addValue("quarter", WoSRanking.Quarter.Q1.name())
                         .addValue("category", parsedCategory.categoryNameCanonical())
                         .addValue("editions", editions.stream().map(Enum::name).toList()),
                 Integer.class

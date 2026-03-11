@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -71,17 +72,20 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactionTemplate;
     private final PostgresReportingProjectionProperties properties;
+    private final PostgresMaterializedViewRefreshService materializedViewRefreshService;
 
     public JdbcPostgresReportingProjectionService(
             MongoTemplate mongoTemplate,
             JdbcTemplate jdbcTemplate,
             PlatformTransactionManager transactionManager,
-            PostgresReportingProjectionProperties properties
+            PostgresReportingProjectionProperties properties,
+            PostgresMaterializedViewRefreshService materializedViewRefreshService
     ) {
         this.mongoTemplate = mongoTemplate;
         this.jdbcTemplate = jdbcTemplate;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.properties = properties;
+        this.materializedViewRefreshService = materializedViewRefreshService;
     }
 
     @Override
@@ -157,6 +161,9 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
                 SliceProjectionResult result = SLICE_WOS.equals(slice)
                         ? rebuildWosSlice(runId, startedAt)
                         : rebuildScopusSlice(runId, startedAt);
+                if (!properties.isDryRun()) {
+                    materializedViewRefreshService.refreshForSlices(Set.of(slice), runId);
+                }
                 upsertCheckpoint(slice, sourceFingerprint, runId, mode);
                 SliceRunSummary summary = new SliceRunSummary(
                         slice,

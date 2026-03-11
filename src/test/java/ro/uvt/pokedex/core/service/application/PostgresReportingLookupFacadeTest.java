@@ -47,9 +47,7 @@ class PostgresReportingLookupFacadeTest {
         ArgumentCaptor<MapSqlParameterSource> paramsCaptor = ArgumentCaptor.forClass(MapSqlParameterSource.class);
         verify(namedParameterJdbcTemplate).queryForObject(sqlCaptor.capture(), paramsCaptor.capture(), eq(Integer.class));
 
-        assertTrue(sqlCaptor.getValue().contains("wos_scoring_view"));
-        assertEquals("AIS", paramsCaptor.getValue().getValue("metricType"));
-        assertEquals("Q1", paramsCaptor.getValue().getValue("quarter"));
+        assertTrue(sqlCaptor.getValue().contains("mv_wos_top_rankings_q1_ais"));
         assertEquals("ECONOMICS", paramsCaptor.getValue().getValue("category"));
     }
 
