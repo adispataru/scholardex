@@ -89,3 +89,18 @@ tasks.named('check') {
     dependsOn tasks.named('verifyDuplicationGuardrails')
     dependsOn tasks.named('verifyDatatablesOptin')
 }
+
+tasks.register('testH226DualReadGate', Test) {
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    systemProperty 'spring.task.scheduling.enabled', 'false'
+    systemProperty 'core.scopus.scheduler.enabled', 'false'
+    systemProperty 'management.health.scopusPython.enabled', 'false'
+    filter {
+        includeTestsMatching '*DualReadGate*'
+    }
+}

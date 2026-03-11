@@ -130,9 +130,16 @@ Done history moved to `TASKS-done.md`.
     - Refresh orchestration: `PostgresMaterializedViewRefreshService`, `JdbcPostgresMaterializedViewRefreshService`.
     - Projection coupling: `JdbcPostgresReportingProjectionService` refreshes slice-mapped MVs after successful slice rebuilds.
     - SQL read cutover updates: `PostgresReportingLookupFacade#getTopRankings` and `PostgresAdminScopusReadPort#buildPublicationCitationsView` now consume H22.5 MVs.
-  - [ ] `H22.6` Dual-read parity and performance gate.
+  - [x] `H22.6` Dual-read parity and performance gate.
     Deliverable: automated parity + latency comparison gates between legacy Mongo reads and new SQL reads across representative workloads.
     Exit criteria: correctness parity is proven and latency/error budgets are met before final read cutover.
+    Status: completed on 2026-03-12.
+    Handover:
+    - Contract: `docs/h22.6-dual-read-parity-performance-gate-contract.md`.
+    - Migration/state tables: `V7__h22_6_dual_read_gate_tables.sql`.
+    - Runtime gate service: `DualReadGateService`, `JdbcDualReadGateService`.
+    - Admin controls: `AdminInitializationController` + `templates/admin/initialization.html` H22.6 section.
+    - Verification tests: `JdbcDualReadGateServiceTest`, `AdminInitializationControllerContractTest`, `AdminInitializationSecurityContractTest`, `PostgresReportingReadSchemaMigrationIntegrationTest`.
   - [ ] `H22.7` Operationalization, rollback, and rebuild playbook.
     Deliverable: documented runbooks for deployment, monitoring, rollback, and full read-model rebuild/backfill in production-like environments.
     Exit criteria: on-call workflows can detect, mitigate, and recover from projector/read-model failures without data-loss ambiguity.

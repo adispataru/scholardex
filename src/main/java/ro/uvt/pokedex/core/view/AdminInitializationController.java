@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ro.uvt.pokedex.core.service.application.GeneralInitializationService;
+import ro.uvt.pokedex.core.service.application.DualReadGateService;
 import ro.uvt.pokedex.core.service.application.PostgresMaterializedViewRefreshService;
 import ro.uvt.pokedex.core.service.application.PostgresReportingProjectionService;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
@@ -27,6 +28,7 @@ public class AdminInitializationController {
     private final ScopusBigBangMigrationService scopusBigBangMigrationService;
     private final ObjectProvider<PostgresReportingProjectionService> postgresReportingProjectionServiceProvider;
     private final ObjectProvider<PostgresMaterializedViewRefreshService> postgresMaterializedViewRefreshServiceProvider;
+    private final ObjectProvider<DualReadGateService> dualReadGateServiceProvider;
 
     @GetMapping
     public String showInitializationPage() {
@@ -586,6 +588,58 @@ public class AdminInitializationController {
         PostgresMaterializedViewRefreshService service = postgresMaterializedViewRefreshServiceProvider.getIfAvailable();
         if (service == null) {
             return new PostgresMaterializedViewRefreshService.MaterializedViewRefreshStatusSnapshot(null);
+        }
+        return service.latestStatus();
+    }
+
+    @PostMapping("/postgres/dualReadGate/run")
+    public String runPostgresDualReadGate(RedirectAttributes redirectAttributes) {
+        DualReadGateService service = dualReadGateServiceProvider.getIfAvailable();
+        if (service == null) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "Postgres dual-read gate service is disabled. Enable postgres profile."
+            );
+            return "redirect:/admin/initialization";
+        }
+
+        var run = service.runFullGate();
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Postgres dual-read gate " + run.status().toLowerCase()
+                        + ". runId=" + run.runId()
+                        + ", scenarios=" + run.scenarios().size()
+                        + ", failed="
+                        + run.scenarios().stream().filter(scenario -> !"SUCCESS".equals(scenario.status())).count()
+                        + ", error=" + (run.errorSample() == null ? "none" : run.errorSample()) + ".");
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/postgres/dualReadGate/showStatus")
+    public String showPostgresDualReadGateStatus(RedirectAttributes redirectAttributes) {
+        DualReadGateService service = dualReadGateServiceProvider.getIfAvailable();
+        if (service == null) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "Postgres dual-read gate service is disabled. Enable postgres profile."
+            );
+            return "redirect:/admin/initialization";
+        }
+        var latestRun = service.latestStatus().latestRun();
+        redirectAttributes.addFlashAttribute("successMessage",
+                latestRun == null
+                        ? "Postgres dual-read gate status: no run recorded yet."
+                        : "Postgres dual-read gate status: runId=" + latestRun.runId()
+                        + ", status=" + latestRun.status()
+                        + ", scenarios=" + latestRun.scenarios().size() + ".");
+        return "redirect:/admin/initialization";
+    }
+
+    @GetMapping("/postgres/dualReadGate/status")
+    @ResponseBody
+    public DualReadGateService.DualReadGateStatusSnapshot postgresDualReadGateStatusApi() {
+        DualReadGateService service = dualReadGateServiceProvider.getIfAvailable();
+        if (service == null) {
+            return new DualReadGateService.DualReadGateStatusSnapshot(null);
         }
         return service.latestStatus();
     }

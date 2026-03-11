@@ -9,6 +9,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.service.application.GeneralInitializationService;
+import ro.uvt.pokedex.core.service.application.DualReadGateService;
 import ro.uvt.pokedex.core.service.application.PostgresMaterializedViewRefreshService;
 import ro.uvt.pokedex.core.service.application.PostgresReportingProjectionService;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
@@ -51,6 +52,8 @@ class AdminInitializationControllerContractTest {
     private PostgresReportingProjectionService postgresReportingProjectionService;
     @MockitoBean
     private PostgresMaterializedViewRefreshService postgresMaterializedViewRefreshService;
+    @MockitoBean
+    private DualReadGateService dualReadGateService;
 
     @Test
     void initializationPageRendersTemplate() throws Exception {
@@ -79,6 +82,9 @@ class AdminInitializationControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/materialized/refreshAll")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/materialized/refreshSlice")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/materialized/showStatus")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/dualReadGate/run")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/dualReadGate/showStatus")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/dualReadGate/status")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/runAll")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/adminUser")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/domain")))
@@ -318,6 +324,47 @@ class AdminInitializationControllerContractTest {
         verify(postgresMaterializedViewRefreshService).refreshAllManual();
         verify(postgresMaterializedViewRefreshService).refreshManualForSlices(java.util.Set.of("wos"));
         verify(postgresMaterializedViewRefreshService, times(2)).latestStatus();
+    }
+
+    @Test
+    void runPostgresDualReadGateActionsRedirectToInitializationPage() throws Exception {
+        when(dualReadGateService.runFullGate())
+                .thenReturn(new DualReadGateService.DualReadGateRunSummary(
+                        "gate-run",
+                        "SUCCESS",
+                        5,
+                        1.2d,
+                        Instant.now(),
+                        Instant.now(),
+                        List.of(),
+                        null
+                ));
+        when(dualReadGateService.latestStatus())
+                .thenReturn(new DualReadGateService.DualReadGateStatusSnapshot(
+                        new DualReadGateService.DualReadGateRunSummary(
+                                "gate-last",
+                                "SUCCESS",
+                                5,
+                                1.2d,
+                                Instant.now(),
+                                Instant.now(),
+                                List.of(),
+                                null
+                        )
+                ));
+
+        mockMvc.perform(post("/admin/initialization/postgres/dualReadGate/run"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+        mockMvc.perform(post("/admin/initialization/postgres/dualReadGate/showStatus"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+        mockMvc.perform(get("/admin/initialization/postgres/dualReadGate/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latestRun.runId").value("gate-last"));
+
+        verify(dualReadGateService).runFullGate();
+        verify(dualReadGateService, times(2)).latestStatus();
     }
 
     @Test

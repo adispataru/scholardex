@@ -62,6 +62,8 @@ class PostgresReportingReadSchemaMigrationIntegrationTest {
             assertTrue(objectExists(connection, "reporting_read", "projection_slice_run", "TABLE"));
             assertTrue(objectExists(connection, "reporting_read", "mv_refresh_run", "TABLE"));
             assertTrue(objectExists(connection, "reporting_read", "mv_refresh_view_run", "TABLE"));
+            assertTrue(objectExists(connection, "reporting_read", "dual_read_gate_run", "TABLE"));
+            assertTrue(objectExists(connection, "reporting_read", "dual_read_gate_scenario_run", "TABLE"));
             assertTrue(materializedViewExists(connection, "reporting_read", "mv_wos_top_rankings_q1_ais"));
             assertTrue(materializedViewExists(connection, "reporting_read", "mv_scholardex_citation_context"));
 
@@ -82,6 +84,8 @@ class PostgresReportingReadSchemaMigrationIntegrationTest {
             assertTrue(indexExists(connection, "reporting_read", "idx_mv_scholardex_citation_context_cited"));
             assertTrue(indexExists(connection, "reporting_read", "idx_mv_refresh_run_started_at"));
             assertTrue(indexExists(connection, "reporting_read", "idx_mv_refresh_view_run_run_id"));
+            assertTrue(indexExists(connection, "reporting_read", "idx_dual_read_gate_run_started_at"));
+            assertTrue(indexExists(connection, "reporting_read", "idx_dual_read_gate_scenario_run_run_id"));
         }
     }
 

@@ -346,6 +346,30 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Postgres Dual-Read Gate (H22.6)</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small">Run parity and latency gate against Mongo and PostgreSQL for all H22.4 first-wave read surfaces.</p>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>Run full dual-read parity/performance gate</div>
+                            <form th:action="@{/admin/initialization/postgres/dualReadGate/run}" method="post">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">Run gate</button>
+                            </form>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>Show latest dual-read gate status</div>
+                            <form th:action="@{/admin/initialization/postgres/dualReadGate/showStatus}" method="post">
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">Show status</button>
+                            </form>
+                        </div>
+                        <div class="small text-muted">
+                            JSON status endpoint: <code>/admin/initialization/postgres/dualReadGate/status</code>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div th:replace="~{fragments :: app-footer}"></div>
         </div>
