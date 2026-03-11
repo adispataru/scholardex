@@ -86,12 +86,21 @@ Done history moved to `TASKS-done.md`.
   Deliverable: architecture contract, SQL read schema, projection/sync pipeline, SQL query cutover for WoS scoring/reporting flows, and operability/rollback guardrails.
   Exit criteria: Mongo remains authoritative for raw import events/queues; WoS/scoring/report read models are served from PostgreSQL; SQL joins/materialized views back WoS scoring and citation-heavy report paths; parity and performance gates pass before full cutover.
   Subtasks:
-  - [ ] `H22.1` Architecture contract and bounded-context map.
+  - [x] `H22.1` Architecture contract and bounded-context map.
     Deliverable: decision-locked contract separating Mongo write/ingest boundaries from PostgreSQL reporting read boundaries, including ownership and data-flow rules.
     Exit criteria: all affected read/write surfaces have explicit ownership, sync direction, and compatibility policy.
-  - [ ] `H22.2` PostgreSQL schema for WoS/scoring/reporting read core.
+    Status: completed on 2026-03-11.
+    Handover:
+    - Contract source of truth: `docs/h22.1-postgres-reporting-architecture-contract.md`.
+    - Companion sequence flows: `docs/h22.1-postgres-reporting-sequences.md`.
+  - [x] `H22.2` PostgreSQL schema for WoS/scoring/reporting read core.
     Deliverable: normalized SQL schema (tables, keys, indexes, constraints) for WoS ranking/scoring and reporting read models.
     Exit criteria: schema supports deterministic joins for existing scoring/reporting contracts and enforces required uniqueness/integrity constraints.
+    Status: completed on 2026-03-11.
+    Handover:
+    - Schema contract: `docs/h22.2-postgres-reporting-schema-contract.md`.
+    - Flyway migrations: `src/main/resources/db/migration/V1__h22_2_create_pg_enums.sql`, `src/main/resources/db/migration/V2__h22_2_create_reporting_core_tables.sql`, `src/main/resources/db/migration/V3__h22_2_create_reporting_core_indexes.sql`.
+    - Migration verification test: `PostgresReportingReadSchemaMigrationIntegrationTest`.
   - [ ] `H22.3` Projection/sync pipeline from canonical Mongo to PostgreSQL.
     Deliverable: deterministic projector/backfill flow that materializes PostgreSQL read models from canonical Mongo collections with replay-safe behavior.
     Exit criteria: full rebuild and incremental sync both produce stable SQL read state with lineage/traceability.
