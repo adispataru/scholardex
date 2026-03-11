@@ -17,7 +17,10 @@ import static org.assertj.core.api.Assertions.assertThat;
         webEnvironment = SpringBootTest.WebEnvironment.NONE,
         properties = {
                 "spring.main.allow-bean-definition-overriding=true",
-                "spring.task.scheduling.enabled=false"
+                "spring.task.scheduling.enabled=false",
+                "spring.autoconfigure.exclude="
+                        + "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration,"
+                        + "org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration"
         }
 )
 class CoreApplicationTests {

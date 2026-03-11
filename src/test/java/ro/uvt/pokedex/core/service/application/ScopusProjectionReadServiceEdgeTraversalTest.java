@@ -25,7 +25,6 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -52,7 +51,8 @@ class ScopusProjectionReadServiceEdgeTraversalTest {
 
         ScholardexSourceLink authorLink = new ScholardexSourceLink();
         authorLink.setCanonicalEntityId("sauth_1");
-        when(sourceLinkService.findByEntityTypeAndSourceRecordId(any(), eq("legacy-author"))).thenReturn(List.of(authorLink));
+        when(sourceLinkService.findByEntityTypeAndSourceRecordIds(any(), anyCollection()))
+                .thenReturn(List.of(authorLink));
 
         ScholardexAuthorshipFact authorship = new ScholardexAuthorshipFact();
         authorship.setAuthorId("sauth_1");
@@ -78,7 +78,8 @@ class ScopusProjectionReadServiceEdgeTraversalTest {
 
         ScholardexSourceLink affiliationLink = new ScholardexSourceLink();
         affiliationLink.setCanonicalEntityId("saff_1");
-        when(sourceLinkService.findByEntityTypeAndSourceRecordId(any(), eq("legacy-aff"))).thenReturn(List.of(affiliationLink));
+        when(sourceLinkService.findByEntityTypeAndSourceRecordIds(any(), anyCollection()))
+                .thenReturn(List.of(affiliationLink));
 
         ScholardexAuthorAffiliationFact authorAffiliation = new ScholardexAuthorAffiliationFact();
         authorAffiliation.setAffiliationId("saff_1");

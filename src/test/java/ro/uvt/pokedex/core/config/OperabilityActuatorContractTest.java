@@ -21,7 +21,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         classes = CoreApplication.class,
         properties = {
                 "spring.main.allow-bean-definition-overriding=true",
-                "spring.task.scheduling.enabled=false"
+                "spring.task.scheduling.enabled=false",
+                "spring.autoconfigure.exclude="
+                        + "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration,"
+                        + "org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration"
         }
 )
 @AutoConfigureMockMvc
