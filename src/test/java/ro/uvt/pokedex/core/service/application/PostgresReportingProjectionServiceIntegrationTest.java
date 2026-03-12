@@ -81,7 +81,6 @@ class PostgresReportingProjectionServiceIntegrationTest {
         properties.setEnabled(true);
         properties.setChunkSize(50);
         properties.setStatementTimeoutMs(120_000);
-        properties.setDryRun(false);
 
         projectionService = new JdbcPostgresReportingProjectionService(
                 mongoTemplate,
