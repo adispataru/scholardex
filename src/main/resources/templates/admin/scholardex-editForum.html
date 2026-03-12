@@ -11,7 +11,7 @@
 <div id="wrapper">
     <!-- Sidebar -->
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: admin-sidebar('scopus-forums')}"></div>
+        <div th:replace="~{fragments :: admin-sidebar('scholardex-forums')}"></div>
         <!-- Sidebar Toggler (Sidebar) -->
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
@@ -36,7 +36,7 @@
                         <h6 class="m-0 font-weight-bold text-primary" th:text="${forum.publicationName}">Update</h6>
                     </div>
                     <div class="card-body">
-                        <form th:action="@{/admin/scopus/forums/edit/{id}(id=${forum.id})}" th:object="${forum}" method="post">
+                        <form th:action="@{/admin/scholardex/forums/edit/{id}(id=${forum.id})}" th:object="${forum}" method="post">
                             <input type="text" class="form-control" id="forumId" th:field="*{id}" hidden>
                             <div class="form-group">
                                 <label for="title">Publication Name</label>

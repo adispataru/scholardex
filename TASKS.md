@@ -81,90 +81,75 @@ Done history moved to `TASKS-done.md`.
   Exit criteria: user-defined publications and related entities imported via user operations integrate with the same Scholardex identity and lineage contracts.
   Dependency: execute after `H19.9` citation canonicalization to avoid EID-coupled citation gaps for user-only publications.
 
-- [ ] `H22` Postgres reporting core + Mongo ingest baseline migration.
-  Goal: improve WoS scoring/reporting read and compute latency by moving reporting read models to PostgreSQL while keeping MongoDB as the ingestion/event/queue write model.
-  Deliverable: architecture contract, SQL read schema, projection/sync pipeline, SQL query cutover for WoS scoring/reporting flows, and operability/rollback guardrails.
-  Exit criteria: Mongo remains authoritative for raw import events/queues; WoS/scoring/report read models are served from PostgreSQL; SQL joins/materialized views back WoS scoring and citation-heavy report paths; parity and performance gates pass before full cutover.
+- [ ] `H23` Scholardex UI route consolidation and steady-state naming cleanup.
+  Goal: reduce maintenance overhead and product-surface drift by consolidating MVC/UI routes around Scholardex-first forum navigation while retiring the split between Scopus forum pages and WoS ranking pages.
+  Deliverable: canonical Scholardex forum routes/templates for public and admin UI, WoS-specific category pages, trimmed MVC compatibility redirects/helpers, and updated docs/guardrails that reflect the new steady-state navigation model.
+  Exit criteria: covered MVC surfaces use the new canonical route families, legacy MVC paths are either redirected or clearly marked transitional, and tests/guardrails enforce the consolidated UI architecture.
   Subtasks:
-  - [x] `H22.1` Architecture contract and bounded-context map.
-    Deliverable: decision-locked contract separating Mongo write/ingest boundaries from PostgreSQL reporting read boundaries, including ownership and data-flow rules.
-    Exit criteria: all affected read/write surfaces have explicit ownership, sync direction, and compatibility policy.
-    Status: completed on 2026-03-11.
-    Handover:
-    - Contract source of truth: `docs/h22.1-postgres-reporting-architecture-contract.md`.
-    - Companion sequence flows: `docs/h22.1-postgres-reporting-sequences.md`.
-  - [x] `H22.2` PostgreSQL schema for WoS/scoring/reporting read core.
-    Deliverable: normalized SQL schema (tables, keys, indexes, constraints) for WoS ranking/scoring and reporting read models.
-    Exit criteria: schema supports deterministic joins for existing scoring/reporting contracts and enforces required uniqueness/integrity constraints.
-    Status: completed on 2026-03-11.
-    Handover:
-    - Schema contract: `docs/h22.2-postgres-reporting-schema-contract.md`.
-    - Flyway migrations: `src/main/resources/db/migration/V1__h22_2_create_pg_enums.sql`, `src/main/resources/db/migration/V2__h22_2_create_reporting_core_tables.sql`, `src/main/resources/db/migration/V3__h22_2_create_reporting_core_indexes.sql`.
-    - Migration verification test: `PostgresReportingReadSchemaMigrationIntegrationTest`.
-  - [x] `H22.3` Projection/sync pipeline from canonical Mongo to PostgreSQL.
-    Deliverable: deterministic projector/backfill flow that materializes PostgreSQL read models from canonical Mongo collections with replay-safe behavior.
-    Exit criteria: full rebuild and incremental sync both produce stable SQL read state with lineage/traceability.
-    Status: completed on 2026-03-11.
-    Handover:
-    - Projection contract: `docs/h22.3-postgres-projection-contract.md`.
-    - Projection state migration: `src/main/resources/db/migration/V4__h22_3_projection_state_tables.sql`.
-    - Projector service: `JdbcPostgresReportingProjectionService` + `PostgresReportingProjectionService`.
-    - Verification tests: `PostgresReportingProjectionServiceIntegrationTest`, `JdbcPostgresReportingProjectionServiceTest`, `PostgresReportingReadSchemaMigrationIntegrationTest`.
-  - [x] `H22.4` Query-layer cutover to SQL-backed WoS scoring/report reads.
-    Deliverable: service/facade read paths for WoS scoring and report retrieval switched from Mongo-assembled joins to SQL-backed queries.
-    Exit criteria: runtime scoring/report entrypoints no longer depend on Mongo join assembly for targeted paths.
-    Status: completed on 2026-03-11.
-    Handover:
-    - Cutover contract: `docs/h22.4-query-layer-cutover-contract.md`.
-    - Runtime selector and startup guard: `ReportingReadStore`, `ReportingReadStoreSelector`, `PostgresReadCutoverGuard`.
-    - Switchable first-wave facades/services: `SwitchableReportingLookupFacade`, `ScholardexAuthorQueryService`, `ScholardexForumQueryService`, `ScholardexAffiliationQueryService`, `ScholardexAdminReadFacade`.
-    - SQL adapters: `PostgresReportingLookupFacade`, `PostgresScholardexAuthorReadPort`, `PostgresScholardexForumReadPort`, `PostgresScholardexAffiliationReadPort`, `PostgresScholardexAdminReadPort`.
-    - Verification tests: `ReportingReadStoreRoutingTest`, `PostgresReportingLookupFacadeTest`, `ScholardexCutoverGuardrailTest`.
-  - [x] `H22.5` Materialized views and refresh strategy for heavy reads.
-    Deliverable: SQL materialized views (or equivalent precomputed read structures) for citation-heavy and ranking-heavy reporting queries, with refresh policy.
-    Exit criteria: heavy reporting workloads meet target latency with deterministic refresh semantics.
-    Status: completed on 2026-03-12.
-    Handover:
-    - Contract: `docs/h22.5-materialized-views-refresh-contract.md`.
-    - Migrations: `V5__h22_5_create_materialized_views.sql`, `V6__h22_5_mv_refresh_state_tables.sql`.
-    - Refresh orchestration: `PostgresMaterializedViewRefreshService`, `JdbcPostgresMaterializedViewRefreshService`.
-    - Projection coupling: `JdbcPostgresReportingProjectionService` refreshes slice-mapped MVs after successful slice rebuilds.
-    - SQL read cutover updates: `PostgresReportingLookupFacade#getTopRankings` and `PostgresScholardexAdminReadPort#buildPublicationCitationsView` now consume H22.5 MVs.
-  - [x] `H22.6` Dual-read parity and performance gate.
-    Deliverable: automated parity + latency comparison gates between legacy Mongo reads and new SQL reads across representative workloads.
-    Exit criteria: correctness parity is proven and latency/error budgets are met before final read cutover.
-    Status: completed on 2026-03-12.
-    Handover:
-    - Contract: `docs/h22.6-dual-read-parity-performance-gate-contract.md`.
-    - Migration/state tables: `V7__h22_6_dual_read_gate_tables.sql`.
-    - Runtime gate service: `DualReadGateService`, `JdbcDualReadGateService`.
-    - Admin controls: `AdminInitializationController` + `templates/admin/initialization.html` H22.6 section.
-    - Verification tests: `JdbcDualReadGateServiceTest`, `AdminInitializationControllerContractTest`, `AdminInitializationSecurityContractTest`, `PostgresReportingReadSchemaMigrationIntegrationTest`.
-  - [x] `H22.7` Operationalization, rollback, and rebuild playbook.
-    Deliverable: documented runbooks for deployment, monitoring, rollback, and full read-model rebuild/backfill in production-like environments.
-    Exit criteria: on-call workflows can detect, mitigate, and recover from projector/read-model failures without data-loss ambiguity.
-    Status: completed on 2026-03-12.
-    Handover:
-    - Runbook: `docs/h22.7-operational-rollback-rebuild-playbook.md`.
-    - Consolidated ops service: `H22OperationalStatusService`, `DefaultH22OperationalStatusService`.
-    - Admin operational endpoints: `/admin/initialization/postgres/operational/showStatus`, `/admin/initialization/postgres/operational/status`.
-    - Verification tests: `DefaultH22OperationalStatusServiceTest`, `AdminInitializationControllerContractTest`, `AdminInitializationSecurityContractTest`.
-  - [x] `H22.8` Post-integration layering and naming consistency.
-    Deliverable: targeted cleanup that normalizes naming, package-level boundaries, and service wiring semantics introduced during H22 integration.
-    Exit criteria: PostgreSQL reporting integration code follows consistent naming/contracts (including Scholardex/reporting read surfaces), with no ambiguous legacy naming left in active paths.
-    Status: completed on 2026-03-12.
-    Handover:
-    - Internal rename completion: admin read switch layer renamed to `ScholardexAdminReadFacade` + `ScholardexAdminReadPort` with `MongoScholardexAdminReadPort` and `PostgresScholardexAdminReadPort`.
-    - Wiring updates: `AdminViewController`, `JdbcDualReadGateService`, and `PostgresReadCutoverGuard` now use Scholardex admin read types.
-    - Consistency updates: `ScholardexProjectionReadService` naming kept across touched integration paths; H22 task/test references aligned with renamed symbols.
-  - [x] `H22.9` Transitional path and config hygiene after Postgres integration.
-    Deliverable: removal or consolidation of obsolete transitional flags, stale dual-path helper code, and unused compatibility branches no longer needed after H22 stabilization.
-    Exit criteria: configuration and runtime path selection are minimal, documented, and free of deprecated dead branches for completed H22 scope.
-    Status: completed on 2026-03-13.
-    Handover:
-    - Runtime routing cleanup: migrated H22 request-path read services now resolve Postgres adapters directly; Mongo remains only in dual-read comparison tooling.
-    - Config hygiene: removed checked-in transitional read-store and local dual-gate ID defaults; dual-gate and projection property surfaces were reduced to operational essentials.
-    - Admin UX cleanup: `/admin/initialization` wording/layout standardized, H22 cards clarified for Postgres-first runtime, and operational status copy no longer advertises active read-store switching.
-  - [ ] `H22.10` H22 test-harness cleanup and deterministic gate baseline refresh.
-    Deliverable: cleanup and consolidation of H22-related tests/gate fixtures to reflect finalized defaults and scenario set (including Postgres-targeted perf checks).
-    Exit criteria: H22 verification tests are deterministic, readable, and aligned with current cutover/perf expectations without brittle historical assumptions.
+  - [ ] `H23.1` Inventory and classify transitional debt.
+    Deliverable: concise inventory doc of internal legacy/transitional hotspots, grouped as `remove now`, `keep intentionally`, `defer`.
+    Must include:
+    - dual-read-only Mongo adapters vs runtime adapters,
+    - compatibility redirects/routes still used internally,
+    - legacy Scopus naming in internal models/services used on steady-state paths,
+    - documented transitional frontend/script allowances still active.
+    Exit criteria: each hotspot has owner + planned action and no ambiguous “maybe legacy” items remain.
+  - [ ] `H23.2` Scholardex UI route consolidation.
+    Deliverable: move covered MVC forum/publication/affiliation pages to canonical Scholardex-first route families and retire WoS rankings as the primary forum discovery surface.
+    Focus:
+    - public canonical forum routes under `/scholardex/forums` and `/scholardex/forums/{id}`,
+    - admin canonical forum/publication/affiliation routes under `/admin/scholardex/**`,
+    - legacy MVC `/admin/scopus/**` and `/rankings/wos` list routes reduced to redirects or explicit transitional shims where needed,
+    - Scholardex forums listing includes all known forums and absorbs current WoS-listing behavior via WoS status column/filter.
+    Exit criteria: covered MVC discovery/list pages resolve through canonical Scholardex routes and the old split between Scopus forum pages and WoS journal listing is no longer the primary navigation model.
+  - [ ] `H23.3` Unified forum detail and UI naming normalization.
+    Deliverable: replace the current journal-only WoS ranking detail flow with a forum-centric Scholardex detail page and normalize UI-facing naming around that model.
+    Focus:
+    - current `/rankings/wos/{id}` detail behavior moves to the canonical Scholardex forum detail page,
+    - journal forums show WoS ranking details when indexed, otherwise a deterministic “not indexed by WoS” message,
+    - conference proceedings show a CORE placeholder section,
+    - books show a book-ranking placeholder section,
+    - UI-facing controller/template/service naming reflects Scholardex ownership rather than the old Scopus/WoS split.
+    Keep:
+    - API paths and DTO schemas unchanged in this wave.
+    Exit criteria: covered forum detail pages are forum-type aware, placeholders exist for later ranking integrations, and no active canonical MVC page still presents WoS rankings as a separate primary forum-detail concept.
+  - [ ] `H23.4` Route-aware guardrails and deterministic UI verification refresh.
+    Deliverable:
+    - focused MVC contract tests aligned to the new canonical routes plus legacy redirects,
+    - refreshed JS/browserless coverage for renamed pages/assets,
+    - deterministic coverage for forum-detail branching and new WoS category pages,
+    - guardrails that block reintroduction of the Scopus-forums vs WoS-rankings UI split.
+    Exit criteria: cleanup-specific test suite is deterministic and catches regressions in canonical routes, redirect shims, forum-type branching, and category-page presence.
+  - [ ] `H23.5` Docs, route map, and task closeout.
+    Deliverable: update architecture/runbook/task docs to reflect canonical Scholardex forum navigation, WoS category pages, retained legacy MVC redirects, and API-layer names intentionally kept stable.
+    Exit criteria: `TASKS.md`/`TASKS-done.md` and H22/H19 adjacent docs are consistent with the post-H23 UI route map and clearly distinguish canonical MVC routes from intentionally retained API naming.
+  Public interfaces / types:
+  - MVC/public/admin route and template names may change in this wave.
+  - `/api/scopus/**` remains unchanged.
+  - `/api/rankings/wos` remains unchanged unless a later task explicitly changes it.
+  - No DTO schema changes.
+  - No DB schema/migration changes required by default.
+  - API/controller DTO rename or deprecation work is explicitly deferred to a separate future task.
+  Test plan (for future implementation task):
+  - Core targeted suite:
+    - `*RankingViewControllerContractTest`
+    - `*AdminViewControllerContractTest`
+    - any affected forum-detail service/read tests
+    - any redirect/route compatibility tests for retained legacy MVC paths.
+  - Browserless / JS coverage:
+    - existing `rankings-wos.js` coverage updated or replaced by Scholardex forum coverage,
+    - `admin-scopus-forums.js` and `admin-scopus-affiliations.js` coverage updated or replaced for renamed canonical pages,
+    - any new category-page script coverage if basic client filtering/navigation is introduced.
+  - Determinism check:
+    - run refreshed cleanup baseline command twice with identical pass/fail outcome.
+  - Acceptance:
+    - canonical Scholardex forum pages cover all known forums,
+    - WoS status/filter behavior replaces WoS list-page forum discovery,
+    - forum detail renders the correct journal/conference/book state,
+    - guardrails enforce non-reintroduction of the old split navigation model.
+  Assumptions:
+  - API routes and DTO schemas remain intentionally stable in this wave.
+  - Canonical public forum routes live under `/scholardex/**`.
+  - Canonical WoS category pages live under `/rankings/**`.
+  - Legacy MVC routes may remain temporarily as redirects, but no longer as equal first-class pages.
+  - “All known forums” means the canonical Scholardex forum view remains the base discovery set, enriched with WoS availability/status rather than replaced by a separate WoS-only list.

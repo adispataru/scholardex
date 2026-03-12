@@ -117,11 +117,11 @@ class JdbcDualReadGateServiceTest {
 
         ScholardexForumView forumView = new ScholardexForumView();
         forumView.setPublicationName("Search Forum");
-        when(fixture.mongoTemplate.findOne(any(Query.class), eq(ScholardexForumView.class))).thenReturn(forumView);
+        when(fixture.mongoTemplate.find(any(Query.class), eq(ScholardexForumView.class))).thenReturn(List.of(forumView));
 
         ScholardexAffiliationView affiliationView = new ScholardexAffiliationView();
         affiliationView.setName("Search Affiliation");
-        when(fixture.mongoTemplate.findOne(any(Query.class), eq(ScholardexAffiliationView.class))).thenReturn(affiliationView);
+        when(fixture.mongoTemplate.find(any(Query.class), eq(ScholardexAffiliationView.class))).thenReturn(List.of(affiliationView));
 
         fixture.service.runFullGate();
 
@@ -135,8 +135,8 @@ class JdbcDualReadGateServiceTest {
     void resolveScenarioInputFallsBackToCanonicalSeedWhenSearchViewMissing() {
         var fixture = fixture();
 
-        when(fixture.mongoTemplate.findOne(any(Query.class), eq(ScholardexForumView.class))).thenReturn(null);
-        when(fixture.mongoTemplate.findOne(any(Query.class), eq(ScholardexAffiliationView.class))).thenReturn(null);
+        when(fixture.mongoTemplate.find(any(Query.class), eq(ScholardexForumView.class))).thenReturn(List.of());
+        when(fixture.mongoTemplate.find(any(Query.class), eq(ScholardexAffiliationView.class))).thenReturn(List.of());
 
         fixture.service.runFullGate();
 
@@ -238,6 +238,48 @@ class JdbcDualReadGateServiceTest {
         assertEquals(0.8d, properties.getP95RatioThreshold());
     }
 
+    @Test
+    void resolveScenarioInputSelectsDeterministicIssnFromMultipleRows() {
+        var fixture = fixture();
+        fixture.properties.setWosIssnWarmupEnabled(false);
+
+        WosRankingView b = new WosRankingView();
+        b.setId("b-row");
+        b.setIssn("9999-9999");
+        WosRankingView a = new WosRankingView();
+        a.setId("a-row");
+        a.setIssn("1234-0000");
+        when(fixture.mongoTemplate.find(any(Query.class), eq(WosRankingView.class))).thenReturn(List.of(b, a));
+
+        fixture.service.runFullGate();
+
+        verify(fixture.mongoReportingLookup, times(fixture.properties.getSampleSize())).getRankingsByIssn("1234-0000");
+        verify(fixture.postgresReportingLookup, times(fixture.properties.getSampleSize())).getRankingsByIssn("1234-0000");
+    }
+
+    @Test
+    void resolveScenarioInputSelectsDeterministicRefreshIdsFromSortedIds() {
+        var fixture = fixture();
+        fixture.properties.setGroupReportRefreshEnabled(true);
+
+        ro.uvt.pokedex.core.model.reporting.Group g2 = new ro.uvt.pokedex.core.model.reporting.Group();
+        g2.setId("g-2");
+        ro.uvt.pokedex.core.model.reporting.Group g1 = new ro.uvt.pokedex.core.model.reporting.Group();
+        g1.setId("g-1");
+        when(fixture.groupRepository.findAll()).thenReturn(List.of(g2, g1));
+
+        ro.uvt.pokedex.core.model.reporting.IndividualReport r2 = new ro.uvt.pokedex.core.model.reporting.IndividualReport();
+        r2.setId("r-2");
+        ro.uvt.pokedex.core.model.reporting.IndividualReport r1 = new ro.uvt.pokedex.core.model.reporting.IndividualReport();
+        r1.setId("r-1");
+        when(fixture.individualReportRepository.findAll()).thenReturn(List.of(r2, r1));
+
+        fixture.service.runFullGate();
+
+        verify(fixture.groupReportFacade, times(fixture.properties.getSampleSize()))
+                .refreshGroupIndividualReportView("g-1", "r-1");
+    }
+
     private Fixture fixture() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         DualReadGateProperties properties = new DualReadGateProperties();
@@ -283,7 +325,7 @@ class JdbcDualReadGateServiceTest {
 
         WosRankingView rankingView = new WosRankingView();
         rankingView.setIssn("1234-5678");
-        when(mongoTemplate.findOne(any(Query.class), eq(WosRankingView.class))).thenReturn(rankingView);
+        when(mongoTemplate.find(any(Query.class), eq(WosRankingView.class))).thenReturn(List.of(rankingView));
 
         WosScoringView scoringView = new WosScoringView();
         scoringView.setCategoryNameCanonical("COMPUTER SCIENCE");
@@ -291,24 +333,24 @@ class JdbcDualReadGateServiceTest {
         scoringView.setMetricType(MetricType.AIS);
         scoringView.setYear(2025);
         scoringView.setQuarter("Q1");
-        when(mongoTemplate.findOne(any(Query.class), eq(WosScoringView.class))).thenReturn(scoringView);
+        when(mongoTemplate.find(any(Query.class), eq(WosScoringView.class))).thenReturn(List.of(scoringView));
 
         ScholardexAuthorView authorView = new ScholardexAuthorView();
         authorView.setAffiliationIds(List.of("af-1"));
-        when(mongoTemplate.findOne(any(Query.class), eq(ScholardexAuthorView.class))).thenReturn(authorView);
+        when(mongoTemplate.find(any(Query.class), eq(ScholardexAuthorView.class))).thenReturn(List.of(authorView));
 
         ScholardexForumView forumView = new ScholardexForumView();
         forumView.setPublicationName("Forum One");
-        when(mongoTemplate.findOne(any(Query.class), eq(ScholardexForumView.class))).thenReturn(forumView);
+        when(mongoTemplate.find(any(Query.class), eq(ScholardexForumView.class))).thenReturn(List.of(forumView));
 
         ScholardexAffiliationView affiliationView = new ScholardexAffiliationView();
         affiliationView.setName("Affiliation One");
-        when(mongoTemplate.findOne(any(Query.class), eq(ScholardexAffiliationView.class))).thenReturn(affiliationView);
+        when(mongoTemplate.find(any(Query.class), eq(ScholardexAffiliationView.class))).thenReturn(List.of(affiliationView));
 
         ScholardexPublicationView publicationView = new ScholardexPublicationView();
         publicationView.setId("pub-1");
         publicationView.setTitle("Parity publication");
-        when(mongoTemplate.findOne(any(Query.class), eq(ScholardexPublicationView.class))).thenReturn(publicationView);
+        when(mongoTemplate.find(any(Query.class), eq(ScholardexPublicationView.class))).thenReturn(List.of(publicationView));
 
         when(mongoTemplate.count(any(Query.class), eq(ScholardexAuthorView.class))).thenReturn(1L);
         when(mongoTemplate.count(any(Query.class), eq(ScholardexForumView.class))).thenReturn(1L);

@@ -2,6 +2,72 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H22 Postgres Reporting Core + Mongo Ingest Baseline Migration
+
+Archived from `TASKS.md` on 2026-03-13 after H22.1-H22.10 closure.
+
+- [x] `H22` Postgres reporting core + Mongo ingest baseline migration.
+  Goal: improve WoS scoring/reporting read and compute latency by moving reporting read models to PostgreSQL while keeping MongoDB as the ingestion/event/queue write model.
+  Deliverable: architecture contract, SQL read schema, projection/sync pipeline, SQL query cutover for WoS scoring/reporting flows, and operability/rollback guardrails.
+  Exit criteria: Mongo remains authoritative for raw import events/queues; WoS/scoring/report read models are served from PostgreSQL; SQL joins/materialized views back WoS scoring and citation-heavy report paths; parity and performance gates pass before full cutover.
+  Status: completed on 2026-03-13.
+  Subtasks:
+  - [x] `H22.1` Architecture contract and bounded-context map.
+    Status: completed on 2026-03-11.
+    Handover:
+    - Contract source of truth: `docs/h22.1-postgres-reporting-architecture-contract.md`.
+    - Companion sequence flows: `docs/h22.1-postgres-reporting-sequences.md`.
+  - [x] `H22.2` PostgreSQL schema for WoS/scoring/reporting read core.
+    Status: completed on 2026-03-11.
+    Handover:
+    - Schema contract: `docs/h22.2-postgres-reporting-schema-contract.md`.
+    - Flyway migrations: `V1__h22_2_create_pg_enums.sql`, `V2__h22_2_create_reporting_core_tables.sql`, `V3__h22_2_create_reporting_core_indexes.sql`.
+    - Migration verification test: `PostgresReportingReadSchemaMigrationIntegrationTest`.
+  - [x] `H22.3` Projection/sync pipeline from canonical Mongo to PostgreSQL.
+    Status: completed on 2026-03-11.
+    Handover:
+    - Projection contract: `docs/h22.3-postgres-projection-contract.md`.
+    - Projection state migration: `V4__h22_3_projection_state_tables.sql`.
+    - Projector service: `JdbcPostgresReportingProjectionService` + `PostgresReportingProjectionService`.
+    - Verification tests: `PostgresReportingProjectionServiceIntegrationTest`, `JdbcPostgresReportingProjectionServiceTest`.
+  - [x] `H22.4` Query-layer cutover to SQL-backed WoS scoring/report reads.
+    Status: completed on 2026-03-11.
+    Handover:
+    - Cutover contract: `docs/h22.4-query-layer-cutover-contract.md`.
+    - Runtime switch/cutover guards: `ReportingReadStore`, `ReportingReadStoreSelector`, `PostgresReadCutoverGuard`.
+    - Verification tests: `ReportingReadStoreRoutingTest`, `PostgresReportingLookupFacadeTest`, `ScholardexCutoverGuardrailTest`.
+  - [x] `H22.5` Materialized views and refresh strategy for heavy reads.
+    Status: completed on 2026-03-12.
+    Handover:
+    - Contract: `docs/h22.5-materialized-views-refresh-contract.md`.
+    - Migrations: `V5__h22_5_create_materialized_views.sql`, `V6__h22_5_mv_refresh_state_tables.sql`.
+    - Refresh orchestration: `PostgresMaterializedViewRefreshService`, `JdbcPostgresMaterializedViewRefreshService`.
+  - [x] `H22.6` Dual-read parity and performance gate.
+    Status: completed on 2026-03-12.
+    Handover:
+    - Contract: `docs/h22.6-dual-read-parity-performance-gate-contract.md`.
+    - Migration/state tables: `V7__h22_6_dual_read_gate_tables.sql`.
+    - Runtime gate service: `DualReadGateService`, `JdbcDualReadGateService`.
+  - [x] `H22.7` Operationalization, rollback, and rebuild playbook.
+    Status: completed on 2026-03-12.
+    Handover:
+    - Runbook: `docs/h22.7-operational-rollback-rebuild-playbook.md`.
+    - Ops status service: `H22OperationalStatusService`, `DefaultH22OperationalStatusService`.
+  - [x] `H22.8` Post-integration layering and naming consistency.
+    Status: completed on 2026-03-12.
+    Handover:
+    - Scholardex naming consistency for admin/read surfaces and associated wiring/tests.
+  - [x] `H22.9` Transitional path and config hygiene after Postgres integration.
+    Status: completed on 2026-03-13.
+    Handover:
+    - Runtime routing and config trimmed to Postgres-first operational mode for migrated H22 surfaces.
+    - `/admin/initialization` wording/layout cleanup for H22 cards and operational status.
+  - [x] `H22.10` H22 test-harness cleanup and deterministic gate baseline refresh.
+    Status: completed on 2026-03-13.
+    Handover:
+    - Deterministic gate seed selection in `JdbcDualReadGateService`.
+    - Focused harness baseline command: `./gradlew testH2210Baseline` and `npm run verify-h22-baseline`.
+
 ## H11-H14 Recovery Wave
 
 Archived from `TASKS.md` on 2026-03-06 after closure and cleanup.

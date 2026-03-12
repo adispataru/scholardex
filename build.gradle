@@ -105,3 +105,23 @@ tasks.register('testH226DualReadGate', Test) {
         includeTestsMatching '*DualReadGate*'
     }
 }
+
+tasks.register('testH2210Baseline', Test) {
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    systemProperty 'spring.task.scheduling.enabled', 'false'
+    systemProperty 'core.scopus.scheduler.enabled', 'false'
+    systemProperty 'management.health.scopusPython.enabled', 'false'
+    filter {
+        includeTestsMatching '*JdbcDualReadGateServiceTest'
+        includeTestsMatching '*ReportingReadStoreRoutingTest'
+        includeTestsMatching '*ScholardexCutoverGuardrailTest'
+        includeTestsMatching '*DefaultH22OperationalStatusServiceTest'
+        includeTestsMatching '*AdminInitializationControllerContractTest'
+        includeTestsMatching '*AdminInitializationSecurityContractTest'
+    }
+}

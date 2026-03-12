@@ -188,7 +188,7 @@
                                                                                             wosVenueId=${(forumWosLinkMap != null && citing != null) ? forumWosLinkMap[citing.forum] : null}">
                                                                             <a th:if="${forum != null && wosVenueId != null}"
                                                                                th:text="${forum.publicationName}"
-                                                                               th:href="@{/rankings/wos/{id}(id=${wosVenueId})}">Venue</a>
+                                                                               th:href="@{/scholardex/forums/{id}(id=${wosVenueId})}">Venue</a>
                                                                             <span th:if="${forum != null && wosVenueId == null}"
                                                                                   th:text="${forum.publicationName}">Venue</span>
                                                                         </th:block>

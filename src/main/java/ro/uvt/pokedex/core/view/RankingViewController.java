@@ -3,50 +3,85 @@ package ro.uvt.pokedex.core.view;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import ro.uvt.pokedex.core.model.ArtisticEvent;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
+import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.URAPUniversityRanking;
-import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
+import ro.uvt.pokedex.core.service.application.ScholardexForumMvcService;
+import ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService;
 import ro.uvt.pokedex.core.service.application.UrapRankingFacade;
 import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
+import ro.uvt.pokedex.core.controller.dto.ScholardexForumPageResponse;
 
 import java.util.List;
 import java.util.Optional;
 
 @Controller
-@RequestMapping("/rankings")
 @RequiredArgsConstructor
 public class RankingViewController {
 
     private final AdminCatalogFacade adminCatalogFacade;
     private final UrapRankingFacade urapRankingFacade;
     private final WosRankingDetailsReadService wosRankingDetailsReadService;
+    private final ScholardexProjectionReadService scholardexProjectionReadService;
+    private final ScholardexForumMvcService scholardexForumMvcService;
 
-    @GetMapping("/wos")
-    public String showWosRankingsPage() {
-        return "rankings/wos";
+    @GetMapping("/scholardex/forums")
+    public String showScholardexForumsPage() {
+        return "scholardex/forums";
     }
 
-    @GetMapping("/wos/{id}")
-    public String showWosRankingDetailsPage(Model model, @PathVariable String id) {
-        Optional<WoSRanking> ranking = wosRankingDetailsReadService.findByJournalId(id);
-        if (ranking.isPresent()) {
-            model.addAttribute("journal", ranking.get());
-            return "rankings/wos-detail";
+    @GetMapping("/scholardex/forums/data")
+    @ResponseBody
+    public ScholardexForumPageResponse listScholardexForumsData(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size,
+            @RequestParam(defaultValue = "publicationName") String sort,
+            @RequestParam(defaultValue = "asc") String direction,
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "all") String wos
+    ) {
+        return scholardexForumMvcService.search(page, size, sort, direction, q, wos);
+    }
+
+    @GetMapping("/scholardex/forums/{id}")
+    public String showScholardexForumDetailsPage(Model model, @PathVariable String id) {
+        Optional<Forum> forum = scholardexProjectionReadService.findForumById(id);
+        if (forum.isEmpty()) {
+            return "user/ranking-not-found";
         }
-        return "user/ranking-not-found";
+        model.addAttribute("forum", forum.get());
+        model.addAttribute("wosRanking", wosRankingDetailsReadService.findByJournalId(id).orElse(null));
+        return "scholardex/forum-detail";
     }
 
-    @GetMapping("/core")
+    @RequestMapping("/rankings")
+    public String redirectRankingsRootToScholardexForums() {
+        return "redirect:/scholardex/forums";
+    }
+
+    @GetMapping("/rankings/wos")
+    public String showWosRankingsPage() {
+        return "redirect:/scholardex/forums?wos=indexed";
+    }
+
+    @GetMapping("/rankings/wos/{id}")
+    public String showWosRankingDetailsPage(@PathVariable String id) {
+        return "redirect:/scholardex/forums/" + id;
+    }
+
+    @GetMapping({"/rankings/core", "/core"})
     public String showCoreRankingsPage() {
         return "rankings/core";
     }
 
-    @GetMapping("/core/{id}")
+    @GetMapping({"/rankings/core/{id}", "/core/{id}"})
     public String showCoreRankingDetailsPage(Model model, @PathVariable String id) {
         Optional<CoreConferenceRanking> ranking = adminCatalogFacade.findCoreRankingById(id);
         if (ranking.isPresent()) {
@@ -56,12 +91,12 @@ public class RankingViewController {
         return "redirect:/rankings/core";
     }
 
-    @GetMapping("/urap")
+    @GetMapping({"/rankings/urap", "/urap"})
     public String showUrapRankingsPage() {
         return "rankings/urap";
     }
 
-    @GetMapping("/urap/{id}")
+    @GetMapping({"/rankings/urap/{id}", "/urap/{id}"})
     public String showUrapRankingDetailsPage(@PathVariable String id, Model model) {
         Optional<URAPUniversityRanking> ranking = urapRankingFacade.findRankingDetails(id);
         if (ranking.isPresent()) {
@@ -72,7 +107,7 @@ public class RankingViewController {
         return "redirect:/rankings/urap";
     }
 
-    @GetMapping("/events")
+    @GetMapping({"/rankings/events", "/events"})
     public String showArtisticEventsPage(Model model) {
         List<ArtisticEvent> all = adminCatalogFacade.listArtisticEvents();
         model.addAttribute("artisticEvents", all);

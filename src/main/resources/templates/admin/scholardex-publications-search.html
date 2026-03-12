@@ -10,7 +10,7 @@
 
 <div id="wrapper">
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: admin-sidebar('scopus-publications')}"></div>
+        <div th:replace="~{fragments :: admin-sidebar('scholardex-publications')}"></div>
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
         </div>
@@ -45,12 +45,12 @@
                                 <tbody>
                                 <tr th:each="publication : ${publications}">
                                     <td>
-                                        <a th:href="@{/admin/scopus/publications/citations(id=${publication.id})}" th:text="${publication.title}">Publication Title</a>
+                                        <a th:href="@{/admin/scholardex/publications/citations(id=${publication.id})}" th:text="${publication.title}">Publication Title</a>
                                     </td>
                                     <td>
                                         <div th:each="author, iterStat : ${publication.authors}">
 
-                                            <a th:if="${authorMap[author]!=null}" th:text="${authorMap[author].name} + (iterStat.last ? '; ' : '')" th:href="@{/admin/scopus/authors/edit/{id}(id=${author})}">
+                                            <a th:if="${authorMap[author]!=null}" th:text="${authorMap[author].name} + (iterStat.last ? '; ' : '')" th:href="@{/admin/scholardex/authors/edit/{id}(id=${author})}">
                                                 <span>;</span>
                                             </a>
                                         </div>

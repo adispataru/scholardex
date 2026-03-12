@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -36,6 +37,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -834,18 +836,30 @@ public class JdbcDualReadGateService implements DualReadGateService {
     }
 
     private String resolveIssn() {
-        WosRankingView view = mongoTemplate.findOne(new Query(), WosRankingView.class);
-        if (view == null) {
+        Optional<WosRankingView> selected = findFirstDeterministic(
+                new Query(),
+                WosRankingView.class,
+                Comparator.comparing((WosRankingView view) -> sortKey(view.getId()))
+                        .thenComparing(view -> sortKey(view.getIssnNorm()))
+                        .thenComparing(view -> sortKey(view.getEIssnNorm())),
+                view -> hasText(view.getIssn())
+                        || hasText(view.getEIssn())
+                        || hasText(firstNonBlank(view.getAlternativeIssns()))
+                        || hasText(view.getIssnNorm())
+        );
+        if (selected.isEmpty()) {
             return "00000000";
         }
+        WosRankingView view = selected.get();
         if (hasText(view.getIssn())) {
             return view.getIssn();
         }
         if (hasText(view.getEIssn())) {
             return view.getEIssn();
         }
-        if (view.getAlternativeIssns() != null && !view.getAlternativeIssns().isEmpty() && hasText(view.getAlternativeIssns().getFirst())) {
-            return view.getAlternativeIssns().getFirst();
+        String alternativeIssn = firstNonBlank(view.getAlternativeIssns());
+        if (hasText(alternativeIssn)) {
+            return alternativeIssn;
         }
         return hasText(view.getIssnNorm()) ? view.getIssnNorm() : "00000000";
     }
@@ -854,52 +868,123 @@ public class JdbcDualReadGateService implements DualReadGateService {
         Query query = new Query();
         query.addCriteria(org.springframework.data.mongodb.core.query.Criteria.where("metricType").is("AIS"));
         query.addCriteria(org.springframework.data.mongodb.core.query.Criteria.where("quarter").is("Q1"));
-        WosScoringView view = mongoTemplate.findOne(query, WosScoringView.class);
-        if (view == null || !hasText(view.getCategoryNameCanonical()) || view.getYear() == null) {
+        Optional<WosScoringView> selected = findFirstDeterministic(
+                query,
+                WosScoringView.class,
+                Comparator.comparing((WosScoringView view) -> view.getYear() == null ? Integer.MAX_VALUE : view.getYear())
+                        .thenComparing(view -> sortKey(view.getCategoryNameCanonical()))
+                        .thenComparing(view -> view.getEditionNormalized() == null ? "" : view.getEditionNormalized().name())
+                        .thenComparing(view -> sortKey(view.getId())),
+                view -> hasText(view.getCategoryNameCanonical()) && view.getYear() != null && view.getEditionNormalized() != null
+        );
+        if (selected.isEmpty()) {
             return new CategoryInput("COMPUTER SCIENCE - SCIE", 2025);
         }
+        WosScoringView view = selected.get();
         String categoryIndex = view.getCategoryNameCanonical() + " - " + view.getEditionNormalized();
         return new CategoryInput(categoryIndex, view.getYear());
     }
 
     private String resolveAfid() {
-        ScholardexAuthorView author = mongoTemplate.findOne(new Query(), ScholardexAuthorView.class);
-        if (author == null || author.getAffiliationIds() == null || author.getAffiliationIds().isEmpty() || !hasText(author.getAffiliationIds().getFirst())) {
+        Optional<ScholardexAuthorView> selected = findFirstDeterministic(
+                new Query(),
+                ScholardexAuthorView.class,
+                Comparator.comparing((ScholardexAuthorView view) -> sortKey(view.getId()))
+                        .thenComparing(view -> sortKey(view.getName())),
+                view -> hasText(firstNonBlank(view.getAffiliationIds()))
+        );
+        if (selected.isEmpty()) {
             return "60000434";
         }
-        return author.getAffiliationIds().getFirst();
+        return firstNonBlank(selected.get().getAffiliationIds());
     }
 
     private String firstForumName() {
-        ScholardexForumView forum = mongoTemplate.findOne(new Query(), ScholardexForumView.class);
-        return forum == null ? null : forum.getPublicationName();
+        return findFirstDeterministic(
+                new Query(),
+                ScholardexForumView.class,
+                Comparator.comparing((ScholardexForumView view) -> sortKey(view.getId()))
+                        .thenComparing(view -> sortKey(view.getPublicationName())),
+                view -> hasText(view.getPublicationName())
+        ).map(ScholardexForumView::getPublicationName).orElse(null);
     }
 
     private String firstAffiliationName() {
-        ScholardexAffiliationView affiliation = mongoTemplate.findOne(new Query(), ScholardexAffiliationView.class);
-        return affiliation == null ? null : affiliation.getName();
+        return findFirstDeterministic(
+                new Query(),
+                ScholardexAffiliationView.class,
+                Comparator.comparing((ScholardexAffiliationView view) -> sortKey(view.getId()))
+                        .thenComparing(view -> sortKey(view.getName())),
+                view -> hasText(view.getName())
+        ).map(ScholardexAffiliationView::getName).orElse(null);
     }
 
     private String firstPublicationTitle() {
-        ScholardexPublicationView publication = mongoTemplate.findOne(new Query(), ScholardexPublicationView.class);
-        return publication == null ? null : publication.getTitle();
+        return findFirstDeterministic(
+                new Query(),
+                ScholardexPublicationView.class,
+                Comparator.comparing((ScholardexPublicationView view) -> sortKey(view.getId()))
+                        .thenComparing(view -> sortKey(view.getTitle())),
+                view -> hasText(view.getTitle())
+        ).map(ScholardexPublicationView::getTitle).orElse(null);
     }
 
     private String firstPublicationId() {
-        ScholardexPublicationView publication = mongoTemplate.findOne(new Query(), ScholardexPublicationView.class);
-        return publication == null || !hasText(publication.getId()) ? "missing-publication-id" : publication.getId();
+        return findFirstDeterministic(
+                new Query(),
+                ScholardexPublicationView.class,
+                Comparator.comparing((ScholardexPublicationView view) -> sortKey(view.getId()))
+                        .thenComparing(view -> sortKey(view.getTitle())),
+                view -> hasText(view.getId())
+        ).map(ScholardexPublicationView::getId).orElse("missing-publication-id");
     }
 
     private GroupReportRefreshIds resolveGroupReportRefreshIds() {
         String groupId = groupRepository.findAll().stream()
-                .findFirst()
                 .map(ro.uvt.pokedex.core.model.reporting.Group::getId)
+                .filter(this::hasText)
+                .sorted()
+                .findFirst()
                 .orElse(null);
         String reportId = individualReportRepository.findAll().stream()
-                .findFirst()
                 .map(ro.uvt.pokedex.core.model.reporting.IndividualReport::getId)
+                .filter(this::hasText)
+                .sorted()
+                .findFirst()
                 .orElse(null);
         return new GroupReportRefreshIds(groupId, reportId);
+    }
+
+    private <T> Optional<T> findFirstDeterministic(
+            Query baseQuery,
+            Class<T> entityType,
+            Comparator<T> comparator,
+            Predicate<T> predicate
+    ) {
+        Query query = baseQuery == null ? new Query() : baseQuery;
+        query.with(Sort.by(Sort.Direction.ASC, "_id"));
+        List<T> rows = mongoTemplate.find(query, entityType);
+        if (rows == null || rows.isEmpty()) {
+            return Optional.empty();
+        }
+        return rows.stream()
+                .sorted(comparator)
+                .filter(predicate)
+                .findFirst();
+    }
+
+    private static String firstNonBlank(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return null;
+        }
+        return values.stream()
+                .filter(value -> value != null && !value.trim().isEmpty())
+                .findFirst()
+                .orElse(null);
+    }
+
+    private static String sortKey(String value) {
+        return value == null ? "" : value;
     }
 
     private String firstToken(String input) {

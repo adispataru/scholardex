@@ -29,6 +29,7 @@ const allowlistedInlineScriptFiles = new Set([
   'src/main/resources/templates/admin/citations.html',
   'src/main/resources/templates/admin/indicators.html',
   'src/main/resources/templates/admin/scopus-citations.html',
+  'src/main/resources/templates/admin/scholardex-citations.html',
   'src/main/resources/templates/admin/scopus-venues.html',
   'src/main/resources/templates/user/citations.html',
   'src/main/resources/templates/user/criteria-apply.html',

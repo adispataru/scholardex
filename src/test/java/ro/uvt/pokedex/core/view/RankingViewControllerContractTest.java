@@ -4,13 +4,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.model.ArtisticEvent;
-import ro.uvt.pokedex.core.model.WoSRanking;
+import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
+import ro.uvt.pokedex.core.service.application.ScholardexForumMvcService;
+import ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService;
 import ro.uvt.pokedex.core.service.application.UrapRankingFacade;
 import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
 
@@ -40,21 +42,63 @@ class RankingViewControllerContractTest {
     private UrapRankingFacade urapRankingFacade;
     @MockitoBean
     private WosRankingDetailsReadService wosRankingDetailsReadService;
+    @MockitoBean
+    private ScholardexProjectionReadService scholardexProjectionReadService;
+    @MockitoBean
+    private ScholardexForumMvcService scholardexForumMvcService;
 
     @Test
-    void wosRankingsPageRendersExpectedTemplateAndClientControls() throws Exception {
-        mockMvc.perform(get("/rankings/wos"))
+    void scholardexForumsPageRendersExpectedTemplateAndClientControls() throws Exception {
+        mockMvc.perform(get("/scholardex/forums"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("rankings/wos"))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-search\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-sort\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-direction\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-size\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-table-body\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-prev\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-next\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/rankings-wos.js")))
+                .andExpect(view().name("scholardex/forums"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"scholardex-forums-search\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"scholardex-forums-sort\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"scholardex-forums-direction\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"scholardex-forums-wos\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"scholardex-forums-size\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"scholardex-forums-table-body\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"scholardex-forums-prev\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"scholardex-forums-next\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/scholardex-forums.js")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
+    }
+
+    @Test
+    void rankingsWosListRedirectsToCanonicalScholardexForums() throws Exception {
+        mockMvc.perform(get("/rankings/wos"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/scholardex/forums?wos=indexed"));
+    }
+
+    @Test
+    void rankingsWosDetailRedirectsToCanonicalScholardexForumDetail() throws Exception {
+        mockMvc.perform(get("/rankings/wos/{id}", "w1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/scholardex/forums/w1"));
+    }
+
+    @Test
+    void missingScholardexForumRendersNotFoundPage() throws Exception {
+        when(scholardexProjectionReadService.findForumById(eq("missing"))).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/scholardex/forums/{id}", "missing"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/ranking-not-found"));
+    }
+
+    @Test
+    void existingScholardexForumRendersCanonicalDetailPage() throws Exception {
+        Forum forum = new Forum();
+        forum.setId("w1");
+        forum.setPublicationName("Test Journal");
+        when(scholardexProjectionReadService.findForumById(eq("w1"))).thenReturn(Optional.of(forum));
+        when(wosRankingDetailsReadService.findByJournalId(eq("w1"))).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/scholardex/forums/{id}", "w1"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("scholardex/forum-detail"))
+                .andExpect(model().attributeExists("forum"));
     }
 
     @Test
@@ -102,28 +146,6 @@ class RankingViewControllerContractTest {
     }
 
     @Test
-    void missingWosRankingRendersNotFoundPage() throws Exception {
-        when(wosRankingDetailsReadService.findByJournalId(eq("missing"))).thenReturn(Optional.empty());
-
-        mockMvc.perform(get("/rankings/wos/{id}", "missing"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("user/ranking-not-found"));
-    }
-
-    @Test
-    void existingWosRankingRendersDetailsFromProjectionBackedService() throws Exception {
-        WoSRanking ranking = new WoSRanking();
-        ranking.setId("w1");
-        ranking.setName("Test Journal");
-        when(wosRankingDetailsReadService.findByJournalId(eq("w1"))).thenReturn(Optional.of(ranking));
-
-        mockMvc.perform(get("/rankings/wos/{id}", "w1"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("rankings/wos-detail"))
-                .andExpect(model().attributeExists("journal"));
-    }
-
-    @Test
     void missingCoreRankingRedirectsToCoreList() throws Exception {
         when(adminCatalogFacade.findCoreRankingById(eq("missing"))).thenReturn(Optional.empty());
 
@@ -143,9 +165,9 @@ class RankingViewControllerContractTest {
 
     @Test
     void rankingsTemplatesExposeSidebarLinks() throws Exception {
-        mockMvc.perform(get("/rankings/wos"))
+        mockMvc.perform(get("/scholardex/forums"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/rankings/wos\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/scholardex/forums\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/rankings/core\"")));
     }
 }

@@ -11,7 +11,7 @@
 <div id="wrapper">
     <!-- Sidebar -->
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: admin-sidebar('authors')}"></div>
+        <div th:replace="~{fragments :: admin-sidebar('scholardex-authors')}"></div>
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
         </div>
@@ -29,7 +29,7 @@
                         <h6 class="m-0 font-weight-bold text-primary">Update</h6>
                     </div>
                     <div class="card-body">
-                        <form th:action="@{/admin/scopus/authors/edit/{id}(id=${author.id})}" th:object="${author}" method="post">
+                        <form th:action="@{/admin/scholardex/authors/edit/{id}(id=${author.id})}" th:object="${author}" method="post">
                             <div class="form-group">
                                 <label for="name">Name</label>
                                 <input type="text" class="form-control" id="name" th:field="*{name}" required>
@@ -71,7 +71,7 @@
                                 <tbody>
                                 <tr th:each="publication : ${publications}">
                                     <td>
-                                        <a th:href="@{/admin/scopus/publications/citations(id=${publication.id})}" th:text="${publication.title}">Publication Title</a>
+                                        <a th:href="@{/admin/scholardex/publications/citations(id=${publication.id})}" th:text="${publication.title}">Publication Title</a>
                                     </td>
                                     <td>
 <!--                                        <a th:each="author, iterStat : ${publication.authors}" th:text="${author.name} + (iterStat.last ? '; ' : '')" th:href="@{/admin/scopus/authors/edit/{id}(id=${author.id})}"></a>-->

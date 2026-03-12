@@ -338,7 +338,7 @@ public class UserViewController {
 
     @GetMapping("/rankings/{id}")
     public String showRankingPage(@PathVariable String id) {
-        return "redirect:/rankings/wos/" + id;
+        return "redirect:/scholardex/forums/" + id;
     }
 
     @PostMapping("/profile/save")

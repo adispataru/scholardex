@@ -10,7 +10,7 @@
 
 <div id="wrapper">
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: admin-sidebar('scopus-publications')}"></div>
+        <div th:replace="~{fragments :: admin-sidebar('scholardex-publications')}"></div>
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
         </div>
@@ -23,7 +23,7 @@
                 <div class="d-sm-flex align-items-center justify-content-between mb-4">
                     <h1 class="h3 mb-0 text-gray-800">Search Publications</h1>
                 </div>
-                <form th:action="@{/admin/scopus/publications/search}" method="get">
+                <form th:action="@{/admin/scholardex/publications/search}" method="get">
                     <div class="form-group">
 <!--                        <label for="authorName">Author Name</label>-->
                         <input type="text" class="form-control" id="authorName" name="authorName" hidden="hidden">

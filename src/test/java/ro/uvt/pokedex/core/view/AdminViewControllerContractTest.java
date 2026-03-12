@@ -86,7 +86,7 @@ class AdminViewControllerContractTest {
     void computePositionsRedirectsAndDelegates() throws Exception {
         mockMvc.perform(post("/admin/rankings/wos/computePositionsForKnownQuarters"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/rankings/wos"));
+                .andExpect(redirectedUrl("/admin/scholardex/forums?wos=indexed"));
 
         verify(rankingMaintenanceFacade).computePositionsForKnownQuarters();
     }
@@ -97,7 +97,7 @@ class AdminViewControllerContractTest {
 
         mockMvc.perform(post("/admin/rankings/wos/computePositionsForKnownQuarters"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/rankings/wos"))
+                .andExpect(redirectedUrl("/admin/scholardex/forums?wos=indexed"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash().attributeExists("errorMessage"));
     }
 
@@ -105,7 +105,7 @@ class AdminViewControllerContractTest {
     void computeMissingQuartersRedirectsAndDelegates() throws Exception {
         mockMvc.perform(post("/admin/rankings/wos/computeQuartersAndRankingsWhereMissing"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/rankings/wos"));
+                .andExpect(redirectedUrl("/admin/scholardex/forums?wos=indexed"));
 
         verify(rankingMaintenanceFacade).computeQuartersAndRankingsWhereMissing();
     }
@@ -114,7 +114,7 @@ class AdminViewControllerContractTest {
     void mergeDuplicateRankingsRedirectsAndDelegates() throws Exception {
         mockMvc.perform(post("/admin/rankings/wos/mergeDuplicateRankings"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/rankings/wos"));
+                .andExpect(redirectedUrl("/admin/scholardex/forums?wos=indexed"));
 
         verify(rankingMaintenanceFacade).mergeDuplicateRankings();
     }
@@ -125,7 +125,7 @@ class AdminViewControllerContractTest {
 
         mockMvc.perform(post("/admin/rankings/wos/rebuildProjections"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/rankings/wos"));
+                .andExpect(redirectedUrl("/admin/scholardex/forums?wos=indexed"));
 
         verify(rankingMaintenanceFacade).rebuildWosProjections();
     }
@@ -140,7 +140,7 @@ class AdminViewControllerContractTest {
 
         mockMvc.perform(post("/admin/rankings/wos/ensureIndexes"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/rankings/wos"));
+                .andExpect(redirectedUrl("/admin/scholardex/forums?wos=indexed"));
 
         verify(rankingMaintenanceFacade).ensureWosIndexes();
     }
@@ -174,51 +174,23 @@ class AdminViewControllerContractTest {
                         .param("dryRun", "true")
                         .param("sourceVersion", "v2026"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/rankings/wos"));
+                .andExpect(redirectedUrl("/admin/scholardex/forums?wos=indexed"));
 
         verify(rankingMaintenanceFacade).runWosBigBangMigration(true, "v2026");
     }
 
     @Test
-    void wosRankingsPageRendersExpectedTemplateAndClientControls() throws Exception {
+    void adminWosRankingsPageRedirectsToCanonicalScholardexForums() throws Exception {
         mockMvc.perform(get("/admin/rankings/wos"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("admin/rankings"))
-                .andExpect(model().attributeDoesNotExist("journals"))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-wos-search\"")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-wos-sort\"")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-wos-direction\"")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-wos-size\"")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-wos-table-body\"")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-wos-prev\"")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-wos-next\"")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/rankings/wos/rebuildProjections"))))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/rankings/wos/ensureIndexes"))))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/rankings/wos/runBigBangMigration"))))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/js/admin-rankings-wos.js")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/scholardex/forums?wos=indexed"));
     }
 
     @Test
-    void missingWosRankingDetailsRedirectsToAdminWosList() throws Exception {
-        when(wosRankingDetailsReadService.findByJournalId(eq("missing"))).thenReturn(Optional.empty());
-
+    void legacyAdminWosDetailRedirectsToCanonicalScholardexForumEdit() throws Exception {
         mockMvc.perform(get("/admin/rankings/wos/{id}", "missing"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/rankings/wos"));
-    }
-
-    @Test
-    void existingWosRankingDetailsRendersProjectionBackedView() throws Exception {
-        WoSRanking ranking = new WoSRanking();
-        ranking.setId("w1");
-        ranking.setName("Journal One");
-        when(wosRankingDetailsReadService.findByJournalId(eq("w1"))).thenReturn(Optional.of(ranking));
-
-        mockMvc.perform(get("/admin/rankings/wos/{id}", "w1"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("admin/rankings-view"))
-                .andExpect(model().attributeExists("journal"));
+                .andExpect(redirectedUrl("/admin/scholardex/forums/edit/missing"));
     }
 
     @Test
@@ -239,19 +211,20 @@ class AdminViewControllerContractTest {
     }
 
     @Test
-    void scopusForumsPageRendersExpectedTemplateAndClientControls() throws Exception {
-        mockMvc.perform(get("/admin/scopus/forums"))
+    void scholardexForumsPageRendersExpectedTemplateAndClientControls() throws Exception {
+        mockMvc.perform(get("/admin/scholardex/forums"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("admin/scopus-venues"))
+                .andExpect(view().name("admin/scholardex-forums"))
                 .andExpect(model().attributeDoesNotExist("venues"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-forums-search\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-forums-sort\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-forums-direction\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-forums-wos\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-forums-size\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-forums-table-body\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-forums-prev\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-forums-next\"")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/js/admin-scopus-forums.js")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/js/admin-scholardex-forums.js")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
     }
 
@@ -259,11 +232,19 @@ class AdminViewControllerContractTest {
     void scopusVenuesCompatibilityRoutesRedirectToForums() throws Exception {
         mockMvc.perform(get("/admin/scopus/venues"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scopus/forums"));
+                .andExpect(redirectedUrl("/admin/scholardex/forums"));
+
+        mockMvc.perform(get("/admin/scopus/forums"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/scholardex/forums"));
 
         mockMvc.perform(get("/admin/scopus/venues/edit/{id}", "f1"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scopus/forums/edit/f1"));
+                .andExpect(redirectedUrl("/admin/scholardex/forums/edit/f1"));
+
+        mockMvc.perform(get("/admin/scopus/forums/edit/{id}", "f1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/scholardex/forums/edit/f1"));
     }
 
     @Test
@@ -272,16 +253,16 @@ class AdminViewControllerContractTest {
                         .param("id", "f1")
                         .param("publicationName", "Forum One"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scopus/forums/edit/f1"));
+                .andExpect(redirectedUrl("/admin/scholardex/forums/edit/f1"));
 
         verify(adminCatalogFacade, times(1)).saveScopusVenue(any(Forum.class));
     }
 
     @Test
-    void scopusAuthorsPageRendersExpectedTemplateAndClientControls() throws Exception {
-        mockMvc.perform(get("/admin/scopus/authors"))
+    void scholardexAuthorsPageRendersExpectedTemplateAndClientControls() throws Exception {
+        mockMvc.perform(get("/admin/scholardex/authors"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("admin/scopus-authors"))
+                .andExpect(view().name("admin/scholardex-authors"))
                 .andExpect(model().attributeDoesNotExist("authors"))
                 .andExpect(model().attributeExists("defaultAfid"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-authors-afid\"")))
@@ -290,27 +271,35 @@ class AdminViewControllerContractTest {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-authors-direction\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-authors-size\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-authors-table-body\"")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/js/admin-scopus-authors.js")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/js/admin-scholardex-authors.js")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
+
+        mockMvc.perform(get("/admin/scopus/authors"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/scholardex/authors"));
     }
 
     @Test
-    void scopusAffiliationsPageRendersExpectedTemplateAndClientControls() throws Exception {
-        mockMvc.perform(get("/admin/scopus/affiliations"))
+    void scholardexAffiliationsPageRendersExpectedTemplateAndClientControls() throws Exception {
+        mockMvc.perform(get("/admin/scholardex/affiliations"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("admin/scopus-affiliations"))
+                .andExpect(view().name("admin/scholardex-affiliations"))
                 .andExpect(model().attributeDoesNotExist("affiliations"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-affiliations-search\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-affiliations-sort\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-affiliations-direction\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-affiliations-size\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-affiliations-table-body\"")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/js/admin-scopus-affiliations.js")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/js/admin-scholardex-affiliations.js")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
+
+        mockMvc.perform(get("/admin/scopus/affiliations"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/scholardex/affiliations"));
     }
 
     @Test
-    void editScopusAuthorPageRendersWithoutDatatablesScript() throws Exception {
+    void editScholardexAuthorPageRendersWithoutDatatablesScript() throws Exception {
         Author author = new Author();
         author.setId("a1");
         author.setName("Author One");
@@ -322,23 +311,31 @@ class AdminViewControllerContractTest {
         when(adminCatalogFacade.findScopusAuthorById("a1")).thenReturn(Optional.of(author));
         when(adminCatalogFacade.listPublicationsByAuthorId("a1")).thenReturn(List.of(publication));
 
-        mockMvc.perform(get("/admin/scopus/authors/edit/{id}", "a1"))
+        mockMvc.perform(get("/admin/scholardex/authors/edit/{id}", "a1"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("admin/scopus-editAuthor"))
+                .andExpect(view().name("admin/scholardex-editAuthor"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
+
+        mockMvc.perform(get("/admin/scopus/authors/edit/{id}", "a1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/scholardex/authors/edit/a1"));
     }
 
     @Test
-    void editScopusAffiliationPageStillRenders() throws Exception {
+    void editScholardexAffiliationPageStillRenders() throws Exception {
         Affiliation affiliation = new Affiliation();
         affiliation.setAfid("af1");
         affiliation.setName("Aff One");
 
         when(adminCatalogFacade.findScopusAffiliationById("af1")).thenReturn(Optional.of(affiliation));
 
-        mockMvc.perform(get("/admin/scopus/affiliations/edit/{id}", "af1"))
+        mockMvc.perform(get("/admin/scholardex/affiliations/edit/{id}", "af1"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("admin/scopus-editAffiliations"));
+                .andExpect(view().name("admin/scholardex-editAffiliation"));
+
+        mockMvc.perform(get("/admin/scopus/affiliations/edit/{id}", "af1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/scholardex/affiliations/edit/af1"));
     }
 
     @Test

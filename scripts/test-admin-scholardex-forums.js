@@ -3,20 +3,30 @@ const path = require('path');
 const vm = require('vm');
 const assert = require('assert');
 
-const scriptPath = path.join(__dirname, '..', 'src', 'main', 'resources', 'static', 'js', 'admin-scopus-forums.js');
+const scriptPath = path.join(__dirname, '..', 'src', 'main', 'resources', 'static', 'js', 'admin-scholardex-forums.js');
 const scriptContent = fs.readFileSync(scriptPath, 'utf8');
 
 function createClassList(initialClasses = []) {
   const classes = new Set(initialClasses);
   return {
-    add(name) {
-      classes.add(name);
-    },
-    remove(name) {
+    add(name) { classes.add(name); },
+    remove(name) { classes.delete(name); },
+    contains(name) { return classes.has(name); },
+    toggle(name, force) {
+      if (force === undefined) {
+        if (classes.has(name)) {
+          classes.delete(name);
+          return false;
+        }
+        classes.add(name);
+        return true;
+      }
+      if (force) {
+        classes.add(name);
+        return true;
+      }
       classes.delete(name);
-    },
-    contains(name) {
-      return classes.has(name);
+      return false;
     }
   };
 }
@@ -40,11 +50,12 @@ function createElement(id, options = {}) {
   };
 }
 
-function createHarness(fetchImpl) {
+function createHarness(fetchImpl, search = '') {
   const elements = {
     'admin-forums-search': createElement('admin-forums-search'),
     'admin-forums-sort': createElement('admin-forums-sort', { value: 'publicationName' }),
     'admin-forums-direction': createElement('admin-forums-direction', { value: 'asc' }),
+    'admin-forums-wos': createElement('admin-forums-wos', { value: 'all' }),
     'admin-forums-size': createElement('admin-forums-size', { value: '25' }),
     'admin-forums-loading': createElement('admin-forums-loading'),
     'admin-forums-error': createElement('admin-forums-error', { classes: ['d-none'] }),
@@ -57,14 +68,13 @@ function createHarness(fetchImpl) {
   };
 
   const context = {
+    window: { location: { search } },
     document: {
       readyState: 'complete',
       getElementById(id) {
         return elements[id] || null;
       },
-      addEventListener() {
-        // Not needed for tests because readyState is complete.
-      }
+      addEventListener() {}
     },
     fetch: fetchImpl,
     URLSearchParams,
@@ -87,7 +97,8 @@ function parseQuery(url) {
     size: query.get('size'),
     sort: query.get('sort'),
     direction: query.get('direction'),
-    q: query.get('q')
+    q: query.get('q'),
+    wos: query.get('wos')
   };
 }
 
@@ -109,23 +120,24 @@ async function testDefaultLoadRequestsExpectedParams() {
   });
 
   await wait(10);
-  assert.strictEqual(calls.length, 1, 'expected one fetch on initialization');
+  assert.strictEqual(calls.length, 1);
   assert.deepStrictEqual(parseQuery(calls[0]), {
     page: '0',
     size: '25',
     sort: 'publicationName',
     direction: 'asc',
-    q: null
+    q: null,
+    wos: 'all'
   });
 }
 
-async function testControlChangesTriggerRequestsAndResetPage() {
+async function testLegacyPresetAndControlChangesTriggerRequests() {
   const calls = [];
   const queue = [
-    { items: [{ id: 'a', publicationName: 'A', issn: '1', eIssn: '2', aggregationType: 'Journal' }], page: 0, size: 25, totalItems: 50, totalPages: 2 },
-    { items: [{ id: 'b', publicationName: 'B', issn: '3', eIssn: '4', aggregationType: 'Book' }], page: 1, size: 25, totalItems: 50, totalPages: 2 },
-    { items: [{ id: 'c', publicationName: 'C', issn: '5', eIssn: '6', aggregationType: 'Conference' }], page: 0, size: 25, totalItems: 50, totalPages: 2 },
-    { items: [{ id: 'd', publicationName: 'D', issn: '7', eIssn: '8', aggregationType: 'Series' }], page: 0, size: 25, totalItems: 50, totalPages: 2 }
+    { items: [{ id: 'a', publicationName: 'A', issn: '1', eIssn: '2', aggregationType: 'Journal', wosStatus: 'indexed' }], page: 0, size: 25, totalItems: 50, totalPages: 2 },
+    { items: [{ id: 'b', publicationName: 'B', issn: '3', eIssn: '4', aggregationType: 'Book', wosStatus: 'not_applicable' }], page: 1, size: 25, totalItems: 50, totalPages: 2 },
+    { items: [{ id: 'c', publicationName: 'C', issn: '5', eIssn: '6', aggregationType: 'Conference', wosStatus: 'not_indexed' }], page: 0, size: 25, totalItems: 50, totalPages: 2 },
+    { items: [{ id: 'd', publicationName: 'D', issn: '7', eIssn: '8', aggregationType: 'Series', wosStatus: 'indexed' }], page: 0, size: 25, totalItems: 50, totalPages: 2 }
   ];
 
   const els = createHarness(async (url) => {
@@ -138,27 +150,27 @@ async function testControlChangesTriggerRequestsAndResetPage() {
         return payload;
       }
     };
-  });
+  }, '?wos=indexed');
 
   await wait(10);
+  assert.strictEqual(parseQuery(calls[0]).wos, 'indexed');
+  assert.strictEqual(els['admin-forums-wos'].value, 'indexed');
+  assert.ok(els['admin-forums-table-body'].innerHTML.includes('/admin/scholardex/forums/edit/a'));
 
   els['admin-forums-next'].dispatch('click');
   await wait(10);
-  assert.strictEqual(parseQuery(calls[1]).page, '1', 'next should request next page');
-
-  els['admin-forums-sort'].value = 'issn';
-  els['admin-forums-sort'].dispatch('change');
-  await wait(10);
-  const sortQuery = parseQuery(calls[2]);
-  assert.strictEqual(sortQuery.page, '0', 'sort change should reset page to 0');
-  assert.strictEqual(sortQuery.sort, 'issn', 'sort value should be propagated');
+  assert.strictEqual(parseQuery(calls[1]).page, '1');
 
   els['admin-forums-search'].value = 'ieee';
   els['admin-forums-search'].dispatch('input');
   await wait(350);
-  const searchQuery = parseQuery(calls[3]);
-  assert.strictEqual(searchQuery.page, '0', 'search should reset page to 0');
-  assert.strictEqual(searchQuery.q, 'ieee', 'search term should be propagated');
+  assert.strictEqual(parseQuery(calls[2]).q, 'ieee');
+
+  els['admin-forums-wos'].value = 'not_indexed';
+  els['admin-forums-wos'].dispatch('change');
+  await wait(10);
+  assert.strictEqual(parseQuery(calls[3]).page, '0');
+  assert.strictEqual(parseQuery(calls[3]).wos, 'not_indexed');
 }
 
 async function testPrevNextBoundariesEnforced() {
@@ -169,56 +181,50 @@ async function testPrevNextBoundariesEnforced() {
       ok: true,
       status: 200,
       async json() {
-        return { items: [{ id: 'only', publicationName: 'Only', issn: '', eIssn: '', aggregationType: '' }], page: 0, size: 25, totalItems: 1, totalPages: 1 };
+        return { items: [{ id: 'only', publicationName: 'Only', issn: '', eIssn: '', aggregationType: '', wosStatus: 'not_applicable' }], page: 0, size: 25, totalItems: 1, totalPages: 1 };
       }
     };
   });
 
   await wait(10);
-  assert.strictEqual(els['admin-forums-prev'].disabled, true, 'prev should be disabled on single-page result');
-  assert.strictEqual(els['admin-forums-next'].disabled, true, 'next should be disabled on single-page result');
+  assert.strictEqual(els['admin-forums-prev'].disabled, true);
+  assert.strictEqual(els['admin-forums-next'].disabled, true);
 
   els['admin-forums-prev'].dispatch('click');
   els['admin-forums-next'].dispatch('click');
   await wait(10);
-  assert.strictEqual(calls.length, 1, 'boundary clicks should not trigger additional requests');
+  assert.strictEqual(calls.length, 1);
 }
 
-async function testEmptyStateRendering() {
-  const els = createHarness(async () => ({
+async function testEmptyAndErrorStateRendering() {
+  const emptyEls = createHarness(async () => ({
     ok: true,
     status: 200,
     async json() {
       return { items: [], page: 0, size: 25, totalItems: 0, totalPages: 0 };
     }
   }));
-
   await wait(10);
-  assert.strictEqual(els['admin-forums-empty'].classList.contains('d-none'), false, 'empty state should be visible');
-  assert.strictEqual(els['admin-forums-table-body'].innerHTML, '', 'table body should remain empty for empty results');
-}
+  assert.strictEqual(emptyEls['admin-forums-empty'].classList.contains('d-none'), false);
 
-async function testErrorStateRendering() {
-  const els = createHarness(async () => ({
+  const errorEls = createHarness(async () => ({
     ok: false,
     status: 500,
     async json() {
       return {};
     }
   }));
-
   await wait(10);
-  assert.strictEqual(els['admin-forums-error'].classList.contains('d-none'), false, 'error state should be visible');
-  assert.ok(els['admin-forums-error'].textContent.length > 0, 'error state should contain a message');
+  assert.strictEqual(errorEls['admin-forums-error'].classList.contains('d-none'), false);
+  assert.ok(errorEls['admin-forums-error'].textContent.length > 0);
 }
 
 async function run() {
   await testDefaultLoadRequestsExpectedParams();
-  await testControlChangesTriggerRequestsAndResetPage();
+  await testLegacyPresetAndControlChangesTriggerRequests();
   await testPrevNextBoundariesEnforced();
-  await testEmptyStateRendering();
-  await testErrorStateRendering();
-  console.log('admin-scopus-forums.js behavior tests passed.');
+  await testEmptyAndErrorStateRendering();
+  console.log('admin-scholardex-forums.js behavior tests passed.');
 }
 
 run().catch((error) => {

@@ -36,7 +36,7 @@
                         <h6 class="m-0 font-weight-bold text-primary" th:text="${forum.publicationName}">Update</h6>
                     </div>
                     <div class="card-body">
-                        <form th:action="@{/admin/scopus/forums/edit/{id}(id=${forum.id})}" th:object="${forum}" method="post">
+                        <form th:action="@{/admin/scholardex/forums/edit/{id}(id=${forum.id})}" th:object="${forum}" method="post">
                             <div class="form-group">
                                 <label for="title">Publication Name</label>
                                 <input type="text" class="form-control" id="title" th:field="*{publicationName}" required>

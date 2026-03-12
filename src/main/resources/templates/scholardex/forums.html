@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Forums</title>
+    <title>Scholardex Forums</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
     <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
@@ -10,7 +10,7 @@
 
 <div id="wrapper">
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: admin-sidebar('scopus-forums')}"></div>
+        <div th:replace="~{fragments :: user-sidebar('scholardex-forums')}"></div>
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
         </div>
@@ -19,11 +19,9 @@
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
             <div th:replace="~{fragments :: navbar}"></div>
-
             <div class="container-fluid">
-                <h1 class="h3 mb-2 text-gray-800">Forums</h1>
-                <button id="exportButton" class="btn btn-primary d-none d-sm-inline-block">Export to Excel</button>
-                <p class="mb-4">This is a list of all forums currently managed by the system.</p>
+                <h1 class="h3 mb-2 text-gray-800">Scholardex Forums</h1>
+                <p class="mb-4">Browse all canonical forums and filter by WoS availability from one place.</p>
 
                 <div class="card shadow mb-4">
                     <div class="card-header py-3">
@@ -31,29 +29,39 @@
                     </div>
                     <div class="card-body">
                         <div class="form-row">
-                            <div class="form-group col-md-5">
-                                <label for="admin-forums-search">Search</label>
-                                <input id="admin-forums-search" type="text" class="form-control" placeholder="Publication name, ISSN, eISSN, aggregation type">
+                            <div class="form-group col-md-4">
+                                <label for="scholardex-forums-search">Search</label>
+                                <input id="scholardex-forums-search" type="text" class="form-control" placeholder="Forum, ISSN, eISSN, aggregation type">
                             </div>
                             <div class="form-group col-md-2">
-                                <label for="admin-forums-sort">Sort By</label>
-                                <select id="admin-forums-sort" class="form-control">
-                                    <option value="publicationName">Publication Name</option>
+                                <label for="scholardex-forums-sort">Sort By</label>
+                                <select id="scholardex-forums-sort" class="form-control">
+                                    <option value="publicationName">Forum</option>
                                     <option value="issn">ISSN</option>
                                     <option value="eIssn">eISSN</option>
                                     <option value="aggregationType">Aggregation Type</option>
+                                    <option value="wosStatus">WoS Status</option>
                                 </select>
                             </div>
                             <div class="form-group col-md-2">
-                                <label for="admin-forums-direction">Direction</label>
-                                <select id="admin-forums-direction" class="form-control">
+                                <label for="scholardex-forums-direction">Direction</label>
+                                <select id="scholardex-forums-direction" class="form-control">
                                     <option value="asc">Ascending</option>
                                     <option value="desc">Descending</option>
                                 </select>
                             </div>
                             <div class="form-group col-md-2">
-                                <label for="admin-forums-size">Page Size</label>
-                                <select id="admin-forums-size" class="form-control">
+                                <label for="scholardex-forums-wos">WoS Status</label>
+                                <select id="scholardex-forums-wos" class="form-control">
+                                    <option value="all">All</option>
+                                    <option value="indexed">WoS indexed</option>
+                                    <option value="not_indexed">Not indexed by WoS</option>
+                                    <option value="not_applicable">Not applicable</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-2">
+                                <label for="scholardex-forums-size">Page Size</label>
+                                <select id="scholardex-forums-size" class="form-control">
                                     <option value="25">25</option>
                                     <option value="50">50</option>
                                     <option value="100">100</option>
@@ -65,32 +73,33 @@
 
                 <div class="card shadow mb-4">
                     <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                        <h6 class="m-0 font-weight-bold text-primary">Detailed View of Forums</h6>
-                        <span id="admin-forums-total-info" class="text-muted small"></span>
+                        <h6 class="m-0 font-weight-bold text-primary">Forum Directory</h6>
+                        <span id="scholardex-forums-total-info" class="text-muted small"></span>
                     </div>
                     <div class="card-body">
-                        <div id="admin-forums-loading" class="alert alert-info" role="status">Loading forums...</div>
-                        <div id="admin-forums-error" class="alert alert-danger d-none" role="alert"></div>
-                        <div id="admin-forums-empty" class="alert alert-warning d-none" role="status">No forums found for the current filter.</div>
+                        <div id="scholardex-forums-loading" class="alert alert-info" role="status">Loading forums...</div>
+                        <div id="scholardex-forums-error" class="alert alert-danger d-none" role="alert"></div>
+                        <div id="scholardex-forums-empty" class="alert alert-warning d-none" role="status">No forums found for the current filter.</div>
 
                         <div class="table-responsive">
-                            <table class="table table-bordered" id="admin-forums-table" width="100%" cellspacing="0">
+                            <table class="table table-bordered" id="scholardex-forums-table" width="100%" cellspacing="0">
                                 <thead>
                                 <tr>
-                                    <th>Publication Name</th>
+                                    <th>Forum</th>
                                     <th>ISSN</th>
                                     <th>eISSN</th>
                                     <th>Aggregation Type</th>
+                                    <th>WoS Status</th>
                                 </tr>
                                 </thead>
-                                <tbody id="admin-forums-table-body"></tbody>
+                                <tbody id="scholardex-forums-table-body"></tbody>
                             </table>
                         </div>
 
                         <div class="d-flex justify-content-between align-items-center mt-3">
-                            <button id="admin-forums-prev" class="btn btn-outline-primary btn-sm" type="button">Previous</button>
-                            <span id="admin-forums-page-info" class="text-muted small"></span>
-                            <button id="admin-forums-next" class="btn btn-outline-primary btn-sm" type="button">Next</button>
+                            <button id="scholardex-forums-prev" class="btn btn-outline-primary btn-sm" type="button">Previous</button>
+                            <span id="scholardex-forums-page-info" class="text-muted small"></span>
+                            <button id="scholardex-forums-next" class="btn btn-outline-primary btn-sm" type="button">Next</button>
                         </div>
                     </div>
                 </div>
@@ -104,9 +113,8 @@
         <i class="fa-solid fa-angle-up"></i>
     </a>
 </div>
-
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
-<script src="/js/admin-scopus-forums.js"></script>
+<script src="/js/scholardex-forums.js"></script>
 
 </body>
 </html>

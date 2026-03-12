@@ -2,19 +2,13 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Rankings</title>
+    <title>Scholardex Forum</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
     <link href="/css/sb-admin-2.min.css" rel="stylesheet">
-    <style>
-        .card-spacing {
-            margin-bottom: 20px;
-        }
-    </style>
 </head>
 <body id="page-top">
 
 <div id="wrapper">
-    <!-- Sidebar -->
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
         <div th:replace="~{fragments :: user-sidebar('scholardex-forums')}"></div>
         <div class="text-center d-none d-md-inline">
@@ -22,23 +16,23 @@
         </div>
     </ul>
 
-    <!-- Content Wrapper -->
     <div id="content-wrapper" class="d-flex flex-column">
-        <!-- Main Content -->
         <div id="content">
             <div th:replace="~{fragments :: navbar}"></div>
             <div class="container-fluid">
-                <h1 class="h3 mb-2 text-gray-800">Rankings</h1>
-                <!--                <p class="mb-4">This page displays the rankings of journals.</p>-->
+                <h1 class="h3 mb-2 text-gray-800" th:text="${forum.publicationName}">Forum</h1>
+                <p class="mb-4">Canonical Scholardex forum route established in H23.2. Detailed forum branching lands in H23.3.</p>
 
-                <div class="card shadow mb-4 card-spacing">
+                <div class="card shadow mb-4">
                     <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Not found</h6>
+                        <h6 class="m-0 font-weight-bold text-primary">Forum Summary</h6>
                     </div>
                     <div class="card-body">
-                        <p>
-                            <span>Forum not found </span>
-                        </p>
+                        <p><strong>Aggregation Type:</strong> <span th:text="${forum.aggregationType}">Journal</span></p>
+                        <p><strong>ISSN:</strong> <span th:text="${forum.issn}">0000-0000</span></p>
+                        <p><strong>eISSN:</strong> <span th:text="${forum.eIssn}">1111-1111</span></p>
+                        <p th:if="${wosRanking != null}" class="mb-0">WoS-linked journal details are available and move to this canonical route in H23.3.</p>
+                        <p th:if="${wosRanking == null}" class="mb-0">Detailed non-journal and non-indexed forum rendering is scheduled for H23.3.</p>
                     </div>
                 </div>
             </div>

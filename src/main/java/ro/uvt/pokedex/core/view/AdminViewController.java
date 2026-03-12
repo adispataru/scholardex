@@ -369,43 +369,65 @@ public class AdminViewController {
         return "redirect:/admin/institutions";
     }
 
+    @GetMapping("/scholardex/forums")
+    public String showScholardexForumsPage() {
+        return "admin/scholardex-forums";
+    }
+
     @GetMapping("/scopus/forums")
     public String showScopusForumsPage() {
-        return "admin/scopus-venues";
+        return "redirect:/admin/scholardex/forums";
     }
 
     @GetMapping("/scopus/venues")
     public String showScopusVenuesPageCompatibilityRedirect() {
-        return "redirect:/admin/scopus/forums";
+        return "redirect:/admin/scholardex/forums";
+    }
+
+    @GetMapping("/scholardex/forums/edit/{id}")
+    public String editScholardexForumPage(Model model, @PathVariable String id) {
+        Optional<Forum> venue = adminCatalogFacade.findScopusVenueById(id);
+        venue.ifPresent(v-> model.addAttribute("forum", v));
+        return "admin/scholardex-editForum";
     }
 
     @GetMapping("/scopus/forums/edit/{id}")
-    public String editScopusForumPage(Model model, @PathVariable String id) {
-        Optional<Forum> venue = adminCatalogFacade.findScopusVenueById(id);
-        venue.ifPresent(v-> model.addAttribute("forum", v));
-        return "admin/scopus-editVenues";
+    public String editScopusForumPage(@PathVariable String id) {
+        return "redirect:/admin/scholardex/forums/edit/" + id;
     }
 
     @GetMapping("/scopus/venues/edit/{id}")
     public String editScopusVenuePageCompatibilityRedirect(@PathVariable String id) {
-        return "redirect:/admin/scopus/forums/edit/" + id;
+        return "redirect:/admin/scholardex/forums/edit/" + id;
+    }
+
+    @PostMapping("/scholardex/forums/edit/{id}")
+    public String updateScholardexForum(@ModelAttribute("forum") Forum forum, RedirectAttributes redirectAttributes) {
+        adminCatalogFacade.saveScopusVenue(forum);
+        redirectAttributes.addFlashAttribute("message", "Forum updated successfully!");
+        return "redirect:/admin/scholardex/forums/edit/" + forum.getId();
     }
 
     @PostMapping({"/scopus/forums/edit/{id}", "/scopus/venues/edit/{id}"})
     public String updateScopusForum(@ModelAttribute("forum") Forum forum, RedirectAttributes redirectAttributes) {
         adminCatalogFacade.saveScopusVenue(forum);
         redirectAttributes.addFlashAttribute("message", "Forum updated successfully!");
-        return "redirect:/admin/scopus/forums/edit/" + forum.getId();
+        return "redirect:/admin/scholardex/forums/edit/" + forum.getId();
+    }
+
+    @GetMapping("/scholardex/authors")
+    public String showScholardexAuthorsPage(Model model, @RequestParam(value = "afid", defaultValue = "60000434") String afid) {
+        model.addAttribute("defaultAfid", afid);
+        return "admin/scholardex-authors";
     }
 
     @GetMapping("/scopus/authors")
-    public String showScopusAuthorsPage(Model model, @RequestParam(value = "afid", defaultValue = "60000434") String afid) {
-        model.addAttribute("defaultAfid", afid);
-        return "admin/scopus-authors";
+    public String showScopusAuthorsPage() {
+        return "redirect:/admin/scholardex/authors";
     }
 
-    @GetMapping("/scopus/authors/edit/{id}")
-    public String editScopusAuthorsPage(Model model, @PathVariable String id) {
+    @GetMapping("/scholardex/authors/edit/{id}")
+    public String editScholardexAuthorsPage(Model model, @PathVariable String id) {
         Optional<Author> byId = adminCatalogFacade.findScopusAuthorById(id);
         byId.ifPresent(a-> {
             AtomicInteger numCitations = new AtomicInteger();
@@ -416,52 +438,91 @@ public class AdminViewController {
             model.addAttribute("citationCount", numCitations.get());
         });
 
-        return "admin/scopus-editAuthor";
+        return "admin/scholardex-editAuthor";
+    }
+
+    @GetMapping("/scopus/authors/edit/{id}")
+    public String editScopusAuthorsPage(@PathVariable String id) {
+        return "redirect:/admin/scholardex/authors/edit/" + id;
+    }
+
+    @PostMapping("/scholardex/authors/edit/{id}")
+    public String updateScholardexAuthor(@ModelAttribute("author") Author author, RedirectAttributes redirectAttributes) {
+        adminCatalogFacade.saveScopusAuthor(author);
+        redirectAttributes.addFlashAttribute("message", "Author updated successfully!");
+        return "redirect:/admin/scholardex/authors";
     }
 
     @PostMapping("/scopus/authors/edit/{id}")
     public String updateScopusAuthor(@ModelAttribute("author") Author author, RedirectAttributes redirectAttributes) {
         adminCatalogFacade.saveScopusAuthor(author);
         redirectAttributes.addFlashAttribute("message", "Author updated successfully!");
-        return "redirect:/admin/scopus/forums";
+        return "redirect:/admin/scholardex/authors";
+    }
+
+    @GetMapping("/scholardex/affiliations")
+    public String showScholardexAffiliationsPage() {
+        return "admin/scholardex-affiliations";
     }
 
     @GetMapping("/scopus/affiliations")
     public String showScopusAffiliationsPage() {
-        return "admin/scopus-affiliations";
+        return "redirect:/admin/scholardex/affiliations";
+    }
+
+    @GetMapping("/scholardex/affiliations/edit/{id}")
+    public String editScholardexAffiliationsPage(Model model, @PathVariable String id) {
+        Optional<Affiliation> byId = adminCatalogFacade.findScopusAffiliationById(id);
+        byId.ifPresent(v-> model.addAttribute("affiliation", v));
+        return "admin/scholardex-editAffiliation";
     }
 
     @GetMapping("/scopus/affiliations/edit/{id}")
-    public String editScopusAffiliationsPage(Model model, @PathVariable String id) {
-        Optional<Affiliation> byId = adminCatalogFacade.findScopusAffiliationById(id);
-        byId.ifPresent(v-> model.addAttribute("affiliation", v));
-        return "admin/scopus-editAffiliations";
+    public String editScopusAffiliationsPage(@PathVariable String id) {
+        return "redirect:/admin/scholardex/affiliations/edit/" + id;
+    }
+
+    @PostMapping("/scholardex/affiliations/edit/{id}")
+    public String updateScholardexAffiliations(@ModelAttribute("affiliation") Affiliation affiliation, RedirectAttributes redirectAttributes, @PathVariable String id) {
+        adminCatalogFacade.saveScopusAffiliation(affiliation);
+        redirectAttributes.addFlashAttribute("message", "Affiliation updated successfully!");
+        return "redirect:/admin/scholardex/affiliations";
     }
 
     @PostMapping("/scopus/affiliations/edit/{id}")
     public String updateScopusAffiliations(@ModelAttribute("affiliation") Affiliation affiliation, RedirectAttributes redirectAttributes, @PathVariable String id) {
         adminCatalogFacade.saveScopusAffiliation(affiliation);
         redirectAttributes.addFlashAttribute("message", "Affiliation updated successfully!");
-        return "redirect:/admin/scopus-affiliations";
+        return "redirect:/admin/scholardex/affiliations";
     }
 
-    @GetMapping("/scopus/publications/search")
-    public String searchPublications(@RequestParam String authorName,
+    @GetMapping("/scholardex/publications/search")
+    public String searchScholardexPublications(@RequestParam String authorName,
                                      @RequestParam String paperTitle,
                                      Model model) {
         AdminScopusPublicationSearchViewModel viewModel = scholardexAdminReadFacade.buildPublicationSearchView(paperTitle);
         model.addAttribute("authorMap", viewModel.authorMap());
         model.addAttribute("publications", viewModel.publications());
-        return "admin/scopus-publications-search";
+        return "admin/scholardex-publications-search";
+    }
+
+    @GetMapping("/scopus/publications/search")
+    public String searchPublications(@RequestParam String authorName, @RequestParam String paperTitle) {
+        return "redirect:/admin/scholardex/publications/search?authorName=" + authorName + "&paperTitle=" + paperTitle;
+    }
+
+    @GetMapping("/scholardex/publications")
+    public String showScholardexPublicationsPage() {
+        return "admin/scholardex-publications";
     }
 
     @GetMapping("/scopus/publications")
     public String showScopusPublicationsPage() {
-        return "admin/scopus-publications";
+        return "redirect:/admin/scholardex/publications";
     }
 
-    @GetMapping("/scopus/publications/citations")
-    public String showPublicationCitationsPage(Model model, @RequestParam("id") String id) {
+    @GetMapping("/scholardex/publications/citations")
+    public String showScholardexPublicationCitationsPage(Model model, @RequestParam("id") String id) {
         Optional<AdminScopusCitationsViewModel> viewModel = scholardexAdminReadFacade.buildPublicationCitationsView(id);
         viewModel.ifPresent(vm -> {
             model.addAttribute("citations", vm.citations());
@@ -470,12 +531,17 @@ public class AdminViewController {
             model.addAttribute("authorMap", vm.authorMap());
             model.addAttribute("forumMap", vm.forumMap());
         });
-        return "admin/scopus-citations";
+        return "admin/scholardex-citations";
+    }
+
+    @GetMapping("/scopus/publications/citations")
+    public String showPublicationCitationsPage(@RequestParam("id") String id) {
+        return "redirect:/admin/scholardex/publications/citations?id=" + id;
     }
 
     @GetMapping("/rankings/wos")
     public String showRankingsPage() {
-        return "admin/rankings";
+        return "redirect:/admin/scholardex/forums?wos=indexed";
     }
 
     @GetMapping("/rankings/events")
@@ -493,7 +559,7 @@ public class AdminViewController {
         } catch (IllegalStateException ex) {
             redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
         }
-        return "redirect:/admin/rankings/wos";
+        return "redirect:/admin/scholardex/forums?wos=indexed";
     }
 
     @PostMapping("/rankings/wos/computeQuartersAndRankingsWhereMissing")
@@ -504,7 +570,7 @@ public class AdminViewController {
         } catch (IllegalStateException ex) {
             redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
         }
-        return "redirect:/admin/rankings/wos";
+        return "redirect:/admin/scholardex/forums?wos=indexed";
     }
 
     @PostMapping("/rankings/wos/mergeDuplicateRankings")
@@ -515,7 +581,7 @@ public class AdminViewController {
         } catch (IllegalStateException ex) {
             redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
         }
-        return "redirect:/admin/rankings/wos";
+        return "redirect:/admin/scholardex/forums?wos=indexed";
     }
 
     @PostMapping("/rankings/wos/rebuildProjections")
@@ -525,7 +591,7 @@ public class AdminViewController {
                 "WoS projections rebuilt. Imported=" + result.getImportedCount()
                         + ", Skipped=" + result.getSkippedCount()
                         + ", Errors=" + result.getErrorCount());
-        return "redirect:/admin/rankings/wos";
+        return "redirect:/admin/scholardex/forums?wos=indexed";
     }
 
     @PostMapping("/rankings/wos/ensureIndexes")
@@ -536,7 +602,7 @@ public class AdminViewController {
                         + ", Present=" + result.present().size()
                         + ", Invalid=" + result.invalid().size()
                         + ", Errors=" + result.errors().size());
-        return "redirect:/admin/rankings/wos";
+        return "redirect:/admin/scholardex/forums?wos=indexed";
     }
 
     @PostMapping("/rankings/wos/runBigBangMigration")
@@ -589,7 +655,7 @@ public class AdminViewController {
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "WoS big-bang migration failed: " + e.getMessage());
         }
-        return "redirect:/admin/rankings/wos";
+        return "redirect:/admin/scholardex/forums?wos=indexed";
     }
 
     @GetMapping("/rankings/core")
@@ -599,13 +665,7 @@ public class AdminViewController {
 
     @GetMapping("/rankings/wos/{id}")
     public String showRankingPage(Model model, @PathVariable  String id) {
-        Optional<WoSRanking> journals = wosRankingDetailsReadService.findByJournalId(id);
-        if(journals.isPresent()) {
-            WoSRanking ranking = journals.get();
-            model.addAttribute("journal", ranking);
-            return "admin/rankings-view";
-        }
-        return "redirect:/admin/rankings/wos";
+        return "redirect:/admin/scholardex/forums/edit/" + id;
     }
 
     @GetMapping("/rankings/core/{id}")

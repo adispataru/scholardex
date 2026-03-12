@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Affiliations</title>
+    <title>Scholardex Authors</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
     <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
@@ -10,7 +10,7 @@
 
 <div id="wrapper">
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: admin-sidebar('scopus-affiliations')}"></div>
+        <div th:replace="~{fragments :: admin-sidebar('scholardex-authors')}"></div>
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
         </div>
@@ -21,8 +21,8 @@
             <div th:replace="~{fragments :: navbar}"></div>
 
             <div class="container-fluid">
-                <h1 class="h3 mb-2 text-gray-800">Affiliations</h1>
-                <p class="mb-4">This is a list of all affiliations currently managed by the system.</p>
+                <h1 class="h3 mb-2 text-gray-800">Scholardex Authors</h1>
+                <p class="mb-4">This is a list of all authors currently managed by the system.</p>
 
                 <div class="card shadow mb-4">
                     <div class="card-header py-3">
@@ -30,29 +30,31 @@
                     </div>
                     <div class="card-body">
                         <div class="form-row">
-                            <div class="form-group col-md-4">
-                                <label for="admin-affiliations-search">Search</label>
-                                <input id="admin-affiliations-search" type="text" class="form-control" placeholder="Name, ID, city, country">
+                            <div class="form-group col-md-3">
+                                <label for="admin-authors-afid">Affiliation ID</label>
+                                <input id="admin-authors-afid" type="text" class="form-control" th:value="${defaultAfid}" placeholder="Scopus affiliation id">
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label for="admin-authors-search">Search</label>
+                                <input id="admin-authors-search" type="text" class="form-control" placeholder="Author name or ID">
                             </div>
                             <div class="form-group col-md-2">
-                                <label for="admin-affiliations-sort">Sort By</label>
-                                <select id="admin-affiliations-sort" class="form-control">
+                                <label for="admin-authors-sort">Sort By</label>
+                                <select id="admin-authors-sort" class="form-control">
                                     <option value="name">Name</option>
-                                    <option value="afid">ID</option>
-                                    <option value="city">City</option>
-                                    <option value="country">Country</option>
+                                    <option value="id">ID</option>
                                 </select>
                             </div>
                             <div class="form-group col-md-2">
-                                <label for="admin-affiliations-direction">Direction</label>
-                                <select id="admin-affiliations-direction" class="form-control">
+                                <label for="admin-authors-direction">Direction</label>
+                                <select id="admin-authors-direction" class="form-control">
                                     <option value="asc">Ascending</option>
                                     <option value="desc">Descending</option>
                                 </select>
                             </div>
                             <div class="form-group col-md-2">
-                                <label for="admin-affiliations-size">Page Size</label>
-                                <select id="admin-affiliations-size" class="form-control">
+                                <label for="admin-authors-size">Page Size</label>
+                                <select id="admin-authors-size" class="form-control">
                                     <option value="25">25</option>
                                     <option value="50">50</option>
                                     <option value="100">100</option>
@@ -64,32 +66,30 @@
 
                 <div class="card shadow mb-4">
                     <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                        <h6 class="m-0 font-weight-bold text-primary">Detailed View of Affiliations</h6>
-                        <span id="admin-affiliations-total-info" class="text-muted small"></span>
+                        <h6 class="m-0 font-weight-bold text-primary">Detailed View of Authors</h6>
+                        <span id="admin-authors-total-info" class="text-muted small"></span>
                     </div>
                     <div class="card-body">
-                        <div id="admin-affiliations-loading" class="alert alert-info" role="status">Loading affiliations...</div>
-                        <div id="admin-affiliations-error" class="alert alert-danger d-none" role="alert"></div>
-                        <div id="admin-affiliations-empty" class="alert alert-warning d-none" role="status">No affiliations found for the current filter.</div>
+                        <div id="admin-authors-loading" class="alert alert-info" role="status">Loading authors...</div>
+                        <div id="admin-authors-error" class="alert alert-danger d-none" role="alert"></div>
+                        <div id="admin-authors-empty" class="alert alert-warning d-none" role="status">No authors found for the current filter.</div>
 
                         <div class="table-responsive">
-                            <table class="table table-bordered" id="admin-affiliations-table" width="100%" cellspacing="0">
+                            <table class="table table-bordered" id="admin-authors-table" width="100%" cellspacing="0">
                                 <thead>
                                 <tr>
                                     <th>Name</th>
-                                    <th>ID</th>
-                                    <th>City</th>
-                                    <th>Country</th>
+                                    <th>Affiliations</th>
                                 </tr>
                                 </thead>
-                                <tbody id="admin-affiliations-table-body"></tbody>
+                                <tbody id="admin-authors-table-body"></tbody>
                             </table>
                         </div>
 
                         <div class="d-flex justify-content-between align-items-center mt-3">
-                            <button id="admin-affiliations-prev" class="btn btn-outline-primary btn-sm" type="button">Previous</button>
-                            <span id="admin-affiliations-page-info" class="text-muted small"></span>
-                            <button id="admin-affiliations-next" class="btn btn-outline-primary btn-sm" type="button">Next</button>
+                            <button id="admin-authors-prev" class="btn btn-outline-primary btn-sm" type="button">Previous</button>
+                            <span id="admin-authors-page-info" class="text-muted small"></span>
+                            <button id="admin-authors-next" class="btn btn-outline-primary btn-sm" type="button">Next</button>
                         </div>
                     </div>
                 </div>
@@ -105,7 +105,7 @@
 </div>
 
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
-<script src="/js/admin-scopus-affiliations.js"></script>
+<script src="/js/admin-scholardex-authors.js"></script>
 
 </body>
 </html>

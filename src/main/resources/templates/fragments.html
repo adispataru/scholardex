@@ -114,29 +114,29 @@
 
     <!-- Heading -->
     <div class="sidebar-heading">
-        Scopus
+        Scholardex
     </div>
 
-    <li class="nav-item" th:classappend="${activeSection == 'scopus-forums' or activeSection == 'scopus-venues'} ? 'active' : ''">
-        <a class="nav-link" th:href="@{/admin/scopus/forums}">
+    <li class="nav-item" th:classappend="${activeSection == 'scholardex-forums' or activeSection == 'scopus-forums' or activeSection == 'scopus-venues'} ? 'active' : ''">
+        <a class="nav-link" th:href="@{/admin/scholardex/forums}">
             <i class="fa-solid fa-fw fa-chart-area"></i>
             <span>Forums</span>
         </a>
     </li>
-    <li class="nav-item" th:classappend="${activeSection} == 'scopus-authors' ? 'active' : ''">
-        <a class="nav-link" th:href="@{/admin/scopus/authors}">
+    <li class="nav-item" th:classappend="${activeSection == 'scholardex-authors' or activeSection == 'scopus-authors'} ? 'active' : ''">
+        <a class="nav-link" th:href="@{/admin/scholardex/authors}">
             <i class="fa-solid fa-fw fa-user-graduate"></i>
             <span>Authors</span>
         </a>
     </li>
-    <li class="nav-item" th:classappend="${activeSection} == 'scopus-affiliations' ? 'active' : ''">
-        <a class="nav-link" th:href="@{/admin/scopus/affiliations}">
+    <li class="nav-item" th:classappend="${activeSection == 'scholardex-affiliations' or activeSection == 'scopus-affiliations'} ? 'active' : ''">
+        <a class="nav-link" th:href="@{/admin/scholardex/affiliations}">
             <i class="fa-solid fa-fw fa-building"></i>
             <span>Affiliations</span>
         </a>
     </li>
-    <li class="nav-item" th:classappend="${activeSection} == 'scopus-publications' ? 'active' : ''">
-        <a class="nav-link" th:href="@{/admin/scopus/publications}">
+    <li class="nav-item" th:classappend="${activeSection == 'scholardex-publications' or activeSection == 'scopus-publications'} ? 'active' : ''">
+        <a class="nav-link" th:href="@{/admin/scholardex/publications}">
             <i class="fa-solid fa-fw fa-file"></i>
             <span>Publications</span>
         </a>
@@ -281,10 +281,10 @@
     <div class="sidebar-heading">
         Rankings
     </div>
-    <li class="nav-item" th:classappend="${activeSection} == 'rankings' ? 'active' : ''">
-        <a class="nav-link" th:href="@{/rankings/wos}">
+    <li class="nav-item" th:classappend="${activeSection == 'scholardex-forums' or activeSection == 'rankings'} ? 'active' : ''">
+        <a class="nav-link" th:href="@{/scholardex/forums}">
             <i class="fa-solid fa-fw fa-medal"></i>
-            <span>WoS</span>
+            <span>Forums</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'rankings-core' ? 'active' : ''">
