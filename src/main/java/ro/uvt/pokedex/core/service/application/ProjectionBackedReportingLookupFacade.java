@@ -41,6 +41,7 @@ public class ProjectionBackedReportingLookupFacade implements ReportingLookupPor
     private final WosMetricFactRepository metricFactRepository;
     private final WosCategoryFactRepository categoryFactRepository;
     private final MongoTemplate mongoTemplate;
+    private final ReportingLookupMemoization reportingLookupMemoization;
 
     @Override
     public Forum getForum(String forumId) {
@@ -53,6 +54,15 @@ public class ProjectionBackedReportingLookupFacade implements ReportingLookupPor
         if (normalizedIssn == null) {
             return List.of();
         }
+        return reportingLookupMemoization.getOrCompute(
+                "mongo",
+                "rankingsByIssn",
+                normalizedIssn,
+                () -> loadRankingsByIssn(normalizedIssn)
+        );
+    }
+
+    private List<WoSRanking> loadRankingsByIssn(String normalizedIssn) {
 
         Query viewQuery = new Query().addCriteria(new Criteria().orOperator(
                 Criteria.where("issnNorm").is(normalizedIssn),
@@ -103,7 +113,19 @@ public class ProjectionBackedReportingLookupFacade implements ReportingLookupPor
         if (parsedCategory.categoryNameCanonical().isBlank()) {
             return 0;
         }
+        String editionMemoKey = parsedCategory.editionNormalized() == null
+                ? "OPERATIONAL"
+                : parsedCategory.editionNormalized().name();
+        String memoKey = year + "|" + parsedCategory.categoryNameCanonical() + "|" + editionMemoKey;
+        return reportingLookupMemoization.getOrCompute(
+                "mongo",
+                "topRankings",
+                memoKey,
+                () -> loadTopRankings(parsedCategory, year)
+        );
+    }
 
+    private Integer loadTopRankings(ParsedCategory parsedCategory, Integer year) {
         Set<EditionNormalized> editions = parsedCategory.editionNormalized() == null
                 ? OPERATIONAL_EDITIONS
                 : Set.of(parsedCategory.editionNormalized());

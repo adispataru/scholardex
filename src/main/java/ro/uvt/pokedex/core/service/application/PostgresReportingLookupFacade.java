@@ -42,6 +42,7 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
 
     private final CacheService cacheService;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    private final ReportingLookupMemoization reportingLookupMemoization;
 
     @Override
     public Forum getForum(String forumId) {
@@ -55,6 +56,15 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
         if (normalizedIssn == null) {
             return List.of();
         }
+        return reportingLookupMemoization.getOrCompute(
+                "postgres",
+                "rankingsByIssn",
+                normalizedIssn,
+                () -> loadRankingsByIssn(normalizedIssn, totalStartedAtNanos)
+        );
+    }
+
+    private List<WoSRanking> loadRankingsByIssn(String normalizedIssn, long totalStartedAtNanos) {
 
         long rankingLookupStartedAtNanos = System.nanoTime();
         List<WosRankingView> views = namedParameterJdbcTemplate.query(
@@ -187,26 +197,51 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
         if (parsedCategory.categoryNameCanonical().isBlank()) {
             return 0;
         }
+        String editionMemoKey = parsedCategory.editionNormalized() == null
+                ? "OPERATIONAL"
+                : parsedCategory.editionNormalized().name();
+        String memoKey = year + "|" + parsedCategory.categoryNameCanonical() + "|" + editionMemoKey;
+        return reportingLookupMemoization.getOrCompute(
+                "postgres",
+                "topRankings",
+                memoKey,
+                () -> loadTopRankings(parsedCategory, year)
+        );
+    }
 
+    private Integer loadTopRankings(ParsedCategory parsedCategory, Integer year) {
         Set<EditionNormalized> editions = parsedCategory.editionNormalized() == null
                 ? OPERATIONAL_EDITIONS
                 : Set.of(parsedCategory.editionNormalized());
 
-        Integer count = namedParameterJdbcTemplate.queryForObject(
-                """
-                        SELECT COALESCE(SUM(top_journal_count), 0)
-                        FROM reporting_read.mv_wos_top_rankings_q1_ais
-                        WHERE year = :year
-                          AND category_name_canonical = :category
-                          AND edition_normalized::text IN (:editions)
-                        """,
-                new MapSqlParameterSource()
-                        .addValue("year", year)
-                        .addValue("category", parsedCategory.categoryNameCanonical())
-                        .addValue("editions", editions.stream().map(Enum::name).toList()),
-                Integer.class
-        );
+        List<String> editionNames = editions.stream().map(Enum::name).sorted().toList();
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("year", year)
+                .addValue("category", parsedCategory.categoryNameCanonical());
+        String editionPredicate;
+        if (editionNames.size() == 1) {
+            params.addValue("edition0", editionNames.getFirst());
+            editionPredicate = "edition_normalized = CAST(:edition0 AS reporting_read.edition_normalized_enum)";
+        } else {
+            params.addValue("edition0", editionNames.get(0));
+            params.addValue("edition1", editionNames.get(1));
+            editionPredicate = """
+                    edition_normalized IN (
+                        CAST(:edition0 AS reporting_read.edition_normalized_enum),
+                        CAST(:edition1 AS reporting_read.edition_normalized_enum)
+                    )
+                    """;
+        }
 
+        String sql = """
+                SELECT COALESCE(SUM(top_journal_count), 0)
+                FROM reporting_read.mv_wos_top_rankings_q1_ais
+                WHERE year = :year
+                  AND category_name_canonical = :category
+                  AND %s
+                """.formatted(editionPredicate);
+
+        Integer count = namedParameterJdbcTemplate.queryForObject(sql, params, Integer.class);
         return count == null ? 0 : count;
     }
 

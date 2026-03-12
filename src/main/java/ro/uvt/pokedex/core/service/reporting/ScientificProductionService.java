@@ -1,6 +1,8 @@
 package ro.uvt.pokedex.core.service.reporting;
 
 import org.mvel2.MVEL;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
@@ -12,6 +14,8 @@ import java.util.Map;
 
 @Service
 public class ScientificProductionService {
+    private static final Logger log = LoggerFactory.getLogger(ScientificProductionService.class);
+
     @Autowired
     ScoringFactoryService scoringFactoryService;
 
@@ -74,6 +78,7 @@ public class ScientificProductionService {
     }
 
     public Map<String, Score> calculateScientificImpactScore(Publication cited, List<Publication> publications, Indicator indicator) {
+        long totalStartedAtNanos = System.nanoTime();
         Map<String, Score> result = new HashMap<>();
         if(indicator.getScoringStrategy().equals(Indicator.Strategy.GENERIC_COUNT)) {
             publications.forEach(pub -> {
@@ -90,14 +95,25 @@ public class ScientificProductionService {
         ScoringService scoringService = scoringFactoryService.getScoringService(indicator.getScoringStrategy());
         double totalAuthorScore = 0;
         double totalScore = 0;
+        long baseScoreLookupNanos = 0L;
+        long formulaEvalNanos = 0L;
+        long aggregationNanos = 0L;
+        int positiveScores = 0;
         if(scoringService != null) {
             for (Publication publication : publications) {
-                Score score = calculateCitationScore(cited, publication, indicator, scoringService);
+                ScoreComputationTiming scoreTiming = new ScoreComputationTiming();
+                Score score = calculateCitationScore(cited, publication, indicator, scoringService, scoreTiming);
+                baseScoreLookupNanos += scoreTiming.baseScoreLookupNanos();
+                formulaEvalNanos += scoreTiming.formulaEvalNanos();
+
+                long aggregationStartedAtNanos = System.nanoTime();
                 if(score.getScore() + score.getAuthorScore() > 0.0) {
                     totalAuthorScore += score.getAuthorScore();
                     totalScore += score.getScore();
                     result.put(publication.getTitle(), score);
+                    positiveScores++;
                 }
+                aggregationNanos += (System.nanoTime() - aggregationStartedAtNanos);
             }
         }
         Score total = new Score();
@@ -105,19 +121,55 @@ public class ScientificProductionService {
         total.setScore(totalScore);
 
         result.put("total", total);
+        if (log.isDebugEnabled()) {
+            String citedId = cited == null ? "null" : cited.getId();
+            log.debug(
+                    "Scientific impact timings [citedId={}, strategy={}, outputType={}, citingPublications={}, matchedScores={}]: baseScoreLookupMs={}, formulaEvalMs={}, aggregationMs={}, totalMs={}",
+                    citedId,
+                    indicator.getScoringStrategy(),
+                    indicator.getOutputType(),
+                    publications.size(),
+                    positiveScores,
+                    nanosToMillis(baseScoreLookupNanos),
+                    nanosToMillis(formulaEvalNanos),
+                    nanosToMillis(aggregationNanos),
+                    nanosToMillis(System.nanoTime() - totalStartedAtNanos)
+            );
+        }
         return result;
     }
 
     private Score calculatePublicationScore(Publication publication, Indicator indicator, ScoringService scoringService) {
-        return getScore(publication, publication, indicator, scoringService);
+        return getScore(publication, publication, indicator, scoringService, null);
     }
 
     private Score calculateCitationScore(Publication cited, Publication citing, Indicator indicator, ScoringService scoringService) {
-        return getScore(cited, citing, indicator, scoringService);
+        return getScore(cited, citing, indicator, scoringService, null);
     }
 
-    private Score getScore(Publication cited, Publication citing, Indicator indicator, ScoringService scoringService) {
+    private Score calculateCitationScore(
+            Publication cited,
+            Publication citing,
+            Indicator indicator,
+            ScoringService scoringService,
+            ScoreComputationTiming timing
+    ) {
+        return getScore(cited, citing, indicator, scoringService, timing);
+    }
+
+    private Score getScore(
+            Publication cited,
+            Publication citing,
+            Indicator indicator,
+            ScoringService scoringService,
+            ScoreComputationTiming timing
+    ) {
+        long baseScoreLookupStartedAtNanos = System.nanoTime();
         Score result = scoringService.getScore(citing, indicator);
+        long baseScoreLookupNanos = System.nanoTime() - baseScoreLookupStartedAtNanos;
+        if (timing != null) {
+            timing.addBaseScoreLookupNanos(baseScoreLookupNanos);
+        }
         if(result.getScore() > 0) {
             int numberOfAuthors = cited.getAuthors().size();
 
@@ -135,12 +187,41 @@ public class ScientificProductionService {
                 variables.put("Math", Math.class);
             }
 
+            long formulaEvalStartedAtNanos = System.nanoTime();
             double finalScore = MVEL.eval(formula, variables, Double.class);
+            long formulaEvalNanos = System.nanoTime() - formulaEvalStartedAtNanos;
+            if (timing != null) {
+                timing.addFormulaEvalNanos(formulaEvalNanos);
+            }
             result.setAuthorScore(finalScore);
         }
         return result;
     }
 
+    private long nanosToMillis(long nanos) {
+        return Math.max(0L, nanos / 1_000_000L);
+    }
+
+    private static class ScoreComputationTiming {
+        private long baseScoreLookupNanos;
+        private long formulaEvalNanos;
+
+        void addBaseScoreLookupNanos(long value) {
+            baseScoreLookupNanos += value;
+        }
+
+        void addFormulaEvalNanos(long value) {
+            formulaEvalNanos += value;
+        }
+
+        long baseScoreLookupNanos() {
+            return baseScoreLookupNanos;
+        }
+
+        long formulaEvalNanos() {
+            return formulaEvalNanos;
+        }
+    }
+
 
 }
-

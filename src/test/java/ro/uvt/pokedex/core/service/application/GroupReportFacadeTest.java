@@ -12,6 +12,7 @@ import ro.uvt.pokedex.core.model.reporting.Group;
 import ro.uvt.pokedex.core.model.reporting.GroupIndividualReportRun;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
+import ro.uvt.pokedex.core.model.reporting.AbstractReport;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.scopus.Author;
@@ -27,9 +28,11 @@ import ro.uvt.pokedex.core.service.reporting.Score;
 import ro.uvt.pokedex.core.service.reporting.ScientificProductionService;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -60,6 +63,8 @@ class GroupReportFacadeTest {
     private ResearcherAuthorLookupService researcherAuthorLookupService;
     @Mock
     private GroupIndividualReportRunRepository groupIndividualReportRunRepository;
+    @Mock
+    private ReportingLookupMemoization reportingLookupMemoization;
 
     @InjectMocks
     private GroupReportFacade facade;
@@ -71,6 +76,12 @@ class GroupReportFacadeTest {
                     Researcher researcher = invocation.getArgument(0);
                     return researcher.getScopusId() == null ? List.of() : researcher.getScopusId();
                 });
+        lenient().when(reportingLookupMemoization.withRefreshScope(any(Supplier.class)))
+                .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(0)).get());
+        lenient().doAnswer(invocation -> {
+            ((Runnable) invocation.getArgument(0)).run();
+            return null;
+        }).when(reportingLookupMemoization).withRefreshScope(any(Runnable.class));
     }
 
     @Test
@@ -276,6 +287,43 @@ class GroupReportFacadeTest {
 
         assertEquals(null, result.redirect());
         assertTrue(result.attributes().containsKey("runStatus"));
+        verify(reportingLookupMemoization, times(1)).withRefreshScope(any(Supplier.class));
+    }
+
+    @Test
+    void buildGroupIndividualReportViewWhenRunMissingUsesMemoizedComputeScope() {
+        Group group = new Group();
+        group.setId("g1");
+        Researcher researcher = new Researcher();
+        researcher.setId("r1");
+        researcher.setFirstName("A");
+        researcher.setLastName("B");
+        researcher.setScopusId(List.of("a1"));
+        group.setResearchers(new ArrayList<>(List.of(researcher)));
+
+        IndividualReport report = new IndividualReport();
+        report.setId("rep1");
+        report.setCriteria(List.of());
+        report.setIndicators(List.of());
+        Institution affiliation = new Institution();
+        affiliation.setName("ANY");
+        report.setIndividualAffiliation(affiliation);
+
+        Author author = new Author();
+        author.setId("a1");
+
+        when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
+        when(individualReportRepository.findById("rep1")).thenReturn(Optional.of(report));
+        when(groupIndividualReportRunRepository.findTopByGroupIdAndReportDefinitionIdOrderByCreatedAtDesc("g1", "rep1"))
+                .thenReturn(Optional.empty());
+        when(scopusProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of());
+        when(groupIndividualReportRunRepository.save(any(GroupIndividualReportRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = facade.buildGroupIndividualReportView("g1", "rep1");
+
+        assertEquals(null, result.redirect());
+        verify(reportingLookupMemoization, times(1)).withRefreshScope(any(Supplier.class));
     }
 
     @Test
@@ -389,5 +437,183 @@ class GroupReportFacadeTest {
         facade.refreshGroupIndividualReportView("g1", "rep1");
 
         verify(activityInstanceRepository, times(1)).findAllByResearcherId("r1");
+    }
+
+    @Test
+    void refreshGroupIndividualReportViewPreservesCitationExcludeSelfSemantics() {
+        Group group = new Group();
+        group.setId("g1");
+        Researcher researcher = new Researcher();
+        researcher.setId("r1");
+        researcher.setFirstName("A");
+        researcher.setLastName("B");
+        researcher.setScopusId(List.of("a1"));
+        group.setResearchers(new ArrayList<>(List.of(researcher)));
+
+        Indicator citations = new Indicator();
+        citations.setOutputType(Indicator.Type.CITATIONS);
+        Indicator citationsExcludeSelf = new Indicator();
+        citationsExcludeSelf.setOutputType(Indicator.Type.CITATIONS_EXCLUDE_SELF);
+
+        AbstractReport.Criterion criterion0 = new AbstractReport.Criterion();
+        criterion0.setIndicatorIndices(List.of(0));
+        AbstractReport.Criterion criterion1 = new AbstractReport.Criterion();
+        criterion1.setIndicatorIndices(List.of(1));
+
+        IndividualReport report = new IndividualReport();
+        report.setId("rep1");
+        report.setCriteria(List.of(criterion0, criterion1));
+        report.setIndicators(List.of(citations, citationsExcludeSelf));
+        Institution affiliation = new Institution();
+        affiliation.setName("ANY");
+        report.setIndividualAffiliation(affiliation);
+
+        Author author = new Author();
+        author.setId("a1");
+
+        Publication publication = new Publication();
+        publication.setId("p1");
+        publication.setAuthors(List.of("a1"));
+        publication.setTitle("Root Publication");
+
+        Citation citationSelf = new Citation();
+        citationSelf.setCitedId("p1");
+        citationSelf.setCitingId("cp-self");
+
+        Citation citationExternal = new Citation();
+        citationExternal.setCitedId("p1");
+        citationExternal.setCitingId("cp-external");
+
+        Publication citingSelf = new Publication();
+        citingSelf.setId("cp-self");
+        citingSelf.setAuthors(List.of("a1"));
+        citingSelf.setTitle("Self Citing");
+
+        Publication citingExternal = new Publication();
+        citingExternal.setId("cp-external");
+        citingExternal.setAuthors(List.of("a2"));
+        citingExternal.setTitle("External Citing");
+
+        when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
+        when(individualReportRepository.findById("rep1")).thenReturn(Optional.of(report));
+        when(scopusProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
+        when(scopusProjectionReadService.findAllCitationsByCitedIdIn(List.of("p1")))
+                .thenReturn(List.of(citationSelf, citationExternal));
+        when(scopusProjectionReadService.findAllPublicationsByIdIn(List.of("cp-self", "cp-external")))
+                .thenReturn(List.of(citingSelf, citingExternal));
+        when(scientificProductionService.calculateScientificImpactScore(any(Publication.class), any(List.class), any(Indicator.class)))
+                .thenAnswer(invocation -> {
+                    @SuppressWarnings("unchecked")
+                    List<Publication> citingPublications = invocation.getArgument(1);
+                    Map<String, Score> result = new HashMap<>();
+                    for (Publication citingPublication : citingPublications) {
+                        Score score = new Score();
+                        score.setAuthorScore(1.0);
+                        score.setScore(1.0);
+                        result.put(citingPublication.getId(), score);
+                    }
+                    Score total = new Score();
+                    total.setAuthorScore((double) citingPublications.size());
+                    total.setScore((double) citingPublications.size());
+                    result.put("total", total);
+                    return result;
+                });
+        when(groupIndividualReportRunRepository.save(any(GroupIndividualReportRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = facade.refreshGroupIndividualReportView("g1", "rep1");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Map<Integer, Double>> researcherScores =
+                (Map<String, Map<Integer, Double>>) result.attributes().get("researcherScores");
+        Map<Integer, Double> scores = researcherScores.get("r1");
+        assertEquals(2.0, scores.get(0));
+        assertEquals(1.0, scores.get(1));
+    }
+
+    @Test
+    void refreshGroupIndividualReportViewPreservesTop10CitationSelectorBehavior() {
+        Group group = new Group();
+        group.setId("g1");
+        Researcher researcher = new Researcher();
+        researcher.setId("r1");
+        researcher.setFirstName("A");
+        researcher.setLastName("B");
+        researcher.setScopusId(List.of("a1"));
+        group.setResearchers(new ArrayList<>(List.of(researcher)));
+
+        Indicator citationsTop10 = new Indicator();
+        citationsTop10.setOutputType(Indicator.Type.CITATIONS);
+        citationsTop10.setSelector(Indicator.Selector.TOP_10);
+
+        AbstractReport.Criterion criterion0 = new AbstractReport.Criterion();
+        criterion0.setIndicatorIndices(List.of(0));
+
+        IndividualReport report = new IndividualReport();
+        report.setId("rep1");
+        report.setCriteria(List.of(criterion0));
+        report.setIndicators(List.of(citationsTop10));
+        Institution affiliation = new Institution();
+        affiliation.setName("ANY");
+        report.setIndividualAffiliation(affiliation);
+
+        Author author = new Author();
+        author.setId("a1");
+
+        Publication publication = new Publication();
+        publication.setId("p1");
+        publication.setAuthors(List.of("a1"));
+        publication.setTitle("Root Publication");
+
+        List<Citation> citations = new ArrayList<>();
+        List<Publication> citingPublications = new ArrayList<>();
+        List<String> citingIds = new ArrayList<>();
+        for (int i = 1; i <= 12; i++) {
+            String citingId = "cp-" + i;
+            Citation citation = new Citation();
+            citation.setCitedId("p1");
+            citation.setCitingId(citingId);
+            citations.add(citation);
+            Publication citingPublication = new Publication();
+            citingPublication.setId(citingId);
+            citingPublication.setAuthors(List.of("a" + (i + 1)));
+            citingPublication.setTitle("Citing " + i);
+            citingPublications.add(citingPublication);
+            citingIds.add(citingId);
+        }
+
+        when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
+        when(individualReportRepository.findById("rep1")).thenReturn(Optional.of(report));
+        when(scopusProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
+        when(scopusProjectionReadService.findAllCitationsByCitedIdIn(List.of("p1"))).thenReturn(citations);
+        when(scopusProjectionReadService.findAllPublicationsByIdIn(citingIds)).thenReturn(citingPublications);
+        when(scientificProductionService.calculateScientificImpactScore(any(Publication.class), any(List.class), any(Indicator.class)))
+                .thenAnswer(invocation -> {
+                    @SuppressWarnings("unchecked")
+                    List<Publication> currentCitingPublications = invocation.getArgument(1);
+                    Map<String, Score> result = new HashMap<>();
+                    int scoreSeed = 1;
+                    for (Publication citingPublication : currentCitingPublications) {
+                        Score score = new Score();
+                        score.setAuthorScore((double) scoreSeed++);
+                        score.setScore(1.0);
+                        result.put(citingPublication.getTitle(), score);
+                    }
+                    Score total = new Score();
+                    total.setAuthorScore(0.0);
+                    total.setScore(0.0);
+                    result.put("total", total);
+                    return result;
+                });
+        when(groupIndividualReportRunRepository.save(any(GroupIndividualReportRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = facade.refreshGroupIndividualReportView("g1", "rep1");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Map<Integer, Double>> researcherScores =
+                (Map<String, Map<Integer, Double>>) result.attributes().get("researcherScores");
+        Map<Integer, Double> scores = researcherScores.get("r1");
+        assertEquals(75.0, scores.get(0));
     }
 }

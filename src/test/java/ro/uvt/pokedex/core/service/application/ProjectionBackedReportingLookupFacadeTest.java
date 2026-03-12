@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class ProjectionBackedReportingLookupFacadeTest {
@@ -47,7 +48,8 @@ class ProjectionBackedReportingLookupFacadeTest {
                 cacheService,
                 metricFactRepository,
                 categoryFactRepository,
-                mongoTemplate
+                mongoTemplate,
+                new ReportingLookupMemoization()
         );
     }
 
@@ -117,6 +119,66 @@ class ProjectionBackedReportingLookupFacadeTest {
         assertTrue(queryText.contains("SCIE"));
         assertTrue(queryText.contains("Q1"));
         assertTrue(queryText.contains("AIS"));
+    }
+
+    @Test
+    void getTopRankingsMemoizesWithinRefreshScopeOnly() {
+        when(mongoTemplate.findDistinct(any(Query.class), eq("journalId"), eq(WosScoringView.class), eq(String.class)))
+                .thenReturn(List.of("j1", "j2"));
+        ReportingLookupMemoization memoization = new ReportingLookupMemoization();
+        facade = new ProjectionBackedReportingLookupFacade(
+                cacheService,
+                metricFactRepository,
+                categoryFactRepository,
+                mongoTemplate,
+                memoization
+        );
+
+        memoization.withRefreshScope(() -> {
+            assertEquals(2, facade.getTopRankings("ECONOMICS - SCIE", 2023));
+            assertEquals(2, facade.getTopRankings("ECONOMICS - SCIE", 2023));
+        });
+
+        verify(mongoTemplate, times(1))
+                .findDistinct(any(Query.class), eq("journalId"), eq(WosScoringView.class), eq(String.class));
+
+        assertEquals(2, facade.getTopRankings("ECONOMICS - SCIE", 2023));
+        verify(mongoTemplate, times(2))
+                .findDistinct(any(Query.class), eq("journalId"), eq(WosScoringView.class), eq(String.class));
+    }
+
+    @Test
+    void getRankingsByIssnMemoizesWithinRefreshScopeOnly() {
+        WosRankingView view = new WosRankingView();
+        view.setId("j1");
+        when(mongoTemplate.find(any(Query.class), eq(WosRankingView.class))).thenReturn(List.of(view));
+        when(metricFactRepository.findAllByJournalIdIn(eq(List.of("j1")))).thenReturn(List.of());
+        when(categoryFactRepository.findAllByJournalIdInAndEditionNormalizedIn(eq(List.of("j1")), eq(Set.of(EditionNormalized.SCIE, EditionNormalized.SSCI))))
+                .thenReturn(List.of());
+        ReportingLookupMemoization memoization = new ReportingLookupMemoization();
+        facade = new ProjectionBackedReportingLookupFacade(
+                cacheService,
+                metricFactRepository,
+                categoryFactRepository,
+                mongoTemplate,
+                memoization
+        );
+
+        memoization.withRefreshScope(() -> {
+            assertTrue(facade.getRankingsByIssn("1234-5678").isEmpty());
+            assertTrue(facade.getRankingsByIssn("1234-5678").isEmpty());
+        });
+
+        verify(mongoTemplate, times(1)).find(any(Query.class), eq(WosRankingView.class));
+        verify(metricFactRepository, times(1)).findAllByJournalIdIn(eq(List.of("j1")));
+        verify(categoryFactRepository, times(1))
+                .findAllByJournalIdInAndEditionNormalizedIn(eq(List.of("j1")), eq(Set.of(EditionNormalized.SCIE, EditionNormalized.SSCI)));
+
+        assertTrue(facade.getRankingsByIssn("1234-5678").isEmpty());
+        verify(mongoTemplate, times(2)).find(any(Query.class), eq(WosRankingView.class));
+        verify(metricFactRepository, times(2)).findAllByJournalIdIn(eq(List.of("j1")));
+        verify(categoryFactRepository, times(2))
+                .findAllByJournalIdInAndEditionNormalizedIn(eq(List.of("j1")), eq(Set.of(EditionNormalized.SCIE, EditionNormalized.SSCI)));
     }
 
     private WosMetricFact metricFact(String journalId, int year, MetricType metricType, double value) {

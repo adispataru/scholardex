@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class PostgresReportingLookupFacadeTest {
@@ -34,7 +35,11 @@ class PostgresReportingLookupFacadeTest {
 
     @BeforeEach
     void setUp() {
-        facade = new PostgresReportingLookupFacade(cacheService, namedParameterJdbcTemplate);
+        facade = new PostgresReportingLookupFacade(
+                cacheService,
+                namedParameterJdbcTemplate,
+                new ReportingLookupMemoization()
+        );
     }
 
     @Test
@@ -51,6 +56,9 @@ class PostgresReportingLookupFacadeTest {
         verify(namedParameterJdbcTemplate).queryForObject(sqlCaptor.capture(), paramsCaptor.capture(), eq(Integer.class));
 
         assertTrue(sqlCaptor.getValue().contains("mv_wos_top_rankings_q1_ais"));
+        assertTrue(!sqlCaptor.getValue().contains("edition_normalized::text"));
+        assertTrue(sqlCaptor.getValue().contains("CAST(:edition0 AS reporting_read.edition_normalized_enum)"));
+        assertTrue(!sqlCaptor.getValue().contains("reporting_read.edition_normalized)"));
         assertEquals("ECONOMICS", paramsCaptor.getValue().getValue("category"));
     }
 
@@ -58,6 +66,26 @@ class PostgresReportingLookupFacadeTest {
     void getTopRankingsReturnsZeroForBlankCategoryOrNullYear() {
         assertEquals(0, facade.getTopRankings("", 2024));
         assertEquals(0, facade.getTopRankings("ECONOMICS - SCIE", null));
+    }
+
+    @Test
+    void getTopRankingsMemoizesWithinRefreshScopeOnly() {
+        when(namedParameterJdbcTemplate.queryForObject(any(String.class), any(MapSqlParameterSource.class), eq(Integer.class)))
+                .thenReturn(3);
+        ReportingLookupMemoization memoization = new ReportingLookupMemoization();
+        facade = new PostgresReportingLookupFacade(cacheService, namedParameterJdbcTemplate, memoization);
+
+        memoization.withRefreshScope(() -> {
+            assertEquals(3, facade.getTopRankings("ECONOMICS - SCIE", 2024));
+            assertEquals(3, facade.getTopRankings("ECONOMICS - SCIE", 2024));
+        });
+
+        verify(namedParameterJdbcTemplate, times(1))
+                .queryForObject(any(String.class), any(MapSqlParameterSource.class), eq(Integer.class));
+
+        assertEquals(3, facade.getTopRankings("ECONOMICS - SCIE", 2024));
+        verify(namedParameterJdbcTemplate, times(2))
+                .queryForObject(any(String.class), any(MapSqlParameterSource.class), eq(Integer.class));
     }
 
     @Test
@@ -102,5 +130,35 @@ class PostgresReportingLookupFacadeTest {
 
         assertTrue(categorySql.contains("edition_normalized IN ('SCIE', 'SSCI')"));
         assertTrue(!categorySql.contains("edition_normalized::text"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getRankingsByIssnMemoizesWithinRefreshScopeOnly() {
+        WosRankingView view = new WosRankingView();
+        view.setId("j1");
+
+        when(namedParameterJdbcTemplate.query(any(String.class), any(MapSqlParameterSource.class), any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenAnswer(invocation -> {
+                    String sql = invocation.getArgument(0, String.class);
+                    if (sql.contains("FROM reporting_read.wos_ranking_view")) {
+                        return List.of(view);
+                    }
+                    return List.of();
+                });
+        ReportingLookupMemoization memoization = new ReportingLookupMemoization();
+        facade = new PostgresReportingLookupFacade(cacheService, namedParameterJdbcTemplate, memoization);
+
+        memoization.withRefreshScope(() -> {
+            assertTrue(facade.getRankingsByIssn("1234-5678").isEmpty());
+            assertTrue(facade.getRankingsByIssn("1234-5678").isEmpty());
+        });
+
+        verify(namedParameterJdbcTemplate, times(3))
+                .query(any(String.class), any(MapSqlParameterSource.class), any(org.springframework.jdbc.core.RowMapper.class));
+
+        assertTrue(facade.getRankingsByIssn("1234-5678").isEmpty());
+        verify(namedParameterJdbcTemplate, times(6))
+                .query(any(String.class), any(MapSqlParameterSource.class), any(org.springframework.jdbc.core.RowMapper.class));
     }
 }

@@ -37,6 +37,7 @@ public class GroupReportFacade {
     private final ScopusProjectionReadService scopusProjectionReadService;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final GroupIndividualReportRunRepository groupIndividualReportRunRepository;
+    private final ReportingLookupMemoization reportingLookupMemoization;
 
     public Optional<GroupPublicationsViewModel> buildGroupPublicationsView(String groupId) {
         Group group = groupRepository.findById(groupId).orElse(null);
@@ -141,7 +142,9 @@ public class GroupReportFacade {
         long lookupMs = nanosToMs(System.nanoTime() - lookupStartNanos);
 
         long computeStartNanos = System.nanoTime();
-        ComputeGroupRunResult computeResult = computeGroupRun(group, reportOpt.get());
+        ComputeGroupRunResult computeResult = reportingLookupMemoization.withRefreshScope(
+                () -> computeGroupRun(group, reportOpt.get())
+        );
         long computeMs = nanosToMs(System.nanoTime() - computeStartNanos);
 
         long saveStartNanos = System.nanoTime();
@@ -151,12 +154,16 @@ public class GroupReportFacade {
         long totalMs = nanosToMs(System.nanoTime() - refreshStartNanos);
         String refreshTimingMessage = String.format(
                 Locale.ROOT,
-                "Group report refresh timings: groupId=%s reportId=%s researchers=%d status=%s errors=%d timingsMs[lookup=%d, compute=%d, save=%d, total=%d] computeMs[authorLookup=%d, publicationLoad=%d, activityLoad=%d, citationLoad=%d, scoring=%d, thresholdBuild=%d]",
+                "Group report refresh timings: groupId=%s reportId=%s researchers=%d status=%s errors=%d counts[publications=%d, citationFacts=%d, citationIndicators=%d, activityIndicators=%d] timingsMs[lookup=%d, compute=%d, save=%d, total=%d] computeMs[authorLookup=%d, publicationLoad=%d, activityLoad=%d, citationLoad=%d, scoring=%d, publicationScoring=%d, activityScoring=%d, citationScoring=%d, selector=%d, thresholdBuild=%d]",
                 groupId,
                 reportId,
                 group.getResearchers() == null ? 0 : group.getResearchers().size(),
                 run.getStatus(),
                 run.getBuildErrors() == null ? 0 : run.getBuildErrors().size(),
+                computeResult.timings().publicationsProcessed(),
+                computeResult.timings().citationFacts(),
+                computeResult.timings().citationIndicators(),
+                computeResult.timings().activityIndicators(),
                 lookupMs,
                 computeMs,
                 saveMs,
@@ -166,6 +173,10 @@ public class GroupReportFacade {
                 computeResult.timings().activityLoadMs(),
                 computeResult.timings().citationLoadMs(),
                 computeResult.timings().scoringMs(),
+                computeResult.timings().publicationScoringMs(),
+                computeResult.timings().activityScoringMs(),
+                computeResult.timings().citationScoringMs(),
+                computeResult.timings().selectorMs(),
                 computeResult.timings().thresholdBuildMs()
         );
         if (totalMs > REFRESH_SLOW_WARN_THRESHOLD_MS) {
@@ -178,7 +189,9 @@ public class GroupReportFacade {
     }
 
     private GroupIndividualReportRun computeAndPersistGroupRun(Group group, IndividualReport report) {
-        ComputeGroupRunResult computeResult = computeGroupRun(group, report);
+        ComputeGroupRunResult computeResult = reportingLookupMemoization.withRefreshScope(
+                () -> computeGroupRun(group, report)
+        );
         return groupIndividualReportRunRepository.save(computeResult.run());
     }
 
@@ -210,6 +223,18 @@ public class GroupReportFacade {
                     .filter(Objects::nonNull)
                     .anyMatch(indicator -> Indicator.Type.CITATIONS.equals(indicator.getOutputType())
                             || Indicator.Type.CITATIONS_EXCLUDE_SELF.equals(indicator.getOutputType()));
+            long activityIndicatorCount = indicators.stream()
+                    .filter(Objects::nonNull)
+                    .filter(indicator -> indicator.getOutputType() != null
+                            && indicator.getOutputType().toString().contains("ACTIVIT"))
+                    .count();
+            long citationIndicatorCount = indicators.stream()
+                    .filter(Objects::nonNull)
+                    .filter(indicator -> Indicator.Type.CITATIONS.equals(indicator.getOutputType())
+                            || Indicator.Type.CITATIONS_EXCLUDE_SELF.equals(indicator.getOutputType()))
+                    .count();
+            timings.activityIndicators += activityIndicatorCount;
+            timings.citationIndicators += citationIndicatorCount;
 
             long publicationLoadStartNanos = System.nanoTime();
             List<String> authorIds = authors.stream().map(Author::getId).toList();
@@ -221,6 +246,11 @@ public class GroupReportFacade {
                         .collect(Collectors.toList());
             }
             timings.publicationLoadNanos += (System.nanoTime() - publicationLoadStartNanos);
+            timings.publicationsProcessed += publications.size();
+            Set<String> researcherAuthorIds = authors.stream()
+                    .map(Author::getId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
 
             List<ActivityInstance> activities = List.of();
             if (hasActivityIndicators) {
@@ -234,6 +264,7 @@ public class GroupReportFacade {
                 long citationLoadStartNanos = System.nanoTime();
                 citationContext = prepareCitationContext(publications);
                 timings.citationLoadNanos += (System.nanoTime() - citationLoadStartNanos);
+                timings.citationFacts += citationContext.citationFactsCount();
             }
 
             Map<Indicator, Double> indicatorScores = new HashMap<>();
@@ -253,12 +284,18 @@ public class GroupReportFacade {
                     indicatorScore = activityReportingService.calculateActivityScores(filteredActivities, indicator)
                             .get("total")
                             .getAuthorScore();
+                    timings.activityScoringNanos += (System.nanoTime() - indicatorScoringStartNanos);
                 }
                 if (indicator.getOutputType().toString().contains("PUBLICATIONS")) {
                     indicatorScore = calculatePublicationScore(indicator, authors, publications);
+                    timings.publicationScoringNanos += (System.nanoTime() - indicatorScoringStartNanos);
                 } else if (indicator.getOutputType().equals(Indicator.Type.CITATIONS)
                         || indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF)) {
-                    indicatorScore = calculateCitationScore(indicator, authors, publications, citationContext);
+                    CitationScoreResult citationScoreResult =
+                            calculateCitationScore(indicator, publications, researcherAuthorIds, citationContext);
+                    indicatorScore = citationScoreResult.score();
+                    timings.selectorNanos += citationScoreResult.selectorNanos();
+                    timings.citationScoringNanos += (System.nanoTime() - indicatorScoringStartNanos);
                 }
 
                 indicatorScores.put(indicator, indicatorScore);
@@ -338,43 +375,41 @@ public class GroupReportFacade {
         return scores.get("total").getAuthorScore();
     }
 
-    private double calculateCitationScore(
+    private CitationScoreResult calculateCitationScore(
             Indicator indicator,
-            List<Author> authors,
             List<Publication> publications,
+            Set<String> researcherAuthorIds,
             CitationContext citationContext
     ) {
         boolean excludeSelf = indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF);
         Map<String, Map<String, Score>> scores = new HashMap<>();
+        long selectorStartNanos = 0L;
 
         for (Publication pub : publications) {
-            List<Publication> citations = new ArrayList<>();
-
-            for (Citation cit : citationContext.allCitations()) {
-                if (cit.getCitedId().equals(pub.getId())) {
-                    if (citationContext.citingPublicationsById().get(cit.getCitingId()) != null) {
-                        Publication citing = citationContext.citingPublicationsById().get(cit.getCitingId());
-                        if (excludeSelf && authors.stream().anyMatch(a -> citing.getAuthors().contains(a.getId()))) {
-                            continue;
-                        }
-                        citations.add(citing);
-                    }
-                }
+            List<Publication> citations = citationContext.citingPublicationsByCitedPublicationId()
+                    .getOrDefault(pub.getId(), List.of());
+            if (excludeSelf) {
+                citations = citations.stream()
+                        .filter(citing -> !sharesAnyAuthor(citing, researcherAuthorIds))
+                        .toList();
             }
 
             Map<String, Score> citScores = scientificProductionService.calculateScientificImpactScore(pub, citations, indicator);
             scores.put(pub.getTitle(), citScores);
         }
 
+        selectorStartNanos = System.nanoTime();
         applyFinalSelector(indicator, scores);
-        return scores.values().stream().map(value -> {
+        long selectorNanos = System.nanoTime() - selectorStartNanos;
+        double score = scores.values().stream().map(value -> {
             double t = 0.0;
             value.remove("total");
-            for (Score score : value.values()) {
-                t += score.getAuthorScore();
+            for (Score entryScore : value.values()) {
+                t += entryScore.getAuthorScore();
             }
             return t;
         }).reduce(0.0, Double::sum);
+        return new CitationScoreResult(score, selectorNanos);
     }
 
     private void applyFinalSelector(Indicator indicator, Map<String, Map<String, Score>> scores) {
@@ -387,6 +422,10 @@ public class GroupReportFacade {
                     .limit(10)
                     .map(Map.Entry::getKey)
                     .toList();
+            Map<String, Integer> top10IndexByTitle = new HashMap<>();
+            for (int i = 0; i < top10.size(); i++) {
+                top10IndexByTitle.putIfAbsent(top10.get(i), i);
+            }
             boolean[] used = new boolean[top10.size()];
             for (String key : scores.keySet()) {
                 Iterator<String> titleIterator = scores.get(key).keySet().iterator();
@@ -396,11 +435,12 @@ public class GroupReportFacade {
                     if (title.equals("total")) {
                         continue;
                     }
-                    if (!top10.contains(title) || used[top10.indexOf(title)]) {
+                    Integer top10Index = top10IndexByTitle.get(title);
+                    if (top10Index == null || used[top10Index]) {
                         titleIterator.remove();
                     }
-                    if (top10.contains(title)) {
-                        used[top10.indexOf(title)] = true;
+                    if (top10Index != null) {
+                        used[top10Index] = true;
                     }
                 }
                 double totalA = 0.0;
@@ -436,7 +476,32 @@ public class GroupReportFacade {
                 citingPublicationsById.putIfAbsent(publication.getId(), publication);
             }
         }
-        return new CitationContext(allCitations, citingPublicationsById);
+        Map<String, List<Publication>> citingPublicationsByCitedPublicationId = new HashMap<>();
+        for (Citation citation : allCitations) {
+            if (citation == null) {
+                continue;
+            }
+            Publication citing = citingPublicationsById.get(citation.getCitingId());
+            if (citing == null || citation.getCitedId() == null) {
+                continue;
+            }
+            citingPublicationsByCitedPublicationId
+                    .computeIfAbsent(citation.getCitedId(), ignored -> new ArrayList<>())
+                    .add(citing);
+        }
+        return new CitationContext(citingPublicationsById, citingPublicationsByCitedPublicationId, allCitations.size());
+    }
+
+    private boolean sharesAnyAuthor(Publication publication, Set<String> authorIds) {
+        if (publication == null || publication.getAuthors() == null || publication.getAuthors().isEmpty() || authorIds.isEmpty()) {
+            return false;
+        }
+        for (String authorId : publication.getAuthors()) {
+            if (authorIds.contains(authorId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private long nanosToMs(long nanos) {
@@ -455,16 +520,31 @@ public class GroupReportFacade {
             long activityLoadMs,
             long citationLoadMs,
             long scoringMs,
+            long publicationScoringMs,
+            long activityScoringMs,
+            long citationScoringMs,
+            long selectorMs,
+            long publicationsProcessed,
+            long citationFacts,
+            long citationIndicators,
+            long activityIndicators,
             long thresholdBuildMs
     ) {
     }
 
+    private record CitationScoreResult(
+            double score,
+            long selectorNanos
+    ) {
+    }
+
     private record CitationContext(
-            List<Citation> allCitations,
-            Map<String, Publication> citingPublicationsById
+            Map<String, Publication> citingPublicationsById,
+            Map<String, List<Publication>> citingPublicationsByCitedPublicationId,
+            int citationFactsCount
     ) {
         static CitationContext empty() {
-            return new CitationContext(List.of(), Map.of());
+            return new CitationContext(Map.of(), Map.of(), 0);
         }
     }
 
@@ -474,6 +554,14 @@ public class GroupReportFacade {
         private long activityLoadNanos;
         private long citationLoadNanos;
         private long scoringNanos;
+        private long publicationScoringNanos;
+        private long activityScoringNanos;
+        private long citationScoringNanos;
+        private long selectorNanos;
+        private long publicationsProcessed;
+        private long citationFacts;
+        private long citationIndicators;
+        private long activityIndicators;
         private long thresholdBuildNanos;
 
         private ComputeTimingsSummary toSummary() {
@@ -483,6 +571,14 @@ public class GroupReportFacade {
                     Math.max(0L, activityLoadNanos / 1_000_000L),
                     Math.max(0L, citationLoadNanos / 1_000_000L),
                     Math.max(0L, scoringNanos / 1_000_000L),
+                    Math.max(0L, publicationScoringNanos / 1_000_000L),
+                    Math.max(0L, activityScoringNanos / 1_000_000L),
+                    Math.max(0L, citationScoringNanos / 1_000_000L),
+                    Math.max(0L, selectorNanos / 1_000_000L),
+                    Math.max(0L, publicationsProcessed),
+                    Math.max(0L, citationFacts),
+                    Math.max(0L, citationIndicators),
+                    Math.max(0L, activityIndicators),
                     Math.max(0L, thresholdBuildNanos / 1_000_000L)
             );
         }
