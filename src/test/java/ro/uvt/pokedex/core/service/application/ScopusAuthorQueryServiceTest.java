@@ -66,6 +66,7 @@ class ScopusAuthorQueryServiceTest {
         assertEquals(5L, findQuery.getSkip());
         Document sortDoc = findQuery.getSortObject();
         assertEquals(1, sortDoc.getInteger("name"));
+        assertEquals(1, sortDoc.getInteger("_id"));
         String queryJson = findQuery.getQueryObject().toJson();
         org.junit.jupiter.api.Assertions.assertTrue(queryJson.contains("affiliationIds"));
     }

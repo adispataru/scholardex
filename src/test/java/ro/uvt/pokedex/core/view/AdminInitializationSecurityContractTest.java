@@ -63,15 +63,6 @@ class AdminInitializationSecurityContractTest {
     }
 
     @Test
-    void nonAdminCannotRunScopusBigBang() throws Exception {
-        mockMvc.perform(post("/admin/initialization/scopus/runBigBang")
-                        .with(csrf())
-                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/custom-error?error=403"));
-    }
-
-    @Test
     void nonAdminCannotResetScopusCanonicalState() throws Exception {
         mockMvc.perform(post("/admin/initialization/scopus/resetCanonicalState")
                         .with(csrf())

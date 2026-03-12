@@ -3,7 +3,6 @@ package ro.uvt.pokedex.core.service.application;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -36,6 +35,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -51,7 +51,7 @@ import static com.mongodb.client.model.Filters.ne;
 import static com.mongodb.client.model.Sorts.descending;
 
 @Service
-@ConditionalOnBean(JdbcTemplate.class)
+@ConditionalOnProperty(name = "spring.datasource.url")
 @ConditionalOnProperty(prefix = "core.h22.projection", name = "enabled", havingValue = "true")
 public class JdbcPostgresReportingProjectionService implements PostgresReportingProjectionService {
 
@@ -118,6 +118,12 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
     private ProjectionRunSummary runProjection(String mode, boolean fullRebuild) {
         String runId = "h22-projection-" + UUID.randomUUID();
         Instant startedAt = Instant.now();
+        long runStartedNs = System.nanoTime();
+
+        log.info(
+                "H22.3 projection run started: runId={} mode={} fullRebuild={} dryRun={} chunkSize={} statementTimeoutMs={}",
+                runId, mode, fullRebuild, properties.isDryRun(), properties.getChunkSize(), properties.getStatementTimeoutMs()
+        );
 
         jdbcTemplate.update("""
                 INSERT INTO reporting_read.projection_run
@@ -142,18 +148,22 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
             boolean rebuildSlice = shouldRebuildSlice(fullRebuild, sourceFingerprint, checkpointFingerprint);
 
             Instant sliceStartedAt = Instant.now();
+            long sliceStartedNs = System.nanoTime();
+            log.info(
+                    "H22.3 projection slice planned: runId={} slice={} rebuild={} sourceFingerprint={} checkpointFingerprint={}",
+                    runId, slice, rebuildSlice, shortFingerprint(sourceFingerprint), shortFingerprint(checkpointFingerprint)
+            );
+
             if (!rebuildSlice) {
                 SliceRunSummary summary = new SliceRunSummary(
-                        slice,
-                        STATUS_SKIPPED,
-                        sourceFingerprint,
-                        0,
-                        "source fingerprint unchanged",
-                        sliceStartedAt,
-                        Instant.now()
+                        slice, STATUS_SKIPPED, sourceFingerprint, 0, "source fingerprint unchanged", sliceStartedAt, Instant.now()
                 );
                 persistSliceRun(runId, summary);
                 slices.add(summary);
+                log.info(
+                        "H22.3 projection slice skipped: runId={} slice={} durationMs={} reason={}",
+                        runId, slice, elapsedMs(sliceStartedNs), summary.note()
+                );
                 continue;
             }
 
@@ -166,29 +176,21 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
                 }
                 upsertCheckpoint(slice, sourceFingerprint, runId, mode);
                 SliceRunSummary summary = new SliceRunSummary(
-                        slice,
-                        STATUS_SUCCESS,
-                        sourceFingerprint,
-                        result.insertedRows(),
-                        result.note(),
-                        sliceStartedAt,
-                        Instant.now()
+                        slice, STATUS_SUCCESS, sourceFingerprint, result.insertedRows(), result.note(), sliceStartedAt, Instant.now()
                 );
                 persistSliceRun(runId, summary);
                 slices.add(summary);
+                log.info(
+                        "H22.3 projection slice completed: runId={} slice={} insertedRows={} durationMs={} note={}",
+                        runId, slice, summary.insertedRows(), elapsedMs(sliceStartedNs), summary.note()
+                );
             } catch (Exception e) {
                 finalStatus = STATUS_FAILED;
                 errorSample = trimError(e.getMessage());
                 log.error("H22.3 projection slice failed: runId={} slice={} mode={}", runId, slice, mode, e);
 
                 SliceRunSummary failedSlice = new SliceRunSummary(
-                        slice,
-                        STATUS_FAILED,
-                        sourceFingerprint,
-                        0,
-                        errorSample,
-                        sliceStartedAt,
-                        Instant.now()
+                        slice, STATUS_FAILED, sourceFingerprint, 0, errorSample, sliceStartedAt, Instant.now()
                 );
                 persistSliceRun(runId, failedSlice);
                 slices.add(failedSlice);
@@ -203,29 +205,60 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
                 WHERE run_id = ?
                 """, finalStatus, timestamp(completedAt), errorSample, runId);
 
+        long successSlices = slices.stream().filter(slice -> STATUS_SUCCESS.equals(slice.status())).count();
+        long skippedSlices = slices.stream().filter(slice -> STATUS_SKIPPED.equals(slice.status())).count();
+        long failedSlices = slices.stream().filter(slice -> STATUS_FAILED.equals(slice.status())).count();
+        log.info(
+                "H22.3 projection run completed: runId={} status={} durationMs={} successSlices={} skippedSlices={} failedSlices={} error={}",
+                runId, finalStatus, elapsedMs(runStartedNs), successSlices, skippedSlices, failedSlices, errorSample == null ? "none" : errorSample
+        );
+
         return new ProjectionRunSummary(runId, mode, finalStatus, startedAt, completedAt, slices, errorSample);
     }
 
     private SliceProjectionResult rebuildWosSlice(String runId, Instant runStartedAt) {
+        long sourceLoadNs = System.nanoTime();
+
+        long rankingLoadNs = System.nanoTime();
         List<WosRankingView> rankingViews = mongoTemplate.find(
-                new Query()
-                        .with(Sort.by(Sort.Order.asc("id"))),
+                new Query().with(Sort.by(Sort.Order.asc("id"))),
                 WosRankingView.class
         );
+        long rankingLoadMs = elapsedMs(rankingLoadNs);
+
+        long metricLoadNs = System.nanoTime();
         List<WosMetricFact> metricFacts = mongoTemplate.find(
-                new Query()
-                        .with(Sort.by(Sort.Order.asc("journalId"), Sort.Order.asc("year"), Sort.Order.asc("metricType"), Sort.Order.asc("id"))),
+                new Query().with(Sort.by(Sort.Order.asc("journalId"), Sort.Order.asc("year"), Sort.Order.asc("metricType"), Sort.Order.asc("id"))),
                 WosMetricFact.class
         );
+        long metricLoadMs = elapsedMs(metricLoadNs);
+
+        long categoryLoadNs = System.nanoTime();
         List<WosCategoryFact> categoryFacts = mongoTemplate.find(
-                new Query()
-                        .with(Sort.by(Sort.Order.asc("journalId"), Sort.Order.asc("year"), Sort.Order.asc("categoryNameCanonical"), Sort.Order.asc("editionNormalized"), Sort.Order.asc("metricType"), Sort.Order.asc("id"))),
+                new Query().with(Sort.by(Sort.Order.asc("journalId"), Sort.Order.asc("year"), Sort.Order.asc("categoryNameCanonical"), Sort.Order.asc("editionNormalized"), Sort.Order.asc("metricType"), Sort.Order.asc("id"))),
                 WosCategoryFact.class
         );
+        long categoryLoadMs = elapsedMs(categoryLoadNs);
+
+        long scoringLoadNs = System.nanoTime();
         List<WosScoringView> scoringViews = mongoTemplate.find(
-                new Query()
-                        .with(Sort.by(Sort.Order.asc("journalId"), Sort.Order.asc("year"), Sort.Order.asc("categoryNameCanonical"), Sort.Order.asc("editionNormalized"), Sort.Order.asc("metricType"), Sort.Order.asc("id"))),
+                new Query().with(Sort.by(Sort.Order.asc("journalId"), Sort.Order.asc("year"), Sort.Order.asc("categoryNameCanonical"), Sort.Order.asc("editionNormalized"), Sort.Order.asc("metricType"), Sort.Order.asc("id"))),
                 WosScoringView.class
+        );
+        long scoringLoadMs = elapsedMs(scoringLoadNs);
+
+        log.info(
+                "H22.3 wos source load: runId={} rankingRows={} metricRows={} categoryRows={} scoringRows={} loadMs(total={} ranking={} metric={} category={} scoring={})",
+                runId,
+                rankingViews.size(),
+                metricFacts.size(),
+                categoryFacts.size(),
+                scoringViews.size(),
+                elapsedMs(sourceLoadNs),
+                rankingLoadMs,
+                metricLoadMs,
+                categoryLoadMs,
+                scoringLoadMs
         );
 
         if (properties.isDryRun()) {
@@ -234,9 +267,11 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
         }
 
         String token = tempSuffix(runId);
+        long[] phaseMs = new long[4];
         transactionTemplate.executeWithoutResult(status -> {
             applyStatementTimeout();
 
+            long setupNs = System.nanoTime();
             String tmpRanking = "tmp_wos_ranking_view_" + token;
             String tmpMetric = "tmp_wos_metric_fact_" + token;
             String tmpCategory = "tmp_wos_category_fact_" + token;
@@ -246,17 +281,31 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
             createTempLike(tmpMetric, "reporting_read.wos_metric_fact");
             createTempLike(tmpCategory, "reporting_read.wos_category_fact");
             createTempLike(tmpScoring, "reporting_read.wos_scoring_view");
+            phaseMs[0] = elapsedMs(setupNs);
 
+            long stageNs = System.nanoTime();
+            long tableNs = System.nanoTime();
             insertWosRankingRows(tmpRanking, rankingViews, runId, runStartedAt);
+            log.info("H22.3 wos stage load: runId={} table=wos_ranking_view rows={} durationMs={}", runId, rankingViews.size(), elapsedMs(tableNs));
+            tableNs = System.nanoTime();
             insertWosMetricRows(tmpMetric, metricFacts);
+            log.info("H22.3 wos stage load: runId={} table=wos_metric_fact rows={} durationMs={}", runId, metricFacts.size(), elapsedMs(tableNs));
+            tableNs = System.nanoTime();
             insertWosCategoryRows(tmpCategory, categoryFacts);
+            log.info("H22.3 wos stage load: runId={} table=wos_category_fact rows={} durationMs={}", runId, categoryFacts.size(), elapsedMs(tableNs));
+            tableNs = System.nanoTime();
             insertWosScoringRows(tmpScoring, scoringViews, runId, runStartedAt);
+            log.info("H22.3 wos stage load: runId={} table=wos_scoring_view rows={} durationMs={}", runId, scoringViews.size(), elapsedMs(tableNs));
+            phaseMs[1] = elapsedMs(stageNs);
 
+            long verifyNs = System.nanoTime();
             verifyCount(tmpRanking, rankingViews.size());
             verifyCount(tmpMetric, metricFacts.size());
             verifyCount(tmpCategory, categoryFacts.size());
             verifyCount(tmpScoring, scoringViews.size());
+            phaseMs[2] = elapsedMs(verifyNs);
 
+            long swapNs = System.nanoTime();
             jdbcTemplate.execute("""
                     TRUNCATE TABLE
                         reporting_read.wos_scoring_view,
@@ -269,59 +318,152 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
             jdbcTemplate.execute("INSERT INTO reporting_read.wos_metric_fact SELECT * FROM " + tmpMetric);
             jdbcTemplate.execute("INSERT INTO reporting_read.wos_category_fact SELECT * FROM " + tmpCategory);
             jdbcTemplate.execute("INSERT INTO reporting_read.wos_scoring_view SELECT * FROM " + tmpScoring);
+            phaseMs[3] = elapsedMs(swapNs);
         });
 
         long totalRows = rankingViews.size() + metricFacts.size() + categoryFacts.size() + scoringViews.size();
+        log.info(
+                "H22.3 wos sql phases: runId={} tempSetupMs={} stageLoadMs={} verifyMs={} swapMs={} totalRows={}",
+                runId, phaseMs[0], phaseMs[1], phaseMs[2], phaseMs[3], totalRows
+        );
         return new SliceProjectionResult(totalRows, "wos slice projected");
     }
 
     private SliceProjectionResult rebuildScopusSlice(String runId, Instant runStartedAt) {
+        long sourceLoadNs = System.nanoTime();
+
+        long publicationLoadNs = System.nanoTime();
         List<ScholardexPublicationView> publicationViews = mongoTemplate.find(
-                new Query()
-                        .with(Sort.by(Sort.Order.asc("id"))),
+                new Query().with(Sort.by(Sort.Order.asc("id"))),
                 ScholardexPublicationView.class
         );
+        long publicationLoadMs = elapsedMs(publicationLoadNs);
+
+        long authorLoadNs = System.nanoTime();
         List<ScholardexAuthorView> authorViews = mongoTemplate.find(
-                new Query()
-                        .with(Sort.by(Sort.Order.asc("id"))),
+                new Query().with(Sort.by(Sort.Order.asc("id"))),
                 ScholardexAuthorView.class
         );
+        long authorLoadMs = elapsedMs(authorLoadNs);
+
+        long forumLoadNs = System.nanoTime();
         List<ScholardexForumView> forumViews = mongoTemplate.find(
-                new Query()
-                        .with(Sort.by(Sort.Order.asc("id"))),
+                new Query().with(Sort.by(Sort.Order.asc("id"))),
                 ScholardexForumView.class
         );
+        long forumLoadMs = elapsedMs(forumLoadNs);
+
+        long affiliationLoadNs = System.nanoTime();
         List<ScholardexAffiliationView> affiliationViews = mongoTemplate.find(
-                new Query()
-                        .with(Sort.by(Sort.Order.asc("id"))),
+                new Query().with(Sort.by(Sort.Order.asc("id"))),
                 ScholardexAffiliationView.class
         );
+        long affiliationLoadMs = elapsedMs(affiliationLoadNs);
+
+        long citationLoadNs = System.nanoTime();
         List<ScholardexCitationFact> citationFacts = mongoTemplate.find(
-                new Query()
-                        .with(Sort.by(Sort.Order.asc("citedPublicationId"), Sort.Order.asc("citingPublicationId"), Sort.Order.asc("source"), Sort.Order.asc("id"))),
+                new Query().with(Sort.by(Sort.Order.asc("citedPublicationId"), Sort.Order.asc("citingPublicationId"), Sort.Order.asc("source"), Sort.Order.asc("id"))),
                 ScholardexCitationFact.class
         );
+        long citationLoadMs = elapsedMs(citationLoadNs);
+
+        long authorshipLoadNs = System.nanoTime();
         List<ScholardexAuthorshipFact> authorshipFacts = mongoTemplate.find(
-                new Query()
-                        .with(Sort.by(Sort.Order.asc("publicationId"), Sort.Order.asc("authorId"), Sort.Order.asc("source"), Sort.Order.asc("id"))),
+                new Query().with(Sort.by(Sort.Order.asc("publicationId"), Sort.Order.asc("authorId"), Sort.Order.asc("source"), Sort.Order.asc("id"))),
                 ScholardexAuthorshipFact.class
         );
+        long authorshipLoadMs = elapsedMs(authorshipLoadNs);
+
+        long authorAffiliationLoadNs = System.nanoTime();
         List<ScholardexAuthorAffiliationFact> authorAffiliationFacts = mongoTemplate.find(
-                new Query()
-                        .with(Sort.by(Sort.Order.asc("authorId"), Sort.Order.asc("affiliationId"), Sort.Order.asc("source"), Sort.Order.asc("id"))),
+                new Query().with(Sort.by(Sort.Order.asc("authorId"), Sort.Order.asc("affiliationId"), Sort.Order.asc("source"), Sort.Order.asc("id"))),
                 ScholardexAuthorAffiliationFact.class
         );
+        long authorAffiliationLoadMs = elapsedMs(authorAffiliationLoadNs);
+
+        log.info(
+                "H22.3 scopus source load: runId={} publicationRows={} authorRows={} forumRows={} affiliationRows={} citationRows={} authorshipRows={} authorAffiliationRows={} loadMs(total={} publication={} author={} forum={} affiliation={} citation={} authorship={} authorAffiliation={})",
+                runId,
+                publicationViews.size(),
+                authorViews.size(),
+                forumViews.size(),
+                affiliationViews.size(),
+                citationFacts.size(),
+                authorshipFacts.size(),
+                authorAffiliationFacts.size(),
+                elapsedMs(sourceLoadNs),
+                publicationLoadMs,
+                authorLoadMs,
+                forumLoadMs,
+                affiliationLoadMs,
+                citationLoadMs,
+                authorshipLoadMs,
+                authorAffiliationLoadMs
+        );
+
+        Set<String> publicationIds = new HashSet<>();
+        for (ScholardexPublicationView row : publicationViews) {
+            if (row.getId() != null && !row.getId().isBlank()) {
+                publicationIds.add(row.getId());
+            }
+        }
+        Set<String> authorIds = new HashSet<>();
+        for (ScholardexAuthorView row : authorViews) {
+            if (row.getId() != null && !row.getId().isBlank()) {
+                authorIds.add(row.getId());
+            }
+        }
+        Set<String> affiliationIds = new HashSet<>();
+        for (ScholardexAffiliationView row : affiliationViews) {
+            if (row.getId() != null && !row.getId().isBlank()) {
+                affiliationIds.add(row.getId());
+            }
+        }
+
+        List<ScholardexCitationFact> validCitationFacts = citationFacts.stream()
+                .filter(row -> row.getCitedPublicationId() != null
+                        && row.getCitingPublicationId() != null
+                        && publicationIds.contains(row.getCitedPublicationId())
+                        && publicationIds.contains(row.getCitingPublicationId()))
+                .toList();
+        List<ScholardexAuthorshipFact> validAuthorshipFacts = authorshipFacts.stream()
+                .filter(row -> row.getPublicationId() != null
+                        && row.getAuthorId() != null
+                        && publicationIds.contains(row.getPublicationId())
+                        && authorIds.contains(row.getAuthorId()))
+                .toList();
+        List<ScholardexAuthorAffiliationFact> validAuthorAffiliationFacts = authorAffiliationFacts.stream()
+                .filter(row -> row.getAuthorId() != null
+                        && row.getAffiliationId() != null
+                        && authorIds.contains(row.getAuthorId())
+                        && affiliationIds.contains(row.getAffiliationId()))
+                .toList();
+
+        int droppedCitations = citationFacts.size() - validCitationFacts.size();
+        int droppedAuthorship = authorshipFacts.size() - validAuthorshipFacts.size();
+        int droppedAuthorAffiliation = authorAffiliationFacts.size() - validAuthorAffiliationFacts.size();
+        if (droppedCitations > 0 || droppedAuthorship > 0 || droppedAuthorAffiliation > 0) {
+            log.warn(
+                    "H22.3 scopus edge filter: runId={} droppedCitations={} droppedAuthorship={} droppedAuthorAffiliation={} reason=missing-parent-rows",
+                    runId,
+                    droppedCitations,
+                    droppedAuthorship,
+                    droppedAuthorAffiliation
+            );
+        }
 
         if (properties.isDryRun()) {
             long totalRows = publicationViews.size() + authorViews.size() + forumViews.size()
-                    + affiliationViews.size() + citationFacts.size() + authorshipFacts.size() + authorAffiliationFacts.size();
+                    + affiliationViews.size() + validCitationFacts.size() + validAuthorshipFacts.size() + validAuthorAffiliationFacts.size();
             return new SliceProjectionResult(totalRows, "dry-run: no SQL writes");
         }
 
         String token = tempSuffix(runId);
+        long[] phaseMs = new long[4];
         transactionTemplate.executeWithoutResult(status -> {
             applyStatementTimeout();
 
+            long setupNs = System.nanoTime();
             String tmpPublication = "tmp_scholardex_publication_view_" + token;
             String tmpAuthor = "tmp_scholardex_author_view_" + token;
             String tmpForum = "tmp_scholardex_forum_view_" + token;
@@ -337,23 +479,43 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
             createTempLike(tmpCitation, "reporting_read.scholardex_citation_fact");
             createTempLike(tmpAuthorship, "reporting_read.scholardex_authorship_fact");
             createTempLike(tmpAuthorAffiliation, "reporting_read.scholardex_author_affiliation_fact");
+            phaseMs[0] = elapsedMs(setupNs);
 
+            long stageNs = System.nanoTime();
+            long tableNs = System.nanoTime();
             insertPublicationRows(tmpPublication, publicationViews, runId, runStartedAt);
+            log.info("H22.3 scopus stage load: runId={} table=scholardex_publication_view rows={} durationMs={}", runId, publicationViews.size(), elapsedMs(tableNs));
+            tableNs = System.nanoTime();
             insertAuthorRows(tmpAuthor, authorViews, runId, runStartedAt);
+            log.info("H22.3 scopus stage load: runId={} table=scholardex_author_view rows={} durationMs={}", runId, authorViews.size(), elapsedMs(tableNs));
+            tableNs = System.nanoTime();
             insertForumRows(tmpForum, forumViews, runId, runStartedAt);
+            log.info("H22.3 scopus stage load: runId={} table=scholardex_forum_view rows={} durationMs={}", runId, forumViews.size(), elapsedMs(tableNs));
+            tableNs = System.nanoTime();
             insertAffiliationRows(tmpAffiliation, affiliationViews, runId, runStartedAt);
-            insertCitationRows(tmpCitation, citationFacts);
-            insertAuthorshipRows(tmpAuthorship, authorshipFacts);
-            insertAuthorAffiliationRows(tmpAuthorAffiliation, authorAffiliationFacts);
+            log.info("H22.3 scopus stage load: runId={} table=scholardex_affiliation_view rows={} durationMs={}", runId, affiliationViews.size(), elapsedMs(tableNs));
+            tableNs = System.nanoTime();
+            insertCitationRows(tmpCitation, validCitationFacts);
+            log.info("H22.3 scopus stage load: runId={} table=scholardex_citation_fact rows={} durationMs={}", runId, validCitationFacts.size(), elapsedMs(tableNs));
+            tableNs = System.nanoTime();
+            insertAuthorshipRows(tmpAuthorship, validAuthorshipFacts);
+            log.info("H22.3 scopus stage load: runId={} table=scholardex_authorship_fact rows={} durationMs={}", runId, validAuthorshipFacts.size(), elapsedMs(tableNs));
+            tableNs = System.nanoTime();
+            insertAuthorAffiliationRows(tmpAuthorAffiliation, validAuthorAffiliationFacts);
+            log.info("H22.3 scopus stage load: runId={} table=scholardex_author_affiliation_fact rows={} durationMs={}", runId, validAuthorAffiliationFacts.size(), elapsedMs(tableNs));
+            phaseMs[1] = elapsedMs(stageNs);
 
+            long verifyNs = System.nanoTime();
             verifyCount(tmpPublication, publicationViews.size());
             verifyCount(tmpAuthor, authorViews.size());
             verifyCount(tmpForum, forumViews.size());
             verifyCount(tmpAffiliation, affiliationViews.size());
-            verifyCount(tmpCitation, citationFacts.size());
-            verifyCount(tmpAuthorship, authorshipFacts.size());
-            verifyCount(tmpAuthorAffiliation, authorAffiliationFacts.size());
+            verifyCount(tmpCitation, validCitationFacts.size());
+            verifyCount(tmpAuthorship, validAuthorshipFacts.size());
+            verifyCount(tmpAuthorAffiliation, validAuthorAffiliationFacts.size());
+            phaseMs[2] = elapsedMs(verifyNs);
 
+            long swapNs = System.nanoTime();
             jdbcTemplate.execute("""
                     TRUNCATE TABLE
                         reporting_read.scholardex_author_affiliation_fact,
@@ -372,11 +534,21 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
             jdbcTemplate.execute("INSERT INTO reporting_read.scholardex_citation_fact SELECT * FROM " + tmpCitation);
             jdbcTemplate.execute("INSERT INTO reporting_read.scholardex_authorship_fact SELECT * FROM " + tmpAuthorship);
             jdbcTemplate.execute("INSERT INTO reporting_read.scholardex_author_affiliation_fact SELECT * FROM " + tmpAuthorAffiliation);
+            phaseMs[3] = elapsedMs(swapNs);
         });
 
         long totalRows = publicationViews.size() + authorViews.size() + forumViews.size()
-                + affiliationViews.size() + citationFacts.size() + authorshipFacts.size() + authorAffiliationFacts.size();
-        return new SliceProjectionResult(totalRows, "scopus slice projected");
+                + affiliationViews.size() + validCitationFacts.size() + validAuthorshipFacts.size() + validAuthorAffiliationFacts.size();
+        log.info(
+                "H22.3 scopus sql phases: runId={} tempSetupMs={} stageLoadMs={} verifyMs={} swapMs={} totalRows={}",
+                runId, phaseMs[0], phaseMs[1], phaseMs[2], phaseMs[3], totalRows
+        );
+        return new SliceProjectionResult(
+                totalRows,
+                "scopus slice projected (dropped: citations=" + droppedCitations
+                        + ", authorship=" + droppedAuthorship
+                        + ", authorAffiliation=" + droppedAuthorAffiliation + ")"
+        );
     }
 
     private void insertWosRankingRows(String tempTable, List<WosRankingView> rows, String runId, Instant runStartedAt) {
@@ -1033,6 +1205,17 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 not available", e);
         }
+    }
+
+    private static long elapsedMs(long startedNs) {
+        return (System.nanoTime() - startedNs) / 1_000_000L;
+    }
+
+    private static String shortFingerprint(String value) {
+        if (value == null || value.isBlank()) {
+            return "none";
+        }
+        return value.length() <= 12 ? value : value.substring(0, 12);
     }
 
     private record SliceProjectionResult(long insertedRows, String note) {

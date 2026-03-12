@@ -1,7 +1,8 @@
 package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -16,7 +17,6 @@ import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
 
-import javax.sql.DataSource;
 import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -31,7 +31,8 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
-@ConditionalOnBean(DataSource.class)
+@Slf4j
+@ConditionalOnProperty(name = "spring.datasource.url")
 public class PostgresReportingLookupFacade implements ReportingLookupPort {
 
     private static final Set<EditionNormalized> OPERATIONAL_EDITIONS = EnumSet.of(
@@ -49,11 +50,13 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
 
     @Override
     public List<WoSRanking> getRankingsByIssn(String issn) {
+        long totalStartedAtNanos = System.nanoTime();
         String normalizedIssn = normalizeIssn(issn);
         if (normalizedIssn == null) {
             return List.of();
         }
 
+        long rankingLookupStartedAtNanos = System.nanoTime();
         List<WosRankingView> views = namedParameterJdbcTemplate.query(
                 """
                         SELECT journal_id, name, issn, e_issn, alternative_issns, alternative_names
@@ -65,13 +68,23 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
                 new MapSqlParameterSource("issn", normalizedIssn),
                 this::mapRankingView
         );
+        long rankingLookupMs = nanosToMillis(System.nanoTime() - rankingLookupStartedAtNanos);
 
         if (views.isEmpty()) {
+            if (log.isDebugEnabled()) {
+                log.debug(
+                        "WoS ISSN lookup timings [issn={}]: rankingLookupMs={}, metricLoadMs=0, categoryLoadMs=0, assemblyMs=0, totalMs={}",
+                        normalizedIssn,
+                        rankingLookupMs,
+                        nanosToMillis(System.nanoTime() - totalStartedAtNanos)
+                );
+            }
             return List.of();
         }
 
         List<String> journalIds = views.stream().map(WosRankingView::getId).toList();
 
+        long metricLoadStartedAtNanos = System.nanoTime();
         List<WosMetricFact> metricFacts = namedParameterJdbcTemplate.query(
                 """
                         SELECT journal_id, year, metric_type, value
@@ -91,18 +104,18 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
                     return fact;
                 }
         );
+        long metricLoadMs = nanosToMillis(System.nanoTime() - metricLoadStartedAtNanos);
 
+        long categoryLoadStartedAtNanos = System.nanoTime();
         List<WosCategoryFact> categoryFacts = namedParameterJdbcTemplate.query(
                 """
                         SELECT journal_id, year, category_name_canonical, edition_normalized,
-                               metric_type, quarter, quartile_rank, rank
+                               metric_type, quarter, quartile_rank, "rank" AS rank_value
                         FROM reporting_read.wos_category_fact
                         WHERE journal_id IN (:journalIds)
-                          AND edition_normalized IN (:editions)
+                          AND edition_normalized IN ('SCIE', 'SSCI')
                         """,
-                new MapSqlParameterSource()
-                        .addValue("journalIds", journalIds)
-                        .addValue("editions", OPERATIONAL_EDITIONS.stream().map(Enum::name).toList()),
+                new MapSqlParameterSource().addValue("journalIds", journalIds),
                 (rs, rowNum) -> {
                     WosCategoryFact fact = new WosCategoryFact();
                     fact.setJournalId(rs.getString("journal_id"));
@@ -118,11 +131,13 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
                     }
                     fact.setQuarter(rs.getString("quarter"));
                     fact.setQuartileRank(rs.getObject("quartile_rank", Integer.class));
-                    fact.setRank(rs.getObject("rank", Integer.class));
+                    fact.setRank(rs.getObject("rank_value", Integer.class));
                     return fact;
                 }
         );
+        long categoryLoadMs = nanosToMillis(System.nanoTime() - categoryLoadStartedAtNanos);
 
+        long assemblyStartedAtNanos = System.nanoTime();
         Map<String, List<WosMetricFact>> scoresByJournal = new HashMap<>();
         for (WosMetricFact metricFact : metricFacts) {
             scoresByJournal.computeIfAbsent(metricFact.getJournalId(), ignored -> new ArrayList<>()).add(metricFact);
@@ -141,6 +156,19 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
                 continue;
             }
             rankings.add(toLegacyRanking(view, journalScores, journalCategories));
+        }
+        long assemblyMs = nanosToMillis(System.nanoTime() - assemblyStartedAtNanos);
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "WoS ISSN lookup timings [issn={}, journals={}]: rankingLookupMs={}, metricLoadMs={}, categoryLoadMs={}, assemblyMs={}, totalMs={}",
+                    normalizedIssn,
+                    journalIds.size(),
+                    rankingLookupMs,
+                    metricLoadMs,
+                    categoryLoadMs,
+                    assemblyMs,
+                    nanosToMillis(System.nanoTime() - totalStartedAtNanos)
+            );
         }
         return rankings;
     }
@@ -170,7 +198,7 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
                         FROM reporting_read.mv_wos_top_rankings_q1_ais
                         WHERE year = :year
                           AND category_name_canonical = :category
-                          AND edition_normalized IN (:editions)
+                          AND edition_normalized::text IN (:editions)
                         """,
                 new MapSqlParameterSource()
                         .addValue("year", year)
@@ -329,6 +357,10 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
             return new ParsedCategory("", edition);
         }
         return new ParsedCategory(categoryName, edition);
+    }
+
+    private long nanosToMillis(long nanos) {
+        return nanos / 1_000_000L;
     }
 
     private record ParsedCategory(String categoryNameCanonical, EditionNormalized editionNormalized) {

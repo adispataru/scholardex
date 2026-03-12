@@ -3,13 +3,14 @@ package ro.uvt.pokedex.core.service.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationListItemResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationPageResponse;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationSearchView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 
 import java.util.List;
 import java.util.Locale;
@@ -29,7 +30,14 @@ public class MongoScopusAffiliationReadPort implements ScopusAffiliationReadPort
         Sort.Direction normalizedDirection = normalizeDirection(direction);
         String normalizedQuery = normalizeQuery(q);
 
-        Query query = new Query().with(PageRequest.of(page, size, Sort.by(normalizedDirection, normalizedSort)));
+        Query query = new Query().with(PageRequest.of(
+                page,
+                size,
+                Sort.by(
+                        new Order(normalizedDirection, normalizedSort),
+                        new Order(normalizedDirection, "_id")
+                )
+        ));
         if (normalizedQuery != null) {
             String pattern = ".*" + Pattern.quote(normalizedQuery) + ".*";
             query.addCriteria(new Criteria().orOperator(
@@ -40,8 +48,8 @@ public class MongoScopusAffiliationReadPort implements ScopusAffiliationReadPort
             ));
         }
 
-        List<ScopusAffiliationSearchView> rows = mongoTemplate.find(query, ScopusAffiliationSearchView.class);
-        long totalItems = mongoTemplate.count(Query.of(query).limit(-1).skip(-1), ScopusAffiliationSearchView.class);
+        List<ScholardexAffiliationView> rows = mongoTemplate.find(query, ScholardexAffiliationView.class);
+        long totalItems = mongoTemplate.count(Query.of(query).limit(-1).skip(-1), ScholardexAffiliationView.class);
         int totalPages = (int) Math.ceil(totalItems / (double) size);
 
         List<ScopusAffiliationListItemResponse> items = rows.stream()
@@ -50,7 +58,7 @@ public class MongoScopusAffiliationReadPort implements ScopusAffiliationReadPort
         return new ScopusAffiliationPageResponse(items, page, size, totalItems, totalPages);
     }
 
-    private ScopusAffiliationListItemResponse toListItem(ScopusAffiliationSearchView affiliation) {
+    private ScopusAffiliationListItemResponse toListItem(ScholardexAffiliationView affiliation) {
         return new ScopusAffiliationListItemResponse(
                 affiliation.getId(),
                 affiliation.getName(),

@@ -1,18 +1,18 @@
 package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.scopus.Author;
+import ro.uvt.pokedex.core.model.scopus.Affiliation;
 import ro.uvt.pokedex.core.model.scopus.Citation;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.service.application.model.AdminScopusCitationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminScopusPublicationSearchViewModel;
 
-import javax.sql.DataSource;
 import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,7 +29,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@ConditionalOnBean(DataSource.class)
+@ConditionalOnProperty(name = "spring.datasource.url")
 public class PostgresAdminScopusReadPort implements AdminScopusReadPort {
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
@@ -163,12 +164,20 @@ public class PostgresAdminScopusReadPort implements AdminScopusReadPort {
             return List.of();
         }
         return namedParameterJdbcTemplate.query(
-                "SELECT id, name FROM reporting_read.scholardex_author_view WHERE id IN (:ids)",
+                "SELECT id, name, affiliation_ids FROM reporting_read.scholardex_author_view WHERE id IN (:ids)",
                 new MapSqlParameterSource("ids", authorIds),
                 (rs, rowNum) -> {
                     Author author = new Author();
                     author.setId(rs.getString("id"));
                     author.setName(rs.getString("name"));
+                    List<Affiliation> affiliations = toStringList(rs.getArray("affiliation_ids")).stream()
+                            .map(affiliationId -> {
+                                Affiliation affiliation = new Affiliation();
+                                affiliation.setAfid(affiliationId);
+                                return affiliation;
+                            })
+                            .toList();
+                    author.setAffiliations(affiliations);
                     return author;
                 }
         );
@@ -226,7 +235,7 @@ public class PostgresAdminScopusReadPort implements AdminScopusReadPort {
         publication.setAuthors(toStringList(rs.getArray("author_ids")));
         publication.setAffiliations(toStringList(rs.getArray("affiliation_ids")));
         publication.setForum(rs.getString("forum_id"));
-        publication.setCitedBy(new HashSet<>(toStringList(rs.getArray("citing_publication_ids"))));
+        publication.setCitedBy(new LinkedHashSet<>(toStringList(rs.getArray("citing_publication_ids"))));
         Integer citedByCount = rs.getObject("cited_by_count", Integer.class);
         publication.setCitedbyCount(citedByCount == null ? 0 : citedByCount);
         return publication;

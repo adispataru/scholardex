@@ -23,6 +23,7 @@ public interface DualReadGateService {
 
     record DualReadScenarioResult(
             String scenarioId,
+            String scenarioType,
             String status,
             boolean parityPassed,
             boolean performancePassed,
@@ -31,6 +32,7 @@ public interface DualReadGateService {
             double postgresAvgMs,
             double postgresP95Ms,
             Double p95Ratio,
+            Double p95ThresholdMs,
             String mismatchSample,
             Instant startedAt,
             Instant completedAt

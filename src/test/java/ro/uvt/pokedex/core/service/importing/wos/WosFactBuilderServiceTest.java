@@ -17,6 +17,7 @@ import ro.uvt.pokedex.core.model.reporting.wos.WosSourceType;
 import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosFactConflictRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
+import ro.uvt.pokedex.core.service.application.WosIndexMaintenanceService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.wos.model.IdentityResolutionResult;
 import ro.uvt.pokedex.core.service.importing.wos.model.WosIdentityResolutionStatus;
@@ -26,6 +27,8 @@ import ro.uvt.pokedex.core.service.importing.wos.model.WosParserRunSummary;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -33,9 +36,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -49,6 +54,7 @@ class WosFactBuilderServiceTest {
     @Mock private WosFactConflictRepository factConflictRepository;
     @Mock private MongoTemplate mongoTemplate;
     @Mock private WosFactBuildCheckpointService checkpointService;
+    @Mock private WosIndexMaintenanceService wosIndexMaintenanceService;
 
     private final List<WosMetricFact> metricStore = new ArrayList<>();
     private final List<WosCategoryFact> categoryStore = new ArrayList<>();
@@ -69,10 +75,16 @@ class WosFactBuilderServiceTest {
                 factConflictRepository,
                 mongoTemplate,
                 checkpointService,
+                wosIndexMaintenanceService,
+                new WosOptimizationProperties(),
                 meterRegistry
         );
 
         lenient().when(identityResolutionService.resolveIdentity(anyString(), anyString(), anyString(), any()))
+                .thenReturn(new IdentityResolutionResult("jid-1", "key", WosIdentityResolutionStatus.MATCHED, null));
+        lenient().when(identityResolutionService.findCandidatesByIssnTokenSets(any()))
+                .thenReturn(java.util.Map.of());
+        lenient().when(identityResolutionService.resolveIdentityWithPrefetchedCandidates(anyString(), anyString(), anyString(), any(), any()))
                 .thenReturn(new IdentityResolutionResult("jid-1", "key", WosIdentityResolutionStatus.MATCHED, null));
 
         lenient().when(mongoTemplate.find(any(Query.class), eq(WosMetricFact.class)))
@@ -263,6 +275,57 @@ class WosFactBuilderServiceTest {
         assertEquals(1, result.getUpdatedCount());
         assertEquals(1.1, existing.getValue());
         assertTrue(conflictStore.stream().anyMatch(c -> "METRIC_SCORE".equals(c.getFactType())));
+    }
+
+    @Test
+    void repeatedIdentityResolutionUsesRunLocalCache() {
+        WosParsedRecord first = record(MetricType.AIS, WosSourceType.GOV_AIS_RIS, 1.0, "v2024", "1", "ACOUSTICS", EditionNormalized.SCIE, "Q1", 1);
+        WosParsedRecord second = record(MetricType.AIS, WosSourceType.GOV_AIS_RIS, 1.1, "v2024", "2", "ACOUSTICS", EditionNormalized.SCIE, "Q1", 2);
+        when(parserOrchestrator.parseAllEvents()).thenReturn(runOf(List.of(first, second)));
+        when(identityResolutionService.resolveIdentityWithPrefetchedCandidates(anyString(), anyString(), anyString(), any(), any()))
+                .thenReturn(new IdentityResolutionResult("jid-1", "key", WosIdentityResolutionStatus.MATCHED, null));
+
+        service.buildFactsFromImportEvents();
+
+        verify(identityResolutionService, times(1))
+                .resolveIdentityWithPrefetchedCandidates(anyString(), anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    void skipsCandidatePrefetchWhenChunkHasNoUnresolvedRecords() {
+        WosParsedRecord first = recordWithIdentity("11112222", "33334444", MetricType.AIS, WosSourceType.GOV_AIS_RIS, 1.0, "v2024", "1");
+        WosParsedRecord second = recordWithIdentity("11112222", "33334444", MetricType.AIS, WosSourceType.GOV_AIS_RIS, 1.1, "v2024", "2");
+        when(parserOrchestrator.parseAllEvents()).thenReturn(runOf(List.of(first, second)));
+        when(identityResolutionService.findJournalIdsByIdentityKeys(any()))
+                .thenAnswer(invocation -> {
+                    @SuppressWarnings("unchecked")
+                    Set<String> keys = invocation.getArgument(0);
+                    return keys.stream().collect(java.util.stream.Collectors.toMap(k -> k, k -> "jid-1"));
+                });
+
+        service.buildFactsFromImportEvents();
+
+        verify(identityResolutionService, never()).findCandidatesByIssnTokenSets(any());
+        verify(identityResolutionService, never())
+                .resolveIdentityWithPrefetchedCandidates(anyString(), anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    void prefetchesCandidatesOnlyForUnresolvedTokenSets() {
+        WosParsedRecord resolvedByIdentityKey = recordWithIdentity("11112222", "33334444", MetricType.AIS, WosSourceType.GOV_AIS_RIS, 1.0, "v2024", "1");
+        WosParsedRecord unresolved = recordWithIdentity("55556666", "77778888", MetricType.AIS, WosSourceType.GOV_AIS_RIS, 1.2, "v2024", "2");
+        when(parserOrchestrator.parseAllEvents()).thenReturn(runOf(List.of(resolvedByIdentityKey, unresolved)));
+        String resolvedIdentityKey = identityKeyFor("11112222", "33334444", 2023, EditionNormalized.SCIE.name());
+        when(identityResolutionService.findJournalIdsByIdentityKeys(any()))
+                .thenReturn(Map.of(resolvedIdentityKey, "jid-1"));
+
+        service.buildFactsFromImportEvents();
+
+        verify(identityResolutionService, times(1))
+                .findCandidatesByIssnTokenSets(argThat(tokenSets ->
+                        tokenSets.size() == 1
+                                && tokenSets.containsKey("55556666|77778888")
+                                && !tokenSets.containsKey("11112222|33334444")));
     }
 
     @Test
@@ -488,6 +551,48 @@ class WosFactBuilderServiceTest {
                 "file.xlsx",
                 sourceVersion,
                 sourceRowItem
+        );
+    }
+
+    private WosParsedRecord recordWithIdentity(
+            String issn,
+            String eIssn,
+            MetricType metricType,
+            WosSourceType sourceType,
+            Double value,
+            String sourceVersion,
+            String sourceRowItem
+    ) {
+        return new WosParsedRecord(
+                "Journal",
+                issn,
+                eIssn,
+                2023,
+                metricType,
+                value,
+                "ACOUSTICS",
+                EditionNormalized.SCIE.name(),
+                EditionNormalized.SCIE,
+                "Q1",
+                null,
+                1,
+                "ev-1",
+                sourceType,
+                "file.xlsx",
+                sourceVersion,
+                sourceRowItem
+        );
+    }
+
+    private String identityKeyFor(String issn, String eIssn, int year, String editionRaw) {
+        return WosCanonicalContractSupport.buildIdentityKey(
+                Set.of(
+                        WosCanonicalContractSupport.normalizeIssnToken(issn),
+                        WosCanonicalContractSupport.normalizeIssnToken(eIssn)
+                ),
+                null,
+                year,
+                editionRaw
         );
     }
 

@@ -1,14 +1,13 @@
 package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.controller.dto.ScopusAuthorListItemResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusAuthorPageResponse;
 
-import javax.sql.DataSource;
 import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -20,7 +19,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-@ConditionalOnBean(DataSource.class)
+@ConditionalOnProperty(name = "spring.datasource.url")
 public class PostgresScopusAuthorReadPort implements ScopusAuthorReadPort {
 
     private static final int MAX_QUERY_LENGTH = 100;
@@ -37,12 +36,13 @@ public class PostgresScopusAuthorReadPort implements ScopusAuthorReadPort {
         StringBuilder whereClause = new StringBuilder(" WHERE 1=1");
         MapSqlParameterSource params = new MapSqlParameterSource();
         if (normalizedAfid != null) {
-            whereClause.append(" AND :afid = ANY(a.affiliation_ids)");
+            // Use array containment so Postgres can leverage the GIN index on affiliation_ids.
+            whereClause.append(" AND a.affiliation_ids @> ARRAY[:afid]::text[]");
             params.addValue("afid", normalizedAfid);
         }
         if (normalizedQuery != null) {
-            whereClause.append(" AND (a.name ILIKE :qPattern OR a.id ILIKE :qPattern)");
-            params.addValue("qPattern", "%" + normalizedQuery + "%");
+            whereClause.append(" AND (a.name ILIKE :qPattern ESCAPE '\\' OR a.id ILIKE :qPattern ESCAPE '\\')");
+            params.addValue("qPattern", "%" + escapeLikePattern(normalizedQuery) + "%");
         }
 
         params.addValue("limit", size);
@@ -51,7 +51,8 @@ public class PostgresScopusAuthorReadPort implements ScopusAuthorReadPort {
         String sql = """
                 SELECT a.id, a.name, a.affiliation_ids
                 FROM reporting_read.scholardex_author_view a
-                """ + whereClause + " ORDER BY " + normalizedSort + " " + normalizedDirection + " LIMIT :limit OFFSET :offset";
+                """ + whereClause + " ORDER BY " + normalizedSort + " " + normalizedDirection
+                + ", a.id COLLATE \"C\" " + normalizedDirection + " LIMIT :limit OFFSET :offset";
 
         List<AuthorRow> rows = namedParameterJdbcTemplate.query(sql, params, this::mapAuthorRow);
 
@@ -114,8 +115,8 @@ public class PostgresScopusAuthorReadPort implements ScopusAuthorReadPort {
     private String normalizeSort(String sort) {
         String normalized = sort == null ? "" : sort.trim();
         return switch (normalized) {
-            case "name" -> "a.name";
-            case "id" -> "a.id";
+            case "name" -> "a.name COLLATE \"C\"";
+            case "id" -> "a.id COLLATE \"C\"";
             default -> throw new IllegalArgumentException("Invalid sort parameter. Allowed: name, id.");
         };
     }
@@ -148,6 +149,13 @@ public class PostgresScopusAuthorReadPort implements ScopusAuthorReadPort {
         }
         String normalized = afid.trim();
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String escapeLikePattern(String value) {
+        return value
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 
     private record AuthorRow(String id, String name, List<String> affiliationIds) {

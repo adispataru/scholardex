@@ -186,40 +186,6 @@ class AdminInitializationControllerContractTest {
     }
 
     @Test
-    void runWosBigBangRedirectsToInitializationPage() throws Exception {
-        when(rankingMaintenanceFacade.runWosBigBangMigration(eq(true), eq("v2026"), eq(200), eq(true)))
-                .thenReturn(new WosBigBangMigrationService.WosBigBangMigrationResult(
-                        true,
-                        "data/loaded",
-                        "v2026",
-                        Instant.now(),
-                        Instant.now(),
-                        new WosBigBangMigrationService.MigrationStepResult("ingest", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
-                                null, null, null, null, null),
-                        new WosBigBangMigrationService.MigrationStepResult("facts", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
-                                200, null, 0, false, 199),
-                        new WosBigBangMigrationService.MigrationStepResult("enrichment", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
-                                null, null, null, null, null),
-                        new WosBigBangMigrationService.MigrationStepResult("projections", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
-                                null, null, null, null, null),
-                        new WosBigBangMigrationService.VerificationSummary(
-                                0, 0, 0, 0, 0, 0,
-                                0, 0, 0, 0, List.of(),
-                                true, true, false, 0, 0, List.of(), List.of()
-                        )
-                ));
-
-        mockMvc.perform(post("/admin/initialization/wos/runBigBangMigration")
-                        .param("dryRun", "true")
-                        .param("sourceVersion", "v2026")
-                        .param("startBatchOverride", "200"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/initialization"));
-
-        verify(rankingMaintenanceFacade).runWosBigBangMigration(true, "v2026", 200, true);
-    }
-
-    @Test
     void runPostgresProjectionActionsRedirectToInitializationPage() throws Exception {
         when(postgresReportingProjectionService.runFullRebuild())
                 .thenReturn(new PostgresReportingProjectionService.ProjectionRunSummary(
@@ -405,6 +371,7 @@ class AdminInitializationControllerContractTest {
                         false,
                         null,
                         null,
+                        0L,
                         0,
                         0,
                         0,
@@ -496,6 +463,7 @@ class AdminInitializationControllerContractTest {
                         true,
                         Instant.now(),
                         Instant.now(),
+                        1000L,
                         1000,
                         240,
                         760,
@@ -519,6 +487,7 @@ class AdminInitializationControllerContractTest {
                         true,
                         Instant.parse("2026-03-08T09:00:00Z"),
                         Instant.parse("2026-03-08T09:00:05Z"),
+                        5000L,
                         1000,
                         240,
                         760,
@@ -548,6 +517,7 @@ class AdminInitializationControllerContractTest {
                         true,
                         Instant.now(),
                         Instant.now(),
+                        10L,
                         10,
                         2,
                         8,
@@ -571,6 +541,7 @@ class AdminInitializationControllerContractTest {
                         false,
                         null,
                         null,
+                        0L,
                         0,
                         0,
                         0,
@@ -614,17 +585,6 @@ class AdminInitializationControllerContractTest {
                 .andExpect(redirectedUrl("/admin/initialization"));
 
         org.mockito.Mockito.verifyNoInteractions(rankingMaintenanceFacade);
-    }
-
-    @Test
-    void runScopusBigBangRedirectsToInitializationPage() throws Exception {
-        when(scopusBigBangMigrationService.runFull()).thenReturn(buildScopusResult());
-
-        mockMvc.perform(post("/admin/initialization/scopus/runBigBang"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/initialization"));
-
-        verify(scopusBigBangMigrationService).runFull();
     }
 
     @Test
@@ -751,16 +711,4 @@ class AdminInitializationControllerContractTest {
         org.mockito.Mockito.verifyNoInteractions(scopusBigBangMigrationService);
     }
 
-    private ScopusBigBangMigrationService.ScopusBigBangMigrationResult buildScopusResult() {
-        return new ScopusBigBangMigrationService.ScopusBigBangMigrationResult(
-                "data/scopus.json",
-                Instant.now(),
-                Instant.now(),
-                new ScopusBigBangMigrationService.MigrationStepResult("ingest", true, 10, 5, 0, 5, 0, null, List.of(), null, null, null, null, null, null),
-                new ScopusBigBangMigrationService.MigrationStepResult("build-facts", true, 10, 10, 0, 0, 0, null, List.of(), 0, 0, 1, 1, false, -1),
-                new ScopusBigBangMigrationService.MigrationStepResult("build-projections", true, 10, 10, 0, 0, 0, null, List.of(), null, null, null, null, null, null),
-                new ScopusBigBangMigrationService.IndexStepResult(true, 1, 0, 0, 0, List.of(), List.of()),
-                new ScopusBigBangMigrationService.VerificationSummary(10, 5, 5, 5, 5, 1, 1, 1, 1, 1, 1, 5, 5)
-        );
-    }
 }

@@ -3,6 +3,7 @@ package ro.uvt.pokedex.core.service.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -34,7 +35,14 @@ public class MongoScopusAuthorReadPort implements ScopusAuthorReadPort {
         String normalizedQuery = normalizeQuery(q);
         String normalizedAfid = normalizeAfid(afid);
 
-        Query query = new Query().with(PageRequest.of(page, size, Sort.by(normalizedDirection, normalizedSort)));
+        Query query = new Query().with(PageRequest.of(
+                page,
+                size,
+                Sort.by(
+                        new Order(normalizedDirection, normalizedSort),
+                        new Order(normalizedDirection, "_id")
+                )
+        ));
 
         List<Criteria> andCriteria = new ArrayList<>();
         if (normalizedAfid != null) {

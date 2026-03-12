@@ -1,20 +1,19 @@
 package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.controller.dto.ScopusForumListItemResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusForumPageResponse;
 
-import javax.sql.DataSource;
 import java.util.List;
 import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
-@ConditionalOnBean(DataSource.class)
+@ConditionalOnProperty(name = "spring.datasource.url")
 public class PostgresScopusForumReadPort implements ScopusForumReadPort {
 
     private static final int MAX_QUERY_LENGTH = 100;
@@ -30,8 +29,8 @@ public class PostgresScopusForumReadPort implements ScopusForumReadPort {
         StringBuilder whereClause = new StringBuilder(" WHERE 1=1");
         MapSqlParameterSource params = new MapSqlParameterSource();
         if (normalizedQuery != null) {
-            whereClause.append(" AND (publication_name ILIKE :qPattern OR issn ILIKE :qPattern OR e_issn ILIKE :qPattern OR aggregation_type ILIKE :qPattern)");
-            params.addValue("qPattern", "%" + normalizedQuery + "%");
+            whereClause.append(" AND (publication_name ILIKE :qPattern ESCAPE '\\' OR issn ILIKE :qPattern ESCAPE '\\' OR e_issn ILIKE :qPattern ESCAPE '\\' OR aggregation_type ILIKE :qPattern ESCAPE '\\')");
+            params.addValue("qPattern", "%" + escapeLikePattern(normalizedQuery) + "%");
         }
         params.addValue("limit", size);
         params.addValue("offset", (long) page * size);
@@ -39,7 +38,8 @@ public class PostgresScopusForumReadPort implements ScopusForumReadPort {
         String sql = """
                 SELECT id, publication_name, issn, e_issn, aggregation_type
                 FROM reporting_read.scholardex_forum_view
-                """ + whereClause + " ORDER BY " + normalizedSort + " " + normalizedDirection + " LIMIT :limit OFFSET :offset";
+                """ + whereClause + " ORDER BY " + normalizedSort + " " + normalizedDirection
+                + ", id COLLATE \"C\" " + normalizedDirection + " LIMIT :limit OFFSET :offset";
 
         List<ScopusForumListItemResponse> items = namedParameterJdbcTemplate.query(
                 sql,
@@ -67,10 +67,10 @@ public class PostgresScopusForumReadPort implements ScopusForumReadPort {
     private String normalizeSort(String sort) {
         String normalized = sort == null ? "" : sort.trim();
         return switch (normalized) {
-            case "publicationName" -> "publication_name";
-            case "issn" -> "issn";
-            case "eIssn" -> "e_issn";
-            case "aggregationType" -> "aggregation_type";
+            case "publicationName" -> "publication_name COLLATE \"C\"";
+            case "issn" -> "issn COLLATE \"C\"";
+            case "eIssn" -> "e_issn COLLATE \"C\"";
+            case "aggregationType" -> "aggregation_type COLLATE \"C\"";
             default -> throw new IllegalArgumentException("Invalid sort parameter. Allowed: publicationName, issn, eIssn, aggregationType.");
         };
     }
@@ -95,5 +95,12 @@ public class PostgresScopusForumReadPort implements ScopusForumReadPort {
             throw new IllegalArgumentException("Invalid q parameter. Maximum length is " + MAX_QUERY_LENGTH + ".");
         }
         return normalized;
+    }
+
+    private String escapeLikePattern(String value) {
+        return value
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 }

@@ -19,6 +19,8 @@ import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.ScopusBigBangMigrationService;
 import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
 
+import java.util.List;
+
 @Controller
 @RequestMapping("/admin/initialization")
 @RequiredArgsConstructor
@@ -33,7 +35,23 @@ public class AdminInitializationController {
     private final ObjectProvider<H22OperationalStatusService> h22OperationalStatusServiceProvider;
 
     @GetMapping
-    public String showInitializationPage() {
+    public String showInitializationPage(Model model) {
+        DualReadGateService service = dualReadGateServiceProvider.getIfAvailable();
+        DualReadGateService.DualReadGateRunSummary latestRun = null;
+        if (service != null) {
+            DualReadGateService.DualReadGateStatusSnapshot status = service.latestStatus();
+            if (status != null) {
+                latestRun = status.latestRun();
+            }
+        }
+        List<DualReadGateService.DualReadScenarioResult> failedScenarios = latestRun == null
+                ? List.of()
+                : latestRun.scenarios()
+                .stream()
+                .filter(scenario -> !"SUCCESS".equals(scenario.status()))
+                .toList();
+        model.addAttribute("dualReadGateLatestRun", latestRun);
+        model.addAttribute("dualReadGateFailedScenarios", failedScenarios);
         return "admin/initialization";
     }
 
@@ -161,40 +179,6 @@ public class AdminInitializationController {
     @ResponseBody
     public WosEnrichmentRunSummaryDto getLastWosCategoryEnrichmentSummaryApi() {
         return rankingMaintenanceFacade.latestWosCategoryRankingEnrichmentSummary();
-    }
-
-    @PostMapping("/wos/runBigBangMigration")
-    public String runWosBigBangMigration(
-            @RequestParam(name = "dryRun", defaultValue = "true") boolean dryRun,
-            @RequestParam(name = "sourceVersion", required = false) String sourceVersion,
-            @RequestParam(name = "startBatchOverride", required = false) Integer startBatchOverride,
-            RedirectAttributes redirectAttributes
-    ) {
-        try {
-            var result = rankingMaintenanceFacade.runWosBigBangMigration(dryRun, sourceVersion, startBatchOverride, true);
-            String mode = dryRun ? "dry-run" : "full-run";
-            redirectAttributes.addFlashAttribute("successMessage", "WoS big-bang " + mode + " complete. "
-                    + formatWosStep("ingest", result.ingest()) + " "
-                    + formatWosStep("facts", result.buildFacts()) + " "
-                    + formatWosEnrichmentSummary(WosEnrichmentRunSummaryDto.fromStep(
-                    result.enrichCategoryRankings(),
-                    null,
-                    null
-            )) + " "
-                    + formatWosStep("projections", result.buildProjections()) + " "
-                    + "verify[events=" + result.verification().importEvents()
-                    + ", metricFacts=" + result.verification().metricFacts()
-                    + ", categoryFacts=" + result.verification().categoryFacts()
-                    + ", rankingRows=" + result.verification().rankingViewRows()
-                    + ", scoringRows=" + result.verification().scoringViewRows()
-                    + ", parserErrors=" + result.verification().parserErrors()
-                    + ", parityPassed=" + result.verification().parityPassed()
-                    + ", parityMismatches=" + result.verification().parityMismatchCount()
-                    + "].");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "WoS big-bang migration failed: " + e.getMessage());
-        }
-        return "redirect:/admin/initialization";
     }
 
     @PostMapping("/wos/resetFactCheckpoint")
@@ -389,25 +373,6 @@ public class AdminInitializationController {
                         + ", updated=" + result.getUpdatedCount()
                         + ", skipped=" + result.getSkippedCount()
                         + ", errors=" + result.getErrorCount() + ".");
-        return "redirect:/admin/initialization";
-    }
-
-    @PostMapping("/scopus/runBigBang")
-    public String runScopusBigBang(RedirectAttributes redirectAttributes) {
-        try {
-            var result = scopusBigBangMigrationService.runFull();
-            redirectAttributes.addFlashAttribute("successMessage", "Scopus big-bang full-run complete. "
-                    + formatScopusStep("ingest", result.ingest()) + " "
-                    + formatScopusStep("facts", result.buildFacts()) + " "
-                    + formatScopusStep("projections", result.buildProjections()) + " "
-                    + "indexes[created=" + result.ensureIndexes().created()
-                    + ", present=" + result.ensureIndexes().present()
-                    + ", invalid=" + result.ensureIndexes().invalid()
-                    + ", errors=" + result.ensureIndexes().errors() + "]. "
-                    + formatScopusVerification(result.verification()));
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Scopus big-bang failed: " + e.getMessage());
-        }
         return "redirect:/admin/initialization";
     }
 
@@ -630,9 +595,7 @@ public class AdminInitializationController {
         redirectAttributes.addFlashAttribute("successMessage",
                 latestRun == null
                         ? "Postgres dual-read gate status: no run recorded yet."
-                        : "Postgres dual-read gate status: runId=" + latestRun.runId()
-                        + ", status=" + latestRun.status()
-                        + ", scenarios=" + latestRun.scenarios().size() + ".");
+                        : formatDualReadGateStatus(latestRun));
         return "redirect:/admin/initialization";
     }
 
@@ -785,7 +748,53 @@ public class AdminInitializationController {
                 + ", preserved=" + summary.preserved()
                 + ", failed=" + summary.failed()
                 + ", skipped=" + summary.skipped()
+                + ", durationMs=" + summary.durationMs()
                 + "].";
+    }
+
+    private String formatDualReadGateStatus(DualReadGateService.DualReadGateRunSummary latestRun) {
+        var failedScenarios = latestRun.scenarios()
+                .stream()
+                .filter(scenario -> !"SUCCESS".equals(scenario.status()))
+                .toList();
+
+        if (failedScenarios.isEmpty()) {
+            return "Postgres dual-read gate status: runId=" + latestRun.runId()
+                    + ", status=" + latestRun.status()
+                    + ", scenarios=" + latestRun.scenarios().size()
+                    + ", failed=0.";
+        }
+
+        String failedScenarioIds = String.join(", ", failedScenarios.stream()
+                .map(DualReadGateService.DualReadScenarioResult::scenarioId)
+                .limit(3)
+                .toList());
+        String failedScenarioSuffix = failedScenarios.size() > 3 ? "..." : "";
+        String error = firstNonBlank(
+                latestRun.errorSample(),
+                failedScenarios.stream()
+                        .map(DualReadGateService.DualReadScenarioResult::mismatchSample)
+                        .filter(sample -> sample != null && !sample.isBlank())
+                        .findFirst()
+                        .orElse(null),
+                "none"
+        );
+
+        return "Postgres dual-read gate status: runId=" + latestRun.runId()
+                + ", status=" + latestRun.status()
+                + ", scenarios=" + latestRun.scenarios().size()
+                + ", failed=" + failedScenarios.size()
+                + ", failedScenarios=[" + failedScenarioIds + failedScenarioSuffix + "]"
+                + ", error=" + error + ".";
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return "";
     }
 
     private String redirectAfterGeneralStep(

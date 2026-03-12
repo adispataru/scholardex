@@ -67,10 +67,31 @@ Common override options:
 1. Environment variables (Spring relaxed binding), for example:
    - `SPRING_DATA_MONGODB_URI`
    - `SCOPUS_API_KEY`
+   - `POSTGRES_URL`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
+   - `SPRING_PROFILES_ACTIVE=postgres`
 2. Runtime args:
    - `./gradlew bootRun --args='--spring.data.mongodb.uri=mongodb://localhost:27017/scholardex'`
 3. Extra config file:
    - `./gradlew bootRun --args='--spring.config.additional-location=optional:file:./config/local.properties'`
+
+### Local `.env` setup (recommended)
+
+The app now auto-loads an optional project-root `.env` file via:
+
+- `spring.config.import=optional:file:.env[.properties]`
+
+Setup:
+
+1. Copy `.env.example` to `.env`.
+2. Update DB credentials/URLs for your machine.
+3. Start from IntelliJ or terminal (`./gradlew bootRun`).
+   - IntelliJ note: keep the Run Configuration working directory at the project root so `.env` is discovered.
+
+For PostgreSQL profile testing with your brew install, ensure:
+
+- `SPRING_PROFILES_ACTIVE=postgres`
+- `POSTGRES_URL`, `POSTGRES_USER`, `POSTGRES_PASSWORD` are valid
+- `APP_REPORTING_READ_STORE=mongo` unless you intentionally cut over reads
 
 ## Run Tests
 

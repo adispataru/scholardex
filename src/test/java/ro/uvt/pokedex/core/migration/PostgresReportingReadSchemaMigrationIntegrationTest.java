@@ -72,6 +72,7 @@ class PostgresReportingReadSchemaMigrationIntegrationTest {
             assertTrue(indexExists(connection, "reporting_read", "idx_wos_ranking_issn_norm"));
             assertTrue(indexExists(connection, "reporting_read", "idx_wos_ranking_e_issn_norm"));
             assertTrue(indexExists(connection, "reporting_read", "idx_wos_ranking_alt_issns_norm_gin"));
+            assertTrue(indexExists(connection, "reporting_read", "idx_wos_category_fact_journal_edition_metric_year"));
             assertTrue(indexExists(connection, "reporting_read", "uq_scholardex_publication_eid"));
             assertTrue(indexExists(connection, "reporting_read", "idx_scholardex_publication_title_lower"));
             assertTrue(indexExists(connection, "reporting_read", "idx_scholardex_citation_cited"));

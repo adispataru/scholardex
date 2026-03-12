@@ -9,6 +9,7 @@ public record WosEnrichmentRunSummaryDto(
         boolean executed,
         Instant startedAt,
         Instant completedAt,
+        long durationMs,
         int processed,
         int computed,
         int preserved,
@@ -21,6 +22,10 @@ public record WosEnrichmentRunSummaryDto(
             Instant startedAt,
             Instant completedAt
     ) {
+        long durationMs = 0L;
+        if (startedAt != null && completedAt != null) {
+            durationMs = Math.max(0L, completedAt.toEpochMilli() - startedAt.toEpochMilli());
+        }
         int processed = step == null ? 0 : step.processed();
         int computed = step == null ? 0 : step.updated();
         int failed = step == null ? 0 : step.errors();
@@ -31,6 +36,7 @@ public record WosEnrichmentRunSummaryDto(
                 step != null && step.executed(),
                 startedAt,
                 completedAt,
+                durationMs,
                 processed,
                 computed,
                 preserved,
@@ -46,6 +52,7 @@ public record WosEnrichmentRunSummaryDto(
                 false,
                 null,
                 null,
+                0L,
                 0,
                 0,
                 0,

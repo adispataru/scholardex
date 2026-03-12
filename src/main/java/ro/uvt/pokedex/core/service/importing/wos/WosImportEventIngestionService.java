@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.wos.WosImportEvent;
 import ro.uvt.pokedex.core.model.reporting.wos.WosSourceType;
 import ro.uvt.pokedex.core.repository.reporting.WosImportEventRepository;
+import ro.uvt.pokedex.core.service.application.WosIndexMaintenanceService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.io.File;
@@ -42,10 +43,11 @@ import java.util.regex.Pattern;
 public class WosImportEventIngestionService {
     private static final Logger log = LoggerFactory.getLogger(WosImportEventIngestionService.class);
     private static final Pattern YEAR_FROM_FILENAME = Pattern.compile(".*?(\\d{4}).*");
-    private static final int PERSIST_BATCH_SIZE = 1_000;
 
     private final WosImportEventRepository importEventRepository;
     private final ObjectMapper objectMapper;
+    private final WosOptimizationProperties optimizationProperties;
+    private final WosIndexMaintenanceService wosIndexMaintenanceService;
     @Value("${h14.wos.official-json-dir:data/wos-json-1997-2019}")
     private String officialWosJsonDirectory;
     @Value("${h14.wos.gov-ais.password:uefiscdi}")
@@ -53,13 +55,20 @@ public class WosImportEventIngestionService {
 
     public WosImportEventIngestionService(
             WosImportEventRepository importEventRepository,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            WosOptimizationProperties optimizationProperties,
+            WosIndexMaintenanceService wosIndexMaintenanceService
     ) {
         this.importEventRepository = importEventRepository;
         this.objectMapper = objectMapper;
+        this.optimizationProperties = optimizationProperties;
+        this.wosIndexMaintenanceService = wosIndexMaintenanceService;
     }
 
     public ImportProcessingResult ingestDirectory(String directoryPath, String sourceVersionOverride) {
+        if (optimizationProperties.isPreflightIndexesEnabled()) {
+            wosIndexMaintenanceService.ensureWosIndexesForStage("wos-ingest");
+        }
         ImportProcessingResult total = new ImportProcessingResult(20);
         File dataDir = new File(directoryPath);
         ingestGovernmentAisRisExcel(dataDir, sourceVersionOverride, total);
@@ -143,15 +152,24 @@ public class WosImportEventIngestionService {
                     : inferSourceVersion(fileName);
             String metricType = fileName.substring(0, 3);
             String year = extractYear(fileName);
+            long fileStartedAtNanos = System.nanoTime();
+            long readExistingNs = 0L;
+            long parseSanitizeNs = 0L;
+            long checksumNormalizeNs = 0L;
+            long persistBatchNs = 0L;
+            long flushCount = 0L;
             try (Workbook workbook = openWorkbook(file, metricType)) {
                 Sheet sheet = workbook.getSheetAt(0);
                 FormulaEvaluator formulaEvaluator = workbook.getCreationHelper().createFormulaEvaluator();
                 DataFormatter dataFormatter = new DataFormatter(Locale.ROOT);
                 int numRows = sheet.getPhysicalNumberOfRows();
+                long readExistingStartedAtNanos = System.nanoTime();
                 Map<String, WosImportEvent> existingByRowItem =
                         loadExistingByRowItem(WosSourceType.GOV_AIS_RIS, fileName, sourceVersion);
+                readExistingNs += System.nanoTime() - readExistingStartedAtNanos;
                 List<WosImportEvent> toPersist = new ArrayList<>();
                 for (int i = 1; i < numRows; i++) {
+                    long parseStartedAtNanos = System.nanoTime();
                     Row row = sheet.getRow(i);
                     if (row == null) {
                         continue;
@@ -161,8 +179,11 @@ public class WosImportEventIngestionService {
                     payload.put("year", year);
                     payload.put("cells", extractCells(row, formulaEvaluator, dataFormatter));
                     if (shouldSkipGovEvent(payload, fileResult, total, fileName, Integer.toString(i))) {
+                        parseSanitizeNs += System.nanoTime() - parseStartedAtNanos;
                         continue;
                     }
+                    parseSanitizeNs += System.nanoTime() - parseStartedAtNanos;
+                    long processStartedAtNanos = System.nanoTime();
                     processEventFast(
                             WosSourceType.GOV_AIS_RIS,
                             fileName,
@@ -175,21 +196,38 @@ public class WosImportEventIngestionService {
                             fileResult,
                             total
                     );
-                    flushBatchIfNeeded(toPersist);
+                    checksumNormalizeNs += System.nanoTime() - processStartedAtNanos;
+                    long flushDurationNs = flushBatchIfNeeded(toPersist);
+                    persistBatchNs += flushDurationNs;
+                    if (flushDurationNs > 0) {
+                        flushCount++;
+                    }
+                    maybeLogFileHeartbeat(fileName, fileResult, fileStartedAtNanos, persistBatchNs, flushCount);
                 }
-                flushBatch(toPersist);
+                long flushDurationNs = flushBatch(toPersist);
+                persistBatchNs += flushDurationNs;
+                if (flushDurationNs > 0) {
+                    flushCount++;
+                }
             } catch (Exception e) {
                 fileResult.markError("file=" + fileName + ", error=" + e.getMessage());
                 total.markError("file=" + fileName + ", error=" + e.getMessage());
             }
-            log.info("WoS import-events GOV file summary for {}: processed={}, imported={}, updated={}, skipped={}, errors={}, sample={}",
+            long totalNs = System.nanoTime() - fileStartedAtNanos;
+            log.info("WoS import-events GOV file summary for {}: processed={}, imported={}, updated={}, skipped={}, errors={}, sample={}, timingsMs[readExisting={}, parse+sanitize={}, checksum+normalize={}, persistBatch={}, total={}], throughputPerSec={}",
                     fileName,
                     fileResult.getProcessedCount(),
                     fileResult.getImportedCount(),
                     fileResult.getUpdatedCount(),
                     fileResult.getSkippedCount(),
                     fileResult.getErrorCount(),
-                    fileResult.getErrorsSample());
+                    fileResult.getErrorsSample(),
+                    nanosToMillis(readExistingNs),
+                    nanosToMillis(parseSanitizeNs),
+                    nanosToMillis(checksumNormalizeNs),
+                    nanosToMillis(persistBatchNs),
+                    nanosToMillis(totalNs),
+                    eventsPerSecond(fileResult.getProcessedCount(), totalNs));
         }
     }
 
@@ -208,12 +246,22 @@ public class WosImportEventIngestionService {
             String sourceVersion = sourceVersionOverride != null && !sourceVersionOverride.isBlank()
                     ? sourceVersionOverride
                     : inferSourceVersion(file.getName());
+            long fileStartedAtNanos = System.nanoTime();
+            long readExistingNs = 0L;
+            long parseSanitizeNs = 0L;
+            long checksumNormalizeNs = 0L;
+            long persistBatchNs = 0L;
+            long flushCount = 0L;
             try {
+                long readExistingStartedAtNanos = System.nanoTime();
                 Map<String, WosImportEvent> existingByRowItem =
                         loadExistingByRowItem(WosSourceType.OFFICIAL_WOS_EXTRACT, fileName, sourceVersion);
+                readExistingNs += System.nanoTime() - readExistingStartedAtNanos;
                 List<WosImportEvent> toPersist = new ArrayList<>();
                 byte[] bytes = Files.readAllBytes(file.toPath());
+                long parseStartedAtNanos = System.nanoTime();
                 JsonNode root = objectMapper.readTree(bytes);
+                parseSanitizeNs += System.nanoTime() - parseStartedAtNanos;
                 if (!root.isArray()) {
                     fileResult.markError("file=" + fileName + ", error=root_not_array");
                     total.markError("file=" + fileName + ", error=root_not_array");
@@ -222,13 +270,16 @@ public class WosImportEventIngestionService {
                 Iterator<JsonNode> iterator = root.elements();
                 int idx = 0;
                 while (iterator.hasNext()) {
+                    long sanitizeStartedAtNanos = System.nanoTime();
                     JsonNode item = iterator.next();
                     JsonNode sanitizedItem = sanitizeOfficialJsonIdentity(item);
+                    parseSanitizeNs += System.nanoTime() - sanitizeStartedAtNanos;
                     if (sanitizedItem == null) {
                         markIdentitySkipped(fileResult, total, fileName, Integer.toString(idx));
                         idx++;
                         continue;
                     }
+                    long processStartedAtNanos = System.nanoTime();
                     processEventFast(
                             WosSourceType.OFFICIAL_WOS_EXTRACT,
                             fileName,
@@ -241,22 +292,39 @@ public class WosImportEventIngestionService {
                             fileResult,
                             total
                     );
-                    flushBatchIfNeeded(toPersist);
+                    checksumNormalizeNs += System.nanoTime() - processStartedAtNanos;
+                    long flushDurationNs = flushBatchIfNeeded(toPersist);
+                    persistBatchNs += flushDurationNs;
+                    if (flushDurationNs > 0) {
+                        flushCount++;
+                    }
+                    maybeLogFileHeartbeat(fileName, fileResult, fileStartedAtNanos, persistBatchNs, flushCount);
                     idx++;
                 }
-                flushBatch(toPersist);
+                long flushDurationNs = flushBatch(toPersist);
+                persistBatchNs += flushDurationNs;
+                if (flushDurationNs > 0) {
+                    flushCount++;
+                }
             } catch (Exception e) {
                 fileResult.markError("file=" + fileName + ", error=" + e.getMessage());
                 total.markError("file=" + fileName + ", error=" + e.getMessage());
             }
-            log.info("WoS import-events official JSON summary for {}: processed={}, imported={}, updated={}, skipped={}, errors={}, sample={}",
+            long totalNs = System.nanoTime() - fileStartedAtNanos;
+            log.info("WoS import-events official JSON summary for {}: processed={}, imported={}, updated={}, skipped={}, errors={}, sample={}, timingsMs[readExisting={}, parse+sanitize={}, checksum+normalize={}, persistBatch={}, total={}], throughputPerSec={}",
                     fileName,
                     fileResult.getProcessedCount(),
                     fileResult.getImportedCount(),
                     fileResult.getUpdatedCount(),
                     fileResult.getSkippedCount(),
                     fileResult.getErrorCount(),
-                    fileResult.getErrorsSample());
+                    fileResult.getErrorsSample(),
+                    nanosToMillis(readExistingNs),
+                    nanosToMillis(parseSanitizeNs),
+                    nanosToMillis(checksumNormalizeNs),
+                    nanosToMillis(persistBatchNs),
+                    nanosToMillis(totalNs),
+                    eventsPerSecond(fileResult.getProcessedCount(), totalNs));
         }
     }
 
@@ -447,18 +515,21 @@ public class WosImportEventIngestionService {
         return objectMapper.writeValueAsString(payload);
     }
 
-    private void flushBatchIfNeeded(List<WosImportEvent> toPersist) {
-        if (toPersist.size() >= PERSIST_BATCH_SIZE) {
-            flushBatch(toPersist);
+    private long flushBatchIfNeeded(List<WosImportEvent> toPersist) {
+        if (toPersist.size() >= Math.max(1, optimizationProperties.getIngestPersistBatchSize())) {
+            return flushBatch(toPersist);
         }
+        return 0L;
     }
 
-    private void flushBatch(List<WosImportEvent> toPersist) {
+    private long flushBatch(List<WosImportEvent> toPersist) {
         if (toPersist.isEmpty()) {
-            return;
+            return 0L;
         }
+        long startedAtNanos = System.nanoTime();
         importEventRepository.saveAll(toPersist);
         toPersist.clear();
+        return System.nanoTime() - startedAtNanos;
     }
 
     private Map<String, WosImportEvent> loadExistingByRowItem(
@@ -613,5 +684,42 @@ public class WosImportEventIngestionService {
             int errorCount,
             List<String> samples
     ) {
+    }
+
+    private void maybeLogFileHeartbeat(
+            String fileName,
+            ImportProcessingResult fileResult,
+            long fileStartedAtNanos,
+            long persistBatchNs,
+            long flushCount
+    ) {
+        int heartbeatInterval = Math.max(1, optimizationProperties.getTelemetryHeartbeatInterval());
+        int processed = fileResult.getProcessedCount();
+        if (processed == 0 || processed % heartbeatInterval != 0) {
+            return;
+        }
+        long elapsedNs = System.nanoTime() - fileStartedAtNanos;
+        long avgFlushMs = flushCount == 0 ? 0 : nanosToMillis(persistBatchNs / flushCount);
+        log.info("WoS ingestion heartbeat [{}]: processed={} imported={} updated={} skipped={} errors={} elapsedMs={} throughputPerSec={} avgFlushMs={}",
+                fileName,
+                processed,
+                fileResult.getImportedCount(),
+                fileResult.getUpdatedCount(),
+                fileResult.getSkippedCount(),
+                fileResult.getErrorCount(),
+                nanosToMillis(elapsedNs),
+                eventsPerSecond(processed, elapsedNs),
+                avgFlushMs);
+    }
+
+    private long nanosToMillis(long nanos) {
+        return nanos / 1_000_000L;
+    }
+
+    private double eventsPerSecond(long processed, long elapsedNs) {
+        if (processed <= 0 || elapsedNs <= 0) {
+            return 0d;
+        }
+        return (processed * 1_000_000_000d) / elapsedNs;
     }
 }

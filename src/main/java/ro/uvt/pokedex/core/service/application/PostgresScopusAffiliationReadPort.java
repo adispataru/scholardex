@@ -1,20 +1,19 @@
 package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationListItemResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationPageResponse;
 
-import javax.sql.DataSource;
 import java.util.List;
 import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
-@ConditionalOnBean(DataSource.class)
+@ConditionalOnProperty(name = "spring.datasource.url")
 public class PostgresScopusAffiliationReadPort implements ScopusAffiliationReadPort {
 
     private static final int MAX_QUERY_LENGTH = 100;
@@ -30,8 +29,8 @@ public class PostgresScopusAffiliationReadPort implements ScopusAffiliationReadP
         StringBuilder whereClause = new StringBuilder(" WHERE 1=1");
         MapSqlParameterSource params = new MapSqlParameterSource();
         if (normalizedQuery != null) {
-            whereClause.append(" AND (name ILIKE :qPattern OR id ILIKE :qPattern OR city ILIKE :qPattern OR country ILIKE :qPattern)");
-            params.addValue("qPattern", "%" + normalizedQuery + "%");
+            whereClause.append(" AND (name ILIKE :qPattern ESCAPE '\\' OR id ILIKE :qPattern ESCAPE '\\' OR city ILIKE :qPattern ESCAPE '\\' OR country ILIKE :qPattern ESCAPE '\\')");
+            params.addValue("qPattern", "%" + escapeLikePattern(normalizedQuery) + "%");
         }
         params.addValue("limit", size);
         params.addValue("offset", (long) page * size);
@@ -39,7 +38,8 @@ public class PostgresScopusAffiliationReadPort implements ScopusAffiliationReadP
         String sql = """
                 SELECT id, name, city, country
                 FROM reporting_read.scholardex_affiliation_view
-                """ + whereClause + " ORDER BY " + normalizedSort + " " + normalizedDirection + " LIMIT :limit OFFSET :offset";
+                """ + whereClause + " ORDER BY " + normalizedSort + " " + normalizedDirection
+                + ", id COLLATE \"C\" " + normalizedDirection + " LIMIT :limit OFFSET :offset";
 
         List<ScopusAffiliationListItemResponse> items = namedParameterJdbcTemplate.query(
                 sql,
@@ -66,10 +66,10 @@ public class PostgresScopusAffiliationReadPort implements ScopusAffiliationReadP
     private String normalizeSort(String sort) {
         String normalized = sort == null ? "" : sort.trim();
         return switch (normalized) {
-            case "name" -> "name";
-            case "afid" -> "id";
-            case "city" -> "city";
-            case "country" -> "country";
+            case "name" -> "name COLLATE \"C\"";
+            case "afid" -> "id COLLATE \"C\"";
+            case "city" -> "city COLLATE \"C\"";
+            case "country" -> "country COLLATE \"C\"";
             default -> throw new IllegalArgumentException("Invalid sort parameter. Allowed: name, afid, city, country.");
         };
     }
@@ -94,5 +94,12 @@ public class PostgresScopusAffiliationReadPort implements ScopusAffiliationReadP
             throw new IllegalArgumentException("Invalid q parameter. Maximum length is " + MAX_QUERY_LENGTH + ".");
         }
         return normalized;
+    }
+
+    private String escapeLikePattern(String value) {
+        return value
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 }

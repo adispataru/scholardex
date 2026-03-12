@@ -3,13 +3,14 @@ package ro.uvt.pokedex.core.service.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.controller.dto.ScopusForumListItemResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusForumPageResponse;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumSearchView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
 import java.util.List;
 import java.util.Locale;
@@ -29,7 +30,14 @@ public class MongoScopusForumReadPort implements ScopusForumReadPort {
         Sort.Direction normalizedDirection = normalizeDirection(direction);
         String normalizedQuery = normalizeQuery(q);
 
-        Query query = new Query().with(PageRequest.of(page, size, Sort.by(normalizedDirection, normalizedSort)));
+        Query query = new Query().with(PageRequest.of(
+                page,
+                size,
+                Sort.by(
+                        new Order(normalizedDirection, normalizedSort),
+                        new Order(normalizedDirection, "_id")
+                )
+        ));
         if (normalizedQuery != null) {
             String pattern = ".*" + Pattern.quote(normalizedQuery) + ".*";
             query.addCriteria(new Criteria().orOperator(
@@ -40,8 +48,8 @@ public class MongoScopusForumReadPort implements ScopusForumReadPort {
             ));
         }
 
-        List<ScopusForumSearchView> rows = mongoTemplate.find(query, ScopusForumSearchView.class);
-        long totalItems = mongoTemplate.count(Query.of(query).limit(-1).skip(-1), ScopusForumSearchView.class);
+        List<ScholardexForumView> rows = mongoTemplate.find(query, ScholardexForumView.class);
+        long totalItems = mongoTemplate.count(Query.of(query).limit(-1).skip(-1), ScholardexForumView.class);
         int totalPages = (int) Math.ceil(totalItems / (double) size);
 
         List<ScopusForumListItemResponse> items = rows.stream()
@@ -50,7 +58,7 @@ public class MongoScopusForumReadPort implements ScopusForumReadPort {
         return new ScopusForumPageResponse(items, page, size, totalItems, totalPages);
     }
 
-    private ScopusForumListItemResponse toListItem(ScopusForumSearchView forum) {
+    private ScopusForumListItemResponse toListItem(ScholardexForumView forum) {
         return new ScopusForumListItemResponse(
                 forum.getId(),
                 forum.getPublicationName(),

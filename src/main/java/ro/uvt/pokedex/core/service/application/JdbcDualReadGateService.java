@@ -3,8 +3,10 @@ package ro.uvt.pokedex.core.service.application;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -19,11 +21,12 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
+import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 import ro.uvt.pokedex.core.service.application.model.AdminScopusCitationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminScopusPublicationSearchViewModel;
 import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
 
-import javax.sql.DataSource;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -38,8 +41,9 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Service
-@ConditionalOnBean(DataSource.class)
+@ConditionalOnProperty(name = "spring.datasource.url")
 public class JdbcDualReadGateService implements DualReadGateService {
+    private static final Logger log = LoggerFactory.getLogger(JdbcDualReadGateService.class);
 
     private static final String STATUS_RUNNING = "RUNNING";
     private static final String STATUS_SUCCESS = "SUCCESS";
@@ -52,6 +56,10 @@ public class JdbcDualReadGateService implements DualReadGateService {
     private static final String SCENARIO_SCOPUS_AFFILIATION = "scopus.affiliation.search";
     private static final String SCENARIO_ADMIN_PUBLICATION = "admin.scopus.publication.search";
     private static final String SCENARIO_ADMIN_CITATIONS = "admin.scopus.citations.view";
+    private static final String SCENARIO_GROUP_REPORT_REFRESH = "admin.group.report.refresh";
+
+    private static final String SCENARIO_TYPE_DUAL_PARITY = "DUAL_PARITY";
+    private static final String SCENARIO_TYPE_PERF_ONLY = "PERF_ONLY";
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
@@ -72,6 +80,9 @@ public class JdbcDualReadGateService implements DualReadGateService {
 
     private final MongoAdminScopusReadPort mongoAdminScopusReadPort;
     private final ObjectProvider<PostgresAdminScopusReadPort> postgresAdminScopusReadPortProvider;
+    private final GroupReportFacade groupReportFacade;
+    private final GroupRepository groupRepository;
+    private final IndividualReportRepository individualReportRepository;
 
     public JdbcDualReadGateService(
             JdbcTemplate jdbcTemplate,
@@ -87,7 +98,10 @@ public class JdbcDualReadGateService implements DualReadGateService {
             MongoScopusAffiliationReadPort mongoScopusAffiliationReadPort,
             ObjectProvider<PostgresScopusAffiliationReadPort> postgresScopusAffiliationReadPortProvider,
             MongoAdminScopusReadPort mongoAdminScopusReadPort,
-            ObjectProvider<PostgresAdminScopusReadPort> postgresAdminScopusReadPortProvider
+            ObjectProvider<PostgresAdminScopusReadPort> postgresAdminScopusReadPortProvider,
+            GroupReportFacade groupReportFacade,
+            GroupRepository groupRepository,
+            IndividualReportRepository individualReportRepository
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
@@ -103,6 +117,9 @@ public class JdbcDualReadGateService implements DualReadGateService {
         this.postgresScopusAffiliationReadPortProvider = postgresScopusAffiliationReadPortProvider;
         this.mongoAdminScopusReadPort = mongoAdminScopusReadPort;
         this.postgresAdminScopusReadPortProvider = postgresAdminScopusReadPortProvider;
+        this.groupReportFacade = groupReportFacade;
+        this.groupRepository = groupRepository;
+        this.individualReportRepository = individualReportRepository;
     }
 
     @Override
@@ -237,6 +254,48 @@ public class JdbcDualReadGateService implements DualReadGateService {
             double p95RatioThreshold
     ) {
         Instant startedAt = Instant.now();
+        String datasetNotReadyReason = datasetNotReadyReason(scenario);
+        if (datasetNotReadyReason != null) {
+            Instant completedAt = Instant.now();
+            DualReadScenarioResult result = new DualReadScenarioResult(
+                    scenario.scenarioId(),
+                    scenario.scenarioType(),
+                    STATUS_FAILED,
+                    false,
+                    false,
+                    0d,
+                    0d,
+                    0d,
+                    0d,
+                    null,
+                    scenario.p95ThresholdMs(),
+                    datasetNotReadyReason,
+                    startedAt,
+                    completedAt
+            );
+            persistScenarioRun(runId, result);
+            log.warn("H22.6 dual-read dataset not ready: runId={} scenario={} reason={}", runId, scenario.scenarioId(), datasetNotReadyReason);
+            return result;
+        }
+
+        if (SCENARIO_TYPE_PERF_ONLY.equals(scenario.scenarioType())) {
+            DualReadScenarioResult result = executePerfOnlyScenario(scenario, sampleSize, startedAt);
+            persistScenarioRun(runId, result);
+            return result;
+        }
+
+        DualReadScenarioResult result = executeDualParityScenario(runId, scenario, sampleSize, p95RatioThreshold, startedAt);
+        persistScenarioRun(runId, result);
+        return result;
+    }
+
+    private DualReadScenarioResult executeDualParityScenario(
+            String runId,
+            DualReadScenario scenario,
+            int sampleSize,
+            double p95RatioThreshold,
+            Instant startedAt
+    ) {
         boolean parityPassed = true;
         String mismatchSample = null;
         List<Double> mongoLatencies = new ArrayList<>();
@@ -254,6 +313,13 @@ public class JdbcDualReadGateService implements DualReadGateService {
                     parityPassed = false;
                     if (mismatchSample == null) {
                         mismatchSample = scenario.scenarioId() + " runtime mismatch: " + runtimeDiff;
+                        log.warn(
+                                "H22.6 dual-read runtime mismatch: runId={} scenario={} mongoError={} postgresError={}",
+                                runId,
+                                scenario.scenarioId(),
+                                errorSummary(mongoCall.error()),
+                                errorSummary(postgresCall.error())
+                        );
                     }
                 }
                 continue;
@@ -288,6 +354,7 @@ public class JdbcDualReadGateService implements DualReadGateService {
         Instant completedAt = Instant.now();
         DualReadScenarioResult result = new DualReadScenarioResult(
                 scenario.scenarioId(),
+                scenario.scenarioType(),
                 status,
                 parityPassed,
                 performancePassed,
@@ -296,12 +363,65 @@ public class JdbcDualReadGateService implements DualReadGateService {
                 postgresAvg,
                 postgresP95,
                 p95Ratio,
+                null,
                 trim(mismatchSample),
                 startedAt,
                 completedAt
         );
+        return result;
+    }
 
-        persistScenarioRun(runId, result);
+    private DualReadScenarioResult executePerfOnlyScenario(
+            DualReadScenario scenario,
+            int sampleSize,
+            Instant startedAt
+    ) {
+        boolean parityPassed = true;
+        String mismatchSample = null;
+        List<Double> latencies = new ArrayList<>();
+
+        for (int i = 0; i < sampleSize; i++) {
+            TimedCall timedCall = timedCall(scenario.mongoSupplier());
+            latencies.add(timedCall.elapsedMs());
+            if (timedCall.error() != null) {
+                parityPassed = false;
+                if (mismatchSample == null) {
+                    mismatchSample = scenario.scenarioId() + " runtime error: " + errorSummary(timedCall.error());
+                }
+            }
+        }
+
+        double postgresAvg = average(latencies);
+        double postgresP95 = p95(latencies);
+        double p95ThresholdMs = scenario.p95ThresholdMs() == null ? 0d : scenario.p95ThresholdMs();
+        boolean performancePassed = parityPassed && postgresP95 <= p95ThresholdMs;
+        if (parityPassed && !performancePassed && mismatchSample == null) {
+            mismatchSample = String.format(
+                    Locale.ROOT,
+                    "p95 %.1fms exceeded threshold %.1fms",
+                    postgresP95,
+                    p95ThresholdMs
+            );
+        }
+
+        String status = parityPassed && performancePassed ? STATUS_SUCCESS : STATUS_FAILED;
+        Instant completedAt = Instant.now();
+        DualReadScenarioResult result = new DualReadScenarioResult(
+                scenario.scenarioId(),
+                scenario.scenarioType(),
+                status,
+                parityPassed,
+                performancePassed,
+                0d,
+                0d,
+                postgresAvg,
+                postgresP95,
+                null,
+                p95ThresholdMs,
+                trim(mismatchSample),
+                startedAt,
+                completedAt
+        );
         return result;
     }
 
@@ -318,6 +438,7 @@ public class JdbcDualReadGateService implements DualReadGateService {
                 ps -> ps.setString(1, runId),
                 (rs, rowNum) -> new DualReadScenarioResult(
                         rs.getString("scenario_id"),
+                        resolveScenarioType(rs.getString("scenario_id")),
                         rs.getString("status"),
                         rs.getBoolean("parity_passed"),
                         rs.getBoolean("performance_passed"),
@@ -326,6 +447,7 @@ public class JdbcDualReadGateService implements DualReadGateService {
                         rs.getDouble("postgres_avg_ms"),
                         rs.getDouble("postgres_p95_ms"),
                         (Double) rs.getObject("p95_ratio"),
+                        resolveP95ThresholdMs(rs.getString("scenario_id")),
                         rs.getString("mismatch_sample"),
                         toInstant(rs.getTimestamp("started_at")),
                         toInstant(rs.getTimestamp("completed_at"))
@@ -367,50 +489,76 @@ public class JdbcDualReadGateService implements DualReadGateService {
 
         ScenarioInput input = resolveScenarioInput();
 
-        return List.of(
+        List<DualReadScenario> scenarios = new ArrayList<>(List.of(
                 new DualReadScenario(
                         SCENARIO_WOS_ISSN,
+                        SCENARIO_TYPE_DUAL_PARITY,
                         () -> mongoReportingLookup.getRankingsByIssn(input.issn()),
                         () -> postgresReportingLookup.getRankingsByIssn(input.issn()),
-                        (mongo, postgres) -> compareJson(normalizeWosRankings(cast(mongo)), normalizeWosRankings(cast(postgres)))
+                        (mongo, postgres) -> compareJson(normalizeWosRankings(cast(mongo)), normalizeWosRankings(cast(postgres))),
+                        null
                 ),
                 new DualReadScenario(
                         SCENARIO_WOS_TOP,
+                        SCENARIO_TYPE_DUAL_PARITY,
                         () -> mongoReportingLookup.getTopRankings(input.categoryIndex(), input.year()),
                         () -> postgresReportingLookup.getTopRankings(input.categoryIndex(), input.year()),
-                        this::compareJson
+                        this::compareJson,
+                        null
                 ),
                 new DualReadScenario(
                         SCENARIO_SCOPUS_AUTHOR,
+                        SCENARIO_TYPE_DUAL_PARITY,
                         () -> mongoScopusAuthorReadPort.search(input.afid(), 0, 25, "name", "asc", null),
                         () -> postgresAuthorReadPort.search(input.afid(), 0, 25, "name", "asc", null),
-                        (mongo, postgres) -> compareAuthorPage(cast(mongo), cast(postgres))
+                        (mongo, postgres) -> compareAuthorPage(cast(mongo), cast(postgres)),
+                        null
                 ),
                 new DualReadScenario(
                         SCENARIO_SCOPUS_FORUM,
+                        SCENARIO_TYPE_DUAL_PARITY,
                         () -> mongoScopusForumReadPort.search(0, 25, "publicationName", "asc", input.forumQuery()),
                         () -> postgresForumReadPort.search(0, 25, "publicationName", "asc", input.forumQuery()),
-                        this::compareJson
+                        this::compareJson,
+                        null
                 ),
                 new DualReadScenario(
                         SCENARIO_SCOPUS_AFFILIATION,
+                        SCENARIO_TYPE_DUAL_PARITY,
                         () -> mongoScopusAffiliationReadPort.search(0, 25, "name", "asc", input.affiliationQuery()),
                         () -> postgresAffiliationReadPort.search(0, 25, "name", "asc", input.affiliationQuery()),
-                        this::compareJson
+                        this::compareJson,
+                        null
                 ),
                 new DualReadScenario(
                         SCENARIO_ADMIN_PUBLICATION,
+                        SCENARIO_TYPE_DUAL_PARITY,
                         () -> mongoAdminScopusReadPort.buildPublicationSearchView(input.publicationTitleQuery()),
                         () -> postgresAdminReadPort.buildPublicationSearchView(input.publicationTitleQuery()),
-                        (mongo, postgres) -> comparePublicationSearch(cast(mongo), cast(postgres))
+                        (mongo, postgres) -> comparePublicationSearch(cast(mongo), cast(postgres)),
+                        null
                 ),
                 new DualReadScenario(
                         SCENARIO_ADMIN_CITATIONS,
+                        SCENARIO_TYPE_DUAL_PARITY,
                         () -> mongoAdminScopusReadPort.buildPublicationCitationsView(input.citationPublicationId()),
                         () -> postgresAdminReadPort.buildPublicationCitationsView(input.citationPublicationId()),
-                        (mongo, postgres) -> compareCitationsView(cast(mongo), cast(postgres))
+                        (mongo, postgres) -> compareCitationsView(cast(mongo), cast(postgres)),
+                        null
                 )
-        );
+        ));
+
+        if (properties.isGroupReportRefreshEnabled()) {
+            scenarios.add(new DualReadScenario(
+                    SCENARIO_GROUP_REPORT_REFRESH,
+                    SCENARIO_TYPE_PERF_ONLY,
+                    () -> groupReportFacade.refreshGroupIndividualReportView(input.groupReportRefreshGroupId(), input.groupReportRefreshReportId()),
+                    null,
+                    null,
+                    properties.getGroupReportRefreshP95ThresholdMs()
+            ));
+        }
+        return scenarios;
     }
 
     private String compareAuthorPage(ScopusAuthorPageResponse mongo, ScopusAuthorPageResponse postgres) {
@@ -599,6 +747,29 @@ public class JdbcDualReadGateService implements DualReadGateService {
         String affiliationQuery = firstToken(firstAffiliationName());
         String publicationTitleQuery = firstToken(firstPublicationTitle());
         String citationPublicationId = firstPublicationId();
+        String groupReportRefreshGroupId = properties.getGroupReportRefreshGroupId();
+        String groupReportRefreshReportId = properties.getGroupReportRefreshReportId();
+
+        log.info(
+                "H22.6 dual-read scenario inputs: issn={}, categoryIndex={}, year={}, afid={}, forumQuery={}, affiliationQuery={}, publicationTitleQuery={}, citationPublicationId={}, groupReportRefreshGroupId={}, groupReportRefreshReportId={}",
+                valueOrPlaceholder(issn),
+                valueOrPlaceholder(category.categoryIndex()),
+                category.year(),
+                valueOrPlaceholder(afid),
+                valueOrPlaceholder(forumQuery),
+                valueOrPlaceholder(affiliationQuery),
+                valueOrPlaceholder(publicationTitleQuery),
+                valueOrPlaceholder(citationPublicationId),
+                valueOrPlaceholder(groupReportRefreshGroupId),
+                valueOrPlaceholder(groupReportRefreshReportId)
+        );
+
+        if (!hasText(forumQuery)) {
+            log.warn("H22.6 dual-read forumQuery resolved to null/blank.");
+        }
+        if (!hasText(affiliationQuery)) {
+            log.warn("H22.6 dual-read affiliationQuery resolved to null/blank.");
+        }
 
         return new ScenarioInput(
                 issn,
@@ -608,7 +779,9 @@ public class JdbcDualReadGateService implements DualReadGateService {
                 forumQuery,
                 affiliationQuery,
                 publicationTitleQuery,
-                citationPublicationId
+                citationPublicationId,
+                groupReportRefreshGroupId,
+                groupReportRefreshReportId
         );
     }
 
@@ -680,6 +853,62 @@ public class JdbcDualReadGateService implements DualReadGateService {
         return input != null && !input.trim().isEmpty();
     }
 
+    private String datasetNotReadyReason(DualReadScenario scenario) {
+        String scenarioId = scenario.scenarioId();
+        if (SCENARIO_SCOPUS_FORUM.equals(scenarioId)) {
+            long count = mongoTemplate.count(new Query(), ScholardexForumView.class);
+            if (count <= 0L) {
+                return "dataset not ready: Mongo scholardex.forum_view is empty";
+            }
+            return null;
+        }
+        if (SCENARIO_SCOPUS_AFFILIATION.equals(scenarioId)) {
+            long count = mongoTemplate.count(new Query(), ScholardexAffiliationView.class);
+            if (count <= 0L) {
+                return "dataset not ready: Mongo scholardex.affiliation_view is empty";
+            }
+            return null;
+        }
+        if (SCENARIO_SCOPUS_AUTHOR.equals(scenarioId)) {
+            long count = mongoTemplate.count(new Query(), ScholardexAuthorView.class);
+            if (count <= 0L) {
+                return "dataset not ready: Mongo scholardex.author_view is empty";
+            }
+            return null;
+        }
+        if (SCENARIO_GROUP_REPORT_REFRESH.equals(scenarioId)) {
+            String groupId = properties.getGroupReportRefreshGroupId();
+            String reportId = properties.getGroupReportRefreshReportId();
+            if (!hasText(groupId) || !hasText(reportId)) {
+                return "dataset not ready: configured group/report ids are missing for admin.group.report.refresh";
+            }
+            if (!groupRepository.existsById(groupId) || !individualReportRepository.existsById(reportId)) {
+                return "dataset not ready: report not found for configured ids groupId="
+                        + valueOrPlaceholder(groupId) + ", reportId=" + valueOrPlaceholder(reportId);
+            }
+            return null;
+        }
+        return null;
+    }
+
+    private String resolveScenarioType(String scenarioId) {
+        if (SCENARIO_GROUP_REPORT_REFRESH.equals(scenarioId)) {
+            return SCENARIO_TYPE_PERF_ONLY;
+        }
+        return SCENARIO_TYPE_DUAL_PARITY;
+    }
+
+    private Double resolveP95ThresholdMs(String scenarioId) {
+        if (SCENARIO_GROUP_REPORT_REFRESH.equals(scenarioId)) {
+            return properties.getGroupReportRefreshP95ThresholdMs();
+        }
+        return null;
+    }
+
+    private String valueOrPlaceholder(String value) {
+        return hasText(value) ? value : "<null>";
+    }
+
     private TimedCall timedCall(Supplier<Object> supplier) {
         long startNanos = System.nanoTime();
         try {
@@ -727,6 +956,21 @@ public class JdbcDualReadGateService implements DualReadGateService {
         return normalized.substring(0, 2000);
     }
 
+    private static String errorSummary(Throwable error) {
+        if (error == null) {
+            return "none";
+        }
+        Throwable root = error;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        String top = error.getClass().getName() + ":" + trim(error.getMessage());
+        if (root == error) {
+            return top;
+        }
+        return top + " | root=" + root.getClass().getName() + ":" + trim(root.getMessage());
+    }
+
     @SuppressWarnings("unchecked")
     private <T> T cast(Object value) {
         return (T) value;
@@ -753,15 +997,19 @@ public class JdbcDualReadGateService implements DualReadGateService {
             String forumQuery,
             String affiliationQuery,
             String publicationTitleQuery,
-            String citationPublicationId
+            String citationPublicationId,
+            String groupReportRefreshGroupId,
+            String groupReportRefreshReportId
     ) {
     }
 
     private record DualReadScenario(
             String scenarioId,
+            String scenarioType,
             Supplier<Object> mongoSupplier,
             Supplier<Object> postgresSupplier,
-            ScenarioComparator comparator
+            ScenarioComparator comparator,
+            Double p95ThresholdMs
     ) {
     }
 

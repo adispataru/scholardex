@@ -13,11 +13,13 @@ import ro.uvt.pokedex.core.model.reporting.wos.MetricType;
 import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosFactBuildCheckpoint;
 import ro.uvt.pokedex.core.model.reporting.wos.WosFactConflict;
+import ro.uvt.pokedex.core.model.reporting.wos.WosJournalIdentity;
 import ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosSourceType;
 import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosFactConflictRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
+import ro.uvt.pokedex.core.service.application.WosIndexMaintenanceService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.wos.model.IdentityResolutionResult;
 import ro.uvt.pokedex.core.service.importing.wos.model.WosIdentitySourceContext;
@@ -38,8 +40,6 @@ import java.util.Set;
 @Service
 public class WosFactBuilderService {
     private static final Logger log = LoggerFactory.getLogger(WosFactBuilderService.class);
-    private static final int FACT_BUILD_CHUNK_SIZE = 1_000;
-    private static final int FACT_BUILD_HEARTBEAT_INTERVAL = 10_000;
     private static final int ENRICHMENT_GROUP_CHUNK_SIZE = 1_000;
     private static final String IDENTITY_NULL_MARKER = "__NULL__";
 
@@ -50,6 +50,8 @@ public class WosFactBuilderService {
     private final WosFactConflictRepository factConflictRepository;
     private final MongoTemplate mongoTemplate;
     private final WosFactBuildCheckpointService checkpointService;
+    private final WosIndexMaintenanceService wosIndexMaintenanceService;
+    private final WosOptimizationProperties optimizationProperties;
     private final Counter ifSourcePolicySkipCounter;
 
     public WosFactBuilderService(
@@ -60,6 +62,8 @@ public class WosFactBuilderService {
             WosFactConflictRepository factConflictRepository,
             MongoTemplate mongoTemplate,
             WosFactBuildCheckpointService checkpointService,
+            WosIndexMaintenanceService wosIndexMaintenanceService,
+            WosOptimizationProperties optimizationProperties,
             MeterRegistry meterRegistry
     ) {
         this.parserOrchestrator = parserOrchestrator;
@@ -69,6 +73,8 @@ public class WosFactBuilderService {
         this.factConflictRepository = factConflictRepository;
         this.mongoTemplate = mongoTemplate;
         this.checkpointService = checkpointService;
+        this.wosIndexMaintenanceService = wosIndexMaintenanceService;
+        this.optimizationProperties = optimizationProperties;
         this.ifSourcePolicySkipCounter = meterRegistry.counter("pokedex.wos.if.source_policy.skips");
     }
 
@@ -83,11 +89,16 @@ public class WosFactBuilderService {
             String sourceVersion
     ) {
         ImportProcessingResult result = new ImportProcessingResult(20);
-        Map<String, String> identityCache = new HashMap<>();
+        if (optimizationProperties.isPreflightIndexesEnabled()) {
+            wosIndexMaintenanceService.ensureWosIndexesForStage("wos-fact-builder");
+        }
+        Map<String, String> identityCache = new BoundedLruCache<>(Math.max(1024, optimizationProperties.getIdentityLruMaxSize()));
+        Map<String, String> tokenSetResolutionCache = new BoundedLruCache<>(Math.max(1024, optimizationProperties.getIdentityLruMaxSize()));
         WosParserRunResult parserRun = parserOrchestrator.parseAllEvents();
         List<WosParsedRecord> records = parserRun.records();
         int total = records.size();
-        int totalBatches = total == 0 ? 0 : ((total - 1) / FACT_BUILD_CHUNK_SIZE) + 1;
+        int chunkSize = Math.max(1, optimizationProperties.getFactChunkSize());
+        int totalBatches = total == 0 ? 0 : ((total - 1) / chunkSize) + 1;
         Optional<WosFactBuildCheckpoint> checkpoint = useCheckpoint ? checkpointService.readCheckpoint() : Optional.empty();
         int checkpointLastCompletedBatch = checkpoint.map(WosFactBuildCheckpoint::getLastCompletedBatch).orElse(-1);
         int startBatch = normalizeStartBatch(startBatchOverride, checkpointLastCompletedBatch, useCheckpoint);
@@ -106,17 +117,17 @@ public class WosFactBuilderService {
 
         int batchesProcessed = 0;
         int endBatch = startBatch - 1;
-        for (int from = startBatch * FACT_BUILD_CHUNK_SIZE; from < total; from += FACT_BUILD_CHUNK_SIZE) {
-            int to = Math.min(total, from + FACT_BUILD_CHUNK_SIZE);
-            int batchIndex = from / FACT_BUILD_CHUNK_SIZE;
-            processChunk(records.subList(from, to), result, identityCache, batchIndex + 1, batchIndex, totalBatches);
+        for (int from = startBatch * chunkSize; from < total; from += chunkSize) {
+            int to = Math.min(total, from + chunkSize);
+            int batchIndex = from / chunkSize;
+            processChunk(records.subList(from, to), result, identityCache, tokenSetResolutionCache, batchIndex + 1, batchIndex, totalBatches);
             batchesProcessed++;
             endBatch = batchIndex;
             if (useCheckpoint) {
                 List<WosParsedRecord> chunk = records.subList(from, to);
                 checkpointService.upsertCheckpoint(
                         batchIndex,
-                        FACT_BUILD_CHUNK_SIZE,
+                        chunkSize,
                         lastRecordKey(chunk),
                         runId,
                         sourceVersion
@@ -234,18 +245,40 @@ public class WosFactBuilderService {
             List<WosParsedRecord> chunk,
             ImportProcessingResult result,
             Map<String, String> identityCache,
+            Map<String, String> tokenSetResolutionCache,
             int chunkNo,
             int batchIndex,
             int totalBatches
     ) {
         long chunkStartedAtNanos = System.nanoTime();
-        List<ResolvedRecord> resolved = new ArrayList<>(chunk.size());
+        long normalizeStartedAtNanos = System.nanoTime();
+        Map<String, Set<String>> normalizedTokenSetsByKey = buildNormalizedTokenSetsByCacheKey(chunk);
+        long normalizeFinishedAtNanos = System.nanoTime();
+        long bulkIdentityFetchStartedAtNanos = System.nanoTime();
         Map<String, String> preResolvedIdentityByKey = preResolveIdentityByKey(chunk);
+        long bulkIdentityFetchFinishedAtNanos = System.nanoTime();
+        long bulkCandidateFetchStartedAtNanos = System.nanoTime();
+        Map<String, Set<String>> unresolvedTokenSetsByKey = unresolvedTokenSetsByKey(
+                chunk,
+                normalizedTokenSetsByKey,
+                identityCache,
+                tokenSetResolutionCache,
+                preResolvedIdentityByKey
+        );
+        Map<String, List<WosJournalIdentity>> prefetchedCandidatesByTokenSet =
+                unresolvedTokenSetsByKey.isEmpty()
+                        ? Map.of()
+                        : preFetchCandidatesByTokenSet(unresolvedTokenSetsByKey);
+        long bulkCandidateFetchFinishedAtNanos = System.nanoTime();
+        List<ResolvedRecord> resolved = new ArrayList<>(chunk.size());
+        ChunkIdentityTelemetry identityTelemetry = new ChunkIdentityTelemetry();
         int ifPolicySkipped = 0;
         List<String> ifPolicySkipSamples = new ArrayList<>();
+        long policyFilterStartedAtNanos = System.nanoTime();
         for (WosParsedRecord record : chunk) {
             result.markProcessed();
-            if (result.getProcessedCount() % FACT_BUILD_HEARTBEAT_INTERVAL == 0) {
+            int heartbeatInterval = Math.max(1, optimizationProperties.getTelemetryHeartbeatInterval());
+            if (result.getProcessedCount() % heartbeatInterval == 0) {
                 log.info("WoS fact-builder progress: processed={} imported={} updated={} skipped={} errors= {}",
                         result.getProcessedCount(), result.getImportedCount(), result.getUpdatedCount(),
                         result.getSkippedCount(), result.getErrorCount());
@@ -262,12 +295,22 @@ public class WosFactBuilderService {
                         + ", sourceRef=" + record.sourceFile() + "#" + record.sourceRowItem());
                 continue;
             }
-            String journalId = resolveJournalId(record, result, identityCache, preResolvedIdentityByKey);
+            String journalId = resolveJournalId(
+                    record,
+                    result,
+                    identityCache,
+                    tokenSetResolutionCache,
+                    preResolvedIdentityByKey,
+                    prefetchedCandidatesByTokenSet,
+                    normalizedTokenSetsByKey,
+                    identityTelemetry
+            );
             if (journalId == null || journalId.isBlank()) {
                 continue;
             }
             resolved.add(new ResolvedRecord(journalId, record));
         }
+        long policyFilterFinishedAtNanos = System.nanoTime();
 
         long preloadStartedAtNanos = System.nanoTime();
         Map<MetricFactKey, WosMetricFact> existingMetrics = preloadMetricFacts(resolved);
@@ -300,7 +343,10 @@ public class WosFactBuilderService {
         }
 
         long finishedAtNanos = System.nanoTime();
-        log.info("WoS fact-builder chunk {} complete [batch={} / totalBatches={}]: resolved={} metricWrites={} categoryWrites={} conflictWrites={} timingsMs[identity+filter={}, preload={}, upsert={}, save={}, total={}]",
+        String logLevel = nanosToMillis(finishedAtNanos - chunkStartedAtNanos) >= optimizationProperties.getSlowChunkThresholdMs()
+                ? "SLOW"
+                : "OK";
+        log.info("WoS fact-builder chunk {} complete [batch={} / totalBatches={}]: resolved={} metricWrites={} categoryWrites={} conflictWrites={} health={} timingsMs[normalize={}, bulkIdentityKeyFetch={}, bulkCandidateFetch={}, fallbackResolveMutations={}, policyFilter={}, preload={}, upsert={}, save={}, total={}] cache[keyHits={}, keyMisses={}, tokenHits={}, tokenMisses={}] resolved[key={}, candidates={}] fallbackMutations={} conflicts={} skips={}",
                 chunkNo,
                 batchIndex,
                 totalBatches,
@@ -308,11 +354,25 @@ public class WosFactBuilderService {
                 pendingMetricSaves.size(),
                 pendingCategorySaves.size(),
                 pendingConflicts.size(),
-                nanosToMillis(preloadStartedAtNanos - chunkStartedAtNanos),
+                logLevel,
+                nanosToMillis(normalizeFinishedAtNanos - normalizeStartedAtNanos),
+                nanosToMillis(bulkIdentityFetchFinishedAtNanos - bulkIdentityFetchStartedAtNanos),
+                nanosToMillis(bulkCandidateFetchFinishedAtNanos - bulkCandidateFetchStartedAtNanos),
+                nanosToMillis(identityTelemetry.fallbackResolveMutationsNs),
+                nanosToMillis(policyFilterFinishedAtNanos - policyFilterStartedAtNanos),
                 nanosToMillis(upsertStartedAtNanos - preloadStartedAtNanos),
                 nanosToMillis(saveStartedAtNanos - upsertStartedAtNanos),
                 nanosToMillis(finishedAtNanos - saveStartedAtNanos),
-                nanosToMillis(finishedAtNanos - chunkStartedAtNanos));
+                nanosToMillis(finishedAtNanos - chunkStartedAtNanos),
+                identityTelemetry.identityCacheHits,
+                identityTelemetry.identityCacheMisses,
+                identityTelemetry.tokenResolutionCacheHits,
+                identityTelemetry.tokenResolutionCacheMisses,
+                identityTelemetry.resolvedByIdentityKey,
+                identityTelemetry.resolvedByCandidates,
+                identityTelemetry.fallbackResolveMutations,
+                pendingConflicts.size(),
+                result.getSkippedCount());
     }
 
     private Map<MetricFactKey, WosMetricFact> preloadMetricFacts(List<ResolvedRecord> resolved) {
@@ -413,11 +473,61 @@ public class WosFactBuilderService {
         return identityResolutionService.findJournalIdsByIdentityKeys(identityKeys);
     }
 
+    private Map<String, List<WosJournalIdentity>> preFetchCandidatesByTokenSet(Map<String, Set<String>> normalizedTokenSetsByKey) {
+        return identityResolutionService.findCandidatesByIssnTokenSets(normalizedTokenSetsByKey);
+    }
+
+    private Map<String, Set<String>> unresolvedTokenSetsByKey(
+            List<WosParsedRecord> chunk,
+            Map<String, Set<String>> normalizedTokenSetsByKey,
+            Map<String, String> identityCache,
+            Map<String, String> tokenSetResolutionCache,
+            Map<String, String> preResolvedIdentityByKey
+    ) {
+        if (normalizedTokenSetsByKey.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Set<String>> unresolved = new LinkedHashMap<>();
+        for (WosParsedRecord record : chunk) {
+            if (!WosCanonicalContractSupport.isSourceAllowedForMetric(record.metricType(), record.sourceType())) {
+                continue;
+            }
+            if (!hasIssnIdentityTokens(record)) {
+                continue;
+            }
+            String cacheKey = identityCacheKey(record);
+            if (identityCache.containsKey(cacheKey)) {
+                continue;
+            }
+            String identityKey = buildIdentityKey(record);
+            if (identityKey != null) {
+                String preResolvedJournalId = preResolvedIdentityByKey.get(identityKey);
+                if (preResolvedJournalId != null && !preResolvedJournalId.isBlank()) {
+                    continue;
+                }
+            }
+            String tokenSetKey = normalizedTokenSetKey(record);
+            if (tokenSetKey == null || tokenSetResolutionCache.containsKey(tokenSetKey)) {
+                continue;
+            }
+            Set<String> tokenSet = normalizedTokenSetsByKey.get(tokenSetKey);
+            if (tokenSet != null && !tokenSet.isEmpty()) {
+                unresolved.putIfAbsent(tokenSetKey, tokenSet);
+            }
+        }
+        return unresolved;
+    }
+
     private String resolveJournalId(
             WosParsedRecord record,
             ImportProcessingResult result,
             Map<String, String> identityCache,
+            Map<String, String> tokenSetResolutionCache,
             Map<String, String> preResolvedIdentityByKey
+            ,
+            Map<String, List<WosJournalIdentity>> prefetchedCandidatesByTokenSet,
+            Map<String, Set<String>> normalizedTokenSetsByKey,
+            ChunkIdentityTelemetry identityTelemetry
     ) {
         if (!hasIssnIdentityTokens(record)) {
             result.markSkipped("identity-missing-no-issn source=" + record.sourceFile() + "#" + record.sourceRowItem());
@@ -425,21 +535,40 @@ public class WosFactBuilderService {
         }
         String cacheKey = identityCacheKey(record);
         if (identityCache.containsKey(cacheKey)) {
+            identityTelemetry.identityCacheHits++;
             String cached = identityCache.get(cacheKey);
             return IDENTITY_NULL_MARKER.equals(cached) ? null : cached;
         }
+        identityTelemetry.identityCacheMisses++;
 
         String identityKey = buildIdentityKey(record);
         if (identityKey != null) {
             String preResolvedJournalId = preResolvedIdentityByKey.get(identityKey);
             if (preResolvedJournalId != null && !preResolvedJournalId.isBlank()) {
                 identityCache.put(cacheKey, preResolvedJournalId);
+                identityTelemetry.resolvedByIdentityKey++;
                 return preResolvedJournalId;
             }
         }
 
+        String tokenSetKey = normalizedTokenSetKey(record);
+        if (tokenSetKey != null && tokenSetResolutionCache.containsKey(tokenSetKey)) {
+            identityTelemetry.tokenResolutionCacheHits++;
+            String cached = tokenSetResolutionCache.get(tokenSetKey);
+            identityCache.put(cacheKey, cached);
+            if (!IDENTITY_NULL_MARKER.equals(cached)) {
+                identityTelemetry.resolvedByCandidates++;
+            }
+            return IDENTITY_NULL_MARKER.equals(cached) ? null : cached;
+        }
+        identityTelemetry.tokenResolutionCacheMisses++;
+
         try {
-            IdentityResolutionResult identity = identityResolutionService.resolveIdentity(
+            long fallbackStartedAtNanos = System.nanoTime();
+            List<WosJournalIdentity> prefetchedCandidates = tokenSetKey == null
+                    ? List.of()
+                    : prefetchedCandidatesByTokenSet.getOrDefault(tokenSetKey, List.of());
+            IdentityResolutionResult identity = identityResolutionService.resolveIdentityWithPrefetchedCandidates(
                     record.issn(),
                     record.eIssn(),
                     record.title(),
@@ -450,20 +579,72 @@ public class WosFactBuilderService {
                             record.sourceFile(),
                             record.sourceVersion(),
                             record.sourceRowItem()
-                    )
+                    ),
+                    prefetchedCandidates
             );
+            identityTelemetry.fallbackResolveMutations++;
+            identityTelemetry.fallbackResolveMutationsNs += System.nanoTime() - fallbackStartedAtNanos;
             if (identity == null || identity.journalId() == null) {
                 result.markSkipped("identity-missing source=" + record.sourceFile() + "#" + record.sourceRowItem());
                 identityCache.put(cacheKey, IDENTITY_NULL_MARKER);
+                if (tokenSetKey != null) {
+                    tokenSetResolutionCache.put(tokenSetKey, IDENTITY_NULL_MARKER);
+                }
                 return null;
             }
             identityCache.put(cacheKey, identity.journalId());
+            if (tokenSetKey != null) {
+                tokenSetResolutionCache.put(tokenSetKey, identity.journalId());
+            }
+            identityTelemetry.resolvedByCandidates++;
             return identity.journalId();
         } catch (Exception e) {
             result.markError("identity-error source=" + record.sourceFile() + "#" + record.sourceRowItem() + " " + e.getMessage());
             identityCache.put(cacheKey, IDENTITY_NULL_MARKER);
+            if (tokenSetKey != null) {
+                tokenSetResolutionCache.put(tokenSetKey, IDENTITY_NULL_MARKER);
+            }
             return null;
         }
+    }
+
+    private Map<String, Set<String>> buildNormalizedTokenSetsByCacheKey(List<WosParsedRecord> chunk) {
+        Map<String, Set<String>> tokenSets = new LinkedHashMap<>();
+        for (WosParsedRecord record : chunk) {
+            String key = normalizedTokenSetKey(record);
+            if (key == null) {
+                continue;
+            }
+            Set<String> tokens = new LinkedHashSet<>();
+            String issn = WosCanonicalContractSupport.normalizeIssnToken(record.issn());
+            String eIssn = WosCanonicalContractSupport.normalizeIssnToken(record.eIssn());
+            if (issn != null) {
+                tokens.add(issn);
+            }
+            if (eIssn != null) {
+                tokens.add(eIssn);
+            }
+            if (!tokens.isEmpty()) {
+                tokenSets.putIfAbsent(key, tokens);
+            }
+        }
+        return tokenSets;
+    }
+
+    private String normalizedTokenSetKey(WosParsedRecord record) {
+        Set<String> tokens = new LinkedHashSet<>();
+        String issn = WosCanonicalContractSupport.normalizeIssnToken(record.issn());
+        String eIssn = WosCanonicalContractSupport.normalizeIssnToken(record.eIssn());
+        if (issn != null) {
+            tokens.add(issn);
+        }
+        if (eIssn != null) {
+            tokens.add(eIssn);
+        }
+        if (tokens.isEmpty()) {
+            return null;
+        }
+        return String.join("|", tokens);
     }
 
     private void upsertMetricFact(
@@ -1191,5 +1372,30 @@ public class WosFactBuilderService {
             WosCategoryFact fact,
             Double metricValue
     ) {
+    }
+
+    private static final class BoundedLruCache<K, V> extends LinkedHashMap<K, V> {
+        private final int maxSize;
+
+        private BoundedLruCache(int maxSize) {
+            super(16, 0.75f, true);
+            this.maxSize = maxSize;
+        }
+
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
+            return size() > maxSize;
+        }
+    }
+
+    private static final class ChunkIdentityTelemetry {
+        long identityCacheHits;
+        long identityCacheMisses;
+        long tokenResolutionCacheHits;
+        long tokenResolutionCacheMisses;
+        long resolvedByIdentityKey;
+        long resolvedByCandidates;
+        long fallbackResolveMutations;
+        long fallbackResolveMutationsNs;
     }
 }

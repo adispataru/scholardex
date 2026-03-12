@@ -1,5 +1,6 @@
 package ro.uvt.pokedex.core.service.application;
 
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
@@ -10,6 +11,7 @@ import java.time.Instant;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class RankingMaintenanceFacade {
     private final WosProjectionBuilderService wosProjectionBuilderService;
@@ -85,9 +87,20 @@ public class RankingMaintenanceFacade {
 
     private synchronized EnrichmentExecution executeAndTrackWosCategoryEnrichment() {
         Instant startedAt = Instant.now();
+        log.info("WoS category ranking enrichment started: startedAt={}", startedAt);
         WosBigBangMigrationService.MigrationStepResult step = wosBigBangMigrationService.runEnrichCategoryRankingsStep();
         Instant completedAt = Instant.now();
         WosEnrichmentRunSummaryDto summary = WosEnrichmentRunSummaryDto.fromStep(step, startedAt, completedAt);
+        log.info(
+                "WoS category ranking enrichment completed: durationMs={}, processed={}, computed={}, preserved={}, failed={}, skipped={}, note={}",
+                summary.durationMs(),
+                summary.processed(),
+                summary.computed(),
+                summary.preserved(),
+                summary.failed(),
+                summary.skipped(),
+                summary.note()
+        );
         lastWosEnrichmentSummary.set(summary);
         return new EnrichmentExecution(step, summary);
     }

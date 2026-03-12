@@ -1,10 +1,9 @@
 package ro.uvt.pokedex.core.service.application;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import javax.sql.DataSource;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -14,7 +13,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Service
-@ConditionalOnBean(DataSource.class)
+@ConditionalOnProperty(name = "spring.datasource.url")
 public class JdbcPostgresMaterializedViewRefreshService implements PostgresMaterializedViewRefreshService {
 
     static final String SLICE_WOS = "wos";

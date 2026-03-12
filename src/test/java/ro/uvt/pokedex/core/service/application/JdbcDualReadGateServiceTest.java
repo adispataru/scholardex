@@ -19,6 +19,8 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
+import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 import ro.uvt.pokedex.core.service.application.model.AdminScopusCitationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminScopusPublicationSearchViewModel;
 
@@ -33,6 +35,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class JdbcDualReadGateServiceTest {
@@ -83,11 +87,123 @@ class JdbcDualReadGateServiceTest {
         assertEquals(1.0d, JdbcDualReadGateService.ratio(0d, 0d));
     }
 
+    @Test
+    void resolveScenarioInputUsesSearchViewSeedWhenPresent() {
+        var fixture = fixture();
+
+        ScholardexForumView forumView = new ScholardexForumView();
+        forumView.setPublicationName("Search Forum");
+        when(fixture.mongoTemplate.findOne(any(Query.class), eq(ScholardexForumView.class))).thenReturn(forumView);
+
+        ScholardexAffiliationView affiliationView = new ScholardexAffiliationView();
+        affiliationView.setName("Search Affiliation");
+        when(fixture.mongoTemplate.findOne(any(Query.class), eq(ScholardexAffiliationView.class))).thenReturn(affiliationView);
+
+        fixture.service.runFullGate();
+
+        verify(fixture.mongoForum, times(fixture.properties.getSampleSize())).search(0, 25, "publicationName", "asc", "Search");
+        verify(fixture.postgresForum, times(fixture.properties.getSampleSize())).search(0, 25, "publicationName", "asc", "Search");
+        verify(fixture.mongoAffiliation, times(fixture.properties.getSampleSize())).search(0, 25, "name", "asc", "Search");
+        verify(fixture.postgresAffiliation, times(fixture.properties.getSampleSize())).search(0, 25, "name", "asc", "Search");
+    }
+
+    @Test
+    void resolveScenarioInputFallsBackToCanonicalSeedWhenSearchViewMissing() {
+        var fixture = fixture();
+
+        when(fixture.mongoTemplate.findOne(any(Query.class), eq(ScholardexForumView.class))).thenReturn(null);
+        when(fixture.mongoTemplate.findOne(any(Query.class), eq(ScholardexAffiliationView.class))).thenReturn(null);
+
+        fixture.service.runFullGate();
+
+        verify(fixture.mongoForum, times(fixture.properties.getSampleSize())).search(0, 25, "publicationName", "asc", null);
+        verify(fixture.postgresForum, times(fixture.properties.getSampleSize())).search(0, 25, "publicationName", "asc", null);
+        verify(fixture.mongoAffiliation, times(fixture.properties.getSampleSize())).search(0, 25, "name", "asc", null);
+        verify(fixture.postgresAffiliation, times(fixture.properties.getSampleSize())).search(0, 25, "name", "asc", null);
+    }
+
+    @Test
+    void forumScenarioFailsWithDatasetNotReadyWhenSearchViewCollectionIsEmpty() {
+        var fixture = fixture();
+        when(fixture.mongoTemplate.count(any(Query.class), eq(ScholardexForumView.class))).thenReturn(0L);
+
+        DualReadGateService.DualReadGateRunSummary run = fixture.service.runFullGate();
+
+        var forumScenario = run.scenarios().stream()
+                .filter(scenario -> scenario.scenarioId().equals("scopus.forum.search"))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals("FAILED", forumScenario.status());
+        assertEquals("dataset not ready: Mongo scholardex.forum_view is empty", forumScenario.mismatchSample());
+    }
+
+    @Test
+    void runFullGateIncludesPerfOnlyRefreshScenarioWhenEnabled() {
+        var fixture = fixture();
+        fixture.properties.setGroupReportRefreshEnabled(true);
+
+        DualReadGateService.DualReadGateRunSummary run = fixture.service.runFullGate();
+
+        var refreshScenario = run.scenarios().stream()
+                .filter(scenario -> scenario.scenarioId().equals("admin.group.report.refresh"))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals("PERF_ONLY", refreshScenario.scenarioType());
+        assertTrue(refreshScenario.parityPassed());
+        assertTrue(refreshScenario.performancePassed());
+        assertEquals(fixture.properties.getGroupReportRefreshP95ThresholdMs(), refreshScenario.p95ThresholdMs());
+    }
+
+    @Test
+    void perfOnlyRefreshScenarioFailsWhenP95ExceedsThreshold() {
+        var fixture = fixture();
+        fixture.properties.setGroupReportRefreshEnabled(true);
+        fixture.properties.setGroupReportRefreshP95ThresholdMs(1d);
+        doAnswer(invocation -> {
+            Thread.sleep(15L);
+            return null;
+        }).when(fixture.groupReportFacade).refreshGroupIndividualReportView("g-1", "r-1");
+
+        DualReadGateService.DualReadGateRunSummary run = fixture.service.runFullGate();
+
+        var refreshScenario = run.scenarios().stream()
+                .filter(scenario -> scenario.scenarioId().equals("admin.group.report.refresh"))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals("FAILED", refreshScenario.status());
+        assertFalse(refreshScenario.performancePassed());
+        assertTrue(refreshScenario.mismatchSample().contains("p95"));
+        assertTrue(refreshScenario.mismatchSample().contains("threshold"));
+    }
+
+    @Test
+    void perfOnlyRefreshScenarioFailsWhenConfiguredIdsMissing() {
+        var fixture = fixture();
+        fixture.properties.setGroupReportRefreshEnabled(true);
+        fixture.properties.setGroupReportRefreshGroupId("");
+        fixture.properties.setGroupReportRefreshReportId(" ");
+
+        DualReadGateService.DualReadGateRunSummary run = fixture.service.runFullGate();
+
+        var refreshScenario = run.scenarios().stream()
+                .filter(scenario -> scenario.scenarioId().equals("admin.group.report.refresh"))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals("FAILED", refreshScenario.status());
+        assertTrue(refreshScenario.mismatchSample().contains("configured group/report ids are missing"));
+    }
+
     private Fixture fixture() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         DualReadGateProperties properties = new DualReadGateProperties();
         properties.setSampleSize(2);
         properties.setP95RatioThreshold(50d);
+        properties.setGroupReportRefreshGroupId("g-1");
+        properties.setGroupReportRefreshReportId("r-1");
 
         MongoTemplate mongoTemplate = mock(MongoTemplate.class);
 
@@ -105,6 +221,9 @@ class JdbcDualReadGateServiceTest {
 
         MongoAdminScopusReadPort mongoAdmin = mock(MongoAdminScopusReadPort.class);
         PostgresAdminScopusReadPort postgresAdmin = mock(PostgresAdminScopusReadPort.class);
+        GroupReportFacade groupReportFacade = mock(GroupReportFacade.class);
+        GroupRepository groupRepository = mock(GroupRepository.class);
+        IndividualReportRepository individualReportRepository = mock(IndividualReportRepository.class);
 
         @SuppressWarnings("unchecked")
         ObjectProvider<PostgresReportingLookupFacade> reportingProvider = mock(ObjectProvider.class);
@@ -152,6 +271,12 @@ class JdbcDualReadGateServiceTest {
         publicationView.setTitle("Parity publication");
         when(mongoTemplate.findOne(any(Query.class), eq(ScholardexPublicationView.class))).thenReturn(publicationView);
 
+        when(mongoTemplate.count(any(Query.class), eq(ScholardexAuthorView.class))).thenReturn(1L);
+        when(mongoTemplate.count(any(Query.class), eq(ScholardexForumView.class))).thenReturn(1L);
+        when(mongoTemplate.count(any(Query.class), eq(ScholardexAffiliationView.class))).thenReturn(1L);
+        when(groupRepository.existsById("g-1")).thenReturn(true);
+        when(individualReportRepository.existsById("r-1")).thenReturn(true);
+
         WoSRanking mongoRanking = new WoSRanking();
         mongoRanking.setId("j-1");
         WoSRanking postgresRanking = new WoSRanking();
@@ -183,6 +308,7 @@ class JdbcDualReadGateServiceTest {
         AdminScopusCitationsViewModel citationsView = new AdminScopusCitationsViewModel(publication, null, List.of(), Map.of(), Map.of());
         when(mongoAdmin.buildPublicationCitationsView("pub-1")).thenReturn(Optional.of(citationsView));
         when(postgresAdmin.buildPublicationCitationsView("pub-1")).thenReturn(Optional.of(citationsView));
+        when(groupReportFacade.refreshGroupIndividualReportView("g-1", "r-1")).thenReturn(null);
 
         JdbcDualReadGateService service = new JdbcDualReadGateService(
                 jdbcTemplate,
@@ -198,17 +324,38 @@ class JdbcDualReadGateServiceTest {
                 mongoAffiliation,
                 affiliationProvider,
                 mongoAdmin,
-                adminProvider
+                adminProvider,
+                groupReportFacade,
+                groupRepository,
+                individualReportRepository
         );
 
-        return new Fixture(service, properties, mongoReportingLookup, postgresReportingLookup, List.of(postgresRanking));
+        return new Fixture(
+                service,
+                mongoTemplate,
+                properties,
+                mongoReportingLookup,
+                postgresReportingLookup,
+                mongoForum,
+                postgresForum,
+                mongoAffiliation,
+                postgresAffiliation,
+                groupReportFacade,
+                List.of(postgresRanking)
+        );
     }
 
     private record Fixture(
             JdbcDualReadGateService service,
+            MongoTemplate mongoTemplate,
             DualReadGateProperties properties,
             ProjectionBackedReportingLookupFacade mongoReportingLookup,
             PostgresReportingLookupFacade postgresReportingLookup,
+            MongoScopusForumReadPort mongoForum,
+            PostgresScopusForumReadPort postgresForum,
+            MongoScopusAffiliationReadPort mongoAffiliation,
+            PostgresScopusAffiliationReadPort postgresAffiliation,
+            GroupReportFacade groupReportFacade,
             List<WoSRanking> postgresRanking
     ) {
     }

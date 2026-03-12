@@ -11,6 +11,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import ro.uvt.pokedex.core.model.reporting.wos.WosImportEvent;
 import ro.uvt.pokedex.core.model.reporting.wos.WosSourceType;
 import ro.uvt.pokedex.core.repository.reporting.WosImportEventRepository;
+import ro.uvt.pokedex.core.service.application.WosIndexMaintenanceService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.io.FileOutputStream;
@@ -47,7 +48,7 @@ class WosImportEventIngestionServiceTest {
 
         EventStore store = new EventStore();
         WosImportEventRepository repository = repositoryMock(store);
-        WosImportEventIngestionService service = new WosImportEventIngestionService(repository, new ObjectMapper());
+        WosImportEventIngestionService service = newService(repository);
 
         ImportProcessingResult result = service.ingestDirectory(dir.toString(), null);
 
@@ -68,7 +69,7 @@ class WosImportEventIngestionServiceTest {
 
         EventStore store = new EventStore();
         WosImportEventRepository repository = repositoryMock(store);
-        WosImportEventIngestionService service = new WosImportEventIngestionService(repository, new ObjectMapper());
+        WosImportEventIngestionService service = newService(repository);
 
         ImportProcessingResult first = service.ingestDirectory(dir.toString(), "batch-1");
         int sizeAfterFirst = store.size();
@@ -99,7 +100,7 @@ class WosImportEventIngestionServiceTest {
 
         EventStore store = new EventStore();
         WosImportEventRepository repository = repositoryMock(store);
-        WosImportEventIngestionService service = new WosImportEventIngestionService(repository, new ObjectMapper());
+        WosImportEventIngestionService service = newService(repository);
         ReflectionTestUtils.setField(service, "officialWosJsonDirectory", externalJsonDir.toString());
 
         ImportProcessingResult result = service.ingestDirectory(loadedDir.toString(), null);
@@ -116,7 +117,7 @@ class WosImportEventIngestionServiceTest {
 
         EventStore store = new EventStore();
         WosImportEventRepository repository = repositoryMock(store);
-        WosImportEventIngestionService service = new WosImportEventIngestionService(repository, new ObjectMapper());
+        WosImportEventIngestionService service = newService(repository);
 
         ImportProcessingResult result = service.ingestDirectory(dir.toString(), null);
 
@@ -133,7 +134,7 @@ class WosImportEventIngestionServiceTest {
 
         EventStore store = new EventStore();
         WosImportEventRepository repository = repositoryMock(store);
-        WosImportEventIngestionService service = new WosImportEventIngestionService(repository, new ObjectMapper());
+        WosImportEventIngestionService service = newService(repository);
 
         ImportProcessingResult result = service.ingestDirectory(dir.toString(), null);
 
@@ -150,7 +151,7 @@ class WosImportEventIngestionServiceTest {
 
         EventStore store = new EventStore();
         WosImportEventRepository repository = repositoryMock(store);
-        WosImportEventIngestionService service = new WosImportEventIngestionService(repository, new ObjectMapper());
+        WosImportEventIngestionService service = newService(repository);
         ReflectionTestUtils.setField(service, "govAisPassword", "uefiscdi");
 
         ImportProcessingResult result = service.ingestDirectory(dir.toString(), null);
@@ -168,7 +169,7 @@ class WosImportEventIngestionServiceTest {
 
         EventStore store = new EventStore();
         WosImportEventRepository repository = repositoryMock(store);
-        WosImportEventIngestionService service = new WosImportEventIngestionService(repository, new ObjectMapper());
+        WosImportEventIngestionService service = newService(repository);
 
         ImportProcessingResult result = service.ingestDirectory(dir.toString(), null);
 
@@ -198,7 +199,7 @@ class WosImportEventIngestionServiceTest {
 
         EventStore store = new EventStore();
         WosImportEventRepository repository = repositoryMock(store);
-        WosImportEventIngestionService service = new WosImportEventIngestionService(repository, new ObjectMapper());
+        WosImportEventIngestionService service = newService(repository);
 
         ImportProcessingResult result = service.ingestDirectory(dir.toString(), null);
 
@@ -267,6 +268,15 @@ class WosImportEventIngestionServiceTest {
                     return iterable;
                 });
         return repository;
+    }
+
+    private WosImportEventIngestionService newService(WosImportEventRepository repository) {
+        WosOptimizationProperties properties = new WosOptimizationProperties();
+        WosIndexMaintenanceService indexMaintenanceService = mock(WosIndexMaintenanceService.class);
+        when(indexMaintenanceService.ensureWosIndexesForStage(any())).thenReturn(
+                new WosIndexMaintenanceService.WosIndexEnsureResult(List.of(), List.of(), List.of(), List.of())
+        );
+        return new WosImportEventIngestionService(repository, new ObjectMapper(), properties, indexMaintenanceService);
     }
 
     private void createSampleExcel(Path file, double scoreValue) throws Exception {
