@@ -11,7 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.ApiExceptionHandler;
 import ro.uvt.pokedex.core.controller.dto.ScopusForumListItemResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusForumPageResponse;
-import ro.uvt.pokedex.core.service.application.ScopusForumQueryService;
+import ro.uvt.pokedex.core.service.application.ScholardexForumQueryService;
 
 import java.util.List;
 
@@ -30,11 +30,11 @@ class ScopusForumApiControllerContractTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ScopusForumQueryService scopusForumQueryService;
+    private ScholardexForumQueryService scholardexForumQueryService;
 
     @Test
     void defaultRequestReturnsPagedEnvelope() throws Exception {
-        when(scopusForumQueryService.search(0, 25, "publicationName", "asc", null))
+        when(scholardexForumQueryService.search(0, 25, "publicationName", "asc", null))
                 .thenReturn(new ScopusForumPageResponse(
                         List.of(
                                 item("1", "ACM Digital Library", "1111-1111", "2222-2222", "Journal"),
@@ -56,7 +56,7 @@ class ScopusForumApiControllerContractTest {
 
     @Test
     void pagingSortingAndDirectionAreApplied() throws Exception {
-        when(scopusForumQueryService.search(1, 2, "issn", "desc", null))
+        when(scholardexForumQueryService.search(1, 2, "issn", "desc", null))
                 .thenReturn(new ScopusForumPageResponse(
                         List.of(item("3", "ScienceDirect", "9999-1111", "9999-2222", "Journal")),
                         1, 2, 3, 2
@@ -78,13 +78,13 @@ class ScopusForumApiControllerContractTest {
 
     @Test
     void queryMatchesConfiguredFields() throws Exception {
-        when(scopusForumQueryService.search(0, 25, "publicationName", "asc", "ieee"))
+        when(scholardexForumQueryService.search(0, 25, "publicationName", "asc", "ieee"))
                 .thenReturn(new ScopusForumPageResponse(List.of(item("name-hit", "IEEE Access", "1111", "2222", "Journal")), 0, 25, 1, 1));
-        when(scopusForumQueryService.search(0, 25, "publicationName", "asc", "7777"))
+        when(scholardexForumQueryService.search(0, 25, "publicationName", "asc", "7777"))
                 .thenReturn(new ScopusForumPageResponse(List.of(item("issn-hit", "Elsevier", "7777-ABCD", "2222", "Journal")), 0, 25, 1, 1));
-        when(scopusForumQueryService.search(0, 25, "publicationName", "asc", "efgh"))
+        when(scholardexForumQueryService.search(0, 25, "publicationName", "asc", "efgh"))
                 .thenReturn(new ScopusForumPageResponse(List.of(item("eissn-hit", "Nature", "1111", "9999-EFGH", "Journal")), 0, 25, 1, 1));
-        when(scopusForumQueryService.search(0, 25, "publicationName", "asc", "conference"))
+        when(scholardexForumQueryService.search(0, 25, "publicationName", "asc", "conference"))
                 .thenReturn(new ScopusForumPageResponse(List.of(item("agg-hit", "SIGIR", "1111", "2222", "Conference")), 0, 25, 1, 1));
 
         mockMvc.perform(get("/api/scopus/forums").param("q", "ieee"))
@@ -106,11 +106,11 @@ class ScopusForumApiControllerContractTest {
 
     @Test
     void invalidParamsReturnBadRequestEnvelope() throws Exception {
-        when(scopusForumQueryService.search(0, 25, "bad", "asc", null))
+        when(scholardexForumQueryService.search(0, 25, "bad", "asc", null))
                 .thenThrow(new IllegalArgumentException("Invalid sort parameter. Allowed: publicationName, issn, eIssn, aggregationType."));
-        when(scopusForumQueryService.search(0, 25, "publicationName", "up", null))
+        when(scholardexForumQueryService.search(0, 25, "publicationName", "up", null))
                 .thenThrow(new IllegalArgumentException("Invalid direction parameter. Allowed: asc, desc."));
-        when(scopusForumQueryService.search(0, 25, "publicationName", "asc", "x".repeat(101)))
+        when(scholardexForumQueryService.search(0, 25, "publicationName", "asc", "x".repeat(101)))
                 .thenThrow(new IllegalArgumentException("Invalid q parameter. Maximum length is 100."));
 
         mockMvc.perform(get("/api/scopus/forums").param("page", "-1"))

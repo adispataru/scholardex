@@ -277,17 +277,17 @@ class JdbcDualReadGateServiceTest {
         ProjectionBackedReportingLookupFacade mongoReportingLookup = mock(ProjectionBackedReportingLookupFacade.class);
         PostgresReportingLookupFacade postgresReportingLookup = mock(PostgresReportingLookupFacade.class);
 
-        MongoScopusAuthorReadPort mongoAuthor = mock(MongoScopusAuthorReadPort.class);
-        PostgresScopusAuthorReadPort postgresAuthor = mock(PostgresScopusAuthorReadPort.class);
+        MongoScholardexAuthorReadPort mongoAuthor = mock(MongoScholardexAuthorReadPort.class);
+        PostgresScholardexAuthorReadPort postgresAuthor = mock(PostgresScholardexAuthorReadPort.class);
 
-        MongoScopusForumReadPort mongoForum = mock(MongoScopusForumReadPort.class);
-        PostgresScopusForumReadPort postgresForum = mock(PostgresScopusForumReadPort.class);
+        MongoScholardexForumReadPort mongoForum = mock(MongoScholardexForumReadPort.class);
+        PostgresScholardexForumReadPort postgresForum = mock(PostgresScholardexForumReadPort.class);
 
-        MongoScopusAffiliationReadPort mongoAffiliation = mock(MongoScopusAffiliationReadPort.class);
-        PostgresScopusAffiliationReadPort postgresAffiliation = mock(PostgresScopusAffiliationReadPort.class);
+        MongoScholardexAffiliationReadPort mongoAffiliation = mock(MongoScholardexAffiliationReadPort.class);
+        PostgresScholardexAffiliationReadPort postgresAffiliation = mock(PostgresScholardexAffiliationReadPort.class);
 
-        MongoAdminScopusReadPort mongoAdmin = mock(MongoAdminScopusReadPort.class);
-        PostgresAdminScopusReadPort postgresAdmin = mock(PostgresAdminScopusReadPort.class);
+        MongoScholardexAdminReadPort mongoAdmin = mock(MongoScholardexAdminReadPort.class);
+        PostgresScholardexAdminReadPort postgresAdmin = mock(PostgresScholardexAdminReadPort.class);
         GroupReportFacade groupReportFacade = mock(GroupReportFacade.class);
         ReportingReadStoreSelector reportingReadStoreSelector = new ReportingReadStoreSelector("mongo");
         GroupRepository groupRepository = mock(GroupRepository.class);
@@ -296,13 +296,13 @@ class JdbcDualReadGateServiceTest {
         @SuppressWarnings("unchecked")
         ObjectProvider<PostgresReportingLookupFacade> reportingProvider = mock(ObjectProvider.class);
         @SuppressWarnings("unchecked")
-        ObjectProvider<PostgresScopusAuthorReadPort> authorProvider = mock(ObjectProvider.class);
+        ObjectProvider<PostgresScholardexAuthorReadPort> authorProvider = mock(ObjectProvider.class);
         @SuppressWarnings("unchecked")
-        ObjectProvider<PostgresScopusForumReadPort> forumProvider = mock(ObjectProvider.class);
+        ObjectProvider<PostgresScholardexForumReadPort> forumProvider = mock(ObjectProvider.class);
         @SuppressWarnings("unchecked")
-        ObjectProvider<PostgresScopusAffiliationReadPort> affiliationProvider = mock(ObjectProvider.class);
+        ObjectProvider<PostgresScholardexAffiliationReadPort> affiliationProvider = mock(ObjectProvider.class);
         @SuppressWarnings("unchecked")
-        ObjectProvider<PostgresAdminScopusReadPort> adminProvider = mock(ObjectProvider.class);
+        ObjectProvider<PostgresScholardexAdminReadPort> adminProvider = mock(ObjectProvider.class);
 
         when(reportingProvider.getIfAvailable()).thenReturn(postgresReportingLookup);
         when(authorProvider.getIfAvailable()).thenReturn(postgresAuthor);
@@ -421,10 +421,10 @@ class JdbcDualReadGateServiceTest {
             DualReadGateProperties properties,
             ProjectionBackedReportingLookupFacade mongoReportingLookup,
             PostgresReportingLookupFacade postgresReportingLookup,
-            MongoScopusForumReadPort mongoForum,
-            PostgresScopusForumReadPort postgresForum,
-            MongoScopusAffiliationReadPort mongoAffiliation,
-            PostgresScopusAffiliationReadPort postgresAffiliation,
+            MongoScholardexForumReadPort mongoForum,
+            PostgresScholardexForumReadPort postgresForum,
+            MongoScholardexAffiliationReadPort mongoAffiliation,
+            PostgresScholardexAffiliationReadPort postgresAffiliation,
             GroupReportFacade groupReportFacade,
             ReportingReadStoreSelector reportingReadStoreSelector,
             List<WoSRanking> postgresRanking

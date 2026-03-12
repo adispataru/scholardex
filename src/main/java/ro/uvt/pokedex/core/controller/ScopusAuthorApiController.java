@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ro.uvt.pokedex.core.controller.dto.ScopusAuthorPageResponse;
-import ro.uvt.pokedex.core.service.application.ScopusAuthorQueryService;
+import ro.uvt.pokedex.core.service.application.ScholardexAuthorQueryService;
 
 @RestController
 @Validated
@@ -18,7 +18,7 @@ import ro.uvt.pokedex.core.service.application.ScopusAuthorQueryService;
 @RequiredArgsConstructor
 public class ScopusAuthorApiController {
 
-    private final ScopusAuthorQueryService scopusAuthorQueryService;
+    private final ScholardexAuthorQueryService scholardexAuthorQueryService;
 
     @GetMapping("/authors")
     public ResponseEntity<ScopusAuthorPageResponse> listScopusAuthors(
@@ -29,6 +29,6 @@ public class ScopusAuthorApiController {
             @RequestParam(defaultValue = "asc") String direction,
             @RequestParam(required = false) String q
     ) {
-        return ResponseEntity.ok(scopusAuthorQueryService.search(afid, page, size, sort, direction, q));
+        return ResponseEntity.ok(scholardexAuthorQueryService.search(afid, page, size, sort, direction, q));
     }
 }

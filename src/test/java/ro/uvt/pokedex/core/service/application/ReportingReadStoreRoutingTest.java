@@ -52,24 +52,24 @@ class ReportingReadStoreRoutingTest {
         ReportingReadStoreSelector selector = mock(ReportingReadStoreSelector.class);
         when(selector.isPostgres()).thenReturn(true);
 
-        MongoScopusAuthorReadPort mongoAuthor = mock(MongoScopusAuthorReadPort.class);
-        PostgresScopusAuthorReadPort postgresAuthor = mock(PostgresScopusAuthorReadPort.class);
+        MongoScholardexAuthorReadPort mongoAuthor = mock(MongoScholardexAuthorReadPort.class);
+        PostgresScholardexAuthorReadPort postgresAuthor = mock(PostgresScholardexAuthorReadPort.class);
         when(postgresAuthor.search(null, 0, 10, "name", "asc", null))
                 .thenReturn(new ScopusAuthorPageResponse(List.of(), 0, 10, 0, 0));
 
-        MongoScopusForumReadPort mongoForum = mock(MongoScopusForumReadPort.class);
-        PostgresScopusForumReadPort postgresForum = mock(PostgresScopusForumReadPort.class);
+        MongoScholardexForumReadPort mongoForum = mock(MongoScholardexForumReadPort.class);
+        PostgresScholardexForumReadPort postgresForum = mock(PostgresScholardexForumReadPort.class);
         when(postgresForum.search(0, 10, "issn", "asc", null))
                 .thenReturn(new ScopusForumPageResponse(List.of(), 0, 10, 0, 0));
 
-        MongoScopusAffiliationReadPort mongoAffiliation = mock(MongoScopusAffiliationReadPort.class);
-        PostgresScopusAffiliationReadPort postgresAffiliation = mock(PostgresScopusAffiliationReadPort.class);
+        MongoScholardexAffiliationReadPort mongoAffiliation = mock(MongoScholardexAffiliationReadPort.class);
+        PostgresScholardexAffiliationReadPort postgresAffiliation = mock(PostgresScholardexAffiliationReadPort.class);
         when(postgresAffiliation.search(0, 10, "name", "asc", null))
                 .thenReturn(new ScopusAffiliationPageResponse(List.of(), 0, 10, 0, 0));
 
-        ScopusAuthorQueryService authorService = new ScopusAuthorQueryService(selector, mongoAuthor, provider(postgresAuthor));
-        ScopusForumQueryService forumService = new ScopusForumQueryService(selector, mongoForum, provider(postgresForum));
-        ScopusAffiliationQueryService affiliationService = new ScopusAffiliationQueryService(selector, mongoAffiliation, provider(postgresAffiliation));
+        ScholardexAuthorQueryService authorService = new ScholardexAuthorQueryService(selector, mongoAuthor, provider(postgresAuthor));
+        ScholardexForumQueryService forumService = new ScholardexForumQueryService(selector, mongoForum, provider(postgresForum));
+        ScholardexAffiliationQueryService affiliationService = new ScholardexAffiliationQueryService(selector, mongoAffiliation, provider(postgresAffiliation));
 
         assertEquals(0, authorService.search(null, 0, 10, "name", "asc", null).totalItems());
         assertEquals(0, forumService.search(0, 10, "issn", "asc", null).totalItems());
@@ -81,13 +81,13 @@ class ReportingReadStoreRoutingTest {
         ReportingReadStoreSelector selector = mock(ReportingReadStoreSelector.class);
         when(selector.isPostgres()).thenReturn(true);
 
-        MongoAdminScopusReadPort mongoPort = mock(MongoAdminScopusReadPort.class);
-        PostgresAdminScopusReadPort postgresPort = mock(PostgresAdminScopusReadPort.class);
-        ScholardexProjectionReadService scopusProjectionReadService = mock(ScholardexProjectionReadService.class);
+        MongoScholardexAdminReadPort mongoPort = mock(MongoScholardexAdminReadPort.class);
+        PostgresScholardexAdminReadPort postgresPort = mock(PostgresScholardexAdminReadPort.class);
+        ScholardexProjectionReadService scholardexProjectionReadService = mock(ScholardexProjectionReadService.class);
         when(postgresPort.buildPublicationSearchView("paper"))
                 .thenReturn(new AdminScopusPublicationSearchViewModel(List.of(), Map.of()));
 
-        AdminScopusFacade facade = new AdminScopusFacade(selector, mongoPort, provider(postgresPort), scopusProjectionReadService);
+        ScholardexAdminReadFacade facade = new ScholardexAdminReadFacade(selector, mongoPort, provider(postgresPort), scholardexProjectionReadService);
 
         assertEquals(0, facade.buildPublicationSearchView("paper").publications().size());
     }

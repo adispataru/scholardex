@@ -32,7 +32,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class AdminCatalogFacadeTest {
 
-    @Mock private ScholardexProjectionReadService scopusProjectionReadService;
+    @Mock private ScholardexProjectionReadService scholardexProjectionReadService;
     @Mock private ArtisticEventRepository artisticEventRepository;
     @Mock private RankingRepository rankingRepository;
     @Mock private CoreConferenceRankingRepository coreConferenceRankingRepository;
@@ -88,8 +88,8 @@ class AdminCatalogFacadeTest {
         Affiliation affiliation = new Affiliation();
         affiliation.setName("Aff");
         Forum forum = new Forum();
-        when(scopusProjectionReadService.findAffiliationsByNameContains("uvt")).thenReturn(List.of(affiliation));
-        when(scopusProjectionReadService.findAllForums()).thenReturn(List.of(forum));
+        when(scholardexProjectionReadService.findAffiliationsByNameContains("uvt")).thenReturn(List.of(affiliation));
+        when(scholardexProjectionReadService.findAllForums()).thenReturn(List.of(forum));
 
         assertEquals(1, facade.listAffiliationsByNameContains("uvt").size());
         assertEquals(1, facade.listScopusVenues().size());

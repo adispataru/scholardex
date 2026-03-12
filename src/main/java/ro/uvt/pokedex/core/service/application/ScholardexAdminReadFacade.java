@@ -18,12 +18,12 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class AdminScopusFacade {
+public class ScholardexAdminReadFacade {
 
     private final ReportingReadStoreSelector readStoreSelector;
-    private final MongoAdminScopusReadPort mongoAdminScopusReadPort;
-    private final ObjectProvider<PostgresAdminScopusReadPort> postgresAdminScopusReadPortProvider;
-    private final ScholardexProjectionReadService scopusProjectionReadService;
+    private final MongoScholardexAdminReadPort mongoScholardexAdminReadPort;
+    private final ObjectProvider<PostgresScholardexAdminReadPort> postgresScholardexAdminReadPortProvider;
+    private final ScholardexProjectionReadService scholardexProjectionReadService;
 
     public AdminScopusPublicationSearchViewModel buildPublicationSearchView(String paperTitle) {
         if (readStoreSelector.isPostgres()) {
@@ -31,12 +31,12 @@ public class AdminScopusFacade {
         }
 
         List<Publication> publications = new ArrayList<>(
-                scopusProjectionReadService.findPublicationsByTitleContainingIgnoreCaseOrderByCoverDateDesc(paperTitle));
+                scholardexProjectionReadService.findPublicationsByTitleContainingIgnoreCaseOrderByCoverDateDesc(paperTitle));
         publications.sort(PublicationOrderingSupport.publicationComparator());
 
         Set<String> authorKeys = new HashSet<>();
         publications.forEach(publication -> authorKeys.addAll(publication.getAuthors()));
-        Map<String, Author> authorMap = scopusProjectionReadService.findAuthorsByIdIn(authorKeys).stream()
+        Map<String, Author> authorMap = scholardexProjectionReadService.findAuthorsByIdIn(authorKeys).stream()
                 .collect(Collectors.toMap(Author::getId, author -> author));
 
         return new AdminScopusPublicationSearchViewModel(publications, authorMap);
@@ -46,13 +46,13 @@ public class AdminScopusFacade {
         return activePort().buildPublicationCitationsView(publicationId);
     }
 
-    private AdminScopusReadPort activePort() {
+    private ScholardexAdminReadPort activePort() {
         if (!readStoreSelector.isPostgres()) {
-            return mongoAdminScopusReadPort;
+            return mongoScholardexAdminReadPort;
         }
-        PostgresAdminScopusReadPort postgresPort = postgresAdminScopusReadPortProvider.getIfAvailable();
+        PostgresScholardexAdminReadPort postgresPort = postgresScholardexAdminReadPortProvider.getIfAvailable();
         if (postgresPort == null) {
-            throw new IllegalStateException("Postgres read-store selected but PostgresAdminScopusReadPort is not available.");
+            throw new IllegalStateException("Postgres read-store selected but PostgresScholardexAdminReadPort is not available.");
         }
         return postgresPort;
     }

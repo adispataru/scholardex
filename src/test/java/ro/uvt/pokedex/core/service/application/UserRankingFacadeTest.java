@@ -18,7 +18,7 @@ import static org.mockito.Mockito.when;
 class UserRankingFacadeTest {
 
     @Mock
-    private ScholardexProjectionReadService scopusProjectionReadService;
+    private ScholardexProjectionReadService scholardexProjectionReadService;
     @Mock
     private RankingRepository rankingRepository;
 
@@ -30,7 +30,7 @@ class UserRankingFacadeTest {
         Forum forum = new Forum();
         forum.setId("f1");
         forum.setAggregationType("Conference");
-        when(scopusProjectionReadService.findForumById("f1")).thenReturn(Optional.of(forum));
+        when(scholardexProjectionReadService.findForumById("f1")).thenReturn(Optional.of(forum));
 
         assertTrue(facade.resolveJournalRankingForForum("f1").isEmpty());
     }
@@ -40,7 +40,7 @@ class UserRankingFacadeTest {
         Forum forum = new Forum();
         forum.setId("f1");
         forum.setAggregationType("Journal");
-        when(scopusProjectionReadService.findForumById("f1")).thenReturn(Optional.of(forum));
+        when(scholardexProjectionReadService.findForumById("f1")).thenReturn(Optional.of(forum));
 
         assertTrue(facade.resolveJournalRankingForForum("f1").isEmpty());
     }
@@ -53,7 +53,7 @@ class UserRankingFacadeTest {
         forum.setIssn("1234-5678");
         WoSRanking ranking = new WoSRanking();
         ranking.setId("1234-5678");
-        when(scopusProjectionReadService.findForumById("f1")).thenReturn(Optional.of(forum));
+        when(scholardexProjectionReadService.findForumById("f1")).thenReturn(Optional.of(forum));
         when(rankingRepository.findById("1234-5678")).thenReturn(Optional.of(ranking));
 
         Optional<WoSRanking> result = facade.resolveJournalRankingForForum("f1");

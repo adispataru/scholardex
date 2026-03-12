@@ -29,7 +29,7 @@ public class GroupCnfisExportFacade {
     private static final String LINKER_VERSION = "h17.10";
 
     private final GroupManagementFacade groupManagementFacade;
-    private final ScholardexProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final PublicationEnrichmentLinkerService publicationEnrichmentLinkerService;
     private final CNFISScoringService2025 cnfiSScoringService2025;
@@ -48,12 +48,12 @@ public class GroupCnfisExportFacade {
         for (Researcher researcher : researchers) {
             lookupKeys.addAll(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
         }
-        List<String> authorIds = scopusProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
+        List<String> authorIds = scholardexProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
                 .map(ro.uvt.pokedex.core.model.scopus.Author::getId)
                 .distinct()
                 .toList();
 
-        List<Publication> publications = scopusProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
+        List<Publication> publications = scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
         publications = filterPublicationsByYear(publications, startYear, endYear);
 
         Domain allDomain = resolveAllDomain();
@@ -73,10 +73,10 @@ public class GroupCnfisExportFacade {
         List<GroupMemberCnfisWorkbook> workbooks = new ArrayList<>();
 
         for (Researcher researcher : group.getResearchers()) {
-            List<String> authorIds = scopusProjectionReadService.findAuthorsByIdIn(
+            List<String> authorIds = scholardexProjectionReadService.findAuthorsByIdIn(
                     researcherAuthorLookupService.resolveAuthorLookupKeys(researcher)
             ).stream().map(ro.uvt.pokedex.core.model.scopus.Author::getId).toList();
-            List<Publication> publications = scopusProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
+            List<Publication> publications = scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
             publications = filterPublicationsByYear(publications, startYear, endYear);
 
             List<CNFISReport2025> cnfisReports = generateReports(publications, allDomain);
@@ -144,7 +144,7 @@ public class GroupCnfisExportFacade {
 
     private Map<String, Forum> loadForumMap(List<Publication> publications) {
         Set<String> forumKeys = publications.stream().map(Publication::getForum).collect(Collectors.toSet());
-        return scopusProjectionReadService.findForumsByIdIn(forumKeys).stream()
+        return scholardexProjectionReadService.findForumsByIdIn(forumKeys).stream()
                 .collect(Collectors.toMap(Forum::getId, forum -> forum));
     }
 }

@@ -7,23 +7,23 @@ import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationPageResponse;
 
 @Service
 @RequiredArgsConstructor
-public class ScopusAffiliationQueryService {
+public class ScholardexAffiliationQueryService {
 
     private final ReportingReadStoreSelector readStoreSelector;
-    private final MongoScopusAffiliationReadPort mongoScopusAffiliationReadPort;
-    private final ObjectProvider<PostgresScopusAffiliationReadPort> postgresScopusAffiliationReadPortProvider;
+    private final MongoScholardexAffiliationReadPort mongoScholardexAffiliationReadPort;
+    private final ObjectProvider<PostgresScholardexAffiliationReadPort> postgresScholardexAffiliationReadPortProvider;
 
     public ScopusAffiliationPageResponse search(int page, int size, String sort, String direction, String q) {
         return activePort().search(page, size, sort, direction, q);
     }
 
-    private ScopusAffiliationReadPort activePort() {
+    private ScholardexAffiliationReadPort activePort() {
         if (!readStoreSelector.isPostgres()) {
-            return mongoScopusAffiliationReadPort;
+            return mongoScholardexAffiliationReadPort;
         }
-        PostgresScopusAffiliationReadPort postgresPort = postgresScopusAffiliationReadPortProvider.getIfAvailable();
+        PostgresScholardexAffiliationReadPort postgresPort = postgresScholardexAffiliationReadPortProvider.getIfAvailable();
         if (postgresPort == null) {
-            throw new IllegalStateException("Postgres read-store selected but PostgresScopusAffiliationReadPort is not available.");
+            throw new IllegalStateException("Postgres read-store selected but PostgresScholardexAffiliationReadPort is not available.");
         }
         return postgresPort;
     }

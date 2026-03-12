@@ -28,7 +28,7 @@ class GroupExportFacadeTest {
     @Mock
     private GroupManagementFacade groupManagementFacade;
     @Mock
-    private ScholardexProjectionReadService scopusProjectionReadService;
+    private ScholardexProjectionReadService scholardexProjectionReadService;
     @Mock
     private ResearcherAuthorLookupService researcherAuthorLookupService;
 
@@ -78,11 +78,11 @@ class GroupExportFacadeTest {
 
         when(groupManagementFacade.buildGroupEditView("g1"))
                 .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of()));
-        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
+        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
                 .thenReturn(List.of(publication));
-        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection()))
+        when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection()))
                 .thenReturn(List.of(author));
-        when(scopusProjectionReadService.findForumsByIdIn(anyCollection()))
+        when(scholardexProjectionReadService.findForumsByIdIn(anyCollection()))
                 .thenReturn(List.of(forum));
 
         var result = facade.buildGroupPublicationCsvExport("g1");
@@ -135,11 +135,11 @@ class GroupExportFacadeTest {
 
         when(groupManagementFacade.buildGroupEditView("g1"))
                 .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of()));
-        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
+        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
                 .thenReturn(List.of(p1, malformed, p2, p1));
-        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection()))
+        when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection()))
                 .thenReturn(List.of(author));
-        when(scopusProjectionReadService.findForumsByIdIn(anyCollection()))
+        when(scholardexProjectionReadService.findForumsByIdIn(anyCollection()))
                 .thenReturn(List.of(forum));
 
         var result = facade.buildGroupPublicationCsvExport("g1");

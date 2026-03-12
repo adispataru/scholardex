@@ -5,7 +5,7 @@ import ro.uvt.pokedex.core.service.application.model.AdminScopusPublicationSearc
 
 import java.util.Optional;
 
-public interface AdminScopusReadPort {
+public interface ScholardexAdminReadPort {
     AdminScopusPublicationSearchViewModel buildPublicationSearchView(String paperTitle);
 
     Optional<AdminScopusCitationsViewModel> buildPublicationCitationsView(String publicationId);

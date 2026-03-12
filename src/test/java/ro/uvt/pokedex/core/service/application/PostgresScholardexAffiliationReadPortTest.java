@@ -22,16 +22,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class PostgresScopusAuthorReadPortTest {
+class PostgresScholardexAffiliationReadPortTest {
 
     @Mock
     private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
-    private PostgresScopusAuthorReadPort service;
+    private PostgresScholardexAffiliationReadPort service;
 
     @BeforeEach
     void setUp() {
-        service = new PostgresScopusAuthorReadPort(namedParameterJdbcTemplate);
+        service = new PostgresScholardexAffiliationReadPort(namedParameterJdbcTemplate);
         when(namedParameterJdbcTemplate.query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
                 .thenReturn(List.of());
         when(namedParameterJdbcTemplate.queryForObject(anyString(), any(MapSqlParameterSource.class), eq(Long.class)))
@@ -39,8 +39,8 @@ class PostgresScopusAuthorReadPortTest {
     }
 
     @Test
-    void searchUsesGinFriendlyAffiliationPredicateAndEscapedLikePattern() {
-        service.search("af-1", 0, 25, "name", "asc", "a%b_c\\d");
+    void searchEscapesLikePatternAndUsesEscapeClause() {
+        service.search(0, 25, "name", "asc", "a%b_c\\d");
 
         ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<MapSqlParameterSource> paramsCaptor = ArgumentCaptor.forClass(MapSqlParameterSource.class);
@@ -49,15 +49,13 @@ class PostgresScopusAuthorReadPortTest {
         String sql = sqlCaptor.getValue();
         MapSqlParameterSource params = paramsCaptor.getValue();
 
-        assertTrue(sql.contains("a.affiliation_ids @> ARRAY[:afid]::text[]"));
         assertTrue(sql.contains("ILIKE :qPattern ESCAPE '\\'"));
-        assertEquals("af-1", params.getValue("afid"));
         assertEquals("%a\\%b\\_c\\\\d%", params.getValue("qPattern"));
     }
 
     @Test
     void searchWithoutQueryDoesNotAddLikeFilter() {
-        service.search("af-1", 0, 25, "name", "asc", "   ");
+        service.search(0, 25, "name", "asc", "   ");
 
         ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
         verify(namedParameterJdbcTemplate).query(sqlCaptor.capture(), any(MapSqlParameterSource.class), any(RowMapper.class));

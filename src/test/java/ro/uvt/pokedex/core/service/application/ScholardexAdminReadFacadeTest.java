@@ -19,22 +19,22 @@ import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class AdminScopusFacadeTest {
+class ScholardexAdminReadFacadeTest {
 
     @Mock
-    private ScholardexProjectionReadService scopusProjectionReadService;
+    private ScholardexProjectionReadService scholardexProjectionReadService;
 
     @InjectMocks
-    private MongoAdminScopusReadPort mongoAdminScopusReadPort;
+    private MongoScholardexAdminReadPort mongoScholardexAdminReadPort;
 
     @Test
     void buildPublicationSearchViewReturnsPublicationsAndAuthorMap() {
         Publication publication = publication("p1", "f1", List.of("a1"), "2024-01-01", "Paper");
         Author author = author("a1", "Author One");
-        when(scopusProjectionReadService.findPublicationsByTitleContainingIgnoreCaseOrderByCoverDateDesc("paper")).thenReturn(List.of(publication));
-        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
+        when(scholardexProjectionReadService.findPublicationsByTitleContainingIgnoreCaseOrderByCoverDateDesc("paper")).thenReturn(List.of(publication));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
 
-        var vm = mongoAdminScopusReadPort.buildPublicationSearchView("paper");
+        var vm = mongoScholardexAdminReadPort.buildPublicationSearchView("paper");
 
         assertEquals(1, vm.publications().size());
         assertEquals(1, vm.authorMap().size());
@@ -46,19 +46,19 @@ class AdminScopusFacadeTest {
         Publication p1 = publication("p1", "f1", List.of("a1"), "2024-01-01", "Beta");
         Publication p2 = publication("p2", "f1", List.of("a1"), "2024-01-01", "Alpha");
         Publication p3 = publication("p3", "f1", List.of("a1"), "bad-date", "Zeta");
-        when(scopusProjectionReadService.findPublicationsByTitleContainingIgnoreCaseOrderByCoverDateDesc("paper")).thenReturn(List.of(p1, p3, p2));
-        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author("a1", "Author One")));
+        when(scholardexProjectionReadService.findPublicationsByTitleContainingIgnoreCaseOrderByCoverDateDesc("paper")).thenReturn(List.of(p1, p3, p2));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author("a1", "Author One")));
 
-        var vm = mongoAdminScopusReadPort.buildPublicationSearchView("paper");
+        var vm = mongoScholardexAdminReadPort.buildPublicationSearchView("paper");
 
         assertEquals(List.of("p2", "p1", "p3"), vm.publications().stream().map(Publication::getId).toList());
     }
 
     @Test
     void buildPublicationCitationsViewReturnsEmptyWhenPublicationMissing() {
-        when(scopusProjectionReadService.findPublicationByAnyId("missing")).thenReturn(Optional.empty());
+        when(scholardexProjectionReadService.findPublicationByAnyId("missing")).thenReturn(Optional.empty());
 
-        var vm = mongoAdminScopusReadPort.buildPublicationCitationsView("missing");
+        var vm = mongoScholardexAdminReadPort.buildPublicationCitationsView("missing");
 
         assertTrue(vm.isEmpty());
     }
@@ -74,14 +74,14 @@ class AdminScopusFacadeTest {
         Forum forum1 = forum("f1", "Forum One");
         Forum forum2 = forum("f2", "Forum Two");
 
-        when(scopusProjectionReadService.findPublicationByAnyId("p1")).thenReturn(Optional.of(publication));
-        when(scopusProjectionReadService.findAllCitationsByCitedId("p1")).thenReturn(List.of(citation));
-        when(scopusProjectionReadService.findAllPublicationsByIdIn(List.of("p2"))).thenReturn(List.of(citing));
-        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author("a1", "A1"), author("a2", "A2")));
-        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum2));
-        when(scopusProjectionReadService.findForumById("f1")).thenReturn(Optional.of(forum1));
+        when(scholardexProjectionReadService.findPublicationByAnyId("p1")).thenReturn(Optional.of(publication));
+        when(scholardexProjectionReadService.findAllCitationsByCitedId("p1")).thenReturn(List.of(citation));
+        when(scholardexProjectionReadService.findAllPublicationsByIdIn(List.of("p2"))).thenReturn(List.of(citing));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author("a1", "A1"), author("a2", "A2")));
+        when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum2));
+        when(scholardexProjectionReadService.findForumById("f1")).thenReturn(Optional.of(forum1));
 
-        var vm = mongoAdminScopusReadPort.buildPublicationCitationsView("p1");
+        var vm = mongoScholardexAdminReadPort.buildPublicationCitationsView("p1");
 
         assertTrue(vm.isPresent());
         assertEquals(1, vm.get().citations().size());
@@ -106,15 +106,15 @@ class AdminScopusFacadeTest {
         cit3.setCitedId("p1");
         cit3.setCitingId("c3");
 
-        when(scopusProjectionReadService.findPublicationByAnyId("p1")).thenReturn(Optional.of(publication));
-        when(scopusProjectionReadService.findAllCitationsByCitedId("p1")).thenReturn(List.of(cit1, cit2, cit3));
-        when(scopusProjectionReadService.findAllPublicationsByIdIn(List.of("c1", "c2", "c3"))).thenReturn(List.of(c1, c3, c2));
-        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(
+        when(scholardexProjectionReadService.findPublicationByAnyId("p1")).thenReturn(Optional.of(publication));
+        when(scholardexProjectionReadService.findAllCitationsByCitedId("p1")).thenReturn(List.of(cit1, cit2, cit3));
+        when(scholardexProjectionReadService.findAllPublicationsByIdIn(List.of("c1", "c2", "c3"))).thenReturn(List.of(c1, c3, c2));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(
                 author("a1", "A1"), author("a2", "A2"), author("a3", "A3"), author("a4", "A4")));
-        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum("f2", "Forum Two")));
-        when(scopusProjectionReadService.findForumById("f1")).thenReturn(Optional.of(forum("f1", "Forum One")));
+        when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum("f2", "Forum Two")));
+        when(scholardexProjectionReadService.findForumById("f1")).thenReturn(Optional.of(forum("f1", "Forum One")));
 
-        var vm = mongoAdminScopusReadPort.buildPublicationCitationsView("p1");
+        var vm = mongoScholardexAdminReadPort.buildPublicationCitationsView("p1");
 
         assertTrue(vm.isPresent());
         assertEquals(List.of("c2", "c3", "c1"), vm.get().citations().stream().map(Publication::getId).toList());

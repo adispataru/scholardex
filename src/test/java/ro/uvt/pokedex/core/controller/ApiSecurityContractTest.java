@@ -14,9 +14,9 @@ import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.service.CustomUserDetailsService;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.CoreRankingQueryService;
-import ro.uvt.pokedex.core.service.application.ScopusAffiliationQueryService;
-import ro.uvt.pokedex.core.service.application.ScopusAuthorQueryService;
-import ro.uvt.pokedex.core.service.application.ScopusForumQueryService;
+import ro.uvt.pokedex.core.service.application.ScholardexAffiliationQueryService;
+import ro.uvt.pokedex.core.service.application.ScholardexAuthorQueryService;
+import ro.uvt.pokedex.core.service.application.ScholardexForumQueryService;
 import ro.uvt.pokedex.core.service.application.UrapRankingQueryService;
 import ro.uvt.pokedex.core.service.application.WosRankingQueryService;
 import ro.uvt.pokedex.core.controller.dto.CoreRankingPageResponse;
@@ -66,11 +66,11 @@ class ApiSecurityContractTest {
     @MockitoBean
     private UrapRankingQueryService urapRankingQueryService;
     @MockitoBean
-    private ScopusForumQueryService scopusForumQueryService;
+    private ScholardexForumQueryService scholardexForumQueryService;
     @MockitoBean
-    private ScopusAuthorQueryService scopusAuthorQueryService;
+    private ScholardexAuthorQueryService scholardexAuthorQueryService;
     @MockitoBean
-    private ScopusAffiliationQueryService scopusAffiliationQueryService;
+    private ScholardexAffiliationQueryService scholardexAffiliationQueryService;
     @MockitoBean
     private PasswordEncoder passwordEncoder;
     @Test
@@ -219,7 +219,7 @@ class ApiSecurityContractTest {
 
     @Test
     void authenticatedResearcherCanAccessScopusForumsApi() throws Exception {
-        when(scopusForumQueryService.search(0, 25, "publicationName", "asc", null))
+        when(scholardexForumQueryService.search(0, 25, "publicationName", "asc", null))
                 .thenReturn(new ScopusForumPageResponse(Collections.emptyList(), 0, 25, 0, 0));
 
         mockMvc.perform(get("/api/scopus/forums")
@@ -232,7 +232,7 @@ class ApiSecurityContractTest {
 
     @Test
     void authenticatedSupervisorCanAccessScopusForumsApi() throws Exception {
-        when(scopusForumQueryService.search(0, 25, "publicationName", "asc", null))
+        when(scholardexForumQueryService.search(0, 25, "publicationName", "asc", null))
                 .thenReturn(new ScopusForumPageResponse(Collections.emptyList(), 0, 25, 0, 0));
 
         mockMvc.perform(get("/api/scopus/forums")
@@ -245,7 +245,7 @@ class ApiSecurityContractTest {
 
     @Test
     void authenticatedAdminCanAccessScopusForumsApi() throws Exception {
-        when(scopusForumQueryService.search(0, 25, "publicationName", "asc", null))
+        when(scholardexForumQueryService.search(0, 25, "publicationName", "asc", null))
                 .thenReturn(new ScopusForumPageResponse(Collections.emptyList(), 0, 25, 0, 0));
 
         mockMvc.perform(get("/api/scopus/forums")
@@ -269,7 +269,7 @@ class ApiSecurityContractTest {
 
     @Test
     void authenticatedRolesCanAccessScopusAuthorsApi() throws Exception {
-        when(scopusAuthorQueryService.search("60000434", 0, 25, "name", "asc", null))
+        when(scholardexAuthorQueryService.search("60000434", 0, 25, "name", "asc", null))
                 .thenReturn(new ScopusAuthorPageResponse(Collections.emptyList(), 0, 25, 0, 0));
 
         mockMvc.perform(get("/api/scopus/authors")
@@ -304,7 +304,7 @@ class ApiSecurityContractTest {
 
     @Test
     void authenticatedRolesCanAccessScopusAffiliationsApi() throws Exception {
-        when(scopusAffiliationQueryService.search(0, 25, "name", "asc", null))
+        when(scholardexAffiliationQueryService.search(0, 25, "name", "asc", null))
                 .thenReturn(new ScopusAffiliationPageResponse(Collections.emptyList(), 0, 25, 0, 0));
 
         mockMvc.perform(get("/api/scopus/affiliations")

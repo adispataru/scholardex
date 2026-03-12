@@ -7,23 +7,23 @@ import ro.uvt.pokedex.core.controller.dto.ScopusAuthorPageResponse;
 
 @Service
 @RequiredArgsConstructor
-public class ScopusAuthorQueryService {
+public class ScholardexAuthorQueryService {
 
     private final ReportingReadStoreSelector readStoreSelector;
-    private final MongoScopusAuthorReadPort mongoScopusAuthorReadPort;
-    private final ObjectProvider<PostgresScopusAuthorReadPort> postgresScopusAuthorReadPortProvider;
+    private final MongoScholardexAuthorReadPort mongoScholardexAuthorReadPort;
+    private final ObjectProvider<PostgresScholardexAuthorReadPort> postgresScholardexAuthorReadPortProvider;
 
     public ScopusAuthorPageResponse search(String afid, int page, int size, String sort, String direction, String q) {
         return activePort().search(afid, page, size, sort, direction, q);
     }
 
-    private ScopusAuthorReadPort activePort() {
+    private ScholardexAuthorReadPort activePort() {
         if (!readStoreSelector.isPostgres()) {
-            return mongoScopusAuthorReadPort;
+            return mongoScholardexAuthorReadPort;
         }
-        PostgresScopusAuthorReadPort postgresPort = postgresScopusAuthorReadPortProvider.getIfAvailable();
+        PostgresScholardexAuthorReadPort postgresPort = postgresScholardexAuthorReadPortProvider.getIfAvailable();
         if (postgresPort == null) {
-            throw new IllegalStateException("Postgres read-store selected but PostgresScopusAuthorReadPort is not available.");
+            throw new IllegalStateException("Postgres read-store selected but PostgresScholardexAuthorReadPort is not available.");
         }
         return postgresPort;
     }

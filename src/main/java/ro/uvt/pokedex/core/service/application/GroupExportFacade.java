@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class GroupExportFacade {
     private final GroupManagementFacade groupManagementFacade;
-    private final ScholardexProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
 
     public Optional<GroupPublicationCsvExportViewModel> buildGroupPublicationCsvExport(String groupId) {
@@ -31,13 +31,13 @@ public class GroupExportFacade {
         for (Researcher researcher : researchers) {
             lookupKeys.addAll(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
         }
-        List<String> authorIds = scopusProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
+        List<String> authorIds = scholardexProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
                 .map(Author::getId)
                 .distinct()
                 .toList();
 
         Map<String, Publication> publicationsById = new LinkedHashMap<>();
-        scopusProjectionReadService.findAllPublicationsByAuthorsIn(authorIds)
+        scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds)
                 .forEach(publication -> publicationsById.putIfAbsent(publication.getId(), publication));
         List<Publication> publications = new ArrayList<>(publicationsById.values());
         PublicationOrderingSupport.sortPublicationsInPlace(publications);
@@ -49,9 +49,9 @@ public class GroupExportFacade {
             forumKeys.add(publication.getForum());
         });
 
-        Map<String, Author> authorMap = scopusProjectionReadService.findAuthorsByIdIn(authorKeys).stream()
+        Map<String, Author> authorMap = scholardexProjectionReadService.findAuthorsByIdIn(authorKeys).stream()
                 .collect(Collectors.toMap(Author::getId, author -> author));
-        Map<String, Forum> forumMap = scopusProjectionReadService.findForumsByIdIn(forumKeys).stream()
+        Map<String, Forum> forumMap = scholardexProjectionReadService.findForumsByIdIn(forumKeys).stream()
                 .collect(Collectors.toMap(Forum::getId, forum -> forum));
 
         return Optional.of(new GroupPublicationCsvExportViewModel(

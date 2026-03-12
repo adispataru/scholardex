@@ -30,7 +30,7 @@ import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.AdminInstitutionReportFacade;
-import ro.uvt.pokedex.core.service.application.AdminScopusFacade;
+import ro.uvt.pokedex.core.service.application.ScholardexAdminReadFacade;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.WosBigBangMigrationService;
 import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
@@ -74,7 +74,7 @@ class AdminViewControllerContractTest {
     @MockitoBean
     private AdminCatalogFacade adminCatalogFacade;
     @MockitoBean
-    private AdminScopusFacade adminScopusFacade;
+    private ScholardexAdminReadFacade scholardexAdminReadFacade;
     @MockitoBean
     private AdminInstitutionReportFacade adminInstitutionReportFacade;
     @MockitoBean

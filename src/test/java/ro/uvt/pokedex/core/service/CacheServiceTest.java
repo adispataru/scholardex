@@ -25,7 +25,7 @@ import static org.mockito.Mockito.when;
 class CacheServiceTest {
 
     @Mock
-    private ScholardexProjectionReadService scopusProjectionReadService;
+    private ScholardexProjectionReadService scholardexProjectionReadService;
     @Mock
     private CoreConferenceRankingRepository coreConferenceRankingRepository;
     @Mock
@@ -46,14 +46,14 @@ class CacheServiceTest {
         Affiliation affiliation = new Affiliation();
         affiliation.setAfid("af1");
 
-        when(scopusProjectionReadService.findAllForums()).thenReturn(List.of(forum));
+        when(scholardexProjectionReadService.findAllForums()).thenReturn(List.of(forum));
         when(coreConferenceRankingRepository.findAll()).thenReturn(List.of(core));
-        when(scopusProjectionReadService.findAllAuthors()).thenReturn(List.of(author));
-        when(scopusProjectionReadService.findAllAffiliations()).thenReturn(List.of(affiliation));
+        when(scholardexProjectionReadService.findAllAuthors()).thenReturn(List.of(author));
+        when(scholardexProjectionReadService.findAllAffiliations()).thenReturn(List.of(affiliation));
         when(groupRepository.findAll()).thenReturn(List.of());
 
         cacheService = new CacheService(
-                scopusProjectionReadService,
+                scholardexProjectionReadService,
                 coreConferenceRankingRepository,
                 groupRepository,
                 researcherAuthorLookupService

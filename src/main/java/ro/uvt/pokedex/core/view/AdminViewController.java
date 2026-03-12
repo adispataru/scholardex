@@ -23,7 +23,7 @@ import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.scopus.*;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.user.UserRole;
-import ro.uvt.pokedex.core.service.application.AdminScopusFacade;
+import ro.uvt.pokedex.core.service.application.ScholardexAdminReadFacade;
 import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.AdminInstitutionReportFacade;
 import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
@@ -51,7 +51,7 @@ public class AdminViewController {
     private final UserService userService;
     private final ResearcherService researcherService;
     private final AdminCatalogFacade adminCatalogFacade;
-    private final AdminScopusFacade adminScopusFacade;
+    private final ScholardexAdminReadFacade scholardexAdminReadFacade;
     private final AdminInstitutionReportFacade adminInstitutionReportFacade;
     private final RankingMaintenanceFacade rankingMaintenanceFacade;
     private final WosRankingDetailsReadService wosRankingDetailsReadService;
@@ -449,7 +449,7 @@ public class AdminViewController {
     public String searchPublications(@RequestParam String authorName,
                                      @RequestParam String paperTitle,
                                      Model model) {
-        AdminScopusPublicationSearchViewModel viewModel = adminScopusFacade.buildPublicationSearchView(paperTitle);
+        AdminScopusPublicationSearchViewModel viewModel = scholardexAdminReadFacade.buildPublicationSearchView(paperTitle);
         model.addAttribute("authorMap", viewModel.authorMap());
         model.addAttribute("publications", viewModel.publications());
         return "admin/scopus-publications-search";
@@ -462,7 +462,7 @@ public class AdminViewController {
 
     @GetMapping("/scopus/publications/citations")
     public String showPublicationCitationsPage(Model model, @RequestParam("id") String id) {
-        Optional<AdminScopusCitationsViewModel> viewModel = adminScopusFacade.buildPublicationCitationsView(id);
+        Optional<AdminScopusCitationsViewModel> viewModel = scholardexAdminReadFacade.buildPublicationCitationsView(id);
         viewModel.ifPresent(vm -> {
             model.addAttribute("citations", vm.citations());
             model.addAttribute("publication", vm.publication());

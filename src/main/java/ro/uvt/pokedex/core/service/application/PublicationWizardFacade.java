@@ -36,17 +36,17 @@ public class PublicationWizardFacade {
     static final String PAYLOAD_FORMAT_JSON_OBJECT = "json-object";
     private static final int MANUAL_HASH_LEN = 24;
 
-    private final ScholardexProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final ScopusImportEventIngestionService importEventIngestionService;
     private final ScopusCanonicalMaterializationService canonicalMaterializationService;
 
     public List<Forum> listForums() {
-        return scopusProjectionReadService.findAllForums();
+        return scholardexProjectionReadService.findAllForums();
     }
 
     public Optional<String> resolveForumId(Forum newForum, String selectedId) {
         if (selectedId != null && !selectedId.isEmpty()) {
-            Forum existingForum = scopusProjectionReadService.findForumById(selectedId).orElse(null);
+            Forum existingForum = scholardexProjectionReadService.findForumById(selectedId).orElse(null);
             if (existingForum != null) {
                 return Optional.of(existingForum.getId());
             }
@@ -60,7 +60,7 @@ public class PublicationWizardFacade {
         if (isBlank(affiliationId)) {
             return Collections.emptyList();
         }
-        return scopusProjectionReadService.findAuthorsByAffiliationId(affiliationId);
+        return scholardexProjectionReadService.findAuthorsByAffiliationId(affiliationId);
     }
 
     public WizardPublicationCommand buildPublicationDraft(
@@ -85,7 +85,7 @@ public class PublicationWizardFacade {
             return command;
         }
 
-        scopusProjectionReadService.findForumById(forumId).ifPresent(forum -> {
+        scholardexProjectionReadService.findForumById(forumId).ifPresent(forum -> {
             command.setWizardForumPublicationName(trim(forum.getPublicationName()));
             command.setWizardForumIssn(normalizeIssnOrBlank(forum.getIssn()));
             command.setWizardForumEIssn(normalizeIssnOrBlank(forum.getEIssn()));
@@ -136,7 +136,7 @@ public class PublicationWizardFacade {
             String sourceRecordId
     ) {
         List<String> authorIds = command.getAuthorIds() == null ? List.of() : command.getAuthorIds();
-        List<Author> authors = scopusProjectionReadService.findAuthorsByIdIn(authorIds);
+        List<Author> authors = scholardexProjectionReadService.findAuthorsByIdIn(authorIds);
         Map<String, Author> authorsById = authors.stream()
                 .collect(Collectors.toMap(Author::getId, a -> a, (left, right) -> left, LinkedHashMap::new));
 
@@ -162,7 +162,7 @@ public class PublicationWizardFacade {
         }
 
         List<Affiliation> affiliations = affiliationIds.stream()
-                .map(scopusProjectionReadService::findAffiliationById)
+                .map(scholardexProjectionReadService::findAffiliationById)
                 .flatMap(Optional::stream)
                 .toList();
 
@@ -221,7 +221,7 @@ public class PublicationWizardFacade {
 
     private String resolveForumSourceId(WizardPublicationCommand command) {
         String forumId = trim(command.getForum());
-        if (!isBlank(forumId) && scopusProjectionReadService.findForumById(forumId).isPresent()) {
+        if (!isBlank(forumId) && scholardexProjectionReadService.findForumById(forumId).isPresent()) {
             return forumId;
         }
         Forum draft = new Forum();

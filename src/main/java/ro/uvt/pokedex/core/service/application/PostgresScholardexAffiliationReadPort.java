@@ -14,7 +14,7 @@ import java.util.Locale;
 @Service
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "spring.datasource.url")
-public class PostgresScopusAffiliationReadPort implements ScopusAffiliationReadPort {
+public class PostgresScholardexAffiliationReadPort implements ScholardexAffiliationReadPort {
 
     private static final int MAX_QUERY_LENGTH = 100;
 

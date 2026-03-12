@@ -70,17 +70,17 @@ public class JdbcDualReadGateService implements DualReadGateService {
     private final ProjectionBackedReportingLookupFacade mongoReportingLookup;
     private final ObjectProvider<PostgresReportingLookupFacade> postgresReportingLookupProvider;
 
-    private final MongoScopusAuthorReadPort mongoScopusAuthorReadPort;
-    private final ObjectProvider<PostgresScopusAuthorReadPort> postgresScopusAuthorReadPortProvider;
+    private final MongoScholardexAuthorReadPort mongoScholardexAuthorReadPort;
+    private final ObjectProvider<PostgresScholardexAuthorReadPort> postgresScholardexAuthorReadPortProvider;
 
-    private final MongoScopusForumReadPort mongoScopusForumReadPort;
-    private final ObjectProvider<PostgresScopusForumReadPort> postgresScopusForumReadPortProvider;
+    private final MongoScholardexForumReadPort mongoScholardexForumReadPort;
+    private final ObjectProvider<PostgresScholardexForumReadPort> postgresScholardexForumReadPortProvider;
 
-    private final MongoScopusAffiliationReadPort mongoScopusAffiliationReadPort;
-    private final ObjectProvider<PostgresScopusAffiliationReadPort> postgresScopusAffiliationReadPortProvider;
+    private final MongoScholardexAffiliationReadPort mongoScholardexAffiliationReadPort;
+    private final ObjectProvider<PostgresScholardexAffiliationReadPort> postgresScholardexAffiliationReadPortProvider;
 
-    private final MongoAdminScopusReadPort mongoAdminScopusReadPort;
-    private final ObjectProvider<PostgresAdminScopusReadPort> postgresAdminScopusReadPortProvider;
+    private final MongoScholardexAdminReadPort mongoScholardexAdminReadPort;
+    private final ObjectProvider<PostgresScholardexAdminReadPort> postgresScholardexAdminReadPortProvider;
     private final GroupReportFacade groupReportFacade;
     private final ReportingReadStoreSelector reportingReadStoreSelector;
     private final GroupRepository groupRepository;
@@ -93,14 +93,14 @@ public class JdbcDualReadGateService implements DualReadGateService {
             MongoTemplate mongoTemplate,
             ProjectionBackedReportingLookupFacade mongoReportingLookup,
             ObjectProvider<PostgresReportingLookupFacade> postgresReportingLookupProvider,
-            MongoScopusAuthorReadPort mongoScopusAuthorReadPort,
-            ObjectProvider<PostgresScopusAuthorReadPort> postgresScopusAuthorReadPortProvider,
-            MongoScopusForumReadPort mongoScopusForumReadPort,
-            ObjectProvider<PostgresScopusForumReadPort> postgresScopusForumReadPortProvider,
-            MongoScopusAffiliationReadPort mongoScopusAffiliationReadPort,
-            ObjectProvider<PostgresScopusAffiliationReadPort> postgresScopusAffiliationReadPortProvider,
-            MongoAdminScopusReadPort mongoAdminScopusReadPort,
-            ObjectProvider<PostgresAdminScopusReadPort> postgresAdminScopusReadPortProvider,
+            MongoScholardexAuthorReadPort mongoScholardexAuthorReadPort,
+            ObjectProvider<PostgresScholardexAuthorReadPort> postgresScholardexAuthorReadPortProvider,
+            MongoScholardexForumReadPort mongoScholardexForumReadPort,
+            ObjectProvider<PostgresScholardexForumReadPort> postgresScholardexForumReadPortProvider,
+            MongoScholardexAffiliationReadPort mongoScholardexAffiliationReadPort,
+            ObjectProvider<PostgresScholardexAffiliationReadPort> postgresScholardexAffiliationReadPortProvider,
+            MongoScholardexAdminReadPort mongoScholardexAdminReadPort,
+            ObjectProvider<PostgresScholardexAdminReadPort> postgresScholardexAdminReadPortProvider,
             GroupReportFacade groupReportFacade,
             ReportingReadStoreSelector reportingReadStoreSelector,
             GroupRepository groupRepository,
@@ -112,14 +112,14 @@ public class JdbcDualReadGateService implements DualReadGateService {
         this.mongoTemplate = mongoTemplate;
         this.mongoReportingLookup = mongoReportingLookup;
         this.postgresReportingLookupProvider = postgresReportingLookupProvider;
-        this.mongoScopusAuthorReadPort = mongoScopusAuthorReadPort;
-        this.postgresScopusAuthorReadPortProvider = postgresScopusAuthorReadPortProvider;
-        this.mongoScopusForumReadPort = mongoScopusForumReadPort;
-        this.postgresScopusForumReadPortProvider = postgresScopusForumReadPortProvider;
-        this.mongoScopusAffiliationReadPort = mongoScopusAffiliationReadPort;
-        this.postgresScopusAffiliationReadPortProvider = postgresScopusAffiliationReadPortProvider;
-        this.mongoAdminScopusReadPort = mongoAdminScopusReadPort;
-        this.postgresAdminScopusReadPortProvider = postgresAdminScopusReadPortProvider;
+        this.mongoScholardexAuthorReadPort = mongoScholardexAuthorReadPort;
+        this.postgresScholardexAuthorReadPortProvider = postgresScholardexAuthorReadPortProvider;
+        this.mongoScholardexForumReadPort = mongoScholardexForumReadPort;
+        this.postgresScholardexForumReadPortProvider = postgresScholardexForumReadPortProvider;
+        this.mongoScholardexAffiliationReadPort = mongoScholardexAffiliationReadPort;
+        this.postgresScholardexAffiliationReadPortProvider = postgresScholardexAffiliationReadPortProvider;
+        this.mongoScholardexAdminReadPort = mongoScholardexAdminReadPort;
+        this.postgresScholardexAdminReadPortProvider = postgresScholardexAdminReadPortProvider;
         this.groupReportFacade = groupReportFacade;
         this.reportingReadStoreSelector = reportingReadStoreSelector;
         this.groupRepository = groupRepository;
@@ -530,10 +530,10 @@ public class JdbcDualReadGateService implements DualReadGateService {
 
     private List<DualReadScenario> buildScenarios() {
         PostgresReportingLookupFacade postgresReportingLookup = requirePostgres(postgresReportingLookupProvider, "PostgresReportingLookupFacade");
-        PostgresScopusAuthorReadPort postgresAuthorReadPort = requirePostgres(postgresScopusAuthorReadPortProvider, "PostgresScopusAuthorReadPort");
-        PostgresScopusForumReadPort postgresForumReadPort = requirePostgres(postgresScopusForumReadPortProvider, "PostgresScopusForumReadPort");
-        PostgresScopusAffiliationReadPort postgresAffiliationReadPort = requirePostgres(postgresScopusAffiliationReadPortProvider, "PostgresScopusAffiliationReadPort");
-        PostgresAdminScopusReadPort postgresAdminReadPort = requirePostgres(postgresAdminScopusReadPortProvider, "PostgresAdminScopusReadPort");
+        PostgresScholardexAuthorReadPort postgresAuthorReadPort = requirePostgres(postgresScholardexAuthorReadPortProvider, "PostgresScholardexAuthorReadPort");
+        PostgresScholardexForumReadPort postgresForumReadPort = requirePostgres(postgresScholardexForumReadPortProvider, "PostgresScholardexForumReadPort");
+        PostgresScholardexAffiliationReadPort postgresAffiliationReadPort = requirePostgres(postgresScholardexAffiliationReadPortProvider, "PostgresScholardexAffiliationReadPort");
+        PostgresScholardexAdminReadPort postgresAdminReadPort = requirePostgres(postgresScholardexAdminReadPortProvider, "PostgresScholardexAdminReadPort");
 
         ScenarioInput input = resolveScenarioInput();
 
@@ -557,7 +557,7 @@ public class JdbcDualReadGateService implements DualReadGateService {
                 new DualReadScenario(
                         SCENARIO_SCOPUS_AUTHOR,
                         SCENARIO_TYPE_DUAL_PARITY,
-                        () -> mongoScopusAuthorReadPort.search(input.afid(), 0, 25, "name", "asc", null),
+                        () -> mongoScholardexAuthorReadPort.search(input.afid(), 0, 25, "name", "asc", null),
                         () -> postgresAuthorReadPort.search(input.afid(), 0, 25, "name", "asc", null),
                         (mongo, postgres) -> compareAuthorPage(cast(mongo), cast(postgres)),
                         null
@@ -565,7 +565,7 @@ public class JdbcDualReadGateService implements DualReadGateService {
                 new DualReadScenario(
                         SCENARIO_SCOPUS_FORUM,
                         SCENARIO_TYPE_DUAL_PARITY,
-                        () -> mongoScopusForumReadPort.search(0, 25, "publicationName", "asc", input.forumQuery()),
+                        () -> mongoScholardexForumReadPort.search(0, 25, "publicationName", "asc", input.forumQuery()),
                         () -> postgresForumReadPort.search(0, 25, "publicationName", "asc", input.forumQuery()),
                         this::compareJson,
                         null
@@ -573,7 +573,7 @@ public class JdbcDualReadGateService implements DualReadGateService {
                 new DualReadScenario(
                         SCENARIO_SCOPUS_AFFILIATION,
                         SCENARIO_TYPE_DUAL_PARITY,
-                        () -> mongoScopusAffiliationReadPort.search(0, 25, "name", "asc", input.affiliationQuery()),
+                        () -> mongoScholardexAffiliationReadPort.search(0, 25, "name", "asc", input.affiliationQuery()),
                         () -> postgresAffiliationReadPort.search(0, 25, "name", "asc", input.affiliationQuery()),
                         this::compareJson,
                         null
@@ -581,7 +581,7 @@ public class JdbcDualReadGateService implements DualReadGateService {
                 new DualReadScenario(
                         SCENARIO_ADMIN_PUBLICATION,
                         SCENARIO_TYPE_DUAL_PARITY,
-                        () -> mongoAdminScopusReadPort.buildPublicationSearchView(input.publicationTitleQuery()),
+                        () -> mongoScholardexAdminReadPort.buildPublicationSearchView(input.publicationTitleQuery()),
                         () -> postgresAdminReadPort.buildPublicationSearchView(input.publicationTitleQuery()),
                         (mongo, postgres) -> comparePublicationSearch(cast(mongo), cast(postgres)),
                         null
@@ -589,7 +589,7 @@ public class JdbcDualReadGateService implements DualReadGateService {
                 new DualReadScenario(
                         SCENARIO_ADMIN_CITATIONS,
                         SCENARIO_TYPE_DUAL_PARITY,
-                        () -> mongoAdminScopusReadPort.buildPublicationCitationsView(input.citationPublicationId()),
+                        () -> mongoScholardexAdminReadPort.buildPublicationCitationsView(input.citationPublicationId()),
                         () -> postgresAdminReadPort.buildPublicationCitationsView(input.citationPublicationId()),
                         (mongo, postgres) -> compareCitationsView(cast(mongo), cast(postgres)),
                         null

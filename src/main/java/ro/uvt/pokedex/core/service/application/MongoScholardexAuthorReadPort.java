@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
-public class MongoScopusAuthorReadPort implements ScopusAuthorReadPort {
+public class MongoScholardexAuthorReadPort implements ScholardexAuthorReadPort {
 
     private static final int MAX_QUERY_LENGTH = 100;
 

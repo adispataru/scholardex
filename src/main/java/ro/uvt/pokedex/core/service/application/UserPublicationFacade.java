@@ -22,7 +22,7 @@ public class UserPublicationFacade {
     private static final Logger log = LoggerFactory.getLogger(UserPublicationFacade.class);
 
     private final ResearcherService researcherService;
-    private final ScholardexProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
 
     public Optional<UserPublicationsViewModel> buildUserPublicationsView(String researcherId) {
@@ -42,7 +42,7 @@ public class UserPublicationFacade {
         long lookupKeysMs = nanosToMillis(System.nanoTime() - lookupKeysStartedAtNanos);
 
         long authorsFetchStartedAtNanos = System.nanoTime();
-        List<Author> byId = scopusProjectionReadService.findAuthorsByIdIn(
+        List<Author> byId = scholardexProjectionReadService.findAuthorsByIdIn(
                 authorLookupKeys
         );
         long authorsFetchMs = nanosToMillis(System.nanoTime() - authorsFetchStartedAtNanos);
@@ -53,7 +53,7 @@ public class UserPublicationFacade {
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
-        List<Publication> publications = scopusProjectionReadService.findAllPublicationsByAuthorsIn(canonicalAuthorIds);
+        List<Publication> publications = scholardexProjectionReadService.findAllPublicationsByAuthorsIn(canonicalAuthorIds);
         Map<String, Publication> dedupedPublicationsById = new LinkedHashMap<>();
         for (Publication publication : publications) {
             if (publication.getId() == null || publication.getId().isBlank()) {
@@ -77,12 +77,12 @@ public class UserPublicationFacade {
             numCitations.addAndGet(p.getCitedbyCount());
         });
 
-        List<Author> byIdIn = scopusProjectionReadService.findAuthorsByIdIn(authorKeys);
+        List<Author> byIdIn = scholardexProjectionReadService.findAuthorsByIdIn(authorKeys);
         Map<String, Author> authorMap = new HashMap<>();
         byIdIn.forEach(a -> authorMap.put(a.getId(), a));
 
         Map<String, Forum> forumMap = new HashMap<>();
-        List<Forum> forums = scopusProjectionReadService.findForumsByIdIn(forumKeys);
+        List<Forum> forums = scholardexProjectionReadService.findForumsByIdIn(forumKeys);
         forums.forEach(f -> forumMap.put(f.getId(), f));
         long relatedLookupMs = nanosToMillis(System.nanoTime() - relatedLookupStartedAtNanos);
 
@@ -111,19 +111,19 @@ public class UserPublicationFacade {
     }
 
     public Optional<UserPublicationCitationsViewModel> buildCitationsView(String publicationId) {
-        Optional<Publication> byId = scopusProjectionReadService.findPublicationByAnyId(publicationId);
+        Optional<Publication> byId = scholardexProjectionReadService.findPublicationByAnyId(publicationId);
         if (byId.isEmpty()) {
             return Optional.empty();
         }
 
         Publication publication = byId.get();
-        List<Citation> allByCited = scopusProjectionReadService.findAllCitationsByCitedId(publication.getId());
+        List<Citation> allByCited = scholardexProjectionReadService.findAllCitationsByCitedId(publication.getId());
         List<String> citations = new ArrayList<>();
         allByCited.forEach(c -> citations.add(c.getCitingId()));
-        List<Publication> citationsPub = new ArrayList<>(scopusProjectionReadService.findAllPublicationsByIdIn(citations));
+        List<Publication> citationsPub = new ArrayList<>(scholardexProjectionReadService.findAllPublicationsByIdIn(citations));
         PublicationOrderingSupport.sortPublicationsInPlace(citationsPub);
 
-        Optional<Forum> forumOpt = scopusProjectionReadService.findForumById(publication.getForum());
+        Optional<Forum> forumOpt = scholardexProjectionReadService.findForumById(publication.getForum());
         if (forumOpt.isEmpty()) {
             return Optional.empty();
         }
@@ -132,8 +132,8 @@ public class UserPublicationFacade {
         Set<String> forumKeys = new HashSet<>();
         citationsPub.forEach(p -> forumKeys.add(p.getForum()));
 
-        List<Author> byIdIn = scopusProjectionReadService.findAuthorsByIdIn(authorKeys);
-        List<Forum> forums = scopusProjectionReadService.findForumsByIdIn(forumKeys);
+        List<Author> byIdIn = scholardexProjectionReadService.findAuthorsByIdIn(authorKeys);
+        List<Forum> forums = scholardexProjectionReadService.findForumsByIdIn(forumKeys);
 
         Map<String, Author> authorMap = new HashMap<>();
         byIdIn.forEach(a -> authorMap.put(a.getId(), a));
@@ -152,19 +152,19 @@ public class UserPublicationFacade {
 
     // Uses canonical Mongo `id`; EID-based lookup belongs to importer/scopus integration paths.
     public Optional<Publication> findPublicationForEdit(String publicationId) {
-        return scopusProjectionReadService.findPublicationByAnyId(publicationId);
+        return scholardexProjectionReadService.findPublicationByAnyId(publicationId);
     }
 
     // Uses canonical Mongo `id`; EID-based lookup belongs to importer/scopus integration paths.
     public void updatePublicationMetadata(String publicationId, Publication patch) {
         Optional<ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView> byId =
-                scopusProjectionReadService.findPublicationViewById(publicationId)
-                        .or(() -> scopusProjectionReadService.findPublicationByAnyId(publicationId)
-                                .flatMap(p -> scopusProjectionReadService.findPublicationViewById(p.getId())));
+                scholardexProjectionReadService.findPublicationViewById(publicationId)
+                        .or(() -> scholardexProjectionReadService.findPublicationByAnyId(publicationId)
+                                .flatMap(p -> scholardexProjectionReadService.findPublicationViewById(p.getId())));
         byId.ifPresent(pub -> {
             pub.setSubtypeDescription(patch.getSubtypeDescription());
             pub.setSubtype(patch.getSubtype());
-            scopusProjectionReadService.savePublicationView(pub);
+            scholardexProjectionReadService.savePublicationView(pub);
         });
     }
 

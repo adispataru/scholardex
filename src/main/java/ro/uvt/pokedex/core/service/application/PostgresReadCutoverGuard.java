@@ -14,10 +14,10 @@ public class PostgresReadCutoverGuard implements ApplicationRunner {
 
     private final JdbcTemplate jdbcTemplate;
     private final PostgresReportingLookupFacade postgresReportingLookupFacade;
-    private final PostgresScopusAuthorReadPort postgresScopusAuthorReadPort;
-    private final PostgresScopusForumReadPort postgresScopusForumReadPort;
-    private final PostgresScopusAffiliationReadPort postgresScopusAffiliationReadPort;
-    private final PostgresAdminScopusReadPort postgresAdminScopusReadPort;
+    private final PostgresScholardexAuthorReadPort postgresScholardexAuthorReadPort;
+    private final PostgresScholardexForumReadPort postgresScholardexForumReadPort;
+    private final PostgresScholardexAffiliationReadPort postgresScholardexAffiliationReadPort;
+    private final PostgresScholardexAdminReadPort postgresScholardexAdminReadPort;
 
     @Override
     public void run(ApplicationArguments args) {

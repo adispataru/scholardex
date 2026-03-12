@@ -21,16 +21,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class ScopusForumQueryServiceTest {
+class ScholardexForumQueryServiceTest {
 
     @Mock
     private MongoTemplate mongoTemplate;
 
-    private MongoScopusForumReadPort service;
+    private MongoScholardexForumReadPort service;
 
     @BeforeEach
     void setUp() {
-        service = new MongoScopusForumReadPort(mongoTemplate);
+        service = new MongoScholardexForumReadPort(mongoTemplate);
     }
 
     @Test

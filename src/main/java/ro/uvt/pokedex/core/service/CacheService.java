@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 @Service
 @Data
 public class CacheService {
-    private final ScholardexProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final ConcurrentMap<String, Forum> forumCache;
 
     private final CoreConferenceRankingRepository coreConferenceRankingRepository;
@@ -33,34 +33,34 @@ public class CacheService {
 
     @Autowired
     public CacheService(
-            ScholardexProjectionReadService scopusProjectionReadService,
+            ScholardexProjectionReadService scholardexProjectionReadService,
             CoreConferenceRankingRepository coreConferenceRankingRepository,
             GroupRepository groupRepository,
             ResearcherAuthorLookupService researcherAuthorLookupService
     ) {
-        this.scopusProjectionReadService = scopusProjectionReadService;
+        this.scholardexProjectionReadService = scholardexProjectionReadService;
         this.coreConferenceRankingRepository = coreConferenceRankingRepository;
         this.groupRepository = groupRepository;
         this.researcherAuthorLookupService = researcherAuthorLookupService;
         this.forumCache = new ConcurrentHashMap<>();
-        this.scopusProjectionReadService.findAllForums().forEach(f -> {
+        this.scholardexProjectionReadService.findAllForums().forEach(f -> {
             forumCache.put(f.getId(), f);
         });
 
         this.confRankingCache = new ConcurrentHashMap<>();
         confRankingCache.putAll(coreConferenceRankingRepository.findAll().stream().collect(Collectors.groupingBy(CoreConferenceRanking::getAcronym)));
-        List<Author> all = scopusProjectionReadService.findAllAuthors();
+        List<Author> all = scholardexProjectionReadService.findAllAuthors();
         groupRepository.findAll().forEach(group ->
                 group.getResearchers().forEach(researcher -> {
                     List<String> lookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(researcher);
-                    scopusProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
+                    scholardexProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
                             .map(Author::getId)
                             .forEach(universityAuthorIds::add);
                 }));
         all.forEach(a -> {
             authorCache.put(a.getId(), a);
         });
-        scopusProjectionReadService.findAllAffiliations().forEach(a -> {
+        scholardexProjectionReadService.findAllAffiliations().forEach(a -> {
             affiliationCache.put(a.getAfid(), a);
         });
     }
@@ -108,14 +108,14 @@ public class CacheService {
     }
 
     public void saveAllAuthors() {
-        authorCache.values().forEach(scopusProjectionReadService::saveAuthor);
+        authorCache.values().forEach(scholardexProjectionReadService::saveAuthor);
     }
 
     public void saveAllForums() {
-        forumCache.values().forEach(scopusProjectionReadService::saveForum);
+        forumCache.values().forEach(scholardexProjectionReadService::saveForum);
     }
 
     public void saveAllAffiliations() {
-        affiliationCache.values().forEach(scopusProjectionReadService::saveAffiliation);
+        affiliationCache.values().forEach(scholardexProjectionReadService::saveAffiliation);
     }
 }

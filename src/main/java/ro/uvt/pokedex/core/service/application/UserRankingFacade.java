@@ -12,11 +12,11 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UserRankingFacade {
 
-    private final ScholardexProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final RankingRepository rankingRepository;
 
     public Optional<WoSRanking> resolveJournalRankingForForum(String forumId) {
-        Optional<Forum> forumOptional = scopusProjectionReadService.findForumById(forumId);
+        Optional<Forum> forumOptional = scholardexProjectionReadService.findForumById(forumId);
         if (forumOptional.isEmpty()) {
             return Optional.empty();
         }

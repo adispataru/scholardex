@@ -11,7 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.ApiExceptionHandler;
 import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationListItemResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationPageResponse;
-import ro.uvt.pokedex.core.service.application.ScopusAffiliationQueryService;
+import ro.uvt.pokedex.core.service.application.ScholardexAffiliationQueryService;
 
 import java.util.List;
 
@@ -30,11 +30,11 @@ class ScopusAffiliationApiControllerContractTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ScopusAffiliationQueryService scopusAffiliationQueryService;
+    private ScholardexAffiliationQueryService scholardexAffiliationQueryService;
 
     @Test
     void defaultRequestReturnsPagedEnvelope() throws Exception {
-        when(scopusAffiliationQueryService.search(0, 25, "name", "asc", null))
+        when(scholardexAffiliationQueryService.search(0, 25, "name", "asc", null))
                 .thenReturn(new ScopusAffiliationPageResponse(
                         List.of(
                                 item("1", "UVT", "Timisoara", "Romania"),
@@ -56,7 +56,7 @@ class ScopusAffiliationApiControllerContractTest {
 
     @Test
     void pagingSortingAndDirectionAreApplied() throws Exception {
-        when(scopusAffiliationQueryService.search(1, 2, "afid", "desc", null))
+        when(scholardexAffiliationQueryService.search(1, 2, "afid", "desc", null))
                 .thenReturn(new ScopusAffiliationPageResponse(List.of(item("3", "EPFL", "Lausanne", "Switzerland")), 1, 2, 3, 2));
 
         mockMvc.perform(get("/api/scopus/affiliations")
@@ -74,13 +74,13 @@ class ScopusAffiliationApiControllerContractTest {
 
     @Test
     void queryMatchesConfiguredFields() throws Exception {
-        when(scopusAffiliationQueryService.search(0, 25, "name", "asc", "uvt"))
+        when(scholardexAffiliationQueryService.search(0, 25, "name", "asc", "uvt"))
                 .thenReturn(new ScopusAffiliationPageResponse(List.of(item("name-hit", "UVT", "Timisoara", "Romania")), 0, 25, 1, 1));
-        when(scopusAffiliationQueryService.search(0, 25, "name", "asc", "0001"))
+        when(scholardexAffiliationQueryService.search(0, 25, "name", "asc", "0001"))
                 .thenReturn(new ScopusAffiliationPageResponse(List.of(item("id-hit", "Other", "City", "Country")), 0, 25, 1, 1));
-        when(scopusAffiliationQueryService.search(0, 25, "name", "asc", "timisoara"))
+        when(scholardexAffiliationQueryService.search(0, 25, "name", "asc", "timisoara"))
                 .thenReturn(new ScopusAffiliationPageResponse(List.of(item("city-hit", "Other", "Timisoara", "Country")), 0, 25, 1, 1));
-        when(scopusAffiliationQueryService.search(0, 25, "name", "asc", "romania"))
+        when(scholardexAffiliationQueryService.search(0, 25, "name", "asc", "romania"))
                 .thenReturn(new ScopusAffiliationPageResponse(List.of(item("country-hit", "Other", "City", "Romania")), 0, 25, 1, 1));
 
         mockMvc.perform(get("/api/scopus/affiliations").param("q", "uvt"))
@@ -102,11 +102,11 @@ class ScopusAffiliationApiControllerContractTest {
 
     @Test
     void invalidParamsReturnBadRequestEnvelope() throws Exception {
-        when(scopusAffiliationQueryService.search(0, 25, "bad", "asc", null))
+        when(scholardexAffiliationQueryService.search(0, 25, "bad", "asc", null))
                 .thenThrow(new IllegalArgumentException("Invalid sort parameter. Allowed: name, afid, city, country."));
-        when(scopusAffiliationQueryService.search(0, 25, "name", "up", null))
+        when(scholardexAffiliationQueryService.search(0, 25, "name", "up", null))
                 .thenThrow(new IllegalArgumentException("Invalid direction parameter. Allowed: asc, desc."));
-        when(scopusAffiliationQueryService.search(0, 25, "name", "asc", "x".repeat(101)))
+        when(scholardexAffiliationQueryService.search(0, 25, "name", "asc", "x".repeat(101)))
                 .thenThrow(new IllegalArgumentException("Invalid q parameter. Maximum length is 100."));
 
         mockMvc.perform(get("/api/scopus/affiliations").param("page", "-1"))

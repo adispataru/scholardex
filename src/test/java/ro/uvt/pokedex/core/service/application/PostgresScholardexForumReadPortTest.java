@@ -22,16 +22,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class PostgresScopusAffiliationReadPortTest {
+class PostgresScholardexForumReadPortTest {
 
     @Mock
     private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
-    private PostgresScopusAffiliationReadPort service;
+    private PostgresScholardexForumReadPort service;
 
     @BeforeEach
     void setUp() {
-        service = new PostgresScopusAffiliationReadPort(namedParameterJdbcTemplate);
+        service = new PostgresScholardexForumReadPort(namedParameterJdbcTemplate);
         when(namedParameterJdbcTemplate.query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
                 .thenReturn(List.of());
         when(namedParameterJdbcTemplate.queryForObject(anyString(), any(MapSqlParameterSource.class), eq(Long.class)))
@@ -40,7 +40,7 @@ class PostgresScopusAffiliationReadPortTest {
 
     @Test
     void searchEscapesLikePatternAndUsesEscapeClause() {
-        service.search(0, 25, "name", "asc", "a%b_c\\d");
+        service.search(0, 25, "publicationName", "asc", "a%b_c\\d");
 
         ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<MapSqlParameterSource> paramsCaptor = ArgumentCaptor.forClass(MapSqlParameterSource.class);
@@ -55,7 +55,7 @@ class PostgresScopusAffiliationReadPortTest {
 
     @Test
     void searchWithoutQueryDoesNotAddLikeFilter() {
-        service.search(0, 25, "name", "asc", "   ");
+        service.search(0, 25, "publicationName", "asc", null);
 
         ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
         verify(namedParameterJdbcTemplate).query(sqlCaptor.capture(), any(MapSqlParameterSource.class), any(RowMapper.class));

@@ -20,7 +20,7 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "spring.datasource.url")
-public class PostgresScopusAuthorReadPort implements ScopusAuthorReadPort {
+public class PostgresScholardexAuthorReadPort implements ScholardexAuthorReadPort {
 
     private static final int MAX_QUERY_LENGTH = 100;
 

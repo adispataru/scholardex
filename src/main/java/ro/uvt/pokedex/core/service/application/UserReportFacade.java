@@ -65,7 +65,7 @@ public class UserReportFacade {
     private final IndicatorRepository indicatorRepository;
     private final IndividualReportRepository individualReportRepository;
     private final ActivityInstanceRepository activityInstanceRepository;
-    private final ScholardexProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final DomainRepository domainRepository;
     private final ActivityReportingService activityReportingService;
     private final ScientificProductionService scientificProductionService;
@@ -743,27 +743,27 @@ public class UserReportFacade {
     }
 
     private List<Author> findAuthorsByIds(Collection<String> authorIds) {
-        return scopusProjectionReadService.findAuthorsByIdIn(authorIds);
+        return scholardexProjectionReadService.findAuthorsByIdIn(authorIds);
     }
 
     private List<Publication> findPublicationsByAuthorIds(Collection<String> authorIds) {
-        return scopusProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
+        return scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
     }
 
     private List<Publication> findPublicationsByIds(Collection<String> publicationIds) {
-        return scopusProjectionReadService.findAllPublicationsByIdIn(publicationIds);
+        return scholardexProjectionReadService.findAllPublicationsByIdIn(publicationIds);
     }
 
     private List<Citation> findCitationsByCitedIds(Collection<String> publicationIds) {
-        return scopusProjectionReadService.findAllCitationsByCitedIdIn(publicationIds);
+        return scholardexProjectionReadService.findAllCitationsByCitedIdIn(publicationIds);
     }
 
     private List<Citation> findCitationsByCitedId(String publicationId) {
-        return scopusProjectionReadService.findAllCitationsByCitedId(publicationId);
+        return scholardexProjectionReadService.findAllCitationsByCitedId(publicationId);
     }
 
     private List<Forum> findForumsByIds(Collection<String> forumIds) {
-        return scopusProjectionReadService.findForumsByIdIn(forumIds);
+        return scholardexProjectionReadService.findForumsByIdIn(forumIds);
     }
 
 }

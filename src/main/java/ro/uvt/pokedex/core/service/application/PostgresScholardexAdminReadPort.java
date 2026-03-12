@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "spring.datasource.url")
-public class PostgresAdminScopusReadPort implements AdminScopusReadPort {
+public class PostgresScholardexAdminReadPort implements ScholardexAdminReadPort {
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 

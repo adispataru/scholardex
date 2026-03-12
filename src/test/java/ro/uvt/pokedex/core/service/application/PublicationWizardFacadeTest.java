@@ -31,7 +31,7 @@ import static org.mockito.Mockito.when;
 class PublicationWizardFacadeTest {
 
     @Mock
-    private ScholardexProjectionReadService scopusProjectionReadService;
+    private ScholardexProjectionReadService scholardexProjectionReadService;
     @Mock
     private ScopusImportEventIngestionService importEventIngestionService;
     @Mock
@@ -44,7 +44,7 @@ class PublicationWizardFacadeTest {
     void resolveForumIdUsesSelectedExistingForum() {
         Forum existing = new Forum();
         existing.setId("f1");
-        when(scopusProjectionReadService.findForumById("f1")).thenReturn(Optional.of(existing));
+        when(scholardexProjectionReadService.findForumById("f1")).thenReturn(Optional.of(existing));
 
         assertEquals(Optional.of("f1"), facade.resolveForumId(new Forum(), "f1"));
     }
@@ -77,8 +77,8 @@ class PublicationWizardFacadeTest {
         affiliation.setCountry("RO");
         author.setAffiliations(List.of(affiliation));
 
-        when(scopusProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
-        when(scopusProjectionReadService.findAffiliationById("af1")).thenReturn(Optional.of(affiliation));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scholardexProjectionReadService.findAffiliationById("af1")).thenReturn(Optional.of(affiliation));
         when(importEventIngestionService.ingest(
                 eq(ScopusImportEntityType.PUBLICATION),
                 eq(PublicationWizardFacade.SOURCE_USER_PUBLICATION_WIZARD),
@@ -124,7 +124,7 @@ class PublicationWizardFacadeTest {
     @Test
     void submitPublicationTreatsDuplicateAsNonFatal() {
         WizardPublicationCommand command = buildCommand();
-        when(scopusProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of());
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of());
         when(importEventIngestionService.ingest(
                 eq(ScopusImportEntityType.PUBLICATION),
                 eq(PublicationWizardFacade.SOURCE_USER_PUBLICATION_WIZARD),

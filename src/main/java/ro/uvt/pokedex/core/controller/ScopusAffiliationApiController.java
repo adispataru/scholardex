@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationPageResponse;
-import ro.uvt.pokedex.core.service.application.ScopusAffiliationQueryService;
+import ro.uvt.pokedex.core.service.application.ScholardexAffiliationQueryService;
 
 @RestController
 @Validated
@@ -18,7 +18,7 @@ import ro.uvt.pokedex.core.service.application.ScopusAffiliationQueryService;
 @RequiredArgsConstructor
 public class ScopusAffiliationApiController {
 
-    private final ScopusAffiliationQueryService scopusAffiliationQueryService;
+    private final ScholardexAffiliationQueryService scholardexAffiliationQueryService;
 
     @GetMapping("/affiliations")
     public ResponseEntity<ScopusAffiliationPageResponse> listScopusAffiliations(
@@ -28,6 +28,6 @@ public class ScopusAffiliationApiController {
             @RequestParam(defaultValue = "asc") String direction,
             @RequestParam(required = false) String q
     ) {
-        return ResponseEntity.ok(scopusAffiliationQueryService.search(page, size, sort, direction, q));
+        return ResponseEntity.ok(scholardexAffiliationQueryService.search(page, size, sort, direction, q));
     }
 }

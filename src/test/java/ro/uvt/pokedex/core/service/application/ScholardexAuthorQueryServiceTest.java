@@ -23,18 +23,18 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class ScopusAuthorQueryServiceTest {
+class ScholardexAuthorQueryServiceTest {
 
     @Mock
     private MongoTemplate mongoTemplate;
     @Mock
     private ScholardexAffiliationViewRepository affiliationViewRepository;
 
-    private MongoScopusAuthorReadPort service;
+    private MongoScholardexAuthorReadPort service;
 
     @BeforeEach
     void setUp() {
-        service = new MongoScopusAuthorReadPort(mongoTemplate, affiliationViewRepository);
+        service = new MongoScholardexAuthorReadPort(mongoTemplate, affiliationViewRepository);
     }
 
     @Test

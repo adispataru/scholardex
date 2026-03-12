@@ -117,9 +117,9 @@ Done history moved to `TASKS-done.md`.
     Handover:
     - Cutover contract: `docs/h22.4-query-layer-cutover-contract.md`.
     - Runtime selector and startup guard: `ReportingReadStore`, `ReportingReadStoreSelector`, `PostgresReadCutoverGuard`.
-    - Switchable first-wave facades/services: `SwitchableReportingLookupFacade`, `ScopusAuthorQueryService`, `ScopusForumQueryService`, `ScopusAffiliationQueryService`, `AdminScopusFacade`.
-    - SQL adapters: `PostgresReportingLookupFacade`, `PostgresScopusAuthorReadPort`, `PostgresScopusForumReadPort`, `PostgresScopusAffiliationReadPort`, `PostgresAdminScopusReadPort`.
-    - Verification tests: `ReportingReadStoreRoutingTest`, `PostgresReportingLookupFacadeTest`, `ScopusCutoverGuardrailTest`.
+    - Switchable first-wave facades/services: `SwitchableReportingLookupFacade`, `ScholardexAuthorQueryService`, `ScholardexForumQueryService`, `ScholardexAffiliationQueryService`, `ScholardexAdminReadFacade`.
+    - SQL adapters: `PostgresReportingLookupFacade`, `PostgresScholardexAuthorReadPort`, `PostgresScholardexForumReadPort`, `PostgresScholardexAffiliationReadPort`, `PostgresScholardexAdminReadPort`.
+    - Verification tests: `ReportingReadStoreRoutingTest`, `PostgresReportingLookupFacadeTest`, `ScholardexCutoverGuardrailTest`.
   - [x] `H22.5` Materialized views and refresh strategy for heavy reads.
     Deliverable: SQL materialized views (or equivalent precomputed read structures) for citation-heavy and ranking-heavy reporting queries, with refresh policy.
     Exit criteria: heavy reporting workloads meet target latency with deterministic refresh semantics.
@@ -129,7 +129,7 @@ Done history moved to `TASKS-done.md`.
     - Migrations: `V5__h22_5_create_materialized_views.sql`, `V6__h22_5_mv_refresh_state_tables.sql`.
     - Refresh orchestration: `PostgresMaterializedViewRefreshService`, `JdbcPostgresMaterializedViewRefreshService`.
     - Projection coupling: `JdbcPostgresReportingProjectionService` refreshes slice-mapped MVs after successful slice rebuilds.
-    - SQL read cutover updates: `PostgresReportingLookupFacade#getTopRankings` and `PostgresAdminScopusReadPort#buildPublicationCitationsView` now consume H22.5 MVs.
+    - SQL read cutover updates: `PostgresReportingLookupFacade#getTopRankings` and `PostgresScholardexAdminReadPort#buildPublicationCitationsView` now consume H22.5 MVs.
   - [x] `H22.6` Dual-read parity and performance gate.
     Deliverable: automated parity + latency comparison gates between legacy Mongo reads and new SQL reads across representative workloads.
     Exit criteria: correctness parity is proven and latency/error budgets are met before final read cutover.
@@ -149,3 +149,17 @@ Done history moved to `TASKS-done.md`.
     - Consolidated ops service: `H22OperationalStatusService`, `DefaultH22OperationalStatusService`.
     - Admin operational endpoints: `/admin/initialization/postgres/operational/showStatus`, `/admin/initialization/postgres/operational/status`.
     - Verification tests: `DefaultH22OperationalStatusServiceTest`, `AdminInitializationControllerContractTest`, `AdminInitializationSecurityContractTest`.
+  - [x] `H22.8` Post-integration layering and naming consistency.
+    Deliverable: targeted cleanup that normalizes naming, package-level boundaries, and service wiring semantics introduced during H22 integration.
+    Exit criteria: PostgreSQL reporting integration code follows consistent naming/contracts (including Scholardex/reporting read surfaces), with no ambiguous legacy naming left in active paths.
+    Status: completed on 2026-03-12.
+    Handover:
+    - Internal rename completion: admin read switch layer renamed to `ScholardexAdminReadFacade` + `ScholardexAdminReadPort` with `MongoScholardexAdminReadPort` and `PostgresScholardexAdminReadPort`.
+    - Wiring updates: `AdminViewController`, `JdbcDualReadGateService`, and `PostgresReadCutoverGuard` now use Scholardex admin read types.
+    - Consistency updates: `ScholardexProjectionReadService` naming kept across touched integration paths; H22 task/test references aligned with renamed symbols.
+  - [ ] `H22.9` Transitional path and config hygiene after Postgres integration.
+    Deliverable: removal or consolidation of obsolete transitional flags, stale dual-path helper code, and unused compatibility branches no longer needed after H22 stabilization.
+    Exit criteria: configuration and runtime path selection are minimal, documented, and free of deprecated dead branches for completed H22 scope.
+  - [ ] `H22.10` H22 test-harness cleanup and deterministic gate baseline refresh.
+    Deliverable: cleanup and consolidation of H22-related tests/gate fixtures to reflect finalized defaults and scenario set (including Postgres-targeted perf checks).
+    Exit criteria: H22 verification tests are deterministic, readable, and aligned with current cutover/perf expectations without brittle historical assumptions.

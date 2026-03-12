@@ -7,23 +7,23 @@ import ro.uvt.pokedex.core.controller.dto.ScopusForumPageResponse;
 
 @Service
 @RequiredArgsConstructor
-public class ScopusForumQueryService {
+public class ScholardexForumQueryService {
 
     private final ReportingReadStoreSelector readStoreSelector;
-    private final MongoScopusForumReadPort mongoScopusForumReadPort;
-    private final ObjectProvider<PostgresScopusForumReadPort> postgresScopusForumReadPortProvider;
+    private final MongoScholardexForumReadPort mongoScholardexForumReadPort;
+    private final ObjectProvider<PostgresScholardexForumReadPort> postgresScholardexForumReadPortProvider;
 
     public ScopusForumPageResponse search(int page, int size, String sort, String direction, String q) {
         return activePort().search(page, size, sort, direction, q);
     }
 
-    private ScopusForumReadPort activePort() {
+    private ScholardexForumReadPort activePort() {
         if (!readStoreSelector.isPostgres()) {
-            return mongoScopusForumReadPort;
+            return mongoScholardexForumReadPort;
         }
-        PostgresScopusForumReadPort postgresPort = postgresScopusForumReadPortProvider.getIfAvailable();
+        PostgresScholardexForumReadPort postgresPort = postgresScholardexForumReadPortProvider.getIfAvailable();
         if (postgresPort == null) {
-            throw new IllegalStateException("Postgres read-store selected but PostgresScopusForumReadPort is not available.");
+            throw new IllegalStateException("Postgres read-store selected but PostgresScholardexForumReadPort is not available.");
         }
         return postgresPort;
     }

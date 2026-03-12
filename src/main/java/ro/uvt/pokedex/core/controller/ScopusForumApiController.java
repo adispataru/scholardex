@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ro.uvt.pokedex.core.controller.dto.ScopusForumPageResponse;
-import ro.uvt.pokedex.core.service.application.ScopusForumQueryService;
+import ro.uvt.pokedex.core.service.application.ScholardexForumQueryService;
 
 @RestController
 @Validated
@@ -18,7 +18,7 @@ import ro.uvt.pokedex.core.service.application.ScopusForumQueryService;
 @RequiredArgsConstructor
 public class ScopusForumApiController {
 
-    private final ScopusForumQueryService scopusForumQueryService;
+    private final ScholardexForumQueryService scholardexForumQueryService;
 
     @GetMapping("/forums")
     public ResponseEntity<ScopusForumPageResponse> listScopusForums(
@@ -28,6 +28,6 @@ public class ScopusForumApiController {
             @RequestParam(defaultValue = "asc") String direction,
             @RequestParam(required = false) String q
     ) {
-        return ResponseEntity.ok(scopusForumQueryService.search(page, size, sort, direction, q));
+        return ResponseEntity.ok(scholardexForumQueryService.search(page, size, sort, direction, q));
     }
 }

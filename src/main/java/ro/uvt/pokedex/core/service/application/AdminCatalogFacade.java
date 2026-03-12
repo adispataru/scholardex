@@ -33,7 +33,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class AdminCatalogFacade {
 
-    private final ScholardexProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final ArtisticEventRepository artisticEventRepository;
     private final RankingRepository rankingRepository;
     private final CoreConferenceRankingRepository coreConferenceRankingRepository;
@@ -48,13 +48,13 @@ public class AdminCatalogFacade {
     }
 
     public List<Affiliation> listAffiliationsByNameContains(String afname) {
-        List<Affiliation> affiliations = new ArrayList<>(scopusProjectionReadService.findAffiliationsByNameContains(afname));
+        List<Affiliation> affiliations = new ArrayList<>(scholardexProjectionReadService.findAffiliationsByNameContains(afname));
         affiliations.sort(java.util.Comparator.comparing(Affiliation::getName));
         return affiliations;
     }
 
     public List<Affiliation> listAffiliationsByCountry(String country) {
-        List<Affiliation> affiliations = new ArrayList<>(scopusProjectionReadService.findAffiliationsByCountry(country));
+        List<Affiliation> affiliations = new ArrayList<>(scholardexProjectionReadService.findAffiliationsByCountry(country));
         affiliations.sort(java.util.Comparator.comparing(Affiliation::getName));
         return affiliations;
     }
@@ -127,43 +127,43 @@ public class AdminCatalogFacade {
     }
 
     public List<Forum> listScopusVenues() {
-        return scopusProjectionReadService.findAllForums();
+        return scholardexProjectionReadService.findAllForums();
     }
 
     public Optional<Forum> findScopusVenueById(String id) {
-        return scopusProjectionReadService.findForumById(id);
+        return scholardexProjectionReadService.findForumById(id);
     }
 
     public Forum saveScopusVenue(Forum forum) {
-        return scopusProjectionReadService.saveForum(forum);
+        return scholardexProjectionReadService.saveForum(forum);
     }
 
     public List<Author> listScopusAuthorsByAffiliation(String affiliationId) {
-        return scopusProjectionReadService.findAuthorsByAffiliationId(affiliationId);
+        return scholardexProjectionReadService.findAuthorsByAffiliationId(affiliationId);
     }
 
     public Optional<Author> findScopusAuthorById(String id) {
-        return scopusProjectionReadService.findAuthorById(id);
+        return scholardexProjectionReadService.findAuthorById(id);
     }
 
     public List<Publication> listPublicationsByAuthorId(String authorId) {
-        return scopusProjectionReadService.findAllPublicationsByAuthorsContaining(authorId);
+        return scholardexProjectionReadService.findAllPublicationsByAuthorsContaining(authorId);
     }
 
     public Author saveScopusAuthor(Author author) {
-        return scopusProjectionReadService.saveAuthor(author);
+        return scholardexProjectionReadService.saveAuthor(author);
     }
 
     public List<Affiliation> listScopusAffiliations() {
-        return scopusProjectionReadService.findAllAffiliations();
+        return scholardexProjectionReadService.findAllAffiliations();
     }
 
     public Optional<Affiliation> findScopusAffiliationById(String id) {
-        return scopusProjectionReadService.findAffiliationById(id);
+        return scholardexProjectionReadService.findAffiliationById(id);
     }
 
     public Affiliation saveScopusAffiliation(Affiliation affiliation) {
-        return scopusProjectionReadService.saveAffiliation(affiliation);
+        return scholardexProjectionReadService.saveAffiliation(affiliation);
     }
 
     public List<ArtisticEvent> listArtisticEvents() {
