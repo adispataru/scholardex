@@ -38,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -58,7 +59,9 @@ class GroupReportFacadeTest {
     @Mock
     private ScientificProductionService scientificProductionService;
     @Mock
-    private ScholardexProjectionReadService scopusProjectionReadService;
+    private ScholardexProjectionReadService scholardexProjectionReadService;
+    @Mock
+    private ReportingReadStoreSelector reportingReadStoreSelector;
     @Mock
     private ResearcherAuthorLookupService researcherAuthorLookupService;
     @Mock
@@ -82,6 +85,7 @@ class GroupReportFacadeTest {
             ((Runnable) invocation.getArgument(0)).run();
             return null;
         }).when(reportingLookupMemoization).withRefreshScope(any(Runnable.class));
+        lenient().when(reportingReadStoreSelector.readStore()).thenReturn(ReportingReadStore.MONGO);
     }
 
     @Test
@@ -121,9 +125,9 @@ class GroupReportFacadeTest {
         forum.setPublicationName("Forum One");
 
         when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
-        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(validPublication, invalidPublication));
-        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
-        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
+        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(validPublication, invalidPublication));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
+        when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
         when(individualReportRepository.findAll()).thenReturn(List.of());
 
         var result = facade.buildGroupPublicationsView("g1");
@@ -175,9 +179,9 @@ class GroupReportFacadeTest {
         forum.setPublicationName("Forum One");
 
         when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
-        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(p1, p3, p2));
-        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
-        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
+        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(p1, p3, p2));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
+        when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
         when(individualReportRepository.findAll()).thenReturn(List.of());
 
         var result = facade.buildGroupPublicationsView("g1");
@@ -213,9 +217,9 @@ class GroupReportFacadeTest {
         forum.setPublicationName("Forum One");
 
         when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
-        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(shared, shared));
-        when(scopusProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
-        when(scopusProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
+        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(shared, shared));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
+        when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
         when(individualReportRepository.findAll()).thenReturn(List.of());
 
         var result = facade.buildGroupPublicationsView("g1");
@@ -253,7 +257,7 @@ class GroupReportFacadeTest {
 
         assertEquals(null, result.redirect());
         assertEquals("g1", ((Group) result.attributes().get("group")).getId());
-        verifyNoInteractions(scopusProjectionReadService, activityInstanceRepository);
+        verifyNoInteractions(scholardexProjectionReadService, activityInstanceRepository);
     }
 
     @Test
@@ -279,8 +283,8 @@ class GroupReportFacadeTest {
         when(individualReportRepository.findById("rep1")).thenReturn(Optional.of(report));
         Author author = new Author();
         author.setId("a1");
-        when(scopusProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
-        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of());
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of());
         when(groupIndividualReportRunRepository.save(any(GroupIndividualReportRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var result = facade.refreshGroupIndividualReportView("g1", "rep1");
@@ -316,8 +320,8 @@ class GroupReportFacadeTest {
         when(individualReportRepository.findById("rep1")).thenReturn(Optional.of(report));
         when(groupIndividualReportRunRepository.findTopByGroupIdAndReportDefinitionIdOrderByCreatedAtDesc("g1", "rep1"))
                 .thenReturn(Optional.empty());
-        when(scopusProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
-        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of());
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of());
         when(groupIndividualReportRunRepository.save(any(GroupIndividualReportRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var result = facade.buildGroupIndividualReportView("g1", "rep1");
@@ -367,11 +371,11 @@ class GroupReportFacadeTest {
 
         when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
         when(individualReportRepository.findById("rep1")).thenReturn(Optional.of(report));
-        when(scopusProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
-        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
-        when(scopusProjectionReadService.findAllCitationsByCitedIdIn(List.of("p1"))).thenReturn(List.of(citation));
-        when(scopusProjectionReadService.findAllPublicationsByIdIn(List.of("cp1"))).thenReturn(List.of(citingPublication));
-        when(scientificProductionService.calculateScientificImpactScore(any(Publication.class), any(List.class), any(Indicator.class)))
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
+        when(scholardexProjectionReadService.findAllCitationsByCitedIdIn(List.of("p1"))).thenReturn(List.of(citation));
+        when(scholardexProjectionReadService.findAllPublicationsByIdIn(List.of("cp1"))).thenReturn(List.of(citingPublication));
+        when(scientificProductionService.calculateScientificImpactScore(any(Publication.class), any(List.class), any(Indicator.class), anyMap()))
                 .thenAnswer(invocation -> {
                     Map<String, Score> scores = new java.util.HashMap<>();
                     scores.put("total", new Score());
@@ -381,8 +385,10 @@ class GroupReportFacadeTest {
 
         facade.refreshGroupIndividualReportView("g1", "rep1");
 
-        verify(scopusProjectionReadService, times(1)).findAllCitationsByCitedIdIn(List.of("p1"));
-        verify(scopusProjectionReadService, times(1)).findAllPublicationsByIdIn(List.of("cp1"));
+        verify(scholardexProjectionReadService, times(1)).findAllCitationsByCitedIdIn(List.of("p1"));
+        verify(scholardexProjectionReadService, times(1)).findAllPublicationsByIdIn(List.of("cp1"));
+        verify(scientificProductionService, times(2))
+                .precomputeCitationBaseScores(any(List.class), any(Indicator.class));
     }
 
     @Test
@@ -427,8 +433,8 @@ class GroupReportFacadeTest {
 
         when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
         when(individualReportRepository.findById("rep1")).thenReturn(Optional.of(report));
-        when(scopusProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
-        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of());
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of());
         when(activityInstanceRepository.findAllByResearcherId("r1")).thenReturn(List.of(activityInstance));
         when(activityReportingService.calculateActivityScores(any(List.class), any(Indicator.class)))
                 .thenReturn(Map.of("total", total));
@@ -496,13 +502,13 @@ class GroupReportFacadeTest {
 
         when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
         when(individualReportRepository.findById("rep1")).thenReturn(Optional.of(report));
-        when(scopusProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
-        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
-        when(scopusProjectionReadService.findAllCitationsByCitedIdIn(List.of("p1")))
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
+        when(scholardexProjectionReadService.findAllCitationsByCitedIdIn(List.of("p1")))
                 .thenReturn(List.of(citationSelf, citationExternal));
-        when(scopusProjectionReadService.findAllPublicationsByIdIn(List.of("cp-self", "cp-external")))
+        when(scholardexProjectionReadService.findAllPublicationsByIdIn(List.of("cp-self", "cp-external")))
                 .thenReturn(List.of(citingSelf, citingExternal));
-        when(scientificProductionService.calculateScientificImpactScore(any(Publication.class), any(List.class), any(Indicator.class)))
+        when(scientificProductionService.calculateScientificImpactScore(any(Publication.class), any(List.class), any(Indicator.class), anyMap()))
                 .thenAnswer(invocation -> {
                     @SuppressWarnings("unchecked")
                     List<Publication> citingPublications = invocation.getArgument(1);
@@ -584,11 +590,11 @@ class GroupReportFacadeTest {
 
         when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
         when(individualReportRepository.findById("rep1")).thenReturn(Optional.of(report));
-        when(scopusProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
-        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
-        when(scopusProjectionReadService.findAllCitationsByCitedIdIn(List.of("p1"))).thenReturn(citations);
-        when(scopusProjectionReadService.findAllPublicationsByIdIn(citingIds)).thenReturn(citingPublications);
-        when(scientificProductionService.calculateScientificImpactScore(any(Publication.class), any(List.class), any(Indicator.class)))
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
+        when(scholardexProjectionReadService.findAllCitationsByCitedIdIn(List.of("p1"))).thenReturn(citations);
+        when(scholardexProjectionReadService.findAllPublicationsByIdIn(citingIds)).thenReturn(citingPublications);
+        when(scientificProductionService.calculateScientificImpactScore(any(Publication.class), any(List.class), any(Indicator.class), anyMap()))
                 .thenAnswer(invocation -> {
                     @SuppressWarnings("unchecked")
                     List<Publication> currentCitingPublications = invocation.getArgument(1);

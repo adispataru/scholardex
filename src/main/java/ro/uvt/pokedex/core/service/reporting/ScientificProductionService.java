@@ -78,6 +78,15 @@ public class ScientificProductionService {
     }
 
     public Map<String, Score> calculateScientificImpactScore(Publication cited, List<Publication> publications, Indicator indicator) {
+        return calculateScientificImpactScore(cited, publications, indicator, null);
+    }
+
+    public Map<String, Score> calculateScientificImpactScore(
+            Publication cited,
+            List<Publication> publications,
+            Indicator indicator,
+            Map<String, Score> cachedBaseScoresByCitingPublicationId
+    ) {
         long totalStartedAtNanos = System.nanoTime();
         Map<String, Score> result = new HashMap<>();
         if(indicator.getScoringStrategy().equals(Indicator.Strategy.GENERIC_COUNT)) {
@@ -102,7 +111,14 @@ public class ScientificProductionService {
         if(scoringService != null) {
             for (Publication publication : publications) {
                 ScoreComputationTiming scoreTiming = new ScoreComputationTiming();
-                Score score = calculateCitationScore(cited, publication, indicator, scoringService, scoreTiming);
+                Score score = calculateCitationScore(
+                        cited,
+                        publication,
+                        indicator,
+                        scoringService,
+                        cachedBaseScoresByCitingPublicationId,
+                        scoreTiming
+                );
                 baseScoreLookupNanos += scoreTiming.baseScoreLookupNanos();
                 formulaEvalNanos += scoreTiming.formulaEvalNanos();
 
@@ -140,11 +156,11 @@ public class ScientificProductionService {
     }
 
     private Score calculatePublicationScore(Publication publication, Indicator indicator, ScoringService scoringService) {
-        return getScore(publication, publication, indicator, scoringService, null);
+        return getScore(publication, publication, indicator, scoringService, null, null);
     }
 
     private Score calculateCitationScore(Publication cited, Publication citing, Indicator indicator, ScoringService scoringService) {
-        return getScore(cited, citing, indicator, scoringService, null);
+        return getScore(cited, citing, indicator, scoringService, null, null);
     }
 
     private Score calculateCitationScore(
@@ -152,9 +168,10 @@ public class ScientificProductionService {
             Publication citing,
             Indicator indicator,
             ScoringService scoringService,
+            Map<String, Score> cachedBaseScoresByCitingPublicationId,
             ScoreComputationTiming timing
     ) {
-        return getScore(cited, citing, indicator, scoringService, timing);
+        return getScore(cited, citing, indicator, scoringService, cachedBaseScoresByCitingPublicationId, timing);
     }
 
     private Score getScore(
@@ -162,14 +179,23 @@ public class ScientificProductionService {
             Publication citing,
             Indicator indicator,
             ScoringService scoringService,
+            Map<String, Score> cachedBaseScoresByCitingPublicationId,
             ScoreComputationTiming timing
     ) {
-        long baseScoreLookupStartedAtNanos = System.nanoTime();
-        Score result = scoringService.getScore(citing, indicator);
-        long baseScoreLookupNanos = System.nanoTime() - baseScoreLookupStartedAtNanos;
+        Score baseScore = null;
+        long baseScoreLookupNanos = 0L;
+        if (cachedBaseScoresByCitingPublicationId != null && citing != null && citing.getId() != null) {
+            baseScore = cachedBaseScoresByCitingPublicationId.get(citing.getId());
+        }
+        if (baseScore == null) {
+            long baseScoreLookupStartedAtNanos = System.nanoTime();
+            baseScore = scoringService.getScore(citing, indicator);
+            baseScoreLookupNanos = System.nanoTime() - baseScoreLookupStartedAtNanos;
+        }
         if (timing != null) {
             timing.addBaseScoreLookupNanos(baseScoreLookupNanos);
         }
+        Score result = copyScore(baseScore);
         if(result.getScore() > 0) {
             int numberOfAuthors = cited.getAuthors().size();
 
@@ -196,6 +222,44 @@ public class ScientificProductionService {
             result.setAuthorScore(finalScore);
         }
         return result;
+    }
+
+    public Map<String, Score> precomputeCitationBaseScores(List<Publication> citingPublications, Indicator indicator) {
+        if (citingPublications == null || citingPublications.isEmpty()) {
+            return Map.of();
+        }
+        if (indicator == null || indicator.getScoringStrategy() == null || indicator.getScoringStrategy().equals(Indicator.Strategy.GENERIC_COUNT)) {
+            return Map.of();
+        }
+        ScoringService scoringService = scoringFactoryService.getScoringService(indicator.getScoringStrategy());
+        if (scoringService == null) {
+            return Map.of();
+        }
+        Map<String, Score> cached = new HashMap<>();
+        for (Publication citingPublication : citingPublications) {
+            if (citingPublication == null || citingPublication.getId() == null || cached.containsKey(citingPublication.getId())) {
+                continue;
+            }
+            Score baseScore = scoringService.getScore(citingPublication, indicator);
+            cached.put(citingPublication.getId(), copyScore(baseScore));
+        }
+        return cached;
+    }
+
+    private Score copyScore(Score source) {
+        if (source == null) {
+            return new Score();
+        }
+        Score target = new Score();
+        target.setScore(source.getScore());
+        target.setYear(source.getYear());
+        target.setCategory(source.getCategory());
+        target.setQuarter(source.getQuarter());
+        target.setAuthorScore(source.getAuthorScore());
+        target.setDetails(source.getDetails());
+        target.setErrors(new HashMap<>(source.getErrors() == null ? Map.of() : source.getErrors()));
+        target.setExtra(new HashMap<>(source.getExtra() == null ? Map.of() : source.getExtra()));
+        return target;
     }
 
     private long nanosToMillis(long nanos) {

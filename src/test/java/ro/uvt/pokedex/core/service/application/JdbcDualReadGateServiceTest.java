@@ -181,6 +181,23 @@ class JdbcDualReadGateServiceTest {
     }
 
     @Test
+    void perfOnlyRefreshScenarioRunsWithPostgresOverrideEvenWhenDefaultStoreIsMongo() {
+        var fixture = fixture();
+        fixture.properties.setGroupReportRefreshEnabled(true);
+        fixture.properties.setGroupReportRefreshDualParityEnabled(false);
+
+        doAnswer(invocation -> {
+            assertEquals(ReportingReadStore.POSTGRES, fixture.reportingReadStoreSelector.readStore());
+            return null;
+        }).when(fixture.groupReportFacade).refreshGroupIndividualReportView("g-1", "r-1");
+
+        fixture.service.runFullGate();
+
+        verify(fixture.groupReportFacade, times(fixture.properties.getSampleSize()))
+                .refreshGroupIndividualReportView("g-1", "r-1");
+    }
+
+    @Test
     void runFullGateIncludesDualRefreshScenarioWhenEnabled() {
         var fixture = fixture();
         fixture.properties.setGroupReportRefreshEnabled(true);
@@ -239,6 +256,12 @@ class JdbcDualReadGateServiceTest {
 
         assertEquals("FAILED", refreshScenario.status());
         assertTrue(refreshScenario.mismatchSample().contains("configured group/report ids are missing"));
+    }
+
+    @Test
+    void dualReadGatePropertiesDefaultRatioThresholdIsPointEight() {
+        DualReadGateProperties properties = new DualReadGateProperties();
+        assertEquals(0.8d, properties.getP95RatioThreshold());
     }
 
     private Fixture fixture() {
@@ -387,6 +410,7 @@ class JdbcDualReadGateServiceTest {
                 mongoAffiliation,
                 postgresAffiliation,
                 groupReportFacade,
+                reportingReadStoreSelector,
                 List.of(postgresRanking)
         );
     }
@@ -402,6 +426,7 @@ class JdbcDualReadGateServiceTest {
             MongoScopusAffiliationReadPort mongoAffiliation,
             PostgresScopusAffiliationReadPort postgresAffiliation,
             GroupReportFacade groupReportFacade,
+            ReportingReadStoreSelector reportingReadStoreSelector,
             List<WoSRanking> postgresRanking
     ) {
     }

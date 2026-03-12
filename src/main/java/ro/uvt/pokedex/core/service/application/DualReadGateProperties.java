@@ -8,13 +8,13 @@ import org.springframework.stereotype.Component;
 public class DualReadGateProperties {
 
     private int sampleSize = 5;
-    private double p95RatioThreshold = 1.2d;
+    private double p95RatioThreshold = 0.8d;
     private boolean wosIssnWarmupEnabled = true;
     private boolean groupReportRefreshEnabled = false;
     private boolean groupReportRefreshDualParityEnabled = true;
     private String groupReportRefreshGroupId = "680fa885dbe2f57466f9f4d2";
     private String groupReportRefreshReportId = "682101ad04e38843635e0cba";
-    private double groupReportRefreshP95ThresholdMs = 1200d;
+    private double groupReportRefreshP95ThresholdMs = 2200d;
 
     public int getSampleSize() {
         return sampleSize;

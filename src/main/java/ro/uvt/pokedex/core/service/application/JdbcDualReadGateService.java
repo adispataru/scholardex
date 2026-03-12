@@ -622,7 +622,13 @@ public class JdbcDualReadGateService implements DualReadGateService {
             scenarios.add(new DualReadScenario(
                     SCENARIO_GROUP_REPORT_REFRESH,
                     SCENARIO_TYPE_PERF_ONLY,
-                    () -> groupReportFacade.refreshGroupIndividualReportView(input.groupReportRefreshGroupId(), input.groupReportRefreshReportId()),
+                    () -> reportingReadStoreSelector.withReadStoreOverride(
+                            ReportingReadStore.POSTGRES,
+                            () -> groupReportFacade.refreshGroupIndividualReportView(
+                                    input.groupReportRefreshGroupId(),
+                                    input.groupReportRefreshReportId()
+                            )
+                    ),
                     null,
                     null,
                     properties.getGroupReportRefreshP95ThresholdMs()

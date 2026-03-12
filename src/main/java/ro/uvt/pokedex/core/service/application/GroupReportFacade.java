@@ -34,7 +34,8 @@ public class GroupReportFacade {
     private final ActivityInstanceRepository activityInstanceRepository;
     private final ActivityReportingService activityReportingService;
     private final ScientificProductionService scientificProductionService;
-    private final ScholardexProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scholardexProjectionReadService;
+    private final ReportingReadStoreSelector reportingReadStoreSelector;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final GroupIndividualReportRunRepository groupIndividualReportRunRepository;
     private final ReportingLookupMemoization reportingLookupMemoization;
@@ -51,12 +52,12 @@ public class GroupReportFacade {
         for (Researcher researcher : researchers) {
             lookupKeys.addAll(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
         }
-        List<String> authorIds = scopusProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
+        List<String> authorIds = scholardexProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
                 .map(Author::getId)
                 .distinct()
                 .toList();
         Map<String, Publication> publicationsById = new LinkedHashMap<>();
-        scopusProjectionReadService.findAllPublicationsByAuthorsIn(authorIds)
+        scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds)
                 .forEach(publication -> publicationsById.putIfAbsent(publication.getId(), publication));
         List<Publication> publications = new ArrayList<>(publicationsById.values());
         PublicationOrderingSupport.sortPublicationsInPlace(publications);
@@ -68,12 +69,12 @@ public class GroupReportFacade {
             forumKeys.add(p.getForum());
         });
 
-        List<Author> byIdIn = scopusProjectionReadService.findAuthorsByIdIn(authorKeys);
+        List<Author> byIdIn = scholardexProjectionReadService.findAuthorsByIdIn(authorKeys);
         Map<String, Author> authorMap = new HashMap<>();
         byIdIn.forEach(a -> authorMap.put(a.getId(), a));
 
         Map<String, Forum> forumMap = new HashMap<>();
-        List<Forum> forums = scopusProjectionReadService.findForumsByIdIn(forumKeys);
+        List<Forum> forums = scholardexProjectionReadService.findForumsByIdIn(forumKeys);
         forums.forEach(f -> forumMap.put(f.getId(), f));
 
         Map<Integer, List<Publication>> publicationsByYear = publications.stream()
@@ -152,11 +153,13 @@ public class GroupReportFacade {
         long saveMs = nanosToMs(System.nanoTime() - saveStartNanos);
 
         long totalMs = nanosToMs(System.nanoTime() - refreshStartNanos);
+        String activeReadStore = reportingReadStoreSelector.readStore().name();
         String refreshTimingMessage = String.format(
                 Locale.ROOT,
-                "Group report refresh timings: groupId=%s reportId=%s researchers=%d status=%s errors=%d counts[publications=%d, citationFacts=%d, citationIndicators=%d, activityIndicators=%d] timingsMs[lookup=%d, compute=%d, save=%d, total=%d] computeMs[authorLookup=%d, publicationLoad=%d, activityLoad=%d, citationLoad=%d, scoring=%d, publicationScoring=%d, activityScoring=%d, citationScoring=%d, selector=%d, thresholdBuild=%d]",
+                "Group report refresh timings: groupId=%s reportId=%s readStore=%s researchers=%d status=%s errors=%d counts[publications=%d, citationFacts=%d, citationIndicators=%d, activityIndicators=%d] timingsMs[lookup=%d, compute=%d, save=%d, total=%d] computeMs[authorLookup=%d, publicationLoad=%d, activityLoad=%d, citationLoad=%d, citationBasePrecompute=%d, scoring=%d, publicationScoring=%d, activityScoring=%d, citationScoring=%d, selector=%d, thresholdBuild=%d]",
                 groupId,
                 reportId,
+                activeReadStore,
                 group.getResearchers() == null ? 0 : group.getResearchers().size(),
                 run.getStatus(),
                 run.getBuildErrors() == null ? 0 : run.getBuildErrors().size(),
@@ -172,6 +175,7 @@ public class GroupReportFacade {
                 computeResult.timings().publicationLoadMs(),
                 computeResult.timings().activityLoadMs(),
                 computeResult.timings().citationLoadMs(),
+                computeResult.timings().citationBasePrecomputeMs(),
                 computeResult.timings().scoringMs(),
                 computeResult.timings().publicationScoringMs(),
                 computeResult.timings().activityScoringMs(),
@@ -205,7 +209,7 @@ public class GroupReportFacade {
 
         for (Researcher researcher : researchers) {
             long authorLookupStartNanos = System.nanoTime();
-            List<Author> authors = scopusProjectionReadService.findAuthorsByIdIn(
+            List<Author> authors = scholardexProjectionReadService.findAuthorsByIdIn(
                     researcherAuthorLookupService.resolveAuthorLookupKeys(researcher)
             );
             timings.authorLookupNanos += (System.nanoTime() - authorLookupStartNanos);
@@ -238,7 +242,7 @@ public class GroupReportFacade {
 
             long publicationLoadStartNanos = System.nanoTime();
             List<String> authorIds = authors.stream().map(Author::getId).toList();
-            List<Publication> publications = scopusProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
+            List<Publication> publications = scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
             if (!"ANY".equals(report.getIndividualAffiliation().getName())) {
                 publications = publications.stream()
                         .filter(p -> report.getIndividualAffiliation().getScopusAffiliations().stream()
@@ -260,11 +264,15 @@ public class GroupReportFacade {
             }
 
             CitationContext citationContext = CitationContext.empty();
+            Map<Indicator, Map<String, Score>> citationBaseScoresByIndicator = Map.of();
             if (hasCitationIndicators) {
                 long citationLoadStartNanos = System.nanoTime();
                 citationContext = prepareCitationContext(publications);
                 timings.citationLoadNanos += (System.nanoTime() - citationLoadStartNanos);
                 timings.citationFacts += citationContext.citationFactsCount();
+                long citationBasePrecomputeStartNanos = System.nanoTime();
+                citationBaseScoresByIndicator = precomputeCitationBaseScoresByIndicator(indicators, citationContext);
+                timings.citationBasePrecomputeNanos += (System.nanoTime() - citationBasePrecomputeStartNanos);
             }
 
             Map<Indicator, Double> indicatorScores = new HashMap<>();
@@ -292,7 +300,13 @@ public class GroupReportFacade {
                 } else if (indicator.getOutputType().equals(Indicator.Type.CITATIONS)
                         || indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF)) {
                     CitationScoreResult citationScoreResult =
-                            calculateCitationScore(indicator, publications, researcherAuthorIds, citationContext);
+                            calculateCitationScore(
+                                    indicator,
+                                    publications,
+                                    researcherAuthorIds,
+                                    citationContext,
+                                    citationBaseScoresByIndicator.getOrDefault(indicator, Map.of())
+                            );
                     indicatorScore = citationScoreResult.score();
                     timings.selectorNanos += citationScoreResult.selectorNanos();
                     timings.citationScoringNanos += (System.nanoTime() - indicatorScoringStartNanos);
@@ -379,7 +393,8 @@ public class GroupReportFacade {
             Indicator indicator,
             List<Publication> publications,
             Set<String> researcherAuthorIds,
-            CitationContext citationContext
+            CitationContext citationContext,
+            Map<String, Score> cachedCitationBaseScoresByCitingPublicationId
     ) {
         boolean excludeSelf = indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF);
         Map<String, Map<String, Score>> scores = new HashMap<>();
@@ -394,7 +409,12 @@ public class GroupReportFacade {
                         .toList();
             }
 
-            Map<String, Score> citScores = scientificProductionService.calculateScientificImpactScore(pub, citations, indicator);
+            Map<String, Score> citScores = scientificProductionService.calculateScientificImpactScore(
+                    pub,
+                    citations,
+                    indicator,
+                    cachedCitationBaseScoresByCitingPublicationId
+            );
             scores.put(pub.getTitle(), citScores);
         }
 
@@ -467,9 +487,9 @@ public class GroupReportFacade {
 
     private CitationContext prepareCitationContext(List<Publication> publications) {
         List<String> pubIds = publications.stream().map(Publication::getId).toList();
-        List<Citation> allCitations = scopusProjectionReadService.findAllCitationsByCitedIdIn(pubIds);
+        List<Citation> allCitations = scholardexProjectionReadService.findAllCitationsByCitedIdIn(pubIds);
         List<String> citationIds = allCitations.stream().map(Citation::getCitingId).toList();
-        List<Publication> citingPublications = scopusProjectionReadService.findAllPublicationsByIdIn(citationIds);
+        List<Publication> citingPublications = scholardexProjectionReadService.findAllPublicationsByIdIn(citationIds);
         Map<String, Publication> citingPublicationsById = new HashMap<>();
         for (Publication publication : citingPublications) {
             if (publication != null && publication.getId() != null) {
@@ -490,6 +510,31 @@ public class GroupReportFacade {
                     .add(citing);
         }
         return new CitationContext(citingPublicationsById, citingPublicationsByCitedPublicationId, allCitations.size());
+    }
+
+    private Map<Indicator, Map<String, Score>> precomputeCitationBaseScoresByIndicator(
+            List<Indicator> indicators,
+            CitationContext citationContext
+    ) {
+        if (indicators == null || indicators.isEmpty()) {
+            return Map.of();
+        }
+        List<Publication> uniqueCitingPublications = new ArrayList<>(citationContext.citingPublicationsById().values());
+        if (uniqueCitingPublications.isEmpty()) {
+            return Map.of();
+        }
+        Map<Indicator, Map<String, Score>> cached = new HashMap<>();
+        for (Indicator indicator : indicators) {
+            if (indicator == null) {
+                continue;
+            }
+            if (!Indicator.Type.CITATIONS.equals(indicator.getOutputType())
+                    && !Indicator.Type.CITATIONS_EXCLUDE_SELF.equals(indicator.getOutputType())) {
+                continue;
+            }
+            cached.put(indicator, scientificProductionService.precomputeCitationBaseScores(uniqueCitingPublications, indicator));
+        }
+        return cached;
     }
 
     private boolean sharesAnyAuthor(Publication publication, Set<String> authorIds) {
@@ -519,6 +564,7 @@ public class GroupReportFacade {
             long publicationLoadMs,
             long activityLoadMs,
             long citationLoadMs,
+            long citationBasePrecomputeMs,
             long scoringMs,
             long publicationScoringMs,
             long activityScoringMs,
@@ -553,6 +599,7 @@ public class GroupReportFacade {
         private long publicationLoadNanos;
         private long activityLoadNanos;
         private long citationLoadNanos;
+        private long citationBasePrecomputeNanos;
         private long scoringNanos;
         private long publicationScoringNanos;
         private long activityScoringNanos;
@@ -570,6 +617,7 @@ public class GroupReportFacade {
                     Math.max(0L, publicationLoadNanos / 1_000_000L),
                     Math.max(0L, activityLoadNanos / 1_000_000L),
                     Math.max(0L, citationLoadNanos / 1_000_000L),
+                    Math.max(0L, citationBasePrecomputeNanos / 1_000_000L),
                     Math.max(0L, scoringNanos / 1_000_000L),
                     Math.max(0L, publicationScoringNanos / 1_000_000L),
                     Math.max(0L, activityScoringNanos / 1_000_000L),
