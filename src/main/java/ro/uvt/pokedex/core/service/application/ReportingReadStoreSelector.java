@@ -1,6 +1,5 @@
 package ro.uvt.pokedex.core.service.application;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.function.Supplier;
@@ -11,7 +10,11 @@ public class ReportingReadStoreSelector {
     private final ReportingReadStore readStore;
     private final ThreadLocal<ReportingReadStore> readStoreOverride = new ThreadLocal<>();
 
-    public ReportingReadStoreSelector(@Value("${app.reporting.read-store:mongo}") String readStore) {
+    public ReportingReadStoreSelector() {
+        this("postgres");
+    }
+
+    ReportingReadStoreSelector(String readStore) {
         this.readStore = ReportingReadStore.fromProperty(readStore);
     }
 

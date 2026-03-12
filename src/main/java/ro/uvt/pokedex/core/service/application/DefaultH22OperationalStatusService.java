@@ -14,18 +14,15 @@ public class DefaultH22OperationalStatusService implements H22OperationalStatusS
     private static final String STATUS_NO_RUN = "NO_RUN";
     private static final String STATUS_SERVICE_DISABLED = "SERVICE_DISABLED";
 
-    private final ReportingReadStoreSelector reportingReadStoreSelector;
     private final ObjectProvider<PostgresReportingProjectionService> projectionServiceProvider;
     private final ObjectProvider<PostgresMaterializedViewRefreshService> materializedViewRefreshServiceProvider;
     private final ObjectProvider<DualReadGateService> dualReadGateServiceProvider;
 
     public DefaultH22OperationalStatusService(
-            ReportingReadStoreSelector reportingReadStoreSelector,
             ObjectProvider<PostgresReportingProjectionService> projectionServiceProvider,
             ObjectProvider<PostgresMaterializedViewRefreshService> materializedViewRefreshServiceProvider,
             ObjectProvider<DualReadGateService> dualReadGateServiceProvider
     ) {
-        this.reportingReadStoreSelector = reportingReadStoreSelector;
         this.projectionServiceProvider = projectionServiceProvider;
         this.materializedViewRefreshServiceProvider = materializedViewRefreshServiceProvider;
         this.dualReadGateServiceProvider = dualReadGateServiceProvider;
@@ -38,19 +35,14 @@ public class DefaultH22OperationalStatusService implements H22OperationalStatusS
         ComponentStatus dualReadGate = dualReadGateComponentStatus();
 
         boolean anyFailed = isFailed(projection) || isFailed(materializedViewRefresh) || isFailed(dualReadGate);
-        boolean allSuccess = isSuccess(projection) && isSuccess(materializedViewRefresh) && isSuccess(dualReadGate);
-        boolean postgresReadStore = reportingReadStoreSelector.isPostgres();
-
         String overallState;
         if (anyFailed) {
             overallState = "RED";
-        } else if (postgresReadStore) {
-            overallState = allSuccess ? "GREEN" : "RED";
         } else {
-            overallState = "YELLOW";
+            overallState = "GREEN";
         }
 
-        String readStore = reportingReadStoreSelector.readStore().name().toLowerCase(Locale.ROOT);
+        String readStore = "postgres";
         return new H22OperationalStatusSnapshot(
                 overallState,
                 readStore,

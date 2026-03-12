@@ -57,7 +57,6 @@ public class JdbcDualReadGateService implements DualReadGateService {
     private static final String SCENARIO_ADMIN_PUBLICATION = "admin.scopus.publication.search";
     private static final String SCENARIO_ADMIN_CITATIONS = "admin.scopus.citations.view";
     private static final String SCENARIO_GROUP_REPORT_REFRESH = "admin.group.report.refresh";
-    private static final String SCENARIO_GROUP_REPORT_REFRESH_DUAL = "admin.group.report.refresh.dual";
 
     private static final String SCENARIO_TYPE_DUAL_PARITY = "DUAL_PARITY";
     private static final String SCENARIO_TYPE_PERF_ONLY = "PERF_ONLY";
@@ -82,7 +81,6 @@ public class JdbcDualReadGateService implements DualReadGateService {
     private final MongoScholardexAdminReadPort mongoScholardexAdminReadPort;
     private final ObjectProvider<PostgresScholardexAdminReadPort> postgresScholardexAdminReadPortProvider;
     private final GroupReportFacade groupReportFacade;
-    private final ReportingReadStoreSelector reportingReadStoreSelector;
     private final GroupRepository groupRepository;
     private final IndividualReportRepository individualReportRepository;
 
@@ -102,7 +100,6 @@ public class JdbcDualReadGateService implements DualReadGateService {
             MongoScholardexAdminReadPort mongoScholardexAdminReadPort,
             ObjectProvider<PostgresScholardexAdminReadPort> postgresScholardexAdminReadPortProvider,
             GroupReportFacade groupReportFacade,
-            ReportingReadStoreSelector reportingReadStoreSelector,
             GroupRepository groupRepository,
             IndividualReportRepository individualReportRepository
     ) {
@@ -121,7 +118,6 @@ public class JdbcDualReadGateService implements DualReadGateService {
         this.mongoScholardexAdminReadPort = mongoScholardexAdminReadPort;
         this.postgresScholardexAdminReadPortProvider = postgresScholardexAdminReadPortProvider;
         this.groupReportFacade = groupReportFacade;
-        this.reportingReadStoreSelector = reportingReadStoreSelector;
         this.groupRepository = groupRepository;
         this.individualReportRepository = individualReportRepository;
     }
@@ -597,37 +593,12 @@ public class JdbcDualReadGateService implements DualReadGateService {
         ));
 
         if (properties.isGroupReportRefreshEnabled()) {
-            if (properties.isGroupReportRefreshDualParityEnabled()) {
-                scenarios.add(new DualReadScenario(
-                        SCENARIO_GROUP_REPORT_REFRESH_DUAL,
-                        SCENARIO_TYPE_DUAL_PARITY,
-                        () -> reportingReadStoreSelector.withReadStoreOverride(
-                                ReportingReadStore.MONGO,
-                                () -> groupReportFacade.refreshGroupIndividualReportView(
-                                        input.groupReportRefreshGroupId(),
-                                        input.groupReportRefreshReportId()
-                                )
-                        ),
-                        () -> reportingReadStoreSelector.withReadStoreOverride(
-                                ReportingReadStore.POSTGRES,
-                                () -> groupReportFacade.refreshGroupIndividualReportView(
-                                        input.groupReportRefreshGroupId(),
-                                        input.groupReportRefreshReportId()
-                                )
-                        ),
-                        (mongo, postgres) -> null,
-                        null
-                ));
-            }
             scenarios.add(new DualReadScenario(
                     SCENARIO_GROUP_REPORT_REFRESH,
                     SCENARIO_TYPE_PERF_ONLY,
-                    () -> reportingReadStoreSelector.withReadStoreOverride(
-                            ReportingReadStore.POSTGRES,
-                            () -> groupReportFacade.refreshGroupIndividualReportView(
-                                    input.groupReportRefreshGroupId(),
-                                    input.groupReportRefreshReportId()
-                            )
+                    () -> groupReportFacade.refreshGroupIndividualReportView(
+                            input.groupReportRefreshGroupId(),
+                            input.groupReportRefreshReportId()
                     ),
                     null,
                     null,
@@ -823,8 +794,9 @@ public class JdbcDualReadGateService implements DualReadGateService {
         String affiliationQuery = firstToken(firstAffiliationName());
         String publicationTitleQuery = firstToken(firstPublicationTitle());
         String citationPublicationId = firstPublicationId();
-        String groupReportRefreshGroupId = properties.getGroupReportRefreshGroupId();
-        String groupReportRefreshReportId = properties.getGroupReportRefreshReportId();
+        GroupReportRefreshIds refreshIds = resolveGroupReportRefreshIds();
+        String groupReportRefreshGroupId = refreshIds.groupId();
+        String groupReportRefreshReportId = refreshIds.reportId();
 
         log.info(
                 "H22.6 dual-read scenario inputs: issn={}, categoryIndex={}, year={}, afid={}, forumQuery={}, affiliationQuery={}, publicationTitleQuery={}, citationPublicationId={}, groupReportRefreshGroupId={}, groupReportRefreshReportId={}",
@@ -918,6 +890,18 @@ public class JdbcDualReadGateService implements DualReadGateService {
         return publication == null || !hasText(publication.getId()) ? "missing-publication-id" : publication.getId();
     }
 
+    private GroupReportRefreshIds resolveGroupReportRefreshIds() {
+        String groupId = groupRepository.findAll().stream()
+                .findFirst()
+                .map(ro.uvt.pokedex.core.model.reporting.Group::getId)
+                .orElse(null);
+        String reportId = individualReportRepository.findAll().stream()
+                .findFirst()
+                .map(ro.uvt.pokedex.core.model.reporting.IndividualReport::getId)
+                .orElse(null);
+        return new GroupReportRefreshIds(groupId, reportId);
+    }
+
     private String firstToken(String input) {
         if (!hasText(input)) {
             return null;
@@ -953,22 +937,11 @@ public class JdbcDualReadGateService implements DualReadGateService {
             return null;
         }
         if (SCENARIO_GROUP_REPORT_REFRESH.equals(scenarioId)) {
-            String groupId = properties.getGroupReportRefreshGroupId();
-            String reportId = properties.getGroupReportRefreshReportId();
+            GroupReportRefreshIds refreshIds = resolveGroupReportRefreshIds();
+            String groupId = refreshIds.groupId();
+            String reportId = refreshIds.reportId();
             if (!hasText(groupId) || !hasText(reportId)) {
-                return "dataset not ready: configured group/report ids are missing for admin.group.report.refresh";
-            }
-            if (!groupRepository.existsById(groupId) || !individualReportRepository.existsById(reportId)) {
-                return "dataset not ready: report not found for configured ids groupId="
-                        + valueOrPlaceholder(groupId) + ", reportId=" + valueOrPlaceholder(reportId);
-            }
-            return null;
-        }
-        if (SCENARIO_GROUP_REPORT_REFRESH_DUAL.equals(scenarioId)) {
-            String groupId = properties.getGroupReportRefreshGroupId();
-            String reportId = properties.getGroupReportRefreshReportId();
-            if (!hasText(groupId) || !hasText(reportId)) {
-                return "dataset not ready: configured group/report ids are missing for admin.group.report.refresh.dual";
+                return "dataset not ready: no group/report ids available for admin.group.report.refresh";
             }
             if (!groupRepository.existsById(groupId) || !individualReportRepository.existsById(reportId)) {
                 return "dataset not ready: report not found for configured ids groupId="
@@ -982,9 +955,6 @@ public class JdbcDualReadGateService implements DualReadGateService {
     private String resolveScenarioType(String scenarioId) {
         if (SCENARIO_GROUP_REPORT_REFRESH.equals(scenarioId)) {
             return SCENARIO_TYPE_PERF_ONLY;
-        }
-        if (SCENARIO_GROUP_REPORT_REFRESH_DUAL.equals(scenarioId)) {
-            return SCENARIO_TYPE_DUAL_PARITY;
         }
         return SCENARIO_TYPE_DUAL_PARITY;
     }
@@ -1077,6 +1047,12 @@ public class JdbcDualReadGateService implements DualReadGateService {
     private record CategoryInput(
             String categoryIndex,
             int year
+    ) {
+    }
+
+    private record GroupReportRefreshIds(
+            String groupId,
+            String reportId
     ) {
     }
 

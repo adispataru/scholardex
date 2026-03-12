@@ -184,36 +184,10 @@ class JdbcDualReadGateServiceTest {
     void perfOnlyRefreshScenarioRunsWithPostgresOverrideEvenWhenDefaultStoreIsMongo() {
         var fixture = fixture();
         fixture.properties.setGroupReportRefreshEnabled(true);
-        fixture.properties.setGroupReportRefreshDualParityEnabled(false);
-
-        doAnswer(invocation -> {
-            assertEquals(ReportingReadStore.POSTGRES, fixture.reportingReadStoreSelector.readStore());
-            return null;
-        }).when(fixture.groupReportFacade).refreshGroupIndividualReportView("g-1", "r-1");
 
         fixture.service.runFullGate();
 
         verify(fixture.groupReportFacade, times(fixture.properties.getSampleSize()))
-                .refreshGroupIndividualReportView("g-1", "r-1");
-    }
-
-    @Test
-    void runFullGateIncludesDualRefreshScenarioWhenEnabled() {
-        var fixture = fixture();
-        fixture.properties.setGroupReportRefreshEnabled(true);
-        fixture.properties.setGroupReportRefreshDualParityEnabled(true);
-
-        DualReadGateService.DualReadGateRunSummary run = fixture.service.runFullGate();
-
-        var refreshScenario = run.scenarios().stream()
-                .filter(scenario -> scenario.scenarioId().equals("admin.group.report.refresh.dual"))
-                .findFirst()
-                .orElseThrow();
-
-        assertEquals("DUAL_PARITY", refreshScenario.scenarioType());
-        assertTrue(refreshScenario.parityPassed());
-        assertTrue(refreshScenario.performancePassed());
-        verify(fixture.groupReportFacade, times(fixture.properties.getSampleSize() * 3))
                 .refreshGroupIndividualReportView("g-1", "r-1");
     }
 
@@ -241,11 +215,11 @@ class JdbcDualReadGateServiceTest {
     }
 
     @Test
-    void perfOnlyRefreshScenarioFailsWhenConfiguredIdsMissing() {
+    void perfOnlyRefreshScenarioFailsWhenNoIdsCanBeResolved() {
         var fixture = fixture();
         fixture.properties.setGroupReportRefreshEnabled(true);
-        fixture.properties.setGroupReportRefreshGroupId("");
-        fixture.properties.setGroupReportRefreshReportId(" ");
+        when(fixture.groupRepository.findAll()).thenReturn(List.of());
+        when(fixture.individualReportRepository.findAll()).thenReturn(List.of());
 
         DualReadGateService.DualReadGateRunSummary run = fixture.service.runFullGate();
 
@@ -255,7 +229,7 @@ class JdbcDualReadGateServiceTest {
                 .orElseThrow();
 
         assertEquals("FAILED", refreshScenario.status());
-        assertTrue(refreshScenario.mismatchSample().contains("configured group/report ids are missing"));
+        assertTrue(refreshScenario.mismatchSample().contains("no group/report ids available"));
     }
 
     @Test
@@ -269,8 +243,6 @@ class JdbcDualReadGateServiceTest {
         DualReadGateProperties properties = new DualReadGateProperties();
         properties.setSampleSize(2);
         properties.setP95RatioThreshold(50d);
-        properties.setGroupReportRefreshGroupId("g-1");
-        properties.setGroupReportRefreshReportId("r-1");
 
         MongoTemplate mongoTemplate = mock(MongoTemplate.class);
 
@@ -289,7 +261,6 @@ class JdbcDualReadGateServiceTest {
         MongoScholardexAdminReadPort mongoAdmin = mock(MongoScholardexAdminReadPort.class);
         PostgresScholardexAdminReadPort postgresAdmin = mock(PostgresScholardexAdminReadPort.class);
         GroupReportFacade groupReportFacade = mock(GroupReportFacade.class);
-        ReportingReadStoreSelector reportingReadStoreSelector = new ReportingReadStoreSelector("mongo");
         GroupRepository groupRepository = mock(GroupRepository.class);
         IndividualReportRepository individualReportRepository = mock(IndividualReportRepository.class);
 
@@ -342,6 +313,12 @@ class JdbcDualReadGateServiceTest {
         when(mongoTemplate.count(any(Query.class), eq(ScholardexAuthorView.class))).thenReturn(1L);
         when(mongoTemplate.count(any(Query.class), eq(ScholardexForumView.class))).thenReturn(1L);
         when(mongoTemplate.count(any(Query.class), eq(ScholardexAffiliationView.class))).thenReturn(1L);
+        ro.uvt.pokedex.core.model.reporting.Group group = new ro.uvt.pokedex.core.model.reporting.Group();
+        group.setId("g-1");
+        ro.uvt.pokedex.core.model.reporting.IndividualReport report = new ro.uvt.pokedex.core.model.reporting.IndividualReport();
+        report.setId("r-1");
+        when(groupRepository.findAll()).thenReturn(List.of(group));
+        when(individualReportRepository.findAll()).thenReturn(List.of(report));
         when(groupRepository.existsById("g-1")).thenReturn(true);
         when(individualReportRepository.existsById("r-1")).thenReturn(true);
 
@@ -394,7 +371,6 @@ class JdbcDualReadGateServiceTest {
                 mongoAdmin,
                 adminProvider,
                 groupReportFacade,
-                reportingReadStoreSelector,
                 groupRepository,
                 individualReportRepository
         );
@@ -410,7 +386,8 @@ class JdbcDualReadGateServiceTest {
                 mongoAffiliation,
                 postgresAffiliation,
                 groupReportFacade,
-                reportingReadStoreSelector,
+                groupRepository,
+                individualReportRepository,
                 List.of(postgresRanking)
         );
     }
@@ -426,7 +403,8 @@ class JdbcDualReadGateServiceTest {
             MongoScholardexAffiliationReadPort mongoAffiliation,
             PostgresScholardexAffiliationReadPort postgresAffiliation,
             GroupReportFacade groupReportFacade,
-            ReportingReadStoreSelector reportingReadStoreSelector,
+            GroupRepository groupRepository,
+            IndividualReportRepository individualReportRepository,
             List<WoSRanking> postgresRanking
     ) {
     }

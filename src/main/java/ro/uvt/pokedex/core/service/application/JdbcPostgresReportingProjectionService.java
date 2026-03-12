@@ -121,8 +121,8 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
         long runStartedNs = System.nanoTime();
 
         log.info(
-                "H22.3 projection run started: runId={} mode={} fullRebuild={} dryRun={} chunkSize={} statementTimeoutMs={}",
-                runId, mode, fullRebuild, properties.isDryRun(), properties.getChunkSize(), properties.getStatementTimeoutMs()
+                "H22.3 projection run started: runId={} mode={} fullRebuild={} chunkSize={} statementTimeoutMs={}",
+                runId, mode, fullRebuild, properties.getChunkSize(), properties.getStatementTimeoutMs()
         );
 
         jdbcTemplate.update("""
@@ -171,9 +171,7 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
                 SliceProjectionResult result = SLICE_WOS.equals(slice)
                         ? rebuildWosSlice(runId, startedAt)
                         : rebuildScopusSlice(runId, startedAt);
-                if (!properties.isDryRun()) {
-                    materializedViewRefreshService.refreshForSlices(Set.of(slice), runId);
-                }
+                materializedViewRefreshService.refreshForSlices(Set.of(slice), runId);
                 upsertCheckpoint(slice, sourceFingerprint, runId, mode);
                 SliceRunSummary summary = new SliceRunSummary(
                         slice, STATUS_SUCCESS, sourceFingerprint, result.insertedRows(), result.note(), sliceStartedAt, Instant.now()
@@ -260,11 +258,6 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
                 categoryLoadMs,
                 scoringLoadMs
         );
-
-        if (properties.isDryRun()) {
-            long totalRows = rankingViews.size() + metricFacts.size() + categoryFacts.size() + scoringViews.size();
-            return new SliceProjectionResult(totalRows, "dry-run: no SQL writes");
-        }
 
         String token = tempSuffix(runId);
         long[] phaseMs = new long[4];
@@ -450,12 +443,6 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
                     droppedAuthorship,
                     droppedAuthorAffiliation
             );
-        }
-
-        if (properties.isDryRun()) {
-            long totalRows = publicationViews.size() + authorViews.size() + forumViews.size()
-                    + affiliationViews.size() + validCitationFacts.size() + validAuthorshipFacts.size() + validAuthorAffiliationFacts.size();
-            return new SliceProjectionResult(totalRows, "dry-run: no SQL writes");
         }
 
         String token = tempSuffix(runId);

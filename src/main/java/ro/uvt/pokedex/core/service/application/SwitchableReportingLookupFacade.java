@@ -17,8 +17,6 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class SwitchableReportingLookupFacade implements ReportingLookupPort {
 
-    private final ReportingReadStoreSelector readStoreSelector;
-    private final ProjectionBackedReportingLookupFacade mongoFacade;
     private final ObjectProvider<PostgresReportingLookupFacade> postgresFacadeProvider;
 
     @Override
@@ -47,12 +45,9 @@ public class SwitchableReportingLookupFacade implements ReportingLookupPort {
     }
 
     private ReportingLookupPort activeFacade() {
-        if (!readStoreSelector.isPostgres()) {
-            return mongoFacade;
-        }
         PostgresReportingLookupFacade postgresFacade = postgresFacadeProvider.getIfAvailable();
         if (postgresFacade == null) {
-            throw new IllegalStateException("Postgres read-store selected but PostgresReportingLookupFacade is not available.");
+            throw new IllegalStateException("Postgres reporting lookup is not available.");
         }
         return postgresFacade;
     }

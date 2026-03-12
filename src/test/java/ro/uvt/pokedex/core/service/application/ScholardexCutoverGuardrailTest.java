@@ -140,15 +140,17 @@ class ScholardexCutoverGuardrailTest {
     }
 
     @Test
-    void h22_4CutoverUsesSingleReadStoreSwitchAndStartupGuard() throws Exception {
+    void h22_4CutoverUsesPostgresStartupGuardWithoutRuntimeReadStoreToggle() throws Exception {
         String appProps = new String(
                 Files.readAllBytes(Path.of("src/main/resources/application.properties")),
                 StandardCharsets.ISO_8859_1
         );
-        assertTrue(appProps.contains("app.reporting.read-store"),
-                "Cutover must define a single read-store selector property.");
+        assertFalse(appProps.contains("app.reporting.read-store"),
+                "Post-cutover runtime must not expose app.reporting.read-store toggle for migrated surfaces.");
 
         String guardContent = Files.readString(Path.of("src/main/java/ro/uvt/pokedex/core/service/application/PostgresReadCutoverGuard.java"));
+        assertTrue(guardContent.contains("spring.datasource.url"),
+                "Postgres cutover guard must activate with Postgres datasource presence.");
         assertTrue(guardContent.contains("projection_checkpoint"),
                 "Postgres cutover must verify projection checkpoint state at startup.");
         assertTrue(guardContent.contains("slice_name IN ('wos', 'scopus')"),

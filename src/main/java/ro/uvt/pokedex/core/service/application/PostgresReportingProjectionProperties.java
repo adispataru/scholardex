@@ -10,9 +10,6 @@ public class PostgresReportingProjectionProperties {
     private boolean enabled;
     private int chunkSize = 1000;
     private int statementTimeoutMs = 120000;
-    private boolean dryRun = false;
-    private String wosFingerprintFields = "count,max(updatedAt),max(createdAt),max(sourceVersion)";
-    private String scopusFingerprintFields = "count,max(updatedAt),max(buildAt),max(createdAt)";
 
     public boolean isEnabled() {
         return enabled;
@@ -38,27 +35,4 @@ public class PostgresReportingProjectionProperties {
         this.statementTimeoutMs = statementTimeoutMs;
     }
 
-    public boolean isDryRun() {
-        return dryRun;
-    }
-
-    public void setDryRun(boolean dryRun) {
-        this.dryRun = dryRun;
-    }
-
-    public String getWosFingerprintFields() {
-        return wosFingerprintFields;
-    }
-
-    public void setWosFingerprintFields(String wosFingerprintFields) {
-        this.wosFingerprintFields = wosFingerprintFields;
-    }
-
-    public String getScopusFingerprintFields() {
-        return scopusFingerprintFields;
-    }
-
-    public void setScopusFingerprintFields(String scopusFingerprintFields) {
-        this.scopusFingerprintFields = scopusFingerprintFields;
-    }
 }

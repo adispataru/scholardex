@@ -14,7 +14,7 @@ public enum ReportingReadStore {
         return switch (normalized) {
             case "MONGO" -> MONGO;
             case "POSTGRES" -> POSTGRES;
-            default -> throw new IllegalArgumentException("Invalid app.reporting.read-store value: " + raw + ". Allowed: mongo, postgres.");
+            default -> throw new IllegalArgumentException("Invalid reporting read-store value: " + raw + ". Allowed: mongo, postgres.");
         };
     }
 }

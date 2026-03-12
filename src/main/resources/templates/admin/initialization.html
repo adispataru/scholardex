@@ -5,6 +5,28 @@
     <title>Initialization</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
     <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+    <style>
+        .init-action-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.4rem 0;
+        }
+        .init-action-row > div:first-child {
+            font-weight: 500;
+        }
+        .init-card-subtitle {
+            margin-bottom: 0.9rem;
+            color: #6c757d;
+            font-size: 0.85rem;
+        }
+        .init-maintenance {
+            border-top: 1px solid #e3e6f0;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+        }
+    </style>
 </head>
 <body id="page-top">
 <div id="wrapper">
@@ -20,7 +42,7 @@
             <div th:replace="~{fragments :: navbar}"></div>
             <div class="container-fluid">
                 <h1 class="h3 mb-2 text-gray-800">Initialization</h1>
-                <p class="mb-4">Canonical initialization operations for WoS and Scopus. Execute steps in order.</p>
+                <p class="mb-4">Run initialization and operational maintenance steps. WoS/Scopus pipelines are deterministic and admin-triggered.</p>
 
                 <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
                 <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
@@ -30,50 +52,50 @@
                         <h6 class="m-0 font-weight-bold text-primary">General Initialization (Non-Scopus/WoS)</h6>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted small">Explicit admin-triggered bootstrap operations. Uses configured default paths and runs synchronously.</p>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <p class="init-card-subtitle">General bootstrap operations using configured default sources.</p>
+                        <div class="init-action-row mb-3">
                             <div>Run all general initialization steps</div>
                             <form th:action="@{/admin/initialization/general/runAll}" method="post">
                                 <button type="submit" class="btn btn-primary btn-sm">Run all</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>Bootstrap default admin user</div>
                             <form th:action="@{/admin/initialization/general/adminUser}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>Bootstrap special domain (`all`)</div>
                             <form th:action="@{/admin/initialization/general/domain}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>Import artistic events</div>
                             <form th:action="@{/admin/initialization/general/artisticEvents}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>Import URAP rankings</div>
                             <form th:action="@{/admin/initialization/general/urap}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>Import CNCSIS publishers</div>
                             <form th:action="@{/admin/initialization/general/cncsis}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>Import CORE conference rankings</div>
                             <form th:action="@{/admin/initialization/general/coreConference}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="init-action-row">
                             <div>Import SENSE book rankings</div>
                             <form th:action="@{/admin/initialization/general/sense}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
@@ -87,8 +109,8 @@
                         <h6 class="m-0 font-weight-bold text-primary">WoS Initialization</h6>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted small">Run canonical WoS pipeline actions in this order: ingest, build facts, enrich category rankings, build projections/views, ensure indexes.</p>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <p class="init-card-subtitle">Recommended order: ingest, build facts, enrich category rankings, build projections/views, ensure indexes.</p>
+                        <div class="init-action-row mb-3">
                             <div>1. Ingest events</div>
                             <form th:action="@{/admin/initialization/wos/ingest}" method="post" class="d-flex align-items-center">
                                 <input type="text"
@@ -99,7 +121,7 @@
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>2. Build facts from events</div>
                             <form th:action="@{/admin/initialization/wos/buildFacts}" method="post" class="d-flex align-items-center">
                                 <input type="text"
@@ -116,7 +138,7 @@
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>3. Enrich category rankings</div>
                             <div class="d-flex align-items-center">
                                 <form th:action="@{/admin/initialization/wos/enrichCategoryRankings}" method="post" class="mr-2">
@@ -125,26 +147,26 @@
                                 <a th:href="@{/admin/initialization/wos/enrichment}" class="btn btn-primary btn-sm">Open page</a>
                             </div>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>4. Build projections/views</div>
                             <form th:action="@{/admin/initialization/wos/rebuildProjections}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="init-action-row">
                             <div>5. Ensure indexes</div>
                             <form th:action="@{/admin/initialization/wos/ensureIndexes}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                             </form>
                         </div>
-                        <hr>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-maintenance">
+                        <div class="init-action-row mb-3">
                             <div>Maintenance: reset fact-build checkpoint</div>
                             <form th:action="@{/admin/initialization/wos/resetFactCheckpoint}" method="post">
                                 <button type="submit" class="btn btn-outline-danger btn-sm">Reset checkpoint</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="init-action-row">
                             <div>Maintenance: clear canonical WoS state (events, facts, views)</div>
                             <form th:action="@{/admin/initialization/wos/resetCanonicalState}" method="post" class="d-flex align-items-center">
                                 <input type="text"
@@ -155,6 +177,7 @@
                                 <button type="submit" class="btn btn-danger btn-sm">Clear state</button>
                             </form>
                         </div>
+                        </div>
                     </div>
                 </div>
 
@@ -163,14 +186,14 @@
                         <h6 class="m-0 font-weight-bold text-primary">Scopus Initialization</h6>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted small">Ingestion source uses configured <code>scopus.data.file</code>. Steps are synchronous and deterministic.</p>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <p class="init-card-subtitle">Uses configured <code>scopus.data.file</code>. Steps are synchronous and deterministic.</p>
+                        <div class="init-action-row mb-3">
                             <div>1. Ingest events</div>
                             <form th:action="@{/admin/initialization/scopus/ingest}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>2. Build facts</div>
                             <form th:action="@{/admin/initialization/scopus/buildFacts}" method="post" class="d-flex align-items-center">
                                 <input type="number" name="startBatchOverride" min="0" class="form-control form-control-sm mr-2" style="width: 140px;" placeholder="Start batch">
@@ -179,25 +202,25 @@
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>3. Build projections/views</div>
                             <form th:action="@{/admin/initialization/scopus/buildProjections}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>4. Ensure canonical indexes</div>
                             <form th:action="@{/admin/initialization/scopus/ensureIndexes}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>Maintenance: backfill canonical citations</div>
                             <form th:action="@{/admin/initialization/scopus/backfillCanonicalCitations}" method="post">
                                 <button type="submit" class="btn btn-outline-secondary btn-sm">Run backfill</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>Maintenance: run canonical build (all|publication|author|affiliation|citation)</div>
                             <form th:action="@{/admin/initialization/scopus/buildCanonical}" method="post" class="d-flex align-items-center">
                                 <input type="text" name="entity" class="form-control form-control-sm mr-2" style="width: 170px;" placeholder="all">
@@ -223,44 +246,44 @@
                                 <button type="submit" class="btn btn-outline-secondary btn-sm">Run canonical</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>Maintenance: show Scopus touch queue backlog</div>
                             <form th:action="@{/admin/initialization/scopus/showTouchQueueBacklog}" method="post">
                                 <button type="submit" class="btn btn-outline-secondary btn-sm">Show backlog</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>Maintenance: rebuild touch queues from import events</div>
                             <form th:action="@{/admin/initialization/scopus/rebuildTouchQueuesFromEvents}" method="post">
                                 <button type="submit" class="btn btn-outline-secondary btn-sm">Rebuild queues</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>Maintenance: drain all touch queues via canonical incremental runs</div>
                             <form th:action="@{/admin/initialization/scopus/drainTouchQueues}" method="post">
                                 <button type="submit" class="btn btn-outline-secondary btn-sm">Drain queues</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>Maintenance: reconcile canonical edges (H19.12)</div>
                             <form th:action="@{/admin/initialization/scopus/reconcileEdges}" method="post">
                                 <button type="submit" class="btn btn-outline-secondary btn-sm">Run reconcile</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>Maintenance: reconcile source-link ledger (H19.11)</div>
                             <form th:action="@{/admin/initialization/scopus/reconcileSourceLinks}" method="post">
                                 <button type="submit" class="btn btn-outline-secondary btn-sm">Run reconcile</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>Maintenance: reset canonical build checkpoints</div>
                             <form th:action="@{/admin/initialization/scopus/resetCanonicalCheckpoints}" method="post">
                                 <button type="submit" class="btn btn-outline-warning btn-sm">Reset checkpoints</button>
                             </form>
                         </div>
-                        <hr>
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="init-maintenance">
+                        <div class="init-action-row">
                             <div>Maintenance: clear canonical Scopus state (events, facts, views, checkpoints)</div>
                             <form th:action="@{/admin/initialization/scopus/resetCanonicalState}" method="post" class="d-flex align-items-center">
                                 <input type="text"
@@ -271,6 +294,7 @@
                                 <button type="submit" class="btn btn-danger btn-sm">Clear state</button>
                             </form>
                         </div>
+                        </div>
                     </div>
                 </div>
 
@@ -279,26 +303,26 @@
                         <h6 class="m-0 font-weight-bold text-primary">Postgres Reporting Projection (H22.3)</h6>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted small">Admin-triggered projection from canonical Mongo collections into <code>reporting_read</code> PostgreSQL schema.</p>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <p class="init-card-subtitle">Project canonical data into <code>reporting_read</code> PostgreSQL schema (full rebuild or fingerprint-gated incremental).</p>
+                        <div class="init-action-row mb-3">
                             <div>Run full rebuild (WoS + Scopus slices)</div>
                             <form th:action="@{/admin/initialization/postgres/projection/runFull}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run full rebuild</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>Run incremental sync (fingerprint-gated slices)</div>
                             <form th:action="@{/admin/initialization/postgres/projection/runIncremental}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run incremental</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>Show latest projection status</div>
                             <form th:action="@{/admin/initialization/postgres/projection/showStatus}" method="post">
                                 <button type="submit" class="btn btn-outline-secondary btn-sm">Show status</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="init-action-row">
                             <div>Maintenance: reset projection checkpoints</div>
                             <form th:action="@{/admin/initialization/postgres/projection/resetState}" method="post" class="d-flex align-items-center">
                                 <input type="text"
@@ -317,28 +341,28 @@
                         <h6 class="m-0 font-weight-bold text-primary">Postgres Materialized Views (H22.5)</h6>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted small">Refresh heavy-read materialized views in <code>reporting_read</code> PostgreSQL schema.</p>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <p class="init-card-subtitle">Refresh heavy-read materialized views after projection runs or large canonical updates.</p>
+                        <div class="init-action-row mb-3">
                             <div>Refresh all materialized views</div>
                             <form th:action="@{/admin/initialization/postgres/materialized/refreshAll}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Refresh all</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>Refresh WoS materialized views</div>
                             <form th:action="@{/admin/initialization/postgres/materialized/refreshSlice}" method="post">
                                 <input type="hidden" name="slice" value="wos">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Refresh WoS</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>Refresh Scopus materialized views</div>
                             <form th:action="@{/admin/initialization/postgres/materialized/refreshSlice}" method="post">
                                 <input type="hidden" name="slice" value="scopus">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Refresh Scopus</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="init-action-row">
                             <div>Show latest materialized-view refresh status</div>
                             <form th:action="@{/admin/initialization/postgres/materialized/showStatus}" method="post">
                                 <button type="submit" class="btn btn-outline-secondary btn-sm">Show status</button>
@@ -352,14 +376,14 @@
                         <h6 class="m-0 font-weight-bold text-primary">Postgres Dual-Read Gate (H22.6)</h6>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted small">Run parity and latency gate against Mongo and PostgreSQL for all H22.4 first-wave read surfaces.</p>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <p class="init-card-subtitle">Validation tooling: compare Mongo vs PostgreSQL parity/latency for migrated H22 read scenarios.</p>
+                        <div class="init-action-row mb-3">
                             <div>Run full dual-read parity/performance gate</div>
                             <form th:action="@{/admin/initialization/postgres/dualReadGate/run}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run gate</button>
                             </form>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="init-action-row mb-3">
                             <div>Show latest dual-read gate status</div>
                             <form th:action="@{/admin/initialization/postgres/dualReadGate/showStatus}" method="post">
                                 <button type="submit" class="btn btn-outline-secondary btn-sm">Show status</button>
@@ -395,8 +419,8 @@
                         <h6 class="m-0 font-weight-bold text-primary">H22 Operational Status (H22.7)</h6>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted small">Consolidated view over projection, materialized-view refresh, dual-read gate, and active read-store selector.</p>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <p class="init-card-subtitle">Consolidated health over projection, materialized-view refresh, and dual-read gate components (Postgres-first runtime).</p>
+                        <div class="init-action-row mb-3">
                             <div>Show consolidated operational status</div>
                             <form th:action="@{/admin/initialization/postgres/operational/showStatus}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Show status</button>

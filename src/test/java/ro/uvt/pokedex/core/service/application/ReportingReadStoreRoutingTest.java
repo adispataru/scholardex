@@ -12,64 +12,41 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class ReportingReadStoreRoutingTest {
 
     @Test
-    void switchableReportingLookupFacadeUsesMongoWhenSelectorIsMongo() {
-        ReportingReadStoreSelector selector = mock(ReportingReadStoreSelector.class);
-        ProjectionBackedReportingLookupFacade mongoFacade = mock(ProjectionBackedReportingLookupFacade.class);
+    void switchableReportingLookupFacadeUsesPostgresAdapter() {
         PostgresReportingLookupFacade postgresFacade = mock(PostgresReportingLookupFacade.class);
         ObjectProvider<PostgresReportingLookupFacade> provider = provider(postgresFacade);
 
-        when(selector.isPostgres()).thenReturn(false);
-        when(mongoFacade.getTopRankings("ECONOMICS - SCIE", 2024)).thenReturn(7);
+        when(postgresFacade.getTopRankings("ECONOMICS - SCIE", 2024)).thenReturn(7);
 
-        SwitchableReportingLookupFacade facade = new SwitchableReportingLookupFacade(selector, mongoFacade, provider);
+        SwitchableReportingLookupFacade facade = new SwitchableReportingLookupFacade(provider);
 
         assertEquals(7, facade.getTopRankings("ECONOMICS - SCIE", 2024));
     }
 
     @Test
-    void switchableReportingLookupFacadeUsesPostgresWhenSelectorIsPostgres() {
-        ReportingReadStoreSelector selector = mock(ReportingReadStoreSelector.class);
-        ProjectionBackedReportingLookupFacade mongoFacade = mock(ProjectionBackedReportingLookupFacade.class);
-        PostgresReportingLookupFacade postgresFacade = mock(PostgresReportingLookupFacade.class);
-        ObjectProvider<PostgresReportingLookupFacade> provider = provider(postgresFacade);
-
-        when(selector.isPostgres()).thenReturn(true);
-        when(postgresFacade.getRankingsByIssn("1234-5678")).thenReturn(List.of(new WoSRanking()));
-
-        SwitchableReportingLookupFacade facade = new SwitchableReportingLookupFacade(selector, mongoFacade, provider);
-
-        assertEquals(1, facade.getRankingsByIssn("1234-5678").size());
-    }
-
-    @Test
-    void scopusRoutersUsePostgresWhenSelectorIsPostgres() {
-        ReportingReadStoreSelector selector = mock(ReportingReadStoreSelector.class);
-        when(selector.isPostgres()).thenReturn(true);
-
-        MongoScholardexAuthorReadPort mongoAuthor = mock(MongoScholardexAuthorReadPort.class);
+    void scopusRoutersUsePostgresPorts() {
         PostgresScholardexAuthorReadPort postgresAuthor = mock(PostgresScholardexAuthorReadPort.class);
         when(postgresAuthor.search(null, 0, 10, "name", "asc", null))
                 .thenReturn(new ScopusAuthorPageResponse(List.of(), 0, 10, 0, 0));
 
-        MongoScholardexForumReadPort mongoForum = mock(MongoScholardexForumReadPort.class);
         PostgresScholardexForumReadPort postgresForum = mock(PostgresScholardexForumReadPort.class);
         when(postgresForum.search(0, 10, "issn", "asc", null))
                 .thenReturn(new ScopusForumPageResponse(List.of(), 0, 10, 0, 0));
 
-        MongoScholardexAffiliationReadPort mongoAffiliation = mock(MongoScholardexAffiliationReadPort.class);
         PostgresScholardexAffiliationReadPort postgresAffiliation = mock(PostgresScholardexAffiliationReadPort.class);
         when(postgresAffiliation.search(0, 10, "name", "asc", null))
                 .thenReturn(new ScopusAffiliationPageResponse(List.of(), 0, 10, 0, 0));
 
-        ScholardexAuthorQueryService authorService = new ScholardexAuthorQueryService(selector, mongoAuthor, provider(postgresAuthor));
-        ScholardexForumQueryService forumService = new ScholardexForumQueryService(selector, mongoForum, provider(postgresForum));
-        ScholardexAffiliationQueryService affiliationService = new ScholardexAffiliationQueryService(selector, mongoAffiliation, provider(postgresAffiliation));
+        ScholardexAuthorQueryService authorService = new ScholardexAuthorQueryService(provider(postgresAuthor));
+        ScholardexForumQueryService forumService = new ScholardexForumQueryService(provider(postgresForum));
+        ScholardexAffiliationQueryService affiliationService = new ScholardexAffiliationQueryService(provider(postgresAffiliation));
 
         assertEquals(0, authorService.search(null, 0, 10, "name", "asc", null).totalItems());
         assertEquals(0, forumService.search(0, 10, "issn", "asc", null).totalItems());
@@ -77,19 +54,29 @@ class ReportingReadStoreRoutingTest {
     }
 
     @Test
-    void adminFacadeUsesPostgresWhenSelectorIsPostgres() {
-        ReportingReadStoreSelector selector = mock(ReportingReadStoreSelector.class);
-        when(selector.isPostgres()).thenReturn(true);
-
-        MongoScholardexAdminReadPort mongoPort = mock(MongoScholardexAdminReadPort.class);
+    void adminFacadeUsesPostgresPort() {
         PostgresScholardexAdminReadPort postgresPort = mock(PostgresScholardexAdminReadPort.class);
-        ScholardexProjectionReadService scholardexProjectionReadService = mock(ScholardexProjectionReadService.class);
         when(postgresPort.buildPublicationSearchView("paper"))
                 .thenReturn(new AdminScopusPublicationSearchViewModel(List.of(), Map.of()));
 
-        ScholardexAdminReadFacade facade = new ScholardexAdminReadFacade(selector, mongoPort, provider(postgresPort), scholardexProjectionReadService);
+        ScholardexAdminReadFacade facade = new ScholardexAdminReadFacade(provider(postgresPort));
 
         assertEquals(0, facade.buildPublicationSearchView("paper").publications().size());
+    }
+
+    @Test
+    void postgresPortsMustBeAvailableForRuntimeRouters() {
+        @SuppressWarnings("unchecked")
+        ObjectProvider<PostgresReportingLookupFacade> missingReportingProvider = mock(ObjectProvider.class);
+        when(missingReportingProvider.getIfAvailable()).thenReturn(null);
+        SwitchableReportingLookupFacade reportingFacade = new SwitchableReportingLookupFacade(missingReportingProvider);
+        assertThrows(IllegalStateException.class, () -> reportingFacade.getTopRankings("A - SCIE", 2024));
+
+        @SuppressWarnings("unchecked")
+        ObjectProvider<PostgresScholardexAuthorReadPort> missingAuthorProvider = mock(ObjectProvider.class);
+        when(missingAuthorProvider.getIfAvailable()).thenReturn(null);
+        ScholardexAuthorQueryService authorService = new ScholardexAuthorQueryService(missingAuthorProvider);
+        assertThrows(IllegalStateException.class, () -> authorService.search(null, 0, 10, "name", "asc", null));
     }
 
     private <T> ObjectProvider<T> provider(T value) {

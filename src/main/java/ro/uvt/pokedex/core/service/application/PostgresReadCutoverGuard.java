@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.reporting.read-store", havingValue = "postgres")
+@ConditionalOnProperty(name = "spring.datasource.url")
 public class PostgresReadCutoverGuard implements ApplicationRunner {
 
     private final JdbcTemplate jdbcTemplate;

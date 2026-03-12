@@ -157,9 +157,14 @@ Done history moved to `TASKS-done.md`.
     - Internal rename completion: admin read switch layer renamed to `ScholardexAdminReadFacade` + `ScholardexAdminReadPort` with `MongoScholardexAdminReadPort` and `PostgresScholardexAdminReadPort`.
     - Wiring updates: `AdminViewController`, `JdbcDualReadGateService`, and `PostgresReadCutoverGuard` now use Scholardex admin read types.
     - Consistency updates: `ScholardexProjectionReadService` naming kept across touched integration paths; H22 task/test references aligned with renamed symbols.
-  - [ ] `H22.9` Transitional path and config hygiene after Postgres integration.
+  - [x] `H22.9` Transitional path and config hygiene after Postgres integration.
     Deliverable: removal or consolidation of obsolete transitional flags, stale dual-path helper code, and unused compatibility branches no longer needed after H22 stabilization.
     Exit criteria: configuration and runtime path selection are minimal, documented, and free of deprecated dead branches for completed H22 scope.
+    Status: completed on 2026-03-13.
+    Handover:
+    - Runtime routing cleanup: migrated H22 request-path read services now resolve Postgres adapters directly; Mongo remains only in dual-read comparison tooling.
+    - Config hygiene: removed checked-in transitional read-store and local dual-gate ID defaults; dual-gate and projection property surfaces were reduced to operational essentials.
+    - Admin UX cleanup: `/admin/initialization` wording/layout standardized, H22 cards clarified for Postgres-first runtime, and operational status copy no longer advertises active read-store switching.
   - [ ] `H22.10` H22 test-harness cleanup and deterministic gate baseline refresh.
     Deliverable: cleanup and consolidation of H22-related tests/gate fixtures to reflect finalized defaults and scenario set (including Postgres-targeted perf checks).
     Exit criteria: H22 verification tests are deterministic, readable, and aligned with current cutover/perf expectations without brittle historical assumptions.

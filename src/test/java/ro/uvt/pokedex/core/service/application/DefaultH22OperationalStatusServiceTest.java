@@ -14,8 +14,8 @@ import static org.mockito.Mockito.when;
 class DefaultH22OperationalStatusServiceTest {
 
     @Test
-    void latestStatusIsGreenWhenPostgresAndAllSignalsSuccessful() {
-        Fixture fixture = fixture(true);
+    void latestStatusIsGreenWhenAllSignalsSuccessful() {
+        Fixture fixture = fixture();
 
         when(fixture.projectionService.latestRunStatus()).thenReturn(new PostgresReportingProjectionService.ProjectionStatusSnapshot(
                 new PostgresReportingProjectionService.ProjectionRunSummary(
@@ -46,7 +46,7 @@ class DefaultH22OperationalStatusServiceTest {
                         "gate-success",
                         "SUCCESS",
                         5,
-                        1.2d,
+                        0.8d,
                         Instant.now(),
                         Instant.now(),
                         List.of(),
@@ -64,8 +64,8 @@ class DefaultH22OperationalStatusServiceTest {
     }
 
     @Test
-    void latestStatusIsYellowForPreCutoverMongoWithIncompleteSignals() {
-        Fixture fixture = fixture(false);
+    void latestStatusIsGreenWhenSignalsAreIncompleteButNotFailed() {
+        Fixture fixture = fixture();
 
         when(fixture.projectionService.latestRunStatus()).thenReturn(new PostgresReportingProjectionService.ProjectionStatusSnapshot(null, Map.of()));
         when(fixture.mvService.latestStatus()).thenReturn(new PostgresMaterializedViewRefreshService.MaterializedViewRefreshStatusSnapshot(null));
@@ -73,8 +73,8 @@ class DefaultH22OperationalStatusServiceTest {
 
         H22OperationalStatusService.H22OperationalStatusSnapshot snapshot = fixture.service.latestStatus();
 
-        assertEquals("YELLOW", snapshot.overallState());
-        assertEquals("mongo", snapshot.readStore());
+        assertEquals("GREEN", snapshot.overallState());
+        assertEquals("postgres", snapshot.readStore());
         assertEquals("NO_RUN", snapshot.projection().status());
         assertEquals("NO_RUN", snapshot.materializedViewRefresh().status());
         assertEquals("NO_RUN", snapshot.dualReadGate().status());
@@ -82,7 +82,7 @@ class DefaultH22OperationalStatusServiceTest {
 
     @Test
     void latestStatusIsRedWhenAnyComponentFailed() {
-        Fixture fixture = fixture(false);
+        Fixture fixture = fixture();
 
         when(fixture.projectionService.latestRunStatus()).thenReturn(new PostgresReportingProjectionService.ProjectionStatusSnapshot(
                 new PostgresReportingProjectionService.ProjectionRunSummary(
@@ -106,30 +106,12 @@ class DefaultH22OperationalStatusServiceTest {
     }
 
     @Test
-    void latestStatusIsRedWhenPostgresModeMissingRequiredSignals() {
-        Fixture fixture = fixture(true);
-
-        when(fixture.projectionService.latestRunStatus()).thenReturn(new PostgresReportingProjectionService.ProjectionStatusSnapshot(null, Map.of()));
-        when(fixture.mvService.latestStatus()).thenReturn(new PostgresMaterializedViewRefreshService.MaterializedViewRefreshStatusSnapshot(null));
-        when(fixture.gateService.latestStatus()).thenReturn(new DualReadGateService.DualReadGateStatusSnapshot(null));
-
-        H22OperationalStatusService.H22OperationalStatusSnapshot snapshot = fixture.service.latestStatus();
-
-        assertEquals("RED", snapshot.overallState());
-        assertEquals("postgres", snapshot.readStore());
-    }
-
-    private Fixture fixture(boolean postgresMode) {
-        ReportingReadStoreSelector selector = mock(ReportingReadStoreSelector.class);
-        when(selector.isPostgres()).thenReturn(postgresMode);
-        when(selector.readStore()).thenReturn(postgresMode ? ReportingReadStore.POSTGRES : ReportingReadStore.MONGO);
-
+    private Fixture fixture() {
         PostgresReportingProjectionService projectionService = mock(PostgresReportingProjectionService.class);
         PostgresMaterializedViewRefreshService mvService = mock(PostgresMaterializedViewRefreshService.class);
         DualReadGateService gateService = mock(DualReadGateService.class);
 
         DefaultH22OperationalStatusService service = new DefaultH22OperationalStatusService(
-                selector,
                 provider(projectionService),
                 provider(mvService),
                 provider(gateService)
