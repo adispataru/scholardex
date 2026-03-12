@@ -57,7 +57,7 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
             case "ar", "re" -> journalScoringService.getScore(publication, indicator);
             case "cp" -> conferenceScoringService.getScore(publication, indicator);
             default -> {
-                logger.warn("Unhandled publication subtype for CS combined scoring: {}", subtype);
+//                logger.warn("Unhandled publication subtype for CS combined scoring: {}", subtype);
                 yield createEmptyScore();
             }
         };
@@ -118,7 +118,7 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
                - Journal articles: Uses WoS quartile-based scoring
                - Conference papers: Uses CORE ranking-based scoring
                - Other publication types are ignored in combined CS publication scoring
-                
+
                For detailed scoring rules, see individual services.
                """;
     }

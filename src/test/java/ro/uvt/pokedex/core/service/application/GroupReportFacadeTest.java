@@ -10,8 +10,12 @@ import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.Institution;
 import ro.uvt.pokedex.core.model.reporting.Group;
 import ro.uvt.pokedex.core.model.reporting.GroupIndividualReportRun;
+import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
+import ro.uvt.pokedex.core.model.activities.Activity;
+import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.scopus.Author;
+import ro.uvt.pokedex.core.model.scopus.Citation;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
@@ -19,10 +23,12 @@ import ro.uvt.pokedex.core.repository.reporting.GroupIndividualReportRunReposito
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 import ro.uvt.pokedex.core.service.reporting.ActivityReportingService;
+import ro.uvt.pokedex.core.service.reporting.Score;
 import ro.uvt.pokedex.core.service.reporting.ScientificProductionService;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -30,8 +36,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class GroupReportFacadeTest {
@@ -268,5 +276,118 @@ class GroupReportFacadeTest {
 
         assertEquals(null, result.redirect());
         assertTrue(result.attributes().containsKey("runStatus"));
+    }
+
+    @Test
+    void refreshGroupIndividualReportViewLoadsCitationDataOncePerResearcher() {
+        Group group = new Group();
+        group.setId("g1");
+        Researcher researcher = new Researcher();
+        researcher.setId("r1");
+        researcher.setFirstName("A");
+        researcher.setLastName("B");
+        researcher.setScopusId(List.of("a1"));
+        group.setResearchers(new ArrayList<>(List.of(researcher)));
+
+        Indicator citations = new Indicator();
+        citations.setOutputType(Indicator.Type.CITATIONS);
+        Indicator citationsExcludeSelf = new Indicator();
+        citationsExcludeSelf.setOutputType(Indicator.Type.CITATIONS_EXCLUDE_SELF);
+
+        IndividualReport report = new IndividualReport();
+        report.setId("rep1");
+        report.setCriteria(List.of());
+        report.setIndicators(List.of(citations, citationsExcludeSelf));
+        Institution affiliation = new Institution();
+        affiliation.setName("ANY");
+        report.setIndividualAffiliation(affiliation);
+
+        Author author = new Author();
+        author.setId("a1");
+
+        Publication publication = new Publication();
+        publication.setId("p1");
+        publication.setAuthors(List.of("a1"));
+
+        Citation citation = new Citation();
+        citation.setCitedId("p1");
+        citation.setCitingId("cp1");
+
+        Publication citingPublication = new Publication();
+        citingPublication.setId("cp1");
+        citingPublication.setAuthors(List.of("a2"));
+
+        when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
+        when(individualReportRepository.findById("rep1")).thenReturn(Optional.of(report));
+        when(scopusProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
+        when(scopusProjectionReadService.findAllCitationsByCitedIdIn(List.of("p1"))).thenReturn(List.of(citation));
+        when(scopusProjectionReadService.findAllPublicationsByIdIn(List.of("cp1"))).thenReturn(List.of(citingPublication));
+        when(scientificProductionService.calculateScientificImpactScore(any(Publication.class), any(List.class), any(Indicator.class)))
+                .thenAnswer(invocation -> {
+                    Map<String, Score> scores = new java.util.HashMap<>();
+                    scores.put("total", new Score());
+                    return scores;
+                });
+        when(groupIndividualReportRunRepository.save(any(GroupIndividualReportRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        facade.refreshGroupIndividualReportView("g1", "rep1");
+
+        verify(scopusProjectionReadService, times(1)).findAllCitationsByCitedIdIn(List.of("p1"));
+        verify(scopusProjectionReadService, times(1)).findAllPublicationsByIdIn(List.of("cp1"));
+    }
+
+    @Test
+    void refreshGroupIndividualReportViewLoadsActivitiesOncePerResearcher() {
+        Group group = new Group();
+        group.setId("g1");
+        Researcher researcher = new Researcher();
+        researcher.setId("r1");
+        researcher.setFirstName("A");
+        researcher.setLastName("B");
+        researcher.setScopusId(List.of("a1"));
+        group.setResearchers(new ArrayList<>(List.of(researcher)));
+
+        Activity activity = new Activity();
+        activity.setName("Forum Activity");
+
+        Indicator indicator1 = new Indicator();
+        indicator1.setOutputType(Indicator.Type.ACTIVITY_FORUM);
+        indicator1.setActivity(activity);
+
+        Indicator indicator2 = new Indicator();
+        indicator2.setOutputType(Indicator.Type.ACTIVITY_FORUM);
+        indicator2.setActivity(activity);
+
+        IndividualReport report = new IndividualReport();
+        report.setId("rep1");
+        report.setCriteria(List.of());
+        report.setIndicators(List.of(indicator1, indicator2));
+        Institution affiliation = new Institution();
+        affiliation.setName("ANY");
+        report.setIndividualAffiliation(affiliation);
+
+        Author author = new Author();
+        author.setId("a1");
+
+        ActivityInstance activityInstance = new ActivityInstance();
+        activityInstance.setResearcherId("r1");
+        activityInstance.setActivity(activity);
+
+        Score total = new Score();
+        total.setAuthorScore(1d);
+
+        when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
+        when(individualReportRepository.findById("rep1")).thenReturn(Optional.of(report));
+        when(scopusProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scopusProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of());
+        when(activityInstanceRepository.findAllByResearcherId("r1")).thenReturn(List.of(activityInstance));
+        when(activityReportingService.calculateActivityScores(any(List.class), any(Indicator.class)))
+                .thenReturn(Map.of("total", total));
+        when(groupIndividualReportRunRepository.save(any(GroupIndividualReportRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        facade.refreshGroupIndividualReportView("g1", "rep1");
+
+        verify(activityInstanceRepository, times(1)).findAllByResearcherId("r1");
     }
 }

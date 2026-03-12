@@ -279,7 +279,7 @@ public class JdbcDualReadGateService implements DualReadGateService {
         }
 
         if (SCENARIO_TYPE_PERF_ONLY.equals(scenario.scenarioType())) {
-            DualReadScenarioResult result = executePerfOnlyScenario(scenario, sampleSize, startedAt);
+            DualReadScenarioResult result = executePerfOnlyScenario(runId, scenario, sampleSize, startedAt);
             persistScenarioRun(runId, result);
             return result;
         }
@@ -372,6 +372,7 @@ public class JdbcDualReadGateService implements DualReadGateService {
     }
 
     private DualReadScenarioResult executePerfOnlyScenario(
+            String runId,
             DualReadScenario scenario,
             int sampleSize,
             Instant startedAt
@@ -383,6 +384,14 @@ public class JdbcDualReadGateService implements DualReadGateService {
         for (int i = 0; i < sampleSize; i++) {
             TimedCall timedCall = timedCall(scenario.mongoSupplier());
             latencies.add(timedCall.elapsedMs());
+            log.debug(
+                    "H22.6 perf-only sample: runId={} scenario={} sample={}/{} elapsedMs={}",
+                    runId,
+                    scenario.scenarioId(),
+                    i + 1,
+                    sampleSize,
+                    String.format(Locale.ROOT, "%.1f", timedCall.elapsedMs())
+            );
             if (timedCall.error() != null) {
                 parityPassed = false;
                 if (mismatchSample == null) {
@@ -405,6 +414,25 @@ public class JdbcDualReadGateService implements DualReadGateService {
         }
 
         String status = parityPassed && performancePassed ? STATUS_SUCCESS : STATUS_FAILED;
+        if (!performancePassed) {
+            log.warn(
+                    "H22.6 perf-only threshold breach: runId={} scenario={} p95Ms={} thresholdMs={} sampleSize={}",
+                    runId,
+                    scenario.scenarioId(),
+                    String.format(Locale.ROOT, "%.1f", postgresP95),
+                    String.format(Locale.ROOT, "%.1f", p95ThresholdMs),
+                    sampleSize
+            );
+        } else {
+            log.info(
+                    "H22.6 perf-only scenario passed: runId={} scenario={} p95Ms={} thresholdMs={} sampleSize={}",
+                    runId,
+                    scenario.scenarioId(),
+                    String.format(Locale.ROOT, "%.1f", postgresP95),
+                    String.format(Locale.ROOT, "%.1f", p95ThresholdMs),
+                    sampleSize
+            );
+        }
         Instant completedAt = Instant.now();
         DualReadScenarioResult result = new DualReadScenarioResult(
                 scenario.scenarioId(),
