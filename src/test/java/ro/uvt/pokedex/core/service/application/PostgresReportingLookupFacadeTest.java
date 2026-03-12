@@ -123,11 +123,19 @@ class PostgresReportingLookupFacadeTest {
                 .query(sqlCaptor.capture(), any(MapSqlParameterSource.class), any(org.springframework.jdbc.core.RowMapper.class));
 
         List<String> sqls = sqlCaptor.getAllValues();
+        String rankingSql = sqls.stream()
+                .filter(sql -> sql.contains("FROM reporting_read.wos_ranking_view"))
+                .findFirst()
+                .orElseThrow();
         String categorySql = sqls.stream()
                 .filter(sql -> sql.contains("FROM reporting_read.wos_category_fact"))
                 .findFirst()
                 .orElseThrow();
 
+        assertTrue(rankingSql.contains("UNION"));
+        assertTrue(rankingSql.contains("alternative_issns_norm @> ARRAY[:issn]::text[]"));
+        assertTrue(!rankingSql.contains(":issn = ANY(alternative_issns_norm)"));
+        assertTrue(!rankingSql.contains("WHERE issn_norm = :issn\n                           OR e_issn_norm = :issn"));
         assertTrue(categorySql.contains("edition_normalized IN ('SCIE', 'SSCI')"));
         assertTrue(!categorySql.contains("edition_normalized::text"));
     }

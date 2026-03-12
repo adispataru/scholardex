@@ -58,7 +58,7 @@ class GroupReportFacadeTest {
     @Mock
     private ScientificProductionService scientificProductionService;
     @Mock
-    private ScopusProjectionReadService scopusProjectionReadService;
+    private ScholardexProjectionReadService scopusProjectionReadService;
     @Mock
     private ResearcherAuthorLookupService researcherAuthorLookupService;
     @Mock

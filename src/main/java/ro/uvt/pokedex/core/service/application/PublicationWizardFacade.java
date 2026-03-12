@@ -36,7 +36,7 @@ public class PublicationWizardFacade {
     static final String PAYLOAD_FORMAT_JSON_OBJECT = "json-object";
     private static final int MANUAL_HASH_LEN = 24;
 
-    private final ScopusProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scopusProjectionReadService;
     private final ScopusImportEventIngestionService importEventIngestionService;
     private final ScopusCanonicalMaterializationService canonicalMaterializationService;
 

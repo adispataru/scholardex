@@ -22,7 +22,7 @@ public class UserPublicationFacade {
     private static final Logger log = LoggerFactory.getLogger(UserPublicationFacade.class);
 
     private final ResearcherService researcherService;
-    private final ScopusProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scopusProjectionReadService;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
 
     public Optional<UserPublicationsViewModel> buildUserPublicationsView(String researcherId) {

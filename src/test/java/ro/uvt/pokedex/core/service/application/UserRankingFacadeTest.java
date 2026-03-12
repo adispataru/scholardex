@@ -18,7 +18,7 @@ import static org.mockito.Mockito.when;
 class UserRankingFacadeTest {
 
     @Mock
-    private ScopusProjectionReadService scopusProjectionReadService;
+    private ScholardexProjectionReadService scopusProjectionReadService;
     @Mock
     private RankingRepository rankingRepository;
 

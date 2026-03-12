@@ -28,7 +28,7 @@ class UserPublicationFacadeTest {
     @Mock
     private ResearcherService researcherService;
     @Mock
-    private ScopusProjectionReadService scopusProjectionReadService;
+    private ScholardexProjectionReadService scopusProjectionReadService;
     @Mock
     private ResearcherAuthorLookupService researcherAuthorLookupService;
 

@@ -69,11 +69,23 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
         long rankingLookupStartedAtNanos = System.nanoTime();
         List<WosRankingView> views = namedParameterJdbcTemplate.query(
                 """
-                        SELECT journal_id, name, issn, e_issn, alternative_issns, alternative_names
-                        FROM reporting_read.wos_ranking_view
-                        WHERE issn_norm = :issn
-                           OR e_issn_norm = :issn
-                           OR :issn = ANY(alternative_issns_norm)
+                        (
+                            SELECT journal_id, name, issn, e_issn, alternative_issns, alternative_names
+                            FROM reporting_read.wos_ranking_view
+                            WHERE issn_norm = :issn
+                        )
+                        UNION
+                        (
+                            SELECT journal_id, name, issn, e_issn, alternative_issns, alternative_names
+                            FROM reporting_read.wos_ranking_view
+                            WHERE e_issn_norm = :issn
+                        )
+                        UNION
+                        (
+                            SELECT journal_id, name, issn, e_issn, alternative_issns, alternative_names
+                            FROM reporting_read.wos_ranking_view
+                            WHERE alternative_issns_norm @> ARRAY[:issn]::text[]
+                        )
                         """,
                 new MapSqlParameterSource("issn", normalizedIssn),
                 this::mapRankingView

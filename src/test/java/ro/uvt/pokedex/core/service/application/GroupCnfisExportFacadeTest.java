@@ -38,7 +38,7 @@ class GroupCnfisExportFacadeTest {
     @Mock
     private GroupManagementFacade groupManagementFacade;
     @Mock
-    private ScopusProjectionReadService scopusProjectionReadService;
+    private ScholardexProjectionReadService scopusProjectionReadService;
     @Mock
     private PublicationEnrichmentLinkerService publicationEnrichmentLinkerService;
     @Mock

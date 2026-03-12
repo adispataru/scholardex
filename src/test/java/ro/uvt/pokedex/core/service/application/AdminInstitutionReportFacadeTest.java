@@ -28,7 +28,7 @@ class AdminInstitutionReportFacadeTest {
     @Mock
     private InstitutionRepository institutionRepository;
     @Mock
-    private ScopusProjectionReadService scopusProjectionReadService;
+    private ScholardexProjectionReadService scopusProjectionReadService;
     @Mock
     private IndividualReportRepository individualReportRepository;
 

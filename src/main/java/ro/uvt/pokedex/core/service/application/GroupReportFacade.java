@@ -34,7 +34,7 @@ public class GroupReportFacade {
     private final ActivityInstanceRepository activityInstanceRepository;
     private final ActivityReportingService activityReportingService;
     private final ScientificProductionService scientificProductionService;
-    private final ScopusProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scopusProjectionReadService;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final GroupIndividualReportRunRepository groupIndividualReportRunRepository;
     private final ReportingLookupMemoization reportingLookupMemoization;

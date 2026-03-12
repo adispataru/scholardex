@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class GroupExportFacade {
     private final GroupManagementFacade groupManagementFacade;
-    private final ScopusProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scopusProjectionReadService;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
 
     public Optional<GroupPublicationCsvExportViewModel> buildGroupPublicationCsvExport(String groupId) {

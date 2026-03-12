@@ -26,7 +26,7 @@ import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;
 import ro.uvt.pokedex.core.model.tasks.Status;
 import ro.uvt.pokedex.core.repository.tasks.ScopusCitationUpdateRepository;
 import ro.uvt.pokedex.core.repository.tasks.ScopusPublicationUpdateRepository;
-import ro.uvt.pokedex.core.service.application.ScopusProjectionReadService;
+import ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService;
 import ro.uvt.pokedex.core.service.integration.IntegrationErrorCode;
 import ro.uvt.pokedex.core.service.integration.IntegrationException;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService;
@@ -51,7 +51,7 @@ public class ScopusUpdateScheduler {
 
     private final ScopusPublicationUpdateRepository taskRepo;
     private final ScopusCitationUpdateRepository citationsTaskRepo;
-    private final ScopusProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scopusProjectionReadService;
     private final ScopusImportEventIngestionService importEventIngestionService;
     private final ScopusCanonicalMaterializationService canonicalMaterializationService;
     private final MeterRegistry meterRegistry;

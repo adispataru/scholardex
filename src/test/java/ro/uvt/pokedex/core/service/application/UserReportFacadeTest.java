@@ -65,7 +65,7 @@ class UserReportFacadeTest {
     @Mock
     private ActivityInstanceRepository activityInstanceRepository;
     @Mock
-    private ScopusProjectionReadService scopusProjectionReadService;
+    private ScholardexProjectionReadService scopusProjectionReadService;
     @Mock
     private DomainRepository domainRepository;
     @Mock

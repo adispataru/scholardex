@@ -88,6 +88,30 @@ class JdbcDualReadGateServiceTest {
     }
 
     @Test
+    void runFullGateWarmsUpWosIssnScenarioWhenEnabled() {
+        var fixture = fixture();
+        fixture.properties.setSampleSize(2);
+        fixture.properties.setWosIssnWarmupEnabled(true);
+
+        fixture.service.runFullGate();
+
+        verify(fixture.mongoReportingLookup, times(3)).getRankingsByIssn("1234-5678");
+        verify(fixture.postgresReportingLookup, times(3)).getRankingsByIssn("1234-5678");
+    }
+
+    @Test
+    void runFullGateDoesNotWarmUpWosIssnScenarioWhenDisabled() {
+        var fixture = fixture();
+        fixture.properties.setSampleSize(2);
+        fixture.properties.setWosIssnWarmupEnabled(false);
+
+        fixture.service.runFullGate();
+
+        verify(fixture.mongoReportingLookup, times(2)).getRankingsByIssn("1234-5678");
+        verify(fixture.postgresReportingLookup, times(2)).getRankingsByIssn("1234-5678");
+    }
+
+    @Test
     void resolveScenarioInputUsesSearchViewSeedWhenPresent() {
         var fixture = fixture();
 
@@ -157,6 +181,26 @@ class JdbcDualReadGateServiceTest {
     }
 
     @Test
+    void runFullGateIncludesDualRefreshScenarioWhenEnabled() {
+        var fixture = fixture();
+        fixture.properties.setGroupReportRefreshEnabled(true);
+        fixture.properties.setGroupReportRefreshDualParityEnabled(true);
+
+        DualReadGateService.DualReadGateRunSummary run = fixture.service.runFullGate();
+
+        var refreshScenario = run.scenarios().stream()
+                .filter(scenario -> scenario.scenarioId().equals("admin.group.report.refresh.dual"))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals("DUAL_PARITY", refreshScenario.scenarioType());
+        assertTrue(refreshScenario.parityPassed());
+        assertTrue(refreshScenario.performancePassed());
+        verify(fixture.groupReportFacade, times(fixture.properties.getSampleSize() * 3))
+                .refreshGroupIndividualReportView("g-1", "r-1");
+    }
+
+    @Test
     void perfOnlyRefreshScenarioFailsWhenP95ExceedsThreshold() {
         var fixture = fixture();
         fixture.properties.setGroupReportRefreshEnabled(true);
@@ -222,6 +266,7 @@ class JdbcDualReadGateServiceTest {
         MongoAdminScopusReadPort mongoAdmin = mock(MongoAdminScopusReadPort.class);
         PostgresAdminScopusReadPort postgresAdmin = mock(PostgresAdminScopusReadPort.class);
         GroupReportFacade groupReportFacade = mock(GroupReportFacade.class);
+        ReportingReadStoreSelector reportingReadStoreSelector = new ReportingReadStoreSelector("mongo");
         GroupRepository groupRepository = mock(GroupRepository.class);
         IndividualReportRepository individualReportRepository = mock(IndividualReportRepository.class);
 
@@ -326,6 +371,7 @@ class JdbcDualReadGateServiceTest {
                 mongoAdmin,
                 adminProvider,
                 groupReportFacade,
+                reportingReadStoreSelector,
                 groupRepository,
                 individualReportRepository
         );

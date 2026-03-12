@@ -22,7 +22,7 @@ import static org.mockito.Mockito.when;
 class AdminScopusFacadeTest {
 
     @Mock
-    private ScopusProjectionReadService scopusProjectionReadService;
+    private ScholardexProjectionReadService scopusProjectionReadService;
 
     @InjectMocks
     private MongoAdminScopusReadPort mongoAdminScopusReadPort;

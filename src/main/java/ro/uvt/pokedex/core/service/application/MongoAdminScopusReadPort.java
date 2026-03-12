@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MongoAdminScopusReadPort implements AdminScopusReadPort {
 
-    private final ScopusProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scopusProjectionReadService;
 
     @Override
     public AdminScopusPublicationSearchViewModel buildPublicationSearchView(String paperTitle) {

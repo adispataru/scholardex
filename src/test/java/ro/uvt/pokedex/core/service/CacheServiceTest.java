@@ -12,7 +12,7 @@ import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
 import ro.uvt.pokedex.core.service.application.ResearcherAuthorLookupService;
-import ro.uvt.pokedex.core.service.application.ScopusProjectionReadService;
+import ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService;
 
 import java.util.List;
 import java.util.Set;
@@ -25,7 +25,7 @@ import static org.mockito.Mockito.when;
 class CacheServiceTest {
 
     @Mock
-    private ScopusProjectionReadService scopusProjectionReadService;
+    private ScholardexProjectionReadService scopusProjectionReadService;
     @Mock
     private CoreConferenceRankingRepository coreConferenceRankingRepository;
     @Mock

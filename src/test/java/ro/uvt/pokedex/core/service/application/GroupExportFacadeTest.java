@@ -28,7 +28,7 @@ class GroupExportFacadeTest {
     @Mock
     private GroupManagementFacade groupManagementFacade;
     @Mock
-    private ScopusProjectionReadService scopusProjectionReadService;
+    private ScholardexProjectionReadService scopusProjectionReadService;
     @Mock
     private ResearcherAuthorLookupService researcherAuthorLookupService;
 

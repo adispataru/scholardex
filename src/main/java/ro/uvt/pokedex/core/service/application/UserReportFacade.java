@@ -65,7 +65,7 @@ public class UserReportFacade {
     private final IndicatorRepository indicatorRepository;
     private final IndividualReportRepository individualReportRepository;
     private final ActivityInstanceRepository activityInstanceRepository;
-    private final ScopusProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scopusProjectionReadService;
     private final DomainRepository domainRepository;
     private final ActivityReportingService activityReportingService;
     private final ScientificProductionService scientificProductionService;

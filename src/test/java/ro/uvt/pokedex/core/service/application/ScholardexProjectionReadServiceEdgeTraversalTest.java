@@ -7,6 +7,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
@@ -23,14 +24,17 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationView
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class ScopusProjectionReadServiceEdgeTraversalTest {
+class ScholardexProjectionReadServiceEdgeTraversalTest {
 
     @Mock private ScholardexPublicationViewRepository publicationViewRepository;
     @Mock private ScholardexCitationFactRepository citationFactRepository;
@@ -47,7 +51,7 @@ class ScopusProjectionReadServiceEdgeTraversalTest {
 
     @Test
     void findAllPublicationsByAuthorsInUsesAuthorshipEdges() {
-        ScopusProjectionReadService service = buildService();
+        ScholardexProjectionReadService service = buildService();
 
         ScholardexSourceLink authorLink = new ScholardexSourceLink();
         authorLink.setCanonicalEntityId("sauth_1");
@@ -74,7 +78,7 @@ class ScopusProjectionReadServiceEdgeTraversalTest {
 
     @Test
     void findAllPublicationsByAffiliationsContainingTraversesAffiliationToAuthorToPublicationEdges() {
-        ScopusProjectionReadService service = buildService();
+        ScholardexProjectionReadService service = buildService();
 
         ScholardexSourceLink affiliationLink = new ScholardexSourceLink();
         affiliationLink.setCanonicalEntityId("saff_1");
@@ -107,8 +111,62 @@ class ScopusProjectionReadServiceEdgeTraversalTest {
         verify(publicationViewRepository, never()).findAllByAffiliationIdsContaining(any());
     }
 
-    private ScopusProjectionReadService buildService() {
-        return new ScopusProjectionReadService(
+    @Test
+    void findAllCitationsByCitedIdInFastPathsCanonicalIdsWithoutLookupFallback() {
+        ScholardexProjectionReadService service = buildService();
+
+        ScholardexCitationFact citation = new ScholardexCitationFact();
+        citation.setId("c1");
+        citation.setCitedPublicationId("spub_1");
+        citation.setCitingPublicationId("spub_citing");
+        when(citationFactRepository.findByCitedPublicationIdIn(anyCollection())).thenReturn(List.of(citation));
+
+        ScholardexPublicationView citedView = new ScholardexPublicationView();
+        citedView.setId("spub_1");
+        ScholardexPublicationView citingView = new ScholardexPublicationView();
+        citingView.setId("spub_citing");
+        when(publicationViewRepository.findAllByIdIn(anyCollection())).thenReturn(List.of(citedView, citingView));
+
+        var citations = service.findAllCitationsByCitedIdIn(List.of("spub_1", "spub_2"));
+
+        assertEquals(1, citations.size());
+        verify(publicationViewRepository, never()).findAllByEidIn(anyCollection());
+        verify(publicationViewRepository, never()).findById(any());
+        verify(publicationViewRepository, never()).findByEid(any());
+        verify(publicationViewRepository, never()).findByWosId(any());
+        verify(publicationViewRepository, never()).findByGoogleScholarId(any());
+    }
+
+    @Test
+    void findAllCitationsByCitedIdInUsesBatchResolutionThenFallbackForUnresolvedKeys() {
+        ScholardexProjectionReadService service = buildService();
+
+        ScholardexPublicationView eidView = new ScholardexPublicationView();
+        eidView.setId("spub_eid");
+        eidView.setEid("2-s2.0-ABC");
+        when(publicationViewRepository.findAllByEidIn(anyCollection())).thenReturn(List.of(eidView));
+
+        ScholardexPublicationView wosView = new ScholardexPublicationView();
+        wosView.setId("spub_wos");
+        when(publicationViewRepository.findByWosId("WOS:0001")).thenReturn(java.util.Optional.of(wosView));
+        when(citationFactRepository.findByCitedPublicationIdIn(anyCollection())).thenReturn(List.of());
+
+        service.findAllCitationsByCitedIdIn(List.of("spub_1", "2-s2.0-ABC", "WOS:0001"));
+
+        org.mockito.ArgumentCaptor<java.util.Collection<String>> citedIdsCaptor =
+                org.mockito.ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(citationFactRepository).findByCitedPublicationIdIn(citedIdsCaptor.capture());
+        java.util.Collection<String> resolved = citedIdsCaptor.getValue();
+        assertTrue(resolved.contains("spub_1"));
+        assertTrue(resolved.contains("spub_eid"));
+        assertTrue(resolved.contains("spub_wos"));
+
+        verify(publicationViewRepository, times(1)).findAllByEidIn(anyCollection());
+        verify(publicationViewRepository, times(1)).findByWosId(eq("WOS:0001"));
+    }
+
+    private ScholardexProjectionReadService buildService() {
+        return new ScholardexProjectionReadService(
                 publicationViewRepository,
                 citationFactRepository,
                 forumViewRepository,

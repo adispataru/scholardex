@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class AdminInstitutionReportFacade {
     private final InstitutionRepository institutionRepository;
-    private final ScopusProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scopusProjectionReadService;
     private final IndividualReportRepository individualReportRepository;
 
     public Optional<AdminInstitutionPublicationsViewModel> buildInstitutionPublicationsView(String institutionId) {

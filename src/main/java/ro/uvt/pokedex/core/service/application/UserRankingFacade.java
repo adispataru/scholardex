@@ -12,7 +12,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UserRankingFacade {
 
-    private final ScopusProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scopusProjectionReadService;
     private final RankingRepository rankingRepository;
 
     public Optional<WoSRanking> resolveJournalRankingForForum(String forumId) {

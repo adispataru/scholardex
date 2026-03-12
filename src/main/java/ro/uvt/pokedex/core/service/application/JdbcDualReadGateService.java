@@ -57,6 +57,7 @@ public class JdbcDualReadGateService implements DualReadGateService {
     private static final String SCENARIO_ADMIN_PUBLICATION = "admin.scopus.publication.search";
     private static final String SCENARIO_ADMIN_CITATIONS = "admin.scopus.citations.view";
     private static final String SCENARIO_GROUP_REPORT_REFRESH = "admin.group.report.refresh";
+    private static final String SCENARIO_GROUP_REPORT_REFRESH_DUAL = "admin.group.report.refresh.dual";
 
     private static final String SCENARIO_TYPE_DUAL_PARITY = "DUAL_PARITY";
     private static final String SCENARIO_TYPE_PERF_ONLY = "PERF_ONLY";
@@ -81,6 +82,7 @@ public class JdbcDualReadGateService implements DualReadGateService {
     private final MongoAdminScopusReadPort mongoAdminScopusReadPort;
     private final ObjectProvider<PostgresAdminScopusReadPort> postgresAdminScopusReadPortProvider;
     private final GroupReportFacade groupReportFacade;
+    private final ReportingReadStoreSelector reportingReadStoreSelector;
     private final GroupRepository groupRepository;
     private final IndividualReportRepository individualReportRepository;
 
@@ -100,6 +102,7 @@ public class JdbcDualReadGateService implements DualReadGateService {
             MongoAdminScopusReadPort mongoAdminScopusReadPort,
             ObjectProvider<PostgresAdminScopusReadPort> postgresAdminScopusReadPortProvider,
             GroupReportFacade groupReportFacade,
+            ReportingReadStoreSelector reportingReadStoreSelector,
             GroupRepository groupRepository,
             IndividualReportRepository individualReportRepository
     ) {
@@ -118,6 +121,7 @@ public class JdbcDualReadGateService implements DualReadGateService {
         this.mongoAdminScopusReadPort = mongoAdminScopusReadPort;
         this.postgresAdminScopusReadPortProvider = postgresAdminScopusReadPortProvider;
         this.groupReportFacade = groupReportFacade;
+        this.reportingReadStoreSelector = reportingReadStoreSelector;
         this.groupRepository = groupRepository;
         this.individualReportRepository = individualReportRepository;
     }
@@ -300,6 +304,22 @@ public class JdbcDualReadGateService implements DualReadGateService {
         String mismatchSample = null;
         List<Double> mongoLatencies = new ArrayList<>();
         List<Double> postgresLatencies = new ArrayList<>();
+
+        if (SCENARIO_WOS_ISSN.equals(scenario.scenarioId()) && properties.isWosIssnWarmupEnabled()) {
+            TimedCall warmupMongo = timedCall(scenario.mongoSupplier());
+            TimedCall warmupPostgres = timedCall(scenario.postgresSupplier());
+            if (log.isDebugEnabled()) {
+                log.debug(
+                        "H22.6 dual-read warm-up excluded from metrics: runId={} scenario={} mongoElapsedMs={} postgresElapsedMs={} mongoError={} postgresError={}",
+                        runId,
+                        scenario.scenarioId(),
+                        String.format(Locale.ROOT, "%.1f", warmupMongo.elapsedMs()),
+                        String.format(Locale.ROOT, "%.1f", warmupPostgres.elapsedMs()),
+                        errorSummary(warmupMongo.error()),
+                        errorSummary(warmupPostgres.error())
+                );
+            }
+        }
 
         for (int i = 0; i < sampleSize; i++) {
             TimedCall mongoCall = timedCall(scenario.mongoSupplier());
@@ -577,6 +597,28 @@ public class JdbcDualReadGateService implements DualReadGateService {
         ));
 
         if (properties.isGroupReportRefreshEnabled()) {
+            if (properties.isGroupReportRefreshDualParityEnabled()) {
+                scenarios.add(new DualReadScenario(
+                        SCENARIO_GROUP_REPORT_REFRESH_DUAL,
+                        SCENARIO_TYPE_DUAL_PARITY,
+                        () -> reportingReadStoreSelector.withReadStoreOverride(
+                                ReportingReadStore.MONGO,
+                                () -> groupReportFacade.refreshGroupIndividualReportView(
+                                        input.groupReportRefreshGroupId(),
+                                        input.groupReportRefreshReportId()
+                                )
+                        ),
+                        () -> reportingReadStoreSelector.withReadStoreOverride(
+                                ReportingReadStore.POSTGRES,
+                                () -> groupReportFacade.refreshGroupIndividualReportView(
+                                        input.groupReportRefreshGroupId(),
+                                        input.groupReportRefreshReportId()
+                                )
+                        ),
+                        (mongo, postgres) -> null,
+                        null
+                ));
+            }
             scenarios.add(new DualReadScenario(
                     SCENARIO_GROUP_REPORT_REFRESH,
                     SCENARIO_TYPE_PERF_ONLY,
@@ -916,12 +958,27 @@ public class JdbcDualReadGateService implements DualReadGateService {
             }
             return null;
         }
+        if (SCENARIO_GROUP_REPORT_REFRESH_DUAL.equals(scenarioId)) {
+            String groupId = properties.getGroupReportRefreshGroupId();
+            String reportId = properties.getGroupReportRefreshReportId();
+            if (!hasText(groupId) || !hasText(reportId)) {
+                return "dataset not ready: configured group/report ids are missing for admin.group.report.refresh.dual";
+            }
+            if (!groupRepository.existsById(groupId) || !individualReportRepository.existsById(reportId)) {
+                return "dataset not ready: report not found for configured ids groupId="
+                        + valueOrPlaceholder(groupId) + ", reportId=" + valueOrPlaceholder(reportId);
+            }
+            return null;
+        }
         return null;
     }
 
     private String resolveScenarioType(String scenarioId) {
         if (SCENARIO_GROUP_REPORT_REFRESH.equals(scenarioId)) {
             return SCENARIO_TYPE_PERF_ONLY;
+        }
+        if (SCENARIO_GROUP_REPORT_REFRESH_DUAL.equals(scenarioId)) {
+            return SCENARIO_TYPE_DUAL_PARITY;
         }
         return SCENARIO_TYPE_DUAL_PARITY;
     }

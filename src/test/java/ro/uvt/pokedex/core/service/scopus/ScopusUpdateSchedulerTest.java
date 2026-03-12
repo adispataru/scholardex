@@ -12,7 +12,7 @@ import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;
 import ro.uvt.pokedex.core.model.tasks.Status;
 import ro.uvt.pokedex.core.repository.tasks.ScopusCitationUpdateRepository;
 import ro.uvt.pokedex.core.repository.tasks.ScopusPublicationUpdateRepository;
-import ro.uvt.pokedex.core.service.application.ScopusProjectionReadService;
+import ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService;
 import ro.uvt.pokedex.core.service.integration.IntegrationErrorCode;
 import ro.uvt.pokedex.core.service.integration.IntegrationException;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService;
@@ -30,7 +30,7 @@ class ScopusUpdateSchedulerTest {
     void pollQueueSkipsPublicationTaskWhenNextAttemptInFuture() {
         ScopusPublicationUpdateRepository publicationTaskRepo = mock(ScopusPublicationUpdateRepository.class);
         ScopusCitationUpdateRepository citationTaskRepo = mock(ScopusCitationUpdateRepository.class);
-        ScopusProjectionReadService projectionReadService = mock(ScopusProjectionReadService.class);
+        ScholardexProjectionReadService projectionReadService = mock(ScholardexProjectionReadService.class);
         ScopusImportEventIngestionService ingestionService = mock(ScopusImportEventIngestionService.class);
         ScopusCanonicalMaterializationService canonicalMaterializationService = mock(ScopusCanonicalMaterializationService.class);
 
@@ -61,7 +61,7 @@ class ScopusUpdateSchedulerTest {
     void computeFromDateUsesLatestPublicationDateWithoutForcedOverride() {
         ScopusPublicationUpdateRepository publicationTaskRepo = mock(ScopusPublicationUpdateRepository.class);
         ScopusCitationUpdateRepository citationTaskRepo = mock(ScopusCitationUpdateRepository.class);
-        ScopusProjectionReadService projectionReadService = mock(ScopusProjectionReadService.class);
+        ScholardexProjectionReadService projectionReadService = mock(ScholardexProjectionReadService.class);
         ScopusImportEventIngestionService ingestionService = mock(ScopusImportEventIngestionService.class);
         ScopusCanonicalMaterializationService canonicalMaterializationService = mock(ScopusCanonicalMaterializationService.class);
 
@@ -130,7 +130,7 @@ class ScopusUpdateSchedulerTest {
     private ScopusUpdateScheduler scheduler() {
         ScopusPublicationUpdateRepository publicationTaskRepo = mock(ScopusPublicationUpdateRepository.class);
         ScopusCitationUpdateRepository citationTaskRepo = mock(ScopusCitationUpdateRepository.class);
-        ScopusProjectionReadService projectionReadService = mock(ScopusProjectionReadService.class);
+        ScholardexProjectionReadService projectionReadService = mock(ScholardexProjectionReadService.class);
         ScopusImportEventIngestionService ingestionService = mock(ScopusImportEventIngestionService.class);
         ScopusCanonicalMaterializationService canonicalMaterializationService = mock(ScopusCanonicalMaterializationService.class);
 

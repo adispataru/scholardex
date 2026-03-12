@@ -33,7 +33,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class AdminCatalogFacade {
 
-    private final ScopusProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scopusProjectionReadService;
     private final ArtisticEventRepository artisticEventRepository;
     private final RankingRepository rankingRepository;
     private final CoreConferenceRankingRepository coreConferenceRankingRepository;

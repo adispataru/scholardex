@@ -9,7 +9,9 @@ public class DualReadGateProperties {
 
     private int sampleSize = 5;
     private double p95RatioThreshold = 1.2d;
+    private boolean wosIssnWarmupEnabled = true;
     private boolean groupReportRefreshEnabled = false;
+    private boolean groupReportRefreshDualParityEnabled = true;
     private String groupReportRefreshGroupId = "680fa885dbe2f57466f9f4d2";
     private String groupReportRefreshReportId = "682101ad04e38843635e0cba";
     private double groupReportRefreshP95ThresholdMs = 1200d;
@@ -34,12 +36,28 @@ public class DualReadGateProperties {
         return groupReportRefreshEnabled;
     }
 
+    public boolean isWosIssnWarmupEnabled() {
+        return wosIssnWarmupEnabled;
+    }
+
+    public void setWosIssnWarmupEnabled(boolean wosIssnWarmupEnabled) {
+        this.wosIssnWarmupEnabled = wosIssnWarmupEnabled;
+    }
+
     public void setGroupReportRefreshEnabled(boolean groupReportRefreshEnabled) {
         this.groupReportRefreshEnabled = groupReportRefreshEnabled;
     }
 
     public String getGroupReportRefreshGroupId() {
         return groupReportRefreshGroupId;
+    }
+
+    public boolean isGroupReportRefreshDualParityEnabled() {
+        return groupReportRefreshDualParityEnabled;
+    }
+
+    public void setGroupReportRefreshDualParityEnabled(boolean groupReportRefreshDualParityEnabled) {
+        this.groupReportRefreshDualParityEnabled = groupReportRefreshDualParityEnabled;
     }
 
     public void setGroupReportRefreshGroupId(String groupReportRefreshGroupId) {

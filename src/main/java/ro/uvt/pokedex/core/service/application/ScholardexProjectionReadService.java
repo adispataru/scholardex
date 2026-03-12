@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class ScopusProjectionReadService {
+public class ScholardexProjectionReadService {
 
     private final ScholardexPublicationViewRepository publicationViewRepository;
     private final ScholardexCitationFactRepository citationFactRepository;
@@ -152,6 +152,9 @@ public class ScopusProjectionReadService {
 
     public List<Citation> findAllCitationsByCitedIdIn(Collection<String> citedIds) {
         List<String> publicationIds = resolvePublicationIdsByAnyKeys(citedIds);
+        if (publicationIds.isEmpty()) {
+            return List.of();
+        }
         List<ScholardexCitationFact> facts = citationFactRepository.findByCitedPublicationIdIn(publicationIds);
         return mapCitationFacts(facts);
     }
@@ -453,11 +456,56 @@ public class ScopusProjectionReadService {
         if (keys == null || keys.isEmpty()) {
             return List.of();
         }
+
+        LinkedHashSet<String> normalizedKeys = keys.stream()
+                .map(this::normalizeBlank)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (normalizedKeys.isEmpty()) {
+            return List.of();
+        }
+
         LinkedHashSet<String> publicationIds = new LinkedHashSet<>();
-        for (String key : keys) {
-            findPublicationByAnyId(key).map(Publication::getId).ifPresent(publicationIds::add);
+        LinkedHashSet<String> unresolvedKeys = new LinkedHashSet<>();
+
+        for (String key : normalizedKeys) {
+            if (isCanonicalPublicationId(key)) {
+                publicationIds.add(key);
+            } else {
+                unresolvedKeys.add(key);
+            }
+        }
+
+        if (!unresolvedKeys.isEmpty()) {
+            List<ScholardexPublicationView> idMatches = publicationViewRepository.findAllByIdIn(unresolvedKeys);
+            for (ScholardexPublicationView match : idMatches) {
+                publicationIds.add(match.getId());
+                String matchedKey = normalizeBlank(match.getId());
+                if (matchedKey != null) {
+                    unresolvedKeys.remove(matchedKey);
+                }
+            }
+        }
+
+        if (!unresolvedKeys.isEmpty()) {
+            List<ScholardexPublicationView> eidMatches = publicationViewRepository.findAllByEidIn(unresolvedKeys);
+            for (ScholardexPublicationView match : eidMatches) {
+                publicationIds.add(match.getId());
+                String matchedEid = normalizeBlank(match.getEid());
+                if (matchedEid != null) {
+                    unresolvedKeys.remove(matchedEid);
+                }
+            }
+        }
+
+        for (String unresolvedKey : unresolvedKeys) {
+            findPublicationByAnyId(unresolvedKey).map(Publication::getId).ifPresent(publicationIds::add);
         }
         return new ArrayList<>(publicationIds);
+    }
+
+    private boolean isCanonicalPublicationId(String key) {
+        return key != null && key.regionMatches(true, 0, "spub_", 0, "spub_".length());
     }
 
     private List<Citation> mapCitationFacts(List<ScholardexCitationFact> facts) {

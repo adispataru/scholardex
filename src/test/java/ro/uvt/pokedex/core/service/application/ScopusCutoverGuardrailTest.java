@@ -114,7 +114,7 @@ class ScopusCutoverGuardrailTest {
 
     @Test
     void projectionReadServiceUsesCanonicalEdgeBackedTraversals() throws Exception {
-        Path readServiceFile = Path.of("src/main/java/ro/uvt/pokedex/core/service/application/ScopusProjectionReadService.java");
+        Path readServiceFile = Path.of("src/main/java/ro/uvt/pokedex/core/service/application/ScholardexProjectionReadService.java");
         String content = Files.readString(readServiceFile);
 
         assertTrue(content.contains("canonicalAuthorshipFactRepository.findByAuthorIdIn"),

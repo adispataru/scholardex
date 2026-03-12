@@ -29,7 +29,7 @@ public class GroupCnfisExportFacade {
     private static final String LINKER_VERSION = "h17.10";
 
     private final GroupManagementFacade groupManagementFacade;
-    private final ScopusProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scopusProjectionReadService;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final PublicationEnrichmentLinkerService publicationEnrichmentLinkerService;
     private final CNFISScoringService2025 cnfiSScoringService2025;

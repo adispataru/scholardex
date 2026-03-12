@@ -24,7 +24,7 @@ class AdminScopusFacadeRoutingLogicTest {
 
         MongoAdminScopusReadPort mongoPort = mock(MongoAdminScopusReadPort.class);
         PostgresAdminScopusReadPort postgresPort = mock(PostgresAdminScopusReadPort.class);
-        ScopusProjectionReadService scopusProjectionReadService = mock(ScopusProjectionReadService.class);
+        ScholardexProjectionReadService scopusProjectionReadService = mock(ScholardexProjectionReadService.class);
 
         Publication p1 = publication("p1", "Beta", "2024-01-01", List.of("a1"));
         Publication p2 = publication("p2", "Alpha", "2024-01-01", List.of("a1"));
@@ -56,7 +56,7 @@ class AdminScopusFacadeRoutingLogicTest {
 
         MongoAdminScopusReadPort mongoPort = mock(MongoAdminScopusReadPort.class);
         PostgresAdminScopusReadPort postgresPort = mock(PostgresAdminScopusReadPort.class);
-        ScopusProjectionReadService scopusProjectionReadService = mock(ScopusProjectionReadService.class);
+        ScholardexProjectionReadService scopusProjectionReadService = mock(ScholardexProjectionReadService.class);
 
         when(postgresPort.buildPublicationSearchView("paper"))
                 .thenReturn(new AdminScopusPublicationSearchViewModel(List.of(), Map.of()));

@@ -10,7 +10,7 @@ import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
 import ro.uvt.pokedex.core.service.application.ResearcherAuthorLookupService;
-import ro.uvt.pokedex.core.service.application.ScopusProjectionReadService;
+import ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 @Service
 @Data
 public class CacheService {
-    private final ScopusProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scopusProjectionReadService;
     private final ConcurrentMap<String, Forum> forumCache;
 
     private final CoreConferenceRankingRepository coreConferenceRankingRepository;
@@ -33,7 +33,7 @@ public class CacheService {
 
     @Autowired
     public CacheService(
-            ScopusProjectionReadService scopusProjectionReadService,
+            ScholardexProjectionReadService scopusProjectionReadService,
             CoreConferenceRankingRepository coreConferenceRankingRepository,
             GroupRepository groupRepository,
             ResearcherAuthorLookupService researcherAuthorLookupService

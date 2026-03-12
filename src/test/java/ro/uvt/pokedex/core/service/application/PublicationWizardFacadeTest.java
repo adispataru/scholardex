@@ -31,7 +31,7 @@ import static org.mockito.Mockito.when;
 class PublicationWizardFacadeTest {
 
     @Mock
-    private ScopusProjectionReadService scopusProjectionReadService;
+    private ScholardexProjectionReadService scopusProjectionReadService;
     @Mock
     private ScopusImportEventIngestionService importEventIngestionService;
     @Mock

@@ -32,7 +32,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class AdminCatalogFacadeTest {
 
-    @Mock private ScopusProjectionReadService scopusProjectionReadService;
+    @Mock private ScholardexProjectionReadService scopusProjectionReadService;
     @Mock private ArtisticEventRepository artisticEventRepository;
     @Mock private RankingRepository rankingRepository;
     @Mock private CoreConferenceRankingRepository coreConferenceRankingRepository;

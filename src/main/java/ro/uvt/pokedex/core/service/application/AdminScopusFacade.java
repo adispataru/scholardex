@@ -23,7 +23,7 @@ public class AdminScopusFacade {
     private final ReportingReadStoreSelector readStoreSelector;
     private final MongoAdminScopusReadPort mongoAdminScopusReadPort;
     private final ObjectProvider<PostgresAdminScopusReadPort> postgresAdminScopusReadPortProvider;
-    private final ScopusProjectionReadService scopusProjectionReadService;
+    private final ScholardexProjectionReadService scopusProjectionReadService;
 
     public AdminScopusPublicationSearchViewModel buildPublicationSearchView(String paperTitle) {
         if (readStoreSelector.isPostgres()) {
