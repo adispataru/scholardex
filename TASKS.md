@@ -41,9 +41,10 @@ Done history moved to `TASKS-done.md`.
   Deliverable: canonical authenticated MVC routes for shared entities (`/forums`, `/wos/categories`, `/core/rankings`, `/universities`, `/events`), trimmed `/user/*` routes for user-owned surfaces, removal of duplicate admin read views, and role-driven sidebar selection instead of hardcoded admin/user sidebar fragments per template.
   Exit criteria: shared entity reads resolve through one canonical route family regardless of role; duplicate admin read pages for forums/rankings/universities/events are removed; user-owned surfaces remain under `/user/*`; sidebar/navigation is selected by role at runtime rather than hardcoded per template; legacy duplicate read routes are removed and all callers/tests/docs are aligned to the new route model.
   Subtasks:
-  - [ ] `H25.1` Lock canonical route and ownership contract.
+  - [x] `H25.1` Lock canonical route and ownership contract.
     Deliverable: implementation-ready route contract defining which pages remain user-owned (`/user/dashboard`, `/user/publications`, `/user/activities`) versus which become shared authenticated entity routes (`/forums`, `/wos/categories`, `/core/rankings`, `/universities`, `/events`), plus explicit non-goals for admin-only management pages that stay under `/admin/*`.
     Exit criteria: every currently duplicated read surface has one decision-locked canonical route family and one owner context before code changes start.
+    Notes: locked by `docs/h25.1-canonical-route-ownership-contract.md`; H25.2 starts from this mapping as the route ownership gate.
   - [ ] `H25.2` Consolidate shared entity MVC routes and remove duplicate admin read pages.
     Deliverable: shared MVC route consolidation for forums, WoS categories, CORE rankings, university rankings, and events, with duplicate `/admin/*` read/list/detail pages removed and callers/templates updated to use the canonical shared routes.
     Exit criteria: shared read entities are no longer exposed through separate admin/user route families, and no duplicate admin MVC page remains for the covered read surfaces.

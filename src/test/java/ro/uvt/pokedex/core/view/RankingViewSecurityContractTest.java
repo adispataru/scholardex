@@ -34,7 +34,6 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest({RankingViewController.class, AdminViewController.class})
@@ -93,12 +92,20 @@ class RankingViewSecurityContractTest {
                         .with(user("researcher@uvt.ro")
                                 .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/scholardex/forums?wos=indexed"));
+                .andExpect(redirectedUrl("/forums?wos=indexed"));
+    }
+
+    @Test
+    void authenticatedUserCanAccessCanonicalForumsRoute() throws Exception {
+        mockMvc.perform(get("/forums")
+                        .with(user("researcher@uvt.ro")
+                                .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().isOk());
     }
 
     @Test
     void supervisorCanAccessCoreRankings() throws Exception {
-        mockMvc.perform(get("/rankings/core")
+        mockMvc.perform(get("/core/rankings")
                         .with(user("supervisor@uvt.ro")
                                 .authorities(new SimpleGrantedAuthority("SUPERVISOR"))))
                 .andExpect(status().isOk());
@@ -106,7 +113,7 @@ class RankingViewSecurityContractTest {
 
     @Test
     void adminCanAccessUrapRankings() throws Exception {
-        mockMvc.perform(get("/rankings/urap")
+        mockMvc.perform(get("/universities")
                         .with(user("admin@uvt.ro")
                                 .authorities(new SimpleGrantedAuthority("PLATFORM_ADMIN"))))
                 .andExpect(status().isOk());

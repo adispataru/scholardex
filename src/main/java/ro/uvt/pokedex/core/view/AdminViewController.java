@@ -12,10 +12,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.Institution;
-import ro.uvt.pokedex.core.model.WoSRanking;
-import ro.uvt.pokedex.core.model.ArtisticEvent;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
@@ -528,14 +525,12 @@ public class AdminViewController {
 
     @GetMapping("/rankings/wos")
     public String showRankingsPage() {
-        return "redirect:/admin/scholardex/forums?wos=indexed";
+        return "redirect:/forums?wos=indexed";
     }
 
     @GetMapping("/rankings/events")
     public String showArtsRankingsPage(Model model) {
-        List<ArtisticEvent> all = adminCatalogFacade.listArtisticEvents();
-        model.addAttribute("artisticEvents", all);
-        return "admin/events";
+        return "redirect:/events";
     }
 
     @PostMapping("/rankings/wos/computePositionsForKnownQuarters")
@@ -546,7 +541,7 @@ public class AdminViewController {
         } catch (IllegalStateException ex) {
             redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
         }
-        return "redirect:/admin/scholardex/forums?wos=indexed";
+        return "redirect:/forums?wos=indexed";
     }
 
     @PostMapping("/rankings/wos/computeQuartersAndRankingsWhereMissing")
@@ -557,7 +552,7 @@ public class AdminViewController {
         } catch (IllegalStateException ex) {
             redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
         }
-        return "redirect:/admin/scholardex/forums?wos=indexed";
+        return "redirect:/forums?wos=indexed";
     }
 
     @PostMapping("/rankings/wos/mergeDuplicateRankings")
@@ -568,7 +563,7 @@ public class AdminViewController {
         } catch (IllegalStateException ex) {
             redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
         }
-        return "redirect:/admin/scholardex/forums?wos=indexed";
+        return "redirect:/forums?wos=indexed";
     }
 
     @PostMapping("/rankings/wos/rebuildProjections")
@@ -578,7 +573,7 @@ public class AdminViewController {
                 "WoS projections rebuilt. Imported=" + result.getImportedCount()
                         + ", Skipped=" + result.getSkippedCount()
                         + ", Errors=" + result.getErrorCount());
-        return "redirect:/admin/scholardex/forums?wos=indexed";
+        return "redirect:/forums?wos=indexed";
     }
 
     @PostMapping("/rankings/wos/ensureIndexes")
@@ -589,7 +584,7 @@ public class AdminViewController {
                         + ", Present=" + result.present().size()
                         + ", Invalid=" + result.invalid().size()
                         + ", Errors=" + result.errors().size());
-        return "redirect:/admin/scholardex/forums?wos=indexed";
+        return "redirect:/forums?wos=indexed";
     }
 
     @PostMapping("/rankings/wos/runBigBangMigration")
@@ -642,28 +637,22 @@ public class AdminViewController {
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "WoS big-bang migration failed: " + e.getMessage());
         }
-        return "redirect:/admin/scholardex/forums?wos=indexed";
+        return "redirect:/forums?wos=indexed";
     }
 
     @GetMapping("/rankings/core")
     public String showCoreRankingsPage() {
-        return "admin/rankings-core";
+        return "redirect:/core/rankings";
     }
 
     @GetMapping("/rankings/wos/{id}")
     public String showRankingPage(Model model, @PathVariable  String id) {
-        return "redirect:/admin/scholardex/forums/edit/" + id;
+        return "redirect:/forums/" + id;
     }
 
     @GetMapping("/rankings/core/{id}")
     public String showCoreRankingPage(Model model, @PathVariable  String id) {
-        Optional<CoreConferenceRanking> byId = adminCatalogFacade.findCoreRankingById(id);
-        if(byId.isPresent()) {
-            CoreConferenceRanking ranking = byId.get();
-            model.addAttribute("conf", ranking);
-            return "admin/rankings-core-view";
-        }
-        return "redirect:/admin/rankings/core";
+        return "redirect:/core/rankings/" + id;
     }
 
 

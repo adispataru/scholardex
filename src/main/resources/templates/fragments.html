@@ -149,25 +149,25 @@
         Rankings
     </div>
     <li class="nav-item" th:classappend="${activeSection == 'rankings' or activeSection == 'rankings-categories'} ? 'active' : ''">
-        <a class="nav-link" th:href="@{/rankings/categories}">
+        <a class="nav-link" th:href="@{/wos/categories}">
             <i class="fa-solid fa-fw fa-tags"></i>
             <span>WoS Categories</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'rankings-core' ? 'active' : ''">
-        <a class="nav-link" th:href="@{/admin/rankings/core}">
+        <a class="nav-link" th:href="@{/core/rankings}">
             <i class="fa-solid fa-fw fa-atom"></i>
             <span>CORE</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'rankings-urap' ? 'active' : ''">
-        <a class="nav-link" th:href="@{/admin/rankings/urap}">
+        <a class="nav-link" th:href="@{/universities}">
             <i class="fa-solid fa-fw fa-university"></i>
             <span>URAP</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'rankings-events' ? 'active' : ''">
-        <a class="nav-link" th:href="@{/admin/rankings/events}">
+        <a class="nav-link" th:href="@{/events}">
             <i class="fa-solid fa-fw fa-theater-masks"></i>
             <span>Events</span>
         </a>
@@ -282,31 +282,31 @@
         Rankings
     </div>
     <li class="nav-item" th:classappend="${activeSection == 'scholardex-forums' or activeSection == 'rankings'} ? 'active' : ''">
-        <a class="nav-link" th:href="@{/scholardex/forums}">
+        <a class="nav-link" th:href="@{/forums}">
             <i class="fa-solid fa-fw fa-medal"></i>
             <span>Forums</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'rankings-categories' ? 'active' : ''">
-        <a class="nav-link" th:href="@{/rankings/categories}">
+        <a class="nav-link" th:href="@{/wos/categories}">
             <i class="fa-solid fa-fw fa-tags"></i>
             <span>WoS Categories</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'rankings-core' ? 'active' : ''">
-        <a class="nav-link" th:href="@{/rankings/core}">
+        <a class="nav-link" th:href="@{/core/rankings}">
             <i class="fa-solid fa-fw fa-atom"></i>
             <span>CORE</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'rankings-urap' ? 'active' : ''">
-        <a class="nav-link" th:href="@{/rankings/urap}">
+        <a class="nav-link" th:href="@{/universities}">
             <i class="fa-solid fa-fw fa-university"></i>
             <span>URAP</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'rankings-events' ? 'active' : ''">
-        <a class="nav-link" th:href="@{/rankings/events}">
+        <a class="nav-link" th:href="@{/events}">
             <i class="fa-solid fa-fw fa-theater-masks"></i>
             <span>Events</span>
         </a>

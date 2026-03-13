@@ -86,7 +86,7 @@ class AdminViewControllerContractTest {
     void computePositionsRedirectsAndDelegates() throws Exception {
         mockMvc.perform(post("/admin/rankings/wos/computePositionsForKnownQuarters"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/forums?wos=indexed"));
+                .andExpect(redirectedUrl("/forums?wos=indexed"));
 
         verify(rankingMaintenanceFacade).computePositionsForKnownQuarters();
     }
@@ -97,7 +97,7 @@ class AdminViewControllerContractTest {
 
         mockMvc.perform(post("/admin/rankings/wos/computePositionsForKnownQuarters"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/forums?wos=indexed"))
+                .andExpect(redirectedUrl("/forums?wos=indexed"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash().attributeExists("errorMessage"));
     }
 
@@ -105,7 +105,7 @@ class AdminViewControllerContractTest {
     void computeMissingQuartersRedirectsAndDelegates() throws Exception {
         mockMvc.perform(post("/admin/rankings/wos/computeQuartersAndRankingsWhereMissing"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/forums?wos=indexed"));
+                .andExpect(redirectedUrl("/forums?wos=indexed"));
 
         verify(rankingMaintenanceFacade).computeQuartersAndRankingsWhereMissing();
     }
@@ -114,7 +114,7 @@ class AdminViewControllerContractTest {
     void mergeDuplicateRankingsRedirectsAndDelegates() throws Exception {
         mockMvc.perform(post("/admin/rankings/wos/mergeDuplicateRankings"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/forums?wos=indexed"));
+                .andExpect(redirectedUrl("/forums?wos=indexed"));
 
         verify(rankingMaintenanceFacade).mergeDuplicateRankings();
     }
@@ -125,7 +125,7 @@ class AdminViewControllerContractTest {
 
         mockMvc.perform(post("/admin/rankings/wos/rebuildProjections"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/forums?wos=indexed"));
+                .andExpect(redirectedUrl("/forums?wos=indexed"));
 
         verify(rankingMaintenanceFacade).rebuildWosProjections();
     }
@@ -140,7 +140,7 @@ class AdminViewControllerContractTest {
 
         mockMvc.perform(post("/admin/rankings/wos/ensureIndexes"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/forums?wos=indexed"));
+                .andExpect(redirectedUrl("/forums?wos=indexed"));
 
         verify(rankingMaintenanceFacade).ensureWosIndexes();
     }
@@ -174,40 +174,44 @@ class AdminViewControllerContractTest {
                         .param("dryRun", "true")
                         .param("sourceVersion", "v2026"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/forums?wos=indexed"));
+                .andExpect(redirectedUrl("/forums?wos=indexed"));
 
         verify(rankingMaintenanceFacade).runWosBigBangMigration(true, "v2026");
     }
 
     @Test
-    void adminWosRankingsPageRedirectsToCanonicalScholardexForums() throws Exception {
+    void adminWosRankingsPageRedirectsToCanonicalForums() throws Exception {
         mockMvc.perform(get("/admin/rankings/wos"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/forums?wos=indexed"));
+                .andExpect(redirectedUrl("/forums?wos=indexed"));
     }
 
     @Test
-    void legacyAdminWosDetailRedirectsToCanonicalScholardexForumEdit() throws Exception {
+    void legacyAdminWosDetailRedirectsToCanonicalForumDetails() throws Exception {
         mockMvc.perform(get("/admin/rankings/wos/{id}", "missing"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/forums/edit/missing"));
+                .andExpect(redirectedUrl("/forums/missing"));
     }
 
     @Test
-    void coreRankingsPageRendersExpectedTemplateAndClientControls() throws Exception {
+    void legacyAdminCoreReadRouteRedirectsToCanonicalCoreRankings() throws Exception {
         mockMvc.perform(get("/admin/rankings/core"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("admin/rankings-core"))
-                .andExpect(model().attributeDoesNotExist("confs"))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"core-search\"")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"core-sort\"")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"core-direction\"")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"core-size\"")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"core-table-body\"")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"core-prev\"")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"core-next\"")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/js/rankings-core.js")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/core/rankings"));
+    }
+
+    @Test
+    void legacyAdminCoreDetailReadRouteRedirectsToCanonicalCoreRankingDetail() throws Exception {
+        mockMvc.perform(get("/admin/rankings/core/{id}", "c1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/core/rankings/c1"));
+    }
+
+    @Test
+    void legacyAdminEventsReadRouteRedirectsToCanonicalEvents() throws Exception {
+        mockMvc.perform(get("/admin/rankings/events"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/events"));
     }
 
     @Test

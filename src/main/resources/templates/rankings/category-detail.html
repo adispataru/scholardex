@@ -27,7 +27,7 @@
                             Edition: <span th:text="${categoryDetail.edition()}">SCIE</span>
                         </p>
                     </div>
-                    <a class="btn btn-outline-primary btn-sm" th:href="@{/rankings/categories}">Back to Categories</a>
+                    <a class="btn btn-outline-primary btn-sm" th:href="@{/wos/categories}">Back to Categories</a>
                 </div>
 
                 <div class="row">
@@ -72,7 +72,7 @@
                                 </thead>
                                 <tbody>
                                 <tr th:each="journal : ${categoryDetail.journals()}">
-                                    <td><a th:href="@{/scholardex/forums/{id}(id=${journal.journalId()})}" th:text="${journal.journalName()}">Journal Name</a></td>
+                                    <td><a th:href="@{/forums/{id}(id=${journal.journalId()})}" th:text="${journal.journalName()}">Journal Name</a></td>
                                     <td th:text="${journal.issn()}">—</td>
                                     <td th:text="${journal.eIssn()}">—</td>
                                     <td th:text="${journal.latestYear() != null ? journal.latestYear() : '—'}">—</td>

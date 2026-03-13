@@ -58,8 +58,8 @@ class RankingViewControllerContractTest {
     private WosCategoryPageService wosCategoryPageService;
 
     @Test
-    void scholardexForumsPageRendersExpectedTemplateAndClientControls() throws Exception {
-        mockMvc.perform(get("/scholardex/forums"))
+    void forumsPageRendersExpectedTemplateAndClientControls() throws Exception {
+        mockMvc.perform(get("/forums"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("scholardex/forums"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"scholardex-forums-search\"")))
@@ -75,24 +75,24 @@ class RankingViewControllerContractTest {
     }
 
     @Test
-    void rankingsWosListRedirectsToCanonicalScholardexForums() throws Exception {
+    void rankingsWosListRedirectsToCanonicalForums() throws Exception {
         mockMvc.perform(get("/rankings/wos"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/scholardex/forums?wos=indexed"));
+                .andExpect(redirectedUrl("/forums?wos=indexed"));
     }
 
     @Test
-    void rankingsWosDetailRedirectsToCanonicalScholardexForumDetail() throws Exception {
+    void rankingsWosDetailRedirectsToCanonicalForumDetail() throws Exception {
         mockMvc.perform(get("/rankings/wos/{id}", "w1"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/scholardex/forums/w1"));
+                .andExpect(redirectedUrl("/forums/w1"));
     }
 
     @Test
     void missingScholardexForumRendersNotFoundPage() throws Exception {
         when(scholardexForumDetailService.findDetail(eq("missing"))).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/scholardex/forums/{id}", "missing"))
+        mockMvc.perform(get("/forums/{id}", "missing"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("user/ranking-not-found"));
     }
@@ -118,7 +118,7 @@ class RankingViewControllerContractTest {
         );
         when(scholardexForumDetailService.findDetail(eq("w1"))).thenReturn(Optional.of(detail));
 
-        mockMvc.perform(get("/scholardex/forums/{id}", "w1"))
+        mockMvc.perform(get("/forums/{id}", "w1"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("scholardex/forum-detail"))
                 .andExpect(model().attributeExists("forum", "detail", "wosRanking"))
@@ -143,7 +143,7 @@ class RankingViewControllerContractTest {
         );
         when(scholardexForumDetailService.findDetail(eq("w2"))).thenReturn(Optional.of(detail));
 
-        mockMvc.perform(get("/scholardex/forums/{id}", "w2"))
+        mockMvc.perform(get("/forums/{id}", "w2"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("scholardex/forum-detail"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("This journal is not indexed by WoS.")));
@@ -166,7 +166,7 @@ class RankingViewControllerContractTest {
         );
         when(scholardexForumDetailService.findDetail(eq("c1"))).thenReturn(Optional.of(detail));
 
-        mockMvc.perform(get("/scholardex/forums/{id}", "c1"))
+        mockMvc.perform(get("/forums/{id}", "c1"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("CORE conference ranking rendering is reserved for a later H23 update.")));
     }
@@ -188,14 +188,14 @@ class RankingViewControllerContractTest {
         );
         when(scholardexForumDetailService.findDetail(eq("b1"))).thenReturn(Optional.of(detail));
 
-        mockMvc.perform(get("/scholardex/forums/{id}", "b1"))
+        mockMvc.perform(get("/forums/{id}", "b1"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Book ranking rendering is reserved for a later H23 update.")));
     }
 
     @Test
     void coreRankingsPageRendersExpectedTemplateAndClientControls() throws Exception {
-        mockMvc.perform(get("/rankings/core"))
+        mockMvc.perform(get("/core/rankings"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("rankings/core"))
                 .andExpect(model().attributeDoesNotExist("confs"))
@@ -212,7 +212,7 @@ class RankingViewControllerContractTest {
 
     @Test
     void urapRankingsPageRendersExpectedTemplateAndClientControls() throws Exception {
-        mockMvc.perform(get("/rankings/urap"))
+        mockMvc.perform(get("/universities"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("rankings/urap"))
                 .andExpect(model().attributeDoesNotExist("rankings"))
@@ -231,7 +231,7 @@ class RankingViewControllerContractTest {
     void eventsRankingsPageRendersExpectedTemplateAndModel() throws Exception {
         when(adminCatalogFacade.listArtisticEvents()).thenReturn(List.of(new ArtisticEvent()));
 
-        mockMvc.perform(get("/rankings/events"))
+        mockMvc.perform(get("/events"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("rankings/events"))
                 .andExpect(model().attributeExists("artisticEvents"));
@@ -241,32 +241,32 @@ class RankingViewControllerContractTest {
     void missingCoreRankingRedirectsToCoreList() throws Exception {
         when(adminCatalogFacade.findCoreRankingById(eq("missing"))).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/rankings/core/{id}", "missing"))
+        mockMvc.perform(get("/core/rankings/{id}", "missing"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/rankings/core"));
+                .andExpect(redirectedUrl("/core/rankings"));
     }
 
     @Test
     void missingUrapRankingRedirectsToUrapList() throws Exception {
         when(urapRankingFacade.findRankingDetails(eq("missing"))).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/rankings/urap/{id}", "missing"))
+        mockMvc.perform(get("/universities/{id}", "missing"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/rankings/urap"));
+                .andExpect(redirectedUrl("/universities"));
     }
 
     @Test
     void rankingsTemplatesExposeSidebarLinks() throws Exception {
-        mockMvc.perform(get("/scholardex/forums"))
+        mockMvc.perform(get("/forums"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/scholardex/forums\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/rankings/categories\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/rankings/core\"")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/forums\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/wos/categories\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/core/rankings\"")));
     }
 
     @Test
     void wosCategoriesPageRendersCanonicalTemplateAndLinks() throws Exception {
-        mockMvc.perform(get("/rankings/categories"))
+        mockMvc.perform(get("/wos/categories"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("rankings/categories"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("WoS Categories")))
@@ -278,7 +278,7 @@ class RankingViewControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-prev\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-next\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/rankings-categories.js")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/scholardex/forums\"")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/forums\"")));
     }
 
     @Test
@@ -294,21 +294,28 @@ class RankingViewControllerContractTest {
                 )
         ));
 
-        mockMvc.perform(get("/rankings/categories/{key}", "Computer Science - SCIE"))
+        mockMvc.perform(get("/wos/categories/{key}", "Computer Science - SCIE"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("rankings/category-detail"))
                 .andExpect(model().attributeExists("categoryDetail"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Journal Coverage")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/scholardex/forums/j1\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/rankings/categories\"")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/forums/j1\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/wos/categories\"")));
     }
 
     @Test
     void missingWosCategoryRendersNotFoundPage() throws Exception {
         when(wosCategoryPageService.findCategory(eq("missing - SCIE"))).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/rankings/categories/{key}", "missing - SCIE"))
+        mockMvc.perform(get("/wos/categories/{key}", "missing - SCIE"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("user/ranking-not-found"));
+    }
+
+    @Test
+    void scholardexForumsAliasStillResolvesDuringMigration() throws Exception {
+        mockMvc.perform(get("/scholardex/forums"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("scholardex/forums"));
     }
 }

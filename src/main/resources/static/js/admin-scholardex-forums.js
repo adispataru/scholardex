@@ -83,7 +83,7 @@
     els.tableBody.innerHTML = (items || []).map(function (item) {
       const id = encodeURIComponent(item.id || '');
       return '<tr>' +
-        '<td><a href="/scholardex/forums/' + id + '">' + escapeHtml(item.publicationName) + '</a></td>' +
+        '<td><a href="/forums/' + id + '">' + escapeHtml(item.publicationName) + '</a></td>' +
         '<td>' + escapeHtml(item.issn) + '</td>' +
         '<td>' + escapeHtml(item.eIssn) + '</td>' +
         '<td>' + escapeHtml(item.aggregationType) + '</td>' +
@@ -103,7 +103,7 @@
     if (state.q) {
       params.set('q', state.q);
     }
-    return '/scholardex/forums/data?' + params.toString();
+    return '/forums/data?' + params.toString();
   }
 
   async function fetchPage() {
