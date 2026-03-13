@@ -269,7 +269,7 @@ class ApiSecurityContractTest {
 
     @Test
     void authenticatedRolesCanAccessScopusAuthorsApi() throws Exception {
-        when(scholardexAuthorQueryService.search("60000434", 0, 25, "name", "asc", null))
+        when(scholardexAuthorQueryService.search(null, 0, 25, "name", "asc", null))
                 .thenReturn(new ScopusAuthorPageResponse(Collections.emptyList(), 0, 25, 0, 0));
 
         mockMvc.perform(get("/api/scopus/authors")

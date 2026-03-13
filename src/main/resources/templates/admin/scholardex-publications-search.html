@@ -50,7 +50,7 @@
                                     <td>
                                         <div th:each="author, iterStat : ${publication.authors}">
 
-                                            <a th:if="${authorMap[author]!=null}" th:text="${authorMap[author].name} + (iterStat.last ? '; ' : '')" th:href="@{/admin/scholardex/authors/edit/{id}(id=${author})}">
+                                            <a th:if="${authorMap[author]!=null}" th:text="${authorMap[author].name} + (iterStat.last ? '; ' : '')" th:href="@{/user/authors/view/{id}(id=${author})}">
                                                 <span>;</span>
                                             </a>
                                         </div>

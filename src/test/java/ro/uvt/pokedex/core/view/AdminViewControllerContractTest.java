@@ -311,26 +311,28 @@ class AdminViewControllerContractTest {
     }
 
     @Test
-    void editScholardexAuthorPageRendersWithoutDatatablesScript() throws Exception {
-        Author author = new Author();
-        author.setId("a1");
-        author.setName("Author One");
-        Publication publication = publication("p1", "f1", "2023-01-01");
-        publication.setTitle("Paper One");
-        publication.setAuthorCount(3);
-        publication.setCitedbyCount(10);
-
-        when(adminCatalogFacade.findScopusAuthorById("a1")).thenReturn(Optional.of(author));
-        when(adminCatalogFacade.listPublicationsByAuthorId("a1")).thenReturn(List.of(publication));
-
+    void removedScholardexAuthorEditRoutesRedirectToAuthorsList() throws Exception {
         mockMvc.perform(get("/admin/scholardex/authors/edit/{id}", "a1"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("admin/scholardex-editAuthor"))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/scholardex/authors"));
 
         mockMvc.perform(get("/admin/scopus/authors/edit/{id}", "a1"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/authors/edit/a1"));
+                .andExpect(redirectedUrl("/admin/scholardex/authors"));
+
+        mockMvc.perform(post("/admin/scholardex/authors/edit/{id}", "a1")
+                        .param("id", "a1")
+                        .param("name", "Author One"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/scholardex/authors"));
+
+        mockMvc.perform(post("/admin/scopus/authors/edit/{id}", "a1")
+                        .param("id", "a1")
+                        .param("name", "Author One"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/scholardex/authors"));
+
+        verify(adminCatalogFacade, never()).saveScopusAuthor(any(Author.class));
     }
 
     @Test

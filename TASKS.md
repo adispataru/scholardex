@@ -35,3 +35,24 @@ Done history moved to `TASKS-done.md`.
   Deliverable: user-operation onboarding flow for user-defined imports modeled as source events/facts with deterministic IDs and moderation/approval metadata.
   Exit criteria: user-defined publications and related entities imported via user operations integrate with the same Scholardex identity and lineage contracts.
   Dependency: execute after `H19.9` citation canonicalization to avoid EID-coupled citation gaps for user-only publications.
+
+- [ ] `H25` Uniform entity routes and shared read-view consolidation.
+  Goal: eliminate duplicate MVC pages/routes for shared read surfaces across `/user/*` and `/admin/*`, and align navigation with canonical entity-based routes while keeping admin-only management tools separate.
+  Deliverable: canonical authenticated MVC routes for shared entities (`/forums`, `/wos/categories`, `/core/rankings`, `/universities`, `/events`), trimmed `/user/*` routes for user-owned surfaces, removal of duplicate admin read views, and role-driven sidebar selection instead of hardcoded admin/user sidebar fragments per template.
+  Exit criteria: shared entity reads resolve through one canonical route family regardless of role; duplicate admin read pages for forums/rankings/universities/events are removed; user-owned surfaces remain under `/user/*`; sidebar/navigation is selected by role at runtime rather than hardcoded per template; legacy duplicate read routes are removed and all callers/tests/docs are aligned to the new route model.
+  Subtasks:
+  - [ ] `H25.1` Lock canonical route and ownership contract.
+    Deliverable: implementation-ready route contract defining which pages remain user-owned (`/user/dashboard`, `/user/publications`, `/user/activities`) versus which become shared authenticated entity routes (`/forums`, `/wos/categories`, `/core/rankings`, `/universities`, `/events`), plus explicit non-goals for admin-only management pages that stay under `/admin/*`.
+    Exit criteria: every currently duplicated read surface has one decision-locked canonical route family and one owner context before code changes start.
+  - [ ] `H25.2` Consolidate shared entity MVC routes and remove duplicate admin read pages.
+    Deliverable: shared MVC route consolidation for forums, WoS categories, CORE rankings, university rankings, and events, with duplicate `/admin/*` read/list/detail pages removed and callers/templates updated to use the canonical shared routes.
+    Exit criteria: shared read entities are no longer exposed through separate admin/user route families, and no duplicate admin MVC page remains for the covered read surfaces.
+  - [ ] `H25.3` Normalize remaining user-owned route families.
+    Deliverable: user route cleanup so personal/user-owned pages remain under a consistent `/user/*` model, including keeping `/user/dashboard` and `/user/publications` and renaming activity-instance reads to `/user/activities`.
+    Exit criteria: user-owned routes follow a consistent naming model and no leftover user route uses the old inconsistent entity naming where a cleaner canonical `/user/*` alternative is defined by H25.
+  - [ ] `H25.4` Replace hardcoded admin/user sidebar composition with role-based layout selection.
+    Deliverable: unified sidebar/layout mechanism that selects navigation content based on the authenticated role/context at render time instead of templates hardcoding `admin-sidebar` vs `user-sidebar`.
+    Exit criteria: covered templates no longer choose sidebar fragments manually by route family, and shared entity pages render the correct role-aware navigation from one central mechanism.
+  - [ ] `H25.5` Remove stale route debt and align verification/docs.
+    Deliverable: delete obsolete duplicate read templates/routes, update route/UI/security tests and any route-map/docs/guardrails that still reference the removed read paths, and record the steady-state route model.
+    Exit criteria: automated tests and docs reflect the new canonical route families only, and no removed duplicate read route remains referenced by runtime navigation or verification artifacts.

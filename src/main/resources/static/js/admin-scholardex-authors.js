@@ -62,7 +62,7 @@
       const affiliations = (item.affiliations || []).map(escapeHtml).join(', ');
       const id = encodeURIComponent(item.id || '');
       return '<tr>' +
-        '<td><a href="/admin/scholardex/authors/edit/' + id + '">' + escapeHtml(item.name) + '</a></td>' +
+        '<td><a href="/user/authors/view/' + id + '">' + escapeHtml(item.name) + '</a></td>' +
         '<td>' + affiliations + '</td>' +
         '</tr>';
     }).join('');

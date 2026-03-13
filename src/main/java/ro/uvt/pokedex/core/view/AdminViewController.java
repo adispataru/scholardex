@@ -20,7 +20,10 @@ import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
-import ro.uvt.pokedex.core.model.scopus.*;
+import ro.uvt.pokedex.core.model.scopus.Affiliation;
+import ro.uvt.pokedex.core.model.scopus.Author;
+import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.user.UserRole;
 import ro.uvt.pokedex.core.service.application.ScholardexAdminReadFacade;
@@ -39,7 +42,6 @@ import ro.uvt.pokedex.core.service.UserService;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Controller
@@ -426,36 +428,22 @@ public class AdminViewController {
     }
 
     @GetMapping("/scholardex/authors/edit/{id}")
-    public String editScholardexAuthorsPage(Model model, @PathVariable String id) {
-        Optional<Author> byId = adminCatalogFacade.findScopusAuthorById(id);
-        byId.ifPresent(a-> {
-            AtomicInteger numCitations = new AtomicInteger();
-            model.addAttribute("author", a);
-            List<Publication> pubs = adminCatalogFacade.listPublicationsByAuthorId(a.getId());
-            pubs.forEach(p-> numCitations.addAndGet(p.getCitedbyCount()));
-            model.addAttribute("publications", pubs);
-            model.addAttribute("citationCount", numCitations.get());
-        });
-
-        return "admin/scholardex-editAuthor";
+    public String editScholardexAuthorsPage(@PathVariable String id) {
+        return "redirect:/admin/scholardex/authors";
     }
 
     @GetMapping("/scopus/authors/edit/{id}")
     public String editScopusAuthorsPage(@PathVariable String id) {
-        return "redirect:/admin/scholardex/authors/edit/" + id;
+        return "redirect:/admin/scholardex/authors";
     }
 
     @PostMapping("/scholardex/authors/edit/{id}")
     public String updateScholardexAuthor(@ModelAttribute("author") Author author, RedirectAttributes redirectAttributes) {
-        adminCatalogFacade.saveScopusAuthor(author);
-        redirectAttributes.addFlashAttribute("message", "Author updated successfully!");
         return "redirect:/admin/scholardex/authors";
     }
 
     @PostMapping("/scopus/authors/edit/{id}")
     public String updateScopusAuthor(@ModelAttribute("author") Author author, RedirectAttributes redirectAttributes) {
-        adminCatalogFacade.saveScopusAuthor(author);
-        redirectAttributes.addFlashAttribute("message", "Author updated successfully!");
         return "redirect:/admin/scholardex/authors";
     }
 

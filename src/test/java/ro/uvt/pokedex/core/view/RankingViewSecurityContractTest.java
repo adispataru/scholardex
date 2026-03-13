@@ -18,8 +18,12 @@ import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.AdminInstitutionReportFacade;
 import ro.uvt.pokedex.core.service.application.ScholardexAdminReadFacade;
+import ro.uvt.pokedex.core.service.application.ScholardexForumDetailService;
+import ro.uvt.pokedex.core.service.application.ScholardexForumMvcService;
+import ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.UrapRankingFacade;
+import ro.uvt.pokedex.core.service.application.WosCategoryPageService;
 import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
 
 import java.util.Collections;
@@ -52,6 +56,14 @@ class RankingViewSecurityContractTest {
     @MockitoBean
     private WosRankingDetailsReadService wosRankingDetailsReadService;
     @MockitoBean
+    private ScholardexProjectionReadService scholardexProjectionReadService;
+    @MockitoBean
+    private ScholardexForumMvcService scholardexForumMvcService;
+    @MockitoBean
+    private ScholardexForumDetailService scholardexForumDetailService;
+    @MockitoBean
+    private WosCategoryPageService wosCategoryPageService;
+    @MockitoBean
     private UserService userService;
     @MockitoBean
     private ResearcherService researcherService;
@@ -80,7 +92,8 @@ class RankingViewSecurityContractTest {
         mockMvc.perform(get("/rankings/wos")
                         .with(user("researcher@uvt.ro")
                                 .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
-                .andExpect(status().isOk());
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/scholardex/forums?wos=indexed"));
     }
 
     @Test
