@@ -25,6 +25,7 @@ const checks = [
       '/admin/rankings/events"',
       '/admin/rankings/wos"',
       '/admin/scopus/',
+      'href="/user"',
       '/user/activityInstances"',
       '/user/individualReports"',
       '/user/publications/exportCNFIS2025"',

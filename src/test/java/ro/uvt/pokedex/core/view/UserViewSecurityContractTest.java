@@ -47,6 +47,20 @@ class UserViewSecurityContractTest {
     private UserIndividualReportRunService userIndividualReportRunService;
 
     @Test
+    void unauthenticatedUserDashboardRouteRedirectsToLogin() throws Exception {
+        mockMvc.perform(get("/user/dashboard"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"));
+    }
+
+    @Test
+    void unauthenticatedUserRootCompatibilityRouteRedirectsToLogin() throws Exception {
+        mockMvc.perform(get("/user"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"));
+    }
+
+    @Test
     void unauthenticatedUserPublicationsRedirectsToLogin() throws Exception {
         mockMvc.perform(get("/user/publications"))
                 .andExpect(status().is3xxRedirection())

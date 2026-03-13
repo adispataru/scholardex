@@ -54,9 +54,14 @@ public class UserViewController {
     private final UserReportFacade userReportFacade;
     private final UserIndicatorResultService userIndicatorResultService;
     private final UserIndividualReportRunService userIndividualReportRunService;
-    @GetMapping()
-    public String showDashboard(Model model) {
 
+    @GetMapping()
+    public String showDashboardCompatibilityRedirect() {
+        return "redirect:/user/dashboard";
+    }
+
+    @GetMapping("/dashboard")
+    public String showDashboard(Model model) {
         return "user/dashboard"; // Returns the users.html template
     }
 

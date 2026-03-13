@@ -84,6 +84,17 @@ class UserViewControllerContractTest {
     private UserIndividualReportRunService userIndividualReportRunService;
 
     @Test
+    void dashboardUsesCanonicalRouteAndLegacyRootRedirects() throws Exception {
+        mockMvc.perform(get("/user/dashboard").with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/dashboard"));
+
+        mockMvc.perform(get("/user").with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/user/dashboard"));
+    }
+
+    @Test
     void indicatorExportRedirectsToLoginWhenAuthenticationMissing() throws Exception {
         mockMvc.perform(get("/user/indicators/export/{id}", "ind-1"))
                 .andExpect(status().is3xxRedirection())
@@ -271,7 +282,8 @@ class UserViewControllerContractTest {
         mockMvc.perform(get("/user/publications").with(authenticatedUser(user)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("user/publications"))
-                .andExpect(model().attributeExists("publications", "hIndex", "authorMap", "forumMap", "numCitations", "user"));
+                .andExpect(model().attributeExists("publications", "hIndex", "authorMap", "forumMap", "numCitations", "user"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/user/dashboard\"")));
     }
 
     @Test
