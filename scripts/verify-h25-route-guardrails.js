@@ -24,6 +24,7 @@ const checks = [
       '/admin/rankings/urap"',
       '/admin/rankings/events"',
       '/admin/rankings/wos"',
+      '/admin/scopus/',
       '/user/activityInstances"',
       '/user/individualReports"',
       '/user/publications/exportCNFIS2025"',
@@ -126,24 +127,34 @@ for (const check of checks) {
   }
 }
 
-function listHtmlFiles(dir) {
+function listFiles(dir, extension) {
   if (!fs.existsSync(dir)) return [];
   const out = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      out.push(...listHtmlFiles(full));
-    } else if (entry.isFile() && full.endsWith('.html')) {
+      out.push(...listFiles(full, extension));
+    } else if (entry.isFile() && full.endsWith(extension)) {
       out.push(full);
     }
   }
   return out;
 }
 
-for (const file of runtimeTemplateRoots.flatMap(listHtmlFiles)) {
+for (const file of runtimeTemplateRoots.flatMap((dir) => listFiles(dir, '.html'))) {
   const content = fs.readFileSync(file, 'utf8');
   if (content.includes('fragments :: admin-sidebar(') || content.includes('fragments :: user-sidebar(')) {
     errors.push(`${file}: must use unified sidebar fragment 'fragments :: sidebar(...)'`);
+  }
+  if (content.includes('/admin/scopus/')) {
+    errors.push(`${file}: contains forbidden stale admin route reference '/admin/scopus/'`);
+  }
+}
+
+for (const file of listFiles('src/main/resources/static/js', '.js')) {
+  const content = fs.readFileSync(file, 'utf8');
+  if (content.includes('/admin/scopus/')) {
+    errors.push(`${file}: contains forbidden stale admin route reference '/admin/scopus/'`);
   }
 }
 

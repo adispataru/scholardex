@@ -57,6 +57,7 @@ Done history moved to `TASKS-done.md`.
     Deliverable: unified sidebar/layout mechanism that selects navigation content based on the authenticated role/context at render time instead of templates hardcoding `admin-sidebar` vs `user-sidebar`.
     Exit criteria: covered templates no longer choose sidebar fragments manually by route family, and shared entity pages render the correct role-aware navigation from one central mechanism.
     Notes: complete with centralized `fragments :: sidebar(activeSection)` + `sidebarContext` model attribute in `GlobalControllerAdvice`; runtime templates now use one sidebar fragment, with admin-first shared-route behavior and `/user/**` override.
-  - [ ] `H25.5` Remove stale route debt and align verification/docs.
+  - [x] `H25.5` Remove stale route debt and align verification/docs.
     Deliverable: delete obsolete duplicate read templates/routes, update route/UI/security tests and any route-map/docs/guardrails that still reference the removed read paths, and record the steady-state route model.
     Exit criteria: automated tests and docs reflect the new canonical route families only, and no removed duplicate read route remains referenced by runtime navigation or verification artifacts.
+    Notes: complete with removal of `/admin/scopus/**` MVC compatibility mappings, deletion of dormant runtime templates, updated route guardrails/verifiers, and H25 steady-state route-map documentation.

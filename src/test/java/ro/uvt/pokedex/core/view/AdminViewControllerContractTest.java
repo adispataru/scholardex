@@ -229,33 +229,57 @@ class AdminViewControllerContractTest {
     }
 
     @Test
-    void scopusVenuesCompatibilityRoutesRedirectToForums() throws Exception {
+    void removedAdminScopusCompatibilityRoutesReturnNotFound() throws Exception {
         mockMvc.perform(get("/admin/scopus/venues"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/forums"));
+                .andExpect(status().isNotFound());
 
         mockMvc.perform(get("/admin/scopus/forums"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/forums"));
+                .andExpect(status().isNotFound());
 
         mockMvc.perform(get("/admin/scopus/venues/edit/{id}", "f1"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/forums/edit/f1"));
+                .andExpect(status().isNotFound());
 
         mockMvc.perform(get("/admin/scopus/forums/edit/{id}", "f1"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/forums/edit/f1"));
-    }
+                .andExpect(status().isNotFound());
 
-    @Test
-    void scopusVenuesCompatibilityPostRouteDelegatesAndRedirectsToForumsEdit() throws Exception {
         mockMvc.perform(post("/admin/scopus/venues/edit/{id}", "f1")
                         .param("id", "f1")
                         .param("publicationName", "Forum One"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/forums/edit/f1"));
+                .andExpect(status().isNotFound());
 
-        verify(adminCatalogFacade, times(1)).saveScopusVenue(any(Forum.class));
+        mockMvc.perform(get("/admin/scopus/authors"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/admin/scopus/authors/edit/{id}", "a1"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(post("/admin/scopus/authors/edit/{id}", "a1")
+                        .param("id", "a1")
+                        .param("name", "Author One"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/admin/scopus/affiliations"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/admin/scopus/affiliations/edit/{id}", "af1"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(post("/admin/scopus/affiliations/edit/{id}", "af1")
+                        .param("id", "af1")
+                        .param("name", "Aff One"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/admin/scopus/publications"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/admin/scopus/publications/citations")
+                        .param("id", "p1"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/admin/scopus/publications/search")
+                        .param("authorName", "A")
+                        .param("paperTitle", "T"))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -272,9 +296,6 @@ class AdminViewControllerContractTest {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/js/admin-scholardex-authors.js")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
 
-        mockMvc.perform(get("/admin/scopus/authors"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/authors"));
     }
 
     @Test
@@ -291,22 +312,15 @@ class AdminViewControllerContractTest {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/js/admin-scholardex-affiliations.js")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
 
-        mockMvc.perform(get("/admin/scopus/affiliations"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/affiliations"));
     }
 
     @Test
-    void scholardexPublicationsPagesRenderCanonicalTemplatesAndScopusRoutesRedirect() throws Exception {
+    void scholardexPublicationsPagesRenderCanonicalTemplates() throws Exception {
         mockMvc.perform(get("/admin/scholardex/publications"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/scholardex-publications"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/admin/scholardex/publications/search")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/scopus/publications"))));
-
-        mockMvc.perform(get("/admin/scopus/publications"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/publications"));
     }
 
     @Test
@@ -315,17 +329,7 @@ class AdminViewControllerContractTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/scholardex/authors"));
 
-        mockMvc.perform(get("/admin/scopus/authors/edit/{id}", "a1"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/authors"));
-
         mockMvc.perform(post("/admin/scholardex/authors/edit/{id}", "a1")
-                        .param("id", "a1")
-                        .param("name", "Author One"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/authors"));
-
-        mockMvc.perform(post("/admin/scopus/authors/edit/{id}", "a1")
                         .param("id", "a1")
                         .param("name", "Author One"))
                 .andExpect(status().is3xxRedirection())
@@ -345,10 +349,6 @@ class AdminViewControllerContractTest {
         mockMvc.perform(get("/admin/scholardex/affiliations/edit/{id}", "af1"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/scholardex-editAffiliation"));
-
-        mockMvc.perform(get("/admin/scopus/affiliations/edit/{id}", "af1"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/scholardex/affiliations/edit/af1"));
     }
 
     @Test
