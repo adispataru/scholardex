@@ -89,7 +89,7 @@ Conclusion:
 - Enforce auth contract: authenticated roles can read this API.
 
 Outcome:
-- Implemented `WosRankingQueryService` backed by `MongoTemplate` for server-side paging/sorting/search.
+- Implemented `WosRankingQueryService` for server-side paging/sorting/search; the current steady-state runtime path is PostgreSQL-backed via `PostgresWosRankingReadPort` over `reporting_read.wos_ranking_view`.
 - Refactored `WosRankingApiController` to delegate query logic to the new service (contract unchanged).
 - Added `@Indexed` fields on `WoSRanking`: `name`, `issn`, `eIssn`, `alternativeIssns`.
 - Preserved Task 2 validation rules (`sort`, `direction`, `q`) and API response schema.

@@ -2,6 +2,52 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H24 PostgreSQL Cutover For `/api/rankings/wos`
+
+Archived from `TASKS.md` on 2026-03-13 after H24.1-H24.5 closure.
+
+- [x] `H24` PostgreSQL cutover for `/api/rankings/wos`.
+  Goal: migrate the `/api/rankings/wos` search/paging API from Mongo-backed `WosRankingView` reads to the existing PostgreSQL reporting read model while preserving the public contract and current UI behavior.
+  Deliverable: Postgres-backed query implementation for `/api/rankings/wos`, runtime cutover wiring, and targeted parity/regression coverage proving contract-equivalent behavior for paging, sorting, search, validation, and authentication.
+  Exit criteria: `/api/rankings/wos` is served from PostgreSQL `reporting_read.wos_ranking_view`; request/response shape, sort semantics, search behavior, and auth contract remain stable; targeted parity/regression tests cover the cutover and protect against reintroduction of Mongo-backed reads for this API.
+  Status: completed on 2026-03-13.
+  Handover:
+  - Public API route intentionally remains `GET /api/rankings/wos`.
+  - Runtime query path is now `WosRankingApiController -> WosRankingQueryService -> PostgresWosRankingReadPort`.
+  - Runtime storage authority for this API is `reporting_read.wos_ranking_view`; Mongo fallback is intentionally removed.
+  - Contract source of truth: `docs/h24.1-wos-rankings-postgres-query-contract.md`.
+  - Closeout source of truth: `docs/h24.5-wos-rankings-postgres-closeout.md`.
+  Subtasks:
+  - [x] `H24.1` Lock `/api/rankings/wos` Postgres query contract.
+    Deliverable: implementation-ready contract for the SQL-backed `/api/rankings/wos` search path, including allowed sort fields, direction rules, query normalization, prefix-search behavior, paging semantics, and response-shape compatibility.
+    Exit criteria: the Postgres implementation target is decision-locked and explicitly matches the current public API contract unless a change is intentionally recorded.
+    Handover:
+    - Contract source of truth: `docs/h24.1-wos-rankings-postgres-query-contract.md`.
+  - [x] `H24.2` Implement PostgreSQL read port for WoS rankings API.
+    Deliverable: dedicated Postgres query component for `/api/rankings/wos` backed by `reporting_read.wos_ranking_view`, returning the existing `WosRankingPageResponse`.
+    Exit criteria: the read port supports current paging/sorting/search behavior and reads only from PostgreSQL for this API surface.
+    Handover:
+    - Runtime SQL adapter: `PostgresWosRankingReadPort`.
+    - Existing read model reused from H22 projection state; no new schema migration required for H24.
+  - [x] `H24.3` Cut over controller/service wiring for `/api/rankings/wos`.
+    Deliverable: runtime wiring that routes `WosRankingApiController` through the new Postgres-backed query path and removes direct Mongo query dependency from the API service.
+    Exit criteria: `/api/rankings/wos` no longer depends on `MongoTemplate`/Mongo query code at runtime, while the public route and response contract remain unchanged.
+    Handover:
+    - `WosRankingQueryService` now requires the Postgres read port and throws if it is unavailable, preventing silent Mongo fallback drift.
+  - [x] `H24.4` Add parity and regression coverage for the API cutover.
+    Deliverable: focused tests covering request validation, authenticated access, paging, allowed sorts, prefix search semantics, and representative parity between legacy Mongo behavior and the new Postgres path.
+    Exit criteria: automated tests fail on contract drift or accidental reintroduction of Mongo-backed `/api/rankings/wos` reads.
+    Handover:
+    - SQL behavior tests: `PostgresWosRankingReadPortTest`.
+    - Runtime cutover tests: `WosRankingQueryServiceTest`.
+    - Controller/API contract tests: `WosRankingApiControllerContractTest`.
+    - Cross-store parity tests: `WosRankingApiParityIntegrationTest`.
+  - [x] `H24.5` Closeout docs and task handoff.
+    Deliverable: backlog/docs/task notes updated to record `/api/rankings/wos` as PostgreSQL-backed while retaining the legacy API name intentionally.
+    Exit criteria: the steady-state route/storage decision is documented clearly enough that future cleanup does not treat this API as still Mongo-backed.
+    Handover:
+    - Closeout source of truth: `docs/h24.5-wos-rankings-postgres-closeout.md`.
+
 ## H22 Postgres Reporting Core + Mongo Ingest Baseline Migration
 
 Archived from `TASKS.md` on 2026-03-13 after H22.1-H22.10 closure.
