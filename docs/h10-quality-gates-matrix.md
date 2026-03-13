@@ -37,7 +37,7 @@ npm run verify-h09-baseline
 | CI workflow / quality gate changes | `npm run verify-h09-baseline` | Ensure local parity with enforced required checks. |
 | Startup/config wiring changes | `./gradlew bootRun -m` and `./gradlew test --tests "*CoreApplicationTests"` | Verify task graph wiring and context startup smoke. |
 | Frontend template/asset changes | `npm run build`, `npm run verify-assets`, `npm run verify-template-assets` | Enforce template/asset contract and generated bundle integrity. |
-| H23 route-map or canonical UI navigation changes | `npm run verify-h23-ui`, `npm run verify-template-assets`, `./gradlew test --tests "*RankingViewControllerContractTest" --tests "*AdminViewControllerContractTest" --tests "*UserViewControllerContractTest"` | Protect canonical Scholardex/category routes, compatibility redirects, and route-owned browserless UI behavior. |
+| H23 route-map or canonical UI navigation changes | `npm run verify-h23-ui`, `npm run verify-template-assets`, `./gradlew test --tests "*RankingViewControllerContractTest" --tests "*AdminViewControllerContractTest" --tests "*UserViewControllerContractTest"` | Protect canonical shared entity routes (`/forums`, `/wos/categories`, `/core/rankings`, `/universities`, `/events`), compatibility redirects, and route-owned browserless UI behavior. |
 
 If multiple change types apply, run the union of command sets.
 

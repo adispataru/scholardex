@@ -28,7 +28,7 @@ Define explicit frontend structure rules so template and JS changes are consiste
 
 ### 3.1 Mandatory layout contract (runtime pages)
 
-Each runtime page under `templates/admin/**`, `templates/user/**`, `templates/rankings/**`, and `templates/scholardex/**` must:
+Each runtime page under `templates/admin/**`, `templates/user/**`, `templates/forums/**`, `templates/wos/**`, `templates/core/**`, `templates/universities/**`, `templates/events/**`, and `templates/shared/**` must:
 
 - include `/assets/app.css`
 - include `/assets/app.js`
@@ -82,7 +82,7 @@ Allowed temporarily until dedicated migration slice:
   - `user/publications-add-step1.html`
   - `user/publications-add-step2.html`
 - Chart.js CDN include in:
-  - `admin/rankings-urap-details.html`
+  - `universities/detail.html`
 - standalone error/public pages (`errors/**`, `publications/list.html`) may keep external CDN until brought under app-shell policy.
 
 All new CDN includes outside this allowlist are prohibited.
@@ -95,9 +95,9 @@ All new CDN includes outside this allowlist are prohibited.
   - `npm run verify-template-assets`
   - `npm run verify-architecture-boundaries`
   - `./gradlew test --tests "*UserViewControllerContractTest" --tests "*AdminViewControllerContractTest"`
-  - `npm run verify-h23-ui` when touching canonical H23 route-owned pages (`scholardex/**`, `rankings/categories`, admin Scholardex catalog pages)
+  - `npm run verify-h23-ui` when touching canonical shared route pages (`/forums`, `/wos/categories`, `/core/rankings`, `/universities`, `/events`) and admin Scholardex catalog pages
 - `verify-template-assets` guardrails enforce:
-  - runtime template coverage for `admin/**`, `user/**`, `rankings/**`, and `scholardex/**`
+  - runtime template coverage for `admin/**`, `user/**`, `forums/**`, `wos/**`, `core/**`, `universities/**`, `events/**`, and `shared/**`
   - no `*-bak.html` templates under runtime admin/user roots
   - core asset contract (`/assets/app.css` + `/assets/app.js` via direct include or shared fragments)
   - external CDN references only from explicit H05 transitional allowlist files
@@ -132,7 +132,7 @@ Status: H05 completed on 2026-03-03.
   - `npm run build`
   - `npm run verify-assets`
   - `npm run verify-template-assets`
-  - `npm run verify-h23-ui` for route-level changes on canonical Scholardex/category pages
+  - `npm run verify-h23-ui` for route-level changes on canonical shared entity pages
   - `./gradlew test --tests "*UserViewControllerContractTest" --tests "*AdminViewControllerContractTest"`
 - H06 handoff focus:
   - keep H05 guardrails unchanged while reviewing data/persistence consistency

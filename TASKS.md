@@ -75,9 +75,10 @@ Done history moved to `TASKS-done.md`.
     Deliverable: rename active template/view names so they match the canonical route/entity model, including the shared forums pages and the normalized user activity/report pages.
     Exit criteria: live templates no longer use stale names such as `scholardex/forums`, `scholardex/forum-detail`, `user/individualReports`, `user/individualReport-view`, `user/activity-instances`, `user/activity-instances-edit`, or `user/ranking-not-found` when canonical route/entity-aligned names are available.
     Notes: complete with canonical shared/user view-name migration (`forums/*`, `wos/*`, `core/*`, `universities/*`, `events/*`, `shared/not-found`, `user/individual-reports*`, `user/activities*`), physical template moves, and guardrail/contract test alignment without MVC route-path changes.
-  - [ ] `H26.3` Clean up active route-documentation drift.
+  - [x] `H26.3` Clean up active route-documentation drift.
     Deliverable: update active docs and route/flow maps that still present removed aliases as current runtime behavior.
     Exit criteria: active docs are aligned to `/user/dashboard`, `/user/individual-reports`, `/user/publications/scopus-tasks`, `/user/exports/cnfis`, and the H25 shared route families; only historical inventory docs retain removed-route references.
+    Notes: complete with active-doc route normalization to canonical H25/H26 families (`/user/dashboard`, `/user/individual-reports`, `/user/exports/cnfis`, `/admin/scholardex/publications/*`, shared entity-first routes) while preserving legacy aliases only in explicitly historical/inventory documentation.
   - [ ] `H26.4` Tighten verification around canonical naming and aliases.
     Deliverable: refresh controller/security/guardrail coverage so canonical routes and renamed views are protected, while old-route references remain only in explicit removed-alias assertions.
     Exit criteria: tests fail if `/user` reverts to primary-dashboard behavior, if canonical dashboard links regress, or if removed aliases are reintroduced; guardrails/docs distinguish active routes from historical removals.

@@ -7,7 +7,7 @@ Scope: runtime architecture and dependency directions across backend, templates,
 
 ```mermaid
 graph TD
-    U["User Browser"] --> MVC["Spring MVC Controllers (/admin, /user)"]
+    U["User Browser"] --> MVC["Spring MVC Controllers (/admin, /user/**, shared entity routes)"]
     U --> API["REST Controllers (/api/**)"]
     SCH["Scheduled Worker"] --> PY["Scopus Python Service (WebClient)"]
 
@@ -30,7 +30,7 @@ graph TD
 ### 2.1 Web MVC (HTML)
 
 - `AdminViewController` (`/admin`) is the largest admin web entrypoint and directly orchestrates user/researcher/scopus/ranking/reporting CRUD and exports.
-- `UserViewController` (`/user`) is the largest user-facing entrypoint and directly orchestrates publication/citation views, indicator application, task creation, and CNFIS export.
+- `UserViewController` uses `/user/dashboard` as the canonical dashboard route (`/user` remains compatibility redirect-only) and orchestrates publication/citation views, indicator application, task creation, and CNFIS export.
 - Additional focused MVC controllers exist for activity instances, publication wizard, groups, reports, activities, and URAP pages.
 
 Representative files:
@@ -94,7 +94,7 @@ Expected direction currently observed in runtime code:
 | Flow | Entry | Orchestration Core | Data Access | Output |
 |---|---|---|---|---|
 | Admin CRUD + listings | `/admin/**` | `AdminViewController` (+ specialized admin controllers) | many repositories directly | thymeleaf admin pages |
-| User publications/citations/reporting | `/user/**` | `UserViewController` (+ user subcontrollers) | scopus/reporting/task repositories + reporting services | thymeleaf user pages + downloads |
+| User publications/citations/reporting | `/user/dashboard`, `/user/publications`, `/user/publications/scopus-tasks`, `/user/tasks/scopus/update-publications`, `/user/tasks/scopus/update-citations`, `/user/individual-reports`, `/user/exports/cnfis` | `UserViewController` (+ user subcontrollers) | scopus/reporting/task repositories + reporting services | thymeleaf user pages + downloads |
 | Group reporting/export | `/admin/groups/**` | `AdminGroupController` | group/researcher/scopus/reporting repositories + scoring services | group pages + archive/report exports |
 | Scoring execution | indicator apply/report routes | `ScientificProductionService`, `ActivityReportingService`, `ScoringFactoryService` | rankings/core/sense/cncsis/cache + scopus forum/publication data | per-item and total scores |
 | CNFIS 2025 export | `/user/exports/cnfis`, `/admin/groups/{id}/publications/exportCNFIS2025` | `CNFISScoringService2025` + `CNFISReportExportService` | scopus data + ranking/cache sources | CNFIS export file |

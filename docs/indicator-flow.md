@@ -1,4 +1,4 @@
-# `/user/indicators/apply/{id}`, `/user/individualReports/view/{id}`, and `/admin/groups/{gId}/reports/view/{repId}`
+# `/user/indicators/apply/{id}`, `/user/individual-reports/view/{id}`, and `/admin/groups/{gId}/reports/view/{repId}`
 
 ## Scope
 This document reflects the persisted-score architecture for user indicator evaluation, user report runs, and admin group report runs.
@@ -28,7 +28,7 @@ Manual refresh:
 
 ## 2) Individual report flow
 Route:
-- `GET /user/individualReports/view/{id}`
+- `GET /user/individual-reports/view/{id}`
 
 Behavior:
 - `UserIndividualReportRunService#getOrCreateLatestRun(userEmail, reportId)` is used.
@@ -40,7 +40,7 @@ Behavior:
   - persists run as `READY`/`PARTIAL`/`FAILED`.
 
 Manual refresh:
-- `POST /user/individualReports/view/{id}/refresh`
+- `POST /user/individual-reports/view/{id}/refresh`
 - creates a brand-new immutable run (new snapshot links).
 
 ## 3) Group individual report flow
