@@ -63,6 +63,15 @@
     </nav>
 </div>
 
+<div th:fragment="sidebar(activeSection)">
+    <div th:if="${sidebarContext == 'admin'}">
+        <th:block th:replace="~{fragments :: admin-sidebar(${activeSection})}"></th:block>
+    </div>
+    <div th:unless="${sidebarContext == 'admin'}">
+        <th:block th:replace="~{fragments :: user-sidebar(${activeSection})}"></th:block>
+    </div>
+</div>
+
 <!-- Admin Sidebar Fragment -->
 <div th:fragment="admin-sidebar(activeSection)">
 <!--    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">-->

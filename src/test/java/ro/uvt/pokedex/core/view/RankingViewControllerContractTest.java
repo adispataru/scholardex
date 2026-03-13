@@ -5,12 +5,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.model.ArtisticEvent;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.model.user.User;
+import ro.uvt.pokedex.core.model.user.UserRole;
 import ro.uvt.pokedex.core.service.application.ScholardexForumDetailService;
 import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.ScholardexForumMvcService;
@@ -24,6 +30,7 @@ import ro.uvt.pokedex.core.service.application.model.WosCategoryJournalViewModel
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -72,6 +79,22 @@ class RankingViewControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"scholardex-forums-next\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/scholardex-forums.js")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
+    }
+
+    @Test
+    void sharedForumsRouteUsesAdminSidebarForPlatformAdmin() throws Exception {
+        mockMvc.perform(get("/forums").with(authenticatedUser(userWithRoles("admin@uvt.ro", Set.of(UserRole.PLATFORM_ADMIN)))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/admin/users\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("href=\"/user/profile\""))));
+    }
+
+    @Test
+    void sharedForumsRouteUsesUserSidebarForNonAdmin() throws Exception {
+        mockMvc.perform(get("/forums").with(authenticatedUser(userWithRoles("u@uvt.ro", Set.of(UserRole.RESEARCHER)))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/user/profile\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("href=\"/admin/users\""))));
     }
 
     @Test
@@ -335,5 +358,23 @@ class RankingViewControllerContractTest {
 
         mockMvc.perform(get("/rankings/events"))
                 .andExpect(status().isNotFound());
+    }
+
+    private User userWithRoles(String email, Set<UserRole> roles) {
+        User user = new User();
+        user.setEmail(email);
+        user.setRoles(roles);
+        return user;
+    }
+
+    private RequestPostProcessor authenticatedUser(User user) {
+        return request -> {
+            TestingAuthenticationToken authentication = new TestingAuthenticationToken(user, null, "RESEARCHER");
+            SecurityContext context = SecurityContextHolder.createEmptyContext();
+            context.setAuthentication(authentication);
+            SecurityContextHolder.setContext(context);
+            request.setUserPrincipal(authentication);
+            return request;
+        };
     }
 }

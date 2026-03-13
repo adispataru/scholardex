@@ -33,7 +33,7 @@ Each runtime page under `templates/admin/**`, `templates/user/**`, `templates/ra
 - include `/assets/app.css`
 - include `/assets/app.js`
 - use `fragments :: navbar`
-- use role-appropriate sidebar fragment (`admin-sidebar` or `user-sidebar`)
+- use unified role-aware sidebar fragment (`fragments :: sidebar(activeSection)`)
 
 ### 3.2 Template composition anti-patterns
 

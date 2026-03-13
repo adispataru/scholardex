@@ -22,6 +22,7 @@ import ro.uvt.pokedex.core.model.reporting.Position;
 import ro.uvt.pokedex.core.model.tasks.ScopusCitationsUpdate;
 import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;
 import ro.uvt.pokedex.core.model.user.User;
+import ro.uvt.pokedex.core.model.user.UserRole;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
@@ -44,6 +45,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.eq;
@@ -270,6 +272,32 @@ class UserViewControllerContractTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("user/publications"))
                 .andExpect(model().attributeExists("publications", "hIndex", "authorMap", "forumMap", "numCitations", "user"));
+    }
+
+    @Test
+    void userRouteKeepsUserSidebarForPlatformAdmin() throws Exception {
+        Publication publication = new Publication();
+        publication.setId("p1");
+        publication.setForum("f1");
+        publication.setAuthors(List.of("a1"));
+
+        when(userPublicationFacade.buildUserPublicationsView(eq("r1")))
+                .thenReturn(Optional.of(new UserPublicationsViewModel(
+                        List.of(publication),
+                        1,
+                        Map.of(),
+                        Map.of(),
+                        0
+                )));
+
+        User user = userPrincipal("admin@uvt.ro");
+        user.setResearcherId("r1");
+        user.setRoles(Set.of(UserRole.PLATFORM_ADMIN));
+
+        mockMvc.perform(get("/user/publications").with(authenticatedUser(user)))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/user/profile\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("href=\"/admin/users\""))));
     }
 
     @Test

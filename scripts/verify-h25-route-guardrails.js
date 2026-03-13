@@ -1,6 +1,13 @@
 const fs = require('fs');
 const path = require('path');
 
+const runtimeTemplateRoots = [
+  'src/main/resources/templates/admin',
+  'src/main/resources/templates/user',
+  'src/main/resources/templates/rankings',
+  'src/main/resources/templates/scholardex'
+];
+
 const checks = [
   {
     file: 'src/main/resources/templates/fragments.html',
@@ -116,6 +123,27 @@ for (const check of checks) {
     if (content.includes(forbidden)) {
       errors.push(`${check.file}: contains forbidden H25 route regression '${forbidden}'`);
     }
+  }
+}
+
+function listHtmlFiles(dir) {
+  if (!fs.existsSync(dir)) return [];
+  const out = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      out.push(...listHtmlFiles(full));
+    } else if (entry.isFile() && full.endsWith('.html')) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+for (const file of runtimeTemplateRoots.flatMap(listHtmlFiles)) {
+  const content = fs.readFileSync(file, 'utf8');
+  if (content.includes('fragments :: admin-sidebar(') || content.includes('fragments :: user-sidebar(')) {
+    errors.push(`${file}: must use unified sidebar fragment 'fragments :: sidebar(...)'`);
   }
 }
 
