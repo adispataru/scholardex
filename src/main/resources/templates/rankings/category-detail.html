@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${categoryDetail.categoryName()}">WoS Category</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="~{fragments :: user-sidebar('rankings-categories')}"></div>
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar}"></div>
+            <div class="container-fluid">
+                <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                    <div>
+                        <h1 class="h3 mb-0 text-gray-800" th:text="${categoryDetail.categoryName()}">Category Name</h1>
+                        <p class="mb-0 text-muted">
+                            Edition: <span th:text="${categoryDetail.edition()}">SCIE</span>
+                        </p>
+                    </div>
+                    <a class="btn btn-outline-primary btn-sm" th:href="@{/rankings/categories}">Back to Categories</a>
+                </div>
+
+                <div class="row">
+                    <div class="col-xl-4 col-md-6 mb-4">
+                        <div class="card border-left-primary shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Journals</div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${categoryDetail.journalCount()}">0</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-4 col-md-6 mb-4">
+                        <div class="card border-left-info shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Latest Year</div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${categoryDetail.latestYear() != null ? categoryDetail.latestYear() : '—'}">—</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Journal Coverage</h6>
+                    </div>
+                    <div class="card-body">
+                        <div th:if="${#lists.isEmpty(categoryDetail.journals())}" class="alert alert-warning mb-0" role="status">
+                            No journals are currently linked to this WoS category.
+                        </div>
+                        <div class="table-responsive" th:if="${!#lists.isEmpty(categoryDetail.journals())}">
+                            <table class="table table-bordered" id="wos-category-detail-table" width="100%" cellspacing="0">
+                                <thead>
+                                <tr>
+                                    <th>Journal</th>
+                                    <th>ISSN</th>
+                                    <th>eISSN</th>
+                                    <th>Latest Year</th>
+                                    <th>AIS Quarter</th>
+                                    <th>RIS Quarter</th>
+                                    <th>IF Quarter</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="journal : ${categoryDetail.journals()}">
+                                    <td><a th:href="@{/scholardex/forums/{id}(id=${journal.journalId()})}" th:text="${journal.journalName()}">Journal Name</a></td>
+                                    <td th:text="${journal.issn()}">—</td>
+                                    <td th:text="${journal.eIssn()}">—</td>
+                                    <td th:text="${journal.latestYear() != null ? journal.latestYear() : '—'}">—</td>
+                                    <td th:text="${journal.latestAisQuarter()}">—</td>
+                                    <td th:text="${journal.latestRisQuarter()}">—</td>
+                                    <td th:text="${journal.latestIfQuarter()}">—</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+
+    <a class="scroll-to-top rounded" href="#page-top">
+        <i class="fa-solid fa-angle-up"></i>
+    </a>
+</div>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+
+</body>
+</html>

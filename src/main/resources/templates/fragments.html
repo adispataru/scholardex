@@ -149,9 +149,9 @@
         Rankings
     </div>
     <li class="nav-item" th:classappend="${activeSection} == 'rankings' ? 'active' : ''">
-        <a class="nav-link" th:href="@{/admin/rankings/wos}">
+        <a class="nav-link" th:href="@{/admin/scholardex/forums(wos='indexed')}">
             <i class="fa-solid fa-fw fa-medal"></i>
-            <span>WoS</span>
+            <span>WoS Journals</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'rankings-core' ? 'active' : ''">
@@ -285,6 +285,12 @@
         <a class="nav-link" th:href="@{/scholardex/forums}">
             <i class="fa-solid fa-fw fa-medal"></i>
             <span>Forums</span>
+        </a>
+    </li>
+    <li class="nav-item" th:classappend="${activeSection} == 'rankings-categories' ? 'active' : ''">
+        <a class="nav-link" th:href="@{/rankings/categories}">
+            <i class="fa-solid fa-fw fa-tags"></i>
+            <span>WoS Categories</span>
         </a>
     </li>
     <li class="nav-item" th:classappend="${activeSection} == 'rankings-core' ? 'active' : ''">

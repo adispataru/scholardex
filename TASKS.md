@@ -113,7 +113,7 @@ Done history moved to `TASKS-done.md`.
     Keep:
     - API paths and DTO schemas unchanged in this wave.
     Exit criteria: covered forum detail pages are forum-type aware, placeholders exist for later ranking integrations, and no active canonical MVC page still presents WoS rankings as a separate primary forum-detail concept.
-  - [ ] `H23.4` Route-aware guardrails and deterministic UI verification refresh.
+  - [x] `H23.4` Route-aware guardrails and deterministic UI verification refresh.
     Deliverable:
     - focused MVC contract tests aligned to the new canonical routes plus legacy redirects,
     - refreshed JS/browserless coverage for renamed pages/assets,

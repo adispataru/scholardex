@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>WoS Categories</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+        <div th:replace="~{fragments :: user-sidebar('rankings-categories')}"></div>
+        <div class="text-center d-none d-md-inline">
+            <button class="rounded-circle border-0" id="sidebarToggle"></button>
+        </div>
+    </ul>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar}"></div>
+            <div class="container-fluid">
+                <h1 class="h3 mb-2 text-gray-800">WoS Categories</h1>
+                <p class="mb-4">Browse the current Web of Science category sets used by journal detail pages.</p>
+
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Filters</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-row">
+                            <div class="form-group col-md-5">
+                                <label for="wos-categories-search">Search</label>
+                                <input id="wos-categories-search" type="text" class="form-control" placeholder="Category name or edition">
+                            </div>
+                            <div class="form-group col-md-2">
+                                <label for="wos-categories-sort">Sort By</label>
+                                <select id="wos-categories-sort" class="form-control">
+                                    <option value="categoryName">Category</option>
+                                    <option value="edition">Edition</option>
+                                    <option value="journalCount">Journals</option>
+                                    <option value="latestYear">Latest Year</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-2">
+                                <label for="wos-categories-direction">Direction</label>
+                                <select id="wos-categories-direction" class="form-control">
+                                    <option value="asc">Ascending</option>
+                                    <option value="desc">Descending</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-2">
+                                <label for="wos-categories-size">Page Size</label>
+                                <select id="wos-categories-size" class="form-control">
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 font-weight-bold text-primary">Category Directory</h6>
+                        <span id="wos-categories-total-info" class="text-muted small"></span>
+                    </div>
+                    <div class="card-body">
+                        <div id="wos-categories-loading" class="alert alert-info" role="status">Loading categories...</div>
+                        <div id="wos-categories-error" class="alert alert-danger d-none" role="alert"></div>
+                        <div id="wos-categories-empty" class="alert alert-warning d-none" role="status">No WoS categories found for the current filter.</div>
+
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="wos-categories-table" data-detail-base="/rankings/categories" width="100%" cellspacing="0">
+                                <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th>Edition</th>
+                                    <th>Journals</th>
+                                    <th>Latest Year</th>
+                                </tr>
+                                </thead>
+                                <tbody id="wos-categories-table-body"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <button id="wos-categories-prev" class="btn btn-outline-primary btn-sm" type="button">Previous</button>
+                            <span id="wos-categories-page-info" class="text-muted small"></span>
+                            <button id="wos-categories-next" class="btn btn-outline-primary btn-sm" type="button">Next</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+
+    <a class="scroll-to-top rounded" href="#page-top">
+        <i class="fa-solid fa-angle-up"></i>
+    </a>
+</div>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+<script src="/js/rankings-categories.js"></script>
+
+</body>
+</html>

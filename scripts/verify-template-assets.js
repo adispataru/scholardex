@@ -3,7 +3,9 @@ const path = require('path');
 
 const roots = [
   'src/main/resources/templates/admin',
-  'src/main/resources/templates/user'
+  'src/main/resources/templates/user',
+  'src/main/resources/templates/rankings',
+  'src/main/resources/templates/scholardex'
 ];
 
 const allowlistedExternalAssetReferences = new Map([
@@ -22,6 +24,18 @@ const allowlistedExternalAssetReferences = new Map([
   [
     'src/main/resources/templates/admin/rankings-view.html',
     new Set(['https://unpkg.com/frappe-charts@1.6.2/dist/frappe-charts.min.umd.js'])
+  ],
+  [
+    'src/main/resources/templates/rankings/urap-detail.html',
+    new Set(['https://cdn.jsdelivr.net/npm/chart.js'])
+  ],
+  [
+    'src/main/resources/templates/rankings/wos-detail.html',
+    new Set(['https://unpkg.com/frappe-charts@1.6.2/dist/frappe-charts.min.umd.js'])
+  ],
+  [
+    'src/main/resources/templates/scholardex/forum-detail.html',
+    new Set(['https://unpkg.com/frappe-charts@1.6.2/dist/frappe-charts.min.umd.js'])
   ]
 ]);
 
@@ -31,6 +45,7 @@ const allowlistedInlineScriptFiles = new Set([
   'src/main/resources/templates/admin/scopus-citations.html',
   'src/main/resources/templates/admin/scholardex-citations.html',
   'src/main/resources/templates/admin/scopus-venues.html',
+  'src/main/resources/templates/rankings/wos-detail.html',
   'src/main/resources/templates/user/citations.html',
   'src/main/resources/templates/user/criteria-apply.html',
   'src/main/resources/templates/user/profile.html',

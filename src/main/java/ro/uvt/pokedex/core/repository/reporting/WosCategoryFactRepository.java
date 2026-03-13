@@ -13,6 +13,7 @@ public interface WosCategoryFactRepository extends MongoRepository<WosCategoryFa
     List<WosCategoryFact> findAllByJournalId(String journalId);
     List<WosCategoryFact> findAllByJournalIdInAndEditionNormalizedIn(List<String> journalIds, Set<EditionNormalized> editions);
     List<WosCategoryFact> findAllByEditionNormalizedIn(Set<EditionNormalized> editions);
+    List<WosCategoryFact> findAllByCategoryNameCanonicalAndEditionNormalized(String categoryNameCanonical, EditionNormalized editionNormalized);
 
     Optional<WosCategoryFact> findByJournalIdAndYearAndCategoryNameCanonicalAndEditionNormalizedAndMetricType(
             String journalId,

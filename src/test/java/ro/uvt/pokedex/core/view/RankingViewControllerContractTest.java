@@ -16,8 +16,11 @@ import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.ScholardexForumMvcService;
 import ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService;
 import ro.uvt.pokedex.core.service.application.UrapRankingFacade;
+import ro.uvt.pokedex.core.service.application.WosCategoryPageService;
 import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
 import ro.uvt.pokedex.core.service.application.model.ScholardexForumDetailViewModel;
+import ro.uvt.pokedex.core.service.application.model.WosCategoryDetailViewModel;
+import ro.uvt.pokedex.core.service.application.model.WosCategoryJournalViewModel;
 
 import java.util.List;
 import java.util.Optional;
@@ -51,6 +54,8 @@ class RankingViewControllerContractTest {
     private ScholardexProjectionReadService scholardexProjectionReadService;
     @MockitoBean
     private ScholardexForumMvcService scholardexForumMvcService;
+    @MockitoBean
+    private WosCategoryPageService wosCategoryPageService;
 
     @Test
     void scholardexForumsPageRendersExpectedTemplateAndClientControls() throws Exception {
@@ -255,6 +260,55 @@ class RankingViewControllerContractTest {
         mockMvc.perform(get("/scholardex/forums"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/scholardex/forums\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/rankings/categories\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/rankings/core\"")));
+    }
+
+    @Test
+    void wosCategoriesPageRendersCanonicalTemplateAndLinks() throws Exception {
+        mockMvc.perform(get("/rankings/categories"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("rankings/categories"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("WoS Categories")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-search\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-sort\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-direction\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-size\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-table-body\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-prev\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-next\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/rankings-categories.js")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/scholardex/forums\"")));
+    }
+
+    @Test
+    void wosCategoryDetailPageRendersCanonicalTemplateAndForumLinks() throws Exception {
+        when(wosCategoryPageService.findCategory(eq("Computer Science - SCIE"))).thenReturn(Optional.of(
+                new WosCategoryDetailViewModel(
+                        "Computer Science - SCIE",
+                        "Computer Science",
+                        "SCIE",
+                        1,
+                        2024,
+                        List.of(new WosCategoryJournalViewModel("j1", "Journal One", "1234-5678", "8765-4321", 2024, "Q1", "Q2", "Q1"))
+                )
+        ));
+
+        mockMvc.perform(get("/rankings/categories/{key}", "Computer Science - SCIE"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("rankings/category-detail"))
+                .andExpect(model().attributeExists("categoryDetail"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Journal Coverage")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/scholardex/forums/j1\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/rankings/categories\"")));
+    }
+
+    @Test
+    void missingWosCategoryRendersNotFoundPage() throws Exception {
+        when(wosCategoryPageService.findCategory(eq("missing - SCIE"))).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/rankings/categories/{key}", "missing - SCIE"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/ranking-not-found"));
     }
 }

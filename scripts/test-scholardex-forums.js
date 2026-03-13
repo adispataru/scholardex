@@ -162,6 +162,7 @@ async function testLegacyWosPresetAndControlChangesTriggerRequests() {
   assert.strictEqual(parseQuery(calls[0]).wos, 'indexed');
   assert.strictEqual(els['scholardex-forums-wos'].value, 'indexed');
   assert.ok(els['scholardex-forums-table-body'].innerHTML.includes('/scholardex/forums/a'));
+  assert.ok(!els['scholardex-forums-table-body'].innerHTML.includes('/rankings/wos/'));
   assert.ok(els['scholardex-forums-table-body'].innerHTML.includes('WoS indexed'));
 
   els['scholardex-forums-next'].dispatch('click');

@@ -17,6 +17,7 @@ import ro.uvt.pokedex.core.service.application.ScholardexForumDetailService;
 import ro.uvt.pokedex.core.service.application.ScholardexForumMvcService;
 import ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService;
 import ro.uvt.pokedex.core.service.application.UrapRankingFacade;
+import ro.uvt.pokedex.core.service.application.WosCategoryPageService;
 import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
 import ro.uvt.pokedex.core.controller.dto.ScholardexForumPageResponse;
 import ro.uvt.pokedex.core.service.application.model.ScholardexForumDetailViewModel;
@@ -34,6 +35,7 @@ public class RankingViewController {
     private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final ScholardexForumMvcService scholardexForumMvcService;
     private final ScholardexForumDetailService scholardexForumDetailService;
+    private final WosCategoryPageService wosCategoryPageService;
 
     @GetMapping("/scholardex/forums")
     public String showScholardexForumsPage() {
@@ -78,6 +80,21 @@ public class RankingViewController {
     @GetMapping("/rankings/wos/{id}")
     public String showWosRankingDetailsPage(@PathVariable String id) {
         return "redirect:/scholardex/forums/" + id;
+    }
+
+    @GetMapping("/rankings/categories")
+    public String showWosCategoriesPage() {
+        return "rankings/categories";
+    }
+
+    @GetMapping("/rankings/categories/{key}")
+    public String showWosCategoryDetailsPage(Model model, @PathVariable String key) {
+        Optional<ro.uvt.pokedex.core.service.application.model.WosCategoryDetailViewModel> detail = wosCategoryPageService.findCategory(key);
+        if (detail.isEmpty()) {
+            return "user/ranking-not-found";
+        }
+        model.addAttribute("categoryDetail", detail.get());
+        return "rankings/category-detail";
     }
 
     @GetMapping({"/rankings/core", "/core"})

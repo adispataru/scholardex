@@ -300,6 +300,19 @@ class AdminViewControllerContractTest {
     }
 
     @Test
+    void scholardexPublicationsPagesRenderCanonicalTemplatesAndScopusRoutesRedirect() throws Exception {
+        mockMvc.perform(get("/admin/scholardex/publications"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin/scholardex-publications"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/admin/scholardex/publications/search")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/scopus/publications"))));
+
+        mockMvc.perform(get("/admin/scopus/publications"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/scholardex/publications"));
+    }
+
+    @Test
     void editScholardexAuthorPageRendersWithoutDatatablesScript() throws Exception {
         Author author = new Author();
         author.setId("a1");

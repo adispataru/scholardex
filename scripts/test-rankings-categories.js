@@ -3,7 +3,7 @@ const path = require('path');
 const vm = require('vm');
 const assert = require('assert');
 
-const scriptPath = path.join(__dirname, '..', 'src', 'main', 'resources', 'static', 'js', 'admin-scholardex-forums.js');
+const scriptPath = path.join(__dirname, '..', 'src', 'main', 'resources', 'static', 'js', 'rankings-categories.js');
 const scriptContent = fs.readFileSync(scriptPath, 'utf8');
 
 function createClassList(initialClasses = []) {
@@ -39,6 +39,7 @@ function createElement(id, options = {}) {
     textContent: options.textContent || '',
     innerHTML: options.innerHTML || '',
     disabled: Boolean(options.disabled),
+    dataset: options.dataset || {},
     classList: createClassList(options.classes || []),
     addEventListener(event, handler) {
       listeners[event] = listeners[event] || [];
@@ -50,25 +51,24 @@ function createElement(id, options = {}) {
   };
 }
 
-function createHarness(fetchImpl, search = '') {
+function createHarness(fetchImpl) {
   const elements = {
-    'admin-forums-search': createElement('admin-forums-search'),
-    'admin-forums-sort': createElement('admin-forums-sort', { value: 'publicationName' }),
-    'admin-forums-direction': createElement('admin-forums-direction', { value: 'asc' }),
-    'admin-forums-wos': createElement('admin-forums-wos', { value: 'all' }),
-    'admin-forums-size': createElement('admin-forums-size', { value: '25' }),
-    'admin-forums-loading': createElement('admin-forums-loading'),
-    'admin-forums-error': createElement('admin-forums-error', { classes: ['d-none'] }),
-    'admin-forums-empty': createElement('admin-forums-empty', { classes: ['d-none'] }),
-    'admin-forums-table-body': createElement('admin-forums-table-body'),
-    'admin-forums-page-info': createElement('admin-forums-page-info'),
-    'admin-forums-total-info': createElement('admin-forums-total-info'),
-    'admin-forums-prev': createElement('admin-forums-prev'),
-    'admin-forums-next': createElement('admin-forums-next')
+    'wos-categories-search': createElement('wos-categories-search'),
+    'wos-categories-sort': createElement('wos-categories-sort', { value: 'categoryName' }),
+    'wos-categories-direction': createElement('wos-categories-direction', { value: 'asc' }),
+    'wos-categories-size': createElement('wos-categories-size', { value: '25' }),
+    'wos-categories-loading': createElement('wos-categories-loading'),
+    'wos-categories-error': createElement('wos-categories-error', { classes: ['d-none'] }),
+    'wos-categories-empty': createElement('wos-categories-empty', { classes: ['d-none'] }),
+    'wos-categories-table': createElement('wos-categories-table', { dataset: { detailBase: '/rankings/categories' } }),
+    'wos-categories-table-body': createElement('wos-categories-table-body'),
+    'wos-categories-page-info': createElement('wos-categories-page-info'),
+    'wos-categories-total-info': createElement('wos-categories-total-info'),
+    'wos-categories-prev': createElement('wos-categories-prev'),
+    'wos-categories-next': createElement('wos-categories-next')
   };
 
   const context = {
-    window: { location: { search } },
     document: {
       readyState: 'complete',
       getElementById(id) {
@@ -86,7 +86,6 @@ function createHarness(fetchImpl, search = '') {
 
   vm.createContext(context);
   vm.runInContext(scriptContent, context);
-
   return elements;
 }
 
@@ -97,8 +96,7 @@ function parseQuery(url) {
     size: query.get('size'),
     sort: query.get('sort'),
     direction: query.get('direction'),
-    q: query.get('q'),
-    wos: query.get('wos')
+    q: query.get('q')
   };
 }
 
@@ -124,20 +122,19 @@ async function testDefaultLoadRequestsExpectedParams() {
   assert.deepStrictEqual(parseQuery(calls[0]), {
     page: '0',
     size: '25',
-    sort: 'publicationName',
+    sort: 'categoryName',
     direction: 'asc',
-    q: null,
-    wos: 'all'
+    q: null
   });
 }
 
-async function testLegacyPresetAndControlChangesTriggerRequests() {
+async function testControlChangesTriggerRequests() {
   const calls = [];
   const queue = [
-    { items: [{ id: 'a', publicationName: 'A', issn: '1', eIssn: '2', aggregationType: 'Journal', wosStatus: 'indexed' }], page: 0, size: 25, totalItems: 50, totalPages: 2 },
-    { items: [{ id: 'b', publicationName: 'B', issn: '3', eIssn: '4', aggregationType: 'Book', wosStatus: 'not_applicable' }], page: 1, size: 25, totalItems: 50, totalPages: 2 },
-    { items: [{ id: 'c', publicationName: 'C', issn: '5', eIssn: '6', aggregationType: 'Conference', wosStatus: 'not_indexed' }], page: 0, size: 25, totalItems: 50, totalPages: 2 },
-    { items: [{ id: 'd', publicationName: 'D', issn: '7', eIssn: '8', aggregationType: 'Series', wosStatus: 'indexed' }], page: 0, size: 25, totalItems: 50, totalPages: 2 }
+    { items: [{ key: 'Computer Science - SCIE', categoryName: 'Computer Science', edition: 'SCIE', journalCount: 3, latestYear: 2024 }], page: 0, size: 25, totalItems: 50, totalPages: 2 },
+    { items: [{ key: 'Economics - SSCI', categoryName: 'Economics', edition: 'SSCI', journalCount: 2, latestYear: 2023 }], page: 1, size: 25, totalItems: 50, totalPages: 2 },
+    { items: [{ key: 'Design - SCIE', categoryName: 'Design', edition: 'SCIE', journalCount: 4, latestYear: 2022 }], page: 0, size: 25, totalItems: 50, totalPages: 2 },
+    { items: [{ key: 'Physics - SCIE', categoryName: 'Physics', edition: 'SCIE', journalCount: 10, latestYear: 2025 }], page: 0, size: 50, totalItems: 50, totalPages: 1 }
   ];
 
   const els = createHarness(async (url) => {
@@ -150,30 +147,24 @@ async function testLegacyPresetAndControlChangesTriggerRequests() {
         return payload;
       }
     };
-  }, '?wos=indexed');
+  });
 
   await wait(10);
-  assert.strictEqual(parseQuery(calls[0]).wos, 'indexed');
-  assert.strictEqual(els['admin-forums-wos'].value, 'indexed');
-  assert.ok(els['admin-forums-table-body'].innerHTML.includes('/scholardex/forums/a'));
-  assert.ok(els['admin-forums-table-body'].innerHTML.includes('/admin/scholardex/forums/edit/a'));
-  assert.ok(!els['admin-forums-table-body'].innerHTML.includes('/admin/scopus/'));
-  assert.ok(!els['admin-forums-table-body'].innerHTML.includes('/admin/scholardex/forums/edit/\"'));
+  assert.ok(els['wos-categories-table-body'].innerHTML.includes('/rankings/categories/Computer%20Science%20-%20SCIE'));
 
-  els['admin-forums-next'].dispatch('click');
+  els['wos-categories-next'].dispatch('click');
   await wait(10);
   assert.strictEqual(parseQuery(calls[1]).page, '1');
 
-  els['admin-forums-search'].value = 'ieee';
-  els['admin-forums-search'].dispatch('input');
+  els['wos-categories-search'].value = 'design';
+  els['wos-categories-search'].dispatch('input');
   await wait(350);
-  assert.strictEqual(parseQuery(calls[2]).q, 'ieee');
+  assert.strictEqual(parseQuery(calls[2]).q, 'design');
 
-  els['admin-forums-wos'].value = 'not_indexed';
-  els['admin-forums-wos'].dispatch('change');
+  els['wos-categories-size'].value = '50';
+  els['wos-categories-size'].dispatch('change');
   await wait(10);
-  assert.strictEqual(parseQuery(calls[3]).page, '0');
-  assert.strictEqual(parseQuery(calls[3]).wos, 'not_indexed');
+  assert.strictEqual(parseQuery(calls[3]).size, '50');
 }
 
 async function testPrevNextBoundariesEnforced() {
@@ -184,17 +175,16 @@ async function testPrevNextBoundariesEnforced() {
       ok: true,
       status: 200,
       async json() {
-        return { items: [{ id: 'only', publicationName: 'Only', issn: '', eIssn: '', aggregationType: '', wosStatus: 'not_applicable' }], page: 0, size: 25, totalItems: 1, totalPages: 1 };
+        return { items: [{ key: 'Only - SCIE', categoryName: 'Only', edition: 'SCIE', journalCount: 1, latestYear: 2024 }], page: 0, size: 25, totalItems: 1, totalPages: 1 };
       }
     };
   });
 
   await wait(10);
-  assert.strictEqual(els['admin-forums-prev'].disabled, true);
-  assert.strictEqual(els['admin-forums-next'].disabled, true);
-
-  els['admin-forums-prev'].dispatch('click');
-  els['admin-forums-next'].dispatch('click');
+  assert.strictEqual(els['wos-categories-prev'].disabled, true);
+  assert.strictEqual(els['wos-categories-next'].disabled, true);
+  els['wos-categories-prev'].dispatch('click');
+  els['wos-categories-next'].dispatch('click');
   await wait(10);
   assert.strictEqual(calls.length, 1);
 }
@@ -208,7 +198,7 @@ async function testEmptyAndErrorStateRendering() {
     }
   }));
   await wait(10);
-  assert.strictEqual(emptyEls['admin-forums-empty'].classList.contains('d-none'), false);
+  assert.strictEqual(emptyEls['wos-categories-empty'].classList.contains('d-none'), false);
 
   const errorEls = createHarness(async () => ({
     ok: false,
@@ -218,16 +208,16 @@ async function testEmptyAndErrorStateRendering() {
     }
   }));
   await wait(10);
-  assert.strictEqual(errorEls['admin-forums-error'].classList.contains('d-none'), false);
-  assert.ok(errorEls['admin-forums-error'].textContent.length > 0);
+  assert.strictEqual(errorEls['wos-categories-error'].classList.contains('d-none'), false);
+  assert.ok(errorEls['wos-categories-error'].textContent.length > 0);
 }
 
 async function run() {
   await testDefaultLoadRequestsExpectedParams();
-  await testLegacyPresetAndControlChangesTriggerRequests();
+  await testControlChangesTriggerRequests();
   await testPrevNextBoundariesEnforced();
   await testEmptyAndErrorStateRendering();
-  console.log('admin-scholardex-forums.js behavior tests passed.');
+  console.log('rankings-categories.js behavior tests passed.');
 }
 
 run().catch((error) => {
