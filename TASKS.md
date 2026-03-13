@@ -44,6 +44,7 @@ Done history moved to `TASKS-done.md`.
   - [ ] `H24.1` Lock `/api/rankings/wos` Postgres query contract.
     Deliverable: implementation-ready contract for the SQL-backed `/api/rankings/wos` search path, including allowed sort fields, direction rules, query normalization, prefix-search behavior, paging semantics, and response-shape compatibility.
     Exit criteria: the Postgres implementation target is decision-locked and explicitly matches the current public API contract unless a change is intentionally recorded.
+    Contract source of truth: `docs/h24.1-wos-rankings-postgres-query-contract.md`.
   - [ ] `H24.2` Implement PostgreSQL read port for WoS rankings API.
     Deliverable: dedicated Postgres query component for `/api/rankings/wos` backed by `reporting_read.wos_ranking_view`, returning the existing `WosRankingPageResponse`.
     Exit criteria: the read port supports current paging/sorting/search behavior and reads only from PostgreSQL for this API surface.
