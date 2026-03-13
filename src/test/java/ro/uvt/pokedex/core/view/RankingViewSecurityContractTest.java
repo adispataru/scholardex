@@ -80,19 +80,18 @@ class RankingViewSecurityContractTest {
     }
 
     @Test
-    void unauthenticatedRankingsWosRedirectsToLogin() throws Exception {
-        mockMvc.perform(get("/rankings/wos"))
+    void unauthenticatedForumsRedirectsToLogin() throws Exception {
+        mockMvc.perform(get("/forums"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login"));
     }
 
     @Test
-    void researcherCanAccessWosRankings() throws Exception {
-        mockMvc.perform(get("/rankings/wos")
+    void researcherCanAccessForums() throws Exception {
+        mockMvc.perform(get("/forums")
                         .with(user("researcher@uvt.ro")
                                 .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/forums?wos=indexed"));
+                .andExpect(status().isOk());
     }
 
     @Test

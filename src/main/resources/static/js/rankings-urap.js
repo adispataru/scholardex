@@ -91,7 +91,7 @@
       return;
     }
 
-    const detailBase = els.table.dataset.detailBase || '/rankings/urap';
+    const detailBase = els.table.dataset.detailBase || '/universities';
     const html = items.map(function (item) {
       const id = encodeURIComponent(item.id || '');
       return '<tr>' +

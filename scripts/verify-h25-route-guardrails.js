@@ -6,13 +6,17 @@ const checks = [
     file: 'src/main/resources/templates/fragments.html',
     forbidden: [
       '/scholardex/forums"',
+      '/rankings/wos"',
       '/rankings/categories"',
       '/rankings/core"',
       '/rankings/urap"',
       '/rankings/events"',
+      '/core"',
+      '/urap"',
       '/admin/rankings/core"',
       '/admin/rankings/urap"',
-      '/admin/rankings/events"'
+      '/admin/rankings/events"',
+      '/admin/rankings/wos"'
     ]
   },
   {
@@ -20,12 +24,44 @@ const checks = [
     forbidden: ['/scholardex/forums/', '/rankings/categories"']
   },
   {
+    file: 'src/main/resources/templates/rankings/categories.html',
+    forbidden: ['data-detail-base="/rankings/categories"']
+  },
+  {
+    file: 'src/main/resources/templates/rankings/core.html',
+    forbidden: ['data-detail-base="/rankings/core"']
+  },
+  {
+    file: 'src/main/resources/templates/rankings/urap.html',
+    forbidden: ['data-detail-base="/rankings/urap"']
+  },
+  {
+    file: 'src/main/resources/templates/scholardex/forum-detail.html',
+    forbidden: ['/rankings/categories/']
+  },
+  {
+    file: 'src/main/resources/templates/user/indicators-apply-citations.html',
+    forbidden: ['/scholardex/forums/']
+  },
+  {
     file: 'src/main/resources/static/js/scholardex-forums.js',
-    forbidden: ['/scholardex/forums/data?']
+    forbidden: ['/scholardex/forums/data?', '/rankings/wos/']
   },
   {
     file: 'src/main/resources/static/js/admin-scholardex-forums.js',
     forbidden: ['/scholardex/forums/data?']
+  },
+  {
+    file: 'src/main/resources/static/js/rankings-categories.js',
+    forbidden: ["/rankings/categories'"]
+  },
+  {
+    file: 'src/main/resources/static/js/rankings-core.js',
+    forbidden: ["/rankings/core'"]
+  },
+  {
+    file: 'src/main/resources/static/js/rankings-urap.js',
+    forbidden: ["/rankings/urap'"]
   }
 ];
 

@@ -180,38 +180,33 @@ class AdminViewControllerContractTest {
     }
 
     @Test
-    void adminWosRankingsPageRedirectsToCanonicalForums() throws Exception {
+    void removedAdminWosReadRouteReturnsNotFound() throws Exception {
         mockMvc.perform(get("/admin/rankings/wos"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/forums?wos=indexed"));
+                .andExpect(status().isNotFound());
     }
 
     @Test
-    void legacyAdminWosDetailRedirectsToCanonicalForumDetails() throws Exception {
+    void removedAdminWosDetailReadRouteReturnsNotFound() throws Exception {
         mockMvc.perform(get("/admin/rankings/wos/{id}", "missing"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/forums/missing"));
+                .andExpect(status().isNotFound());
     }
 
     @Test
-    void legacyAdminCoreReadRouteRedirectsToCanonicalCoreRankings() throws Exception {
+    void removedAdminCoreReadRouteReturnsNotFound() throws Exception {
         mockMvc.perform(get("/admin/rankings/core"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/core/rankings"));
+                .andExpect(status().isNotFound());
     }
 
     @Test
-    void legacyAdminCoreDetailReadRouteRedirectsToCanonicalCoreRankingDetail() throws Exception {
+    void removedAdminCoreDetailReadRouteReturnsNotFound() throws Exception {
         mockMvc.perform(get("/admin/rankings/core/{id}", "c1"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/core/rankings/c1"));
+                .andExpect(status().isNotFound());
     }
 
     @Test
-    void legacyAdminEventsReadRouteRedirectsToCanonicalEvents() throws Exception {
+    void removedAdminEventsReadRouteReturnsNotFound() throws Exception {
         mockMvc.perform(get("/admin/rankings/events"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/events"));
+                .andExpect(status().isNotFound());
     }
 
     @Test

@@ -45,9 +45,10 @@ Done history moved to `TASKS-done.md`.
     Deliverable: implementation-ready route contract defining which pages remain user-owned (`/user/dashboard`, `/user/publications`, `/user/activities`) versus which become shared authenticated entity routes (`/forums`, `/wos/categories`, `/core/rankings`, `/universities`, `/events`), plus explicit non-goals for admin-only management pages that stay under `/admin/*`.
     Exit criteria: every currently duplicated read surface has one decision-locked canonical route family and one owner context before code changes start.
     Notes: locked by `docs/h25.1-canonical-route-ownership-contract.md`; H25.2 starts from this mapping as the route ownership gate.
-  - [ ] `H25.2` Consolidate shared entity MVC routes and remove duplicate admin read pages.
+  - [x] `H25.2` Consolidate shared entity MVC routes and remove duplicate admin read pages.
     Deliverable: shared MVC route consolidation for forums, WoS categories, CORE rankings, university rankings, and events, with duplicate `/admin/*` read/list/detail pages removed and callers/templates updated to use the canonical shared routes.
     Exit criteria: shared read entities are no longer exposed through separate admin/user route families, and no duplicate admin MVC page remains for the covered read surfaces.
+    Notes: complete with canonical-only shared routes (`/forums`, `/wos/categories`, `/core/rankings`, `/universities`, `/events`), removed legacy public aliases (`/rankings/*`, `/scholardex/forums*`, `/core*`, `/urap*`), and removed admin duplicate read GET aliases under `/admin/rankings/*`.
   - [ ] `H25.3` Normalize remaining user-owned route families.
     Deliverable: user route cleanup so personal/user-owned pages remain under a consistent `/user/*` model, including keeping `/user/dashboard` and `/user/publications` and renaming activity-instance reads to `/user/activities`.
     Exit criteria: user-owned routes follow a consistent naming model and no leftover user route uses the old inconsistent entity naming where a cleaner canonical `/user/*` alternative is defined by H25.

@@ -168,7 +168,7 @@
                                     </div>
                                     <div th:each="e, iterStat : ${wosRanking.webOfScienceCategoryIndex}" class="mb-4">
                                         <h6 class="m-0 text-primary">
-                                            <a th:href="@{/rankings/categories/{key}(key=${e.key})}" th:text="${e.key}">Category</a>
+                                            <a th:href="@{/wos/categories/{key}(key=${e.key})}" th:text="${e.key}">Category</a>
                                         </h6>
                                         <div class="mt-2">
                                             <div th:attr="id='chart-quartile-' + ${#strings.replace(e.key, ' ', '-')}"></div>

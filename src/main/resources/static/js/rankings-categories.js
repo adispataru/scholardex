@@ -66,7 +66,7 @@
   }
 
   function renderRows(items) {
-    const detailBase = els.table.dataset.detailBase || '/rankings/categories';
+    const detailBase = els.table.dataset.detailBase || '/wos/categories';
     els.tableBody.innerHTML = (items || []).map(function (item) {
       const key = encodeURIComponent(item.key || '');
       return '<tr>' +

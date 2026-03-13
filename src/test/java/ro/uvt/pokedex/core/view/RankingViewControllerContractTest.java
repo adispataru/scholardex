@@ -75,17 +75,15 @@ class RankingViewControllerContractTest {
     }
 
     @Test
-    void rankingsWosListRedirectsToCanonicalForums() throws Exception {
+    void legacyRankingsWosRouteIsRemoved() throws Exception {
         mockMvc.perform(get("/rankings/wos"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/forums?wos=indexed"));
+                .andExpect(status().isNotFound());
     }
 
     @Test
-    void rankingsWosDetailRedirectsToCanonicalForumDetail() throws Exception {
+    void legacyRankingsWosDetailRouteIsRemoved() throws Exception {
         mockMvc.perform(get("/rankings/wos/{id}", "w1"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/forums/w1"));
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -313,9 +311,29 @@ class RankingViewControllerContractTest {
     }
 
     @Test
-    void scholardexForumsAliasStillResolvesDuringMigration() throws Exception {
+    void removedPublicAliasesReturnNotFound() throws Exception {
         mockMvc.perform(get("/scholardex/forums"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("scholardex/forums"));
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/scholardex/forums/{id}", "w1"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/rankings/categories"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/rankings/core"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/core"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/rankings/urap"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/urap"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/rankings/events"))
+                .andExpect(status().isNotFound());
     }
 }

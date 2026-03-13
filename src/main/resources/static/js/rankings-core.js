@@ -84,7 +84,7 @@
       return;
     }
 
-    const detailBase = els.table.dataset.detailBase || '/rankings/core';
+    const detailBase = els.table.dataset.detailBase || '/core/rankings';
     const html = items.map(function (item) {
       const id = encodeURIComponent(item.id || '');
       return '<tr>' +

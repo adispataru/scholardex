@@ -28,7 +28,6 @@ import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.AdminInstitutionReportFacade;
 import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
-import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminScopusCitationsViewModel;
@@ -53,7 +52,6 @@ public class AdminViewController {
     private final ScholardexAdminReadFacade scholardexAdminReadFacade;
     private final AdminInstitutionReportFacade adminInstitutionReportFacade;
     private final RankingMaintenanceFacade rankingMaintenanceFacade;
-    private final WosRankingDetailsReadService wosRankingDetailsReadService;
     private final String Country = "Romania";
 
 
@@ -523,16 +521,6 @@ public class AdminViewController {
         return "redirect:/admin/scholardex/publications/citations?id=" + id;
     }
 
-    @GetMapping("/rankings/wos")
-    public String showRankingsPage() {
-        return "redirect:/forums?wos=indexed";
-    }
-
-    @GetMapping("/rankings/events")
-    public String showArtsRankingsPage(Model model) {
-        return "redirect:/events";
-    }
-
     @PostMapping("/rankings/wos/computePositionsForKnownQuarters")
     public String computeMissingRanks(RedirectAttributes redirectAttributes) {
         try {
@@ -639,22 +627,6 @@ public class AdminViewController {
         }
         return "redirect:/forums?wos=indexed";
     }
-
-    @GetMapping("/rankings/core")
-    public String showCoreRankingsPage() {
-        return "redirect:/core/rankings";
-    }
-
-    @GetMapping("/rankings/wos/{id}")
-    public String showRankingPage(Model model, @PathVariable  String id) {
-        return "redirect:/forums/" + id;
-    }
-
-    @GetMapping("/rankings/core/{id}")
-    public String showCoreRankingPage(Model model, @PathVariable  String id) {
-        return "redirect:/core/rankings/" + id;
-    }
-
 
     @PostMapping("/users/lock/{email}")
     public String lockUser(@PathVariable String email) {

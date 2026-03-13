@@ -6,16 +6,18 @@ const checks = [
     file: 'src/main/resources/templates/fragments.html',
     forbidden: [
       '/admin/rankings/wos"',
-      '/admin/scopus/'
+      '/admin/scopus/',
+      '/rankings/wos"',
+      '/scholardex/forums"'
     ]
   },
   {
     file: 'src/main/resources/templates/scholardex/forums.html',
-    forbidden: ['/rankings/wos"', '/admin/scopus/']
+    forbidden: ['/rankings/wos"', '/admin/scopus/', '/scholardex/forums/data']
   },
   {
     file: 'src/main/resources/templates/scholardex/forum-detail.html',
-    forbidden: ['/rankings/wos/"', '/admin/scopus/']
+    forbidden: ['/rankings/wos/"', '/admin/scopus/', '/rankings/categories/']
   },
   {
     file: 'src/main/resources/templates/admin/scholardex-forums.html',

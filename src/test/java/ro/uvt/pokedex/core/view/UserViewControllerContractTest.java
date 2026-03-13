@@ -318,7 +318,7 @@ class UserViewControllerContractTest {
         mockMvc.perform(get("/user/rankings/{id}", "forum-1")
                         .with(authenticatedUser("u@uvt.ro")))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/scholardex/forums/forum-1"));
+                .andExpect(redirectedUrl("/forums/forum-1"));
     }
 
     @Test
