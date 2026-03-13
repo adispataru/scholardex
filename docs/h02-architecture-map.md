@@ -97,7 +97,7 @@ Expected direction currently observed in runtime code:
 | User publications/citations/reporting | `/user/**` | `UserViewController` (+ user subcontrollers) | scopus/reporting/task repositories + reporting services | thymeleaf user pages + downloads |
 | Group reporting/export | `/admin/groups/**` | `AdminGroupController` | group/researcher/scopus/reporting repositories + scoring services | group pages + archive/report exports |
 | Scoring execution | indicator apply/report routes | `ScientificProductionService`, `ActivityReportingService`, `ScoringFactoryService` | rankings/core/sense/cncsis/cache + scopus forum/publication data | per-item and total scores |
-| CNFIS 2025 export | `/user/publications/exportCNFIS2025`, `/admin/groups/{id}/publications/exportCNFIS2025` | `CNFISScoringService2025` + `CNFISReportExportService` | scopus data + ranking/cache sources | CNFIS export file |
+| CNFIS 2025 export | `/user/exports/cnfis`, `/admin/groups/{id}/publications/exportCNFIS2025` | `CNFISScoringService2025` + `CNFISReportExportService` | scopus data + ranking/cache sources | CNFIS export file |
 | Scopus publication update | scheduled poll | `ScopusUpdateScheduler` + `ScopusDataService` | task repos + scopus repos | updated publications/tasks statuses |
 | Scopus citation update | scheduled poll | `ScopusUpdateScheduler` + `ScopusDataService` | citation/pub/task repos | updated citation graph/tasks statuses |
 | Frontend asset contract | npm scripts | `build-assets.js`, `verify-assets.js`, `verify-template-assets.js` | static assets + template files | build artifacts + CI/workflow gate |

@@ -24,7 +24,6 @@ import ro.uvt.pokedex.core.service.application.UserIndicatorResultService;
 import ro.uvt.pokedex.core.service.application.UserReportFacade;
 import ro.uvt.pokedex.core.service.application.UserScopusTaskFacade;
 import ro.uvt.pokedex.core.service.application.RequestYearRangeSupport;
-import ro.uvt.pokedex.core.service.application.UserRankingFacade;
 import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
 import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorsViewModel;
@@ -53,7 +52,6 @@ public class UserViewController {
     private final UserPublicationFacade userPublicationFacade;
     private final UserScopusTaskFacade userScopusTaskFacade;
     private final UserReportFacade userReportFacade;
-    private final UserRankingFacade userRankingFacade;
     private final UserIndicatorResultService userIndicatorResultService;
     private final UserIndividualReportRunService userIndividualReportRunService;
     @GetMapping()
@@ -126,7 +124,7 @@ public class UserViewController {
         return "user/publications";
     }
 
-    @GetMapping("/publications/scopus_tasks")
+    @GetMapping("/publications/scopus-tasks")
     public String showScopusTasksPage(Model model, Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
             return "redirect:/login";
@@ -141,7 +139,7 @@ public class UserViewController {
     }
 
 
-    @PostMapping("/tasks/scopus/update")
+    @PostMapping("/tasks/scopus/update-publications")
     public ResponseEntity<ScopusPublicationUpdate> createScopusUpdateTask(@ModelAttribute ScopusPublicationUpdate task,
                                                  Authentication authentication,
                                                  RedirectAttributes redirectAttributes) {
@@ -154,7 +152,7 @@ public class UserViewController {
         return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
 
-    @PostMapping("/tasks/scopus/updateCitations")
+    @PostMapping("/tasks/scopus/update-citations")
     public ResponseEntity<ScopusCitationsUpdate> createScopusCitationsUpdateTask(@ModelAttribute ScopusCitationsUpdate task,
                                                                           Authentication authentication,
                                                                           RedirectAttributes redirectAttributes) {
@@ -277,26 +275,7 @@ public class UserViewController {
         response.getOutputStream().write(vm.workbookBytes());
     }
 
-    @GetMapping("/export/cnfis")
-    @ResponseBody
-    public void exportCnfisResults(Authentication authentication, HttpServletResponse response) throws IOException {
-        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
-            response.sendRedirect("/login");
-            return;
-        }
-
-        UserWorkbookExportResult exportResult = userReportFacade.buildLegacyUserCnfisWorkbookExport(currentUser.getEmail());
-        if (exportResult.status() == UserWorkbookExportStatus.NOT_FOUND) {
-            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            return;
-        }
-        response.setContentType(exportResult.contentType());
-        response.setHeader("Content-Disposition", "attachment; filename=\"" + exportResult.fileName() + "\"");
-        response.getOutputStream().write(exportResult.workbookBytes());
-    }
-
-
-    @GetMapping("/individualReports")
+    @GetMapping("/individual-reports")
     public String viewReports(Model model, Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
             return "redirect:/login";
@@ -309,7 +288,7 @@ public class UserViewController {
     }
 
 
-    @GetMapping("/individualReports/view/{id}")
+    @GetMapping("/individual-reports/view/{id}")
     public String viewIndividualReport(Model model, Authentication authentication, @PathVariable("id") String id) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
             return "redirect:/login";
@@ -345,27 +324,22 @@ public class UserViewController {
         return "user/individualReport-view";
     }
 
-    @PostMapping("/individualReports/view/{id}/refresh")
+    @PostMapping("/individual-reports/view/{id}/refresh")
     public String refreshIndividualReport(Model model, Authentication authentication, @PathVariable("id") String id) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
             return "redirect:/login";
         }
         userIndividualReportRunService.refreshRun(currentUser.getEmail(), id);
-        return "redirect:/user/individualReports/view/" + id;
+        return "redirect:/user/individual-reports/view/" + id;
     }
 
-    @PostMapping("/individualReports/view/{id}/refresh-all-indicators")
+    @PostMapping("/individual-reports/view/{id}/refresh-all-indicators")
     public String refreshIndividualReportWithAllIndicators(Authentication authentication, @PathVariable("id") String id) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
             return "redirect:/login";
         }
         userIndividualReportRunService.refreshRunWithAllIndicators(currentUser.getEmail(), id);
-        return "redirect:/user/individualReports/view/" + id;
-    }
-
-    @GetMapping("/rankings/{id}")
-    public String showRankingPage(@PathVariable String id) {
-        return "redirect:/forums/" + id;
+        return "redirect:/user/individual-reports/view/" + id;
     }
 
     @PostMapping("/profile/save")
@@ -416,7 +390,7 @@ public class UserViewController {
         return 0;
     }
     // File: src/main/java/ro/uvt/pokedex/core/view/UserViewController.java
-    @GetMapping("/publications/exportCNFIS2025")
+    @GetMapping("/exports/cnfis")
     @ResponseBody
     public void createCNFISReport2025(Authentication authentication,
                                       HttpServletResponse response,

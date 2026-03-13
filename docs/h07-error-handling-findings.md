@@ -54,7 +54,7 @@ The following regression guards were added to lock current behavior before remed
 
 - `UserViewControllerContractTest`
   - unauthenticated `/user/publications` redirects to login,
-  - unauthenticated `/user/publications/exportCNFIS2025` returns `401`,
+  - unauthenticated `/user/exports/cnfis` returns `401`,
   - invalid `start` year on CNFIS export currently throws `ServletException` (no explicit `400/500` mapping contract in place),
   - missing indicator workbook on export returns `404`.
 - `AdminGroupControllerContractTest`

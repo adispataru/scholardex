@@ -17,7 +17,7 @@
 <div id="wrapper">
     <!-- Sidebar -->
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: user-sidebar('activityInstances')}"></div>
+        <div th:replace="~{fragments :: user-sidebar('activities')}"></div>
         <!-- Sidebar Toggler (Sidebar) -->
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
@@ -90,8 +90,8 @@
                                         </ul>
                                     </td>
                                     <td>
-                                        <a th:href="@{/user/activityInstances/edit/{id}(id=${instance.id})}" class="btn btn-primary btn-sm">Edit</a>
-                                        <form th:action="@{/user/activityInstances/delete/{id}(id=${instance.id})}" method="post" style="display:inline;">
+                                        <a th:href="@{/user/activities/edit/{id}(id=${instance.id})}" class="btn btn-primary btn-sm">Edit</a>
+                                        <form th:action="@{/user/activities/delete/{id}(id=${instance.id})}" method="post" style="display:inline;">
                                             <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                                         </form>
                                     </td>
@@ -129,7 +129,7 @@
                 </button>
             </div>
             <div class="modal-body">
-                <form th:action="@{/user/activityInstances/create}" th:object="${newActivityInstance}" method="post">
+                <form th:action="@{/user/activities/create}" th:object="${newActivityInstance}" method="post">
                     <div class="form-group">
                         <label for="activitySelect">Activity</label>
                         <select class="form-control" id="activitySelect" th:field="*{activity}" required>
@@ -218,7 +218,7 @@
             if (selectedActivityId) {
                 // Fetch the activity data
                 $.ajax({
-                    url: `/user/activityInstances/activity/${selectedActivityId}/fields`,
+                    url: `/user/activities/activity/${selectedActivityId}/fields`,
                     method: 'GET',
                     success: function(activity) {
                         $.each(activity.fields, function(index, field) {

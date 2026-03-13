@@ -15,7 +15,7 @@ import ro.uvt.pokedex.core.service.application.model.UserActivityInstancesViewMo
 import java.util.Optional;
 
 @Controller
-@RequestMapping("/user/activityInstances")
+@RequestMapping("/user/activities")
 @RequiredArgsConstructor
 public class ActivityInstanceController {
 
@@ -44,13 +44,13 @@ public class ActivityInstanceController {
     public String createActivityInstance(@ModelAttribute ActivityInstance activityInstance) {
 
         userActivityInstanceFacade.saveActivityInstance(activityInstance);
-        return "redirect:/user/activityInstances";
+        return "redirect:/user/activities";
     }
 
     @PostMapping("/update")
     public String updateActivityInstance(@ModelAttribute ActivityInstance activityInstance) {
         userActivityInstanceFacade.updateActivityInstance(activityInstance);
-        return "redirect:/user/activityInstances";
+        return "redirect:/user/activities";
     }
 
     @GetMapping("/edit/{id}")
@@ -60,14 +60,14 @@ public class ActivityInstanceController {
             model.addAttribute("activityInstance", byId.get());
             return "user/activity-instances-edit";
         } else {
-            return "redirect:/user/activityInstances";
+            return "redirect:/user/activities";
         }
     }
 
     @PostMapping("/delete/{id}")
     public String deleteActivityInstance(@PathVariable String id) {
         userActivityInstanceFacade.deleteActivityInstance(id);
-        return "redirect:/user/activityInstances";
+        return "redirect:/user/activities";
     }
 
     @GetMapping("/activity/{id}/fields")

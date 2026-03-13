@@ -11,7 +11,7 @@
 <div id="wrapper">
     <!-- Sidebar -->
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: user-sidebar('individualReports')}"></div>
+        <div th:replace="~{fragments :: user-sidebar('individual-reports')}"></div>
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
         </div>
@@ -54,7 +54,7 @@
                                     </td>
                                     <td th:text="${report.individualAffiliation != null ? report.individualAffiliation.name : 'No affiliation'}"></td>
                                     <td>
-                                        <a th:href="@{/user/individualReports/view/{id}(id=${report.id})}" class="btn btn-primary btn-sm">Apply</a>
+                                        <a th:href="@{/user/individual-reports/view/{id}(id=${report.id})}" class="btn btn-primary btn-sm">Apply</a>
                                     </td>
                                 </tr>
                                 </tbody>

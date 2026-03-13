@@ -11,7 +11,7 @@
 <div id="wrapper">
     <!-- Sidebar -->
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: user-sidebar('scopus_tasks')}"></div>
+        <div th:replace="~{fragments :: user-sidebar('publications')}"></div>
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
         </div>
@@ -44,10 +44,10 @@
                                     <td th:text="${entry}">1234567890</td>
                                     <td>
                                         <button type="button" class="btn btn-sm btn-primary"
-                                                th:attr="data-scopus-id=${entry},data-url=@{/user/tasks/scopus/update}"
+                                                th:attr="data-scopus-id=${entry},data-url=@{/user/tasks/scopus/update-publications}"
                                                 onclick="sendScopusUpdate(this)">Update Publications</button>
                                         <button type="button" class="btn btn-sm btn-primary"
-                                                th:attr="data-scopus-id=${entry},data-url=@{/user/tasks/scopus/updateCitations}"
+                                                th:attr="data-scopus-id=${entry},data-url=@{/user/tasks/scopus/update-citations}"
                                                 onclick="sendScopusCitationsUpdate(this)">Update Citations</button>
                                     </td>
                                 </tr>

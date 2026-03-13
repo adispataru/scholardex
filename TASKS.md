@@ -49,9 +49,10 @@ Done history moved to `TASKS-done.md`.
     Deliverable: shared MVC route consolidation for forums, WoS categories, CORE rankings, university rankings, and events, with duplicate `/admin/*` read/list/detail pages removed and callers/templates updated to use the canonical shared routes.
     Exit criteria: shared read entities are no longer exposed through separate admin/user route families, and no duplicate admin MVC page remains for the covered read surfaces.
     Notes: complete with canonical-only shared routes (`/forums`, `/wos/categories`, `/core/rankings`, `/universities`, `/events`), removed legacy public aliases (`/rankings/*`, `/scholardex/forums*`, `/core*`, `/urap*`), and removed admin duplicate read GET aliases under `/admin/rankings/*`.
-  - [ ] `H25.3` Normalize remaining user-owned route families.
+  - [x] `H25.3` Normalize remaining user-owned route families.
     Deliverable: user route cleanup so personal/user-owned pages remain under a consistent `/user/*` model, including keeping `/user/dashboard` and `/user/publications` and renaming activity-instance reads to `/user/activities`.
     Exit criteria: user-owned routes follow a consistent naming model and no leftover user route uses the old inconsistent entity naming where a cleaner canonical `/user/*` alternative is defined by H25.
+    Notes: complete with canonical user routes (`/user/activities*`, `/user/individual-reports*`, `/user/publications/scopus-tasks`, `/user/tasks/scopus/update-publications`, `/user/tasks/scopus/update-citations`, `/user/exports/cnfis`) and immediate removal of legacy aliases (no redirects).
   - [ ] `H25.4` Replace hardcoded admin/user sidebar composition with role-based layout selection.
     Deliverable: unified sidebar/layout mechanism that selects navigation content based on the authenticated role/context at render time instead of templates hardcoding `admin-sidebar` vs `user-sidebar`.
     Exit criteria: covered templates no longer choose sidebar fragments manually by route family, and shared entity pages render the correct role-aware navigation from one central mechanism.

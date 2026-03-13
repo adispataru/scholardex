@@ -11,7 +11,7 @@
 <div id="wrapper">
     <!-- Sidebar -->
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: user-sidebar('activityInstances')}"></div>
+        <div th:replace="~{fragments :: user-sidebar('activities')}"></div>
         <!-- Sidebar Toggler (Sidebar) -->
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
@@ -37,7 +37,7 @@
                         <h6 class="m-0 font-weight-bold text-primary">Update Activity Instance</h6>
                     </div>
                     <div class="card-body">
-                        <form th:action="@{/user/activityInstances/update}" th:object="${activityInstance}" method="post">
+                        <form th:action="@{/user/activities/update}" th:object="${activityInstance}" method="post">
                             <div class="form-group">
                                 <input type="text" class="form-control" id="instanceId" th:field="*{id}" hidden>
                             </div>

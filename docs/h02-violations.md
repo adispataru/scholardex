@@ -95,8 +95,7 @@ Why this violates rules: matrix denies direct `Z1 -> Z3`; rule logic should be a
 Status update (2026-03-03, V02 slice for User/AdminGroup pair):
 - `UserViewController` reporting-coupled export endpoints are facade-backed (`UserReportFacade`):
   - `/user/indicators/export/{id}`
-  - `/user/publications/exportCNFIS2025`
-  - `/user/export/cnfis` (legacy route kept, now facade-backed)
+  - `/user/exports/cnfis` (canonical route as of H25.3)
 - `AdminGroupController` no longer calls reporting export service directly for CNFIS workbook flow:
   - `/admin/groups/{id}/publications/exportCNFIS2025` now delegates fully to `GroupCnfisExportFacade`
 - Static scan check:

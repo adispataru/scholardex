@@ -16,7 +16,14 @@ const checks = [
       '/admin/rankings/core"',
       '/admin/rankings/urap"',
       '/admin/rankings/events"',
-      '/admin/rankings/wos"'
+      '/admin/rankings/wos"',
+      '/user/activityInstances"',
+      '/user/individualReports"',
+      '/user/publications/exportCNFIS2025"',
+      '/user/export/cnfis"',
+      '/user/publications/scopus_tasks"',
+      '/user/tasks/scopus/updateCitations"',
+      '/user/rankings/'
     ]
   },
   {
@@ -62,6 +69,42 @@ const checks = [
   {
     file: 'src/main/resources/static/js/rankings-urap.js',
     forbidden: ["/rankings/urap'"]
+  },
+  {
+    file: 'src/main/resources/templates/user/activity-instances-edit.html',
+    forbidden: [
+      "user-sidebar('activityInstances')",
+      '/user/activityInstances/update'
+    ]
+  },
+  {
+    file: 'src/main/resources/templates/user/publications.html',
+    forbidden: [
+      '/user/publications/exportCNFIS2025',
+      '/user/publications/scopus_tasks'
+    ]
+  },
+  {
+    file: 'src/main/resources/templates/user/tasks.html',
+    forbidden: [
+      "user-sidebar('scopus_tasks')",
+      '/user/tasks/scopus/updateCitations',
+      '/user/tasks/scopus/update}'
+    ]
+  },
+  {
+    file: 'src/main/resources/templates/user/individualReports.html',
+    forbidden: [
+      "user-sidebar('individualReports')",
+      '/user/individualReports/view/'
+    ]
+  },
+  {
+    file: 'src/main/resources/templates/user/individualReport-view.html',
+    forbidden: [
+      "user-sidebar('individualReports')",
+      '/user/individualReports/view/'
+    ]
   }
 ];
 

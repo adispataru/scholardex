@@ -14,10 +14,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.reporting.Position;
+import ro.uvt.pokedex.core.model.tasks.ScopusCitationsUpdate;
+import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.service.ResearcherService;
@@ -25,13 +28,14 @@ import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.UserPublicationFacade;
 import ro.uvt.pokedex.core.service.application.UserIndividualReportRunService;
 import ro.uvt.pokedex.core.service.application.UserIndicatorResultService;
-import ro.uvt.pokedex.core.service.application.UserRankingFacade;
 import ro.uvt.pokedex.core.service.application.UserReportFacade;
 import ro.uvt.pokedex.core.service.application.UserScopusTaskFacade;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorWorkbookExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationCitationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationsViewModel;
+import ro.uvt.pokedex.core.service.application.model.UserReportsListViewModel;
+import ro.uvt.pokedex.core.service.application.model.UserScopusTasksViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserWorkbookExportResult;
 import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
 
@@ -72,8 +76,6 @@ class UserViewControllerContractTest {
     private UserScopusTaskFacade userScopusTaskFacade;
     @MockitoBean
     private UserReportFacade userReportFacade;
-    @MockitoBean
-    private UserRankingFacade userRankingFacade;
     @MockitoBean
     private UserIndicatorResultService userIndicatorResultService;
     @MockitoBean
@@ -116,7 +118,7 @@ class UserViewControllerContractTest {
 
     @Test
     void cnfis2025ExportRedirectsToLoginWithoutAuthentication() throws Exception {
-        mockMvc.perform(get("/user/publications/exportCNFIS2025"))
+        mockMvc.perform(get("/user/exports/cnfis"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login"));
     }
@@ -138,7 +140,7 @@ class UserViewControllerContractTest {
                         "data/templates/AC2025_Anexa5-Fisa_articole_brevete-2025.xlsx"
                 ));
 
-        mockMvc.perform(get("/user/publications/exportCNFIS2025")
+        mockMvc.perform(get("/user/exports/cnfis")
                         .with(authenticatedUser("u@uvt.ro")))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition",
@@ -149,7 +151,7 @@ class UserViewControllerContractTest {
 
     @Test
     void cnfis2025ExportWithInvalidStartYearReturnsBadRequest() throws Exception {
-        mockMvc.perform(get("/user/publications/exportCNFIS2025")
+        mockMvc.perform(get("/user/exports/cnfis")
                         .param("start", "bad")
                         .param("end", "2024")
                         .with(authenticatedUser("u@uvt.ro")))
@@ -158,7 +160,7 @@ class UserViewControllerContractTest {
 
     @Test
     void cnfis2025ExportWithInvalidEndYearReturnsBadRequest() throws Exception {
-        mockMvc.perform(get("/user/publications/exportCNFIS2025")
+        mockMvc.perform(get("/user/exports/cnfis")
                         .param("start", "2021")
                         .param("end", "bad")
                         .with(authenticatedUser("u@uvt.ro")))
@@ -167,7 +169,7 @@ class UserViewControllerContractTest {
 
     @Test
     void cnfis2025ExportWithStartGreaterThanEndReturnsBadRequest() throws Exception {
-        mockMvc.perform(get("/user/publications/exportCNFIS2025")
+        mockMvc.perform(get("/user/exports/cnfis")
                         .param("start", "2024")
                         .param("end", "2021")
                         .with(authenticatedUser("u@uvt.ro")))
@@ -176,11 +178,63 @@ class UserViewControllerContractTest {
 
     @Test
     void cnfis2025ExportWithOutOfRangeYearReturnsBadRequest() throws Exception {
-        mockMvc.perform(get("/user/publications/exportCNFIS2025")
+        mockMvc.perform(get("/user/exports/cnfis")
                         .param("start", "1899")
                         .param("end", "2024")
                         .with(authenticatedUser("u@uvt.ro")))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void removedLegacyUserExportAliasesReturnNotFound() throws Exception {
+        mockMvc.perform(get("/user/publications/exportCNFIS2025").with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/user/export/cnfis").with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void scopusTasksPageUsesCanonicalKebabCaseRoute() throws Exception {
+        Researcher researcher = new Researcher();
+        researcher.setScopusId(List.of("123"));
+        when(userScopusTaskFacade.buildTasksView(eq("u@uvt.ro"), eq("r1")))
+                .thenReturn(new UserScopusTasksViewModel(researcher, List.of(), List.of()));
+
+        User user = userPrincipal("u@uvt.ro");
+        user.setResearcherId("r1");
+
+        mockMvc.perform(get("/user/publications/scopus-tasks").with(authenticatedUser(user)))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/tasks"))
+                .andExpect(model().attributeExists("researcher", "tasks", "citationsTasks", "user"));
+    }
+
+    @Test
+    void removedLegacyScopusTaskRoutesReturnNotFound() throws Exception {
+        mockMvc.perform(get("/user/publications/scopus_tasks").with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post("/user/tasks/scopus/update").with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post("/user/tasks/scopus/updateCitations").with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void canonicalScopusTaskActionsReturnCreated() throws Exception {
+        when(userScopusTaskFacade.createPublicationTask(eq("u@uvt.ro"), org.mockito.ArgumentMatchers.any(ScopusPublicationUpdate.class)))
+                .thenReturn(new ScopusPublicationUpdate());
+        when(userScopusTaskFacade.createCitationTask(eq("u@uvt.ro"), org.mockito.ArgumentMatchers.any(ScopusCitationsUpdate.class)))
+                .thenReturn(new ScopusCitationsUpdate());
+
+        mockMvc.perform(post("/user/tasks/scopus/update-publications")
+                        .param("scopusId", "123")
+                        .with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/user/tasks/scopus/update-citations")
+                        .param("scopusId", "123")
+                        .with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isCreated());
     }
 
     @Test
@@ -300,6 +354,18 @@ class UserViewControllerContractTest {
     }
 
     @Test
+    void individualReportsListUsesCanonicalKebabCaseRoute() throws Exception {
+        when(userReportFacade.buildIndividualReportsListView(eq("u@uvt.ro")))
+                .thenReturn(new UserReportsListViewModel(List.of()));
+
+        mockMvc.perform(get("/user/individual-reports")
+                        .with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/individualReports"))
+                .andExpect(model().attributeExists("individualReports", "user"));
+    }
+
+    @Test
     void editPublicationFormRendersPublicationEditTemplateWhenPublicationExists() throws Exception {
         Publication publication = new Publication();
         publication.setEid("eid-1");
@@ -314,11 +380,10 @@ class UserViewControllerContractTest {
     }
 
     @Test
-    void rankingPageRedirectsToNewSharedRankingsRoute() throws Exception {
+    void removedUserRankingAliasReturnsNotFound() throws Exception {
         mockMvc.perform(get("/user/rankings/{id}", "forum-1")
                         .with(authenticatedUser("u@uvt.ro")))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/forums/forum-1"));
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -447,7 +512,7 @@ class UserViewControllerContractTest {
                         IndividualReportRunDto.Source.PERSISTED
                 )));
 
-        String html = mockMvc.perform(get("/user/individualReports/view/{id}", "rep-1")
+        String html = mockMvc.perform(get("/user/individual-reports/view/{id}", "rep-1")
                         .with(authenticatedUser("u@uvt.ro")))
                 .andExpect(status().isOk())
                 .andExpect(view().name("user/individualReport-view"))
@@ -463,22 +528,22 @@ class UserViewControllerContractTest {
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("/js/individual-report-dashboard.js"));
         org.junit.jupiter.api.Assertions.assertFalse(html.contains("/js/demo/datatables-demo.js"));
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("Refresh all indicators"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("/user/individualReports/view/rep-1/refresh-all-indicators"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("/user/individual-reports/view/rep-1/refresh-all-indicators"));
     }
 
     @Test
     void individualReportRefreshAllIndicatorsRedirectsToLoginWhenAuthenticationMissing() throws Exception {
-        mockMvc.perform(post("/user/individualReports/view/{id}/refresh-all-indicators", "rep-1"))
+        mockMvc.perform(post("/user/individual-reports/view/{id}/refresh-all-indicators", "rep-1"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login"));
     }
 
     @Test
     void individualReportRefreshAllIndicatorsRedirectsToViewRoute() throws Exception {
-        mockMvc.perform(post("/user/individualReports/view/{id}/refresh-all-indicators", "rep-1")
+        mockMvc.perform(post("/user/individual-reports/view/{id}/refresh-all-indicators", "rep-1")
                         .with(authenticatedUser("u@uvt.ro")))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/user/individualReports/view/rep-1"));
+                .andExpect(redirectedUrl("/user/individual-reports/view/rep-1"));
 
         verify(userIndividualReportRunService).refreshRunWithAllIndicators("u@uvt.ro", "rep-1");
     }
@@ -521,7 +586,7 @@ class UserViewControllerContractTest {
                         IndividualReportRunDto.Source.PERSISTED
                 )));
 
-        String html = mockMvc.perform(get("/user/individualReports/view/{id}", "rep-2")
+        String html = mockMvc.perform(get("/user/individual-reports/view/{id}", "rep-2")
                         .with(authenticatedUser("u@uvt.ro")))
                 .andExpect(status().isOk())
                 .andExpect(view().name("user/individualReport-view"))
@@ -546,6 +611,16 @@ class UserViewControllerContractTest {
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("indicator-link"));
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("Info_B"));
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("/user/indicators/apply/ind-compact-1"));
+    }
+
+    @Test
+    void removedLegacyIndividualReportsRouteReturnsNotFound() throws Exception {
+        mockMvc.perform(get("/user/individualReports")
+                        .with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/user/individualReports/view/{id}", "rep-1")
+                        .with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isNotFound());
     }
 
     @Test

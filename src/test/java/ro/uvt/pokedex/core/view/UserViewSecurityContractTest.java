@@ -14,7 +14,6 @@ import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.UserPublicationFacade;
 import ro.uvt.pokedex.core.service.application.UserIndividualReportRunService;
 import ro.uvt.pokedex.core.service.application.UserIndicatorResultService;
-import ro.uvt.pokedex.core.service.application.UserRankingFacade;
 import ro.uvt.pokedex.core.service.application.UserReportFacade;
 import ro.uvt.pokedex.core.service.application.UserScopusTaskFacade;
 
@@ -43,8 +42,6 @@ class UserViewSecurityContractTest {
     @MockitoBean
     private UserReportFacade userReportFacade;
     @MockitoBean
-    private UserRankingFacade userRankingFacade;
-    @MockitoBean
     private UserIndicatorResultService userIndicatorResultService;
     @MockitoBean
     private UserIndividualReportRunService userIndividualReportRunService;
@@ -58,7 +55,21 @@ class UserViewSecurityContractTest {
 
     @Test
     void unauthenticatedUserCnfisExportRedirectsToLogin() throws Exception {
-        mockMvc.perform(get("/user/publications/exportCNFIS2025"))
+        mockMvc.perform(get("/user/exports/cnfis"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"));
+    }
+
+    @Test
+    void unauthenticatedUserIndividualReportsRedirectToLogin() throws Exception {
+        mockMvc.perform(get("/user/individual-reports"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"));
+    }
+
+    @Test
+    void unauthenticatedUserScopusTasksRedirectToLogin() throws Exception {
+        mockMvc.perform(get("/user/publications/scopus-tasks"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login"));
     }

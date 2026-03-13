@@ -22,7 +22,7 @@ Completion criteria carried forward to next V01 slice:
 - Preserve route/template/redirect behavior parity.
 
 Slice 2 closeout (2026-03-03):
-- User-controller closure endpoints migrated: `/user/indicators`, `/user/individualReports`.
+- User-controller closure endpoints migrated: `/user/indicators`, `/user/individual-reports` (route normalized from `/user/individualReports` in H25.3).
 - Baseline pair field counts:
   - Before V01: `23`
   - After slice 1: `16`
@@ -69,8 +69,7 @@ Status: baseline pair remediated; residual debt remains in non-baseline controll
 V02 slice closeout (2026-03-03):
 - `UserViewController` reporting-coupled exports moved behind `UserReportFacade`:
   - `/user/indicators/export/{id}`
-  - `/user/publications/exportCNFIS2025`
-  - `/user/export/cnfis` (legacy route retained and facade-backed)
+  - `/user/exports/cnfis` (canonical route as of H25.3)
 - `AdminGroupController` CNFIS workbook export moved fully behind `GroupCnfisExportFacade`:
   - `/admin/groups/{id}/publications/exportCNFIS2025`
 - Controller imports of `core.service.reporting` for the User/AdminGroup pair are now zero.

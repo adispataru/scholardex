@@ -11,7 +11,7 @@
 
 <div id="wrapper">
     <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: user-sidebar('individualReports')}"></div>
+        <div th:replace="~{fragments :: user-sidebar('individual-reports')}"></div>
         <div class="text-center d-none d-md-inline">
             <button class="rounded-circle border-0" id="sidebarToggle"></button>
         </div>
@@ -25,10 +25,10 @@
                 <div class="d-sm-flex align-items-center justify-content-between mb-4">
                     <h1 class="h3 mb-2 text-gray-800" th:text="${report.title}">Individual Report</h1>
                     <div class="d-flex gap-2">
-                        <form th:action="@{/user/individualReports/view/{id}/refresh(id=${report.id})}" method="post">
+                        <form th:action="@{/user/individual-reports/view/{id}/refresh(id=${report.id})}" method="post">
                             <button type="submit" class="btn btn-sm btn-outline-primary shadow-sm">Refresh Report</button>
                         </form>
-                        <form th:action="@{/user/individualReports/view/{id}/refresh-all-indicators(id=${report.id})}" method="post">
+                        <form th:action="@{/user/individual-reports/view/{id}/refresh-all-indicators(id=${report.id})}" method="post">
                             <button type="submit" class="btn btn-sm btn-primary shadow-sm">Refresh all indicators</button>
                         </form>
                     </div>
