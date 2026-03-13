@@ -283,7 +283,8 @@ class UserViewControllerContractTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("user/publications"))
                 .andExpect(model().attributeExists("publications", "hIndex", "authorMap", "forumMap", "numCitations", "user"))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/user/dashboard\"")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/user/dashboard\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("href=\"/user\""))));
     }
 
     @Test
@@ -402,7 +403,9 @@ class UserViewControllerContractTest {
                         .with(authenticatedUser("u@uvt.ro")))
                 .andExpect(status().isOk())
                 .andExpect(view().name("user/individual-reports"))
-                .andExpect(model().attributeExists("individualReports", "user"));
+                .andExpect(model().attributeExists("individualReports", "user"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/user/dashboard\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("href=\"/user\""))));
     }
 
     @Test

@@ -79,6 +79,7 @@ Done history moved to `TASKS-done.md`.
     Deliverable: update active docs and route/flow maps that still present removed aliases as current runtime behavior.
     Exit criteria: active docs are aligned to `/user/dashboard`, `/user/individual-reports`, `/user/publications/scopus-tasks`, `/user/exports/cnfis`, and the H25 shared route families; only historical inventory docs retain removed-route references.
     Notes: complete with active-doc route normalization to canonical H25/H26 families (`/user/dashboard`, `/user/individual-reports`, `/user/exports/cnfis`, `/admin/scholardex/publications/*`, shared entity-first routes) while preserving legacy aliases only in explicitly historical/inventory documentation.
-  - [ ] `H26.4` Tighten verification around canonical naming and aliases.
+  - [x] `H26.4` Tighten verification around canonical naming and aliases.
     Deliverable: refresh controller/security/guardrail coverage so canonical routes and renamed views are protected, while old-route references remain only in explicit removed-alias assertions.
     Exit criteria: tests fail if `/user` reverts to primary-dashboard behavior, if canonical dashboard links regress, or if removed aliases are reintroduced; guardrails/docs distinguish active routes from historical removals.
+    Notes: complete with H26 checks folded into `verify-h25-route-guardrails` (canonical `/user/dashboard` contract marker, stale view-token regression checks, active-doc vs historical legacy-route boundary), plus tightened user/shared MVC-security alias-removal assertions.

@@ -119,6 +119,30 @@ class RankingViewSecurityContractTest {
     }
 
     @Test
+    void authenticatedUserStillGetsNotFoundForRemovedSharedAliases() throws Exception {
+        mockMvc.perform(get("/scholardex/forums")
+                        .with(user("researcher@uvt.ro")
+                                .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/rankings/categories")
+                        .with(user("researcher@uvt.ro")
+                                .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/rankings/core")
+                        .with(user("researcher@uvt.ro")
+                                .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/rankings/urap")
+                        .with(user("researcher@uvt.ro")
+                                .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/rankings/events")
+                        .with(user("researcher@uvt.ro")
+                                .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void nonAdminCannotInvokeAdminRankingOperations() throws Exception {
         mockMvc.perform(post("/admin/rankings/wos/mergeDuplicateRankings")
                         .with(csrf())

@@ -15,6 +15,9 @@ const runtimeTemplateRoots = [
 const checks = [
   {
     file: 'src/main/resources/templates/fragments.html',
+    required: [
+      'href="/user/dashboard"'
+    ],
     forbidden: [
       '/scholardex/forums"',
       '/rankings/wos"',
@@ -30,8 +33,12 @@ const checks = [
       '/admin/rankings/wos"',
       '/admin/scopus/',
       'href="/user"',
+      'th:href="@{/user}"',
       '/user/activityInstances"',
+      '/user/activity-instances',
+      '/user/activity-instances-edit',
       '/user/individualReports"',
+      '/user/individualReport-view',
       '/user/publications/exportCNFIS2025"',
       '/user/export/cnfis"',
       '/user/publications/scopus_tasks"',
@@ -125,6 +132,11 @@ const errors = [];
 for (const check of checks) {
   const filePath = path.join(process.cwd(), check.file);
   const content = fs.readFileSync(filePath, 'utf8');
+  for (const required of check.required || []) {
+    if (!content.includes(required)) {
+      errors.push(`${check.file}: missing required canonical contract marker '${required}'`);
+    }
+  }
   for (const forbidden of check.forbidden) {
     if (content.includes(forbidden)) {
       errors.push(`${check.file}: contains forbidden H25 route regression '${forbidden}'`);
@@ -153,6 +165,71 @@ for (const file of runtimeTemplateRoots.flatMap((dir) => listFiles(dir, '.html')
   }
   if (content.includes('/admin/scopus/')) {
     errors.push(`${file}: contains forbidden stale admin route reference '/admin/scopus/'`);
+  }
+  const staleViewNamingTokens = [
+    'user/individualReports',
+    'user/individualReport-view',
+    'user/activity-instances',
+    'user/activity-instances-edit',
+    'user/ranking-not-found',
+    'scholardex/forum-detail',
+    'rankings/categories',
+    'rankings/category-detail',
+    'rankings/core',
+    'rankings/core-detail',
+    'rankings/urap',
+    'rankings/urap-detail',
+    'rankings/events'
+  ];
+  for (const token of staleViewNamingTokens) {
+    if (content.includes(token)) {
+      errors.push(`${file}: contains forbidden stale H26 view/template naming token '${token}'`);
+    }
+  }
+}
+
+const activeRouteDocs = [
+  'docs/h02-architecture-map.md',
+  'docs/h03-flow-priority-map.md',
+  'docs/h05-frontend-conventions.md',
+  'docs/h10-quality-gates-matrix.md',
+  'docs/indicator-flow.md'
+];
+
+const legacyRouteReferenceAllowlistDocs = new Set([
+  'docs/h23.1-transitional-debt-inventory.md',
+  'docs/h23.5-route-map-and-closeout.md',
+  'docs/h25.1-canonical-route-ownership-contract.md',
+  'docs/h02-remediation-plan.md',
+  'docs/h02-violations.md'
+]);
+
+const forbiddenLegacyDocRoutes = [
+  '/user/individualReports',
+  '/user/export/cnfis',
+  '/user/publications/exportCNFIS2025',
+  '/admin/scopus/publications'
+];
+
+for (const file of activeRouteDocs) {
+  const content = fs.readFileSync(path.join(process.cwd(), file), 'utf8');
+  for (const forbidden of forbiddenLegacyDocRoutes) {
+    if (content.includes(forbidden)) {
+      errors.push(`${file}: active docs must not contain removed route alias '${forbidden}'`);
+    }
+  }
+}
+
+for (const file of listFiles('docs', '.md')) {
+  const relative = path.relative(process.cwd(), file);
+  if (activeRouteDocs.includes(relative) || legacyRouteReferenceAllowlistDocs.has(relative)) {
+    continue;
+  }
+  const content = fs.readFileSync(file, 'utf8');
+  for (const forbidden of forbiddenLegacyDocRoutes) {
+    if (content.includes(forbidden)) {
+      errors.push(`${relative}: contains removed alias '${forbidden}' outside active-doc set and historical allowlist`);
+    }
   }
 }
 

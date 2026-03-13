@@ -18,6 +18,7 @@ import ro.uvt.pokedex.core.service.application.UserReportFacade;
 import ro.uvt.pokedex.core.service.application.UserScopusTaskFacade;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -86,6 +87,22 @@ class UserViewSecurityContractTest {
         mockMvc.perform(get("/user/publications/scopus-tasks"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login"));
+    }
+
+    @Test
+    void authenticatedUserStillGetsNotFoundOnRemovedLegacyAliases() throws Exception {
+        mockMvc.perform(get("/user/individualReports")
+                        .with(user("u@uvt.ro").authorities(() -> "RESEARCHER")))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/user/publications/exportCNFIS2025")
+                        .with(user("u@uvt.ro").authorities(() -> "RESEARCHER")))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/user/export/cnfis")
+                        .with(user("u@uvt.ro").authorities(() -> "RESEARCHER")))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/user/publications/scopus_tasks")
+                        .with(user("u@uvt.ro").authorities(() -> "RESEARCHER")))
+                .andExpect(status().isNotFound());
     }
 
 }
