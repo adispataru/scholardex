@@ -10,7 +10,6 @@ import ro.uvt.pokedex.core.controller.dto.WosRankingPageResponse;
 public class WosRankingQueryService {
 
     private final ObjectProvider<PostgresWosRankingReadPort> postgresWosRankingReadPortProvider;
-    private final ObjectProvider<MongoWosRankingReadPort> mongoWosRankingReadPortProvider;
 
     public WosRankingPageResponse search(int page, int size, String sort, String direction, String q) {
         PostgresWosRankingReadPort postgresPort = postgresWosRankingReadPortProvider.getIfAvailable();
@@ -18,11 +17,6 @@ public class WosRankingQueryService {
             return postgresPort.search(page, size, sort, direction, q);
         }
 
-        MongoWosRankingReadPort mongoPort = mongoWosRankingReadPortProvider.getIfAvailable();
-        if (mongoPort != null) {
-            return mongoPort.search(page, size, sort, direction, q);
-        }
-
-        throw new IllegalStateException("No WoS ranking read port is available.");
+        throw new IllegalStateException("Postgres WoS ranking read port is not available.");
     }
 }

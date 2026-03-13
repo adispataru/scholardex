@@ -14,6 +14,7 @@ public class PostgresReadCutoverGuard implements ApplicationRunner {
 
     private final JdbcTemplate jdbcTemplate;
     private final PostgresReportingLookupFacade postgresReportingLookupFacade;
+    private final PostgresWosRankingReadPort postgresWosRankingReadPort;
     private final PostgresScholardexAuthorReadPort postgresScholardexAuthorReadPort;
     private final PostgresScholardexForumReadPort postgresScholardexForumReadPort;
     private final PostgresScholardexAffiliationReadPort postgresScholardexAffiliationReadPort;

@@ -6,7 +6,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.controller.dto.WosRankingListItemResponse;
 import ro.uvt.pokedex.core.controller.dto.WosRankingPageResponse;
 import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
@@ -16,7 +15,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
-@Service
 @RequiredArgsConstructor
 public class MongoWosRankingReadPort implements WosRankingReadPort {
 
