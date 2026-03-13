@@ -9,12 +9,15 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.model.ArtisticEvent;
+import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.service.application.ScholardexForumDetailService;
 import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.ScholardexForumMvcService;
 import ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService;
 import ro.uvt.pokedex.core.service.application.UrapRankingFacade;
 import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
+import ro.uvt.pokedex.core.service.application.model.ScholardexForumDetailViewModel;
 
 import java.util.List;
 import java.util.Optional;
@@ -42,6 +45,8 @@ class RankingViewControllerContractTest {
     private UrapRankingFacade urapRankingFacade;
     @MockitoBean
     private WosRankingDetailsReadService wosRankingDetailsReadService;
+    @MockitoBean
+    private ScholardexForumDetailService scholardexForumDetailService;
     @MockitoBean
     private ScholardexProjectionReadService scholardexProjectionReadService;
     @MockitoBean
@@ -80,7 +85,7 @@ class RankingViewControllerContractTest {
 
     @Test
     void missingScholardexForumRendersNotFoundPage() throws Exception {
-        when(scholardexProjectionReadService.findForumById(eq("missing"))).thenReturn(Optional.empty());
+        when(scholardexForumDetailService.findDetail(eq("missing"))).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/scholardex/forums/{id}", "missing"))
                 .andExpect(status().isOk())
@@ -88,17 +93,99 @@ class RankingViewControllerContractTest {
     }
 
     @Test
-    void existingScholardexForumRendersCanonicalDetailPage() throws Exception {
+    void journalForumWithWosDataRendersCanonicalDetailPage() throws Exception {
         Forum forum = new Forum();
         forum.setId("w1");
         forum.setPublicationName("Test Journal");
-        when(scholardexProjectionReadService.findForumById(eq("w1"))).thenReturn(Optional.of(forum));
-        when(wosRankingDetailsReadService.findByJournalId(eq("w1"))).thenReturn(Optional.empty());
+        forum.setAggregationType("Journal");
+        WoSRanking wosRanking = new WoSRanking();
+        wosRanking.setId("w1");
+        wosRanking.setName("Test Journal");
+        wosRanking.setWebOfScienceCategoryIndex(java.util.Map.of());
+        ScholardexForumDetailViewModel detail = new ScholardexForumDetailViewModel(
+                forum,
+                ScholardexForumDetailViewModel.ForumType.JOURNAL,
+                wosRanking,
+                true,
+                false,
+                false,
+                false
+        );
+        when(scholardexForumDetailService.findDetail(eq("w1"))).thenReturn(Optional.of(detail));
 
         mockMvc.perform(get("/scholardex/forums/{id}", "w1"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("scholardex/forum-detail"))
-                .andExpect(model().attributeExists("forum"));
+                .andExpect(model().attributeExists("forum", "detail", "wosRanking"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("General Metrics")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Category Rankings")));
+    }
+
+    @Test
+    void journalForumWithoutWosDataRendersNotIndexedState() throws Exception {
+        Forum forum = new Forum();
+        forum.setId("w2");
+        forum.setPublicationName("Unindexed Journal");
+        forum.setAggregationType("Journal");
+        ScholardexForumDetailViewModel detail = new ScholardexForumDetailViewModel(
+                forum,
+                ScholardexForumDetailViewModel.ForumType.JOURNAL,
+                null,
+                false,
+                false,
+                false,
+                false
+        );
+        when(scholardexForumDetailService.findDetail(eq("w2"))).thenReturn(Optional.of(detail));
+
+        mockMvc.perform(get("/scholardex/forums/{id}", "w2"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("scholardex/forum-detail"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("This journal is not indexed by WoS.")));
+    }
+
+    @Test
+    void conferenceForumRendersCorePlaceholder() throws Exception {
+        Forum forum = new Forum();
+        forum.setId("c1");
+        forum.setPublicationName("Conference One");
+        forum.setAggregationType("Conference Proceeding");
+        ScholardexForumDetailViewModel detail = new ScholardexForumDetailViewModel(
+                forum,
+                ScholardexForumDetailViewModel.ForumType.CONFERENCE,
+                null,
+                false,
+                true,
+                false,
+                false
+        );
+        when(scholardexForumDetailService.findDetail(eq("c1"))).thenReturn(Optional.of(detail));
+
+        mockMvc.perform(get("/scholardex/forums/{id}", "c1"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("CORE conference ranking rendering is reserved for a later H23 update.")));
+    }
+
+    @Test
+    void bookForumRendersBookPlaceholder() throws Exception {
+        Forum forum = new Forum();
+        forum.setId("b1");
+        forum.setPublicationName("Book One");
+        forum.setAggregationType("Book Series");
+        ScholardexForumDetailViewModel detail = new ScholardexForumDetailViewModel(
+                forum,
+                ScholardexForumDetailViewModel.ForumType.BOOK,
+                null,
+                false,
+                false,
+                true,
+                false
+        );
+        when(scholardexForumDetailService.findDetail(eq("b1"))).thenReturn(Optional.of(detail));
+
+        mockMvc.perform(get("/scholardex/forums/{id}", "b1"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Book ranking rendering is reserved for a later H23 update.")));
     }
 
     @Test

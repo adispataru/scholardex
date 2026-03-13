@@ -155,6 +155,7 @@ async function testLegacyPresetAndControlChangesTriggerRequests() {
   await wait(10);
   assert.strictEqual(parseQuery(calls[0]).wos, 'indexed');
   assert.strictEqual(els['admin-forums-wos'].value, 'indexed');
+  assert.ok(els['admin-forums-table-body'].innerHTML.includes('/scholardex/forums/a'));
   assert.ok(els['admin-forums-table-body'].innerHTML.includes('/admin/scholardex/forums/edit/a'));
 
   els['admin-forums-next'].dispatch('click');

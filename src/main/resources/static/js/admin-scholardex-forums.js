@@ -83,11 +83,12 @@
     els.tableBody.innerHTML = (items || []).map(function (item) {
       const id = encodeURIComponent(item.id || '');
       return '<tr>' +
-        '<td><a href="/admin/scholardex/forums/edit/' + id + '">' + escapeHtml(item.publicationName) + '</a></td>' +
+        '<td><a href="/scholardex/forums/' + id + '">' + escapeHtml(item.publicationName) + '</a></td>' +
         '<td>' + escapeHtml(item.issn) + '</td>' +
         '<td>' + escapeHtml(item.eIssn) + '</td>' +
         '<td>' + escapeHtml(item.aggregationType) + '</td>' +
         '<td>' + escapeHtml(labelWosStatus(item.wosStatus)) + '</td>' +
+        '<td><a class="btn btn-outline-secondary btn-sm" href="/admin/scholardex/forums/edit/' + id + '">Edit</a></td>' +
         '</tr>';
     }).join('');
   }

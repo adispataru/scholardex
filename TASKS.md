@@ -86,7 +86,7 @@ Done history moved to `TASKS-done.md`.
   Deliverable: canonical Scholardex forum routes/templates for public and admin UI, WoS-specific category pages, trimmed MVC compatibility redirects/helpers, and updated docs/guardrails that reflect the new steady-state navigation model.
   Exit criteria: covered MVC surfaces use the new canonical route families, legacy MVC paths are either redirected or clearly marked transitional, and tests/guardrails enforce the consolidated UI architecture.
   Subtasks:
-  - [ ] `H23.1` Inventory and classify transitional debt.
+  - [x] `H23.1` Inventory and classify transitional debt.
     Deliverable: concise inventory doc of internal legacy/transitional hotspots, grouped as `remove now`, `keep intentionally`, `defer`.
     Must include:
     - dual-read-only Mongo adapters vs runtime adapters,
@@ -94,7 +94,7 @@ Done history moved to `TASKS-done.md`.
     - legacy Scopus naming in internal models/services used on steady-state paths,
     - documented transitional frontend/script allowances still active.
     Exit criteria: each hotspot has owner + planned action and no ambiguous “maybe legacy” items remain.
-  - [ ] `H23.2` Scholardex UI route consolidation.
+  - [x] `H23.2` Scholardex UI route consolidation.
     Deliverable: move covered MVC forum/publication/affiliation pages to canonical Scholardex-first route families and retire WoS rankings as the primary forum discovery surface.
     Focus:
     - public canonical forum routes under `/scholardex/forums` and `/scholardex/forums/{id}`,
@@ -102,7 +102,7 @@ Done history moved to `TASKS-done.md`.
     - legacy MVC `/admin/scopus/**` and `/rankings/wos` list routes reduced to redirects or explicit transitional shims where needed,
     - Scholardex forums listing includes all known forums and absorbs current WoS-listing behavior via WoS status column/filter.
     Exit criteria: covered MVC discovery/list pages resolve through canonical Scholardex routes and the old split between Scopus forum pages and WoS journal listing is no longer the primary navigation model.
-  - [ ] `H23.3` Unified forum detail and UI naming normalization.
+  - [x] `H23.3` Unified forum detail and UI naming normalization.
     Deliverable: replace the current journal-only WoS ranking detail flow with a forum-centric Scholardex detail page and normalize UI-facing naming around that model.
     Focus:
     - current `/rankings/wos/{id}` detail behavior moves to the canonical Scholardex forum detail page,

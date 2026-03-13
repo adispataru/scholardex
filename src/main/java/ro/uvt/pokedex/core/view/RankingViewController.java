@@ -13,11 +13,13 @@ import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.URAPUniversityRanking;
 import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
+import ro.uvt.pokedex.core.service.application.ScholardexForumDetailService;
 import ro.uvt.pokedex.core.service.application.ScholardexForumMvcService;
 import ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService;
 import ro.uvt.pokedex.core.service.application.UrapRankingFacade;
 import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
 import ro.uvt.pokedex.core.controller.dto.ScholardexForumPageResponse;
+import ro.uvt.pokedex.core.service.application.model.ScholardexForumDetailViewModel;
 
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +33,7 @@ public class RankingViewController {
     private final WosRankingDetailsReadService wosRankingDetailsReadService;
     private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final ScholardexForumMvcService scholardexForumMvcService;
+    private final ScholardexForumDetailService scholardexForumDetailService;
 
     @GetMapping("/scholardex/forums")
     public String showScholardexForumsPage() {
@@ -52,12 +55,13 @@ public class RankingViewController {
 
     @GetMapping("/scholardex/forums/{id}")
     public String showScholardexForumDetailsPage(Model model, @PathVariable String id) {
-        Optional<Forum> forum = scholardexProjectionReadService.findForumById(id);
-        if (forum.isEmpty()) {
+        Optional<ScholardexForumDetailViewModel> detail = scholardexForumDetailService.findDetail(id);
+        if (detail.isEmpty()) {
             return "user/ranking-not-found";
         }
-        model.addAttribute("forum", forum.get());
-        model.addAttribute("wosRanking", wosRankingDetailsReadService.findByJournalId(id).orElse(null));
+        model.addAttribute("detail", detail.get());
+        model.addAttribute("forum", detail.get().forum());
+        model.addAttribute("wosRanking", detail.get().wosRanking());
         return "scholardex/forum-detail";
     }
 
