@@ -15,6 +15,7 @@ import ro.uvt.pokedex.core.service.application.WosRankingQueryService;
 
 import java.util.List;
 
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -77,6 +78,32 @@ class WosRankingApiControllerContractTest {
     }
 
     @Test
+    void validNonDefaultSortsAreApplied() throws Exception {
+        when(wosRankingQueryService.search(0, 25, "issn", "desc", null))
+                .thenReturn(new WosRankingPageResponse(
+                        List.of(item("issn-sort", "ISSN Journal", "9999-0000", "1000-0000", List.of())),
+                        0, 25, 1, 1
+                ));
+        when(wosRankingQueryService.search(0, 25, "eIssn", "asc", null))
+                .thenReturn(new WosRankingPageResponse(
+                        List.of(item("eissn-sort", "eISSN Journal", "2000-0000", "0001-9999", List.of())),
+                        0, 25, 1, 1
+                ));
+
+        mockMvc.perform(get("/api/rankings/wos")
+                        .param("sort", "issn")
+                        .param("direction", "desc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].id").value("issn-sort"));
+
+        mockMvc.perform(get("/api/rankings/wos")
+                        .param("sort", "eIssn")
+                        .param("direction", "asc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].id").value("eissn-sort"));
+    }
+
+    @Test
     void queryMatchesByNameIssnEIssnAndAlternativeIssn() throws Exception {
         when(wosRankingQueryService.search(0, 25, "name", "asc", "nature"))
                 .thenReturn(new WosRankingPageResponse(List.of(item("name-hit", "Nature Journal", "1111", "2222", List.of())), 0, 25, 1, 1));
@@ -106,6 +133,21 @@ class WosRankingApiControllerContractTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items.length()").value(1))
                 .andExpect(jsonPath("$.items[0].id").value("alt-hit"));
+    }
+
+    @Test
+    void blankQueryIsAcceptedByApi() throws Exception {
+        when(wosRankingQueryService.search(0, 25, "name", "asc", "   "))
+                .thenReturn(new WosRankingPageResponse(
+                        List.of(item("blank-q", "Blank Query Journal", "1000", "2000", List.of())),
+                        0, 25, 1, 1
+                ));
+
+        mockMvc.perform(get("/api/rankings/wos").param("q", "   "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].id").value("blank-q"));
+
+        verify(wosRankingQueryService).search(0, 25, "name", "asc", "   ");
     }
 
     @Test
