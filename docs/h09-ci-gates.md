@@ -91,6 +91,10 @@ Run before pushing CI-sensitive changes:
 2. `./gradlew test --tests "*CoreApplicationTests"` (quick smoke sanity)
 3. `npm run verify-h12-integrations` when touching Scopus/import integration paths
 
+For H23 route/UI changes that affect canonical Scholardex or category navigation, also run:
+
+4. `npm run verify-h23-ui`
+
 `verify-h09-baseline` contract:
 
 1. `verify-architecture-boundaries`
@@ -106,6 +110,11 @@ Expected runtime profile:
 1. local developer machine: typically slower than CI smoke jobs due to full `check`;
 2. run before PR when touching build/security/test infrastructure;
 3. use targeted commands during inner-loop development and run full baseline before push.
+
+H23 note:
+
+- `npm run verify-h23-ui` is a contributor-facing route/UI sanity suite for the canonical H23 navigation model.
+- It is not part of `verify-h09-baseline` and is not automatically a required CI gate unless a later task explicitly promotes it.
 
 Troubleshooting:
 

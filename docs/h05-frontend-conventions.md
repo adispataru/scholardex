@@ -26,9 +26,9 @@ Define explicit frontend structure rules so template and JS changes are consiste
 
 ## 3. Composition Conventions
 
-### 3.1 Mandatory layout contract (admin/user pages)
+### 3.1 Mandatory layout contract (runtime pages)
 
-Each admin/user runtime page must:
+Each runtime page under `templates/admin/**`, `templates/user/**`, `templates/rankings/**`, and `templates/scholardex/**` must:
 
 - include `/assets/app.css`
 - include `/assets/app.js`
@@ -90,11 +90,14 @@ All new CDN includes outside this allowlist are prohibited.
 ## 6. Verification and Guardrails
 
 - Existing mandatory checks:
+- Existing mandatory checks:
   - `npm run verify-assets`
   - `npm run verify-template-assets`
   - `npm run verify-architecture-boundaries`
   - `./gradlew test --tests "*UserViewControllerContractTest" --tests "*AdminViewControllerContractTest"`
+  - `npm run verify-h23-ui` when touching canonical H23 route-owned pages (`scholardex/**`, `rankings/categories`, admin Scholardex catalog pages)
 - `verify-template-assets` guardrails enforce:
+  - runtime template coverage for `admin/**`, `user/**`, `rankings/**`, and `scholardex/**`
   - no `*-bak.html` templates under runtime admin/user roots
   - core asset contract (`/assets/app.css` + `/assets/app.js` via direct include or shared fragments)
   - external CDN references only from explicit H05 transitional allowlist files
@@ -129,6 +132,7 @@ Status: H05 completed on 2026-03-03.
   - `npm run build`
   - `npm run verify-assets`
   - `npm run verify-template-assets`
+  - `npm run verify-h23-ui` for route-level changes on canonical Scholardex/category pages
   - `./gradlew test --tests "*UserViewControllerContractTest" --tests "*AdminViewControllerContractTest"`
 - H06 handoff focus:
   - keep H05 guardrails unchanged while reviewing data/persistence consistency

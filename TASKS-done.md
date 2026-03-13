@@ -68,6 +68,44 @@ Archived from `TASKS.md` on 2026-03-13 after H22.1-H22.10 closure.
     - Deterministic gate seed selection in `JdbcDualReadGateService`.
     - Focused harness baseline command: `./gradlew testH2210Baseline` and `npm run verify-h22-baseline`.
 
+## H23 Scholardex UI Route Consolidation and Steady-State Naming Cleanup
+
+Archived from `TASKS.md` on 2026-03-13 after H23.1-H23.5 closure.
+
+- [x] `H23` Scholardex UI route consolidation and steady-state naming cleanup.
+  Goal: reduce maintenance overhead and product-surface drift by consolidating MVC/UI routes around Scholardex-first forum navigation while retiring the split between Scopus forum pages and WoS ranking pages.
+  Deliverable: canonical Scholardex forum routes/templates for public and admin UI, WoS-specific category pages, trimmed MVC compatibility redirects/helpers, and updated docs/guardrails that reflect the new steady-state navigation model.
+  Exit criteria: covered MVC surfaces use the new canonical route families, legacy MVC paths are either redirected or clearly marked transitional, and tests/guardrails enforce the consolidated UI architecture.
+  Status: completed on 2026-03-13.
+  Handover:
+  - Canonical public MVC routes are `/scholardex/forums`, `/scholardex/forums/{id}`, `/rankings/categories`, and `/rankings/categories/{key}`.
+  - Canonical admin MVC routes are under `/admin/scholardex/**`; retained compatibility shims remain under `/admin/scopus/**`, `/admin/scopus/venues*`, `/rankings/wos`, and `/user/rankings/{id}`.
+  - Stable legacy APIs intentionally retained: `/api/scopus/**` and `/api/rankings/wos`.
+  - New H23 paged category API: `/api/rankings/categories`.
+  - Route map and closeout doc: `docs/h23.5-route-map-and-closeout.md`.
+  - H23 verification entrypoint: `npm run verify-h23-ui`.
+  Subtasks:
+  - [x] `H23.1` Inventory and classify transitional debt.
+    Status: completed on 2026-03-13.
+    Handover:
+    - Debt inventory: `docs/h23.1-transitional-debt-inventory.md`.
+  - [x] `H23.2` Scholardex UI route consolidation.
+    Status: completed on 2026-03-13.
+    Handover:
+    - Canonical forum/publication/affiliation/admin routes moved to Scholardex-first MVC families.
+  - [x] `H23.3` Unified forum detail and UI naming normalization.
+    Status: completed on 2026-03-13.
+    Handover:
+    - Canonical forum detail moved to `/scholardex/forums/{id}` with journal/conference/book branching.
+  - [x] `H23.4` Route-aware guardrails and deterministic UI verification refresh.
+    Status: completed on 2026-03-13.
+    Handover:
+    - Deterministic route/UI guardrails and paged WoS category coverage now live behind `npm run verify-h23-ui`.
+  - [x] `H23.5` Docs, route map, and task closeout.
+    Status: completed on 2026-03-13.
+    Handover:
+    - Route map, verification contract, and task closeout aligned to the shipped H23 route model.
+
 ## H11-H14 Recovery Wave
 
 Archived from `TASKS.md` on 2026-03-06 after closure and cleanup.
