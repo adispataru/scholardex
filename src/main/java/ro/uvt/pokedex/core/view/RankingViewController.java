@@ -33,7 +33,7 @@ public class RankingViewController {
 
     @GetMapping("/forums")
     public String showScholardexForumsPage() {
-        return "scholardex/forums";
+        return "forums/list";
     }
 
     @GetMapping("/forums/data")
@@ -53,32 +53,32 @@ public class RankingViewController {
     public String showScholardexForumDetailsPage(Model model, @PathVariable String id) {
         Optional<ScholardexForumDetailViewModel> detail = scholardexForumDetailService.findDetail(id);
         if (detail.isEmpty()) {
-            return "user/ranking-not-found";
+            return "shared/not-found";
         }
         model.addAttribute("detail", detail.get());
         model.addAttribute("forum", detail.get().forum());
         model.addAttribute("wosRanking", detail.get().wosRanking());
-        return "scholardex/forum-detail";
+        return "forums/detail";
     }
 
     @GetMapping("/wos/categories")
     public String showWosCategoriesPage() {
-        return "rankings/categories";
+        return "wos/categories";
     }
 
     @GetMapping("/wos/categories/{key}")
     public String showWosCategoryDetailsPage(Model model, @PathVariable String key) {
         Optional<ro.uvt.pokedex.core.service.application.model.WosCategoryDetailViewModel> detail = wosCategoryPageService.findCategory(key);
         if (detail.isEmpty()) {
-            return "user/ranking-not-found";
+            return "shared/not-found";
         }
         model.addAttribute("categoryDetail", detail.get());
-        return "rankings/category-detail";
+        return "wos/category-detail";
     }
 
     @GetMapping("/core/rankings")
     public String showCoreRankingsPage() {
-        return "rankings/core";
+        return "core/rankings";
     }
 
     @GetMapping("/core/rankings/{id}")
@@ -86,14 +86,14 @@ public class RankingViewController {
         Optional<CoreConferenceRanking> ranking = adminCatalogFacade.findCoreRankingById(id);
         if (ranking.isPresent()) {
             model.addAttribute("conf", ranking.get());
-            return "rankings/core-detail";
+            return "core/ranking-detail";
         }
         return "redirect:/core/rankings";
     }
 
     @GetMapping("/universities")
     public String showUrapRankingsPage() {
-        return "rankings/urap";
+        return "universities/list";
     }
 
     @GetMapping("/universities/{id}")
@@ -102,7 +102,7 @@ public class RankingViewController {
         if (ranking.isPresent()) {
             model.addAttribute("ranking", ranking.get());
             model.addAttribute("fields", List.of("article", "citation", "totalDocument", "AIT", "CIT", "collaboration"));
-            return "rankings/urap-detail";
+            return "universities/detail";
         }
         return "redirect:/universities";
     }
@@ -111,6 +111,6 @@ public class RankingViewController {
     public String showArtisticEventsPage(Model model) {
         List<ArtisticEvent> all = adminCatalogFacade.listArtisticEvents();
         model.addAttribute("artisticEvents", all);
-        return "rankings/events";
+        return "events/list";
     }
 }

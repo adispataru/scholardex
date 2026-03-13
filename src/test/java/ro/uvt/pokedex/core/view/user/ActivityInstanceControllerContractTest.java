@@ -62,7 +62,7 @@ class ActivityInstanceControllerContractTest {
 
         mockMvc.perform(get("/user/activities").with(authenticatedUser(user)))
                 .andExpect(status().isOk())
-                .andExpect(view().name("user/activity-instances"))
+                .andExpect(view().name("user/activities"))
                 .andExpect(model().attributeExists(
                         "activities",
                         "referenceTypes",
@@ -100,7 +100,7 @@ class ActivityInstanceControllerContractTest {
 
         mockMvc.perform(get("/user/activities/edit/{id}", "a1"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("user/activity-instances-edit"))
+                .andExpect(view().name("user/activities-edit"))
                 .andExpect(model().attributeExists("activityInstance"));
 
         Activity selectedActivity = new Activity();

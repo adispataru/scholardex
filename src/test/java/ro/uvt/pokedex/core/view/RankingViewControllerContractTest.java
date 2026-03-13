@@ -68,7 +68,7 @@ class RankingViewControllerContractTest {
     void forumsPageRendersExpectedTemplateAndClientControls() throws Exception {
         mockMvc.perform(get("/forums"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("scholardex/forums"))
+                .andExpect(view().name("forums/list"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"scholardex-forums-search\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"scholardex-forums-sort\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"scholardex-forums-direction\"")))
@@ -115,7 +115,7 @@ class RankingViewControllerContractTest {
 
         mockMvc.perform(get("/forums/{id}", "missing"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("user/ranking-not-found"));
+                .andExpect(view().name("shared/not-found"));
     }
 
     @Test
@@ -141,7 +141,7 @@ class RankingViewControllerContractTest {
 
         mockMvc.perform(get("/forums/{id}", "w1"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("scholardex/forum-detail"))
+                .andExpect(view().name("forums/detail"))
                 .andExpect(model().attributeExists("forum", "detail", "wosRanking"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("General Metrics")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Category Rankings")));
@@ -166,7 +166,7 @@ class RankingViewControllerContractTest {
 
         mockMvc.perform(get("/forums/{id}", "w2"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("scholardex/forum-detail"))
+                .andExpect(view().name("forums/detail"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("This journal is not indexed by WoS.")));
     }
 
@@ -218,7 +218,7 @@ class RankingViewControllerContractTest {
     void coreRankingsPageRendersExpectedTemplateAndClientControls() throws Exception {
         mockMvc.perform(get("/core/rankings"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("rankings/core"))
+                .andExpect(view().name("core/rankings"))
                 .andExpect(model().attributeDoesNotExist("confs"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"core-search\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"core-sort\"")))
@@ -235,7 +235,7 @@ class RankingViewControllerContractTest {
     void urapRankingsPageRendersExpectedTemplateAndClientControls() throws Exception {
         mockMvc.perform(get("/universities"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("rankings/urap"))
+                .andExpect(view().name("universities/list"))
                 .andExpect(model().attributeDoesNotExist("rankings"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"urap-search\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"urap-sort\"")))
@@ -254,7 +254,7 @@ class RankingViewControllerContractTest {
 
         mockMvc.perform(get("/events"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("rankings/events"))
+                .andExpect(view().name("events/list"))
                 .andExpect(model().attributeExists("artisticEvents"));
     }
 
@@ -289,7 +289,7 @@ class RankingViewControllerContractTest {
     void wosCategoriesPageRendersCanonicalTemplateAndLinks() throws Exception {
         mockMvc.perform(get("/wos/categories"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("rankings/categories"))
+                .andExpect(view().name("wos/categories"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("WoS Categories")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-search\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-sort\"")))
@@ -317,7 +317,7 @@ class RankingViewControllerContractTest {
 
         mockMvc.perform(get("/wos/categories/{key}", "Computer Science - SCIE"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("rankings/category-detail"))
+                .andExpect(view().name("wos/category-detail"))
                 .andExpect(model().attributeExists("categoryDetail"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Journal Coverage")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/forums/j1\"")))
@@ -330,7 +330,7 @@ class RankingViewControllerContractTest {
 
         mockMvc.perform(get("/wos/categories/{key}", "missing - SCIE"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("user/ranking-not-found"));
+                .andExpect(view().name("shared/not-found"));
     }
 
     @Test

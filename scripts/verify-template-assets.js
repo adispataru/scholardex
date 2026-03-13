@@ -4,8 +4,12 @@ const path = require('path');
 const roots = [
   'src/main/resources/templates/admin',
   'src/main/resources/templates/user',
-  'src/main/resources/templates/rankings',
-  'src/main/resources/templates/scholardex'
+  'src/main/resources/templates/forums',
+  'src/main/resources/templates/wos',
+  'src/main/resources/templates/core',
+  'src/main/resources/templates/universities',
+  'src/main/resources/templates/events',
+  'src/main/resources/templates/shared'
 ];
 
 const allowlistedExternalAssetReferences = new Map([
@@ -18,11 +22,11 @@ const allowlistedExternalAssetReferences = new Map([
     new Set(['https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css'])
   ],
   [
-    'src/main/resources/templates/rankings/urap-detail.html',
+    'src/main/resources/templates/universities/detail.html',
     new Set(['https://cdn.jsdelivr.net/npm/chart.js'])
   ],
   [
-    'src/main/resources/templates/scholardex/forum-detail.html',
+    'src/main/resources/templates/forums/detail.html',
     new Set(['https://unpkg.com/frappe-charts@1.6.2/dist/frappe-charts.min.umd.js'])
   ]
 ]);

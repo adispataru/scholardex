@@ -12,11 +12,11 @@ const checks = [
     ]
   },
   {
-    file: 'src/main/resources/templates/scholardex/forums.html',
+    file: 'src/main/resources/templates/forums/list.html',
     forbidden: ['/rankings/wos"', '/admin/scopus/', '/scholardex/forums/data']
   },
   {
-    file: 'src/main/resources/templates/scholardex/forum-detail.html',
+    file: 'src/main/resources/templates/forums/detail.html',
     forbidden: ['/rankings/wos/"', '/admin/scopus/', '/rankings/categories/']
   },
   {

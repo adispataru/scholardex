@@ -4,8 +4,12 @@ const path = require('path');
 const runtimeTemplateRoots = [
   'src/main/resources/templates/admin',
   'src/main/resources/templates/user',
-  'src/main/resources/templates/rankings',
-  'src/main/resources/templates/scholardex'
+  'src/main/resources/templates/forums',
+  'src/main/resources/templates/wos',
+  'src/main/resources/templates/core',
+  'src/main/resources/templates/universities',
+  'src/main/resources/templates/events',
+  'src/main/resources/templates/shared'
 ];
 
 const checks = [
@@ -36,23 +40,23 @@ const checks = [
     ]
   },
   {
-    file: 'src/main/resources/templates/rankings/category-detail.html',
+    file: 'src/main/resources/templates/wos/category-detail.html',
     forbidden: ['/scholardex/forums/', '/rankings/categories"']
   },
   {
-    file: 'src/main/resources/templates/rankings/categories.html',
+    file: 'src/main/resources/templates/wos/categories.html',
     forbidden: ['data-detail-base="/rankings/categories"']
   },
   {
-    file: 'src/main/resources/templates/rankings/core.html',
+    file: 'src/main/resources/templates/core/rankings.html',
     forbidden: ['data-detail-base="/rankings/core"']
   },
   {
-    file: 'src/main/resources/templates/rankings/urap.html',
+    file: 'src/main/resources/templates/universities/list.html',
     forbidden: ['data-detail-base="/rankings/urap"']
   },
   {
-    file: 'src/main/resources/templates/scholardex/forum-detail.html',
+    file: 'src/main/resources/templates/forums/detail.html',
     forbidden: ['/rankings/categories/']
   },
   {
@@ -80,7 +84,7 @@ const checks = [
     forbidden: ["/rankings/urap'"]
   },
   {
-    file: 'src/main/resources/templates/user/activity-instances-edit.html',
+    file: 'src/main/resources/templates/user/activities-edit.html',
     forbidden: [
       "user-sidebar('activityInstances')",
       '/user/activityInstances/update'
@@ -102,14 +106,14 @@ const checks = [
     ]
   },
   {
-    file: 'src/main/resources/templates/user/individualReports.html',
+    file: 'src/main/resources/templates/user/individual-reports.html',
     forbidden: [
       "user-sidebar('individualReports')",
       '/user/individualReports/view/'
     ]
   },
   {
-    file: 'src/main/resources/templates/user/individualReport-view.html',
+    file: 'src/main/resources/templates/user/individual-report-view.html',
     forbidden: [
       "user-sidebar('individualReports')",
       '/user/individualReports/view/'

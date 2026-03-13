@@ -289,7 +289,7 @@ public class UserViewController {
         UserReportsListViewModel viewModel = userReportFacade.buildIndividualReportsListView(currentUser.getEmail());
         model.addAttribute("individualReports", viewModel.individualReports());
         model.addAttribute("user", currentUser);
-        return "user/individualReports";
+        return "user/individual-reports";
     }
 
 
@@ -326,7 +326,7 @@ public class UserViewController {
         model.addAttribute("runMetaSource", run.source());
 
         model.addAttribute("user", currentUser);
-        return "user/individualReport-view";
+        return "user/individual-report-view";
     }
 
     @PostMapping("/individual-reports/view/{id}/refresh")

@@ -401,7 +401,7 @@ class UserViewControllerContractTest {
         mockMvc.perform(get("/user/individual-reports")
                         .with(authenticatedUser("u@uvt.ro")))
                 .andExpect(status().isOk())
-                .andExpect(view().name("user/individualReports"))
+                .andExpect(view().name("user/individual-reports"))
                 .andExpect(model().attributeExists("individualReports", "user"));
     }
 
@@ -555,7 +555,7 @@ class UserViewControllerContractTest {
         String html = mockMvc.perform(get("/user/individual-reports/view/{id}", "rep-1")
                         .with(authenticatedUser("u@uvt.ro")))
                 .andExpect(status().isOk())
-                .andExpect(view().name("user/individualReport-view"))
+                .andExpect(view().name("user/individual-report-view"))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -629,7 +629,7 @@ class UserViewControllerContractTest {
         String html = mockMvc.perform(get("/user/individual-reports/view/{id}", "rep-2")
                         .with(authenticatedUser("u@uvt.ro")))
                 .andExpect(status().isOk())
-                .andExpect(view().name("user/individualReport-view"))
+                .andExpect(view().name("user/individual-report-view"))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();

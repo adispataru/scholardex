@@ -36,7 +36,7 @@ public class ActivityInstanceController {
         model.addAttribute("activityLabels", viewModel.activityLabels());
         model.addAttribute("activityData", viewModel.activityData());
         model.addAttribute("newActivityInstance", viewModel.newActivityInstance());
-        return "user/activity-instances";
+        return "user/activities";
 
     }
 
@@ -58,7 +58,7 @@ public class ActivityInstanceController {
         Optional<ActivityInstance> byId = userActivityInstanceFacade.findActivityInstance(id);
         if (byId.isPresent()) {
             model.addAttribute("activityInstance", byId.get());
-            return "user/activity-instances-edit";
+            return "user/activities-edit";
         } else {
             return "redirect:/user/activities";
         }

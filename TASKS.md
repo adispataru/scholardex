@@ -71,9 +71,10 @@ Done history moved to `TASKS-done.md`.
     Deliverable: implement `/user/dashboard` as the canonical dashboard endpoint and convert `/user` into a compatibility redirect only.
     Exit criteria: controller mappings, sidebar links, and MVC/security tests treat `/user/dashboard` as canonical; `/user` remains only as a redirect and is not documented as the steady-state route.
     Notes: complete with canonical `GET /user/dashboard`, compatibility-only `GET /user -> redirect:/user/dashboard`, and route/link/test guardrail alignment.
-  - [ ] `H26.2` Rename live runtime views/templates to canonical entity names.
+  - [x] `H26.2` Rename live runtime views/templates to canonical entity names.
     Deliverable: rename active template/view names so they match the canonical route/entity model, including the shared forums pages and the normalized user activity/report pages.
     Exit criteria: live templates no longer use stale names such as `scholardex/forums`, `scholardex/forum-detail`, `user/individualReports`, `user/individualReport-view`, `user/activity-instances`, `user/activity-instances-edit`, or `user/ranking-not-found` when canonical route/entity-aligned names are available.
+    Notes: complete with canonical shared/user view-name migration (`forums/*`, `wos/*`, `core/*`, `universities/*`, `events/*`, `shared/not-found`, `user/individual-reports*`, `user/activities*`), physical template moves, and guardrail/contract test alignment without MVC route-path changes.
   - [ ] `H26.3` Clean up active route-documentation drift.
     Deliverable: update active docs and route/flow maps that still present removed aliases as current runtime behavior.
     Exit criteria: active docs are aligned to `/user/dashboard`, `/user/individual-reports`, `/user/publications/scopus-tasks`, `/user/exports/cnfis`, and the H25 shared route families; only historical inventory docs retain removed-route references.
