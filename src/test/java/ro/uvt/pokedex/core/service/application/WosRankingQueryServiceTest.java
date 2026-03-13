@@ -1,110 +1,68 @@
 package ro.uvt.pokedex.core.service.application;
 
-import org.bson.Document;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.beans.factory.ObjectProvider;
 import ro.uvt.pokedex.core.controller.dto.WosRankingPageResponse;
-import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
 class WosRankingQueryServiceTest {
 
-    @Mock
-    private MongoTemplate mongoTemplate;
+    @Test
+    void usesPostgresPortWhenAvailable() {
+        PostgresWosRankingReadPort postgresPort = mock(PostgresWosRankingReadPort.class);
+        MongoWosRankingReadPort mongoPort = mock(MongoWosRankingReadPort.class);
+        ObjectProvider<PostgresWosRankingReadPort> postgresProvider = provider(postgresPort);
+        ObjectProvider<MongoWosRankingReadPort> mongoProvider = provider(mongoPort);
+        WosRankingPageResponse response = new WosRankingPageResponse(List.of(), 0, 25, 0, 0);
+        when(postgresPort.search(0, 25, "name", "asc", null)).thenReturn(response);
 
-    private WosRankingQueryService service;
+        WosRankingQueryService service = new WosRankingQueryService(postgresProvider, mongoProvider);
 
-    @BeforeEach
-    void setUp() {
-        service = new WosRankingQueryService(mongoTemplate);
+        WosRankingPageResponse result = service.search(0, 25, "name", "asc", null);
+
+        assertSame(response, result);
+        verify(postgresPort).search(0, 25, "name", "asc", null);
     }
 
     @Test
-    void searchBuildsPagedSortedQueryAndMapsResponse() {
-        WosRankingView a = ranking("1", "A Journal", "1111", "2222", List.of("3333"));
-        WosRankingView b = ranking("2", "B Journal", "4444", "5555", List.of());
+    void fallsBackToMongoWhenPostgresIsUnavailable() {
+        MongoWosRankingReadPort mongoPort = mock(MongoWosRankingReadPort.class);
+        ObjectProvider<PostgresWosRankingReadPort> postgresProvider = provider(null);
+        ObjectProvider<MongoWosRankingReadPort> mongoProvider = provider(mongoPort);
+        WosRankingPageResponse response = new WosRankingPageResponse(List.of(), 1, 50, 4, 1);
+        when(mongoPort.search(1, 50, "issn", "desc", "ab")).thenReturn(response);
 
-        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(WosRankingView.class)))
-                .thenReturn(List.of(a, b));
-        when(mongoTemplate.count(org.mockito.ArgumentMatchers.any(Query.class), eq(WosRankingView.class)))
-                .thenReturn(11L);
+        WosRankingQueryService service = new WosRankingQueryService(postgresProvider, mongoProvider);
 
-        WosRankingPageResponse result = service.search(1, 5, "name", "asc", null);
+        WosRankingPageResponse result = service.search(1, 50, "issn", "desc", "ab");
 
-        assertEquals(1, result.page());
-        assertEquals(5, result.size());
-        assertEquals(11L, result.totalItems());
-        assertEquals(3, result.totalPages());
-        assertEquals(2, result.items().size());
-        assertEquals("1", result.items().get(0).id());
-
-        ArgumentCaptor<Query> findQueryCaptor = ArgumentCaptor.forClass(Query.class);
-        verify(mongoTemplate).find(findQueryCaptor.capture(), eq(WosRankingView.class));
-        Query findQuery = findQueryCaptor.getValue();
-        assertEquals(5, findQuery.getLimit());
-        assertEquals(5L, findQuery.getSkip());
-        Document sortDoc = findQuery.getSortObject();
-        assertEquals(1, sortDoc.getInteger("name"));
+        assertSame(response, result);
+        verify(mongoPort).search(1, 50, "issn", "desc", "ab");
     }
 
     @Test
-    void searchWithQueryAddsPrefixRegexCriteriaOnNormalizedFields() {
-        when(mongoTemplate.find(org.mockito.ArgumentMatchers.any(Query.class), eq(WosRankingView.class)))
-                .thenReturn(List.of());
-        when(mongoTemplate.count(org.mockito.ArgumentMatchers.any(Query.class), eq(WosRankingView.class)))
-                .thenReturn(0L);
+    void throwsWhenNoReadPortIsAvailable() {
+        WosRankingQueryService service = new WosRankingQueryService(provider(null), provider(null));
 
-        service.search(0, 25, "issn", "desc", "ab cd");
+        IllegalStateException error = assertThrows(
+                IllegalStateException.class,
+                () -> service.search(0, 25, "name", "asc", null)
+        );
 
-        ArgumentCaptor<Query> findQueryCaptor = ArgumentCaptor.forClass(Query.class);
-        verify(mongoTemplate).find(findQueryCaptor.capture(), eq(WosRankingView.class));
-        Query findQuery = findQueryCaptor.getValue();
-        String queryJson = findQuery.getQueryObject().toJson();
-        assertEquals(-1, findQuery.getSortObject().getInteger("issn"));
-        org.junit.jupiter.api.Assertions.assertTrue(queryJson.contains("nameNorm"));
-        org.junit.jupiter.api.Assertions.assertTrue(queryJson.contains("issnNorm"));
-        org.junit.jupiter.api.Assertions.assertTrue(queryJson.contains("eIssnNorm"));
-        org.junit.jupiter.api.Assertions.assertTrue(queryJson.contains("alternativeIssnsNorm"));
-        org.junit.jupiter.api.Assertions.assertTrue(queryJson.contains("^\\\\Qab cd\\\\E"));
-        org.junit.jupiter.api.Assertions.assertTrue(queryJson.contains("^\\\\QABCD\\\\E"));
+        org.junit.jupiter.api.Assertions.assertEquals("No WoS ranking read port is available.", error.getMessage());
     }
 
-    @Test
-    void invalidSortThrowsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () -> service.search(0, 25, "bad", "asc", null));
-    }
-
-    @Test
-    void invalidDirectionThrowsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () -> service.search(0, 25, "name", "up", null));
-    }
-
-    @Test
-    void invalidQueryLengthThrowsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () -> service.search(0, 25, "name", "asc", "x".repeat(101)));
-    }
-
-    private WosRankingView ranking(String id, String name, String issn, String eIssn, List<String> altIssns) {
-        WosRankingView view = new WosRankingView();
-        view.setId(id);
-        view.setName(name);
-        view.setIssn(issn);
-        view.setEIssn(eIssn);
-        view.setAlternativeIssns(altIssns);
-        return view;
+    @SuppressWarnings("unchecked")
+    private <T> ObjectProvider<T> provider(T value) {
+        ObjectProvider<T> provider = mock(ObjectProvider.class);
+        when(provider.getIfAvailable()).thenReturn(value);
+        return provider;
     }
 }
