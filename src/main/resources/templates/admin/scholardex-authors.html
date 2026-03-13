@@ -30,22 +30,18 @@
                     </div>
                     <div class="card-body">
                         <div class="form-row">
-                            <div class="form-group col-md-3">
-                                <label for="admin-authors-afid">Affiliation ID</label>
-                                <input id="admin-authors-afid" type="text" class="form-control" th:value="${defaultAfid}" placeholder="Scopus affiliation id">
-                            </div>
-                            <div class="form-group col-md-3">
+                            <div class="form-group col-md-4">
                                 <label for="admin-authors-search">Search</label>
                                 <input id="admin-authors-search" type="text" class="form-control" placeholder="Author name or ID">
                             </div>
-                            <div class="form-group col-md-2">
+                            <div class="form-group col-md-3">
                                 <label for="admin-authors-sort">Sort By</label>
                                 <select id="admin-authors-sort" class="form-control">
                                     <option value="name">Name</option>
                                     <option value="id">ID</option>
                                 </select>
                             </div>
-                            <div class="form-group col-md-2">
+                            <div class="form-group col-md-3">
                                 <label for="admin-authors-direction">Direction</label>
                                 <select id="admin-authors-direction" class="form-control">
                                     <option value="asc">Ascending</option>
@@ -72,7 +68,7 @@
                     <div class="card-body">
                         <div id="admin-authors-loading" class="alert alert-info" role="status">Loading authors...</div>
                         <div id="admin-authors-error" class="alert alert-danger d-none" role="alert"></div>
-                        <div id="admin-authors-empty" class="alert alert-warning d-none" role="status">No authors found for the current filter.</div>
+                        <div id="admin-authors-empty" class="alert alert-warning d-none" role="status">No authors found for the current search.</div>
 
                         <div class="table-responsive">
                             <table class="table table-bordered" id="admin-authors-table" width="100%" cellspacing="0">

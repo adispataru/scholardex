@@ -1,6 +1,5 @@
 (function () {
   const state = {
-    afid: '60000434',
     page: 0,
     size: 25,
     sort: 'name',
@@ -13,7 +12,6 @@
   let searchDebounce = null;
 
   const els = {
-    afid: document.getElementById('admin-authors-afid'),
     search: document.getElementById('admin-authors-search'),
     sort: document.getElementById('admin-authors-sort'),
     direction: document.getElementById('admin-authors-direction'),
@@ -72,7 +70,6 @@
 
   function buildUrl() {
     const params = new URLSearchParams();
-    params.set('afid', state.afid);
     params.set('page', String(state.page));
     params.set('size', String(state.size));
     params.set('sort', state.sort);
@@ -112,11 +109,6 @@
   }
 
   function bindEvents() {
-    els.afid.addEventListener('change', function () {
-      state.afid = els.afid.value.trim() || '60000434';
-      state.page = 0;
-      fetchPage();
-    });
     els.search.addEventListener('input', function () {
       const value = els.search.value.trim();
       if (searchDebounce) clearTimeout(searchDebounce);
@@ -149,7 +141,6 @@
 
   function initialize() {
     if (Object.values(els).some(function (value) { return !value; })) return;
-    state.afid = els.afid.value.trim() || '60000434';
     bindEvents();
     updatePager();
     fetchPage();

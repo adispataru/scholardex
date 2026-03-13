@@ -416,8 +416,7 @@ public class AdminViewController {
     }
 
     @GetMapping("/scholardex/authors")
-    public String showScholardexAuthorsPage(Model model, @RequestParam(value = "afid", defaultValue = "60000434") String afid) {
-        model.addAttribute("defaultAfid", afid);
+    public String showScholardexAuthorsPage() {
         return "admin/scholardex-authors";
     }
 

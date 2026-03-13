@@ -29,14 +29,17 @@
             <div class="container-fluid">
                 <!-- Page Heading -->
                 <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                    <h1 class="h3 mb-0 text-gray-800">Publications</h1>
-                    <a th:href="@{/user/publications/exportCNFIS2025}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+                    <div>
+                        <h1 class="h3 mb-0 text-gray-800" th:text="${publicationPageTitle ?: 'Publications'}">Publications</h1>
+                        <p class="text-muted small mb-0" th:if="${publicationPageSubtitle != null}" th:text="${publicationPageSubtitle}">Author name</p>
+                    </div>
+                    <a th:if="${showPublicationActions == null || showPublicationActions}" th:href="@{/user/publications/exportCNFIS2025}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
                         <i class="fa-solid fa-download fa-sm text-white-50"></i> Export CNFIS
                     </a>
-                    <a th:href="@{/user/publications/add}" class="d-none d-sm-inline-block btn btn-sm btn-outline-success shadow-sm">
+                    <a th:if="${showPublicationActions == null || showPublicationActions}" th:href="@{/user/publications/add}" class="d-none d-sm-inline-block btn btn-sm btn-outline-success shadow-sm">
                         <i class="fa-solid fa-download fa-sm text-white-50"></i> Add Publication
                     </a>
-                    <a th:href="@{/user/publications/scopus_tasks}" class="d-none d-sm-inline-block btn btn-sm btn-outline-success shadow-sm">
+                    <a th:if="${showPublicationActions == null || showPublicationActions}" th:href="@{/user/publications/scopus_tasks}" class="d-none d-sm-inline-block btn btn-sm btn-outline-success shadow-sm">
                         <i class="fa-solid fa-download fa-sm text-white-50"></i> Scopus Updates
                     </a>
 
@@ -98,7 +101,7 @@
                 <!-- DataTales Example -->
                 <div class="card shadow mb-4">
                     <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Your Publications</h6>
+                        <h6 class="m-0 font-weight-bold text-primary" th:text="${publicationTableTitle ?: 'Your Publications'}">Your Publications</h6>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">

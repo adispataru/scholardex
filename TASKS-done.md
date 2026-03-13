@@ -932,6 +932,62 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   Note: residual controllers were migrated to Z2 facades (`AdminCatalogFacade`, `UserRankingFacade`, `ActivityManagementFacade`, `GroupReportsManagementFacade`, `IndividualReportsManagementFacade`, `UrapRankingFacade`, `UserActivityInstanceFacade`, `PublicationWizardFacade`); controller/view repository imports are now zero and architecture allowlist is empty.
 
 
+- [x] `H18` WoS ranking enrichment (computed fallback data + admin control page).
+  Goal: enrich WoS ranking records with computed values for fields missing in import files, without overriding values explicitly provided by source files.
+  Deliverable: enrichment flow that computes `rank`, `quartile`, and `quartileRank` per `category + edition`, plus an admin page to run/inspect enrichment.
+  Exit criteria: for each `category + edition`, source-provided values are preserved; missing values are deterministically computed; admins can run and validate enrichment from a dedicated page.
+  Status: archived from `TASKS.md` on 2026-03-13 after closing remaining subtasks based on existing implementation and regression coverage.
+  Subtasks:
+  - [x] `H18.1` Define enrichment computation contract.
+    Deliverable: documented deterministic rules for `rank`, `quartile`, and `quartileRank` at `category + edition` scope, including tie handling and null/insufficient-data behavior.
+    Exit criteria: rules are unambiguous and implementation-ready.
+    Status: completed on 2026-03-08.
+    Handover:
+    - Contract source of truth: `docs/h18.1-wos-ranking-enrichment-contract.md`.
+    - Canonical linkage amendment: `docs/h17-scopus-canonical-contract.md` (H18.1 section).
+    - Locked decisions: competition rank ties (`1,1,3`), position-bucket quartiles, source `quarter` precedence, missing metric value -> skip (non-conflict).
+  - [x] `H18.2` Integrate enrichment into WoS ingestion/projection flow.
+    Deliverable: service-level enrichment step that preserves source values and computes only missing fields.
+    Exit criteria: persistence reflects "source if present, computed otherwise" for all three fields.
+    Status: completed on 2026-03-08.
+    Handover:
+    - Canonical enrichment implementation: `WosFactBuilderService#enrichMissingCategoryRankingFields` computes missing `rank`, `quarter`, `quartileRank` while preserving source-provided fields.
+    - Initialization order now includes explicit enrichment step before projections (`/admin/initialization/wos/enrichCategoryRankings`).
+    - Big-bang flow executes enrichment between `build-facts` and `build-projections`.
+  - [x] `H18.3` Add admin backend endpoints for enrichment operations.
+    Deliverable: secured admin endpoints to trigger enrichment and retrieve summary results (processed, computed, preserved, failed).
+    Exit criteria: authorized admins can execute enrichment and get deterministic run summaries.
+    Status: completed on 2026-03-08.
+    Handover:
+    - New admin JSON endpoints: `POST /admin/initialization/wos/enrichment/run` and `GET /admin/initialization/wos/enrichment/summary`.
+    - Deterministic summary DTO: `stepName`, `executed`, `startedAt`, `completedAt`, `processed`, `computed`, `preserved`, `failed`, `skipped`, `note`.
+    - Locked mapping used in backend reporting: `computed=updated`, `failed=errors`, `preserved=processed-computed-failed`.
+  - [x] `H18.4` Build dedicated admin page for WoS enrichment.
+    Deliverable: admin UI page to start enrichment runs and review per-run outcome metrics.
+    Exit criteria: page is accessible to admins only and supports operational verification.
+    Status: completed on 2026-03-08.
+    Handover:
+    - Dedicated page endpoint: `GET /admin/initialization/wos/enrichment` with run action `POST /admin/initialization/wos/enrichment/runPage`.
+    - Page shows latest deterministic enrichment metrics (`processed`, `computed`, `preserved`, `failed`, `skipped`) and links to JSON summary endpoint.
+    - Initialization step 3 now exposes direct navigation to the dedicated enrichment page (`Open page`).
+  - [x] `H18.5` Backfill historical WoS records.
+    Deliverable: backfill-capable execution path for existing WoS category facts using the same enrichment contract as normal pipeline runs.
+    Exit criteria: historical records are enriched according to the same contract, with idempotent rerun behavior.
+    Status: completed on 2026-03-13.
+    Handover:
+    - Existing-data backfill is handled by `WosFactBuilderService#enrichMissingCategoryRankingFields`, which scans all persisted `WosCategoryFact` rows and updates only records still missing `rank`, `quarter`, or `quartileRank`.
+    - The backfill-capable enrichment step is available both as a standalone admin action (`/admin/initialization/wos/enrichCategoryRankings`, `/admin/initialization/wos/enrichment/run`, `/admin/initialization/wos/enrichment/runPage`) and inside the WoS big-bang sequence between `build-facts` and `build-projections`.
+    - Reruns are operationally idempotent because records with fully populated source/computed values are skipped and preserved by the same field-preservation rules.
+  - [x] `H18.6` Add regression and integration test coverage.
+    Deliverable: tests for preservation logic, computation correctness, and admin trigger flow.
+    Exit criteria: automated tests cover success paths and key failure/edge cases.
+    Status: completed on 2026-03-13.
+    Handover:
+    - Regression coverage for computation/preservation lives in `WosFactBuilderServiceTest` (computed rank/quarter/quartileRank, source-quarter preservation, missing-metric skip behavior, and category tuple handling).
+    - Admin trigger coverage lives in `AdminInitializationControllerContractTest`, `AdminInitializationSecurityContractTest`, and `RankingMaintenanceFacadeTest` (redirect/API/page flow, authorization, and deterministic summary mapping).
+    - Integration tests were intentionally not added in this closeout; the task is considered satisfied by the existing regression and controller/facade coverage until a broader workflow-level test slice is prioritized.
+
+
 - [x] `H17` Scopus canonical import pipeline transition.
   Goal: replace direct Scopus document writes with a canonical ingestion pipeline aligned to WoS patterns (`events -> facts -> views`) while converging runtime publication reads to a derived `scholardex.publication` projection that merges Scopus, WoS, and Google Scholar enrichments.
   Deliverable: high-level migration to Scopus import events ledger, normalized Scopus facts layer, explicit cross-source field ownership contract, and merged projection views consumed by application/reporting flows.

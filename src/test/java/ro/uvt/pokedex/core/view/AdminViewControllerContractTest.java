@@ -265,8 +265,6 @@ class AdminViewControllerContractTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/scholardex-authors"))
                 .andExpect(model().attributeDoesNotExist("authors"))
-                .andExpect(model().attributeExists("defaultAfid"))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-authors-afid\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-authors-search\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-authors-sort\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-authors-direction\"")))

@@ -34,7 +34,7 @@ class ScopusAuthorApiControllerContractTest {
 
     @Test
     void defaultRequestReturnsPagedEnvelope() throws Exception {
-        when(scholardexAuthorQueryService.search("60000434", 0, 25, "name", "asc", null))
+        when(scholardexAuthorQueryService.search(null, 0, 25, "name", "asc", null))
                 .thenReturn(new ScopusAuthorPageResponse(
                         List.of(
                                 item("1", "Alice", List.of("UVT")),
@@ -75,9 +75,9 @@ class ScopusAuthorApiControllerContractTest {
 
     @Test
     void queryMatchesConfiguredFields() throws Exception {
-        when(scholardexAuthorQueryService.search("60000434", 0, 25, "name", "asc", "alice"))
+        when(scholardexAuthorQueryService.search(null, 0, 25, "name", "asc", "alice"))
                 .thenReturn(new ScopusAuthorPageResponse(List.of(item("name-hit", "Alice", List.of())), 0, 25, 1, 1));
-        when(scholardexAuthorQueryService.search("60000434", 0, 25, "name", "asc", "0001"))
+        when(scholardexAuthorQueryService.search(null, 0, 25, "name", "asc", "0001"))
                 .thenReturn(new ScopusAuthorPageResponse(List.of(item("id-hit", "Author", List.of())), 0, 25, 1, 1));
 
         mockMvc.perform(get("/api/scopus/authors").param("q", "alice"))
@@ -91,11 +91,11 @@ class ScopusAuthorApiControllerContractTest {
 
     @Test
     void invalidParamsReturnBadRequestEnvelope() throws Exception {
-        when(scholardexAuthorQueryService.search("60000434", 0, 25, "bad", "asc", null))
+        when(scholardexAuthorQueryService.search(null, 0, 25, "bad", "asc", null))
                 .thenThrow(new IllegalArgumentException("Invalid sort parameter. Allowed: name, id."));
-        when(scholardexAuthorQueryService.search("60000434", 0, 25, "name", "up", null))
+        when(scholardexAuthorQueryService.search(null, 0, 25, "name", "up", null))
                 .thenThrow(new IllegalArgumentException("Invalid direction parameter. Allowed: asc, desc."));
-        when(scholardexAuthorQueryService.search("60000434", 0, 25, "name", "asc", "x".repeat(101)))
+        when(scholardexAuthorQueryService.search(null, 0, 25, "name", "asc", "x".repeat(101)))
                 .thenThrow(new IllegalArgumentException("Invalid q parameter. Maximum length is 100."));
 
         mockMvc.perform(get("/api/scopus/authors").param("page", "-1"))

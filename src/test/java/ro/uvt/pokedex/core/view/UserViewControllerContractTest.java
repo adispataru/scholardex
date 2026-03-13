@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -215,6 +216,56 @@ class UserViewControllerContractTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("user/publications"))
                 .andExpect(model().attributeExists("publications", "hIndex", "authorMap", "forumMap", "numCitations", "user"));
+    }
+
+    @Test
+    void authorPublicationsPageReusesSharedTemplateWithoutActionButtons() throws Exception {
+        Publication publication = new Publication();
+        publication.setId("p1");
+        publication.setForum("f1");
+        publication.setAuthors(List.of("sauth_1"));
+
+        Author author = new Author();
+        author.setId("sauth_1");
+        author.setName("Author A");
+
+        Forum forum = new Forum();
+        forum.setId("f1");
+        forum.setPublicationName("Forum A");
+
+        when(userPublicationFacade.buildAuthorPublicationsView(eq("sauth_1")))
+                .thenReturn(Optional.of(new UserPublicationsViewModel(
+                        List.of(publication),
+                        3,
+                        Map.of("sauth_1", author),
+                        Map.of("f1", forum),
+                        8
+                )));
+
+        String html = mockMvc.perform(get("/user/authors/view/{id}", "sauth_1").with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().isOk())
+                .andExpect(view().name("user/publications"))
+                .andExpect(model().attributeExists("publications", "hIndex", "authorMap", "forumMap", "numCitations", "user"))
+                .andExpect(model().attribute("publicationPageTitle", "Author Publications"))
+                .andExpect(model().attribute("publicationTableTitle", "Author Publications"))
+                .andExpect(model().attribute("publicationPageSubtitle", "Author A"))
+                .andExpect(model().attribute("showPublicationActions", false))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertFalse(html.contains("Export CNFIS"));
+        assertFalse(html.contains("Add Publication"));
+        assertFalse(html.contains("Scopus Updates"));
+    }
+
+    @Test
+    void authorPublicationsPageRedirectsToSharedPublicationsWhenAuthorMissing() throws Exception {
+        when(userPublicationFacade.buildAuthorPublicationsView(eq("missing"))).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/user/authors/view/{id}", "missing").with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/user/publications"));
     }
 
     @Test

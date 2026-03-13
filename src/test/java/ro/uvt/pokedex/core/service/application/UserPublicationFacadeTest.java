@@ -135,6 +135,28 @@ class UserPublicationFacadeTest {
     }
 
     @Test
+    void buildAuthorPublicationsViewBuildsSharedSummaryForCanonicalAuthorId() {
+        Author selectedAuthor = author("sauth_1");
+        selectedAuthor.setName("Alice");
+        Publication publication = publication("p1", "T1", "2024-01-01", 4, "f1", List.of("sauth_1", "a2"));
+
+        when(scholardexProjectionReadService.findAuthorById("sauth_1")).thenReturn(Optional.of(selectedAuthor));
+        when(scholardexProjectionReadService.findAllPublicationsByAuthorsContaining("sauth_1")).thenReturn(List.of(publication));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(selectedAuthor, author("a2")));
+        when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum("f1")));
+
+        var vmOpt = facade.buildAuthorPublicationsView("sauth_1");
+
+        assertTrue(vmOpt.isPresent());
+        assertEquals(1, vmOpt.get().publications().size());
+        assertEquals(1, vmOpt.get().hIndex());
+        assertEquals(4, vmOpt.get().numCitations());
+        assertEquals("Alice", vmOpt.get().authorMap().get("sauth_1").getName());
+        verify(scholardexProjectionReadService).findAuthorById("sauth_1");
+        verify(scholardexProjectionReadService).findAllPublicationsByAuthorsContaining("sauth_1");
+    }
+
+    @Test
     void buildCitationsViewSortsCitationsDeterministically() {
         Publication publication = publication("p1", "Main", "2023-01-01", 0, "f1", List.of("a1"));
         Publication c1 = publication("c1", "Zulu", "bad-date", 0, "f2", List.of("a2"));

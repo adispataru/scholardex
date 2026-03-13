@@ -10,64 +10,19 @@ Done history moved to `TASKS-done.md`.
 ## Backlog
 
 - [ ] `H13` Workflow-level functional confidence suite.
-  Goal: move beyond slice-level guardrails and prove critical user/admin business workflows end-to-end under realistic conditions.
-  Deliverable: focused high-value functional test suite (multi-step user/admin/report/export flows) with deterministic fixtures and clear pass/fail contracts.
-  Exit criteria: top business workflows are validated across success and failure paths, and functional regressions are caught before merge by repeatable automated checks.
+  Goal: move beyond slice-level guardrails and prove critical user/admin workflows across the current canonical architecture (Mongo ingest/facts, WoS/Scopus initialization flows, PostgreSQL reporting projections, and user-facing report/export reads).
+  Deliverable: focused workflow-level tests for the highest-value operational paths, using deterministic fixtures and asserting state transitions across controller -> orchestration -> persistence/read-model boundaries.
+  Exit criteria: top workflows that now span canonical ingest, projection rebuilds, Postgres-backed reads, and user report/export surfaces are validated across success and failure paths, and regressions are caught before merge by repeatable automated checks.
   Subtasks:
   - [ ] `H13.1` Admin WoS maintenance end-to-end flow.
-    Deliverable: deterministic workflow test for admin-triggered WoS maintenance chain (ingest -> facts -> projections -> verify) including authorization checks.
-    Exit criteria: success and unauthorized/failure paths are both asserted.
+    Deliverable: deterministic workflow test for the modern admin WoS initialization path, covering canonical WoS steps (`ingest -> build facts/onboarding -> enrich category rankings -> build projections`) plus verification/readiness assertions for the resulting read models.
+    Exit criteria: the workflow validates the current initialization surface under `/admin/initialization`, confirms step ordering and expected persistence/read-model effects, and asserts both authorized execution and unauthorized access behavior.
   - [ ] `H13.2` User indicator refresh/export workflow.
-    Deliverable: deterministic workflow test covering indicator refresh and export from user-facing flow.
-    Exit criteria: refresh updates persisted score state and export contract remains stable.
+    Deliverable: deterministic workflow test covering a representative user reporting path across persisted indicator refresh, individual-report refresh, and workbook export using the current user surfaces and projection-backed read dependencies.
+    Exit criteria: refresh actions persist/update the expected run/result state, downstream user-facing views resolve from the refreshed state without recomputation drift, and export response contracts remain stable for the selected workflow.
   - [ ] `H13.3` Failure-path workflow gate.
-    Deliverable: at least one full workflow-level degraded/failure scenario with deterministic error handling assertions.
-    Exit criteria: failure mode is reproducible and blocks regressions.
-
-- [ ] `H18` WoS ranking enrichment (computed fallback data + admin control page).
-  Goal: enrich WoS ranking records with computed values for fields missing in import files, without overriding values explicitly provided by source files.
-  Deliverable: enrichment flow that computes `rank`, `quartile`, and `quartileRank` per `category + edition`, plus an admin page to run/inspect enrichment.
-  Exit criteria: for each `category + edition`, source-provided values are preserved; missing values are deterministically computed; admins can run and validate enrichment from a dedicated page.
-  Subtasks:
-  - [x] `H18.1` Define enrichment computation contract.
-    Deliverable: documented deterministic rules for `rank`, `quartile`, and `quartileRank` at `category + edition` scope, including tie handling and null/insufficient-data behavior.
-    Exit criteria: rules are unambiguous and implementation-ready.
-    Status: completed on 2026-03-08.
-    Handover:
-    - Contract source of truth: `docs/h18.1-wos-ranking-enrichment-contract.md`.
-    - Canonical linkage amendment: `docs/h17-scopus-canonical-contract.md` (H18.1 section).
-    - Locked decisions: competition rank ties (`1,1,3`), position-bucket quartiles, source `quarter` precedence, missing metric value -> skip (non-conflict).
-  - [x] `H18.2` Integrate enrichment into WoS ingestion/projection flow.
-    Deliverable: service-level enrichment step that preserves source values and computes only missing fields.
-    Exit criteria: persistence reflects "source if present, computed otherwise" for all three fields.
-    Status: completed on 2026-03-08.
-    Handover:
-    - Canonical enrichment implementation: `WosFactBuilderService#enrichMissingCategoryRankingFields` computes missing `rank`, `quarter`, `quartileRank` while preserving source-provided fields.
-    - Initialization order now includes explicit enrichment step before projections (`/admin/initialization/wos/enrichCategoryRankings`).
-    - Big-bang flow executes enrichment between `build-facts` and `build-projections`.
-  - [x] `H18.3` Add admin backend endpoints for enrichment operations.
-    Deliverable: secured admin endpoints to trigger enrichment and retrieve summary results (processed, computed, preserved, failed).
-    Exit criteria: authorized admins can execute enrichment and get deterministic run summaries.
-    Status: completed on 2026-03-08.
-    Handover:
-    - New admin JSON endpoints: `POST /admin/initialization/wos/enrichment/run` and `GET /admin/initialization/wos/enrichment/summary`.
-    - Deterministic summary DTO: `stepName`, `executed`, `startedAt`, `completedAt`, `processed`, `computed`, `preserved`, `failed`, `skipped`, `note`.
-    - Locked mapping used in backend reporting: `computed=updated`, `failed=errors`, `preserved=processed-computed-failed`.
-  - [x] `H18.4` Build dedicated admin page for WoS enrichment.
-    Deliverable: admin UI page to start enrichment runs and review per-run outcome metrics.
-    Exit criteria: page is accessible to admins only and supports operational verification.
-    Status: completed on 2026-03-08.
-    Handover:
-    - Dedicated page endpoint: `GET /admin/initialization/wos/enrichment` with run action `POST /admin/initialization/wos/enrichment/runPage`.
-    - Page shows latest deterministic enrichment metrics (`processed`, `computed`, `preserved`, `failed`, `skipped`) and links to JSON summary endpoint.
-    - Initialization step 3 now exposes direct navigation to the dedicated enrichment page (`Open page`).
-  - [ ] `H18.5` Backfill historical WoS records.
-    Deliverable: one-time/backfill-capable execution path for existing data.
-    Exit criteria: historical records are enriched according to the same contract, with idempotent rerun behavior.
-    Status: active next task.
-  - [ ] `H18.6` Add regression and integration test coverage.
-    Deliverable: tests for preservation logic, computation correctness, and admin trigger flow.
-    Exit criteria: automated tests cover success paths and key failure/edge cases.
+    Deliverable: at least one full workflow-level degraded scenario exercising a modern critical path failure, such as initialization/projection verification failure, Postgres reporting readiness mismatch, or user report refresh/export degradation.
+    Exit criteria: the selected failure mode is reproducible with deterministic fixtures, produces explicit user/operator-visible behavior, and blocks regressions in the corresponding workflow.
 
 - [ ] `H20` Google Scholar (PoP) user-onboarding into Scholardex.
   Goal: support user-triggered Google Scholar imports from Publish-or-Perish exports as first-class canonical ingestion into Scholardex identity/link models.
@@ -80,3 +35,24 @@ Done history moved to `TASKS-done.md`.
   Deliverable: user-operation onboarding flow for user-defined imports modeled as source events/facts with deterministic IDs and moderation/approval metadata.
   Exit criteria: user-defined publications and related entities imported via user operations integrate with the same Scholardex identity and lineage contracts.
   Dependency: execute after `H19.9` citation canonicalization to avoid EID-coupled citation gaps for user-only publications.
+
+- [ ] `H24` PostgreSQL cutover for `/api/rankings/wos`.
+  Goal: migrate the `/api/rankings/wos` search/paging API from Mongo-backed `WosRankingView` reads to the existing PostgreSQL reporting read model while preserving the public contract and current UI behavior.
+  Deliverable: Postgres-backed query implementation for `/api/rankings/wos`, runtime cutover wiring, and targeted parity/regression coverage proving contract-equivalent behavior for paging, sorting, search, validation, and authentication.
+  Exit criteria: `/api/rankings/wos` is served from PostgreSQL `reporting_read.wos_ranking_view`; request/response shape, sort semantics, search behavior, and auth contract remain stable; targeted parity/regression tests cover the cutover and protect against reintroduction of Mongo-backed reads for this API.
+  Subtasks:
+  - [ ] `H24.1` Lock `/api/rankings/wos` Postgres query contract.
+    Deliverable: implementation-ready contract for the SQL-backed `/api/rankings/wos` search path, including allowed sort fields, direction rules, query normalization, prefix-search behavior, paging semantics, and response-shape compatibility.
+    Exit criteria: the Postgres implementation target is decision-locked and explicitly matches the current public API contract unless a change is intentionally recorded.
+  - [ ] `H24.2` Implement PostgreSQL read port for WoS rankings API.
+    Deliverable: dedicated Postgres query component for `/api/rankings/wos` backed by `reporting_read.wos_ranking_view`, returning the existing `WosRankingPageResponse`.
+    Exit criteria: the read port supports current paging/sorting/search behavior and reads only from PostgreSQL for this API surface.
+  - [ ] `H24.3` Cut over controller/service wiring for `/api/rankings/wos`.
+    Deliverable: runtime wiring that routes `WosRankingApiController` through the new Postgres-backed query path and removes direct Mongo query dependency from the API service.
+    Exit criteria: `/api/rankings/wos` no longer depends on `MongoTemplate`/Mongo query code at runtime, while the public route and response contract remain unchanged.
+  - [ ] `H24.4` Add parity and regression coverage for the API cutover.
+    Deliverable: focused tests covering request validation, authenticated access, paging, allowed sorts, prefix search semantics, and representative parity between legacy Mongo behavior and the new Postgres path.
+    Exit criteria: automated tests fail on contract drift or accidental reintroduction of Mongo-backed `/api/rankings/wos` reads.
+  - [ ] `H24.5` Closeout docs and task handoff.
+    Deliverable: backlog/docs/task notes updated to record `/api/rankings/wos` as PostgreSQL-backed while retaining the legacy API name intentionally.
+    Exit criteria: the steady-state route/storage decision is documented clearly enough that future cleanup does not treat this API as still Mongo-backed.

@@ -53,37 +53,13 @@ public class UserPublicationFacade {
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
-        List<Publication> publications = scholardexProjectionReadService.findAllPublicationsByAuthorsIn(canonicalAuthorIds);
-        Map<String, Publication> dedupedPublicationsById = new LinkedHashMap<>();
-        for (Publication publication : publications) {
-            if (publication.getId() == null || publication.getId().isBlank()) {
-                continue;
-            }
-            dedupedPublicationsById.putIfAbsent(publication.getId(), publication);
-        }
-        publications = new ArrayList<>(dedupedPublicationsById.values());
-        PublicationOrderingSupport.sortPublicationsInPlace(publications);
+        List<Publication> publications = dedupeAndSortPublications(
+                scholardexProjectionReadService.findAllPublicationsByAuthorsIn(canonicalAuthorIds)
+        );
         long publicationsFetchMs = nanosToMillis(System.nanoTime() - publicationsFetchStartedAtNanos);
 
-        int hIndex = computeHIndex(publications);
-
         long relatedLookupStartedAtNanos = System.nanoTime();
-        Set<String> authorKeys = new HashSet<>();
-        Set<String> forumKeys = new HashSet<>();
-        AtomicInteger numCitations = new AtomicInteger();
-        publications.forEach(p -> {
-            authorKeys.addAll(p.getAuthors());
-            forumKeys.add(p.getForum());
-            numCitations.addAndGet(p.getCitedbyCount());
-        });
-
-        List<Author> byIdIn = scholardexProjectionReadService.findAuthorsByIdIn(authorKeys);
-        Map<String, Author> authorMap = new HashMap<>();
-        byIdIn.forEach(a -> authorMap.put(a.getId(), a));
-
-        Map<String, Forum> forumMap = new HashMap<>();
-        List<Forum> forums = scholardexProjectionReadService.findForumsByIdIn(forumKeys);
-        forums.forEach(f -> forumMap.put(f.getId(), f));
+        UserPublicationsViewModel viewModel = buildPublicationsViewModel(publications);
         long relatedLookupMs = nanosToMillis(System.nanoTime() - relatedLookupStartedAtNanos);
 
         long totalMs = nanosToMillis(System.nanoTime() - startedAtNanos);
@@ -93,21 +69,27 @@ public class UserPublicationFacade {
                 byId.size(),
                 canonicalAuthorIds.size(),
                 publications.size(),
-                forums.size(),
-                numCitations.get(),
+                viewModel.forumMap().size(),
+                viewModel.numCitations(),
                 lookupKeysMs,
                 authorsFetchMs,
                 publicationsFetchMs,
                 relatedLookupMs,
                 totalMs);
 
-        return Optional.of(new UserPublicationsViewModel(
-                publications,
-                hIndex,
-                authorMap,
-                forumMap,
-                numCitations.get()
-        ));
+        return Optional.of(viewModel);
+    }
+
+    public Optional<UserPublicationsViewModel> buildAuthorPublicationsView(String authorId) {
+        Optional<Author> author = scholardexProjectionReadService.findAuthorById(authorId);
+        if (author.isEmpty()) {
+            return Optional.empty();
+        }
+
+        List<Publication> publications = dedupeAndSortPublications(
+                scholardexProjectionReadService.findAllPublicationsByAuthorsContaining(author.get().getId())
+        );
+        return Optional.of(buildPublicationsViewModel(publications));
     }
 
     public Optional<UserPublicationCitationsViewModel> buildCitationsView(String publicationId) {
@@ -190,6 +172,48 @@ public class UserPublicationFacade {
         }
 
         return 0;
+    }
+
+    private List<Publication> dedupeAndSortPublications(List<Publication> publications) {
+        Map<String, Publication> dedupedPublicationsById = new LinkedHashMap<>();
+        for (Publication publication : publications) {
+            if (publication.getId() == null || publication.getId().isBlank()) {
+                continue;
+            }
+            dedupedPublicationsById.putIfAbsent(publication.getId(), publication);
+        }
+        List<Publication> deduped = new ArrayList<>(dedupedPublicationsById.values());
+        PublicationOrderingSupport.sortPublicationsInPlace(deduped);
+        return deduped;
+    }
+
+    private UserPublicationsViewModel buildPublicationsViewModel(List<Publication> publications) {
+        int hIndex = computeHIndex(publications);
+
+        Set<String> authorKeys = new HashSet<>();
+        Set<String> forumKeys = new HashSet<>();
+        AtomicInteger numCitations = new AtomicInteger();
+        publications.forEach(p -> {
+            authorKeys.addAll(p.getAuthors());
+            forumKeys.add(p.getForum());
+            numCitations.addAndGet(p.getCitedbyCount());
+        });
+
+        List<Author> byIdIn = scholardexProjectionReadService.findAuthorsByIdIn(authorKeys);
+        Map<String, Author> authorMap = new HashMap<>();
+        byIdIn.forEach(a -> authorMap.put(a.getId(), a));
+
+        Map<String, Forum> forumMap = new HashMap<>();
+        List<Forum> forums = scholardexProjectionReadService.findForumsByIdIn(forumKeys);
+        forums.forEach(f -> forumMap.put(f.getId(), f));
+
+        return new UserPublicationsViewModel(
+                publications,
+                hIndex,
+                authorMap,
+                forumMap,
+                numCitations.get()
+        );
     }
 
     private long nanosToMillis(long nanos) {

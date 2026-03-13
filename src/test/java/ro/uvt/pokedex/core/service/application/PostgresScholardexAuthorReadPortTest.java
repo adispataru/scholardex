@@ -63,4 +63,13 @@ class PostgresScholardexAuthorReadPortTest {
         verify(namedParameterJdbcTemplate).query(sqlCaptor.capture(), any(MapSqlParameterSource.class), any(RowMapper.class));
         assertFalse(sqlCaptor.getValue().contains("ILIKE :qPattern"));
     }
+
+    @Test
+    void searchWithoutAffiliationDoesNotAddAffiliationPredicate() {
+        service.search(null, 0, 25, "name", "asc", null);
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(namedParameterJdbcTemplate).query(sqlCaptor.capture(), any(MapSqlParameterSource.class), any(RowMapper.class));
+        assertFalse(sqlCaptor.getValue().contains("a.affiliation_ids @> ARRAY[:afid]::text[]"));
+    }
 }

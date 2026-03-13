@@ -22,7 +22,7 @@ public class ScopusAuthorApiController {
 
     @GetMapping("/authors")
     public ResponseEntity<ScopusAuthorPageResponse> listScopusAuthors(
-            @RequestParam(defaultValue = "60000434") String afid,
+            @RequestParam(required = false) String afid,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "25") @Min(1) @Max(100) int size,
             @RequestParam(defaultValue = "name") String sort,

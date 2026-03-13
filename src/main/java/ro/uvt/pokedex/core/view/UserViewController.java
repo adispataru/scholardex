@@ -99,6 +99,33 @@ public class UserViewController {
         return "user/publications";
     }
 
+    @GetMapping("/authors/view/{id}")
+    public String showAuthorPublicationsPage(@PathVariable("id") String authorId, Model model, Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
+            return "redirect:/login";
+        }
+
+        Optional<UserPublicationsViewModel> viewModelOpt = userPublicationFacade.buildAuthorPublicationsView(authorId);
+        if (viewModelOpt.isEmpty()) {
+            return "redirect:/user/publications";
+        }
+        UserPublicationsViewModel viewModel = viewModelOpt.get();
+
+        model.addAttribute("publications", viewModel.publications());
+        model.addAttribute("hIndex", viewModel.hIndex());
+        model.addAttribute("authorMap", viewModel.authorMap());
+        model.addAttribute("forumMap", viewModel.forumMap());
+        model.addAttribute("numCitations", viewModel.numCitations());
+        model.addAttribute("publicationPageTitle", "Author Publications");
+        model.addAttribute("publicationTableTitle", "Author Publications");
+        model.addAttribute("publicationPageSubtitle", viewModel.authorMap().get(authorId) != null
+                ? viewModel.authorMap().get(authorId).getName()
+                : authorId);
+        model.addAttribute("showPublicationActions", false);
+        model.addAttribute("user", currentUser);
+        return "user/publications";
+    }
+
     @GetMapping("/publications/scopus_tasks")
     public String showScopusTasksPage(Model model, Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
