@@ -8,6 +8,7 @@
     "verify-template-assets": "node scripts/verify-template-assets.js",
     "verify-h23-ui-guardrails": "node scripts/verify-h23-ui-guardrails.js",
     "verify-h25-route-guardrails": "node scripts/verify-h25-route-guardrails.js",
+    "verify-docs-governance": "node scripts/verify-docs-governance.js",
     "verify-duplication-guardrails": "node scripts/verify-duplication-guardrails.js",
     "verify-datatables-optin": "node scripts/verify-datatables-optin.js",
     "verify-architecture-boundaries": "node scripts/verify-architecture-boundaries.js",

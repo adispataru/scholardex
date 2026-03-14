@@ -1,4 +1,5 @@
 # C01 Canonical CNFIS Rule Spec
+Status: active indexed source-of-truth document.
 
 Date: 2026-03-03  
 Scope: active CNFIS 2025 scoring path only (`CNFISScoringService2025`)

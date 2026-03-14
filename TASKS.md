@@ -32,54 +32,25 @@ Done history moved to `TASKS-done.md`.
 
 - [ ] `H21` User-defined source onboarding into Scholardex.
   Goal: support user-triggered non-Scopus/WoS/Scholar publication imports as first-class canonical ingestion into Scholardex identity/link models.
-  Deliverable: user-operation onboarding flow for user-defined imports modeled as source events/facts with deterministic IDs and moderation/approval metadata.
-  Exit criteria: user-defined publications and related entities imported via user operations integrate with the same Scholardex identity and lineage contracts.
+  Deliverable: migrated in-place user publication wizard onboarding flow modeled as `USER_DEFINED` source events/facts with deterministic IDs, explicit review/moderation metadata, and integration with canonical Scholardex identity, source-link, conflict, and projection contracts.
+  Exit criteria: the existing `/user/publications/add` wizard submits `USER_DEFINED` publication onboarding through the canonical Scholardex ingestion path; publication/forum/authorship/linked-affiliation lineage is deterministic and replay-safe; review/moderation state is explicit in metadata without requiring a separate admin approval workflow; imported records become visible through canonical Scholardex projections and existing user/admin operability surfaces.
   Dependency: execute after `H19.9` citation canonicalization to avoid EID-coupled citation gaps for user-only publications.
-
-- [ ] `H25` Uniform entity routes and shared read-view consolidation.
-  Goal: eliminate duplicate MVC pages/routes for shared read surfaces across `/user/*` and `/admin/*`, and align navigation with canonical entity-based routes while keeping admin-only management tools separate.
-  Deliverable: canonical authenticated MVC routes for shared entities (`/forums`, `/wos/categories`, `/core/rankings`, `/universities`, `/events`), trimmed `/user/*` routes for user-owned surfaces, removal of duplicate admin read views, and role-driven sidebar selection instead of hardcoded admin/user sidebar fragments per template.
-  Exit criteria: shared entity reads resolve through one canonical route family regardless of role; duplicate admin read pages for forums/rankings/universities/events are removed; user-owned surfaces remain under `/user/*`; sidebar/navigation is selected by role at runtime rather than hardcoded per template; legacy duplicate read routes are removed and all callers/tests/docs are aligned to the new route model.
   Subtasks:
-  - [x] `H25.1` Lock canonical route and ownership contract.
-    Deliverable: implementation-ready route contract defining which pages remain user-owned (`/user/dashboard`, `/user/publications`, `/user/activities`) versus which become shared authenticated entity routes (`/forums`, `/wos/categories`, `/core/rankings`, `/universities`, `/events`), plus explicit non-goals for admin-only management pages that stay under `/admin/*`.
-    Exit criteria: every currently duplicated read surface has one decision-locked canonical route family and one owner context before code changes start.
-    Notes: locked by `docs/h25.1-canonical-route-ownership-contract.md`; H25.2 starts from this mapping as the route ownership gate.
-  - [x] `H25.2` Consolidate shared entity MVC routes and remove duplicate admin read pages.
-    Deliverable: shared MVC route consolidation for forums, WoS categories, CORE rankings, university rankings, and events, with duplicate `/admin/*` read/list/detail pages removed and callers/templates updated to use the canonical shared routes.
-    Exit criteria: shared read entities are no longer exposed through separate admin/user route families, and no duplicate admin MVC page remains for the covered read surfaces.
-    Notes: complete with canonical-only shared routes (`/forums`, `/wos/categories`, `/core/rankings`, `/universities`, `/events`), removed legacy public aliases (`/rankings/*`, `/scholardex/forums*`, `/core*`, `/urap*`), and removed admin duplicate read GET aliases under `/admin/rankings/*`.
-  - [x] `H25.3` Normalize remaining user-owned route families.
-    Deliverable: user route cleanup so personal/user-owned pages remain under a consistent `/user/*` model, including keeping `/user/dashboard` and `/user/publications` and renaming activity-instance reads to `/user/activities`.
-    Exit criteria: user-owned routes follow a consistent naming model and no leftover user route uses the old inconsistent entity naming where a cleaner canonical `/user/*` alternative is defined by H25.
-    Notes: complete with canonical user routes (`/user/activities*`, `/user/individual-reports*`, `/user/publications/scopus-tasks`, `/user/tasks/scopus/update-publications`, `/user/tasks/scopus/update-citations`, `/user/exports/cnfis`) and immediate removal of legacy aliases (no redirects).
-  - [x] `H25.4` Replace hardcoded admin/user sidebar composition with role-based layout selection.
-    Deliverable: unified sidebar/layout mechanism that selects navigation content based on the authenticated role/context at render time instead of templates hardcoding `admin-sidebar` vs `user-sidebar`.
-    Exit criteria: covered templates no longer choose sidebar fragments manually by route family, and shared entity pages render the correct role-aware navigation from one central mechanism.
-    Notes: complete with centralized `fragments :: sidebar(activeSection)` + `sidebarContext` model attribute in `GlobalControllerAdvice`; runtime templates now use one sidebar fragment, with admin-first shared-route behavior and `/user/**` override.
-  - [x] `H25.5` Remove stale route debt and align verification/docs.
-    Deliverable: delete obsolete duplicate read templates/routes, update route/UI/security tests and any route-map/docs/guardrails that still reference the removed read paths, and record the steady-state route model.
-    Exit criteria: automated tests and docs reflect the new canonical route families only, and no removed duplicate read route remains referenced by runtime navigation or verification artifacts.
-    Notes: complete with removal of `/admin/scopus/**` MVC compatibility mappings, deletion of dormant runtime templates, updated route guardrails/verifiers, and H25 steady-state route-map documentation.
-
-- [ ] `H26` Canonical user dashboard route and post-H25 naming cleanup.
-  Goal: finish the post-H25 cleanup by aligning the remaining runtime route contract, live template/view names, and active docs with the canonical MVC route model already adopted in H25.
-  Deliverable: canonical `/user/dashboard` route with `/user` retained only as a compatibility redirect, renamed live MVC template/view names that match canonical entities/routes, and active docs/tests/guardrails updated to reflect the steady-state route model without stale pre-H25 naming.
-  Exit criteria: `/user/dashboard` is the documented and implemented dashboard route; `/user` no longer serves as the primary route; live runtime template/view names no longer use stale `scholardex` or camelCase report/activity naming where canonical names now exist; active docs/tests/guardrails describe only current route families except where old routes are intentionally referenced as removal assertions.
-  Subtasks:
-  - [x] `H26.1` Canonicalize the dashboard route.
-    Deliverable: implement `/user/dashboard` as the canonical dashboard endpoint and convert `/user` into a compatibility redirect only.
-    Exit criteria: controller mappings, sidebar links, and MVC/security tests treat `/user/dashboard` as canonical; `/user` remains only as a redirect and is not documented as the steady-state route.
-    Notes: complete with canonical `GET /user/dashboard`, compatibility-only `GET /user -> redirect:/user/dashboard`, and route/link/test guardrail alignment.
-  - [x] `H26.2` Rename live runtime views/templates to canonical entity names.
-    Deliverable: rename active template/view names so they match the canonical route/entity model, including the shared forums pages and the normalized user activity/report pages.
-    Exit criteria: live templates no longer use stale names such as `scholardex/forums`, `scholardex/forum-detail`, `user/individualReports`, `user/individualReport-view`, `user/activity-instances`, `user/activity-instances-edit`, or `user/ranking-not-found` when canonical route/entity-aligned names are available.
-    Notes: complete with canonical shared/user view-name migration (`forums/*`, `wos/*`, `core/*`, `universities/*`, `events/*`, `shared/not-found`, `user/individual-reports*`, `user/activities*`), physical template moves, and guardrail/contract test alignment without MVC route-path changes.
-  - [x] `H26.3` Clean up active route-documentation drift.
-    Deliverable: update active docs and route/flow maps that still present removed aliases as current runtime behavior.
-    Exit criteria: active docs are aligned to `/user/dashboard`, `/user/individual-reports`, `/user/publications/scopus-tasks`, `/user/exports/cnfis`, and the H25 shared route families; only historical inventory docs retain removed-route references.
-    Notes: complete with active-doc route normalization to canonical H25/H26 families (`/user/dashboard`, `/user/individual-reports`, `/user/exports/cnfis`, `/admin/scholardex/publications/*`, shared entity-first routes) while preserving legacy aliases only in explicitly historical/inventory documentation.
-  - [x] `H26.4` Tighten verification around canonical naming and aliases.
-    Deliverable: refresh controller/security/guardrail coverage so canonical routes and renamed views are protected, while old-route references remain only in explicit removed-alias assertions.
-    Exit criteria: tests fail if `/user` reverts to primary-dashboard behavior, if canonical dashboard links regress, or if removed aliases are reintroduced; guardrails/docs distinguish active routes from historical removals.
-    Notes: complete with H26 checks folded into `verify-h25-route-guardrails` (canonical `/user/dashboard` contract marker, stale view-token regression checks, active-doc vs historical legacy-route boundary), plus tightened user/shared MVC-security alias-removal assertions.
+  - [ ] `H21.1` Lock the `USER_DEFINED` wizard-onboarding contract.
+    Deliverable: implementation-ready contract for the migrated `/user/publications/add` flow covering source family naming, deterministic `sourceRecordId` and forum keying, lineage envelope, ownership boundaries, and review/moderation metadata semantics.
+    Exit criteria: H21 is decision-locked as an in-place migration of the existing publication wizard, not a new route family or broader direct author/forum/affiliation onboarding project; `USER_DEFINED` publication/forum linkage rules explicitly align with H19.1 and H19.2 contracts.
+  - [ ] `H21.2` Migrate wizard submission into first-class `USER_DEFINED` canonical ingest.
+    Deliverable: backend migration of the existing wizard submission path so wizard-created publications and newly created forums are emitted and materialized as canonical `USER_DEFINED` onboarding records rather than legacy manual compatibility payloads.
+    Exit criteria: the wizard still runs at `/user/publications/add`, but its submit path is explicitly modeled as `USER_DEFINED` canonical onboarding with deterministic replay-safe IDs and no hidden dependence on legacy source naming assumptions.
+  - [ ] `H21.3` Align canonical linking, lineage, and review metadata for wizard-created entities.
+    Deliverable: canonical publication/forum/authorship/linked-affiliation handling for wizard submissions with explicit review/moderation metadata carried in source event payloads, source links, or canonical facts as appropriate.
+    Exit criteria: user-defined submissions preserve source ownership, link deterministically into Scholardex identity models, surface review/moderation state for operator triage, and do not require a separate admin approval UI/workflow in H21.
+  - [ ] `H21.4` Integrate operability and admin triage for `USER_DEFINED` onboarding.
+    Deliverable: ensure wizard-created `USER_DEFINED` records appear coherently in existing conflict/source-link/admin operability surfaces and log/metric triage paths.
+    Exit criteria: operators can trace wizard submissions through canonical build/source-link lineage using the same admin and observability paths already used for other Scholardex sources; no parallel one-off wizard-only debugging path remains.
+  - [ ] `H21.5` Add regression and projection-visibility coverage for migrated wizard onboarding.
+    Deliverable: focused tests for wizard submission, duplicate replay/idempotence, deterministic forum/source ID generation, source-link/conflict behavior where applicable, and projection visibility after canonical materialization.
+    Exit criteria: automated coverage protects the migrated in-place wizard contract and fails on regressions that reintroduce legacy manual-path behavior or break canonical projection visibility for `USER_DEFINED` submissions.
+  - [ ] `H21.6` Closeout docs and route/task handoff.
+    Deliverable: backlog/docs/task notes updated so the publication wizard is documented as the canonical in-place `USER_DEFINED` onboarding surface into Scholardex.
+    Exit criteria: active docs no longer describe the wizard as a legacy manual exception path; H21 handoff is explicit about retained UI route, canonical source family, and no-admin-approval-workflow scope.

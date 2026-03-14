@@ -2,6 +2,67 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H25 Uniform Entity Routes And Shared Read-View Consolidation
+
+Archived from `TASKS.md` on 2026-03-13 after H25.1-H25.5 closure.
+
+- [x] `H25` Uniform entity routes and shared read-view consolidation.
+  Goal: eliminate duplicate MVC pages/routes for shared read surfaces across `/user/*` and `/admin/*`, and align navigation with canonical entity-based routes while keeping admin-only management tools separate.
+  Deliverable: canonical authenticated MVC routes for shared entities (`/forums`, `/wos/categories`, `/core/rankings`, `/universities`, `/events`), trimmed `/user/*` routes for user-owned surfaces, removal of duplicate admin read views, and role-driven sidebar selection instead of hardcoded admin/user sidebar fragments per template.
+  Exit criteria: shared entity reads resolve through one canonical route family regardless of role; duplicate admin read pages for forums/rankings/universities/events are removed; user-owned surfaces remain under `/user/*`; sidebar/navigation is selected by role at runtime rather than hardcoded per template; legacy duplicate read routes are removed and all callers/tests/docs are aligned to the new route model.
+  Status: completed on 2026-03-13.
+  Handover:
+  - Shared authenticated MVC reads are canonical under `/forums`, `/wos/categories`, `/core/rankings`, `/universities`, and `/events`.
+  - User-owned MVC routes are canonical under `/user/*`, with legacy aliases removed rather than redirected.
+  - Sidebar selection is centralized through `fragments :: sidebar(activeSection)` with role-aware context instead of template-specific admin/user fragment selection.
+  - Route ownership source of truth: `docs/tasks/closed/h25.1-canonical-route-ownership-contract.md`.
+  - Steady-state route map: `docs/tasks/closed/h23.5-route-map-and-closeout.md`.
+  Subtasks:
+  - [x] `H25.1` Lock canonical route and ownership contract.
+    Handover:
+    - Contract source of truth: `docs/tasks/closed/h25.1-canonical-route-ownership-contract.md`.
+  - [x] `H25.2` Consolidate shared entity MVC routes and remove duplicate admin read pages.
+    Handover:
+    - Shared canonical route families now serve the consolidated read surfaces.
+    - Duplicate admin read GET aliases under `/admin/rankings/*` are removed.
+  - [x] `H25.3` Normalize remaining user-owned route families.
+    Handover:
+    - Canonical user routes include `/user/activities*`, `/user/individual-reports*`, `/user/publications/scopus-tasks`, `/user/tasks/scopus/update-publications`, `/user/tasks/scopus/update-citations`, and `/user/exports/cnfis`.
+  - [x] `H25.4` Replace hardcoded admin/user sidebar composition with role-based layout selection.
+    Handover:
+    - Runtime templates use unified sidebar composition with role-aware selection instead of hardcoded `admin-sidebar` and `user-sidebar` bindings.
+  - [x] `H25.5` Remove stale route debt and align verification/docs.
+    Handover:
+    - `/admin/scopus/**` MVC compatibility mappings are removed.
+    - Route guardrails and route-map docs were updated to enforce canonical shared/user route families.
+
+## H26 Canonical User Dashboard Route And Post-H25 Naming Cleanup
+
+Archived from `TASKS.md` on 2026-03-13 after H26.1-H26.4 closure.
+
+- [x] `H26` Canonical user dashboard route and post-H25 naming cleanup.
+  Goal: finish the post-H25 cleanup by aligning the remaining runtime route contract, live template/view names, and active docs with the canonical MVC route model already adopted in H25.
+  Deliverable: canonical `/user/dashboard` route with `/user` retained only as a compatibility redirect, renamed live MVC template/view names that match canonical entities/routes, and active docs/tests/guardrails updated to reflect the steady-state route model without stale pre-H25 naming.
+  Exit criteria: `/user/dashboard` is the documented and implemented dashboard route; `/user` no longer serves as the primary route; live runtime template/view names no longer use stale `scholardex` or camelCase report/activity naming where canonical names now exist; active docs/tests/guardrails describe only current route families except where old routes are intentionally referenced as removal assertions.
+  Status: completed on 2026-03-13.
+  Handover:
+  - `GET /user/dashboard` is canonical and `GET /user` is compatibility redirect-only.
+  - Live shared/user view names are normalized to entity-aligned template families such as `forums/*`, `wos/*`, `core/*`, `universities/*`, `events/*`, `shared/not-found`, `user/activities*`, and `user/individual-reports*`.
+  - Active docs and route guardrails now enforce canonical naming while reserving removed aliases for historical inventories and explicit removal assertions only.
+  Subtasks:
+  - [x] `H26.1` Canonicalize the dashboard route.
+    Handover:
+    - Canonical dashboard route is `GET /user/dashboard`; `GET /user` redirects there for compatibility.
+  - [x] `H26.2` Rename live runtime views/templates to canonical entity names.
+    Handover:
+    - Runtime view-name/template families are aligned with canonical entity naming and no longer use stale `scholardex` or camelCase activity/report names.
+  - [x] `H26.3` Clean up active route-documentation drift.
+    Handover:
+    - Active docs now describe canonical H25/H26 route families; legacy aliases remain only in historical inventory/closeout material.
+  - [x] `H26.4` Tighten verification around canonical naming and aliases.
+    Handover:
+    - Route guardrails and MVC/security tests protect canonical `/user/dashboard` behavior, renamed view tokens, and removed-alias invariants.
+
 ## H24 PostgreSQL Cutover For `/api/rankings/wos`
 
 Archived from `TASKS.md` on 2026-03-13 after H24.1-H24.5 closure.
@@ -15,14 +76,14 @@ Archived from `TASKS.md` on 2026-03-13 after H24.1-H24.5 closure.
   - Public API route intentionally remains `GET /api/rankings/wos`.
   - Runtime query path is now `WosRankingApiController -> WosRankingQueryService -> PostgresWosRankingReadPort`.
   - Runtime storage authority for this API is `reporting_read.wos_ranking_view`; Mongo fallback is intentionally removed.
-  - Contract source of truth: `docs/h24.1-wos-rankings-postgres-query-contract.md`.
-  - Closeout source of truth: `docs/h24.5-wos-rankings-postgres-closeout.md`.
+  - Contract source of truth: `docs/tasks/closed/h24.1-wos-rankings-postgres-query-contract.md`.
+  - Closeout source of truth: `docs/tasks/closed/h24.5-wos-rankings-postgres-closeout.md`.
   Subtasks:
   - [x] `H24.1` Lock `/api/rankings/wos` Postgres query contract.
     Deliverable: implementation-ready contract for the SQL-backed `/api/rankings/wos` search path, including allowed sort fields, direction rules, query normalization, prefix-search behavior, paging semantics, and response-shape compatibility.
     Exit criteria: the Postgres implementation target is decision-locked and explicitly matches the current public API contract unless a change is intentionally recorded.
     Handover:
-    - Contract source of truth: `docs/h24.1-wos-rankings-postgres-query-contract.md`.
+    - Contract source of truth: `docs/tasks/closed/h24.1-wos-rankings-postgres-query-contract.md`.
   - [x] `H24.2` Implement PostgreSQL read port for WoS rankings API.
     Deliverable: dedicated Postgres query component for `/api/rankings/wos` backed by `reporting_read.wos_ranking_view`, returning the existing `WosRankingPageResponse`.
     Exit criteria: the read port supports current paging/sorting/search behavior and reads only from PostgreSQL for this API surface.
@@ -46,7 +107,7 @@ Archived from `TASKS.md` on 2026-03-13 after H24.1-H24.5 closure.
     Deliverable: backlog/docs/task notes updated to record `/api/rankings/wos` as PostgreSQL-backed while retaining the legacy API name intentionally.
     Exit criteria: the steady-state route/storage decision is documented clearly enough that future cleanup does not treat this API as still Mongo-backed.
     Handover:
-    - Closeout source of truth: `docs/h24.5-wos-rankings-postgres-closeout.md`.
+    - Closeout source of truth: `docs/tasks/closed/h24.5-wos-rankings-postgres-closeout.md`.
 
 ## H22 Postgres Reporting Core + Mongo Ingest Baseline Migration
 
@@ -61,43 +122,43 @@ Archived from `TASKS.md` on 2026-03-13 after H22.1-H22.10 closure.
   - [x] `H22.1` Architecture contract and bounded-context map.
     Status: completed on 2026-03-11.
     Handover:
-    - Contract source of truth: `docs/h22.1-postgres-reporting-architecture-contract.md`.
-    - Companion sequence flows: `docs/h22.1-postgres-reporting-sequences.md`.
+    - Contract source of truth: `docs/tasks/closed/h22.1-postgres-reporting-architecture-contract.md`.
+    - Companion sequence flows: `docs/tasks/closed/h22.1-postgres-reporting-sequences.md`.
   - [x] `H22.2` PostgreSQL schema for WoS/scoring/reporting read core.
     Status: completed on 2026-03-11.
     Handover:
-    - Schema contract: `docs/h22.2-postgres-reporting-schema-contract.md`.
+    - Schema contract: `docs/tasks/closed/h22.2-postgres-reporting-schema-contract.md`.
     - Flyway migrations: `V1__h22_2_create_pg_enums.sql`, `V2__h22_2_create_reporting_core_tables.sql`, `V3__h22_2_create_reporting_core_indexes.sql`.
     - Migration verification test: `PostgresReportingReadSchemaMigrationIntegrationTest`.
   - [x] `H22.3` Projection/sync pipeline from canonical Mongo to PostgreSQL.
     Status: completed on 2026-03-11.
     Handover:
-    - Projection contract: `docs/h22.3-postgres-projection-contract.md`.
+    - Projection contract: `docs/tasks/closed/h22.3-postgres-projection-contract.md`.
     - Projection state migration: `V4__h22_3_projection_state_tables.sql`.
     - Projector service: `JdbcPostgresReportingProjectionService` + `PostgresReportingProjectionService`.
     - Verification tests: `PostgresReportingProjectionServiceIntegrationTest`, `JdbcPostgresReportingProjectionServiceTest`.
   - [x] `H22.4` Query-layer cutover to SQL-backed WoS scoring/report reads.
     Status: completed on 2026-03-11.
     Handover:
-    - Cutover contract: `docs/h22.4-query-layer-cutover-contract.md`.
+    - Cutover contract: `docs/tasks/closed/h22.4-query-layer-cutover-contract.md`.
     - Runtime switch/cutover guards: `ReportingReadStore`, `ReportingReadStoreSelector`, `PostgresReadCutoverGuard`.
     - Verification tests: `ReportingReadStoreRoutingTest`, `PostgresReportingLookupFacadeTest`, `ScholardexCutoverGuardrailTest`.
   - [x] `H22.5` Materialized views and refresh strategy for heavy reads.
     Status: completed on 2026-03-12.
     Handover:
-    - Contract: `docs/h22.5-materialized-views-refresh-contract.md`.
+    - Contract: `docs/tasks/closed/h22.5-materialized-views-refresh-contract.md`.
     - Migrations: `V5__h22_5_create_materialized_views.sql`, `V6__h22_5_mv_refresh_state_tables.sql`.
     - Refresh orchestration: `PostgresMaterializedViewRefreshService`, `JdbcPostgresMaterializedViewRefreshService`.
   - [x] `H22.6` Dual-read parity and performance gate.
     Status: completed on 2026-03-12.
     Handover:
-    - Contract: `docs/h22.6-dual-read-parity-performance-gate-contract.md`.
+    - Contract: `docs/tasks/closed/h22.6-dual-read-parity-performance-gate-contract.md`.
     - Migration/state tables: `V7__h22_6_dual_read_gate_tables.sql`.
     - Runtime gate service: `DualReadGateService`, `JdbcDualReadGateService`.
   - [x] `H22.7` Operationalization, rollback, and rebuild playbook.
     Status: completed on 2026-03-12.
     Handover:
-    - Runbook: `docs/h22.7-operational-rollback-rebuild-playbook.md`.
+    - Runbook: `docs/tasks/closed/h22.7-operational-rollback-rebuild-playbook.md`.
     - Ops status service: `H22OperationalStatusService`, `DefaultH22OperationalStatusService`.
   - [x] `H22.8` Post-integration layering and naming consistency.
     Status: completed on 2026-03-12.
@@ -128,13 +189,13 @@ Archived from `TASKS.md` on 2026-03-13 after H23.1-H23.5 closure.
   - Canonical admin MVC routes are under `/admin/scholardex/**`; retained compatibility shims remain under `/admin/scopus/**`, `/admin/scopus/venues*`, `/rankings/wos`, and `/user/rankings/{id}`.
   - Stable legacy APIs intentionally retained: `/api/scopus/**` and `/api/rankings/wos`.
   - New H23 paged category API: `/api/rankings/categories`.
-  - Route map and closeout doc: `docs/h23.5-route-map-and-closeout.md`.
+  - Route map and closeout doc: `docs/tasks/closed/h23.5-route-map-and-closeout.md`.
   - H23 verification entrypoint: `npm run verify-h23-ui`.
   Subtasks:
   - [x] `H23.1` Inventory and classify transitional debt.
     Status: completed on 2026-03-13.
     Handover:
-    - Debt inventory: `docs/h23.1-transitional-debt-inventory.md`.
+    - Debt inventory: `docs/tasks/closed/h23.1-transitional-debt-inventory.md`.
   - [x] `H23.2` Scholardex UI route consolidation.
     Status: completed on 2026-03-13.
     Handover:
@@ -189,7 +250,7 @@ Archived from `TASKS.md` on 2026-03-06 after closure and CI stabilization.
     Deliverable: inventory of guardrails that still encode pre-H14 behavior (WoS cache and old CS dispatch assumptions).
     Exit criteria: each stale check has a documented intended replacement aligned with current architecture.
     Status: completed on 2026-03-06.
-    Note: see `docs/h15-guardrail-policy-audit.md` for stale/valid classification, source-of-truth mappings, and H15.2 decision-locked script updates.
+    Note: see `docs/tasks/closed/h15-guardrail-policy-audit.md` for stale/valid classification, source-of-truth mappings, and H15.2 decision-locked script updates.
     H15.2 handoff:
     - `verify-h06-persistence`: remove WoS ranking-cache/repository assertions for `CacheService`; keep edit/update canonical `findById` checks while allowing `buildCitationsView` `id/eid` compatibility fallback.
     - `verify-duplication-guardrails`: replace publication `bk/ch` delegation expectation with non-`ar/re/cp` empty-score policy; keep activity `Book/Book Series` delegation requirement unchanged.
@@ -197,7 +258,7 @@ Archived from `TASKS.md` on 2026-03-06 after closure and CI stabilization.
     Deliverable: update `verify-h06-persistence` and `verify-duplication-guardrails` to reflect current intended behavior.
     Exit criteria: scripts pass on compliant code and fail on true policy regressions.
     Status: completed on 2026-03-06.
-    Note: script-only update completed in line with `docs/h15-guardrail-policy-audit.md`; no runtime service code changed for this task.
+    Note: script-only update completed in line with `docs/tasks/closed/h15-guardrail-policy-audit.md`; no runtime service code changed for this task.
   - [x] `H15.3` GitHub workflow enforcement completion.
     Deliverable: ensure quality workflows execute the full required guardrail set (including WoS parity baseline/integration checks) with failure artifacts.
     Exit criteria: PR/push pipelines consistently run and enforce the updated guardrails.
@@ -218,12 +279,12 @@ Archived from `TASKS.md` on 2026-03-06 after H16.1-H16.5 closure.
   Deliverable: aligned Java/Gradle versions, dependency/plugin compatibility fixes, and green baseline gates.
   Exit criteria: `java-smoke`, `quality-full`, and local `./gradlew check` pass on the upgraded toolchain without environment-specific hacks.
   Status: completed on 2026-03-06.
-  Note: upgrade and validation evidence recorded in `docs/h16-toolchain-modernization-matrix.md` (including H16.5 closeout evidence).
+  Note: upgrade and validation evidence recorded in `docs/tasks/closed/h16-toolchain-modernization-matrix.md` (including H16.5 closeout evidence).
   Subtasks:
   - [x] `H16.1` Baseline and target matrix.
     Deliverable: documented current Java/Gradle/plugin/dependency versions and an explicit target upgrade matrix with compatibility notes.
     Exit criteria: upgrade scope and order are fixed, with rollback path and known risk hotspots identified.
-    Status note (2026-03-06): completed in `docs/h16-toolchain-modernization-matrix.md` with pinned target direction (Java 25, Gradle 9.1.x+, Spring Boot 4.0.x LTS-target line), compatibility ownership, and rollback guards.
+    Status note (2026-03-06): completed in `docs/tasks/closed/h16-toolchain-modernization-matrix.md` with pinned target direction (Java 25, Gradle 9.1.x+, Spring Boot 4.0.x LTS-target line), compatibility ownership, and rollback guards.
   - [x] `H16.2` Gradle wrapper and build tooling bump.
     Deliverable: upgraded Gradle wrapper and required build script/property updates to match the target Java/toolchain baseline.
     Exit criteria: `./gradlew --version`, configuration phase, and core build lifecycle start cleanly on the new wrapper.
@@ -235,11 +296,11 @@ Archived from `TASKS.md` on 2026-03-06 after H16.1-H16.5 closure.
   - [x] `H16.4` CI parity and deterministic execution hardening.
     Deliverable: workflow and environment alignment updates so local and CI use the same Java/Gradle assumptions.
     Exit criteria: `java-smoke` and `quality-full` run with identical toolchain intent across local and CI.
-    Status note (2026-03-06): completed by updating quality/security workflows to Temurin Java 25 and standardizing Java-job Gradle invocations to wrapper + `--no-daemon`; docs updated in `docs/h09-ci-gates.md` and `docs/h16-toolchain-modernization-matrix.md`.
+    Status note (2026-03-06): completed by updating quality/security workflows to Temurin Java 25 and standardizing Java-job Gradle invocations to wrapper + `--no-daemon`; docs updated in `docs/tasks/closed/h09-ci-gates.md` and `docs/tasks/closed/h16-toolchain-modernization-matrix.md`.
   - [x] `H16.5` Validation and closeout evidence.
     Deliverable: run log + short closeout note capturing command results, residual risks, and follow-ups.
     Exit criteria: local `./gradlew check` and CI gates (`java-smoke`, `quality-full`) are green on the upgraded stack.
-    Status note (2026-03-06): completed with evidence in `docs/h16-toolchain-modernization-matrix.md` (H16.5 section); local validation set passed (`./gradlew --version`, `compileJava`, `test --tests "*CoreApplicationTests"`, `check`). CI gate confirmation is tracked as follow-up via PR workflow run.
+    Status note (2026-03-06): completed with evidence in `docs/tasks/closed/h16-toolchain-modernization-matrix.md` (H16.5 section); local validation set passed (`./gradlew --version`, `compileJava`, `test --tests "*CoreApplicationTests"`, `check`). CI gate confirmation is tracked as follow-up via PR workflow run.
 
 ## Vendor Asset Migration Tasks
 
@@ -318,23 +379,23 @@ Archived from `TASKS.md` on 2026-03-03 after H01 closure.
 ### H01 Subtasks
 
 - [x] `H01-S01` Inventory likely duplicate clusters.
-  Deliverable: `docs/h01-duplication-inventory.md`.
+  Deliverable: `docs/tasks/closed/h01-duplication-inventory.md`.
   Notes: Completed.
 
 - [x] `H01-S03` Identify behavioral drift inside top clusters.
-  Deliverable: `docs/h01-drift-findings.md`.
+  Deliverable: `docs/tasks/closed/h01-drift-findings.md`.
   Notes: Completed on 2026-03-03. `C01`, `C03`, `C04`, `C05`, and `C06` analyzed with decisions/evidence; C04 closure slices completed (`D01/D02/D03/D04/D05/D06/D07` resolved for C04 scope).
 
 - [x] `H01-S04` Prioritize by risk and blast radius.
-  Deliverable: priority table in `docs/h01-duplication-inventory.md`.
+  Deliverable: priority table in `docs/tasks/closed/h01-duplication-inventory.md`.
   Notes: Completed (`C01 (P0)` -> `C04 (P1)` -> `C06 (P2)`).
 
 - [x] `H01-S05` Define consolidation strategy per priority cluster.
-  Deliverable: `docs/h01-consolidation-strategy.md`.
+  Deliverable: `docs/tasks/closed/h01-consolidation-strategy.md`.
   Notes: Completed.
 
 - [x] `H01-S06` Create regression guards before refactor.
-  Deliverable: focused tests + coverage notes in `docs/h01-regression-guards.md`.
+  Deliverable: focused tests + coverage notes in `docs/tasks/closed/h01-regression-guards.md`.
   Notes: Completed.
 
 - [x] `H01-S07` Execute first consolidation slice (small, high-value).
@@ -366,30 +427,30 @@ Scope: `H02` Architecture boundaries and ownership.
 - [x] `H02-S01` Map current runtime architecture and dependency directions.
   Goal: produce a factual map of layers/modules and how requests/flows travel through them.
   Inputs: package structure, controller/service/repository wiring, frontend template/script entrypoints.
-  Deliverable: `docs/h02-architecture-map.md` (current-state diagram + dependency table).
+  Deliverable: `docs/tasks/closed/h02-architecture-map.md` (current-state diagram + dependency table).
   Exit criteria: all major runtime paths (web -> service -> data and template/script flow) are represented.
   Status: completed on 2026-03-03.
 
 - [x] `H02-S02` Define target boundaries and ownership zones.
   Goal: define what belongs in each layer/module and who owns cross-cutting areas.
   Inputs: `H02-S01` map + current drift/findings from H01.
-  Deliverable: `docs/h02-boundaries-and-ownership.md` (zones, responsibilities, ownership matrix).
+  Deliverable: `docs/tasks/closed/h02-boundaries-and-ownership.md` (zones, responsibilities, ownership matrix).
   Exit criteria: each major package/area has a declared owner and allowed responsibilities.
   Status: completed on 2026-03-03.
 
 - [x] `H02-S03` Specify allowed dependency rules.
   Goal: convert boundaries into explicit allow/deny dependency rules.
   Inputs: boundary definitions and known problematic couplings.
-  Deliverable: dependency rule set in `docs/h02-boundaries-and-ownership.md` (or `docs/h02-dependency-rules.md`).
+  Deliverable: dependency rule set in `docs/tasks/closed/h02-boundaries-and-ownership.md` (or `docs/tasks/closed/h02-dependency-rules.md`).
   Exit criteria: developers can decide placement/dependencies without ambiguity.
-  Status: completed on 2026-03-03 (`docs/h02-dependency-rules.md`).
+  Status: completed on 2026-03-03 (`docs/tasks/closed/h02-dependency-rules.md`).
 
 - [x] `H02-S04` Identify and classify current boundary violations.
   Goal: detect concrete code locations that violate the declared dependency rules.
   Inputs: declared rules + current codebase scan.
-  Deliverable: `docs/h02-violations.md` with severity (`high|medium|low`) and rationale.
+  Deliverable: `docs/tasks/closed/h02-violations.md` with severity (`high|medium|low`) and rationale.
   Exit criteria: every violation has a file reference and a proposed remediation direction.
-  Status: completed on 2026-03-03 (`docs/h02-violations.md`).
+  Status: completed on 2026-03-03 (`docs/tasks/closed/h02-violations.md`).
   Note: V01 follow-up slice 4 completed (`AdminGroupController` export/CNFIS via `GroupExportFacade` and `GroupCnfisExportFacade`); tracked baseline pair is now at 73.9% repository-field reduction (`23 -> 6`), and AdminGroup repository debt is closed.
   Note: V02 baseline slice completed for the same pair (User/AdminGroup): direct controller imports of `core.service.reporting` removed; export/reporting coupling now facade-backed.
   Note: V02 AdminView verification slice completed: no direct `Z1 -> Z3` reporting-service coupling found in `AdminViewController`; transport-layer scan baseline is clean.
@@ -400,9 +461,9 @@ Scope: `H02` Architecture boundaries and ownership.
 - [x] `H02-S05` Define phased remediation plan for violations.
   Goal: prioritize fixes by blast radius and effort without blocking delivery.
   Inputs: violation inventory + ownership matrix.
-  Deliverable: `docs/h02-remediation-plan.md` with phased slices (`R1`, `R2`, ...).
+  Deliverable: `docs/tasks/closed/h02-remediation-plan.md` with phased slices (`R1`, `R2`, ...).
   Exit criteria: top-priority violations have actionable implementation slices and sequencing.
-  Status: completed on 2026-03-03 (`docs/h02-remediation-plan.md` with `R1..R4`).
+  Status: completed on 2026-03-03 (`docs/tasks/closed/h02-remediation-plan.md` with `R1..R4`).
 
 - [x] `H02-S06` Add lightweight enforcement in workflow.
   Goal: add practical checks/review guardrails so boundaries stay intact.
@@ -415,7 +476,7 @@ Scope: `H02` Architecture boundaries and ownership.
 - [x] `H02-S07` Close H02 with adoption notes.
   Goal: finalize architecture baseline and usage guidance for future tasks.
   Inputs: completed H02 artifacts and enforcement setup.
-  Deliverable: H02 closeout note in `docs/h02-boundaries-and-ownership.md` + `TASKS.md` status updates.
+  Deliverable: H02 closeout note in `docs/tasks/closed/h02-boundaries-and-ownership.md` + `TASKS.md` status updates.
   Exit criteria: H02 can be treated as reference baseline for H03+ planning and implementation.
   Status: completed on 2026-03-03.
   Note: H02 is now the active architecture reference baseline; reopen H02 only for boundary-rule changes or newly detected violations.
@@ -433,15 +494,15 @@ Archived from `TASKS.md` on 2026-03-03 after H03 closure.
 ### H03 Subtasks
 
 - [x] `H03-S01` Identify and rank critical runtime flows for contract coverage.
-  Deliverable: `docs/h03-flow-priority-map.md`.
+  Deliverable: `docs/tasks/closed/h03-flow-priority-map.md`.
   Notes: Completed.
 
 - [x] `H03-S02` Define contract schema for prioritized flows.
-  Deliverable: `docs/h03-contract-schema.md`.
+  Deliverable: `docs/tasks/closed/h03-contract-schema.md`.
   Notes: Completed.
 
 - [x] `H03-S03` Capture reporting/service characterization contracts.
-  Deliverable: `docs/h03-reporting-contracts.md`.
+  Deliverable: `docs/tasks/closed/h03-reporting-contracts.md`.
   Notes: Completed.
 
 - [x] `H03-S04` Add controller-level behavior characterization tests for top flows.
@@ -457,7 +518,7 @@ Archived from `TASKS.md` on 2026-03-03 after H03 closure.
   Notes: Completed.
 
 - [x] `H03-S07` Close H03 with adoption notes and forward links to H04.
-  Deliverable: H03 closeout/adoption note in `docs/h03-reporting-contracts.md` and task archive updates.
+  Deliverable: H03 closeout/adoption note in `docs/tasks/closed/h03-reporting-contracts.md` and task archive updates.
   Notes: Completed on 2026-03-03.
 
 ## H04 Test Strategy and Pyramid Rebalance
@@ -473,15 +534,15 @@ Archived from `TASKS.md` on 2026-03-03 after H04 closure.
 ### H04 Subtasks
 
 - [x] `H04-S01` Build current test inventory and taxonomy map.
-  Deliverable: `docs/h04-test-inventory.md`.
+  Deliverable: `docs/tasks/closed/h04-test-inventory.md`.
   Notes: Completed.
 
 - [x] `H04-S02` Define target pyramid and quality criteria.
-  Deliverable: `docs/h04-test-strategy.md`.
+  Deliverable: `docs/tasks/closed/h04-test-strategy.md`.
   Notes: Completed.
 
 - [x] `H04-S03` Create risk-weighted gap matrix for critical flows.
-  Deliverable: `docs/h04-gap-matrix.md`.
+  Deliverable: `docs/tasks/closed/h04-gap-matrix.md`.
   Notes: Completed.
 
 - [x] `H04-S04` Add missing unit tests for scorer/support logic hotspots.
@@ -493,11 +554,11 @@ Archived from `TASKS.md` on 2026-03-03 after H04 closure.
   Notes: Completed; `G08` deferred to S06 infrastructure policy and then partially resolved.
 
 - [x] `H04-S06` Introduce reliability and runtime guardrails for test execution.
-  Deliverable: `verify-h04-baseline`, `verify-h04-mongo-integration`, `docs/h04-reliability-guardrails.md`.
+  Deliverable: `verify-h04-baseline`, `verify-h04-mongo-integration`, `docs/tasks/closed/h04-reliability-guardrails.md`.
   Notes: Completed; `G09` resolved and `G08` initial Testcontainers tranche implemented.
 
 - [x] `H04-S07` Close H04 with adoption notes and handoff to H05.
-  Deliverable: H04 closeout section in `docs/h04-test-strategy.md` + task archive updates.
+  Deliverable: H04 closeout section in `docs/tasks/closed/h04-test-strategy.md` + task archive updates.
   Notes: Completed on 2026-03-03.
 
 ## H05 Frontend Structure and Asset Discipline
@@ -508,16 +569,16 @@ Archived from `TASKS.md` on 2026-03-03 after H05 closure.
   Goal: standardize JS/CSS/template patterns to avoid divergent implementations.
   Deliverable: frontend conventions (entrypoints, shared utilities, template composition patterns).
   Exit criteria: duplicated UI logic is centralized and new pages follow the same conventions.
-  Notes: Completed on 2026-03-03. H05 baseline is active via `docs/h05-frontend-map.md`, `docs/h05-frontend-conventions.md`, shared frontend modules, and template guardrails.
+  Notes: Completed on 2026-03-03. H05 baseline is active via `docs/tasks/closed/h05-frontend-map.md`, `docs/tasks/closed/h05-frontend-conventions.md`, shared frontend modules, and template guardrails.
 
 ### H05 Subtasks
 
 - [x] `H05-S01` Build frontend structure map and duplication baseline.
-  Deliverable: `docs/h05-frontend-map.md`.
+  Deliverable: `docs/tasks/closed/h05-frontend-map.md`.
   Notes: Completed.
 
 - [x] `H05-S02` Define frontend conventions and ownership rules.
-  Deliverable: `docs/h05-frontend-conventions.md`.
+  Deliverable: `docs/tasks/closed/h05-frontend-conventions.md`.
   Notes: Completed.
 
 - [x] `H05-S03` Extract shared template composition primitives.
@@ -553,19 +614,19 @@ Archived from `TASKS.md` on 2026-03-03 after H06 closure.
 ### H06 Subtasks
 
 - [x] `H06-S01` Build persistence architecture map and entity ownership baseline.
-  Deliverable: `docs/h06-persistence-map.md`.
+  Deliverable: `docs/tasks/closed/h06-persistence-map.md`.
   Notes: Completed.
 
 - [x] `H06-S02` Inventory schema and data-shape drift risks.
-  Deliverable: `docs/h06-schema-drift-inventory.md`.
+  Deliverable: `docs/tasks/closed/h06-schema-drift-inventory.md`.
   Notes: Completed.
 
 - [x] `H06-S03` Review query patterns and consistency semantics.
-  Deliverable: `docs/h06-query-consistency-findings.md`.
+  Deliverable: `docs/tasks/closed/h06-query-consistency-findings.md`.
   Notes: Completed.
 
 - [x] `H06-S04` Define canonical persistence contracts.
-  Deliverable: `docs/h06-persistence-contracts.md`.
+  Deliverable: `docs/tasks/closed/h06-persistence-contracts.md`.
   Notes: Completed.
 
 - [x] `H06-S05` Add focused persistence regression tests for highest risks.
@@ -573,7 +634,7 @@ Archived from `TASKS.md` on 2026-03-03 after H06 closure.
   Notes: Completed on 2026-03-03 (`PersistenceYearSupport`, CNFIS year-filter hardening, ranking ISSN cache alignment, guard tests).
 
 - [x] `H06-S06` Define phased remediation plan and guardrails.
-  Deliverable: `docs/h06-remediation-plan.md` + lightweight persistence verification.
+  Deliverable: `docs/tasks/closed/h06-remediation-plan.md` + lightweight persistence verification.
   Notes: Completed on 2026-03-03. Added `npm run verify-h06-persistence`.
 
 - [x] `H06-S07` Close H06 with adoption notes and handoff to H07.
@@ -593,19 +654,19 @@ Archived from `TASKS.md` on 2026-03-04 after H07 closure.
 ### H07 Subtasks
 
 - [x] `H07-S01` Build endpoint and trust-boundary security map.
-  Deliverable: `docs/h07-security-surface-map.md`.
+  Deliverable: `docs/tasks/closed/h07-security-surface-map.md`.
   Notes: Completed.
 
 - [x] `H07-S02` Inventory validation and binding drift risks.
-  Deliverable: `docs/h07-validation-drift-inventory.md`.
+  Deliverable: `docs/tasks/closed/h07-validation-drift-inventory.md`.
   Notes: Completed.
 
 - [x] `H07-S03` Inventory exception/error handling consistency gaps.
-  Deliverable: `docs/h07-error-handling-findings.md`.
+  Deliverable: `docs/tasks/closed/h07-error-handling-findings.md`.
   Notes: Completed.
 
 - [x] `H07-S04` Define canonical H07 contracts and policies.
-  Deliverable: `docs/h07-security-validation-contracts.md`.
+  Deliverable: `docs/tasks/closed/h07-security-validation-contracts.md`.
   Notes: Completed.
 
 - [x] `H07-S05` Add focused regression guards for highest H07 risks.
@@ -613,7 +674,7 @@ Archived from `TASKS.md` on 2026-03-04 after H07 closure.
   Notes: Completed on 2026-03-04 (mixed unauthorized semantics, parse/role exception baselines, upload baseline, mutating-GET baseline, access-denied redirect and error template mappings).
 
 - [x] `H07-S06` Define phased remediation plan and lightweight enforcement.
-  Deliverable: `docs/h07-remediation-plan.md` + `npm run verify-h07-guardrails`.
+  Deliverable: `docs/tasks/closed/h07-remediation-plan.md` + `npm run verify-h07-guardrails`.
   Notes: Completed on 2026-03-04 (`R1..R4` remediation sequence and debt-aware guardrails).
 
 - [x] `H07-S07` Close H07 with adoption notes and handoff to H08.
@@ -633,27 +694,27 @@ Archived from `TASKS.md` on 2026-03-04 after H08 closure.
 ### H08 Subtasks
 
 - [x] `H08-S01` Build observability surface map and signal inventory.
-  Deliverable: `docs/h08-observability-map.md`.
+  Deliverable: `docs/tasks/closed/h08-observability-map.md`.
   Notes: Completed.
 
 - [x] `H08-S02` Inventory logging and diagnostics drift risks.
-  Deliverable: `docs/h08-logging-drift-inventory.md`.
+  Deliverable: `docs/tasks/closed/h08-logging-drift-inventory.md`.
   Notes: Completed.
 
 - [x] `H08-S03` Inventory health/readiness/operability gaps.
-  Deliverable: `docs/h08-operability-findings.md`.
+  Deliverable: `docs/tasks/closed/h08-operability-findings.md`.
   Notes: Completed.
 
 - [x] `H08-S04` Define canonical observability and operability contracts.
-  Deliverable: `docs/h08-observability-contracts.md`.
+  Deliverable: `docs/tasks/closed/h08-observability-contracts.md`.
   Notes: Completed.
 
 - [x] `H08-S05` Add focused observability regression guards.
-  Deliverable: `docs/h08-regression-guards.md` + `npm run verify-h08-observability-guardrails`.
+  Deliverable: `docs/tasks/closed/h08-regression-guards.md` + `npm run verify-h08-observability-guardrails`.
   Notes: Completed on 2026-03-04.
 
 - [x] `H08-S06` Define phased remediation plan and lightweight enforcement.
-  Deliverable: `docs/h08-remediation-plan.md` + `npm run verify-h08-baseline`.
+  Deliverable: `docs/tasks/closed/h08-remediation-plan.md` + `npm run verify-h08-baseline`.
   Notes: Completed on 2026-03-04.
 
 - [x] `H08-S07` Close H08 with adoption notes and handoff to H09.
@@ -677,7 +738,7 @@ Done history moved to `TASKS-done.md`.
   Deliverable: lightweight architecture map and dependency rules.
   Exit criteria: new code placement rules are documented and enforceable in review.
   Status: completed on 2026-03-03.
-  Note: architecture baseline and enforcement are active via `docs/h02-*.md` and `npm run verify-architecture-boundaries`.
+  Note: architecture baseline and enforcement are active via `docs/architecture.md`, `docs/doc-governance.md`, and `npm run verify-architecture-boundaries`.
 
 - [x] `H03` Contract and behavior baseline.
   Goal: capture current expected behavior for key flows before refactors.
@@ -733,16 +794,16 @@ Done history moved to `TASKS-done.md`.
   Deliverable: contributor playbook for local dev, testing, and release hygiene.
   Exit criteria: a new contributor can run, test, and modify the project without tribal knowledge.
   Status: completed on 2026-03-04.
-  Note: completed via `H10-S01..S08` with consolidated docs pack (`docs/h10-*.md`) and walkthrough validation evidence in `docs/h10-validation-walkthrough.md`.
+  Note: completed via `H10-S01..S08` with the durable top-level docs set (`docs/quality-gates.md`, `docs/failure-triage.md`, `docs/release-hygiene.md`, `docs/doc-governance.md`) and walkthrough validation evidence in `docs/tasks/closed/h10-validation-walkthrough.md`.
 
 ### H10 Subtasks (Planned)
 
 - [x] `H10-S01` Documentation inventory and gap map.
   Goal: map current docs (`README`, `CONTRIBUTING`, `docs/*`) against actual workflows and guardrails.
-  Deliverable: `docs/h10-doc-inventory.md` with outdated/missing sections and owners.
+  Deliverable: `docs/tasks/closed/h10-doc-inventory.md` with outdated/missing sections and owners.
   Exit criteria: all contributor-critical gaps are identified and prioritized.
   Status: completed on 2026-03-04.
-  Note: added `docs/h10-doc-inventory.md` with source coverage matrix, owner mapping, and prioritized closure order for `H10-S02..S08`.
+  Note: added `docs/tasks/closed/h10-doc-inventory.md` with source coverage matrix, owner mapping, and prioritized closure order for `H10-S02..S08`.
 
 - [x] `H10-S02` Local setup and runbook alignment.
   Goal: make first-run setup deterministic for new contributors.
@@ -760,38 +821,38 @@ Done history moved to `TASKS-done.md`.
 
 - [x] `H10-S04` Quality gate command matrix.
   Goal: document when to run each verification command (`H03`-`H09` baselines and guardrails).
-  Deliverable: `docs/h10-quality-gates-matrix.md` (`change type -> required commands`).
+  Deliverable: `docs/tasks/closed/h10-quality-gates-matrix.md` (`change type -> required commands`).
   Exit criteria: contributors can select required checks by change scope.
   Status: completed on 2026-03-04.
-  Note: added `docs/h10-quality-gates-matrix.md` and linked it from `CONTRIBUTING.md` as the canonical change-type command selector.
+  Note: added `docs/tasks/closed/h10-quality-gates-matrix.md` and linked it from `CONTRIBUTING.md` as the canonical change-type command selector.
 
 - [x] `H10-S05` Failure triage and debugging guide.
   Goal: reduce time-to-fix for common guardrail/CI failures.
   Deliverable: troubleshooting sections for architecture, persistence, security, observability, and CI jobs.
   Exit criteria: each required CI check has a `failure -> likely cause -> fix path`.
   Status: completed on 2026-03-04.
-  Note: added `docs/h10-failure-triage.md` with guardrail/build/security CI triage matrix and linked it from `CONTRIBUTING.md`.
+  Note: added `docs/tasks/closed/h10-failure-triage.md` with guardrail/build/security CI triage matrix and linked it from `CONTRIBUTING.md`.
 
 - [x] `H10-S06` Release hygiene baseline.
   Goal: define minimal release-safe merge hygiene.
   Deliverable: PR checklist + merge/release checklist (risk notes, rollback notes, evidence commands).
   Exit criteria: release-affecting changes follow a documented checklist.
   Status: completed on 2026-03-04.
-  Note: added `docs/h10-release-hygiene.md` with PR/merge/evidence/rollback baseline and linked it from `CONTRIBUTING.md`.
+  Note: added `docs/tasks/closed/h10-release-hygiene.md` with PR/merge/evidence/rollback baseline and linked it from `CONTRIBUTING.md`.
 
 - [x] `H10-S07` Docs governance and ownership.
   Goal: prevent documentation drift after H10 completion.
   Deliverable: docs ownership table, update triggers, and review cadence policy.
   Exit criteria: each key doc has an owner and mandatory update triggers.
   Status: completed on 2026-03-04.
-  Note: added `docs/h10-doc-governance.md` with ownership matrix, mandatory update triggers, and review cadence; linked policy from `CONTRIBUTING.md`.
+  Note: added `docs/tasks/closed/h10-doc-governance.md` with ownership matrix, mandatory update triggers, and review cadence; linked policy from `CONTRIBUTING.md`.
 
 - [x] `H10-S08` Validation and closure.
   Goal: verify the documentation workflow works in practice.
   Deliverable: one walkthrough by a fresh-contributor path plus fixes, then H10 closeout note in `TASKS.md`.
   Exit criteria: all H10 docs are updated, cross-linked, and validated with current commands.
   Status: completed on 2026-03-04.
-  Note: added `docs/h10-validation-walkthrough.md` with executed command evidence (`npm run verify-h09-baseline`, `./gradlew bootRun -m`) and successful outcomes.
+  Note: added `docs/tasks/closed/h10-validation-walkthrough.md` with executed command evidence (`npm run verify-h09-baseline`, `./gradlew bootRun -m`) and successful outcomes.
 
 ## How To Use This File
 
@@ -805,7 +866,7 @@ Done history moved to `TASKS-done.md`.
 
 ## Remediation Execution Backlog (Actionable)
 
-Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.md`, `docs/h07-remediation-plan.md`, `docs/h08-remediation-plan.md` and linked findings/contracts inventories.
+Source set reviewed: `docs/tasks/closed/h02-remediation-plan.md`, `docs/tasks/closed/h06-remediation-plan.md`, `docs/tasks/closed/h07-remediation-plan.md`, `docs/tasks/closed/h08-remediation-plan.md` and linked findings/contracts inventories.
 
 ### P0 (High Priority)
 
@@ -815,7 +876,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   - add compound unique index for citation (`citedId`, `citingId`);
   - implement one-time safe dedupe migration for existing duplicates;
   - keep app-level duplicate guard as defense in depth.
-  Inputs: `docs/h06-remediation-plan.md` (`R1`), `docs/h06-query-consistency-findings.md`.
+  Inputs: `docs/tasks/closed/h06-remediation-plan.md` (`R1`), `docs/tasks/closed/h06-query-consistency-findings.md`.
   Done criteria: duplicate citation writes are rejected by DB; migration is reproducible and documented.
   Status: completed on 2026-03-04.
   Note: added `CitationUniquenessMigrationService` + gated runner (`off|report|apply`) with keep-lowest-id dedupe and runtime unique index `uniq_cited_citing`; added unit + integration coverage.
@@ -825,7 +886,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   Scope:
   - explicitly scope privileged MVC/API routes;
   - enforce zone contract (MVC redirect-to-login, API 401 JSON; denied -> MVC 403 view/API 403 JSON).
-  Inputs: `docs/h07-remediation-plan.md` (`R1`), `docs/h07-security-validation-contracts.md`.
+  Inputs: `docs/tasks/closed/h07-remediation-plan.md` (`R1`), `docs/tasks/closed/h07-security-validation-contracts.md`.
   Done criteria: no privileged route depends only on `anyRequest().authenticated()`; behavior is consistent by zone.
   Status: completed on 2026-03-04.
   Note: added explicit `/admin/**`, `/api/admin/**`, `/api/export/**`, `/api/scrape/**` authority scoping and API-aware JSON `401/403` handlers; normalized `/user/**` unauthenticated flow to login redirect with filter-enabled security contract tests.
@@ -837,7 +898,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   - fix logger owner drift (`ComputerScienceBookService`);
   - remove raw external payload logging in `ScopusService#parseToken`;
   - preserve endpoint behavior while improving diagnostics.
-  Inputs: `docs/h08-remediation-plan.md` (`P0`), `docs/h08-logging-drift-inventory.md`.
+  Inputs: `docs/tasks/closed/h08-remediation-plan.md` (`P0`), `docs/tasks/closed/h08-logging-drift-inventory.md`.
   Done criteria: H08 allowlists shrink accordingly; failures are logged with structured context.
   Status: completed on 2026-03-04.
   Note: replaced active runtime `printStackTrace` and targeted `System.out/System.err` in transport/service/importing/reporting paths; fixed `ComputerScienceBookService` logger owner drift; removed raw payload print in `ScopusService#parseToken`; tightened `verify-h08-observability-guardrails` allowlists.
@@ -849,7 +910,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   Scope:
   - replace remaining raw year parsing in high-impact report/export/search/grouping flows with `PersistenceYearSupport`;
   - finalize policy for `ActivityInstance#getYear`.
-  Inputs: `docs/h06-remediation-plan.md` (`R2`), `docs/h06-persistence-contracts.md`.
+  Inputs: `docs/tasks/closed/h06-remediation-plan.md` (`R2`), `docs/tasks/closed/h06-persistence-contracts.md`.
   Done criteria: no raw `substring(0,4)` year filtering/grouping remains in targeted high-impact flows.
   Status: completed on 2026-03-04.
   Note: rolled out helper-based year parsing across scoring/grouping/export hotspots; added `PersistenceYearSupport.extractYearString(...)` and `ActivityInstance#getYearOptional()`; expanded `verify-h06-persistence` to enforce no raw year parsing regression on remediated files.
@@ -860,7 +921,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   - normalize `id`/`eid`/`doi` lookup usage per contract;
   - enforce deterministic sorting for user-visible lists/exports;
   - remove author-aggregation duplicate amplification.
-  Inputs: `docs/h06-remediation-plan.md` (`R3`), `docs/h06-query-consistency-findings.md`.
+  Inputs: `docs/tasks/closed/h06-remediation-plan.md` (`R3`), `docs/tasks/closed/h06-query-consistency-findings.md`.
   Done criteria: stable ordering and deduped outputs are covered by tests.
   Status: completed on 2026-03-04.
   Note: user publication aggregation now dedupes by publication ID; deterministic publication/citation ordering contract applied across user/admin/group hotspots; user edit/save flow naming normalized to canonical DB `id`; `verify-h06-persistence` extended with `R3` guard checks.
@@ -871,7 +932,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   - DTO + `@Valid` rollout for top-risk write and import endpoints;
   - safe/bounded parsing for `start/end` and role conversion;
   - deterministic 4xx behavior for malformed input.
-  Inputs: `docs/h07-remediation-plan.md` (`R2`), `docs/h07-validation-drift-inventory.md`.
+  Inputs: `docs/tasks/closed/h07-remediation-plan.md` (`R2`), `docs/tasks/closed/h07-validation-drift-inventory.md`.
   Done criteria: boundary validation enforced on targeted endpoints; invalid input no longer escapes as 5xx.
   Status: completed on 2026-03-04.
   Note: migrated `/api/admin/users` + `/api/admin/researchers` create/update to DTO + `@Valid`; replaced CNFIS start/end `Integer.parseInt` with bounded year-range validation returning `400`; added role allowlist validation in `/admin/users/create` with redirect+flash fallback; updated H07 guardrails and regression tests.
@@ -882,7 +943,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   - introduce `@ControllerAdvice` mappings for common failure classes;
   - remove catch-and-print/swallowed exceptions on transport paths;
   - align API/MVC error envelopes/views.
-  Inputs: `docs/h07-remediation-plan.md` (`R3`), `docs/h07-error-handling-findings.md`.
+  Inputs: `docs/tasks/closed/h07-remediation-plan.md` (`R3`), `docs/tasks/closed/h07-error-handling-findings.md`.
   Done criteria: consistent mapped error behavior with structured diagnostics.
   Status: completed on 2026-03-04.
   Note: added split centralized exception mapping (`ApiExceptionHandler` + `MvcExceptionHandler`), switched `UserService.updateUser` to `Optional` with deterministic `404` in controller, tightened `/api/export` to deterministic failure behavior, and extended `verify-h07-guardrails` to block generic export swallow-catch regressions.
@@ -894,7 +955,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   - explicit Spring form-login + logout endpoints/redirects;
   - security regression tests for login success/failure/logout;
   - H07 guardrail checks for login input naming/autocomplete contract.
-  Inputs: login baseline plan (practical scope), `docs/h07-security-validation-contracts.md`.
+  Inputs: login baseline plan (practical scope), `docs/tasks/closed/h07-security-validation-contracts.md`.
   Done criteria: deterministic login/logout contract + test/guardrail coverage.
   Status: completed on 2026-03-04.
   Note: `/login` GET/POST contract is explicit; invalid credentials redirect to `/login?error`, logout redirects to `/login?logout`; login template now uses `name=\"username\"/\"password\"` with `autocomplete=\"username\"/\"current-password\"`; guardrails enforce these attributes.
@@ -905,7 +966,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   - add request correlation IDs for HTTP flows;
   - standardize scheduler context (`jobType`, `taskId`, phase);
   - ensure error logs include correlation context and align with H07 mappings.
-  Inputs: `docs/h08-remediation-plan.md` (`P1`), `docs/h08-observability-contracts.md`.
+  Inputs: `docs/tasks/closed/h08-remediation-plan.md` (`P1`), `docs/tasks/closed/h08-observability-contracts.md`.
   Done criteria: request/job traces are diagnosable end-to-end.
   Status: completed on 2026-03-04.
   Note: implemented `X-Request-Id` adopt-and-propagate filter + request MDC (`requestId`, `route`, `userId`); added Scopus scheduler context helper and phase-aware MDC (`jobType`, `taskId`, `phase`) for batch/per-task logs; centralized exception handlers now include request correlation context; `verify-h08-observability-guardrails` extended with B08 checks.
@@ -915,10 +976,10 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   Scope:
   - include `verify-architecture-boundaries`, `verify-h06-persistence`, `verify-h07-guardrails`, `verify-h08-baseline` as required CI checks;
   - document policy for tightening/allowlist shrink.
-  Inputs: `docs/h08-remediation-plan.md` (H09 handoff), remediation guardrail docs.
+  Inputs: `docs/tasks/closed/h08-remediation-plan.md` (H09 handoff), remediation guardrail docs.
   Done criteria: CI blocks merges on guardrail failure.
   Status: completed on 2026-03-04.
-  Note: added GitHub Actions workflow `.github/workflows/h09-quality-gates.yml` with `guardrails` and `java-smoke` jobs plus failure artifact upload; documented Stage 1 soft rollout and Stage 2 required-check transition in `docs/h09-ci-gates.md`; included H08 baseline handoff confirmation.
+  Note: added GitHub Actions workflow `.github/workflows/h09-quality-gates.yml` with `guardrails` and `java-smoke` jobs plus failure artifact upload; documented Stage 1 soft rollout and Stage 2 required-check transition in `docs/tasks/closed/h09-ci-gates.md`; included H08 baseline handoff confirmation.
 
 ### P2 (Planned / Structural)
 
@@ -929,7 +990,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   - retire typo’d repo API (`findAllByeIssn`) via compatibility step;
   - forum export dedupe normalization (remove sentinel checks);
   - plan and execute collection naming migration (`schodardex` -> `scholardex`).
-  Inputs: `docs/h06-remediation-plan.md` (`R4`), `docs/h06-schema-drift-inventory.md`.
+  Inputs: `docs/tasks/closed/h06-remediation-plan.md` (`R4`), `docs/tasks/closed/h06-schema-drift-inventory.md`.
   Done criteria: API naming and data-shape drift items have closed implementation path.
   Status: completed on 2026-03-04.
   Note: delivered case-insensitive admin title search normalization, forum export dedupe normalization (`issn -> eIssn -> sourceId`), and single-step task namespace cutover to `scholardex.tasks.*` with startup-gated migration runner (`off|report|apply`) and integration coverage.
@@ -950,7 +1011,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   - re-enable CSRF for browser form flows with explicit exemptions only when justified;
   - migrate `delete/duplicate` mutating GET routes to safe verbs;
   - enforce upload size/type/schema validation in group import.
-  Inputs: `docs/h07-remediation-plan.md` (`R4`), `docs/h07-security-validation-contracts.md`.
+  Inputs: `docs/tasks/closed/h07-remediation-plan.md` (`R4`), `docs/tasks/closed/h07-security-validation-contracts.md`.
   Done criteria: browser mutation routes are CSRF-protected and non-GET; upload policy enforced.
   Status: completed on 2026-03-04.
   Note: CSRF is re-enabled for MVC flows with explicit `/api/**` exemption; mutating `delete/duplicate` GET routes were migrated to POST across targeted controllers/templates; group CSV import now enforces strict size/type/schema validation.
@@ -962,7 +1023,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   - add minimum metrics coverage for startup/scheduler/export/external dependency calls;
   - add async executor saturation/queue diagnostics;
   - define startup phase readiness semantics.
-  Inputs: `docs/h08-remediation-plan.md` (`P2`), `docs/h08-operability-findings.md`, `docs/h08-observability-contracts.md`.
+  Inputs: `docs/tasks/closed/h08-remediation-plan.md` (`P2`), `docs/tasks/closed/h08-operability-findings.md`, `docs/tasks/closed/h08-observability-contracts.md`.
   Done criteria: production failure modes are machine-detectable via health and metrics endpoints.
   Status: completed on 2026-03-04.
   Note: actuator baseline and readiness/liveness groups are active, startup/external dependency health contributors are wired, scheduler/export/startup/external metrics are instrumented, async queue/rejection diagnostics are exposed, and H08 observability guardrails now assert P2 baseline wiring.
@@ -972,7 +1033,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   Scope:
   - prioritize `AdminViewController` and smaller controllers still directly importing repositories;
   - migrate residual orchestration to Z2 facades while preserving behavior.
-  Inputs: `docs/h02-remediation-plan.md` (`R1 residual`), `docs/h02-violations.md`.
+  Inputs: `docs/tasks/closed/h02-remediation-plan.md` (`R1 residual`), `docs/tasks/closed/h02-violations.md`.
   Done criteria: repository-import allowlist in `verify-architecture-boundaries` is materially reduced.
   Status: completed on 2026-03-04.
   Note: residual controllers were migrated to Z2 facades (`AdminCatalogFacade`, `UserRankingFacade`, `ActivityManagementFacade`, `GroupReportsManagementFacade`, `IndividualReportsManagementFacade`, `UrapRankingFacade`, `UserActivityInstanceFacade`, `PublicationWizardFacade`); controller/view repository imports are now zero and architecture allowlist is empty.
@@ -989,8 +1050,8 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
     Exit criteria: rules are unambiguous and implementation-ready.
     Status: completed on 2026-03-08.
     Handover:
-    - Contract source of truth: `docs/h18.1-wos-ranking-enrichment-contract.md`.
-    - Canonical linkage amendment: `docs/h17-scopus-canonical-contract.md` (H18.1 section).
+    - Contract source of truth: `docs/tasks/closed/h18.1-wos-ranking-enrichment-contract.md`.
+    - Canonical linkage amendment: `docs/tasks/closed/h17-scopus-canonical-contract.md` (H18.1 section).
     - Locked decisions: competition rank ties (`1,1,3`), position-bucket quartiles, source `quarter` precedence, missing metric value -> skip (non-conflict).
   - [x] `H18.2` Integrate enrichment into WoS ingestion/projection flow.
     Deliverable: service-level enrichment step that preserves source values and computes only missing fields.
@@ -1045,7 +1106,7 @@ Source set reviewed: `docs/h02-remediation-plan.md`, `docs/h06-remediation-plan.
   Amendment note (2026-03-07): WoS detail projection/read UX now includes `alternativeNames` + `alternativeIssns` and uses lightweight chart rendering for details visualizations.
   Subtasks:
   - [x] `H17.1` Canonical Scopus contract lock.
-    Deliverable: `docs/h17-scopus-canonical-contract.md` with canonical collections, required fields, identity keys, lineage fields, and source-policy rules for publications, citations, forums, authors, affiliations, and funding.
+    Deliverable: `docs/tasks/closed/h17-scopus-canonical-contract.md` with canonical collections, required fields, identity keys, lineage fields, and source-policy rules for publications, citations, forums, authors, affiliations, and funding.
     Exit criteria: schema, identity, and source policy are decision-locked before implementation changes.
   - [x] `H17.2` Canonical storage and index baseline.
     Deliverable: canonical Mongo collection/index definitions for Scopus import events, normalized facts, Scopus read views, and merged `scholardex.publication*` projection/index prerequisites (lookup/sort/reporting keys) with idempotence-oriented unique constraints.
@@ -1089,12 +1150,12 @@ Archived from `TASKS.md` on 2026-03-11 after top-level closure and backlog clean
     Deliverable: locked contract for Scholardex entities (`publication`, `author`, `forum`, `affiliation`, `citation`) with per-source IDs, provenance/lineage fields, conflict rules, source-link mapping rules, and replay/idempotence semantics.
     Exit criteria: one contract document is implementation-ready and explicitly defines source ownership boundaries for Scopus/WoS/Scholar/User-defined.
     Handover:
-    - Contract source of truth: `docs/h19.1-multisource-identity-contract.md`.
+    - Contract source of truth: `docs/tasks/closed/h19.1-multisource-identity-contract.md`.
   - [x] `H19.2` Define canonical keying and merge policy for journal/forum identity.
     Deliverable: deterministic forum identity policy that links WoS journal identity and Scopus forum identity into Scholardex forum records, with normalization and collision handling rules.
     Exit criteria: deterministic link keys and conflict quarantine behavior are documented and testable.
     Handover:
-    - Contract source of truth: `docs/h19.2-forum-keying-merge-contract.md`.
+    - Contract source of truth: `docs/tasks/closed/h19.2-forum-keying-merge-contract.md`.
   - [x] `H19.3` Implement Scholardex publication identity model v2.
     Deliverable: publication model supporting source IDs (`eid`, `wosId`, `googleScholarId`, `userSourceId`) plus canonical `scholardexPublicationId` and lineage metadata, with canonical `authorIds` aligned to relationship-edge contracts.
     Exit criteria: all publication ingest/build paths can persist and resolve the new identity model without ambiguity, and publication author linkage is consistent with canonical authorship edges.
@@ -1131,4 +1192,4 @@ Archived from `TASKS.md` on 2026-03-11 after top-level closure and backlog clean
     Deliverable: workflow and integration tests covering implemented sources (`SCOPUS`, `WOS`, current manual/user wizard `USER_DEFINED` path), identity-link conflicts, replay/idempotence, and cutover regressions; observability metrics and failure triage hooks.
     Exit criteria: CI gates catch identity/linking regressions and operational dashboards expose source-level ingest/link health for implemented sources.
     Handover:
-    - Validation/operability contract: `docs/h19.8-validation-operability-gates.md`.
+    - Validation/operability contract: `docs/tasks/closed/h19.8-validation-operability-gates.md`.

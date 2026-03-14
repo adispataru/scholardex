@@ -47,9 +47,9 @@ For CI parity on build/test/security-sensitive changes:
 npm run verify-h09-baseline
 ```
 
-For failure diagnosis paths, use `docs/h10-failure-triage.md`.
-For release-affecting change hygiene, use `docs/h10-release-hygiene.md`.
-For documentation ownership/update triggers, use `docs/h10-doc-governance.md`.
+For failure diagnosis paths, use `docs/tasks/closed/h10-failure-triage.md`.
+For release-affecting change hygiene, use `docs/tasks/closed/h10-release-hygiene.md`.
+For documentation ownership/update triggers, use `docs/tasks/closed/h10-doc-governance.md`.
 
 If your change affects startup/config wiring, also verify boot task resolution:
 
@@ -92,7 +92,7 @@ npm run verify-h09-baseline
 ```
 
 If multiple categories apply, run the union of commands.
-See `docs/h10-quality-gates-matrix.md` for the canonical change-type command map.
+See `docs/tasks/closed/h10-quality-gates-matrix.md` for the canonical change-type command map.
 
 ## Guardrail Expectations
 
@@ -108,4 +108,4 @@ Do not introduce new mutating `GET` routes, transport-layer `printStackTrace`, o
 - Tests/checks were run and results are described.
 - Risks or assumptions are listed when relevant.
 - Docs are updated when behavior, commands, or contracts changed.
-- For release-affecting changes, include rollback note + verification evidence per `docs/h10-release-hygiene.md`.
+- For release-affecting changes, include rollback note + verification evidence per `docs/tasks/closed/h10-release-hygiene.md`.

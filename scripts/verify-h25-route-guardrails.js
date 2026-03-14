@@ -189,19 +189,19 @@ for (const file of runtimeTemplateRoots.flatMap((dir) => listFiles(dir, '.html')
 }
 
 const activeRouteDocs = [
-  'docs/h02-architecture-map.md',
-  'docs/h03-flow-priority-map.md',
-  'docs/h05-frontend-conventions.md',
-  'docs/h10-quality-gates-matrix.md',
-  'docs/indicator-flow.md'
+  'docs/architecture.md',
+  'docs/workflows.md',
+  'docs/frontend-conventions.md',
+  'docs/quality-gates.md',
+  'docs/contracts.md'
 ];
 
 const legacyRouteReferenceAllowlistDocs = new Set([
-  'docs/h23.1-transitional-debt-inventory.md',
-  'docs/h23.5-route-map-and-closeout.md',
-  'docs/h25.1-canonical-route-ownership-contract.md',
-  'docs/h02-remediation-plan.md',
-  'docs/h02-violations.md'
+  'docs/tasks/closed/h23.1-transitional-debt-inventory.md',
+  'docs/tasks/closed/h23.5-route-map-and-closeout.md',
+  'docs/tasks/closed/h25.1-canonical-route-ownership-contract.md',
+  'docs/tasks/closed/h02-remediation-plan.md',
+  'docs/tasks/closed/h02-violations.md'
 ]);
 
 const forbiddenLegacyDocRoutes = [
