@@ -6,8 +6,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
@@ -23,6 +25,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -95,5 +98,40 @@ class ScopusProjectionBuilderServiceTest {
         assertNull(publicationViewsCaptor.getValue().getFirst().getWosId());
         assertEquals("10.1000/abc", publicationViewsCaptor.getValue().getFirst().getDoiNormalized());
         assertEquals(List.of("p2"), publicationViewsCaptor.getValue().getFirst().getCitingPublicationIds());
+    }
+
+    @Test
+    void rebuildViewsIncludesCanonicalUserDefinedForumsWithoutScopusForumIds() {
+        ScopusProjectionBuilderService service = new ScopusProjectionBuilderService(
+                forumFactRepository,
+                canonicalForumFactRepository,
+                authorFactRepository,
+                affiliationFactRepository,
+                publicationFactRepository,
+                citationFactRepository,
+                forumViewRepository,
+                authorViewRepository,
+                affiliationViewRepository,
+                publicationViewRepository
+        );
+
+        ScholardexForumFact canonicalUserDefinedForum = new ScholardexForumFact();
+        canonicalUserDefinedForum.setId("sforum_ud");
+        canonicalUserDefinedForum.setName("Wizard Forum");
+        canonicalUserDefinedForum.setIssn("1234-5678");
+        canonicalUserDefinedForum.setAggregationType("Journal");
+
+        when(forumFactRepository.findAll()).thenReturn(List.of());
+        when(canonicalForumFactRepository.findAll()).thenReturn(List.of(canonicalUserDefinedForum));
+        when(authorFactRepository.findAll()).thenReturn(List.of());
+        when(affiliationFactRepository.findAll()).thenReturn(List.of());
+        when(publicationFactRepository.findAll()).thenReturn(List.of());
+        when(citationFactRepository.findAll()).thenReturn(List.of());
+
+        service.rebuildViews();
+
+        ArgumentCaptor<List<ScholardexForumView>> forumViewsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(forumViewRepository).saveAll(forumViewsCaptor.capture());
+        assertTrue(forumViewsCaptor.getValue().stream().anyMatch(view -> "sforum_ud".equals(view.getId())));
     }
 }

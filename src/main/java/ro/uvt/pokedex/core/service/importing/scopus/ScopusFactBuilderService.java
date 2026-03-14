@@ -22,6 +22,7 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusFundingFactReposito
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusImportEventRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
+import ro.uvt.pokedex.core.service.application.UserDefinedWizardOnboardingContract;
 
 import java.time.Instant;
 import java.nio.charset.StandardCharsets;
@@ -44,6 +45,7 @@ public class ScopusFactBuilderService {
     private static final Logger log = LoggerFactory.getLogger(ScopusFactBuilderService.class);
     private static final int FACT_BUILD_CHUNK_SIZE = 1_000;
     private static final int FACT_BUILD_HEARTBEAT_INTERVAL = 10_000;
+    private static final String SOURCE_USER_PUBLICATION_WIZARD = "USER_PUBLICATION_WIZARD";
 
     private final ScopusImportEventRepository importEventRepository;
     private final ScopusPublicationFactRepository publicationFactRepository;
@@ -82,6 +84,10 @@ public class ScopusFactBuilderService {
             try {
                 JsonNode payload = objectMapper.readTree(event.getPayload());
                 if (event.getEntityType() == ScopusImportEntityType.PUBLICATION) {
+                    if (isUserDefinedSource(event.getSource())) {
+                        result.markSkipped(sample(event, "routed to user-defined fact builder"));
+                        continue;
+                    }
                     publicationEvents.add(new PublicationWorkItem(event, payload));
                     continue;
                 }
@@ -834,6 +840,12 @@ public class ScopusFactBuilderService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private boolean isUserDefinedSource(String source) {
+        String normalized = trim(source).toUpperCase(Locale.ROOT);
+        return UserDefinedWizardOnboardingContract.SOURCE.equals(normalized)
+                || SOURCE_USER_PUBLICATION_WIZARD.equals(normalized);
     }
 
     private boolean samePayloadHash(String previous, String current) {

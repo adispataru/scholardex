@@ -264,6 +264,27 @@ class ScopusFactBuilderServiceTest {
     }
 
     @Test
+    void buildFactsFromImportEventsSkipsUserDefinedPublicationEvents() throws Exception {
+        ScopusImportEvent userDefinedEvent = new ScopusImportEvent();
+        userDefinedEvent.setEntityType(ScopusImportEntityType.PUBLICATION);
+        userDefinedEvent.setSource("USER_DEFINED");
+        userDefinedEvent.setSourceRecordId("USER_DEFINED:PUBLICATION:abc");
+        userDefinedEvent.setPayload(mapper.writeValueAsString(java.util.Map.of(
+                "eid", "USER_DEFINED:EID:abc",
+                "source_id", "USER_DEFINED:FORUM:abc"
+        )));
+
+        when(importEventRepository.findAll()).thenReturn(List.of(userDefinedEvent));
+
+        ImportProcessingResult result = service.buildFactsFromImportEvents();
+
+        assertEquals(1, result.getProcessedCount());
+        assertEquals(0, result.getImportedCount());
+        verify(publicationFactRepository, never()).saveAll(anyCollection());
+        verify(forumFactRepository, never()).saveAll(anyCollection());
+    }
+
+    @Test
     void citationCitingItemDoesNotBackfillDimensionsWhenPublicationExists() throws Exception {
         ScopusImportEvent citationEvent = new ScopusImportEvent();
         citationEvent.setEntityType(ScopusImportEntityType.CITATION);

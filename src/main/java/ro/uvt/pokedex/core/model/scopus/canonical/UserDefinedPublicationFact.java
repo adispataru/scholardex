@@ -10,35 +10,29 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Data
-@Document(collection = "scholardex.publication_facts")
-@CompoundIndex(name = "uniq_scholardex_publication_fact_eid", def = "{'eid': 1}", unique = true, sparse = true)
-@CompoundIndex(name = "uniq_scholardex_publication_fact_wos_id", def = "{'wosId': 1}", unique = true, sparse = true)
-@CompoundIndex(name = "uniq_scholardex_publication_fact_google_scholar_id", def = "{'googleScholarId': 1}", unique = true, sparse = true)
-@CompoundIndex(name = "uniq_scholardex_publication_fact_user_source_id", def = "{'userSourceId': 1}", unique = true, sparse = true)
-public class ScholardexPublicationFact {
+@Document(collection = "user_defined.publication_facts")
+@CompoundIndex(name = "uniq_user_defined_publication_source_record_id", def = "{'sourceRecordId': 1}", unique = true)
+public class UserDefinedPublicationFact {
     @Id
     private String id;
-    private String doi;
-    private String doiNormalized;
-    private String title;
-    private String titleNormalized;
+    private String source;
+    private String sourceRecordId;
+    private String sourceEventId;
+    private String sourceBatchId;
+    private String sourceCorrelationId;
 
+    private String forumSourceRecordId;
     private String eid;
-    private String wosId;
-    private String googleScholarId;
-    private String userSourceId;
-
+    private String doi;
+    private String title;
     private String subtype;
     private String subtypeDescription;
-    private String scopusSubtype;
-    private String scopusSubtypeDescription;
     private String creator;
     private Integer authorCount;
     private List<String> authorIds = new ArrayList<>();
-    private List<String> pendingAuthorSourceIds = new ArrayList<>();
+    private List<String> authorAffiliationSourceIds = new ArrayList<>();
     private List<String> correspondingAuthors = new ArrayList<>();
     private List<String> affiliationIds = new ArrayList<>();
-    private String forumId;
     private String volume;
     private String issueIdentifier;
     private String coverDate;
@@ -51,6 +45,7 @@ public class ScholardexPublicationFact {
     private String fundingId;
     private String articleNumber;
     private String pageRange;
+
     private Boolean approved;
     private String reviewState;
     private String reviewReason;
@@ -61,11 +56,8 @@ public class ScholardexPublicationFact {
     private String wizardSubmitterResearcherId;
     private Instant wizardSubmittedAt;
 
-    private String sourceEventId;
-    private String source;
-    private String sourceRecordId;
-    private String sourceBatchId;
-    private String sourceCorrelationId;
+    private String lastPayloadHash;
+    private Instant lastMaterializedAt;
     private Instant createdAt;
     private Instant updatedAt;
 }

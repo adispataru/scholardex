@@ -16,9 +16,11 @@ public class ScopusCanonicalMaterializationService {
     private static final Logger log = LoggerFactory.getLogger(ScopusCanonicalMaterializationService.class);
 
     private final ScopusFactBuilderService factBuilderService;
+    private final UserDefinedFactBuilderService userDefinedFactBuilderService;
     private final ScholardexAffiliationCanonicalizationService affiliationCanonicalizationService;
     private final ScholardexAuthorCanonicalizationService authorCanonicalizationService;
     private final ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
+    private final UserDefinedCanonicalizationService userDefinedCanonicalizationService;
     private final ScholardexCitationCanonicalizationService citationCanonicalizationService;
     private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexEdgeReconciliationService edgeReconciliationService;
@@ -36,10 +38,12 @@ public class ScopusCanonicalMaterializationService {
         String runId = java.util.UUID.randomUUID().toString();
         long startedAtNanos = System.nanoTime();
         ImportProcessingResult factResult = factBuilderService.buildFactsFromImportEvents(batchId);
+        ImportProcessingResult userDefinedFactResult = userDefinedFactBuilderService.buildFactsFromImportEvents(batchId);
         CanonicalBuildOptions effectiveOptions = canonicalOptions == null ? CanonicalBuildOptions.defaults() : canonicalOptions;
         ImportProcessingResult canonicalAffiliationResult = affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(effectiveOptions);
         ImportProcessingResult canonicalAuthorResult = authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(effectiveOptions);
         ImportProcessingResult canonicalPublicationResult = publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(effectiveOptions);
+        ImportProcessingResult canonicalUserDefinedResult = userDefinedCanonicalizationService.rebuildCanonicalFacts();
         ImportProcessingResult canonicalCitationResult = citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(effectiveOptions);
         ScholardexSourceLinkService.ImportRepairSummary sourceLinkRepair = effectiveOptions.reconcileSourceLinks()
                 ? sourceLinkService.reconcileLinks()
@@ -49,14 +53,16 @@ public class ScopusCanonicalMaterializationService {
                 : new ImportProcessingResult(0);
         ImportProcessingResult projectionResult = projectionBuilderService.rebuildViews();
         String outcome = (factResult.getErrorCount()
+                + userDefinedFactResult.getErrorCount()
                 + canonicalAffiliationResult.getErrorCount()
                 + canonicalAuthorResult.getErrorCount()
                 + canonicalPublicationResult.getErrorCount()
+                + canonicalUserDefinedResult.getErrorCount()
                 + canonicalCitationResult.getErrorCount()
                 + projectionResult.getErrorCount()) > 0 ? "failure" : "success";
         long durationNanos = System.nanoTime() - startedAtNanos;
         H19CanonicalMetrics.recordCanonicalBuildRun("all", "SCOPUS", outcome, durationNanos);
-        log.info("H19_TRIAGE canonical_materialization runId={} batchId={} correlationId={} trigger={} source=SCOPUS entity=all outcome={} durationMs={} factProcessed={} factErrors={} canonicalAffiliationProcessed={} canonicalAffiliationErrors={} canonicalAffiliationBatches={} canonicalAuthorProcessed={} canonicalAuthorErrors={} canonicalAuthorBatches={} canonicalPublicationProcessed={} canonicalPublicationErrors={} canonicalPublicationBatches={} canonicalCitationProcessed={} canonicalCitationErrors={} canonicalCitationBatches={} sourceLinkReconcileUpdated={} sourceLinkReconcileSkipped={} sourceLinkReconcileErrors={} edgeReconcileUpdated={} edgeReconcileSkipped={} edgeReconcileErrors={} projectionProcessed={} projectionErrors={}",
+        log.info("H19_TRIAGE canonical_materialization runId={} batchId={} correlationId={} trigger={} source=SCOPUS entity=all outcome={} durationMs={} factProcessed={} factErrors={} userDefinedFactProcessed={} userDefinedFactErrors={} canonicalAffiliationProcessed={} canonicalAffiliationErrors={} canonicalAffiliationBatches={} canonicalAuthorProcessed={} canonicalAuthorErrors={} canonicalAuthorBatches={} canonicalPublicationProcessed={} canonicalPublicationErrors={} canonicalPublicationBatches={} canonicalUserDefinedProcessed={} canonicalUserDefinedErrors={} canonicalUserDefinedBatches={} canonicalCitationProcessed={} canonicalCitationErrors={} canonicalCitationBatches={} sourceLinkReconcileUpdated={} sourceLinkReconcileSkipped={} sourceLinkReconcileErrors={} edgeReconcileUpdated={} edgeReconcileSkipped={} edgeReconcileErrors={} projectionProcessed={} projectionErrors={}",
                 runId,
                 batchId,
                 trigger,
@@ -65,6 +71,8 @@ public class ScopusCanonicalMaterializationService {
                 durationNanos / 1_000_000L,
                 factResult.getProcessedCount(),
                 factResult.getErrorCount(),
+                userDefinedFactResult.getProcessedCount(),
+                userDefinedFactResult.getErrorCount(),
                 canonicalAffiliationResult.getProcessedCount(),
                 canonicalAffiliationResult.getErrorCount(),
                 canonicalAffiliationResult.getBatchesProcessed(),
@@ -74,6 +82,9 @@ public class ScopusCanonicalMaterializationService {
                 canonicalPublicationResult.getProcessedCount(),
                 canonicalPublicationResult.getErrorCount(),
                 canonicalPublicationResult.getBatchesProcessed(),
+                canonicalUserDefinedResult.getProcessedCount(),
+                canonicalUserDefinedResult.getErrorCount(),
+                canonicalUserDefinedResult.getBatchesProcessed(),
                 canonicalCitationResult.getProcessedCount(),
                 canonicalCitationResult.getErrorCount(),
                 canonicalCitationResult.getBatchesProcessed(),

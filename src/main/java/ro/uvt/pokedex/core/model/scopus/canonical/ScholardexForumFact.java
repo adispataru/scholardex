@@ -29,6 +29,14 @@ public class ScholardexForumFact {
     private List<String> aliasIssns = new ArrayList<>();
     private String aggregationType;
     private String aggregationTypeNormalized;
+    private String reviewState;
+    private String reviewReason;
+    private Instant reviewStateUpdatedAt;
+    private String reviewStateUpdatedBy;
+    private String moderationFlow;
+    private String wizardSubmitterEmail;
+    private String wizardSubmitterResearcherId;
+    private Instant wizardSubmittedAt;
 
     private String sourceEventId;
     private String source;

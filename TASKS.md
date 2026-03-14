@@ -47,6 +47,7 @@ Done history moved to `TASKS-done.md`.
   - [ ] `H21.3` Align canonical linking, lineage, and review metadata for wizard-created entities.
     Deliverable: canonical publication/forum/authorship/linked-affiliation handling for wizard submissions with explicit review/moderation metadata carried in source event payloads, source links, or canonical facts as appropriate.
     Exit criteria: user-defined submissions preserve source ownership, link deterministically into Scholardex identity models, surface review/moderation state for operator triage, and do not require a separate admin approval UI/workflow in H21.
+    Reference: `docs/tasks/active/h21.3-user-defined-facts-canonicalization.md`.
   - [ ] `H21.4` Integrate operability and admin triage for `USER_DEFINED` onboarding.
     Deliverable: ensure wizard-created `USER_DEFINED` records appear coherently in existing conflict/source-link/admin operability surfaces and log/metric triage paths.
     Exit criteria: operators can trace wizard submissions through canonical build/source-link lineage using the same admin and observability paths already used for other Scholardex sources; no parallel one-off wizard-only debugging path remains.
