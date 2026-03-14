@@ -43,6 +43,7 @@ Done history moved to `TASKS-done.md`.
   - [ ] `H21.2` Migrate wizard submission into first-class `USER_DEFINED` canonical ingest.
     Deliverable: backend migration of the existing wizard submission path so wizard-created publications and newly created forums are emitted and materialized as canonical `USER_DEFINED` onboarding records rather than legacy manual compatibility payloads.
     Exit criteria: the wizard still runs at `/user/publications/add`, but its submit path is explicitly modeled as `USER_DEFINED` canonical onboarding with deterministic replay-safe IDs and no hidden dependence on legacy source naming assumptions.
+    Reference: `docs/tasks/active/h21.2-user-defined-wizard-submit-migration.md`.
   - [ ] `H21.3` Align canonical linking, lineage, and review metadata for wizard-created entities.
     Deliverable: canonical publication/forum/authorship/linked-affiliation handling for wizard submissions with explicit review/moderation metadata carried in source event payloads, source links, or canonical facts as appropriate.
     Exit criteria: user-defined submissions preserve source ownership, link deterministically into Scholardex identity models, surface review/moderation state for operator triage, and do not require a separate admin approval UI/workflow in H21.

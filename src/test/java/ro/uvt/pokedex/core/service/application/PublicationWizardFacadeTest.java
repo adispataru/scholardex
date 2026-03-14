@@ -21,6 +21,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -61,7 +62,7 @@ class PublicationWizardFacadeTest {
 
         assertTrue(first.isPresent());
         assertEquals(first, second);
-        assertTrue(first.get().startsWith("MANUAL:FORUM:"));
+        assertTrue(first.get().startsWith(UserDefinedWizardOnboardingContract.FORUM_SOURCE_RECORD_PREFIX));
     }
 
     @Test
@@ -81,7 +82,7 @@ class PublicationWizardFacadeTest {
         when(scholardexProjectionReadService.findAffiliationById("af1")).thenReturn(Optional.of(affiliation));
         when(importEventIngestionService.ingest(
                 eq(ScopusImportEntityType.PUBLICATION),
-                eq(PublicationWizardFacade.SOURCE_USER_PUBLICATION_WIZARD),
+                eq(UserDefinedWizardOnboardingContract.SOURCE),
                 any(),
                 any(),
                 any(),
@@ -96,20 +97,24 @@ class PublicationWizardFacadeTest {
         PublicationWizardFacade.SubmissionResult result = facade.submitPublication(command, submitter);
 
         assertTrue(result.imported());
-        assertTrue(result.sourceRecordId().startsWith("MANUAL:"));
-        assertTrue(result.eid().startsWith("MANUAL:EID:"));
-        assertTrue(result.forumSourceId().startsWith("MANUAL:FORUM:"));
+        assertTrue(result.sourceRecordId().startsWith(UserDefinedWizardOnboardingContract.PUBLICATION_SOURCE_RECORD_PREFIX));
+        assertTrue(result.eid().startsWith("USER_DEFINED:EID:"));
+        assertTrue(result.forumSourceId().startsWith(UserDefinedWizardOnboardingContract.FORUM_SOURCE_RECORD_PREFIX));
 
         ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
+        ArgumentCaptor<String> batchCaptor = ArgumentCaptor.forClass(String.class);
         verify(importEventIngestionService).ingest(
                 eq(ScopusImportEntityType.PUBLICATION),
-                eq(PublicationWizardFacade.SOURCE_USER_PUBLICATION_WIZARD),
+                eq(UserDefinedWizardOnboardingContract.SOURCE),
                 any(),
-                any(),
+                batchCaptor.capture(),
                 any(),
                 eq(PublicationWizardFacade.PAYLOAD_FORMAT_JSON_OBJECT),
                 payloadCaptor.capture()
         );
+        String batchId = batchCaptor.getValue();
+        assertNotNull(batchId);
+        assertTrue(batchId.startsWith("wizard-publication-"));
 
         @SuppressWarnings("unchecked")
         Map<String, Object> payload = (Map<String, Object>) payloadCaptor.getValue();
@@ -117,8 +122,35 @@ class PublicationWizardFacadeTest {
         assertEquals("Author One", payload.get("author_names"));
         assertEquals("af1", payload.get("afid"));
         assertEquals(0, payload.get("approved"));
+        assertEquals(result.sourceRecordId(), payload.get("wizardSourceRecordId"));
+        assertEquals(result.forumSourceId(), payload.get("source_id"));
 
         verify(canonicalMaterializationService).rebuildFactsAndViews(eq("wizard-publication-submit"), any());
+    }
+
+    @Test
+    void submitPublicationPreservesExistingSelectedForumId() {
+        WizardPublicationCommand command = buildCommand();
+        command.setForum("f-existing");
+
+        Forum existing = new Forum();
+        existing.setId("f-existing");
+        when(scholardexProjectionReadService.findForumById("f-existing")).thenReturn(Optional.of(existing));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of());
+        when(importEventIngestionService.ingest(
+                eq(ScopusImportEntityType.PUBLICATION),
+                eq(UserDefinedWizardOnboardingContract.SOURCE),
+                any(),
+                any(),
+                any(),
+                eq(PublicationWizardFacade.PAYLOAD_FORMAT_JSON_OBJECT),
+                any())
+        ).thenReturn(ScopusImportEventIngestionService.EventIngestionOutcome.imported("ev-2"));
+
+        PublicationWizardFacade.SubmissionResult result = facade.submitPublication(command, new User());
+
+        assertEquals("f-existing", result.forumSourceId());
+        assertTrue(result.sourceRecordId().startsWith(UserDefinedWizardOnboardingContract.PUBLICATION_SOURCE_RECORD_PREFIX));
     }
 
     @Test
@@ -127,7 +159,7 @@ class PublicationWizardFacadeTest {
         when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of());
         when(importEventIngestionService.ingest(
                 eq(ScopusImportEntityType.PUBLICATION),
-                eq(PublicationWizardFacade.SOURCE_USER_PUBLICATION_WIZARD),
+                eq(UserDefinedWizardOnboardingContract.SOURCE),
                 any(),
                 any(),
                 any(),
@@ -150,7 +182,7 @@ class PublicationWizardFacadeTest {
         command.setCoverDate("2026-03-08");
         command.setVolume("12");
         command.setIssueIdentifier("2");
-        command.setForum("MANUAL:FORUM:seed");
+        command.setForum("USER_DEFINED:FORUM:seed");
         command.setAuthorIdsCsv("a1");
         command.setWizardForumPublicationName("Journal of Tests");
         command.setWizardForumIssn("1234-5678");

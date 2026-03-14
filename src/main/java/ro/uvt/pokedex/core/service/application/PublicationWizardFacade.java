@@ -11,9 +11,6 @@ import ro.uvt.pokedex.core.service.application.model.WizardPublicationCommand;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusImportEventIngestionService;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
@@ -32,9 +29,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PublicationWizardFacade {
 
-    static final String SOURCE_USER_PUBLICATION_WIZARD = "USER_PUBLICATION_WIZARD";
     static final String PAYLOAD_FORMAT_JSON_OBJECT = "json-object";
-    private static final int MANUAL_HASH_LEN = 24;
 
     private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final ScopusImportEventIngestionService importEventIngestionService;
@@ -106,14 +101,15 @@ public class PublicationWizardFacade {
 
         String forumSourceId = resolveForumSourceId(command);
         String sourceRecordId = buildSourceRecordId(command, forumSourceId);
-        String eid = "MANUAL:EID:" + sourceRecordId.substring("MANUAL:".length());
-        String batchId = "wizard-publication-" + sourceRecordId.substring("MANUAL:".length()) + "-" + System.currentTimeMillis();
+        String sourceRecordSuffix = sourceRecordSuffix(sourceRecordId);
+        String eid = UserDefinedWizardOnboardingContract.SOURCE + ":EID:" + sourceRecordSuffix;
+        String batchId = "wizard-publication-" + sourceRecordSuffix + "-" + System.currentTimeMillis();
         String correlationId = buildCorrelationId(sourceRecordId, submitter);
 
         Map<String, Object> payload = buildCanonicalPayload(command, submitter, eid, forumSourceId, sourceRecordId);
         ScopusImportEventIngestionService.EventIngestionOutcome outcome = importEventIngestionService.ingest(
                 ScopusImportEntityType.PUBLICATION,
-                SOURCE_USER_PUBLICATION_WIZARD,
+                UserDefinedWizardOnboardingContract.SOURCE,
                 sourceRecordId,
                 batchId,
                 correlationId,
@@ -229,38 +225,26 @@ public class PublicationWizardFacade {
         draft.setIssn(command.getWizardForumIssn());
         draft.setEIssn(command.getWizardForumEIssn());
         draft.setAggregationType(command.getWizardForumAggregationType());
-        draft.setIsbn(command.getWizardForumIsbn());
-        draft.setPublisher(command.getWizardForumPublisher());
         return generateForumSourceId(draft);
     }
 
     String generateForumSourceId(Forum forum) {
-        String issn = normalizeIssnOrBlank(forum == null ? null : forum.getIssn());
-        String eIssn = normalizeIssnOrBlank(forum == null ? null : forum.getEIssn());
-        String forumKeyBase;
-        if (!isBlank(issn) || !isBlank(eIssn)) {
-            forumKeyBase = "issn|" + issn + "|" + eIssn;
-        } else {
-            forumKeyBase = "name|"
-                    + normalizeToken(forum == null ? null : forum.getPublicationName())
-                    + "|type|"
-                    + normalizeToken(forum == null ? null : forum.getAggregationType());
-        }
-        return "MANUAL:FORUM:" + shortHash(forumKeyBase);
+        return UserDefinedWizardOnboardingContract.deterministicForumSourceRecordId(
+                forum == null ? null : forum.getPublicationName(),
+                forum == null ? null : forum.getIssn(),
+                forum == null ? null : forum.getEIssn(),
+                forum == null ? null : forum.getAggregationType()
+        );
     }
 
     String buildSourceRecordId(WizardPublicationCommand command, String forumSourceId) {
-        String normalizedDoi = normalizeDoi(command.getDoi());
-        String material;
-        if (!isBlank(normalizedDoi)) {
-            material = "doi|" + normalizedDoi;
-        } else {
-            material = "title|" + normalizeToken(command.getTitle())
-                    + "|date|" + normalizeDate(command.getCoverDate())
-                    + "|creator|" + normalizeToken(command.getCreator())
-                    + "|forum|" + normalizeToken(forumSourceId);
-        }
-        return "MANUAL:" + shortHash(material);
+        return UserDefinedWizardOnboardingContract.deterministicPublicationSourceRecordId(
+                command.getDoi(),
+                command.getTitle(),
+                command.getCoverDate(),
+                command.getCreator(),
+                forumSourceId
+        );
     }
 
     private void validateCommand(WizardPublicationCommand command) {
@@ -383,18 +367,14 @@ public class PublicationWizardFacade {
         return trim(raw).toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
     }
 
-    private String shortHash(String raw) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] bytes = digest.digest(raw.getBytes(StandardCharsets.UTF_8));
-            StringBuilder out = new StringBuilder(bytes.length * 2);
-            for (byte b : bytes) {
-                out.append(String.format("%02x", b));
-            }
-            return out.substring(0, MANUAL_HASH_LEN);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 not available", e);
+    private String sourceRecordSuffix(String sourceRecordId) {
+        if (isBlank(sourceRecordId)) {
+            throw new IllegalStateException("Wizard sourceRecordId must not be blank.");
         }
+        int idx = sourceRecordId.lastIndexOf(':');
+        return idx >= 0 && idx + 1 < sourceRecordId.length()
+                ? sourceRecordId.substring(idx + 1)
+                : sourceRecordId;
     }
 
     private String trim(String value) {
