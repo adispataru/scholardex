@@ -17,6 +17,7 @@ import ro.uvt.pokedex.core.service.application.PostgresMaterializedViewRefreshSe
 import ro.uvt.pokedex.core.service.application.PostgresReportingProjectionService;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.ScopusBigBangMigrationService;
+import ro.uvt.pokedex.core.service.application.UserDefinedMaintenanceOrchestrationService;
 import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
 
 import java.util.List;
@@ -29,6 +30,7 @@ public class AdminInitializationController {
     private final GeneralInitializationService generalInitializationService;
     private final RankingMaintenanceFacade rankingMaintenanceFacade;
     private final ScopusBigBangMigrationService scopusBigBangMigrationService;
+    private final UserDefinedMaintenanceOrchestrationService userDefinedMaintenanceOrchestrationService;
     private final ObjectProvider<PostgresReportingProjectionService> postgresReportingProjectionServiceProvider;
     private final ObjectProvider<PostgresMaterializedViewRefreshService> postgresMaterializedViewRefreshServiceProvider;
     private final ObjectProvider<DualReadGateService> dualReadGateServiceProvider;
@@ -373,6 +375,51 @@ public class AdminInitializationController {
                         + ", updated=" + result.getUpdatedCount()
                         + ", skipped=" + result.getSkippedCount()
                         + ", errors=" + result.getErrorCount() + ".");
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/user-defined/buildFacts")
+    public String runUserDefinedBuildFacts(RedirectAttributes redirectAttributes) {
+        var result = userDefinedMaintenanceOrchestrationService.runBuildFactsStep(null);
+        redirectAttributes.addFlashAttribute("successMessage",
+                "USER_DEFINED fact build complete. processed=" + result.getProcessedCount()
+                        + ", imported=" + result.getImportedCount()
+                        + ", updated=" + result.getUpdatedCount()
+                        + ", skipped=" + result.getSkippedCount()
+                        + ", errors=" + result.getErrorCount() + ".");
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/user-defined/canonicalize")
+    public String runUserDefinedCanonicalize(
+            @RequestParam(name = "reconcileSourceLinks", defaultValue = "false") boolean reconcileSourceLinks,
+            @RequestParam(name = "reconcileEdges", defaultValue = "false") boolean reconcileEdges,
+            @RequestParam(name = "rebuildProjections", defaultValue = "true") boolean rebuildProjections,
+            RedirectAttributes redirectAttributes
+    ) {
+        var summary = userDefinedMaintenanceOrchestrationService.runCanonicalizeStep(
+                reconcileSourceLinks,
+                reconcileEdges,
+                rebuildProjections
+        );
+        redirectAttributes.addFlashAttribute("successMessage", formatUserDefinedMaintenance("canonicalize", summary));
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/user-defined/runAll")
+    public String runUserDefinedRunAll(
+            @RequestParam(name = "reconcileSourceLinks", defaultValue = "false") boolean reconcileSourceLinks,
+            @RequestParam(name = "reconcileEdges", defaultValue = "false") boolean reconcileEdges,
+            @RequestParam(name = "rebuildProjections", defaultValue = "true") boolean rebuildProjections,
+            RedirectAttributes redirectAttributes
+    ) {
+        var summary = userDefinedMaintenanceOrchestrationService.runAll(
+                null,
+                reconcileSourceLinks,
+                reconcileEdges,
+                rebuildProjections
+        );
+        redirectAttributes.addFlashAttribute("successMessage", formatUserDefinedMaintenance("runAll", summary));
         return "redirect:/admin/initialization";
     }
 
@@ -740,6 +787,32 @@ public class AdminInitializationController {
                 + ", authorViews=" + verification.authorViews()
                 + ", affiliationViews=" + verification.affiliationViews()
                 + ", publicationViews=" + verification.publicationViews() + "].";
+    }
+
+    private String formatUserDefinedMaintenance(
+            String label,
+            UserDefinedMaintenanceOrchestrationService.UserDefinedMaintenanceRunSummary summary
+    ) {
+        return "USER_DEFINED " + label + " complete. "
+                + "buildFacts[processed=" + summary.buildFacts().getProcessedCount()
+                + ", imported=" + summary.buildFacts().getImportedCount()
+                + ", updated=" + summary.buildFacts().getUpdatedCount()
+                + ", skipped=" + summary.buildFacts().getSkippedCount()
+                + ", errors=" + summary.buildFacts().getErrorCount()
+                + "], canonicalize[processed=" + summary.canonicalize().getProcessedCount()
+                + ", imported=" + summary.canonicalize().getImportedCount()
+                + ", updated=" + summary.canonicalize().getUpdatedCount()
+                + ", skipped=" + summary.canonicalize().getSkippedCount()
+                + ", errors=" + summary.canonicalize().getErrorCount()
+                + "], sourceLinkReconcile[updated=" + summary.sourceLinkReconcile().updated()
+                + ", skipped=" + summary.sourceLinkReconcile().skipped()
+                + ", errors=" + summary.sourceLinkReconcile().errors()
+                + "], edgeReconcile[updated=" + summary.edgeReconcile().getUpdatedCount()
+                + ", skipped=" + summary.edgeReconcile().getSkippedCount()
+                + ", errors=" + summary.edgeReconcile().getErrorCount()
+                + "], projections[processed=" + summary.projections().getProcessedCount()
+                + ", errors=" + summary.projections().getErrorCount()
+                + "].";
     }
 
     private String formatWosEnrichmentSummary(WosEnrichmentRunSummaryDto summary) {

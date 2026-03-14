@@ -63,7 +63,7 @@ class AdminSourceLinkControllerContractTest {
                         .param("page", "1")
                         .param("size", "25")
                         .param("entityType", "PUBLICATION")
-                        .param("source", "WOS")
+                        .param("source", "USER_DEFINED")
                         .param("linkState", "CONFLICT")
                         .param("sourceBatchId", "b1")
                         .param("sourceCorrelationId", "c1")
@@ -73,7 +73,7 @@ class AdminSourceLinkControllerContractTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/source-links"));
 
-        verify(sourceLinkOperationsFacade).findSourceLinks(eq(1), eq(25), eq("PUBLICATION"), eq("WOS"),
+        verify(sourceLinkOperationsFacade).findSourceLinks(eq(1), eq(25), eq("PUBLICATION"), eq("USER_DEFINED"),
                 eq("CONFLICT"), eq("b1"), eq("c1"), eq("e1"), any(), any());
     }
 
@@ -96,4 +96,3 @@ class AdminSourceLinkControllerContractTest {
         verify(sourceLinkOperationsFacade).reconcileSourceLinks();
     }
 }
-

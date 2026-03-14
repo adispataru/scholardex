@@ -245,6 +245,12 @@
             <span>Source Links</span>
         </a>
     </li>
+    <li class="nav-item" th:classappend="${activeSection} == 'user-defined-triage' ? 'active' : ''">
+        <a class="nav-link" th:href="@{/admin/user-defined-triage}">
+            <i class="fa-solid fa-fw fa-compass"></i>
+            <span>USER_DEFINED Triage</span>
+        </a>
+    </li>
 
         <!-- Divider -->
         <hr class="sidebar-divider d-none d-md-block">

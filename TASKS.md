@@ -51,6 +51,7 @@ Done history moved to `TASKS-done.md`.
   - [ ] `H21.4` Integrate operability and admin triage for `USER_DEFINED` onboarding.
     Deliverable: ensure wizard-created `USER_DEFINED` records appear coherently in existing conflict/source-link/admin operability surfaces and log/metric triage paths.
     Exit criteria: operators can trace wizard submissions through canonical build/source-link lineage using the same admin and observability paths already used for other Scholardex sources; no parallel one-off wizard-only debugging path remains.
+    Reference: `docs/tasks/active/h21.4-user-defined-operability-admin-triage.md`.
   - [ ] `H21.5` Add regression and projection-visibility coverage for migrated wizard onboarding.
     Deliverable: focused tests for wizard submission, duplicate replay/idempotence, deterministic forum/source ID generation, source-link/conflict behavior where applicable, and projection visibility after canonical materialization.
     Exit criteria: automated coverage protects the migrated in-place wizard contract and fails on regressions that reintroduce legacy manual-path behavior or break canonical projection visibility for `USER_DEFINED` submissions.

@@ -16,6 +16,7 @@ import ro.uvt.pokedex.core.service.application.PostgresReportingProjectionServic
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.ScopusBigBangMigrationService;
 import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
+import ro.uvt.pokedex.core.service.application.UserDefinedMaintenanceOrchestrationService;
 import ro.uvt.pokedex.core.service.application.WosBigBangMigrationService;
 import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
@@ -57,6 +58,8 @@ class AdminInitializationControllerContractTest {
     private DualReadGateService dualReadGateService;
     @MockitoBean
     private H22OperationalStatusService h22OperationalStatusService;
+    @MockitoBean
+    private UserDefinedMaintenanceOrchestrationService userDefinedMaintenanceOrchestrationService;
 
     @Test
     void initializationPageRendersTemplate() throws Exception {
@@ -78,6 +81,9 @@ class AdminInitializationControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/drainTouchQueues")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/reconcileEdges")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/resetCanonicalCheckpoints")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/user-defined/buildFacts")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/user-defined/canonicalize")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/user-defined/runAll")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/projection/runFull")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/projection/runIncremental")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/projection/showStatus")))
@@ -101,6 +107,58 @@ class AdminInitializationControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/sense")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/initialization/wos/runBigBangMigration"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/runBigBang"))));
+    }
+
+    @Test
+    void runUserDefinedMaintenanceActionsRedirectToInitializationPage() throws Exception {
+        ImportProcessingResult buildFacts = new ImportProcessingResult(10);
+        buildFacts.markProcessed();
+        buildFacts.markImported();
+        ImportProcessingResult canonicalize = new ImportProcessingResult(10);
+        canonicalize.markProcessed();
+        canonicalize.markUpdated();
+        ImportProcessingResult edgeReconcile = new ImportProcessingResult(10);
+        edgeReconcile.markUpdated();
+        ImportProcessingResult projections = new ImportProcessingResult(10);
+        projections.markProcessed();
+
+        when(userDefinedMaintenanceOrchestrationService.runBuildFactsStep(null)).thenReturn(buildFacts);
+        when(userDefinedMaintenanceOrchestrationService.runCanonicalizeStep(true, true, true))
+                .thenReturn(new UserDefinedMaintenanceOrchestrationService.UserDefinedMaintenanceRunSummary(
+                        new ImportProcessingResult(0),
+                        canonicalize,
+                        new ScholardexSourceLinkService.ImportRepairSummary(1L, 0L, 0L),
+                        edgeReconcile,
+                        projections
+                ));
+        when(userDefinedMaintenanceOrchestrationService.runAll(null, true, true, true))
+                .thenReturn(new UserDefinedMaintenanceOrchestrationService.UserDefinedMaintenanceRunSummary(
+                        buildFacts,
+                        canonicalize,
+                        new ScholardexSourceLinkService.ImportRepairSummary(1L, 0L, 0L),
+                        edgeReconcile,
+                        projections
+                ));
+
+        mockMvc.perform(post("/admin/initialization/user-defined/buildFacts"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+        mockMvc.perform(post("/admin/initialization/user-defined/canonicalize")
+                        .param("reconcileSourceLinks", "true")
+                        .param("reconcileEdges", "true")
+                        .param("rebuildProjections", "true"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+        mockMvc.perform(post("/admin/initialization/user-defined/runAll")
+                        .param("reconcileSourceLinks", "true")
+                        .param("reconcileEdges", "true")
+                        .param("rebuildProjections", "true"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
+
+        verify(userDefinedMaintenanceOrchestrationService).runBuildFactsStep(null);
+        verify(userDefinedMaintenanceOrchestrationService).runCanonicalizeStep(true, true, true);
+        verify(userDefinedMaintenanceOrchestrationService).runAll(null, true, true, true);
     }
 
     @Test

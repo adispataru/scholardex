@@ -45,6 +45,8 @@ public interface ScholardexSourceLinkRepository extends MongoRepository<Scholard
             String canonicalEntityId
     );
 
+    Page<ScholardexSourceLink> findBySourceOrderByUpdatedAtDesc(String source, Pageable pageable);
+
     Page<ScholardexSourceLink> findAllBySourceContainingIgnoreCaseAndLinkStateContainingIgnoreCaseAndUpdatedAtBetween(
             String source,
             String linkState,
@@ -63,4 +65,5 @@ public interface ScholardexSourceLinkRepository extends MongoRepository<Scholard
     );
 
     long countByLinkState(String linkState);
+    long countBySourceAndLinkState(String source, String linkState);
 }

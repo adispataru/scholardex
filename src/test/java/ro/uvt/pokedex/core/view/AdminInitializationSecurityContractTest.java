@@ -19,6 +19,7 @@ import ro.uvt.pokedex.core.service.application.PostgresMaterializedViewRefreshSe
 import ro.uvt.pokedex.core.service.application.PostgresReportingProjectionService;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.ScopusBigBangMigrationService;
+import ro.uvt.pokedex.core.service.application.UserDefinedMaintenanceOrchestrationService;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -53,6 +54,8 @@ class AdminInitializationSecurityContractTest {
     private DualReadGateService dualReadGateService;
     @MockitoBean
     private H22OperationalStatusService h22OperationalStatusService;
+    @MockitoBean
+    private UserDefinedMaintenanceOrchestrationService userDefinedMaintenanceOrchestrationService;
 
     @Test
     void nonAdminCannotAccessInitializationPage() throws Exception {
@@ -114,6 +117,27 @@ class AdminInitializationSecurityContractTest {
                 .andExpect(redirectedUrl("/custom-error?error=403"));
         mockMvc.perform(post("/admin/initialization/scopus/drainTouchQueues")
                         .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+    }
+
+    @Test
+    void nonAdminCannotRunUserDefinedMaintenanceRoutes() throws Exception {
+        mockMvc.perform(post("/admin/initialization/user-defined/buildFacts")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+        mockMvc.perform(post("/admin/initialization/user-defined/canonicalize")
+                        .with(csrf())
+                        .param("rebuildProjections", "true")
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+        mockMvc.perform(post("/admin/initialization/user-defined/runAll")
+                        .with(csrf())
+                        .param("rebuildProjections", "true")
                         .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/custom-error?error=403"));

@@ -42,7 +42,7 @@
             <div th:replace="~{fragments :: navbar}"></div>
             <div class="container-fluid">
                 <h1 class="h3 mb-2 text-gray-800">Initialization</h1>
-                <p class="mb-4">Run initialization and operational maintenance steps. WoS/Scopus pipelines are deterministic and admin-triggered.</p>
+                <p class="mb-4">Run initialization and operational maintenance steps. WoS/Scopus/USER_DEFINED pipelines are deterministic and admin-triggered.</p>
 
                 <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
                 <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
@@ -294,6 +294,57 @@
                                 <button type="submit" class="btn btn-danger btn-sm">Clear state</button>
                             </form>
                         </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">USER_DEFINED Initialization</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="init-card-subtitle">Maintenance for wizard-driven USER_DEFINED onboarding lineage and canonicalization.</p>
+                        <div class="init-action-row mb-3">
+                            <div>1. Build USER_DEFINED source facts</div>
+                            <form th:action="@{/admin/initialization/user-defined/buildFacts}" method="post">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
+                            </form>
+                        </div>
+                        <div class="init-action-row mb-3">
+                            <div>2. Canonicalize USER_DEFINED facts</div>
+                            <form th:action="@{/admin/initialization/user-defined/canonicalize}" method="post" class="d-flex align-items-center">
+                                <label class="form-check-label small mr-2">
+                                    <input type="checkbox" class="form-check-input mt-1" name="reconcileSourceLinks" value="true">
+                                    reconcile source links
+                                </label>
+                                <label class="form-check-label small mr-2">
+                                    <input type="checkbox" class="form-check-input mt-1" name="reconcileEdges" value="true">
+                                    reconcile edges
+                                </label>
+                                <label class="form-check-label small mr-2">
+                                    <input type="checkbox" class="form-check-input mt-1" name="rebuildProjections" value="true" checked>
+                                    rebuild projections
+                                </label>
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">Run canonicalize</button>
+                            </form>
+                        </div>
+                        <div class="init-action-row">
+                            <div>Run full USER_DEFINED maintenance (facts + canonicalize)</div>
+                            <form th:action="@{/admin/initialization/user-defined/runAll}" method="post" class="d-flex align-items-center">
+                                <label class="form-check-label small mr-2">
+                                    <input type="checkbox" class="form-check-input mt-1" name="reconcileSourceLinks" value="true">
+                                    reconcile source links
+                                </label>
+                                <label class="form-check-label small mr-2">
+                                    <input type="checkbox" class="form-check-input mt-1" name="reconcileEdges" value="true">
+                                    reconcile edges
+                                </label>
+                                <label class="form-check-label small mr-2">
+                                    <input type="checkbox" class="form-check-input mt-1" name="rebuildProjections" value="true" checked>
+                                    rebuild projections
+                                </label>
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">Run all</button>
+                            </form>
                         </div>
                     </div>
                 </div>

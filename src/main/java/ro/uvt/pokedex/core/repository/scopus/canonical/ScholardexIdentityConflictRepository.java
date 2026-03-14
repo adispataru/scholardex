@@ -41,8 +41,10 @@ public interface ScholardexIdentityConflictRepository extends MongoRepository<Sc
     );
 
     long countByStatus(String status);
+    long countByIncomingSourceAndStatus(String incomingSource, String status);
 
     long countByEntityTypeAndStatus(ScholardexEntityType entityType, String status);
 
     List<ScholardexIdentityConflict> findAllByIdIn(List<String> ids);
+    Page<ScholardexIdentityConflict> findByIncomingSourceOrderByDetectedAtDesc(String incomingSource, Pageable pageable);
 }

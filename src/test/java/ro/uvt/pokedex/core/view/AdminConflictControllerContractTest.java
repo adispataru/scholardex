@@ -64,7 +64,7 @@ class AdminConflictControllerContractTest {
                         .param("page", "2")
                         .param("size", "25")
                         .param("entityType", "PUBLICATION")
-                        .param("incomingSource", "SCOPUS")
+                        .param("incomingSource", "USER_DEFINED")
                         .param("reasonCode", "SOURCE_ID_COLLISION")
                         .param("status", "OPEN")
                         .param("detectedFrom", "2026-01-01")
@@ -72,7 +72,7 @@ class AdminConflictControllerContractTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/conflicts"));
 
-        verify(conflictOperationsFacade).findIdentityConflicts(eq(2), eq(25), eq("PUBLICATION"), eq("SCOPUS"), eq("SOURCE_ID_COLLISION"), eq("OPEN"), any(), any());
+        verify(conflictOperationsFacade).findIdentityConflicts(eq(2), eq(25), eq("PUBLICATION"), eq("USER_DEFINED"), eq("SOURCE_ID_COLLISION"), eq("OPEN"), any(), any());
     }
 
     @Test

@@ -14,6 +14,7 @@ import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 public class ScopusCanonicalMaterializationService {
 
     private static final Logger log = LoggerFactory.getLogger(ScopusCanonicalMaterializationService.class);
+    private static final String SOURCE_CANONICAL_MIXED = "CANONICAL_MIXED";
 
     private final ScopusFactBuilderService factBuilderService;
     private final UserDefinedFactBuilderService userDefinedFactBuilderService;
@@ -61,12 +62,14 @@ public class ScopusCanonicalMaterializationService {
                 + canonicalCitationResult.getErrorCount()
                 + projectionResult.getErrorCount()) > 0 ? "failure" : "success";
         long durationNanos = System.nanoTime() - startedAtNanos;
-        H19CanonicalMetrics.recordCanonicalBuildRun("all", "SCOPUS", outcome, durationNanos);
-        log.info("H19_TRIAGE canonical_materialization runId={} batchId={} correlationId={} trigger={} source=SCOPUS entity=all outcome={} durationMs={} factProcessed={} factErrors={} userDefinedFactProcessed={} userDefinedFactErrors={} canonicalAffiliationProcessed={} canonicalAffiliationErrors={} canonicalAffiliationBatches={} canonicalAuthorProcessed={} canonicalAuthorErrors={} canonicalAuthorBatches={} canonicalPublicationProcessed={} canonicalPublicationErrors={} canonicalPublicationBatches={} canonicalUserDefinedProcessed={} canonicalUserDefinedErrors={} canonicalUserDefinedBatches={} canonicalCitationProcessed={} canonicalCitationErrors={} canonicalCitationBatches={} sourceLinkReconcileUpdated={} sourceLinkReconcileSkipped={} sourceLinkReconcileErrors={} edgeReconcileUpdated={} edgeReconcileSkipped={} edgeReconcileErrors={} projectionProcessed={} projectionErrors={}",
+        H19CanonicalMetrics.recordCanonicalBuildRun("all", SOURCE_CANONICAL_MIXED, outcome, durationNanos);
+        H19CanonicalMetrics.recordCanonicalBuildRun("all", "USER_DEFINED", outcome, durationNanos);
+        log.info("H19_TRIAGE canonical_materialization runId={} batchId={} correlationId={} trigger={} source={} entity=all outcome={} durationMs={} factProcessed={} factErrors={} userDefinedFactProcessed={} userDefinedFactErrors={} canonicalAffiliationProcessed={} canonicalAffiliationErrors={} canonicalAffiliationBatches={} canonicalAuthorProcessed={} canonicalAuthorErrors={} canonicalAuthorBatches={} canonicalPublicationProcessed={} canonicalPublicationErrors={} canonicalPublicationBatches={} canonicalUserDefinedProcessed={} canonicalUserDefinedErrors={} canonicalUserDefinedBatches={} canonicalCitationProcessed={} canonicalCitationErrors={} canonicalCitationBatches={} sourceLinkReconcileUpdated={} sourceLinkReconcileSkipped={} sourceLinkReconcileErrors={} edgeReconcileUpdated={} edgeReconcileSkipped={} edgeReconcileErrors={} projectionProcessed={} projectionErrors={}",
                 runId,
                 batchId,
                 trigger,
                 trigger,
+                SOURCE_CANONICAL_MIXED,
                 outcome,
                 durationNanos / 1_000_000L,
                 factResult.getProcessedCount(),
