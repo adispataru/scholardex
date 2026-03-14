@@ -46,8 +46,8 @@ const groupCnfisFacadePath =
   'src/main/java/ro/uvt/pokedex/core/service/application/GroupCnfisExportFacade.java';
 const userPublicationFacadePath =
   'src/main/java/ro/uvt/pokedex/core/service/application/UserPublicationFacade.java';
-const adminScopusFacadePath =
-  'src/main/java/ro/uvt/pokedex/core/service/application/AdminScopusFacade.java';
+const adminCatalogFacadePath =
+  'src/main/java/ro/uvt/pokedex/core/service/application/AdminCatalogFacade.java';
 const rankingRepositoryPath =
   'src/main/java/ro/uvt/pokedex/core/repository/reporting/RankingRepository.java';
 const scopusPublicationUpdateModelPath =
@@ -69,7 +69,7 @@ const yearParsingGuardFiles = [
 const userReportContent = readFile(userReportFacadePath);
 const groupCnfisContent = readFile(groupCnfisFacadePath);
 const userPublicationFacadeContent = readFile(userPublicationFacadePath);
-const adminScopusFacadeContent = readFile(adminScopusFacadePath);
+const adminCatalogFacadeContent = readFile(adminCatalogFacadePath);
 const rankingRepositoryContent = readFile(rankingRepositoryPath);
 const scopusPublicationUpdateModelContent = readFile(scopusPublicationUpdateModelPath);
 const scopusCitationsUpdateModelContent = readFile(scopusCitationsUpdateModelPath);
@@ -128,8 +128,8 @@ assertContains(
 );
 assertContains(
   userPublicationFacadeContent,
-  'scopusProjectionReadService',
-  `${userPublicationFacadePath}: publication edit/update/citation flows must resolve through ScopusProjectionReadService.`
+  'scholardexProjectionReadService',
+  `${userPublicationFacadePath}: publication edit/update/citation flows must resolve through ScholardexProjectionReadService.`
 );
 assertNotContains(
   userPublicationFacadeContent,
@@ -191,14 +191,14 @@ if (citationsViewMethod == null) {
   );
 }
 assertContains(
-  adminScopusFacadeContent,
-  'findPublicationsByTitleContainingIgnoreCaseOrderByCoverDateDesc',
-  `${adminScopusFacadePath}: publication search must use canonical case-insensitive ordered read-service method.`
+  adminCatalogFacadeContent,
+  'findAllPublicationsByAuthorsContaining',
+  `${adminCatalogFacadePath}: publication reads must use canonical projection-backed author/publication traversal.`
 );
 assertNotContains(
-  adminScopusFacadeContent,
-  'findByTitleContainsOrderByCoverDateDesc',
-  `${adminScopusFacadePath}: publication search must not use case-sensitive title contains query path.`
+  adminCatalogFacadeContent,
+  'scopusPublicationRepository.',
+  `${adminCatalogFacadePath}: publication reads must not use legacy source-silo scopusPublicationRepository.`
 );
 assertContains(
   scopusPublicationUpdateModelContent,

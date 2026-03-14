@@ -39,6 +39,8 @@ import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublication
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsViewModel;
 
 import java.io.ByteArrayInputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -336,6 +338,30 @@ class AdminViewControllerContractTest {
                 .andExpect(redirectedUrl("/admin/scholardex/authors"));
 
         verify(adminCatalogFacade, never()).saveScopusAuthor(any(Author.class));
+    }
+
+    @Test
+    void scholardexPublicationSearchTemplateLinksAuthorsToCanonicalDetailView() throws Exception {
+        String template = Files.readString(Path.of("src/main/resources/templates/admin/scholardex-publications-search.html"));
+
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("/user/authors/view/{id}"));
+        org.junit.jupiter.api.Assertions.assertFalse(template.contains("/admin/scholardex/authors/edit/{id}"));
+    }
+
+    @Test
+    void scholardexCitationsTemplateLinksAuthorsToCanonicalDetailView() throws Exception {
+        String template = Files.readString(Path.of("src/main/resources/templates/admin/scholardex-citations.html"));
+
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("/user/authors/view/{id}"));
+        org.junit.jupiter.api.Assertions.assertFalse(template.contains("/admin/scholardex/authors/edit/{id}"));
+    }
+
+    @Test
+    void adminAuthorsScriptLinksRowsToCanonicalDetailView() throws Exception {
+        String script = Files.readString(Path.of("src/main/resources/static/js/admin-scholardex-authors.js"));
+
+        org.junit.jupiter.api.Assertions.assertTrue(script.contains("/user/authors/view/"));
+        org.junit.jupiter.api.Assertions.assertFalse(script.contains("/admin/scholardex/authors/edit/"));
     }
 
     @Test

@@ -19,6 +19,7 @@ Status: active project contract summary.
 - `/api/rankings/wos` intentionally remains stable while reading from Postgres.
 - Shared MVC route names are entity-first and stable.
 - User-defined publication onboarding remains an in-place user flow under `/user/publications/add`.
+- H21.1 lock (2026-03-14): wizard onboarding contract target source is `USER_DEFINED` with deterministic `USER_DEFINED:FORUM:*` and `USER_DEFINED:PUBLICATION:*` source record key shapes; contract source of truth is `docs/tasks/active/h21.1-user-defined-wizard-onboarding-contract.md`.
 
 ## Compatibility Rules
 

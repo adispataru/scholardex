@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.view.user;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -15,6 +16,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 
 @WebMvcTest(PublicationWizardController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -25,6 +27,12 @@ class PublicationWizardControllerContractTest {
 
     @MockitoBean
     private PublicationWizardFacade publicationWizardFacade;
+
+    @Test
+    void controllerRouteFamilyRemainsLockedToUserPublicationsAdd() {
+        RequestMapping mapping = PublicationWizardController.class.getAnnotation(RequestMapping.class);
+        assertArrayEquals(new String[]{"/user/publications/add"}, mapping.value());
+    }
 
     @Test
     void processStep1RedirectsBackWithFlashErrorWhenForumSelectionInvalid() throws Exception {

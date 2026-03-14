@@ -39,6 +39,7 @@ Done history moved to `TASKS-done.md`.
   - [ ] `H21.1` Lock the `USER_DEFINED` wizard-onboarding contract.
     Deliverable: implementation-ready contract for the migrated `/user/publications/add` flow covering source family naming, deterministic `sourceRecordId` and forum keying, lineage envelope, ownership boundaries, and review/moderation metadata semantics.
     Exit criteria: H21 is decision-locked as an in-place migration of the existing publication wizard, not a new route family or broader direct author/forum/affiliation onboarding project; `USER_DEFINED` publication/forum linkage rules explicitly align with H19.1 and H19.2 contracts.
+    Reference: `docs/tasks/active/h21.1-user-defined-wizard-onboarding-contract.md`.
   - [ ] `H21.2` Migrate wizard submission into first-class `USER_DEFINED` canonical ingest.
     Deliverable: backend migration of the existing wizard submission path so wizard-created publications and newly created forums are emitted and materialized as canonical `USER_DEFINED` onboarding records rather than legacy manual compatibility payloads.
     Exit criteria: the wizard still runs at `/user/publications/add`, but its submit path is explicitly modeled as `USER_DEFINED` canonical onboarding with deterministic replay-safe IDs and no hidden dependence on legacy source naming assumptions.

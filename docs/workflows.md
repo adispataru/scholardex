@@ -13,6 +13,7 @@ Status: active project workflow summary.
 - Dashboard and personal views run under the canonical `/user/*` route family.
 - Publication and citation views, report refreshes, and workbook exports depend on projection-backed and canonicalized data.
 - User-defined publication onboarding uses the existing publication wizard surface and should materialize through canonical `USER_DEFINED` lineage.
+- H21.1 lock (2026-03-14): route family remains `/user/publications/add`; contract-level source/keying target is `USER_DEFINED` (see `docs/tasks/active/h21.1-user-defined-wizard-onboarding-contract.md`) while runtime migration lands in H21.2+.
 
 ## Shared Read Flows
 

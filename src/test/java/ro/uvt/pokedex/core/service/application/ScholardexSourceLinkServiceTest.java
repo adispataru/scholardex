@@ -60,6 +60,30 @@ class ScholardexSourceLinkServiceTest {
     }
 
     @Test
+    void linkNormalizesUserWizardAliasToUserDefined() {
+        ScholardexSourceLinkService service = new ScholardexSourceLinkService(sourceLinkRepository, identityConflictRepository);
+        when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
+                ScholardexEntityType.PUBLICATION, "USER_DEFINED", "record-1")).thenReturn(Optional.empty());
+
+        ScholardexSourceLinkService.SourceLinkWriteResult result = service.link(
+                ScholardexEntityType.PUBLICATION,
+                "USER_PUBLICATION_WIZARD",
+                "record-1",
+                "spub_1",
+                "wizard-submit",
+                "ev-1",
+                "b-1",
+                "c-1",
+                false
+        );
+
+        assertTrue(result.accepted());
+        ArgumentCaptor<ScholardexSourceLink> captor = ArgumentCaptor.forClass(ScholardexSourceLink.class);
+        verify(sourceLinkRepository).save(captor.capture());
+        assertEquals("USER_DEFINED", captor.getValue().getSource());
+    }
+
+    @Test
     void linkedCanonicalIdIsImmutableAndOpensConflictOnRelinkAttempt() {
         ScholardexSourceLinkService service = new ScholardexSourceLinkService(sourceLinkRepository, identityConflictRepository);
         ScholardexSourceLink existing = new ScholardexSourceLink();
