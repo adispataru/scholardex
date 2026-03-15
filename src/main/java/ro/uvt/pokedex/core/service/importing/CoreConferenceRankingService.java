@@ -81,7 +81,7 @@ public class CoreConferenceRankingService {
                 logger.info("Cache synced...");
             } catch (IOException | CsvException e) {
                 totalResult.markError("file=" + fileName + ", error=" + e.getMessage());
-                logger.error("Error reading the CSV file: {}", e);
+                logger.error("Error reading the CSV file: {}", e.getMessage(), e);
             }
         }
         logger.info("Total CORE import summary: processed={}, imported={}, skipped={}, errors={}, sample={}",

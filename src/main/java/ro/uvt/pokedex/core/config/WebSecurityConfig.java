@@ -14,7 +14,6 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.access.RequestMatcherDelegatingAccessDeniedHandler;
-import org.springframework.security.web.authentication.DelegatingAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
@@ -116,11 +115,16 @@ public class WebSecurityConfig {
 
     @Bean
     public AuthenticationEntryPoint delegatingAuthenticationEntryPoint() {
-        LinkedHashMap<RequestMatcher, AuthenticationEntryPoint> entryPoints = new LinkedHashMap<>();
-        entryPoints.put(PathPatternRequestMatcher.pathPattern("/api/**"), apiAuthenticationEntryPoint());
-        DelegatingAuthenticationEntryPoint delegating = new DelegatingAuthenticationEntryPoint(entryPoints);
-        delegating.setDefaultEntryPoint(new LoginUrlAuthenticationEntryPoint("/login"));
-        return delegating;
+        AuthenticationEntryPoint apiEntryPoint = apiAuthenticationEntryPoint();
+        AuthenticationEntryPoint loginEntryPoint = new LoginUrlAuthenticationEntryPoint("/login");
+        RequestMatcher apiMatcher = PathPatternRequestMatcher.pathPattern("/api/**");
+        return (request, response, authException) -> {
+            if (apiMatcher.matches(request)) {
+                apiEntryPoint.commence(request, response, authException);
+            } else {
+                loginEntryPoint.commence(request, response, authException);
+            }
+        };
     }
 
     @Bean
