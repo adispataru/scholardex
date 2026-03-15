@@ -119,6 +119,8 @@ public class UserViewController {
         model.addAttribute("authorMap", viewModel.authorMap());
         model.addAttribute("forumMap", viewModel.forumMap());
         model.addAttribute("numCitations", viewModel.numCitations());
+        model.addAttribute("profileAuthor", viewModel.profileAuthor());
+        model.addAttribute("affiliations", viewModel.affiliations());
         model.addAttribute("publicationPageTitle", "Author Publications");
         model.addAttribute("publicationTableTitle", "Author Publications");
         model.addAttribute("publicationPageSubtitle", viewModel.authorMap().get(authorId) != null

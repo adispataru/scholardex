@@ -19,11 +19,10 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar}"></div>
+            <div th:replace="~{fragments :: navbar(${report.title})}"></div>
             <div class="container-fluid individual-report-dashboard"
                  th:attr="data-researcher-position=${researcherPosition}">
-                <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                    <h1 class="h3 mb-2 text-gray-800" th:text="${report.title}">Individual Report</h1>
+                <div class="d-sm-flex align-items-center justify-content-end mb-4">
                     <div class="d-flex gap-2">
                         <form th:action="@{/user/individual-reports/view/{id}/refresh(id=${report.id})}" method="post">
                             <button type="submit" class="btn btn-sm btn-outline-primary shadow-sm">Refresh Report</button>

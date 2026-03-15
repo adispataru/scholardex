@@ -27,11 +27,14 @@
 </th:block>
 
 <!-- Navigation Bar Fragment -->
-<div th:fragment="navbar">
+<div th:fragment="navbar(pageTitle)">
     <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
         <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
             <i class="fa-solid fa-bars"></i>
         </button>
+
+        <!-- Page Title -->
+        <span th:if="${pageTitle != null and !pageTitle.isEmpty()}" class="navbar-page-title" th:text="${pageTitle}"></span>
 
         <ul class="navbar-nav ml-auto">
             <!-- Dropdown for User Roles and Access -->

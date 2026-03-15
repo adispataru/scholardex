@@ -241,6 +241,13 @@ public class ScholardexProjectionReadService {
         return affiliationViewRepository.findAllByNameContains(name).stream().map(this::toAffiliation).toList();
     }
 
+    public List<Affiliation> findAffiliationsByIdIn(Collection<String> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+        return affiliationViewRepository.findByIdIn(ids).stream()
+                .map(this::toAffiliation)
+                .toList();
+    }
+
     public Optional<ScholardexPublicationView> findPublicationViewById(String id) {
         return publicationViewRepository.findById(id);
     }

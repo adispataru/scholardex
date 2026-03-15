@@ -17,9 +17,8 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar}"></div>
+            <div th:replace="~{fragments :: navbar('Canonical Identity Conflicts')}"></div>
             <div class="container-fluid">
-                <h1 class="h3 mb-2 text-gray-800">Canonical Identity Conflicts</h1>
                 <p class="mb-4">Primary conflict operations for <code>scholardex.identity_conflicts</code>.</p>
 
                 <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>

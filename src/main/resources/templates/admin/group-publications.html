@@ -23,13 +23,12 @@
         <!-- Main Content -->
         <div id="content">
             <!-- Topbar -->
-            <div th:replace="~{fragments :: navbar}"></div>
+            <div th:replace="~{fragments :: navbar(${group.name})}"></div>
 
             <!-- Begin Page Content -->
             <div class="container-fluid">
                 <!-- Page Heading -->
-                <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                    <h1 class="h3 mb-0 text-gray-800" th:text="${group.name}">Publications</h1>
+                <div class="d-sm-flex align-items-center justify-content-end mb-4">
                     <a th:href="@{/admin/groups/{id}/publications/exportCNFIS2025(id=${group.id})}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
                         <i class="fa-solid fa-download fa-sm text-white-50"></i> Export CNFIS
                     </a>

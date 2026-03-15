@@ -18,12 +18,11 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar}"></div>
+            <div th:replace="~{fragments :: navbar(${indicator.name})}"></div>
 
             <div class="container-fluid" id="activities-dashboard-v2"
                  th:attr="data-quarter-labels=${#strings.listJoin(allQuarters, '|')},data-quarter-values=${#strings.listJoin(allValues, '|')}">
-                <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                    <h1 class="h3 mb-0 text-gray-800" th:text="${indicator.name}">Indicator scores</h1>
+                <div class="d-sm-flex align-items-center justify-content-end mb-4">
                     <div class="d-flex">
                         <a th:href="@{/user/indicators/export/{id}(id=${indicator.id})}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm mr-2">
                             <i class="fa-solid fa-download fa-sm text-white-50"></i> Export Excel

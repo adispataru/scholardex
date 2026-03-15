@@ -82,9 +82,8 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar}"></div>
+            <div th:replace="~{fragments :: navbar('Forum')}"></div>
             <div class="container-fluid">
-                <h1 class="h3 mb-2 text-gray-800" th:text="${forum.publicationName}">Forum</h1>
                 <p class="mb-4">Canonical Scholardex forum detail page. Ranking content is shown by forum type.</p>
 
                 <div class="card shadow mb-4 card-spacing">

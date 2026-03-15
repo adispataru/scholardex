@@ -20,10 +20,9 @@
     <!-- Content Wrapper -->
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar}"></div>
+            <div th:replace="~{fragments :: navbar('Groups')}"></div>
             <div class="container-fluid">
-                <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                    <h1 class="h3 mb-2 text-gray-800">Groups</h1>
+                <div class="d-sm-flex align-items-center justify-content-end mb-4">
 <!--                    divs to show errorMessage or successMessage if present-->
                     <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
                     <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>

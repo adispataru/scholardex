@@ -21,3 +21,13 @@ html, body {
 .sticky-footer {
   margin-top: auto;
 }
+
+.navbar-page-title {
+  font-weight: 800;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: .05rem;
+  line-height: 4.375rem;
+  padding-left: 1rem;
+  color: #4e73df;
+}

@@ -20,10 +20,9 @@
     <!-- Content Wrapper -->
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar}"></div>
+            <div th:replace="~{fragments :: navbar(${report.title})}"></div>
             <div class="container-fluid">
-                <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                    <h1 class="h3 mb-2 text-gray-800" th:text="${report.title}">Individual Report</h1>
+                <div class="d-sm-flex align-items-center justify-content-end mb-4">
                     <form th:action="@{/admin/groups/{gid}/reports/view/{id}/refresh(gid=${group.id},id=${report.id})}" method="post">
                         <button type="submit" class="btn btn-primary btn-sm">Refresh scores</button>
                     </form>

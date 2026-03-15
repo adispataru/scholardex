@@ -23,13 +23,12 @@
         <!-- Main Content -->
         <div id="content">
             <!-- Topbar -->
-            <div th:replace="~{fragments :: navbar}"></div>
+            <div th:replace="~{fragments :: navbar('Domains')}"></div>
 
             <!-- Begin Page Content -->
             <div class="container-fluid">
                 <!-- Page Heading -->
-                <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                    <h1 class="h3 mb-2 text-gray-800">Domains</h1>
+                <div class="d-sm-flex align-items-center justify-content-end mb-4">
                     <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" data-toggle="modal" data-target="#createDomainModal">
                         <i class="fa-solid fa-plus fa-sm text-white-50"></i> Create New Domain
                     </a>

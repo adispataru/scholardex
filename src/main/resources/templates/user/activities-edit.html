@@ -23,12 +23,11 @@
         <!-- Main Content -->
         <div id="content">
             <!-- Topbar -->
-            <div th:replace="~{fragments :: navbar}"></div>
+            <div th:replace="~{fragments :: navbar('Edit Activity Instance')}"></div>
 
             <!-- Begin Page Content -->
             <div class="container-fluid">
                 <!-- Page Heading -->
-                <h1 class="h3 mb-2 text-gray-800">Edit Activity Instance</h1>
                 <p class="mb-4" th:text="${activityInstance.activity.name}"></p>
 
                 <!-- Form for editing the activity instance -->

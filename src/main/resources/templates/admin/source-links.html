@@ -16,9 +16,8 @@
     </ul>
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar}"></div>
+            <div th:replace="~{fragments :: navbar('Source Link Ledger')}"></div>
             <div class="container-fluid">
-                <h1 class="h3 mb-2 text-gray-800">Source Link Ledger</h1>
                 <p class="mb-4">Traceability and replay diagnostics for <code>scholardex.source_links</code>.</p>
 
                 <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>

@@ -18,11 +18,8 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar}"></div>
+            <div th:replace="~{fragments :: navbar('Search Publications')}"></div>
             <div class="container-fluid">
-                <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                    <h1 class="h3 mb-0 text-gray-800">Publications</h1>
-                </div>
                 <div class="row">
                     <div id="scrape-result" class="mt-3"></div>
                     <div id="scrape-cit-result" class="mt-3"></div>

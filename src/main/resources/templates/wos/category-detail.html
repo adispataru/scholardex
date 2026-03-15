@@ -18,15 +18,9 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar}"></div>
+            <div th:replace="~{fragments :: navbar('WoS Category')}"></div>
             <div class="container-fluid">
-                <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                    <div>
-                        <h1 class="h3 mb-0 text-gray-800" th:text="${categoryDetail.categoryName()}">Category Name</h1>
-                        <p class="mb-0 text-muted">
-                            Edition: <span th:text="${categoryDetail.edition()}">SCIE</span>
-                        </p>
-                    </div>
+                <div class="d-sm-flex align-items-center justify-content-end mb-4">
                     <a class="btn btn-outline-primary btn-sm" th:href="@{/wos/categories}">Back to Categories</a>
                 </div>
 

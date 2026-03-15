@@ -20,9 +20,8 @@
     <!-- Content Wrapper -->
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar}"></div>
+            <div th:replace="~{fragments :: navbar('Edit Affiliation')}"></div>
             <div class="container-fluid">
-                <h1 class="h3 mb-2 text-gray-800">Edit Affiliation</h1>
                 <p class="mb-4" th:text="${affiliation.name}"></p>
 
                 <div class="card shadow mb-4">

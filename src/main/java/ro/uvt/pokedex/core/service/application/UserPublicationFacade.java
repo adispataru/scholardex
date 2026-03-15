@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.Researcher;
+import ro.uvt.pokedex.core.model.scopus.Affiliation;
 import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Citation;
 import ro.uvt.pokedex.core.model.scopus.Forum;
@@ -86,10 +87,24 @@ public class UserPublicationFacade {
             return Optional.empty();
         }
 
+        Author theAuthor = author.get();
         List<Publication> publications = dedupeAndSortPublications(
-                scholardexProjectionReadService.findAllPublicationsByAuthorsContaining(author.get().getId())
+                scholardexProjectionReadService.findAllPublicationsByAuthorsContaining(theAuthor.getId())
         );
-        return Optional.of(buildPublicationsViewModel(publications));
+
+        List<String> affiliationIds = theAuthor.getAffiliations() != null
+                ? theAuthor.getAffiliations().stream()
+                    .map(Affiliation::getAfid)
+                    .filter(Objects::nonNull)
+                    .toList()
+                : List.of();
+        List<Affiliation> affiliations = scholardexProjectionReadService.findAffiliationsByIdIn(affiliationIds);
+
+        UserPublicationsViewModel baseVm = buildPublicationsViewModel(publications);
+        return Optional.of(new UserPublicationsViewModel(
+                baseVm.publications(), baseVm.hIndex(), baseVm.authorMap(), baseVm.forumMap(),
+                baseVm.numCitations(), theAuthor, affiliations
+        ));
     }
 
     public Optional<UserPublicationCitationsViewModel> buildCitationsView(String publicationId) {
@@ -212,7 +227,9 @@ public class UserPublicationFacade {
                 hIndex,
                 authorMap,
                 forumMap,
-                numCitations.get()
+                numCitations.get(),
+                null,
+                List.of()
         );
     }
 

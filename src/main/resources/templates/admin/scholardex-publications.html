@@ -18,11 +18,8 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar}"></div>
+            <div th:replace="~{fragments :: navbar('Publications')}"></div>
             <div class="container-fluid">
-                <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                    <h1 class="h3 mb-0 text-gray-800">Search Publications</h1>
-                </div>
                 <form th:action="@{/admin/scholardex/publications/search}" method="get">
                     <div class="form-group">
 <!--                        <label for="authorName">Author Name</label>-->

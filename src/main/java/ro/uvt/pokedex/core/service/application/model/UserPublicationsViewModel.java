@@ -1,5 +1,6 @@
 package ro.uvt.pokedex.core.service.application.model;
 
+import ro.uvt.pokedex.core.model.scopus.Affiliation;
 import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
@@ -12,6 +13,8 @@ public record UserPublicationsViewModel(
         int hIndex,
         Map<String, Author> authorMap,
         Map<String, Forum> forumMap,
-        int numCitations
+        int numCitations,
+        Author profileAuthor,
+        List<Affiliation> affiliations
 ) {
 }
