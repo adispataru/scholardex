@@ -11,6 +11,7 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.test.web.servlet.MockMvc;
+import ro.uvt.pokedex.core.model.scopus.Affiliation;
 import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
@@ -273,7 +274,9 @@ class UserViewControllerContractTest {
                         3,
                         Map.of("a1", author),
                         Map.of("f1", forum),
-                        8
+                        8,
+                        null,
+                        List.of()
                 )));
 
         User user = userPrincipal("u@uvt.ro");
@@ -300,7 +303,9 @@ class UserViewControllerContractTest {
                         1,
                         Map.of(),
                         Map.of(),
-                        0
+                        0,
+                        null,
+                        List.of()
                 )));
 
         User user = userPrincipal("admin@uvt.ro");
@@ -334,7 +339,9 @@ class UserViewControllerContractTest {
                         3,
                         Map.of("sauth_1", author),
                         Map.of("f1", forum),
-                        8
+                        8,
+                        author,
+                        List.of()
                 )));
 
         String html = mockMvc.perform(get("/user/authors/view/{id}", "sauth_1").with(authenticatedUser("u@uvt.ro")))
