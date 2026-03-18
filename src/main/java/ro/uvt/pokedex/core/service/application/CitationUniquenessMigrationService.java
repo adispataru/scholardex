@@ -116,7 +116,7 @@ public class CitationUniquenessMigrationService {
         return UNIQUE_INDEX_NAME.equals(info.getName())
                 && info.isUnique()
                 && info.getIndexFields().size() == 3
-                && "citedPublicationId".equals(info.getIndexFields().get(0).getKey())
+                && "citedPublicationId".equals(info.getIndexFields().getFirst().getKey())
                 && "citingPublicationId".equals(info.getIndexFields().get(1).getKey())
                 && "source".equals(info.getIndexFields().get(2).getKey());
     }

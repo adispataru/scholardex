@@ -381,9 +381,9 @@ public class GroupReportFacade {
     private double calculatePublicationScore(Indicator indicator, List<Author> authors, List<Publication> publications) {
         List<Publication> filteredPublications = publications;
         if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR)) {
-            filteredPublications = publications.stream().filter(p -> authors.stream().anyMatch(a -> a.getId().equals(p.getAuthors().get(0)))).collect(Collectors.toList());
+            filteredPublications = publications.stream().filter(p -> authors.stream().anyMatch(a -> a.getId().equals(p.getAuthors().getFirst()))).collect(Collectors.toList());
         } else if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_COAUTHOR)) {
-            filteredPublications = publications.stream().filter(p -> authors.stream().noneMatch(a -> a.getId().equals(p.getAuthors().get(0)))).collect(Collectors.toList());
+            filteredPublications = publications.stream().filter(p -> authors.stream().noneMatch(a -> a.getId().equals(p.getAuthors().getFirst()))).collect(Collectors.toList());
         }
         Map<String, Score> scores = scientificProductionService.calculateScientificProductionScore(filteredPublications, indicator);
         return scores.get("total").getAuthorScore();

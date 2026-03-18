@@ -107,7 +107,7 @@ public class AdminGroupController {
     }
 
     @GetMapping("{gid}/reports/view/{id}")
-    public String viewIndividualReport(Model model, Authentication authentication, @PathVariable("gid") String gid, @PathVariable("id") String id) {
+    public String viewIndividualReport(Model model, Authentication authentication, @PathVariable String gid, @PathVariable String id) {
         GroupIndividualReportViewModel viewModel = groupReportFacade.buildGroupIndividualReportView(gid, id);
         if (viewModel.redirect() != null) {
             return viewModel.redirect();
@@ -117,8 +117,8 @@ public class AdminGroupController {
     }
 
     @PostMapping("{gid}/reports/view/{id}/refresh")
-    public String refreshIndividualReport(@PathVariable("gid") String gid,
-                                          @PathVariable("id") String id) {
+    public String refreshIndividualReport(@PathVariable String gid,
+                                          @PathVariable String id) {
         GroupIndividualReportViewModel viewModel = groupReportFacade.refreshGroupIndividualReportView(gid, id);
         if (viewModel.redirect() != null) {
             return viewModel.redirect();
@@ -128,7 +128,7 @@ public class AdminGroupController {
 
     @GetMapping("/{id}/publications/export")
     @ResponseBody
-    public void exportIndicatorResults(@PathVariable("id") String id, Authentication authentication, HttpServletResponse response) throws IOException {
+    public void exportIndicatorResults(@PathVariable String id, Authentication authentication, HttpServletResponse response) throws IOException {
         Optional<GroupPublicationCsvExportViewModel> viewModel = groupExportFacade.buildGroupPublicationCsvExport(id);
         if (viewModel.isEmpty()) {
             return;
@@ -170,7 +170,7 @@ public class AdminGroupController {
 
     @GetMapping("/{id}/publications/exportCNFIS2025")
     @ResponseBody
-    public void createCNFISReport2025(@PathVariable("id") String id,
+    public void createCNFISReport2025(@PathVariable String id,
                                       HttpServletResponse response,
                                       @RequestParam(name = "start", defaultValue = "2021") String startYear,
                                       @RequestParam(name = "end", defaultValue = "2024") String endYear) throws IOException {
@@ -196,7 +196,7 @@ public class AdminGroupController {
 
     @GetMapping("/{id}/publications/exportAllReports")
     @ResponseBody
-    public void exportAllReports(@PathVariable("id") String id, HttpServletResponse response) throws IOException {
+    public void exportAllReports(@PathVariable String id, HttpServletResponse response) throws IOException {
         Optional<GroupCnfisZipExportViewModel> zipViewModel = groupCnfisExportFacade.buildGroupCnfisZipExport(id, 2021, 2024);
         if (zipViewModel.isEmpty()) {
             return;

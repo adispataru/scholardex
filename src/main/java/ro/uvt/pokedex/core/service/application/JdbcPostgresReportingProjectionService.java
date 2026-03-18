@@ -1055,7 +1055,7 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
                     rs.getString("error_sample")
             );
         });
-        return runs.isEmpty() ? null : runs.get(0);
+        return runs.isEmpty() ? null : runs.getFirst();
     }
 
     private List<SliceRunSummary> querySliceRuns(String runId) {
