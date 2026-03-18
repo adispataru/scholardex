@@ -69,7 +69,7 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
             return "anonymous";
         }
         Object principalObj = authentication.getPrincipal();
-        if (principalObj instanceof UserDetails details && !details.getUsername().isBlank()) {
+        if (principalObj instanceof UserDetails details && details.getUsername() != null && !details.getUsername().isBlank()) {
             return details.getUsername();
         }
         String name = authentication.getName();
