@@ -301,11 +301,6 @@ public class RankingService {
                         rank.getQAis().put(year, quarter);
                     }
                     break;
-                case "RIS":
-                    if (quarter != null) {
-                        rank.getQRis().put(year, quarter);
-                    }
-                    break;
             }
             ranking.getWebOfScienceCategoryIndex().put(category, rank);
         }
