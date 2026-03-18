@@ -4,12 +4,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.util.ReflectionTestUtils;
 import ro.uvt.pokedex.core.model.Institution;
 import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.reporting.Group;
@@ -44,13 +42,14 @@ class GroupServiceTest {
     @Mock
     private UserService userService;
 
-    @InjectMocks
     private GroupService groupService;
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(groupService, "defaultPassword", "2025");
-        ReflectionTestUtils.setField(groupService, "requiredColumnCount", 5);
+        groupService = new GroupService(
+                groupRepository, institutionRepository, researcherService,
+                passwordEncoder, userService, "2025", 5
+        );
 
         Institution uvt = new Institution();
         uvt.setName("UVT");

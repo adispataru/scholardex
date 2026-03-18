@@ -1,12 +1,11 @@
 package ro.uvt.pokedex.core.service.importing;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.SenseBookRanking;
@@ -18,15 +17,14 @@ import java.io.IOException;
 import java.util.*;
 
 @Service
+@RequiredArgsConstructor
 public class SenseRankingService {
 
     private static final Logger logger = LoggerFactory.getLogger(SenseRankingService.class);
 
-    @Autowired
-    private CoreConferenceRankingRepository coreConferenceRankingRepository;
+    private final CoreConferenceRankingRepository coreConferenceRankingRepository;
 
-    @Autowired
-    private SenseRankingRepository bookRankingRepository;
+    private final SenseRankingRepository bookRankingRepository;
 
     @Async("taskExecutor")
     public void importBookRankingsFromExcel(String excelFilePath) {

@@ -12,7 +12,6 @@ import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 

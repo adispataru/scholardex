@@ -1,6 +1,5 @@
 package ro.uvt.pokedex.core.service.importing;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -26,20 +25,31 @@ import java.util.regex.Pattern;
 public class GroupService {
     private static final Pattern SIMPLE_EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
-    @Autowired
-    private GroupRepository groupRepository;
-    @Autowired
-    private InstitutionRepository institutionRepository;
-    @Autowired
-    private ResearcherService researcherService;
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-    @Autowired
-    private UserService userService;
-    @Value("${user.default.password}")
-    private String defaultPassword;
-    @Value("${h07.groups.import.required-column-count:5}")
-    private int requiredColumnCount;
+    private final GroupRepository groupRepository;
+    private final InstitutionRepository institutionRepository;
+    private final ResearcherService researcherService;
+    private final PasswordEncoder passwordEncoder;
+    private final UserService userService;
+    private final String defaultPassword;
+    private final int requiredColumnCount;
+
+    public GroupService(
+            GroupRepository groupRepository,
+            InstitutionRepository institutionRepository,
+            ResearcherService researcherService,
+            PasswordEncoder passwordEncoder,
+            UserService userService,
+            @Value("${user.default.password}") String defaultPassword,
+            @Value("${h07.groups.import.required-column-count:5}") int requiredColumnCount
+    ) {
+        this.groupRepository = groupRepository;
+        this.institutionRepository = institutionRepository;
+        this.researcherService = researcherService;
+        this.passwordEncoder = passwordEncoder;
+        this.userService = userService;
+        this.defaultPassword = defaultPassword;
+        this.requiredColumnCount = requiredColumnCount;
+    }
 
     public void importGroupsFromCsv(MultipartFile file) throws Exception {
         List<Institution> uvt = institutionRepository.findByNameIgnoreCase("UVT");

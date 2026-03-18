@@ -12,9 +12,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationPageResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusAuthorPageResponse;
-import ro.uvt.pokedex.core.controller.dto.ScopusForumPageResponse;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 import ro.uvt.pokedex.core.model.reporting.wos.WosScoringView;
@@ -26,7 +24,6 @@ import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 import ro.uvt.pokedex.core.service.application.model.AdminScopusCitationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminScopusPublicationSearchViewModel;
-import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
 
 import java.sql.Timestamp;
 import java.time.Instant;

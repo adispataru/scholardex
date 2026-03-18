@@ -3,7 +3,7 @@ package ro.uvt.pokedex.core.service.reporting;
 import org.mvel2.MVEL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.scopus.Publication;
@@ -13,11 +13,11 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class ScientificProductionService {
     private static final Logger log = LoggerFactory.getLogger(ScientificProductionService.class);
 
-    @Autowired
-    ScoringFactoryService scoringFactoryService;
+    private final ScoringFactoryService scoringFactoryService;
 
 
     public Map<String, Score> calculateScientificProductionScore(List<Publication> publications, Indicator indicator) {

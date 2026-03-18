@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEntityType;
@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.*;
 
 @Service
+@RequiredArgsConstructor
 public class ScopusDataService {
 
     private static final Logger logger = LoggerFactory.getLogger(ScopusDataService.class);
@@ -36,31 +37,16 @@ public class ScopusDataService {
     private static final CanonicalBuildOptions BOOTSTRAP_FULL_RESCAN_OPTIONS =
             new CanonicalBuildOptions(null, null, true, null, false, false, false, false, true);
 
-    @Autowired
-    private ScopusPublicationRepository publicationRepository;
-
-    @Autowired
-    private ScopusCitationRepository citationRepository;
-
-    @Autowired
-    private ScopusAffiliationRepository affiliationRepository;
-
-    @Autowired
-    private ScopusAuthorRepository authorRepository;
-
-    @Autowired
-    private ScopusForumRepository venueRepository;
-
-    @Autowired
-    private ScopusFundingRepository fundingRepository;
-    @Autowired
-    private CacheService cacheService;
-    @Autowired
-    private ScopusImportEventRepository importEventRepository;
-    @Autowired
-    private ScopusImportEventIngestionService importEventIngestionService;
-    @Autowired
-    private ScopusCanonicalMaterializationService canonicalMaterializationService;
+    private final ScopusPublicationRepository publicationRepository;
+    private final ScopusCitationRepository citationRepository;
+    private final ScopusAffiliationRepository affiliationRepository;
+    private final ScopusAuthorRepository authorRepository;
+    private final ScopusForumRepository venueRepository;
+    private final ScopusFundingRepository fundingRepository;
+    private final CacheService cacheService;
+    private final ScopusImportEventRepository importEventRepository;
+    private final ScopusImportEventIngestionService importEventIngestionService;
+    private final ScopusCanonicalMaterializationService canonicalMaterializationService;
 
     @Async("taskExecutor")
     public void loadScopusDataIfEmpty(String scopusDataFile) {
@@ -404,26 +390,15 @@ public class ScopusDataService {
         if (citationRepository.findByCitedIdAndCitingId(cited.getId(), citing.getId()).isEmpty()) {
             citationRepository.insert(citation);
         }
-
-//        logger.info("Saved citation for {}", cited.getTitle());
     }
 
     private Publication createAndSaveCitingPublication(JsonNode rootNode) {
         Publication publication = createPublicationFromJson(rootNode);
-//        publication.setEid(rootNode.get("eid").asText());
-//        setupPublication(rootNode, publication);
         handleAffiliations(publication, rootNode);
         handleAuthors(publication, rootNode);
         handleVenue(publication, rootNode);
         handleFunding(publication, rootNode);
 
-//        if(publication.getDoi() != null && !publication.getDoi().isEmpty())
-//            publication.setId(publication.getDoi());
-//        else if(publication.getEid() != null && !publication.getEid().isEmpty())
-//            publication.setId(publication.getEid());
-//        else{
-//            logger.error("Citing publication has no DOI or EID: {}", publication.getTitle());
-//        }
         publicationRepository.insert(publication);
         return publication;
     }
@@ -475,7 +450,6 @@ public class ScopusDataService {
         Publication publication = new Publication();
         String ctx = "scopus-runtime-item";
         publication.setEid(readRequiredText(rootNode, "eid", ctx));
-//        publication.setImportId(i);
         publication.setDoi(readOptionalText(rootNode, "doi"));
         publication.setTitle(readRequiredText(rootNode, "title", ctx));
         publication.setSubtype(readOptionalText(rootNode, "subtype"));
@@ -602,16 +576,6 @@ public class ScopusDataService {
         return affiliations;
     }
 
-//    private void saveAuthorIfNotExist(Author author) {
-//        Optional<Author> existingAuthor = authorRepository.findById(author.getId());
-//        if (existingAuthor.isEmpty()) {
-//            authorRepository.insert(author);
-//            logger.info("Saved author: {}", author.getName());
-//        } else {
-//            updateExistingAuthorAffiliations(existingAuthor.get(), author.getAffiliations());
-//        }
-//    }
-
     private void updateExistingAuthorAffiliations(Author existing, List<Affiliation> newAffiliations) {
         for (Affiliation affiliation : newAffiliations) {
             if (!existing.getAffiliations().contains(affiliation)) {
@@ -658,13 +622,6 @@ public class ScopusDataService {
         return (issn != null && !issn.isEmpty() && !issn.contains("-")) ? issn.substring(0, 4) + "-" + issn.substring(4) : issn;
     }
 
-//    private void saveForumIfNotExist(Forum forum) {
-//        if (venueRepository.findById(forum.getSourceId()).isEmpty()) {
-//            venueRepository.save(forum);
-//            logger.info("Saved forum: {}", forum.getPublicationName());
-//        }
-//    }
-
     private void handleFunding(Publication publication, JsonNode rootNode, int i) {
         Funding funding = new Funding();
         funding.setAcronym(readOptionalIndexedText(rootNode, "fund_acr", i));
@@ -691,7 +648,6 @@ public class ScopusDataService {
     private Funding saveFundingIfNotExist(Funding funding) {
         if (fundingRepository.findByAcronymAndNumberAndSponsor(funding.getAcronym(), funding.getNumber(), funding.getSponsor()).isEmpty()) {
             return fundingRepository.save(funding);
-//            logger.info("Saved funding: {}/{}", funding.getAcronym(), funding.getNumber());
         }
         return funding;
     }

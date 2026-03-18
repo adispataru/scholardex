@@ -6,9 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.controller.dto.ScholardexForumPageResponse;
-import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
 
 import java.util.List;
 

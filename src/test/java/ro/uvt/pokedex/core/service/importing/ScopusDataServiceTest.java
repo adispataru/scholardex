@@ -3,15 +3,32 @@ package ro.uvt.pokedex.core.service.importing;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
+import ro.uvt.pokedex.core.repository.scopus.*;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusImportEventRepository;
+import ro.uvt.pokedex.core.service.CacheService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScopusImportEventIngestionService;
 import ro.uvt.pokedex.core.service.integration.IntegrationException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
 
 class ScopusDataServiceTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final ScopusDataService service = new ScopusDataService();
+    private final ScopusDataService service = new ScopusDataService(
+            mock(ScopusPublicationRepository.class),
+            mock(ScopusCitationRepository.class),
+            mock(ScopusAffiliationRepository.class),
+            mock(ScopusAuthorRepository.class),
+            mock(ScopusForumRepository.class),
+            mock(ScopusFundingRepository.class),
+            mock(CacheService.class),
+            mock(ScopusImportEventRepository.class),
+            mock(ScopusImportEventIngestionService.class),
+            mock(ScopusCanonicalMaterializationService.class)
+    );
 
     @Test
     void createPublicationFromJsonThrowsOnMissingRequiredEid() {

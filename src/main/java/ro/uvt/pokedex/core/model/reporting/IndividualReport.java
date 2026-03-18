@@ -5,7 +5,6 @@ import lombok.EqualsAndHashCode;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import ro.uvt.pokedex.core.model.Institution;
-import ro.uvt.pokedex.core.model.scopus.Affiliation;
 
 @Data
 @EqualsAndHashCode(callSuper = true)

@@ -2,7 +2,6 @@ package ro.uvt.pokedex.core.service.importing;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -15,19 +14,24 @@ import java.util.Arrays;
 @Service
 public class AdminUserService {
 
-    @Value("${admin.email}")
-    private String adminEmail;
-
-    @Value("${admin.password}")
-    private String adminPassword;
-
     private static final Logger logger = LoggerFactory.getLogger(AdminUserService.class);
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final String adminEmail;
+    private final String adminPassword;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    public AdminUserService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            @Value("${admin.email}") String adminEmail,
+            @Value("${admin.password}") String adminPassword
+    ) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.adminEmail = adminEmail;
+        this.adminPassword = adminPassword;
+    }
 
     public void createDefaultAdminUser() {
         if (userRepository.count() == 0) {
@@ -40,4 +44,3 @@ public class AdminUserService {
         }
     }
 }
-

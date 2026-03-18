@@ -2,7 +2,6 @@ package ro.uvt.pokedex.core.service.reporting;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ro.uvt.pokedex.core.model.ArtisticEvent;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.URAPUniversityRanking;
 import ro.uvt.pokedex.core.model.WoSRanking;
@@ -174,7 +173,6 @@ public abstract class AbstractWoSForumScoringService implements ScoringService {
             List<Integer> allowedYears,
             ScoreResult result,
             BiFunction<URAPUniversityRanking, Integer, Optional<Double>> scoreExtractor) {
-
 
         for (int year : allowedYears) {
             Optional<Double> points = scoreExtractor.apply(ranking, year);

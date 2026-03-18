@@ -1,33 +1,23 @@
 package ro.uvt.pokedex.core.service.reporting;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 
 @Service
+@RequiredArgsConstructor
 public class ScoringFactoryService {
-    @Autowired
-    private ComputerScienceConferenceScoringService computerScienceConferenceScoringService;
-    @Autowired
-    private ComputerScienceJournalScoringService computerScienceJournalScoringService;
-    @Autowired
-    private ComputerScienceBookService computerScienceBookService;
-    @Autowired
-    private ComputerScienceScoringService computerScienceScoringService;
-    @Autowired
-    private ImpactFactorJournalScoringService impactFactorJournalScoringService;
-    @Autowired
-    private RISJournalScoringService risJournalScoringService;
-    @Autowired
-    private AISJournalScoringService aisJournalScoringService;
-    @Autowired
-    private UniversityRankScoringService universityRankScoringService;
-    @Autowired
-    private CNCSISPublisherListService cncsisPublisherListService;
-    @Autowired
-    private ArtEventScoringService artEventScoringService;
-    @Autowired
-    private EconomicsJournalScoringService economicsJournalScoringService;
+    private final ComputerScienceConferenceScoringService computerScienceConferenceScoringService;
+    private final ComputerScienceJournalScoringService computerScienceJournalScoringService;
+    private final ComputerScienceBookService computerScienceBookService;
+    private final ComputerScienceScoringService computerScienceScoringService;
+    private final ImpactFactorJournalScoringService impactFactorJournalScoringService;
+    private final RISJournalScoringService risJournalScoringService;
+    private final AISJournalScoringService aisJournalScoringService;
+    private final UniversityRankScoringService universityRankScoringService;
+    private final CNCSISPublisherListService cncsisPublisherListService;
+    private final ArtEventScoringService artEventScoringService;
+    private final EconomicsJournalScoringService economicsJournalScoringService;
 
     public ScoringService getScoringService(Indicator.Strategy strategy) {
         if (strategy == null) {

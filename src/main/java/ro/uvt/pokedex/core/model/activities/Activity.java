@@ -5,7 +5,6 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.List;
-import java.util.Map;
 
 @Data
 @Document(collection = "activities")
@@ -15,7 +14,6 @@ public class Activity {
     protected String name;
     private List<Field> fields;
     private List<ReferenceField> referenceFields;
-
 
     @Data
     public static class Field {
