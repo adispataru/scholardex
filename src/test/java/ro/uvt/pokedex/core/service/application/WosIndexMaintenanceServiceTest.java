@@ -88,14 +88,14 @@ class WosIndexMaintenanceServiceTest {
         assertTrue(result.present().isEmpty());
         assertTrue(result.invalid().isEmpty());
         assertTrue(result.errors().isEmpty());
-        verify(metricOps, org.mockito.Mockito.times(2)).ensureIndex(any());
-        verify(categoryOps, org.mockito.Mockito.times(2)).ensureIndex(any());
-        verify(rankingOps, org.mockito.Mockito.times(7)).ensureIndex(any());
-        verify(scoringOps, org.mockito.Mockito.times(2)).ensureIndex(any());
-        verify(importEventOps, org.mockito.Mockito.times(1)).ensureIndex(any());
-        verify(journalIdentityOps, org.mockito.Mockito.times(4)).ensureIndex(any());
-        verify(identityConflictOps, org.mockito.Mockito.times(1)).ensureIndex(any());
-        verify(factConflictOps, org.mockito.Mockito.times(1)).ensureIndex(any());
+        verify(metricOps, org.mockito.Mockito.times(2)).createIndex(any());
+        verify(categoryOps, org.mockito.Mockito.times(2)).createIndex(any());
+        verify(rankingOps, org.mockito.Mockito.times(7)).createIndex(any());
+        verify(scoringOps, org.mockito.Mockito.times(2)).createIndex(any());
+        verify(importEventOps, org.mockito.Mockito.times(1)).createIndex(any());
+        verify(journalIdentityOps, org.mockito.Mockito.times(4)).createIndex(any());
+        verify(identityConflictOps, org.mockito.Mockito.times(1)).createIndex(any());
+        verify(factConflictOps, org.mockito.Mockito.times(1)).createIndex(any());
     }
 
     @Test
@@ -144,10 +144,10 @@ class WosIndexMaintenanceServiceTest {
         assertTrue(result.created().isEmpty());
         assertTrue(result.invalid().isEmpty());
         assertTrue(result.errors().isEmpty());
-        verify(metricOps, never()).ensureIndex(any());
-        verify(categoryOps, never()).ensureIndex(any());
-        verify(rankingOps, never()).ensureIndex(any());
-        verify(scoringOps, never()).ensureIndex(any());
+        verify(metricOps, never()).createIndex(any());
+        verify(categoryOps, never()).createIndex(any());
+        verify(rankingOps, never()).createIndex(any());
+        verify(scoringOps, never()).createIndex(any());
     }
 
     @Test
@@ -196,7 +196,7 @@ class WosIndexMaintenanceServiceTest {
         assertTrue(result.invalid().getFirst().contains(WosIndexMaintenanceService.IDX_METRIC_UNIQ));
         assertTrue(result.created().isEmpty());
         assertEquals(19, result.present().size());
-        verify(metricOps, never()).ensureIndex(any());
+        verify(metricOps, never()).createIndex(any());
     }
 
     private IndexInfo info(String name, boolean unique, String... keys) {

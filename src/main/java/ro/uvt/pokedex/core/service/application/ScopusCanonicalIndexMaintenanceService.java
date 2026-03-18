@@ -581,7 +581,7 @@ public class ScopusCanonicalIndexMaintenanceService {
             if (definition.sparse()) {
                 index.sparse();
             }
-            ops.ensureIndex(index);
+            ops.createIndex(index);
             created.add(definition.name());
         } catch (Exception e) {
             errors.add(definition.name() + ": " + e.getMessage());

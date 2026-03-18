@@ -74,7 +74,7 @@ public class CitationUniquenessMigrationService {
     }
 
     public void ensureUniqueIndex() {
-        mongoTemplate.indexOps(ScholardexCitationFact.class).ensureIndex(
+        mongoTemplate.indexOps(ScholardexCitationFact.class).createIndex(
                 new Index()
                         .on("citedPublicationId", Sort.Direction.ASC)
                         .on("citingPublicationId", Sort.Direction.ASC)

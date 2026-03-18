@@ -53,7 +53,7 @@ public class RankingService {
             }
             logger.info("Successfully initialized categories from the Excel file.");
         } catch (IOException | EncryptedDocumentException e) {
-            logger.error("Error reading the Excel file: {}", e);
+            logger.error("Error reading the Excel file: {}", e.getMessage(), e);
         }
     }
 

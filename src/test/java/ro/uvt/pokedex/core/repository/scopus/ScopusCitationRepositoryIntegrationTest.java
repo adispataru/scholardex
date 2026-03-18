@@ -83,7 +83,7 @@ class ScopusCitationRepositoryIntegrationTest extends MongoIntegrationTestBase {
 
     @Test
     void uniqueIndexRejectsDuplicateCitationPairs() {
-        mongoTemplate.indexOps(Citation.class).ensureIndex(
+        mongoTemplate.indexOps(Citation.class).createIndex(
                 new Index()
                         .on("citedId", Sort.Direction.ASC)
                         .on("citingId", Sort.Direction.ASC)

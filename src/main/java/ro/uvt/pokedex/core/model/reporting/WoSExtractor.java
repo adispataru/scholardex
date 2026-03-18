@@ -17,7 +17,7 @@ public class WoSExtractor {
         try {
             // Build the curl command
             String command = String.format(
-                "curl -s -I 'http://ws.isiknowledge.com/cps/openurl/service?url_ver=Z39.88-2004&rft_id=info:doi/%s' | grep Location",
+                "curl -s -I 'https://ws.isiknowledge.com/cps/openurl/service?url_ver=Z39.88-2004&rft_id=info:doi/%s' | grep Location",
                 doi
             );
 
