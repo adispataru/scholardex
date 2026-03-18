@@ -8,9 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
-import ro.uvt.pokedex.core.model.reporting.ActivityIndicator;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Forum;
 
 import java.util.HashMap;
 import java.util.List;
@@ -81,7 +79,6 @@ public class ActivityReportingService {
         }
         if(result.getScore() > 0.0) {
 
-
             StringBuilder sb = new StringBuilder();
             variables.forEach((k, v) -> {
                 if (rawformula.contains(k))
@@ -110,6 +107,5 @@ public class ActivityReportingService {
         }
         return result;
     }
-
 
 }

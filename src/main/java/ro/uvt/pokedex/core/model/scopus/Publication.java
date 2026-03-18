@@ -3,7 +3,6 @@ package ro.uvt.pokedex.core.model.scopus;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.DBRef;
 
 import java.util.HashSet;
 import java.util.List;
@@ -26,8 +25,6 @@ public class Publication {
     private String scopusSubtypeDescription;
     private String subtypeDescription;
     private String creator;
-//    @DBRef
-//    private List<Affiliation> affiliations;
     private List<String> affiliations;
     private int authorCount;
     private List<String> authors;

@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Domain;
@@ -120,7 +119,6 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
     /* ------------------------------------------------------------------ */
 
     private Optional<Score> computeEconomicsScore(WoSRanking ranking, int year, String category, WoSRanking.Rank rank) {
-
 
         Score returnScore = new Score();
         AtomicInteger multiplier = new AtomicInteger(0);

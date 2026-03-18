@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationTouch;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorTouch;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationTouch;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumTouch;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEvent;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationTouch;

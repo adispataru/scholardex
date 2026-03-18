@@ -95,44 +95,6 @@ public abstract class AbstractForumScoringService implements ScoringService {
         return ScoringCategorySupport.isCategoryEligibleForDomain(domain, category);
     }
 
-//    /**
-//     * Generic score-computing routine – relies on a {@code scoreExtractor}
-//     * that tells how to pull the concrete score (AIS, RIS, IF, …)
-//     * from a ranking/year combination.
-//     */
-//    protected void computeScores(
-//            Domain domain,
-//            Forum forum,
-//            List<Integer> allowedYears,
-//            ScoreResult result,
-//            BiFunction<WoSRanking, Integer, Optional<Score>> scoreExtractor) {
-//
-//        if (forum == null) {
-//            return;
-//        }
-//        if(forum.getIssn() == null && forum.getEIssn() == null) {
-//            return;
-//        }
-//
-//        for (WoSRanking ranking : getRankingsForForum(forum)) {
-//            ranking.getWebOfScienceCategoryIndex().forEach((category, rank) -> {
-//                if (isCategoryInDomain(domain, category)) {
-//                    for (int year : allowedYears) {
-//                        Optional<Score> points = scoreExtractor.apply(ranking, year);
-//                        if (points.isPresent() && points.get().getScore() > result.bestPoints.get()) {
-//                            result.bestPoints.set(points.get().getScore());
-////                            result.bestQuarter.set(getBestQuarter(ranking));
-//                            result.bestQuarter.set(WoSRanking.Quarter.valueOf(points.get().getQuarter()));
-//                            result.bestCategory.set(CoreConferenceRanking.Rank.valueOf(points.get().getCategory()));
-//                            result.bestYear.set(year);
-//                            result.extra.putAll(points.get().getExtra());
-//                        }
-//                    }
-//                }
-//            });
-//        }
-//    }
-
     public WoSRanking.Quarter getBestQuarter(WoSRanking ranking){
         List<String> options = new ArrayList<>();
         for(String cat : ranking.getWebOfScienceCategoryIndex().keySet()){

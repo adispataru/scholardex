@@ -5,7 +5,6 @@ import org.springframework.beans.factory.ObjectProvider;
 import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationPageResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusAuthorPageResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusForumPageResponse;
-import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.service.application.model.AdminScopusPublicationSearchViewModel;
 
 import java.util.List;

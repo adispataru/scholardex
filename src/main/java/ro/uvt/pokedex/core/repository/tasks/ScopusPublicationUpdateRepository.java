@@ -1,7 +1,6 @@
 package ro.uvt.pokedex.core.repository.tasks;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
-import ro.uvt.pokedex.core.model.reporting.ActivityIndicator;
 import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;
 import ro.uvt.pokedex.core.model.tasks.Status;
 

@@ -4,7 +4,7 @@ import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
@@ -20,15 +20,14 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class CoreConferenceRankingService {
 
     private static final Logger logger = LoggerFactory.getLogger(CoreConferenceRankingService.class);
 
-    @Autowired
-    private CoreConferenceRankingRepository coreConferenceRankingRepository;
+    private final CoreConferenceRankingRepository coreConferenceRankingRepository;
 
-    @Autowired
-    private CacheService cacheService;
+    private final CacheService cacheService;
     @Async("taskExecutor")
     public void loadRankingsFromCSV(String directoryPath) {
         loadRankingsFromCSVSync(directoryPath);
@@ -275,7 +274,6 @@ public class CoreConferenceRankingService {
         }
         yearlyRankings.put(year, yearlyRanking);
 
-//        coreConferenceRankingRepository.save(ranking);
         if(pos > -1){
             cacheService.getCachedConfRankings(acronym).set(pos, ranking);
         } else{

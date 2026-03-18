@@ -12,7 +12,6 @@ import ro.uvt.pokedex.core.service.importing.wos.model.WosParsedRecord;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 
 @Component

@@ -16,7 +16,6 @@ import ro.uvt.pokedex.core.model.Institution;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.scopus.Affiliation;
 import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
@@ -53,8 +52,6 @@ public class AdminViewController {
     private final AdminInstitutionReportFacade adminInstitutionReportFacade;
     private final RankingMaintenanceFacade rankingMaintenanceFacade;
     private final String Country = "Romania";
-
-
 
     @GetMapping()
     public String showDashboard(Model model) {
@@ -132,7 +129,6 @@ public class AdminViewController {
         }
         AdminInstitutionPublicationsExportViewModel vm = exportViewModel.get();
 
-
         // 3. Prepare Excel workbook
         try (Workbook workbook = new XSSFWorkbook()) {
             // Publications sheet
@@ -200,7 +196,6 @@ public class AdminViewController {
         }
     }
 
-
     @PostMapping("/institutions/update")
     public String updateInstitution(@ModelAttribute Institution institution, RedirectAttributes redirectAttributes) {
         adminCatalogFacade.saveInstitution(institution);
@@ -259,7 +254,6 @@ public class AdminViewController {
                 ));
         return activityDescriptions;
     }
-
 
     @PostMapping("/indicators/create")
     public String createIndicator(@ModelAttribute Indicator indicator) {
@@ -585,12 +579,10 @@ public class AdminViewController {
         return "redirect:/admin/users";
     }
 
-
     @PostMapping("/users/updateRoles")
     public String updateRoles(@RequestParam String email, @RequestParam(required = false) List<String> roles) {
         userService.updateUserRoles(email, roles);
         return "redirect:/admin/users";
     }
-
 
 }

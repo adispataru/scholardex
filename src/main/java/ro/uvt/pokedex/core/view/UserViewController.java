@@ -9,11 +9,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Citation;
-import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.model.tasks.ScopusCitationsUpdate;
 import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;
@@ -39,7 +36,6 @@ import ro.uvt.pokedex.core.service.application.model.UserWorkbookExportStatus;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/user")
@@ -145,7 +141,6 @@ public class UserViewController {
         return "user/tasks";
     }
 
-
     @PostMapping("/tasks/scopus/update-publications")
     public ResponseEntity<ScopusPublicationUpdate> createScopusUpdateTask(@ModelAttribute ScopusPublicationUpdate task,
                                                  Authentication authentication,
@@ -171,7 +166,6 @@ public class UserViewController {
         redirectAttributes.addFlashAttribute("successMessage", "Scopus update task created.");
         return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
-
 
     @GetMapping("/publications/citations")
     public String showPublicationCitationsPage(Model model,
@@ -203,7 +197,6 @@ public class UserViewController {
         return "user/citations";
     }
 
-
     @GetMapping("/publications/edit/{eid}")
     public String showEditPublicationForm(@PathVariable("eid") String publicationId, Model model) {
         Optional<Publication> publicationOpt = userPublicationFacade.findPublicationForEdit(publicationId);
@@ -222,7 +215,6 @@ public class UserViewController {
         return "redirect:/user/publications";
     }
 
-
     @GetMapping("/indicators")
     public String showPubCriteriaPage(Model model, Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
@@ -236,7 +228,6 @@ public class UserViewController {
         model.addAttribute("user", currentUser);
         return "user/indicators";
     }
-
 
     @GetMapping("/indicators/apply/{id}")
     public String showCriteriaResultsPage(Model model, Authentication authentication, @PathVariable("id") String id) {
@@ -293,7 +284,6 @@ public class UserViewController {
         model.addAttribute("user", currentUser);
         return "user/individual-reports";
     }
-
 
     @GetMapping("/individual-reports/view/{id}")
     public String viewIndividualReport(Model model, Authentication authentication, @PathVariable("id") String id) {

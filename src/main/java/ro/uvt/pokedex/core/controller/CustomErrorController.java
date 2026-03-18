@@ -1,7 +1,5 @@
 package ro.uvt.pokedex.core.controller;
 
-//import javax.servlet.RequestDispatcher;
-//import javax.servlet.http.HttpServletRequest;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.boot.webmvc.error.ErrorController;

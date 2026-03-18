@@ -6,9 +6,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import ro.uvt.pokedex.core.model.activities.Activity;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.Map;
 
 @Data
 @Document(collection = "indicators")

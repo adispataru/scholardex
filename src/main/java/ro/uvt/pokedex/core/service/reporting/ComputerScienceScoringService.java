@@ -57,7 +57,6 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
             case "ar", "re" -> journalScoringService.getScore(publication, indicator);
             case "cp" -> conferenceScoringService.getScore(publication, indicator);
             default -> {
-//                logger.warn("Unhandled publication subtype for CS combined scoring: {}", subtype);
                 yield createEmptyScore();
             }
         };

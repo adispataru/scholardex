@@ -4,6 +4,7 @@ import org.apache.poi.EncryptedDocumentException;
 import org.apache.poi.ss.usermodel.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -21,12 +22,12 @@ import java.io.IOException;
 import java.util.*;
 
 @Service
+@RequiredArgsConstructor
 public class RankingService {
 
     private static final Logger logger = LoggerFactory.getLogger(RankingService.class);
 
-    @Autowired
-    private RankingRepository rankingRepository;
+    private final RankingRepository rankingRepository;
     @Autowired(required = false)
     private WosImportEventIngestionService wosImportEventIngestionService;
     @Autowired(required = false)
@@ -387,7 +388,6 @@ public class RankingService {
         try {
             return "N/A".equals(quarterValue) ? WoSRanking.Quarter.REMOVED : WoSRanking.Quarter.valueOf(quarterValue);
         } catch (Exception e) {
-//            logger.error("Exception when retrieving Quarter value: {}", e.getMessage());
             return WoSRanking.Quarter.NOT_FOUND;
         }
     }
@@ -397,7 +397,6 @@ public class RankingService {
         try {
             return WoSRanking.Quarter.valueOf(quarter);
         } catch (Exception e) {
-//            logger.error("Exception when retrieving Quarter value: {}", e.getMessage());
             return WoSRanking.Quarter.NOT_FOUND;
         }
     }

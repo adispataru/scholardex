@@ -8,7 +8,6 @@ import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 

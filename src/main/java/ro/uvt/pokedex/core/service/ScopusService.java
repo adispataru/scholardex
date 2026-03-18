@@ -77,17 +77,6 @@ public class ScopusService {
     }
 
     public void getCitingWorks(Researcher researcher) {
-
-//        String authToken = obtainAuthToken();  // Obtain the auth token
-
-//        for(Publication p : pubs) {
-//            String doi = p.getDoi();
-//
-//            getCitingWorks(doi);
-//
-//        }
-
-
     }
 
     public List<Map<String, String>> getCitingWorks(String doi) {
@@ -95,17 +84,11 @@ public class ScopusService {
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-ELS-APIKey", apiKey);
-//        headers.set("Authorization", "Bearer " + authToken);  // Use the auth token
         headers.set("Accept", "application/json");
 
         String url = UriComponentsBuilder.fromUriString(apiUrl)
                 .buildAndExpand(doi)
                 .toUriString();
-//        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(apiUrl)
-//                .queryParam("doi", doi);
-//                .queryParam("view", "STANDARD");  // Set other query params as necessary.
-//                .queryParam("field", "author,title,coverDate,sourceTitle,doi");
-
         HttpEntity<String> entity = new HttpEntity<>(headers);
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
         return parseCitingWorks(response.getBody());
@@ -125,18 +108,6 @@ public class ScopusService {
             return List.of();
         }
         List<Map<String, String>> detailsList = new ArrayList<>();
-
-//        for (int i = 0; i < works.length(); i++) {
-//            JSONObject work = works.getJSONObject(i);
-//            Map<String, String> workDetails = new HashMap<>();
-//            workDetails.put("Title", work.getString("dc:title"));
-//            workDetails.put("Author", work.getJSONArray("dc:creator").join(", ").replaceAll("\"", ""));
-//            workDetails.put("Date", work.getString("prism:coverDate"));
-//            workDetails.put("Source", work.getString("prism:sourceTitle"));
-//            workDetails.put("DOI", work.optString("prism:doi", "No DOI available"));
-//
-//            detailsList.add(workDetails);
-//        }
 
         return detailsList;
     }

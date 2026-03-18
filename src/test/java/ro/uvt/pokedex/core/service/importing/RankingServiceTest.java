@@ -21,13 +21,12 @@ class RankingServiceTest {
 
     @Test
     void loadRankingsFromExcelHandlesEmptyFolderDeterministically() throws Exception {
-        RankingService service = new RankingService();
         RankingRepository rankingRepository = mock(RankingRepository.class);
+        RankingService service = new RankingService(rankingRepository);
         WosImportEventIngestionService ingestionService = mock(WosImportEventIngestionService.class);
         WosFactBuilderService factBuilderService = mock(WosFactBuilderService.class);
         when(ingestionService.ingestDirectory(anyString(), isNull())).thenReturn(new ImportProcessingResult(5));
         when(factBuilderService.buildFactsFromImportEvents()).thenReturn(new ImportProcessingResult(5));
-        ReflectionTestUtils.setField(service, "rankingRepository", rankingRepository);
         ReflectionTestUtils.setField(service, "wosImportEventIngestionService", ingestionService);
         ReflectionTestUtils.setField(service, "wosFactBuilderService", factBuilderService);
 
@@ -40,13 +39,12 @@ class RankingServiceTest {
 
     @Test
     void loadRankingsFromExcelIgnoresJifFiles() throws Exception {
-        RankingService service = new RankingService();
         RankingRepository rankingRepository = mock(RankingRepository.class);
+        RankingService service = new RankingService(rankingRepository);
         WosImportEventIngestionService ingestionService = mock(WosImportEventIngestionService.class);
         WosFactBuilderService factBuilderService = mock(WosFactBuilderService.class);
         when(ingestionService.ingestDirectory(anyString(), isNull())).thenReturn(new ImportProcessingResult(5));
         when(factBuilderService.buildFactsFromImportEvents()).thenReturn(new ImportProcessingResult(5));
-        ReflectionTestUtils.setField(service, "rankingRepository", rankingRepository);
         ReflectionTestUtils.setField(service, "wosImportEventIngestionService", ingestionService);
         ReflectionTestUtils.setField(service, "wosFactBuilderService", factBuilderService);
 

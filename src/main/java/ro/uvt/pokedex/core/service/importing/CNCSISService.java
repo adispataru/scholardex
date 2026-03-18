@@ -5,24 +5,22 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.CNCSISPublisher;
-import ro.uvt.pokedex.core.model.SenseBookRanking;
 import ro.uvt.pokedex.core.repository.reporting.CNCSISPublisherRepository;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class CNCSISService {
 
     private static final Logger logger = LoggerFactory.getLogger(CNCSISService.class);
 
-    @Autowired
-    private CNCSISPublisherRepository cncsisPublisherRepository;
+    private final CNCSISPublisherRepository cncsisPublisherRepository;
 
     @Async("taskExecutor")
     public void importPublisherListFromExcel(String excelFilePath) {
