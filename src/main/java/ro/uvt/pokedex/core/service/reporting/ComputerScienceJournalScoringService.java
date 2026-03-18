@@ -137,13 +137,15 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
 
     @Override
     public String getDescription() {
-        return "Scoring strategy for CNATDCU's Computer Science domain.(Category translation from WoS quarters)\n" +
-                "x = 20% * num(Q1) in the same WoS category\n" +
-                "A* = 12p (first x in Q1)\n" +
-                "A = 8p (rest of Q1 + first x in Q2)\n" +
-                "B = 4p (rest of Q2 + first x in Q3)\n" +
-                "C = 2p (rest of Q3 and Q4)\n" +
-                "C = 2p (non WoS, but indexed by SCOPUS)\n" +
-                "D = 1p (non WoS, non SCOPUS)\n";
+        return """
+                Scoring strategy for CNATDCU's Computer Science domain.(Category translation from WoS quarters)
+                x = 20% * num(Q1) in the same WoS category
+                A* = 12p (first x in Q1)
+                A = 8p (rest of Q1 + first x in Q2)
+                B = 4p (rest of Q2 + first x in Q3)
+                C = 2p (rest of Q3 and Q4)
+                C = 2p (non WoS, but indexed by SCOPUS)
+                D = 1p (non WoS, non SCOPUS)
+                """;
     }
 }

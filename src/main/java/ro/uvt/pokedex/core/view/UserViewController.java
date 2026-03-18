@@ -230,7 +230,7 @@ public class UserViewController {
     }
 
     @GetMapping("/indicators/apply/{id}")
-    public String showCriteriaResultsPage(Model model, Authentication authentication, @PathVariable("id") String id) {
+    public String showCriteriaResultsPage(Model model, Authentication authentication, @PathVariable String id) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
             return "redirect:/login"; // or your login route
         }
@@ -245,7 +245,7 @@ public class UserViewController {
     }
 
     @PostMapping("/indicators/apply/{id}/refresh")
-    public String refreshCriteriaResultsPage(Authentication authentication, @PathVariable("id") String id) {
+    public String refreshCriteriaResultsPage(Authentication authentication, @PathVariable String id) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
             return "redirect:/login";
         }
@@ -255,7 +255,7 @@ public class UserViewController {
 
     @GetMapping("indicators/export/{id}")
     @ResponseBody
-    public void exportIndicatorResults(@PathVariable("id") String id, Authentication authentication, HttpServletResponse response) throws IOException {
+    public void exportIndicatorResults(@PathVariable String id, Authentication authentication, HttpServletResponse response) throws IOException {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
             response.sendRedirect("/login");
             return;
@@ -286,7 +286,7 @@ public class UserViewController {
     }
 
     @GetMapping("/individual-reports/view/{id}")
-    public String viewIndividualReport(Model model, Authentication authentication, @PathVariable("id") String id) {
+    public String viewIndividualReport(Model model, Authentication authentication, @PathVariable String id) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
             return "redirect:/login";
         }
@@ -322,7 +322,7 @@ public class UserViewController {
     }
 
     @PostMapping("/individual-reports/view/{id}/refresh")
-    public String refreshIndividualReport(Model model, Authentication authentication, @PathVariable("id") String id) {
+    public String refreshIndividualReport(Model model, Authentication authentication, @PathVariable String id) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
             return "redirect:/login";
         }
@@ -331,7 +331,7 @@ public class UserViewController {
     }
 
     @PostMapping("/individual-reports/view/{id}/refresh-all-indicators")
-    public String refreshIndividualReportWithAllIndicators(Authentication authentication, @PathVariable("id") String id) {
+    public String refreshIndividualReportWithAllIndicators(Authentication authentication, @PathVariable String id) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
             return "redirect:/login";
         }

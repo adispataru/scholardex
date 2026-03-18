@@ -176,13 +176,15 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
 
     @Override
     public String getDescription() {
-        return "Scoring strategy for CNATDCU's Computer Science domain.(Categories based on CORE)\n" +
-                "A* = 12p\n" +
-                "A = 8p\n" +
-                "B = 4p\n" +
-                "C = 2p\n" +
-                "D = 1p\n" +
-                "LNCS = C = 2p\n" +
-                "SCOPUS = D = 1p\n";
+        return """
+                Scoring strategy for CNATDCU's Computer Science domain.(Categories based on CORE)
+                A* = 12p
+                A = 8p
+                B = 4p
+                C = 2p
+                D = 1p
+                LNCS = C = 2p
+                SCOPUS = D = 1p
+                """;
     }
 }

@@ -235,7 +235,7 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
             params.addValue("edition0", editionNames.getFirst());
             editionPredicate = "edition_normalized = CAST(:edition0 AS reporting_read.edition_normalized_enum)";
         } else {
-            params.addValue("edition0", editionNames.get(0));
+            params.addValue("edition0", editionNames.getFirst());
             params.addValue("edition1", editionNames.get(1));
             editionPredicate = """
                     edition_normalized IN (

@@ -361,9 +361,9 @@ public class UserReportFacade {
     private UserIndicatorApplyViewModel handlePublications(Indicator indicator, List<Author> authors, List<Publication> publications, Map<String, Object> attrs) {
         List<Publication> filteredPublications = publications;
         if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR)) {
-            filteredPublications = publications.stream().filter(p -> authors.stream().anyMatch(a -> a.getId().equals(p.getAuthors().get(0)))).collect(Collectors.toList());
+            filteredPublications = publications.stream().filter(p -> authors.stream().anyMatch(a -> a.getId().equals(p.getAuthors().getFirst()))).collect(Collectors.toList());
         } else if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_COAUTHOR)) {
-            filteredPublications = publications.stream().filter(p -> authors.stream().noneMatch(a -> a.getId().equals(p.getAuthors().get(0)))).collect(Collectors.toList());
+            filteredPublications = publications.stream().filter(p -> authors.stream().noneMatch(a -> a.getId().equals(p.getAuthors().getFirst()))).collect(Collectors.toList());
         }
         Map<String, Score> scores = scientificProductionService.calculateScientificProductionScore(filteredPublications, indicator);
         attrs.put("total", String.format("%.2f", scores.get("total").getAuthorScore()));
@@ -428,7 +428,7 @@ public class UserReportFacade {
             List<Publication> citations = new ArrayList<>();
             for (Citation cit : allCitations) {
                 if (cit.getCitedId().equals(pub.getId())) {
-                    Publication citing = citationsMapRetrieved.get(cit.getCitingId()).get(0);
+                    Publication citing = citationsMapRetrieved.get(cit.getCitingId()).getFirst();
                     if (excludeSelf && authors.stream().anyMatch(a -> citing.getAuthors().contains(a.getId()))) {
                         continue;
                     }
@@ -549,9 +549,9 @@ public class UserReportFacade {
     private double calculatePublicationScore(Indicator indicator, List<Author> authors, List<Publication> publications) {
         List<Publication> filteredPublications = publications;
         if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR)) {
-            filteredPublications = publications.stream().filter(p -> authors.stream().anyMatch(a -> a.getId().equals(p.getAuthors().get(0)))).collect(Collectors.toList());
+            filteredPublications = publications.stream().filter(p -> authors.stream().anyMatch(a -> a.getId().equals(p.getAuthors().getFirst()))).collect(Collectors.toList());
         } else if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_COAUTHOR)) {
-            filteredPublications = publications.stream().filter(p -> authors.stream().noneMatch(a -> a.getId().equals(p.getAuthors().get(0)))).collect(Collectors.toList());
+            filteredPublications = publications.stream().filter(p -> authors.stream().noneMatch(a -> a.getId().equals(p.getAuthors().getFirst()))).collect(Collectors.toList());
         }
         Map<String, Score> scores = scientificProductionService.calculateScientificProductionScore(filteredPublications, indicator);
         return scores.get("total").getAuthorScore();
@@ -571,7 +571,7 @@ public class UserReportFacade {
             List<Publication> citations = new ArrayList<>();
             for (Citation cit : allCitations) {
                 if (cit.getCitedId().equals(pub.getId())) {
-                    Publication citing = pubCitationsMap.get(cit.getCitingId()).get(0);
+                    Publication citing = pubCitationsMap.get(cit.getCitingId()).getFirst();
                     if (excludeSelf && authors.stream().anyMatch(a -> citing.getAuthors().contains(a.getId()))) {
                         continue;
                     }

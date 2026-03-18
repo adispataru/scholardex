@@ -1,15 +1,17 @@
 package ro.uvt.pokedex.core.service.importing.wos.model;
 
+import lombok.Getter;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 public class WosParserRunSummary {
     private final int maxSamples;
-    private int processedCount;
-    private int parsedCount;
-    private int skippedCount;
-    private int errorCount;
+    @Getter private int processedCount;
+    @Getter private int parsedCount;
+    @Getter private int skippedCount;
+    @Getter private int errorCount;
     private final List<String> samples = new ArrayList<>();
 
     public WosParserRunSummary(int maxSamples) {
@@ -41,22 +43,6 @@ public class WosParserRunSummary {
         if (samples.size() < maxSamples) {
             samples.add(sample);
         }
-    }
-
-    public int getProcessedCount() {
-        return processedCount;
-    }
-
-    public int getParsedCount() {
-        return parsedCount;
-    }
-
-    public int getSkippedCount() {
-        return skippedCount;
-    }
-
-    public int getErrorCount() {
-        return errorCount;
     }
 
     public List<String> getSamples() {

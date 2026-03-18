@@ -78,7 +78,7 @@ public class WosIdentityResolutionService {
         }
 
         if (candidates.size() == 1) {
-            WosJournalIdentity candidate = candidates.get(0);
+            WosJournalIdentity candidate = candidates.getFirst();
             candidate.setIdentityKey(identityKey);
             maybeUpdateAliases(candidate, normalizedIssns, rawTitle, normalizedTitle);
             return new IdentityResolutionResult(candidate.getId(), identityKey, WosIdentityResolutionStatus.MATCHED, null);
