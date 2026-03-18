@@ -167,7 +167,7 @@ public class UserIndicatorResultService {
             try {
                 totalCount = Integer.parseInt(String.valueOf(totalCountObj));
             } catch (NumberFormatException ignored) {
-                totalCount = null;
+                // totalCount remains null from initialization
             }
         }
 

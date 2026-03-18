@@ -3,6 +3,7 @@ package ro.uvt.pokedex.core.observability;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.MeterBinder;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
@@ -32,7 +33,7 @@ public class ScholardexOperabilityGaugeBinder implements MeterBinder {
     }
 
     @Override
-    public void bindTo(MeterRegistry registry) {
+    public void bindTo(@NonNull MeterRegistry registry) {
         Gauge.builder("core.h19.identity_conflicts.open", this,
                         binder -> binder.identityConflictRepository.countByStatus("OPEN"))
                 .description("Current open generic identity conflicts")

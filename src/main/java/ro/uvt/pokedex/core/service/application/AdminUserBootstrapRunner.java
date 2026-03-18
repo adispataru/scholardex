@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -21,7 +22,7 @@ public class AdminUserBootstrapRunner implements CommandLineRunner {
     private final GeneralInitializationService generalInitializationService;
 
     @Override
-    public void run(String... args) {
+    public void run(@NonNull String... args) {
         GeneralInitializationService.GeneralInitializationStepResult result =
                 generalInitializationService.runAdminUserBootstrap();
         if (result.success()) {

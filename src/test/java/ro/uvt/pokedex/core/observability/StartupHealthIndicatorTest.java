@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.observability;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.Status;
 import ro.uvt.pokedex.core.model.user.UserRole;
 import ro.uvt.pokedex.core.repository.UserRepository;
@@ -35,8 +36,10 @@ class StartupHealthIndicatorTest {
 
         StartupHealthIndicator indicator = new StartupHealthIndicator(tracker, userRepository);
 
-        assertThat(indicator.health().getStatus()).isEqualTo(Status.UP);
-        assertThat(indicator.health().getDetails()).containsKey("phases");
+        Health health = indicator.health();
+        assertThat(health).isNotNull();
+        assertThat(health.getStatus()).isEqualTo(Status.UP);
+        assertThat(health.getDetails()).containsKey("phases");
     }
 
     @Test
@@ -79,7 +82,9 @@ class StartupHealthIndicatorTest {
 
         StartupHealthIndicator indicator = new StartupHealthIndicator(tracker, userRepository);
 
-        assertThat(indicator.health().getStatus()).isEqualTo(Status.OUT_OF_SERVICE);
-        assertThat(indicator.health().getDetails()).containsEntry("adminUserPresent", false);
+        Health health = indicator.health();
+        assertThat(health).isNotNull();
+        assertThat(health.getStatus()).isEqualTo(Status.OUT_OF_SERVICE);
+        assertThat(health.getDetails()).containsEntry("adminUserPresent", false);
     }
 }

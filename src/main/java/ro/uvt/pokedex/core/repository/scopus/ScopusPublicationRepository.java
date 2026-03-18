@@ -3,6 +3,7 @@ package ro.uvt.pokedex.core.repository.scopus;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,12 +15,12 @@ public interface ScopusPublicationRepository extends MongoRepository<Publication
     List<Publication> findAllByEidIn(List<String> ids);
     List<Publication> findAllByIdIn(List<String> ids);
 //    @Query("{ 'authors': { $in: ?0 } }")
-    List<Publication> findAllByAuthorsIn(List<String> author);
+    List<Publication> findAllByAuthorsIn(Collection<String> author);
     List<Publication> findByTitleContains(String title);
     List<Publication> findByTitleContainsOrderByCoverDateDesc(String title);
     List<Publication> findByTitleContainingIgnoreCaseOrderByCoverDateDesc(String title);
 
-    List<Publication> findAllByAuthorsInAndTitleContains(List<String> authorIds, String paperTitle);
+    List<Publication> findAllByAuthorsInAndTitleContains(Collection<String> authorIds, String paperTitle);
 
     Optional<Publication> findTopByAuthorsContainsOrderByCoverDateDesc(String authorScopusId);
 }

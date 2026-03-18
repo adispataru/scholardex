@@ -55,12 +55,14 @@ public class AsyncConfiguration {
         meterRegistry.gauge("core.async.active.threads", executor, ThreadPoolTaskExecutor::getActiveCount);
         meterRegistry.gauge("core.async.pool.size", executor, ThreadPoolTaskExecutor::getPoolSize);
         meterRegistry.gauge("core.async.queue.size", executor, e -> {
+            // defensive: should never be null after initialize()
             if (e.getThreadPoolExecutor() == null) {
                 return 0;
             }
             return e.getThreadPoolExecutor().getQueue().size();
         });
         meterRegistry.gauge("core.async.queue.remaining", executor, e -> {
+            // defensive: should never be null after initialize()
             if (e.getThreadPoolExecutor() == null) {
                 return 0;
             }

@@ -128,36 +128,30 @@ public class CoreConferenceRankingService {
     }
 
     private void updateRankingFromRow2008(String[] row, int year) {
-        String id = null;
+        // 2008 CSV format does not include fields of research data
         String name = row[1].trim();
         String source = row[3].trim();
         String acronym = row[2].trim();
         CoreConferenceRanking.Rank rank = parseRank(row[4].trim());
         String rankString = row[4].trim();
-        String[] fieldsOfResearch = null;
-        String[] fieldsOfResearchNames = null;
 
-        updateRanking(id, source, "", name, acronym, rank, rankString, fieldsOfResearch, fieldsOfResearchNames, year);
+        updateRanking(null, source, "", name, acronym, rank, rankString, null, null, year);
     }
 
     private void updateRankingFromRow2010(String[] row, int year) {
-        // Update column indices according to the CSV structure for 2010
-        String id = null;
+        // 2010 CSV format does not include fields of research data
         String source = row[3].trim();
         String sourceId = row[0].trim();
         String name = row[1].trim();
         String acronym = row[2].trim();
         CoreConferenceRanking.Rank rank = parseRank(row[4].trim());
         String rankString = row[4].trim();
-        String[] fieldsOfResearch = null;
-        String[] fieldsOfResearchNames = null;
 
-        updateRanking(id, source, sourceId, name, acronym, rank, rankString, fieldsOfResearch, fieldsOfResearchNames, year);
+        updateRanking(null, source, sourceId, name, acronym, rank, rankString, null, null, year);
     }
 
     private void updateRankingFromRow2013(String[] row, int year) {
-        // Update column indices according to the CSV structure for 2013
-        String id = null;
+        // 2013 CSV format does not include fields of research data
         String source = row[3].trim();
         String sourceId = row[0].trim();
         String name = row[1].trim();
@@ -165,56 +159,47 @@ public class CoreConferenceRankingService {
         CoreConferenceRanking.Rank rank = parseRank(row[4].trim());
         String rankString = row[4].trim();
 
-        updateRanking(id, source, sourceId, name, acronym, rank, rankString, null, null, year);
+        updateRanking(null, source, sourceId, name, acronym, rank, rankString, null, null, year);
     }
 
     private void updateRankingFromRow2014(String[] row, int year) {
-        // Update column indices according to the CSV structure for 2014
-        String id = null;
+        // 2014 CSV format does not include fields of research data
         String source = row[3].trim();
         String sourceId = row[0].trim();
         String name = row[1].trim();
         String acronym = row[2].trim();
         CoreConferenceRanking.Rank rank = parseRank(row[4].trim());
         String rankString = row[4].trim();
-        String[] fieldsOfResearch = null;
-        String[] fieldsOfResearchNames = null;
-        updateRanking(id, source, sourceId, name, acronym, rank, rankString, fieldsOfResearch, fieldsOfResearchNames, year);
+
+        updateRanking(null, source, sourceId, name, acronym, rank, rankString, null, null, year);
     }
 
     private void updateRankingFromRow2017(String[] row, int year) {
-        // Update column indices according to the CSV structure for 2017
-        String id = null;
+        // 2017 CSV format does not include fields of research data
         String source = row[3].trim();
         String sourceId = row[0].trim();
         String name = row[1].trim();
         String acronym = row[2].trim();
         CoreConferenceRanking.Rank rank = parseRank(row[4].trim());
         String rankString = row[4].trim();
-        String[] fieldsOfResearch = null;
-        String[] fieldsOfResearchNames = null;
 
-        updateRanking(id, source, sourceId, name, acronym, rank, rankString, fieldsOfResearch, fieldsOfResearchNames, year);
+        updateRanking(null, source, sourceId, name, acronym, rank, rankString, null, null, year);
     }
 
     private void updateRankingFromRow2018(String[] row, int year) {
-        // Update column indices according to the CSV structure for 2018
-        String id = null;
+        // 2018 CSV format does not include fields of research data
         String source = row[3].trim();
         String sourceId = row[0].trim();
         String name = row[1].trim();
         String acronym = row[2].trim();
         CoreConferenceRanking.Rank rank = parseRank(row[4].trim());
         String rankString = row[4].trim();
-        String[] fieldsOfResearch = null;
-        String[] fieldsOfResearchNames = null;
 
-        updateRanking(id, source, sourceId, name, acronym, rank, rankString, fieldsOfResearch, fieldsOfResearchNames, year);
+        updateRanking(null, source, sourceId, name, acronym, rank, rankString, null, null, year);
     }
 
     private void updateRankingFromRow2020(String[] row, int year) {
-        // Update column indices according to the CSV structure for 2020
-        String id = null;
+        // 2020+ CSV format includes fields of research in column 6
         String source = row[3].trim();
         String sourceId = row[0].trim();
         String name = row[1].trim();
@@ -222,14 +207,12 @@ public class CoreConferenceRankingService {
         CoreConferenceRanking.Rank rank = parseRank(row[4].trim());
         String rankString = row[4].trim();
         String[] fieldsOfResearch = row[6].trim().split(";");
-        String[] fieldsOfResearchNames = null;
 
-        updateRanking(id, source, sourceId, name, acronym, rank, rankString, fieldsOfResearch, fieldsOfResearchNames, year);
+        updateRanking(null, source, sourceId, name, acronym, rank, rankString, fieldsOfResearch, null, year);
     }
 
     private void updateRankingFromRow2021(String[] row, int year) {
-        // Update column indices according to the CSV structure for 2021
-        String id = null;
+        // 2020+ CSV format includes fields of research in column 6
         String source = row[3].trim();
         String sourceId = row[0].trim();
         String name = row[1].trim();
@@ -237,14 +220,12 @@ public class CoreConferenceRankingService {
         CoreConferenceRanking.Rank rank = parseRank(row[4].trim());
         String rankString = row[4].trim();
         String[] fieldsOfResearch = row[6].trim().split(";");
-        String[] fieldsOfResearchNames = null;
 
-        updateRanking(id, source, sourceId, name, acronym, rank, rankString, fieldsOfResearch, fieldsOfResearchNames, year);
+        updateRanking(null, source, sourceId, name, acronym, rank, rankString, fieldsOfResearch, null, year);
     }
 
     private void updateRankingFromRow2023(String[] row, int year) {
-        // Update column indices according to the CSV structure for 2023
-        String id = null;
+        // 2020+ CSV format includes fields of research in column 6
         String source = row[3].trim();
         String sourceId = row[0].trim();
         String name = row[1].trim();
@@ -252,9 +233,8 @@ public class CoreConferenceRankingService {
         CoreConferenceRanking.Rank rank = parseRank(row[4].trim());
         String rankString = row[4].trim();
         String[] fieldsOfResearch = row[6].trim().split(";");
-        String[] fieldsOfResearchNames = null;
 
-        updateRanking(id, source, sourceId, name, acronym, rank, rankString, fieldsOfResearch, fieldsOfResearchNames, year);
+        updateRanking(null, source, sourceId, name, acronym, rank, rankString, fieldsOfResearch, null, year);
     }
 
     private void updateRanking(String id, String source, String sourceId, String name, String acronym, CoreConferenceRanking.Rank rank, String rankString, String[] fieldsOfResearch, String[] fieldsOfResearchNames, int year) {

@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import ro.uvt.pokedex.core.service.application.TaskCollectionNamespaceMigrationService.ApplyResult;
 import ro.uvt.pokedex.core.service.application.TaskCollectionNamespaceMigrationService.CollectionReport;
@@ -38,7 +39,7 @@ public class TaskCollectionNamespaceMigrationRunner implements CommandLineRunner
     }
 
     @Override
-    public void run(String... args) {
+    public void run(@NonNull String... args) {
         Mode effectiveMode = Mode.fromRaw(mode);
         if (effectiveMode == Mode.OFF) {
             return;

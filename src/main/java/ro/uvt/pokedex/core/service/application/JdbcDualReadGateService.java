@@ -422,7 +422,7 @@ public class JdbcDualReadGateService implements DualReadGateService {
         double postgresP95 = p95(latencies);
         double p95ThresholdMs = scenario.p95ThresholdMs() == null ? 0d : scenario.p95ThresholdMs();
         boolean performancePassed = parityPassed && postgresP95 <= p95ThresholdMs;
-        if (parityPassed && !performancePassed && mismatchSample == null) {
+        if (parityPassed && !performancePassed) {
             mismatchSample = String.format(
                     Locale.ROOT,
                     "p95 %.1fms exceeded threshold %.1fms",
@@ -964,7 +964,7 @@ public class JdbcDualReadGateService implements DualReadGateService {
         Query query = baseQuery == null ? new Query() : baseQuery;
         query.with(Sort.by(Sort.Direction.ASC, "_id"));
         List<T> rows = mongoTemplate.find(query, entityType);
-        if (rows == null || rows.isEmpty()) {
+        if (rows.isEmpty()) {
             return Optional.empty();
         }
         return rows.stream()

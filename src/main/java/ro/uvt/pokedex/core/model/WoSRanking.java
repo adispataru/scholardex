@@ -145,7 +145,13 @@ public class WoSRanking {
     }
 
     public static String getGeneratedId(String issn, String eIssn) {
-        return !issn.equals("") && !issn.equals("N/A") ? issn : !eIssn.equals("") && !eIssn.equals("N/A") ? eIssn : null;
+        if (issn != null && !issn.isEmpty() && !"N/A".equals(issn)) {
+            return issn;
+        }
+        if (eIssn != null && !eIssn.isEmpty() && !"N/A".equals(eIssn)) {
+            return eIssn;
+        }
+        return null;
     }
 
     public static void rankByAisWithQuarterKnown(List<WoSRanking> rankings) {

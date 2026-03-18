@@ -13,6 +13,6 @@ public interface RankingRepository extends MongoRepository<WoSRanking, String> {
     @Query("{ 'eIssn': ?0 }")
     List<WoSRanking> findAllByEIssn(String eIssn);
 
-    List<WoSRanking> findAllById(String s);
+    List<WoSRanking> findAllById(Iterable<String> ids);
     List<WoSRanking>  findAllByWebOfScienceCategoryIndex(String webOfScienceCategoryIndex);
 }
