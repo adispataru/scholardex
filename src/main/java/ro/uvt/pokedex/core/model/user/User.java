@@ -4,6 +4,7 @@ import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.lang.NonNull;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -27,6 +28,7 @@ public class User implements UserDetails {
     private List<SimpleGrantedAuthority> authority;
     private boolean locked = false;
 
+    @NonNull
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         if (authority == null) {
@@ -37,6 +39,7 @@ public class User implements UserDetails {
         return authority;
     }
 
+    @NonNull
     @Override
     public String getUsername() {
         return email;

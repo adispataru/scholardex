@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.observability;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.Status;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.reactive.function.client.ClientResponse;
@@ -19,8 +20,10 @@ class ScopusPythonHealthIndicatorTest {
         WebClient webClient = WebClient.builder().exchangeFunction(exchangeFunction).build();
         ScopusPythonHealthIndicator indicator = new ScopusPythonHealthIndicator(webClient, "/health", 2000);
 
-        assertThat(indicator.health().getStatus()).isEqualTo(Status.UP);
-        assertThat(indicator.health().getDetails()).containsKey("statusCode");
+        Health health = indicator.health();
+        assertThat(health).isNotNull();
+        assertThat(health.getStatus()).isEqualTo(Status.UP);
+        assertThat(health.getDetails()).containsKey("statusCode");
     }
 
     @Test
