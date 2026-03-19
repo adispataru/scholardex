@@ -75,6 +75,7 @@ public abstract class AbstractForumScoringService implements ScoringService {
         s.setYear(r.bestYear.get());
         s.setCategory(r.bestCategory.get().toString());
         s.setQuarter(r.bestQuarter.get().toString());
+        s.setExtra(r.extra);
         return s;
     }
 
