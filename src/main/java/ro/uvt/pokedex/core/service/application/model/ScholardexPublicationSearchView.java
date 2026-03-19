@@ -6,7 +6,7 @@ import ro.uvt.pokedex.core.model.scopus.Publication;
 import java.util.List;
 import java.util.Map;
 
-public record AdminScopusPublicationSearchViewModel(
+public record ScholardexPublicationSearchView(
         List<Publication> publications,
         Map<String, Author> authorMap
 ) {

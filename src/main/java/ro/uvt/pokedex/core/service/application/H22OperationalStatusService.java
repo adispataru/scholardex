@@ -11,7 +11,6 @@ public interface H22OperationalStatusService {
             String readStore,
             ComponentStatus projection,
             ComponentStatus materializedViewRefresh,
-            ComponentStatus dualReadGate,
             Instant evaluatedAt
     ) {
         public static H22OperationalStatusSnapshot unavailable() {
@@ -20,7 +19,6 @@ public interface H22OperationalStatusService {
             return new H22OperationalStatusSnapshot(
                     "RED",
                     "unknown",
-                    unavailable,
                     unavailable,
                     unavailable,
                     now

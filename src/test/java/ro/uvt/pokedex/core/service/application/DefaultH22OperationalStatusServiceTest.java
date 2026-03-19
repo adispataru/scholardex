@@ -41,18 +41,6 @@ class DefaultH22OperationalStatusServiceTest {
                         null
                 )
         ));
-        when(fixture.gateService.latestStatus()).thenReturn(new DualReadGateService.DualReadGateStatusSnapshot(
-                new DualReadGateService.DualReadGateRunSummary(
-                        "gate-success",
-                        "SUCCESS",
-                        5,
-                        0.8d,
-                        Instant.now(),
-                        Instant.now(),
-                        List.of(),
-                        null
-                )
-        ));
 
         H22OperationalStatusService.H22OperationalStatusSnapshot snapshot = fixture.service.latestStatus();
 
@@ -60,7 +48,6 @@ class DefaultH22OperationalStatusServiceTest {
         assertEquals("postgres", snapshot.readStore());
         assertEquals("SUCCESS", snapshot.projection().status());
         assertEquals("SUCCESS", snapshot.materializedViewRefresh().status());
-        assertEquals("SUCCESS", snapshot.dualReadGate().status());
     }
 
     @Test
@@ -69,7 +56,6 @@ class DefaultH22OperationalStatusServiceTest {
 
         when(fixture.projectionService.latestRunStatus()).thenReturn(new PostgresReportingProjectionService.ProjectionStatusSnapshot(null, Map.of()));
         when(fixture.mvService.latestStatus()).thenReturn(new PostgresMaterializedViewRefreshService.MaterializedViewRefreshStatusSnapshot(null));
-        when(fixture.gateService.latestStatus()).thenReturn(new DualReadGateService.DualReadGateStatusSnapshot(null));
 
         H22OperationalStatusService.H22OperationalStatusSnapshot snapshot = fixture.service.latestStatus();
 
@@ -77,7 +63,6 @@ class DefaultH22OperationalStatusServiceTest {
         assertEquals("postgres", snapshot.readStore());
         assertEquals("NO_RUN", snapshot.projection().status());
         assertEquals("NO_RUN", snapshot.materializedViewRefresh().status());
-        assertEquals("NO_RUN", snapshot.dualReadGate().status());
     }
 
     @Test
@@ -97,7 +82,6 @@ class DefaultH22OperationalStatusServiceTest {
                 Map.of()
         ));
         when(fixture.mvService.latestStatus()).thenReturn(new PostgresMaterializedViewRefreshService.MaterializedViewRefreshStatusSnapshot(null));
-        when(fixture.gateService.latestStatus()).thenReturn(new DualReadGateService.DualReadGateStatusSnapshot(null));
 
         H22OperationalStatusService.H22OperationalStatusSnapshot snapshot = fixture.service.latestStatus();
 
@@ -109,15 +93,13 @@ class DefaultH22OperationalStatusServiceTest {
     private Fixture fixture() {
         PostgresReportingProjectionService projectionService = mock(PostgresReportingProjectionService.class);
         PostgresMaterializedViewRefreshService mvService = mock(PostgresMaterializedViewRefreshService.class);
-        DualReadGateService gateService = mock(DualReadGateService.class);
 
         DefaultH22OperationalStatusService service = new DefaultH22OperationalStatusService(
                 provider(projectionService),
-                provider(mvService),
-                provider(gateService)
+                provider(mvService)
         );
 
-        return new Fixture(service, projectionService, mvService, gateService);
+        return new Fixture(service, projectionService, mvService);
     }
 
     private <T> ObjectProvider<T> provider(T value) {
@@ -130,8 +112,7 @@ class DefaultH22OperationalStatusServiceTest {
     private record Fixture(
             DefaultH22OperationalStatusService service,
             PostgresReportingProjectionService projectionService,
-            PostgresMaterializedViewRefreshService mvService,
-            DualReadGateService gateService
+            PostgresMaterializedViewRefreshService mvService
     ) {
     }
 }

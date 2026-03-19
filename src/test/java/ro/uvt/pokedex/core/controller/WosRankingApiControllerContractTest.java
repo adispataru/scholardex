@@ -11,7 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.ApiExceptionHandler;
 import ro.uvt.pokedex.core.controller.dto.WosRankingListItemResponse;
 import ro.uvt.pokedex.core.controller.dto.WosRankingPageResponse;
-import ro.uvt.pokedex.core.service.application.WosRankingQueryService;
+import ro.uvt.pokedex.core.service.application.PostgresWosRankingReadPort;
 
 import java.util.List;
 
@@ -31,11 +31,11 @@ class WosRankingApiControllerContractTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private WosRankingQueryService wosRankingQueryService;
+    private PostgresWosRankingReadPort postgresWosRankingReadPort;
 
     @Test
     void defaultRequestReturnsPagedEnvelope() throws Exception {
-        when(wosRankingQueryService.search(0, 25, "name", "asc", null))
+        when(postgresWosRankingReadPort.search(0, 25, "name", "asc", null))
                 .thenReturn(new WosRankingPageResponse(
                         List.of(
                                 item("1", "ACM Journal", "1111-1111", "2222-2222", List.of("3333-3333")),
@@ -57,7 +57,7 @@ class WosRankingApiControllerContractTest {
 
     @Test
     void pagingSortingAndDirectionAreApplied() throws Exception {
-        when(wosRankingQueryService.search(1, 2, "name", "asc", null))
+        when(postgresWosRankingReadPort.search(1, 2, "name", "asc", null))
                 .thenReturn(new WosRankingPageResponse(
                         List.of(item("3", "C name", "3333", "2222", List.of())),
                         1, 2, 3, 2
@@ -79,12 +79,12 @@ class WosRankingApiControllerContractTest {
 
     @Test
     void validNonDefaultSortsAreApplied() throws Exception {
-        when(wosRankingQueryService.search(0, 25, "issn", "desc", null))
+        when(postgresWosRankingReadPort.search(0, 25, "issn", "desc", null))
                 .thenReturn(new WosRankingPageResponse(
                         List.of(item("issn-sort", "ISSN Journal", "9999-0000", "1000-0000", List.of())),
                         0, 25, 1, 1
                 ));
-        when(wosRankingQueryService.search(0, 25, "eIssn", "asc", null))
+        when(postgresWosRankingReadPort.search(0, 25, "eIssn", "asc", null))
                 .thenReturn(new WosRankingPageResponse(
                         List.of(item("eissn-sort", "eISSN Journal", "2000-0000", "0001-9999", List.of())),
                         0, 25, 1, 1
@@ -105,13 +105,13 @@ class WosRankingApiControllerContractTest {
 
     @Test
     void queryMatchesByNameIssnEIssnAndAlternativeIssn() throws Exception {
-        when(wosRankingQueryService.search(0, 25, "name", "asc", "nature"))
+        when(postgresWosRankingReadPort.search(0, 25, "name", "asc", "nature"))
                 .thenReturn(new WosRankingPageResponse(List.of(item("name-hit", "Nature Journal", "1111", "2222", List.of())), 0, 25, 1, 1));
-        when(wosRankingQueryService.search(0, 25, "name", "asc", "abcd"))
+        when(postgresWosRankingReadPort.search(0, 25, "name", "asc", "abcd"))
                 .thenReturn(new WosRankingPageResponse(List.of(item("issn-hit", "Other", "7777-ABCD", "4444", List.of())), 0, 25, 1, 1));
-        when(wosRankingQueryService.search(0, 25, "name", "asc", "efgh"))
+        when(postgresWosRankingReadPort.search(0, 25, "name", "asc", "efgh"))
                 .thenReturn(new WosRankingPageResponse(List.of(item("eissn-hit", "Other2", "8888", "9999-EFGH", List.of())), 0, 25, 1, 1));
-        when(wosRankingQueryService.search(0, 25, "name", "asc", "alt-0001"))
+        when(postgresWosRankingReadPort.search(0, 25, "name", "asc", "alt-0001"))
                 .thenReturn(new WosRankingPageResponse(List.of(item("alt-hit", "Other3", "1234", "5678", List.of("ALT-0001"))), 0, 25, 1, 1));
 
         mockMvc.perform(get("/api/rankings/wos").param("q", "nature"))
@@ -137,7 +137,7 @@ class WosRankingApiControllerContractTest {
 
     @Test
     void blankQueryIsAcceptedByApi() throws Exception {
-        when(wosRankingQueryService.search(0, 25, "name", "asc", "   "))
+        when(postgresWosRankingReadPort.search(0, 25, "name", "asc", "   "))
                 .thenReturn(new WosRankingPageResponse(
                         List.of(item("blank-q", "Blank Query Journal", "1000", "2000", List.of())),
                         0, 25, 1, 1
@@ -147,16 +147,16 @@ class WosRankingApiControllerContractTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].id").value("blank-q"));
 
-        verify(wosRankingQueryService).search(0, 25, "name", "asc", "   ");
+        verify(postgresWosRankingReadPort).search(0, 25, "name", "asc", "   ");
     }
 
     @Test
     void invalidParamsReturnBadRequestEnvelope() throws Exception {
-        when(wosRankingQueryService.search(0, 25, "bad", "asc", null))
+        when(postgresWosRankingReadPort.search(0, 25, "bad", "asc", null))
                 .thenThrow(new IllegalArgumentException("Invalid sort parameter. Allowed: name, issn, eIssn."));
-        when(wosRankingQueryService.search(0, 25, "name", "up", null))
+        when(postgresWosRankingReadPort.search(0, 25, "name", "up", null))
                 .thenThrow(new IllegalArgumentException("Invalid direction parameter. Allowed: asc, desc."));
-        when(wosRankingQueryService.search(0, 25, "name", "asc", "x".repeat(101)))
+        when(postgresWosRankingReadPort.search(0, 25, "name", "asc", "x".repeat(101)))
                 .thenThrow(new IllegalArgumentException("Invalid q parameter. Maximum length is 100."));
 
         mockMvc.perform(get("/api/rankings/wos").param("page", "-1"))

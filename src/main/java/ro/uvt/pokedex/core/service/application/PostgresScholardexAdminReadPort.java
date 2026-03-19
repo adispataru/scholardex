@@ -10,8 +10,8 @@ import ro.uvt.pokedex.core.model.scopus.Affiliation;
 import ro.uvt.pokedex.core.model.scopus.Citation;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
-import ro.uvt.pokedex.core.service.application.model.AdminScopusCitationsViewModel;
-import ro.uvt.pokedex.core.service.application.model.AdminScopusPublicationSearchViewModel;
+import ro.uvt.pokedex.core.service.application.model.ScholardexCitationsView;
+import ro.uvt.pokedex.core.service.application.model.ScholardexPublicationSearchView;
 
 import java.sql.Array;
 import java.sql.ResultSet;
@@ -30,12 +30,11 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "spring.datasource.url")
-public class PostgresScholardexAdminReadPort implements ScholardexAdminReadPort {
+public class PostgresScholardexAdminReadPort {
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
-    @Override
-    public AdminScopusPublicationSearchViewModel buildPublicationSearchView(String paperTitle) {
+    public ScholardexPublicationSearchView buildPublicationSearchView(String paperTitle) {
         String normalizedTitle = paperTitle == null ? "" : paperTitle.trim();
         List<Publication> publications;
         if (normalizedTitle.isBlank()) {
@@ -58,11 +57,10 @@ public class PostgresScholardexAdminReadPort implements ScholardexAdminReadPort 
         Map<String, Author> authorMap = findAuthorsByIdIn(authorKeys).stream()
                 .collect(Collectors.toMap(Author::getId, author -> author));
 
-        return new AdminScopusPublicationSearchViewModel(publications, authorMap);
+        return new ScholardexPublicationSearchView(publications, authorMap);
     }
 
-    @Override
-    public Optional<AdminScopusCitationsViewModel> buildPublicationCitationsView(String publicationId) {
+    public Optional<ScholardexCitationsView> buildPublicationCitationsView(String publicationId) {
         if (publicationId == null || publicationId.isBlank()) {
             return Optional.empty();
         }
@@ -122,7 +120,7 @@ public class PostgresScholardexAdminReadPort implements ScholardexAdminReadPort 
 
         Forum publicationForum = findForumById(publication.getForum()).orElse(null);
 
-        return Optional.of(new AdminScopusCitationsViewModel(
+        return Optional.of(new ScholardexCitationsView(
                 publication,
                 publicationForum,
                 citations,
