@@ -14,7 +14,7 @@ import java.time.Instant;
         def = "{'publicationId': 1, 'authorId': 1, 'source': 1}",
         unique = true
 )
-public class ScholardexAuthorshipFact {
+public class ScholardexAuthorshipFact implements HasEdgeLineageFields {
     @Id
     private String id;
     private String publicationId;

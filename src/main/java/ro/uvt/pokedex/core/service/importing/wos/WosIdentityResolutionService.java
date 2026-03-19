@@ -67,25 +67,7 @@ public class WosIdentityResolutionService {
         }
 
         List<WosJournalIdentity> candidates = journalIdentityRepository.findCandidatesByIssnTokens(normalizedIssns);
-        if (candidates.size() > 1) {
-            WosJournalIdentity resolved = resolveBestCandidate(candidates, normalizedIssns);
-            if (resolved != null) {
-                resolved.setIdentityKey(identityKey);
-                maybeUpdateAliases(resolved, normalizedIssns, rawTitle, normalizedTitle);
-                return new IdentityResolutionResult(resolved.getId(), identityKey, WosIdentityResolutionStatus.MATCHED, null);
-            }
-            return createConflictIdentity(rawIssn, rawEIssn, rawTitle, normalizedIssns, normalizedTitle, identityKey, context, candidates);
-        }
-
-        if (candidates.size() == 1) {
-            WosJournalIdentity candidate = candidates.getFirst();
-            candidate.setIdentityKey(identityKey);
-            maybeUpdateAliases(candidate, normalizedIssns, rawTitle, normalizedTitle);
-            return new IdentityResolutionResult(candidate.getId(), identityKey, WosIdentityResolutionStatus.MATCHED, null);
-        }
-
-        WosJournalIdentity created = createIdentity(rawIssn, rawEIssn, rawTitle, normalizedIssns, normalizedTitle, identityKey, null, null);
-        return new IdentityResolutionResult(created.getId(), identityKey, WosIdentityResolutionStatus.CREATED, null);
+        return resolveFromCandidates(rawIssn, rawEIssn, rawTitle, context, normalizedIssns, normalizedTitle, identityKey, candidates);
     }
 
     public java.util.Map<String, String> findJournalIdsByIdentityKeys(Set<String> identityKeys) {
@@ -167,7 +149,15 @@ public class WosIdentityResolutionService {
         List<WosJournalIdentity> candidates = prefetchedCandidates == null ? List.of() : prefetchedCandidates.stream()
                 .filter(candidate -> hasIssnTokenOverlap(candidate, normalizedIssns))
                 .toList();
+        return resolveFromCandidates(rawIssn, rawEIssn, rawTitle, context, normalizedIssns, normalizedTitle, identityKey, candidates);
+    }
 
+    private IdentityResolutionResult resolveFromCandidates(
+            String rawIssn, String rawEIssn, String rawTitle,
+            WosIdentitySourceContext context,
+            Set<String> normalizedIssns, String normalizedTitle, String identityKey,
+            List<WosJournalIdentity> candidates
+    ) {
         if (candidates.size() > 1) {
             WosJournalIdentity resolved = resolveBestCandidate(candidates, normalizedIssns);
             if (resolved != null) {

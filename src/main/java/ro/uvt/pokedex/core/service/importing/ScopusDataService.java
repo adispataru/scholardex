@@ -467,12 +467,12 @@ public class ScopusDataService {
         return publication;
     }
 
-    private void handleAffiliations(Publication publication, JsonNode rootNode, int i) {
+    private void handleAffiliations(Publication publication, JsonNode rootNode, Integer index) {
         List<String> affiliations = new ArrayList<>();
-        String[] afids = splitSemicolon(readOptionalIndexedText(rootNode, "afid", i));
-        String[] affilnames = splitSemicolon(readOptionalIndexedText(rootNode, "affilname", i));
-        String[] affilCities = splitSemicolon(readOptionalIndexedText(rootNode, "affiliation_city", i));
-        String[] affilCountries = splitSemicolon(readOptionalIndexedText(rootNode, "affiliation_country", i));
+        String[] afids = splitSemicolon(readOptionalText(rootNode, "afid", index));
+        String[] affilnames = splitSemicolon(readOptionalText(rootNode, "affilname", index));
+        String[] affilCities = splitSemicolon(readOptionalText(rootNode, "affiliation_city", index));
+        String[] affilCountries = splitSemicolon(readOptionalText(rootNode, "affiliation_country", index));
         for (int j = 0; j < afids.length; j++) {
             Affiliation affiliation = new Affiliation();
             affiliation.setAfid(afids[j]);
@@ -485,22 +485,12 @@ public class ScopusDataService {
         publication.setAffiliations(affiliations);
     }
 
+    private void handleAffiliations(Publication publication, JsonNode rootNode, int i) {
+        handleAffiliations(publication, rootNode, (Integer) i);
+    }
+
     public void handleAffiliations(Publication publication, JsonNode rootNode) {
-        List<String> affiliations = new ArrayList<>();
-        String[] afids = splitSemicolon(readOptionalText(rootNode, "afid"));
-        String[] affilnames = splitSemicolon(readOptionalText(rootNode, "affilname"));
-        String[] affilCities = splitSemicolon(readOptionalText(rootNode, "affiliation_city"));
-        String[] affilCountries = splitSemicolon(readOptionalText(rootNode, "affiliation_country"));
-        for (int j = 0; j < afids.length; j++) {
-            Affiliation affiliation = new Affiliation();
-            affiliation.setAfid(afids[j]);
-            affiliation.setName(getValueSafely(affilnames, j));
-            affiliation.setCity(getValueSafely(affilCities, j));
-            affiliation.setCountry(getValueSafely(affilCountries, j));
-            saveAffiliationIfNotExist(affiliation);
-            affiliations.add(affiliation.getAfid());
-        }
-        publication.setAffiliations(affiliations);
+        handleAffiliations(publication, rootNode, (Integer) null);
     }
 
     private String getValueSafely(String[] array, int index) {
@@ -533,11 +523,11 @@ public class ScopusDataService {
         }
     }
 
-    private void handleAuthors(Publication publication, JsonNode rootNode, int i) {
+    private void handleAuthors(Publication publication, JsonNode rootNode, Integer index) {
         List<String> authors = new ArrayList<>();
-        String[] authorIds = splitSemicolon(readOptionalIndexedText(rootNode, "author_ids", i));
-        String[] authorNames = splitSemicolon(readOptionalIndexedText(rootNode, "author_names", i));
-        String[] authorAfids = splitSemicolon(readOptionalIndexedText(rootNode, "author_afids", i));
+        String[] authorIds = splitSemicolon(readOptionalText(rootNode, "author_ids", index));
+        String[] authorNames = splitSemicolon(readOptionalText(rootNode, "author_names", index));
+        String[] authorAfids = splitSemicolon(readOptionalText(rootNode, "author_afids", index));
         int N = Math.min(authorIds.length, Math.min(authorNames.length, authorAfids.length));
         for (int j = 0; j < N; j++) {
             Author author = createAuthor(getValueSafely(authorIds, j), getValueSafely(authorNames, j), getValueSafely(authorAfids, j));
@@ -546,18 +536,13 @@ public class ScopusDataService {
         }
         publication.setAuthors(authors);
     }
+
+    private void handleAuthors(Publication publication, JsonNode rootNode, int i) {
+        handleAuthors(publication, rootNode, (Integer) i);
+    }
+
     public void handleAuthors(Publication publication, JsonNode rootNode) {
-        List<String> authors = new ArrayList<>();
-        String[] authorIds = splitSemicolon(readOptionalText(rootNode, "author_ids"));
-        String[] authorNames = splitSemicolon(readOptionalText(rootNode, "author_names"));
-        String[] authorAfids = splitSemicolon(readOptionalText(rootNode, "author_afids"));
-        int N = Math.min(authorIds.length, Math.min(authorNames.length, authorAfids.length));
-        for (int j = 0; j < N; j++) {
-            Author author = createAuthor(getValueSafely(authorIds, j), getValueSafely(authorNames, j), getValueSafely(authorAfids, j));
-            saveAuthorIfNotExist(author);
-            authors.add(author.getId());
-        }
-        publication.setAuthors(authors);
+        handleAuthors(publication, rootNode, (Integer) null);
     }
 
     private Author createAuthor(String id, String name, String afids) {
@@ -622,26 +607,23 @@ public class ScopusDataService {
         return (issn != null && !issn.isEmpty() && !issn.contains("-")) ? issn.substring(0, 4) + "-" + issn.substring(4) : issn;
     }
 
-    private void handleFunding(Publication publication, JsonNode rootNode, int i) {
+    private void handleFunding(Publication publication, JsonNode rootNode, Integer index) {
         Funding funding = new Funding();
-        funding.setAcronym(readOptionalIndexedText(rootNode, "fund_acr", i));
-        funding.setNumber(readOptionalIndexedText(rootNode, "fund_no", i));
-        funding.setSponsor(readOptionalIndexedText(rootNode, "fund_sponsor", i));
+        funding.setAcronym(readOptionalText(rootNode, "fund_acr", index));
+        funding.setNumber(readOptionalText(rootNode, "fund_no", index));
+        funding.setSponsor(readOptionalText(rootNode, "fund_sponsor", index));
         if (funding.getAcronym() != null && !funding.getAcronym().isBlank()) {
             funding = saveFundingIfNotExist(funding);
             publication.setFundingId(funding.getId());
         }
     }
 
+    private void handleFunding(Publication publication, JsonNode rootNode, int i) {
+        handleFunding(publication, rootNode, (Integer) i);
+    }
+
     public void handleFunding(Publication publication, JsonNode rootNode) {
-        Funding funding = new Funding();
-        funding.setAcronym(readOptionalText(rootNode, "fund_acr"));
-        funding.setNumber(readOptionalText(rootNode, "fund_no"));
-        funding.setSponsor(readOptionalText(rootNode, "fund_sponsor"));
-        if (funding.getAcronym() != null && !funding.getAcronym().isBlank()) {
-            funding = saveFundingIfNotExist(funding);
-            publication.setFundingId(funding.getId());
-        }
+        handleFunding(publication, rootNode, (Integer) null);
     }
 
 
@@ -652,13 +634,14 @@ public class ScopusDataService {
         return funding;
     }
 
-    private String readRequiredIndexedText(JsonNode node, String field, int index, String contextId) {
-        JsonNode fieldNode = node.path(field).path(String.valueOf(index));
+    private String readRequiredText(JsonNode node, String field, Integer index, String contextId) {
+        JsonNode fieldNode = index == null ? node.path(field) : node.path(field).path(String.valueOf(index));
+        String location = index == null ? "(" + contextId + ")" : "at index " + index + " (" + contextId + ")";
         if (fieldNode.isMissingNode() || fieldNode.isNull()) {
             throw new IntegrationException(
                     IntegrationErrorCode.VALIDATION_ERROR,
                     false,
-                    "Missing required field '" + field + "' at index " + index + " (" + contextId + ")"
+                    "Missing required field '" + field + "' " + location
             );
         }
         String value = fieldNode.asText("").trim();
@@ -666,76 +649,57 @@ public class ScopusDataService {
             throw new IntegrationException(
                     IntegrationErrorCode.VALIDATION_ERROR,
                     false,
-                    "Blank required field '" + field + "' at index " + index + " (" + contextId + ")"
+                    "Blank required field '" + field + "' " + location
             );
         }
         return value;
+    }
+
+    private String readRequiredIndexedText(JsonNode node, String field, int index, String contextId) {
+        return readRequiredText(node, field, index, contextId);
     }
 
     private String readRequiredText(JsonNode node, String field, String contextId) {
-        JsonNode fieldNode = node.path(field);
+        return readRequiredText(node, field, null, contextId);
+    }
+
+    private String readOptionalText(JsonNode node, String field, Integer index) {
+        JsonNode fieldNode = index == null ? node.path(field) : node.path(field).path(String.valueOf(index));
         if (fieldNode.isMissingNode() || fieldNode.isNull()) {
-            throw new IntegrationException(
-                    IntegrationErrorCode.VALIDATION_ERROR,
-                    false,
-                    "Missing required field '" + field + "' (" + contextId + ")"
-            );
+            return "";
         }
-        String value = fieldNode.asText("").trim();
-        if (value.isBlank()) {
-            throw new IntegrationException(
-                    IntegrationErrorCode.VALIDATION_ERROR,
-                    false,
-                    "Blank required field '" + field + "' (" + contextId + ")"
-            );
-        }
-        return value;
+        return normalizeOptionalValue(fieldNode.asText(""));
     }
 
     private String readOptionalIndexedText(JsonNode node, String field, int index) {
-        JsonNode fieldNode = node.path(field).path(String.valueOf(index));
-        if (fieldNode.isMissingNode() || fieldNode.isNull()) {
-            return "";
-        }
-        return normalizeOptionalValue(fieldNode.asText(""));
+        return readOptionalText(node, field, index);
     }
 
     private String readOptionalText(JsonNode node, String field) {
-        JsonNode fieldNode = node.path(field);
+        return readOptionalText(node, field, null);
+    }
+
+    private int readInt(JsonNode node, String field, Integer index) {
+        JsonNode fieldNode = index == null ? node.path(field) : node.path(field).path(String.valueOf(index));
         if (fieldNode.isMissingNode() || fieldNode.isNull()) {
-            return "";
+            return 0;
         }
-        return normalizeOptionalValue(fieldNode.asText(""));
+        if (fieldNode.canConvertToInt()) {
+            return fieldNode.asInt();
+        }
+        try {
+            return Integer.parseInt(fieldNode.asText("").trim());
+        } catch (Exception ex) {
+            return 0;
+        }
     }
 
     private int readIndexedInt(JsonNode node, String field, int index) {
-        JsonNode fieldNode = node.path(field).path(String.valueOf(index));
-        if (fieldNode.isMissingNode() || fieldNode.isNull()) {
-            return 0;
-        }
-        if (fieldNode.canConvertToInt()) {
-            return fieldNode.asInt();
-        }
-        try {
-            return Integer.parseInt(fieldNode.asText("").trim());
-        } catch (Exception ex) {
-            return 0;
-        }
+        return readInt(node, field, index);
     }
 
     private int readInt(JsonNode node, String field) {
-        JsonNode fieldNode = node.path(field);
-        if (fieldNode.isMissingNode() || fieldNode.isNull()) {
-            return 0;
-        }
-        if (fieldNode.canConvertToInt()) {
-            return fieldNode.asInt();
-        }
-        try {
-            return Integer.parseInt(fieldNode.asText("").trim());
-        } catch (Exception ex) {
-            return 0;
-        }
+        return readInt(node, field, null);
     }
 
     private String[] splitSemicolon(String value) {
