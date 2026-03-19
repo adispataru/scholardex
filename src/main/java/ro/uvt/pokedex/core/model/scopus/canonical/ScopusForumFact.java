@@ -10,7 +10,7 @@ import java.time.Instant;
 @Data
 @Document(collection = "scopus.forum_facts")
 @CompoundIndex(name = "uniq_scopus_forum_fact_source_id", def = "{'sourceId': 1}", unique = true)
-public class ScopusForumFact {
+public class ScopusForumFact implements HasLineageFields {
     @Id
     private String id;
     private String sourceId;

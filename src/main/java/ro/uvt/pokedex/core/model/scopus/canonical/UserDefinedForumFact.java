@@ -10,7 +10,7 @@ import java.time.Instant;
 @Data
 @Document(collection = "user_defined.forum_facts")
 @CompoundIndex(name = "uniq_user_defined_forum_source_record_id", def = "{'sourceRecordId': 1}", unique = true)
-public class UserDefinedForumFact {
+public class UserDefinedForumFact implements HasLineageFields, HasReviewFields {
     @Id
     private String id;
     private String source;
