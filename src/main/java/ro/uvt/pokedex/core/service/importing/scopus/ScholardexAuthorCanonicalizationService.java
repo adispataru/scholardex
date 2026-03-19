@@ -1,30 +1,24 @@
 package ro.uvt.pokedex.core.service.importing.scopus;
 
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
-import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCanonicalBuildCheckpoint;
+import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
+import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorAffiliationFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorFactRepository;
 import ro.uvt.pokedex.core.service.application.ScholardexEdgeWriterService;
 import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.text.Normalizer;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -32,260 +26,195 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
-import java.util.regex.Pattern;
+
+import static ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSupport.addUnique;
+import static ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSupport.isBlank;
+import static ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSupport.nanosToMillis;
+import static ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSupport.normalizeBlank;
+import static ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSupport.normalizeName;
+import static ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSupport.normalizeToken;
+import static ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSupport.shortHash;
 
 @Service
-@RequiredArgsConstructor
-public class ScholardexAuthorCanonicalizationService {
+public class ScholardexAuthorCanonicalizationService extends AbstractCanonicalizationService<ScopusAuthorFact, ScholardexAuthorCanonicalizationService.ChunkContext> {
 
     private static final Logger log = LoggerFactory.getLogger(ScholardexAuthorCanonicalizationService.class);
     private static final int DEFAULT_CHUNK_SIZE = 5_000;
     private static final String DEFAULT_SOURCE_VERSION = "scopus-author-facts-v1";
     private static final String PIPELINE_KEY = ScholardexCanonicalBuildCheckpointService.AUTHOR_PIPELINE_KEY;
     private static final String SOURCE_SCOPUS = "SCOPUS";
-    private static final String STATUS_OPEN = "OPEN";
     private static final String LINK_REASON_SCOPUS_BRIDGE = "scopus-author-bridge";
     private static final String LINK_REASON_AFFILIATION_FALLBACK = "canonical-affiliation-fallback";
     private static final String LINK_REASON_AUTHOR_AFFILIATION_BRIDGE = "author-affiliation-bridge";
     private static final String CONFLICT_SOURCE_ID_COLLISION = "SOURCE_ID_COLLISION";
-    private static final Pattern NON_ALNUM_OR_SPACE = Pattern.compile("[^\\p{Alnum}\\s]");
-    private static final Pattern MULTI_SPACE = Pattern.compile("\\s+");
-    private static final Pattern COMBINING_MARKS = Pattern.compile("\\p{M}+");
 
     private final ScopusAuthorFactRepository scopusAuthorFactRepository;
     private final ScholardexAuthorFactRepository scholardexAuthorFactRepository;
     private final ScholardexAuthorAffiliationFactRepository scholardexAuthorAffiliationFactRepository;
-    private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexEdgeWriterService edgeWriterService;
-    private final ScholardexIdentityConflictRepository identityConflictRepository;
-    private final ScholardexCanonicalBuildCheckpointService checkpointService;
-    private final ScopusTouchQueueService touchQueueService;
+
     @Value("${scopus.canonical.telemetry.heartbeat-seconds:10}")
     private long heartbeatSeconds;
 
+    public ScholardexAuthorCanonicalizationService(
+            ScopusAuthorFactRepository scopusAuthorFactRepository,
+            ScholardexAuthorFactRepository scholardexAuthorFactRepository,
+            ScholardexAuthorAffiliationFactRepository scholardexAuthorAffiliationFactRepository,
+            ScholardexEdgeWriterService edgeWriterService,
+            ScholardexSourceLinkService sourceLinkService,
+            ScholardexIdentityConflictRepository identityConflictRepository,
+            ScholardexCanonicalBuildCheckpointService checkpointService,
+            ScopusTouchQueueService touchQueueService
+    ) {
+        super(sourceLinkService, identityConflictRepository, checkpointService, touchQueueService);
+        this.scopusAuthorFactRepository = scopusAuthorFactRepository;
+        this.scholardexAuthorFactRepository = scholardexAuthorFactRepository;
+        this.scholardexAuthorAffiliationFactRepository = scholardexAuthorAffiliationFactRepository;
+        this.edgeWriterService = edgeWriterService;
+    }
+
+    // ── Public API (unchanged) ──────────────────────────────────────────────
+
     public ImportProcessingResult rebuildCanonicalAuthorFactsFromScopusFacts() {
-        return rebuildCanonicalAuthorFactsFromScopusFacts(CanonicalBuildOptions.defaults());
+        return rebuild(CanonicalBuildOptions.defaults());
     }
 
     public ImportProcessingResult rebuildCanonicalAuthorFactsFromScopusFacts(CanonicalBuildOptions options) {
-        ImportProcessingResult result = new ImportProcessingResult(20);
-        CanonicalBuildOptions effectiveOptions = options == null ? CanonicalBuildOptions.defaults() : options;
-        int chunkSize = effectiveOptions.chunkSizeOverride() == null || effectiveOptions.chunkSizeOverride() <= 0
-                ? DEFAULT_CHUNK_SIZE
-                : effectiveOptions.chunkSizeOverride();
-        log.info("Scholardex author canonicalization phase started: mode={} fullRescan={} chunkSize={} useCheckpoint={}",
-                effectiveOptions.incremental() ? "INCREMENTAL" : "FULL",
-                effectiveOptions.fullRescan(),
-                chunkSize,
-                effectiveOptions.useCheckpoint());
-        List<ScopusAuthorFact> sourceFacts = loadSourceFacts(effectiveOptions);
-        log.info("Scholardex author canonicalization sort started: records={}", sourceFacts.size());
-        sourceFacts.sort(Comparator.comparing(ScopusAuthorFact::getAuthorId, Comparator.nullsLast(String::compareTo)));
-        log.info("Scholardex author canonicalization sort completed: records={}", sourceFacts.size());
-        int total = sourceFacts.size();
-        int totalBatches = total == 0 ? 0 : ((total - 1) / chunkSize) + 1;
-        Optional<ScholardexCanonicalBuildCheckpoint> checkpoint = effectiveOptions.useCheckpoint()
-                ? checkpointService.readCheckpoint(PIPELINE_KEY)
-                : Optional.empty();
-        int checkpointLastCompletedBatch = checkpoint.map(ScholardexCanonicalBuildCheckpoint::getLastCompletedBatch).orElse(-1);
-        int startBatch = normalizeStartBatch(effectiveOptions.startBatchOverride(), checkpointLastCompletedBatch, effectiveOptions.useCheckpoint());
-        boolean resumedFromCheckpoint = effectiveOptions.useCheckpoint() && effectiveOptions.startBatchOverride() == null && checkpointLastCompletedBatch >= 0;
-        String runId = UUID.randomUUID().toString();
-        String sourceVersion = isBlank(effectiveOptions.sourceVersionOverride()) ? DEFAULT_SOURCE_VERSION : effectiveOptions.sourceVersionOverride();
+        return rebuild(options);
+    }
+
+    public void upsertFromScopusFact(ScopusAuthorFact sourceFact, ImportProcessingResult result) {
+        String sourceRecordId = normalizeBlank(sourceFact == null ? null : sourceFact.getAuthorId());
+        if (sourceFact == null || sourceRecordId == null) {
+            if (result != null) {
+                result.markSkipped("missing scopus author id");
+            }
+            return;
+        }
+
+        Optional<ScholardexSourceLink> existingSourceLink = sourceLinkService
+                .findByKey(ScholardexEntityType.AUTHOR, sourceFact.getSource(), sourceRecordId);
+        Optional<ScholardexAuthorFact> existingBySource = scholardexAuthorFactRepository.findByScopusAuthorIdsContains(sourceRecordId);
+        String canonicalId = existingSourceLink.map(ScholardexSourceLink::getCanonicalEntityId)
+                .or(() -> existingBySource.map(ScholardexAuthorFact::getId))
+                .orElseGet(() -> buildCanonicalAuthorId(sourceRecordId, sourceFact.getName()));
+
+        if (existingSourceLink.isPresent() && existingSourceLink.get().getCanonicalEntityId() != null
+                && !existingSourceLink.get().getCanonicalEntityId().equals(canonicalId)) {
+            saveConflict(sourceFact, sourceRecordId, CONFLICT_SOURCE_ID_COLLISION, List.of(existingSourceLink.get().getCanonicalEntityId(), canonicalId));
+            if (result != null) {
+                result.markSkipped("author-source-id-collision:" + sourceRecordId);
+            }
+            return;
+        }
+
+        // For single-record upsert, use a local context for affiliation bridging
+        ChunkContext localContext = new ChunkContext();
+        AffiliationBridgeResult affiliationBridge = bridgeAffiliationIds(sourceFact.getAffiliationIds(), sourceFact.getSource(), localContext);
+        if (!localContext.pendingSourceLinkCommands.isEmpty()) {
+            sourceLinkService.batchUpsertWithState(
+                    localContext.pendingSourceLinkCommands.values(),
+                    localContext.sourceLinkCache
+            );
+        }
+        ScholardexAuthorFact target = scholardexAuthorFactRepository.findById(canonicalId).orElseGet(ScholardexAuthorFact::new);
+        boolean created = target.getId() == null;
+        Instant now = Instant.now();
+        if (target.getCreatedAt() == null) {
+            target.setCreatedAt(now);
+        }
+        target.setId(canonicalId);
+        addUnique(target.getScopusAuthorIds(), sourceRecordId);
+        target.setDisplayName(sourceFact.getName());
+        target.setNameNormalized(normalizeName(sourceFact.getName()));
+        target.setAffiliationIds(affiliationBridge.canonicalAffiliationIds());
+        target.setPendingAffiliationSourceIds(affiliationBridge.pendingSourceAffiliationIds());
+        target.setSourceEventId(sourceFact.getSourceEventId());
+        target.setSource(sourceFact.getSource());
+        target.setSourceRecordId(sourceRecordId);
+        target.setSourceBatchId(sourceFact.getSourceBatchId());
+        target.setSourceCorrelationId(sourceFact.getSourceCorrelationId());
+        target.setUpdatedAt(now);
+        scholardexAuthorFactRepository.save(target);
+        upsertAuthorSourceLink(sourceFact, sourceRecordId, target.getId());
+        upsertAuthorAffiliationEdges(target, sourceFact, affiliationBridge);
+
+        if (result != null) {
+            if (created) {
+                result.markImported();
+            } else {
+                result.markUpdated();
+            }
+        }
+    }
+
+    public String buildCanonicalAuthorId(String scopusAuthorId, String displayName) {
+        String material;
+        if (!isBlank(scopusAuthorId)) {
+            material = "scopus|" + normalizeToken(scopusAuthorId);
+        } else {
+            material = "name|" + normalizeToken(normalizeName(displayName));
+        }
+        return "sauth_" + shortHash(material);
+    }
+
+    // ── Abstract hook implementations ───────────────────────────────────────
+
+    @Override protected String getPipelineKey() { return PIPELINE_KEY; }
+    @Override protected String getEntityTypeLabel() { return "author"; }
+    @Override protected ScholardexEntityType getEntityType() { return ScholardexEntityType.AUTHOR; }
+    @Override protected int getDefaultChunkSize() { return DEFAULT_CHUNK_SIZE; }
+    @Override protected String getDefaultSourceVersion() { return DEFAULT_SOURCE_VERSION; }
+    @Override protected long getHeartbeatSeconds() { return heartbeatSeconds; }
+
+    @Override
+    protected List<ScopusAuthorFact> loadSourceFacts(CanonicalBuildOptions options) {
+        if (!options.fullRescan() && options.incremental()) {
+            long startedAtNanos = System.nanoTime();
+            log.info("Scholardex author canonicalization source load started: mode=incremental drainQueues={}", options.drainQueues());
+            List<String> touchedIds = touchQueueService.consumeAuthorIds(options.drainQueues());
+            if (!touchedIds.isEmpty()) {
+                List<ScopusAuthorFact> facts = new ArrayList<>(scopusAuthorFactRepository.findByAuthorIdIn(touchedIds));
+                log.info("Scholardex author canonicalization source load completed: mode=incremental records={} elapsedMs={}",
+                        facts.size(),
+                        nanosToMillis(System.nanoTime() - startedAtNanos));
+                return facts;
+            }
+            log.info("Scholardex author canonicalization incremental run has empty touch queue; skipping source scan.");
+            return new ArrayList<>();
+        }
         long startedAtNanos = System.nanoTime();
-
-        result.setStartBatch(startBatch);
-        result.setTotalBatches(totalBatches);
-        result.setResumedFromCheckpoint(resumedFromCheckpoint);
-        result.setCheckpointLastCompletedBatch(checkpointLastCompletedBatch);
-
-        if (startBatch >= totalBatches) {
-            result.setEndBatch(startBatch);
-            result.setBatchesProcessed(0);
-            log.info("Scholardex author canonicalization skipped: totalRecords={}, totalBatches={}, startBatch={}, checkpointLastCompletedBatch={}",
-                    total, totalBatches, startBatch, checkpointLastCompletedBatch);
-            return result;
-        }
-
-        int batchesProcessed = 0;
-        for (int batchIndex = startBatch; batchIndex < totalBatches; batchIndex++) {
-            int from = batchIndex * chunkSize;
-            int to = Math.min(total, from + chunkSize);
-            int chunkNo = batchIndex + 1;
-            int importedBefore = result.getImportedCount();
-            int updatedBefore = result.getUpdatedCount();
-            int skippedBefore = result.getSkippedCount();
-            int errorsBefore = result.getErrorCount();
-
-            AuthorChunkOutcome outcome = processChunk(sourceFacts.subList(from, to), result, chunkNo, totalBatches, total);
-            CanonicalBuildChunkTimings timings = outcome.timings();
-            batchesProcessed++;
-            result.setEndBatch(batchIndex);
-            result.setBatchesProcessed(batchesProcessed);
-
-            if (effectiveOptions.useCheckpoint()) {
-                checkpointService.upsertCheckpoint(
-                        PIPELINE_KEY,
-                        batchIndex,
-                        chunkSize,
-                        lastRecordKey(sourceFacts.subList(from, to)),
-                        runId,
-                        sourceVersion
-                );
-            }
-            log.info("Scholardex author canonicalization chunk {} complete [batch={} / totalBatches={}]: records={} imported={} updated={} skipped={} errors={} timingsMs[preload={}, resolve={}, upsert={}, save={}, total={}]",
-                    chunkNo,
-                    chunkNo,
-                    totalBatches,
-                    to - from,
-                    result.getImportedCount() - importedBefore,
-                    result.getUpdatedCount() - updatedBefore,
-                    result.getSkippedCount() - skippedBefore,
-                    result.getErrorCount() - errorsBefore,
-                    timings.preloadMs(),
-                    timings.resolveMs(),
-                    timings.upsertMs(),
-                    timings.saveMs(),
-                    timings.totalMs());
-            log.info("Scholardex author canonicalization chunk {} writes: authorFacts={} sourceLinks[linked={}, unmatched={}, conflict={}, skipped={}] edgeWrites={} conflicts={}",
-                    chunkNo,
-                    outcome.authorFactWrites(),
-                    outcome.sourceLinkLinkedWrites(),
-                    outcome.sourceLinkUnmatchedWrites(),
-                    outcome.sourceLinkConflictWrites(),
-                    outcome.sourceLinkSkippedWrites(),
-                    outcome.edgeWrites(),
-                    outcome.conflictsWritten());
-        }
-
-        log.info("Scholardex author canonicalization summary: processed={}, imported={}, updated={}, skipped={}, errors={}, batchesProcessed={}, totalBatches={}, resumedFromCheckpoint={}, checkpointLastCompletedBatch={}, totalMs={}",
-                result.getProcessedCount(),
-                result.getImportedCount(),
-                result.getUpdatedCount(),
-                result.getSkippedCount(),
-                result.getErrorCount(),
-                result.getBatchesProcessed(),
-                result.getTotalBatches(),
-                resumedFromCheckpoint,
-                checkpointLastCompletedBatch,
+        log.info("Scholardex author canonicalization source load started: mode=full-rescan");
+        List<ScopusAuthorFact> facts = new ArrayList<>(scopusAuthorFactRepository.findAll());
+        log.info("Scholardex author canonicalization source load completed: mode=full-rescan records={} elapsedMs={}",
+                facts.size(),
                 nanosToMillis(System.nanoTime() - startedAtNanos));
-        H19CanonicalMetrics.recordCanonicalBuildRun(
-                "author",
-                SOURCE_SCOPUS,
-                result.getErrorCount() > 0 ? "failure" : "success",
-                System.nanoTime() - startedAtNanos
-        );
-        return result;
+        return facts;
     }
 
-    private AuthorChunkOutcome processChunk(
-            List<ScopusAuthorFact> chunk,
-            ImportProcessingResult result,
-            int chunkNo,
-            int totalBatches,
-            int totalRecords
-    ) {
-        long chunkStartedAtNanos = System.nanoTime();
-        ChunkContext context = preloadChunkContext(chunk);
-        long preloadFinishedAtNanos = System.nanoTime();
-        long heartbeatIntervalNanos = Math.max(1L, heartbeatSeconds) * 1_000_000_000L;
-        long lastHeartbeatAtNanos = chunkStartedAtNanos;
-        int chunkProcessed = 0;
-        for (ScopusAuthorFact sourceFact : chunk) {
-            result.markProcessed();
-            resolveSourceFactIntoContext(sourceFact, result, context);
-            chunkProcessed++;
-            long now = System.nanoTime();
-            if (now - lastHeartbeatAtNanos >= heartbeatIntervalNanos) {
-                long elapsedMs = nanosToMillis(now - chunkStartedAtNanos);
-                long ratePerSec = elapsedMs <= 0 ? 0 : Math.round((chunkProcessed * 1000.0d) / elapsedMs);
-                log.info("Scholardex author canonicalization heartbeat [batch={} / totalBatches={}]: chunkProcessed={} totalProcessed={} totalRecords={} elapsedMs={} ratePerSec={}",
-                        chunkNo,
-                        totalBatches,
-                        chunkProcessed,
-                        result.getProcessedCount(),
-                        totalRecords,
-                        elapsedMs,
-                        ratePerSec);
-                lastHeartbeatAtNanos = now;
-            }
-        }
-        long resolveFinishedAtNanos = System.nanoTime();
-
-        int authorFactWrites = 0;
-        int sourceLinkLinkedWrites = 0;
-        int sourceLinkUnmatchedWrites = 0;
-        int sourceLinkConflictWrites = 0;
-        int sourceLinkSkippedWrites = 0;
-        int edgeWrites = 0;
-        int conflictsWritten = context.pendingConflicts.size();
-
-        if (!context.pendingAuthorFacts.isEmpty()) {
-            scholardexAuthorFactRepository.saveAll(context.pendingAuthorFacts.values());
-            authorFactWrites = context.pendingAuthorFacts.size();
-        }
-        if (!context.pendingConflicts.isEmpty()) {
-            identityConflictRepository.saveAll(context.pendingConflicts.values());
-        }
-
-        List<ScholardexSourceLinkService.SourceLinkUpsertCommand> sourceLinkCommands =
-                new ArrayList<>(context.pendingSourceLinkCommands.values());
-        ScholardexSourceLinkService.BatchWriteResult sourceLinkResults =
-                sourceLinkService.batchUpsertWithState(sourceLinkCommands, context.sourceLinkCache, false);
-        for (ScholardexSourceLinkService.SourceLinkBatchItemResult item : sourceLinkResults.results()) {
-            if (!item.accepted()) {
-                continue;
-            }
-            String state = item.link().getLinkState();
-            if (ScholardexSourceLinkService.STATE_LINKED.equals(state)) {
-                sourceLinkLinkedWrites++;
-            } else if (ScholardexSourceLinkService.STATE_UNMATCHED.equals(state)) {
-                sourceLinkUnmatchedWrites++;
-            } else if (ScholardexSourceLinkService.STATE_CONFLICT.equals(state)) {
-                sourceLinkConflictWrites++;
-            } else if (ScholardexSourceLinkService.STATE_SKIPPED.equals(state)) {
-                sourceLinkSkippedWrites++;
-            }
-        }
-
-        ScholardexEdgeWriterService.BatchEdgeWriteResult edgeResult =
-                edgeWriterService.batchUpsertAuthorAffiliationEdges(
-                        new ArrayList<>(context.pendingEdgeCommands.values()),
-                        context.authorAffiliationEdgeByNaturalKey,
-                        context.sourceLinkCache,
-                        false
-                );
-        edgeWrites = edgeResult.accepted();
-        conflictsWritten += edgeResult.conflicts();
-
-        long upsertFinishedAtNanos = System.nanoTime();
-        long saveFinishedAtNanos = upsertFinishedAtNanos;
-        CanonicalBuildChunkTimings timings = new CanonicalBuildChunkTimings(
-                nanosToMillis(preloadFinishedAtNanos - chunkStartedAtNanos),
-                nanosToMillis(resolveFinishedAtNanos - preloadFinishedAtNanos),
-                nanosToMillis(upsertFinishedAtNanos - resolveFinishedAtNanos),
-                nanosToMillis(saveFinishedAtNanos - upsertFinishedAtNanos),
-                nanosToMillis(saveFinishedAtNanos - chunkStartedAtNanos)
-        );
-        return new AuthorChunkOutcome(
-                timings,
-                authorFactWrites,
-                sourceLinkLinkedWrites,
-                sourceLinkUnmatchedWrites,
-                sourceLinkConflictWrites,
-                sourceLinkSkippedWrites,
-                edgeWrites,
-                conflictsWritten
-        );
+    @Override
+    protected void sortSourceFacts(List<ScopusAuthorFact> facts) {
+        facts.sort(Comparator.comparing(ScopusAuthorFact::getAuthorId, Comparator.nullsLast(String::compareTo)));
     }
 
-    private ChunkContext preloadChunkContext(List<ScopusAuthorFact> chunk) {
-        ChunkContext context = new ChunkContext();
+    @Override
+    protected String lastRecordKey(List<ScopusAuthorFact> chunk) {
+        if (chunk == null || chunk.isEmpty()) {
+            return null;
+        }
+        return normalizeBlank(chunk.getLast().getAuthorId());
+    }
+
+    @Override
+    protected ChunkContext createChunkContext() {
+        return new ChunkContext();
+    }
+
+    @Override
+    protected void preloadChunkContext(List<ScopusAuthorFact> chunk, ChunkContext context) {
         Set<String> sourceAuthorIds = new LinkedHashSet<>();
         Set<String> sourceAffiliationIds = new LinkedHashSet<>();
         Set<String> sourceAuthorAffiliationEdgeRecordIds = new LinkedHashSet<>();
@@ -364,14 +293,10 @@ public class ScholardexAuthorCanonicalizationService {
                 context.authorAffiliationEdgeByNaturalKey.put(edgeNaturalKey(edge.getAuthorId(), edge.getAffiliationId(), edge.getSource()), edge);
             }
         }
-        return context;
     }
 
-    private ScholardexSourceLinkService.SourceLinkKey toSourceLinkKey(ScholardexSourceLink link) {
-        return ScholardexSourceLinkService.SourceLinkKey.of(link.getEntityType(), link.getSource(), link.getSourceRecordId());
-    }
-
-    private void resolveSourceFactIntoContext(ScopusAuthorFact sourceFact, ImportProcessingResult result, ChunkContext context) {
+    @Override
+    protected void processSourceFact(ScopusAuthorFact sourceFact, ImportProcessingResult result, ChunkContext context) {
         String sourceRecordId = normalizeBlank(sourceFact == null ? null : sourceFact.getAuthorId());
         if (sourceFact == null || sourceRecordId == null) {
             result.markSkipped("missing scopus author id");
@@ -380,10 +305,10 @@ public class ScholardexAuthorCanonicalizationService {
         String normalizedSource = sourceLinkService.normalizeSource(sourceFact.getSource());
 
         Optional<ScholardexSourceLink> existingSourceLink = resolveFromChunkSourceLinks(
-                context,
                 ScholardexEntityType.AUTHOR,
                 normalizedSource,
-                sourceRecordId
+                sourceRecordId,
+                context
         );
         Optional<ScholardexAuthorFact> existingBySource = Optional.ofNullable(context.authorBySourceId.get(sourceRecordId));
         String canonicalId = existingSourceLink.map(ScholardexSourceLink::getCanonicalEntityId)
@@ -393,14 +318,14 @@ public class ScholardexAuthorCanonicalizationService {
         if (existingSourceLink.isPresent() && existingSourceLink.get().getCanonicalEntityId() != null
                 && !existingSourceLink.get().getCanonicalEntityId().equals(canonicalId)) {
             upsertConflictInContext(
-                    context,
                     sourceFact.getSource(),
                     sourceRecordId,
                     sourceFact.getSourceEventId(),
                     sourceFact.getSourceBatchId(),
                     sourceFact.getSourceCorrelationId(),
                     CONFLICT_SOURCE_ID_COLLISION,
-                    List.of(existingSourceLink.get().getCanonicalEntityId(), canonicalId)
+                    List.of(existingSourceLink.get().getCanonicalEntityId(), canonicalId),
+                    context
             );
             result.markSkipped("author-source-id-collision:" + sourceRecordId);
             return;
@@ -431,7 +356,6 @@ public class ScholardexAuthorCanonicalizationService {
         context.authorBySourceId.put(sourceRecordId, target);
         context.pendingAuthorFacts.put(canonicalId, target);
         queueSourceLinkCommand(
-                context,
                 ScholardexEntityType.AUTHOR,
                 sourceFact.getSource(),
                 sourceRecordId,
@@ -440,9 +364,10 @@ public class ScholardexAuthorCanonicalizationService {
                 LINK_REASON_SCOPUS_BRIDGE,
                 sourceFact.getSourceEventId(),
                 sourceFact.getSourceBatchId(),
-                sourceFact.getSourceCorrelationId()
+                sourceFact.getSourceCorrelationId(),
+                context
         );
-        queueAuthorAffiliationEdges(context, target, sourceFact, affiliationBridge);
+        queueAuthorAffiliationEdges(target, sourceFact, affiliationBridge, context);
 
         if (created) {
             result.markImported();
@@ -451,79 +376,72 @@ public class ScholardexAuthorCanonicalizationService {
         }
     }
 
-    public void upsertFromScopusFact(ScopusAuthorFact sourceFact, ImportProcessingResult result) {
-        String sourceRecordId = normalizeBlank(sourceFact == null ? null : sourceFact.getAuthorId());
-        if (sourceFact == null || sourceRecordId == null) {
-            if (result != null) {
-                result.markSkipped("missing scopus author id");
+    @Override
+    protected CanonicalBuildChunkTimings flushPendingWrites(long chunkStartedAtNanos, long preloadFinishedAtNanos, long resolveFinishedAtNanos, ChunkContext context) {
+        context.lastConflictsWritten = context.pendingConflicts.size();
+
+        if (!context.pendingAuthorFacts.isEmpty()) {
+            scholardexAuthorFactRepository.saveAll(context.pendingAuthorFacts.values());
+            context.lastAuthorFactWrites = context.pendingAuthorFacts.size();
+        }
+        if (!context.pendingConflicts.isEmpty()) {
+            identityConflictRepository.saveAll(context.pendingConflicts.values());
+        }
+
+        List<ScholardexSourceLinkService.SourceLinkUpsertCommand> sourceLinkCommands =
+                new ArrayList<>(context.pendingSourceLinkCommands.values());
+        ScholardexSourceLinkService.BatchWriteResult sourceLinkResults =
+                sourceLinkService.batchUpsertWithState(sourceLinkCommands, context.sourceLinkCache, false);
+        for (ScholardexSourceLinkService.SourceLinkBatchItemResult item : sourceLinkResults.results()) {
+            if (!item.accepted()) {
+                continue;
             }
-            return;
-        }
-
-        Optional<ScholardexSourceLink> existingSourceLink = sourceLinkService
-                .findByKey(ScholardexEntityType.AUTHOR, sourceFact.getSource(), sourceRecordId);
-        Optional<ScholardexAuthorFact> existingBySource = scholardexAuthorFactRepository.findByScopusAuthorIdsContains(sourceRecordId);
-        String canonicalId = existingSourceLink.map(ScholardexSourceLink::getCanonicalEntityId)
-                .or(() -> existingBySource.map(ScholardexAuthorFact::getId))
-                .orElseGet(() -> buildCanonicalAuthorId(sourceRecordId, sourceFact.getName()));
-
-        if (existingSourceLink.isPresent() && existingSourceLink.get().getCanonicalEntityId() != null
-                && !existingSourceLink.get().getCanonicalEntityId().equals(canonicalId)) {
-            saveConflict(sourceFact, sourceRecordId, CONFLICT_SOURCE_ID_COLLISION, List.of(existingSourceLink.get().getCanonicalEntityId(), canonicalId));
-            if (result != null) {
-                result.markSkipped("author-source-id-collision:" + sourceRecordId);
-            }
-            return;
-        }
-
-        ChunkContext bridgeContext = new ChunkContext();
-        AffiliationBridgeResult affiliationBridge = bridgeAffiliationIds(sourceFact.getAffiliationIds(), sourceFact.getSource(), bridgeContext);
-        if (!bridgeContext.pendingSourceLinkCommands.isEmpty()) {
-            sourceLinkService.batchUpsertWithState(
-                    bridgeContext.pendingSourceLinkCommands.values(),
-                    bridgeContext.sourceLinkCache
-            );
-        }
-        ScholardexAuthorFact target = scholardexAuthorFactRepository.findById(canonicalId).orElseGet(ScholardexAuthorFact::new);
-        boolean created = target.getId() == null;
-        Instant now = Instant.now();
-        if (target.getCreatedAt() == null) {
-            target.setCreatedAt(now);
-        }
-        target.setId(canonicalId);
-        addUnique(target.getScopusAuthorIds(), sourceRecordId);
-        target.setDisplayName(sourceFact.getName());
-        target.setNameNormalized(normalizeName(sourceFact.getName()));
-        target.setAffiliationIds(affiliationBridge.canonicalAffiliationIds());
-        target.setPendingAffiliationSourceIds(affiliationBridge.pendingSourceAffiliationIds());
-        target.setSourceEventId(sourceFact.getSourceEventId());
-        target.setSource(sourceFact.getSource());
-        target.setSourceRecordId(sourceRecordId);
-        target.setSourceBatchId(sourceFact.getSourceBatchId());
-        target.setSourceCorrelationId(sourceFact.getSourceCorrelationId());
-        target.setUpdatedAt(now);
-        scholardexAuthorFactRepository.save(target);
-        upsertAuthorSourceLink(sourceFact, sourceRecordId, target.getId());
-        upsertAuthorAffiliationEdges(target, sourceFact, affiliationBridge);
-
-        if (result != null) {
-            if (created) {
-                result.markImported();
-            } else {
-                result.markUpdated();
+            String state = item.link().getLinkState();
+            if (ScholardexSourceLinkService.STATE_LINKED.equals(state)) {
+                context.lastSourceLinkLinkedWrites++;
+            } else if (ScholardexSourceLinkService.STATE_UNMATCHED.equals(state)) {
+                context.lastSourceLinkUnmatchedWrites++;
+            } else if (ScholardexSourceLinkService.STATE_CONFLICT.equals(state)) {
+                context.lastSourceLinkConflictWrites++;
+            } else if (ScholardexSourceLinkService.STATE_SKIPPED.equals(state)) {
+                context.lastSourceLinkSkippedWrites++;
             }
         }
+
+        ScholardexEdgeWriterService.BatchEdgeWriteResult edgeResult =
+                edgeWriterService.batchUpsertAuthorAffiliationEdges(
+                        new ArrayList<>(context.pendingEdgeCommands.values()),
+                        context.authorAffiliationEdgeByNaturalKey,
+                        context.sourceLinkCache,
+                        false
+                );
+        context.lastEdgeWrites = edgeResult.accepted();
+        context.lastConflictsWritten += edgeResult.conflicts();
+
+        long upsertFinishedAtNanos = System.nanoTime();
+        return new CanonicalBuildChunkTimings(
+                nanosToMillis(preloadFinishedAtNanos - chunkStartedAtNanos),
+                nanosToMillis(resolveFinishedAtNanos - preloadFinishedAtNanos),
+                nanosToMillis(upsertFinishedAtNanos - resolveFinishedAtNanos),
+                0L,
+                nanosToMillis(upsertFinishedAtNanos - chunkStartedAtNanos)
+        );
     }
 
-    public String buildCanonicalAuthorId(String scopusAuthorId, String displayName) {
-        String material;
-        if (!isBlank(scopusAuthorId)) {
-            material = "scopus|" + normalizeToken(scopusAuthorId);
-        } else {
-            material = "name|" + normalizeToken(normalizeName(displayName));
-        }
-        return "sauth_" + shortHash(material);
+    @Override
+    protected void afterChunkLogged(int chunkNo, ChunkContext context) {
+        log.info("Scholardex author canonicalization chunk {} writes: authorFacts={} sourceLinks[linked={}, unmatched={}, conflict={}, skipped={}] edgeWrites={} conflicts={}",
+                chunkNo,
+                context.lastAuthorFactWrites,
+                context.lastSourceLinkLinkedWrites,
+                context.lastSourceLinkUnmatchedWrites,
+                context.lastSourceLinkConflictWrites,
+                context.lastSourceLinkSkippedWrites,
+                context.lastEdgeWrites,
+                context.lastConflictsWritten);
     }
+
+    // ── Private helpers ─────────────────────────────────────────────────────
 
     private AffiliationBridgeResult bridgeAffiliationIds(List<String> sourceAffiliationIds, String source, ChunkContext context) {
         if (sourceAffiliationIds == null || sourceAffiliationIds.isEmpty()) {
@@ -537,7 +455,7 @@ public class ScholardexAuthorCanonicalizationService {
             if (sourceAffiliationId == null) {
                 continue;
             }
-            Optional<ScholardexSourceLink> resolved = resolveAffiliationSourceLink(context, source, sourceAffiliationId);
+            Optional<ScholardexSourceLink> resolved = resolveAffiliationSourceLink(source, sourceAffiliationId, context);
             if (resolved.isPresent() && !isBlank(resolved.get().getCanonicalEntityId())) {
                 String canonicalAffiliationId = resolved.get().getCanonicalEntityId();
                 byCanonicalId.putIfAbsent(canonicalAffiliationId, new AffiliationBridgeEntry(canonicalAffiliationId, sourceAffiliationId, false));
@@ -547,7 +465,6 @@ public class ScholardexAuthorCanonicalizationService {
             byCanonicalId.putIfAbsent(fallbackAffiliationId, new AffiliationBridgeEntry(fallbackAffiliationId, sourceAffiliationId, true));
             pendingSource.add(sourceAffiliationId);
             queueSourceLinkCommand(
-                    context,
                     ScholardexEntityType.AFFILIATION,
                     source,
                     sourceAffiliationId,
@@ -556,7 +473,8 @@ public class ScholardexAuthorCanonicalizationService {
                     LINK_REASON_AFFILIATION_FALLBACK,
                     null,
                     null,
-                    null
+                    null,
+                    context
             );
         }
         return new AffiliationBridgeResult(
@@ -566,27 +484,27 @@ public class ScholardexAuthorCanonicalizationService {
         );
     }
 
-    private Optional<ScholardexSourceLink> resolveAffiliationSourceLink(ChunkContext context, String source, String sourceAffiliationId) {
+    private Optional<ScholardexSourceLink> resolveAffiliationSourceLink(String source, String sourceAffiliationId, ChunkContext context) {
         String normalizedSource = normalizeBlank(source);
         if (normalizedSource != null) {
             Optional<ScholardexSourceLink> direct = resolveFromChunkSourceLinks(
-                    context,
                     ScholardexEntityType.AFFILIATION,
                     normalizedSource,
-                    sourceAffiliationId
+                    sourceAffiliationId,
+                    context
             );
             if (direct.isPresent()) {
                 return direct;
             }
         }
-        return resolveFromChunkSourceLinks(context, ScholardexEntityType.AFFILIATION, SOURCE_SCOPUS, sourceAffiliationId);
+        return resolveFromChunkSourceLinks(ScholardexEntityType.AFFILIATION, SOURCE_SCOPUS, sourceAffiliationId, context);
     }
 
     private Optional<ScholardexSourceLink> resolveFromChunkSourceLinks(
-            ChunkContext context,
             ScholardexEntityType entityType,
             String source,
-            String sourceRecordId
+            String sourceRecordId,
+            ChunkContext context
     ) {
         String normalizedSource = sourceLinkService.normalizeSource(source);
         ScholardexSourceLinkService.SourceLinkKey key =
@@ -598,21 +516,8 @@ public class ScholardexAuthorCanonicalizationService {
         return Optional.empty();
     }
 
-    private void upsertUnmatchedAffiliationSourceLink(String source, String sourceAffiliationId, String fallbackAffiliationId) {
-        if (isBlank(source) || isBlank(sourceAffiliationId) || isBlank(fallbackAffiliationId)) {
-            return;
-        }
-        sourceLinkService.markUnmatched(
-                ScholardexEntityType.AFFILIATION,
-                source,
-                sourceAffiliationId,
-                fallbackAffiliationId,
-                LINK_REASON_AFFILIATION_FALLBACK,
-                null,
-                null,
-                null,
-                false
-        );
+    private ScholardexSourceLinkService.SourceLinkKey toSourceLinkKey(ScholardexSourceLink link) {
+        return ScholardexSourceLinkService.SourceLinkKey.of(link.getEntityType(), link.getSource(), link.getSourceRecordId());
     }
 
     private void upsertAuthorSourceLink(ScopusAuthorFact sourceFact, String sourceRecordId, String canonicalId) {
@@ -663,10 +568,10 @@ public class ScholardexAuthorCanonicalizationService {
     }
 
     private void queueAuthorAffiliationEdges(
-            ChunkContext context,
             ScholardexAuthorFact authorFact,
             ScopusAuthorFact sourceFact,
-            AffiliationBridgeResult affiliationBridge
+            AffiliationBridgeResult affiliationBridge,
+            ChunkContext context
     ) {
         for (AffiliationBridgeEntry entry : affiliationBridge.entries()) {
             if (isBlank(sourceFact.getSource())) {
@@ -698,7 +603,6 @@ public class ScholardexAuthorCanonicalizationService {
     }
 
     private void queueSourceLinkCommand(
-            ChunkContext context,
             ScholardexEntityType entityType,
             String source,
             String sourceRecordId,
@@ -707,7 +611,8 @@ public class ScholardexAuthorCanonicalizationService {
             String reason,
             String sourceEventId,
             String sourceBatchId,
-            String sourceCorrelationId
+            String sourceCorrelationId,
+            ChunkContext context
     ) {
         String normalizedSource = sourceLinkService.normalizeSource(source);
         String normalizedRecordId = normalizeBlank(sourceRecordId);
@@ -746,14 +651,14 @@ public class ScholardexAuthorCanonicalizationService {
     }
 
     private void upsertConflictInContext(
-            ChunkContext context,
             String source,
             String sourceRecordId,
             String sourceEventId,
             String sourceBatchId,
             String sourceCorrelationId,
             String reason,
-            List<String> candidates
+            List<String> candidates,
+            ChunkContext context
     ) {
         String normalizedSource = normalizeBlank(source);
         String normalizedRecordId = normalizeBlank(sourceRecordId);
@@ -769,7 +674,7 @@ public class ScholardexAuthorCanonicalizationService {
                             normalizedSource,
                             normalizedRecordId,
                             reason,
-                            STATUS_OPEN
+                            CanonicalizationSupport.STATUS_OPEN
                     )
                     .orElseGet(ScholardexIdentityConflict::new);
         }
@@ -777,7 +682,7 @@ public class ScholardexAuthorCanonicalizationService {
         conflict.setIncomingSource(normalizedSource);
         conflict.setIncomingSourceRecordId(normalizedRecordId);
         conflict.setReasonCode(reason);
-        conflict.setStatus(STATUS_OPEN);
+        conflict.setStatus(CanonicalizationSupport.STATUS_OPEN);
         conflict.setCandidateCanonicalIds(candidates == null ? List.of() : new ArrayList<>(candidates));
         conflict.setSourceEventId(sourceEventId);
         conflict.setSourceBatchId(sourceBatchId);
@@ -796,14 +701,14 @@ public class ScholardexAuthorCanonicalizationService {
                         sourceFact.getSource(),
                         sourceRecordId,
                         reason,
-                        STATUS_OPEN
+                        CanonicalizationSupport.STATUS_OPEN
                 )
                 .orElseGet(ScholardexIdentityConflict::new);
         conflict.setEntityType(ScholardexEntityType.AUTHOR);
         conflict.setIncomingSource(sourceFact.getSource());
         conflict.setIncomingSourceRecordId(sourceRecordId);
         conflict.setReasonCode(reason);
-        conflict.setStatus(STATUS_OPEN);
+        conflict.setStatus(CanonicalizationSupport.STATUS_OPEN);
         conflict.setCandidateCanonicalIds(candidates == null ? List.of() : new ArrayList<>(candidates));
         conflict.setSourceEventId(sourceFact.getSourceEventId());
         conflict.setSourceBatchId(sourceFact.getSourceBatchId());
@@ -824,109 +729,11 @@ public class ScholardexAuthorCanonicalizationService {
         return normalizeToken(sourceAuthorRecordId) + "::affiliation::" + normalizeToken(sourceAffiliationId);
     }
 
-    private String normalizeName(String value) {
-        if (value == null) {
-            return null;
-        }
-        String normalized = value.toLowerCase(Locale.ROOT);
-        normalized = Normalizer.normalize(normalized, Normalizer.Form.NFKD);
-        normalized = COMBINING_MARKS.matcher(normalized).replaceAll("");
-        normalized = NON_ALNUM_OR_SPACE.matcher(normalized).replaceAll(" ");
-        normalized = MULTI_SPACE.matcher(normalized).replaceAll(" ").trim();
-        return normalized.isEmpty() ? null : normalized;
-    }
-
-    private void addUnique(List<String> values, String value) {
-        if (value == null || value.isBlank()) {
-            return;
-        }
-        if (!values.contains(value)) {
-            values.add(value);
-        }
-    }
-
-    private String normalizeBlank(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
-
-    private String normalizeToken(String value) {
-        if (value == null) {
-            return "";
-        }
-        String normalized = value.trim().toLowerCase(Locale.ROOT);
-        return normalized.isEmpty() ? "" : normalized;
-    }
-
-    private String shortHash(String value) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder(hash.length * 2);
-            for (byte b : hash) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.substring(0, 24);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 not available", e);
-        }
-    }
-
-    private boolean isBlank(String value) {
-        return value == null || value.trim().isEmpty();
-    }
-
     private String edgeNaturalKey(String authorId, String affiliationId, String source) {
         return normalizeToken(authorId) + "|" + normalizeToken(affiliationId) + "|" + normalizeToken(source);
     }
 
-    private int normalizeStartBatch(Integer startBatchOverride, int checkpointLastCompletedBatch, boolean useCheckpoint) {
-        if (startBatchOverride != null) {
-            return Math.max(0, startBatchOverride);
-        }
-        if (useCheckpoint && checkpointLastCompletedBatch >= 0) {
-            return Math.max(0, checkpointLastCompletedBatch + 1);
-        }
-        return 0;
-    }
-
-    private String lastRecordKey(List<ScopusAuthorFact> chunk) {
-        if (chunk == null || chunk.isEmpty()) {
-            return null;
-        }
-        return normalizeBlank(chunk.get(chunk.size() - 1).getAuthorId());
-    }
-
-    private long nanosToMillis(long nanos) {
-        return nanos / 1_000_000L;
-    }
-
-    private List<ScopusAuthorFact> loadSourceFacts(CanonicalBuildOptions options) {
-        if (!options.fullRescan() && options.incremental()) {
-            long startedAtNanos = System.nanoTime();
-            log.info("Scholardex author canonicalization source load started: mode=incremental drainQueues={}", options.drainQueues());
-            List<String> touchedIds = touchQueueService.consumeAuthorIds(options.drainQueues());
-            if (!touchedIds.isEmpty()) {
-                List<ScopusAuthorFact> facts = new ArrayList<>(scopusAuthorFactRepository.findByAuthorIdIn(touchedIds));
-                log.info("Scholardex author canonicalization source load completed: mode=incremental records={} elapsedMs={}",
-                        facts.size(),
-                        nanosToMillis(System.nanoTime() - startedAtNanos));
-                return facts;
-            }
-            log.info("Scholardex author canonicalization incremental run has empty touch queue; skipping source scan.");
-            return new ArrayList<>();
-        }
-        long startedAtNanos = System.nanoTime();
-        log.info("Scholardex author canonicalization source load started: mode=full-rescan");
-        List<ScopusAuthorFact> facts = new ArrayList<>(scopusAuthorFactRepository.findAll());
-        log.info("Scholardex author canonicalization source load completed: mode=full-rescan records={} elapsedMs={}",
-                facts.size(),
-                nanosToMillis(System.nanoTime() - startedAtNanos));
-        return facts;
-    }
+    // ── Records and chunk context ───────────────────────────────────────────
 
     public record AffiliationBridgeResult(
             List<String> canonicalAffiliationIds,
@@ -940,7 +747,7 @@ public class ScholardexAuthorCanonicalizationService {
             boolean pendingResolution
     ) {}
 
-    private static class ChunkContext {
+    static class ChunkContext {
         private final Map<String, ScholardexAuthorFact> authorBySourceId = new HashMap<>();
         private final Map<String, ScholardexAuthorFact> authorByCanonicalId = new HashMap<>();
         private final Map<ScholardexSourceLinkService.SourceLinkKey, ScholardexSourceLink> sourceLinkCache = new HashMap<>();
@@ -949,16 +756,14 @@ public class ScholardexAuthorCanonicalizationService {
         private final Map<String, ScholardexEdgeWriterService.EdgeWriteCommand> pendingEdgeCommands = new LinkedHashMap<>();
         private final Map<String, ScholardexIdentityConflict> pendingConflicts = new LinkedHashMap<>();
         private final Map<String, ScholardexAuthorAffiliationFact> authorAffiliationEdgeByNaturalKey = new HashMap<>();
-    }
 
-    private record AuthorChunkOutcome(
-            CanonicalBuildChunkTimings timings,
-            int authorFactWrites,
-            int sourceLinkLinkedWrites,
-            int sourceLinkUnmatchedWrites,
-            int sourceLinkConflictWrites,
-            int sourceLinkSkippedWrites,
-            int edgeWrites,
-            int conflictsWritten
-    ) {}
+        // Per-chunk write statistics (set by flushPendingWrites, read by afterChunkLogged)
+        private int lastAuthorFactWrites;
+        private int lastSourceLinkLinkedWrites;
+        private int lastSourceLinkUnmatchedWrites;
+        private int lastSourceLinkConflictWrites;
+        private int lastSourceLinkSkippedWrites;
+        private int lastEdgeWrites;
+        private int lastConflictsWritten;
+    }
 }

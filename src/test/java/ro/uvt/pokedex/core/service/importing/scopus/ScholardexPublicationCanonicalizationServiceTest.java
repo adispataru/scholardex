@@ -56,9 +56,9 @@ class ScholardexPublicationCanonicalizationServiceTest {
         service = new ScholardexPublicationCanonicalizationService(
                 scopusPublicationFactRepository,
                 scholardexPublicationFactRepository,
-                identityConflictRepository,
-                sourceLinkService,
                 edgeWriterService,
+                sourceLinkService,
+                identityConflictRepository,
                 checkpointService,
                 touchQueueService
         );
