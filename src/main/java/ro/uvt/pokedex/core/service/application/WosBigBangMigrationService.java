@@ -12,6 +12,7 @@ import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosScoringViewRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosFactConflictRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
+import ro.uvt.pokedex.core.service.importing.model.MigrationStepResult;
 import ro.uvt.pokedex.core.service.importing.wos.WosFactBuilderService;
 import ro.uvt.pokedex.core.service.importing.wos.WosImportEventIngestionService;
 import ro.uvt.pokedex.core.service.importing.wos.WosImportEventParserOrchestrator;
@@ -314,84 +315,6 @@ public class WosBigBangMigrationService {
             MigrationStepResult buildProjections,
             VerificationSummary verification
     ) {
-    }
-
-    public record MigrationStepResult(
-            String stepName,
-            boolean executed,
-            int processed,
-            int imported,
-            int updated,
-            int skipped,
-            int errors,
-            String note,
-            List<String> samples,
-            Integer startBatch,
-            Integer endBatch,
-            Integer batchesProcessed,
-            Boolean resumedFromCheckpoint,
-            Integer checkpointLastCompletedBatch
-    ) {
-        static MigrationStepResult executed(String stepName, ImportProcessingResult result) {
-            return executed(stepName, result, null, null, null, null, null);
-        }
-
-        static MigrationStepResult executed(
-                String stepName,
-                ImportProcessingResult result,
-                Integer startBatch,
-                Integer endBatch,
-                Integer batchesProcessed,
-                Boolean resumedFromCheckpoint,
-                Integer checkpointLastCompletedBatch
-        ) {
-            return new MigrationStepResult(
-                    stepName,
-                    true,
-                    result.getProcessedCount(),
-                    result.getImportedCount(),
-                    result.getUpdatedCount(),
-                    result.getSkippedCount(),
-                    result.getErrorCount(),
-                    null,
-                    result.getErrorsSample(),
-                    startBatch,
-                    endBatch,
-                    batchesProcessed,
-                    resumedFromCheckpoint,
-                    checkpointLastCompletedBatch
-            );
-        }
-
-        static MigrationStepResult dryRun(
-                String stepName,
-                String note,
-                List<String> samples,
-                int processed,
-                int errors,
-                Integer startBatch,
-                Integer endBatch,
-                Integer batchesProcessed,
-                Boolean resumedFromCheckpoint,
-                Integer checkpointLastCompletedBatch
-        ) {
-            return new MigrationStepResult(
-                    stepName,
-                    false,
-                    processed,
-                    0,
-                    0,
-                    0,
-                    errors,
-                    note,
-                    samples,
-                    startBatch,
-                    endBatch,
-                    batchesProcessed,
-                    resumedFromCheckpoint,
-                    checkpointLastCompletedBatch
-            );
-        }
     }
 
     public record VerificationSummary(

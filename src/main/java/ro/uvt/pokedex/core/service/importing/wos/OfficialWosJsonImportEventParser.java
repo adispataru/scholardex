@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Set;
 
 @Component
-public class OfficialWosJsonImportEventParser implements WosImportEventParser {
+public class OfficialWosJsonImportEventParser extends AbstractWosImportEventParser {
     private final ObjectMapper objectMapper;
 
     public OfficialWosJsonImportEventParser(ObjectMapper objectMapper) {
@@ -108,54 +108,6 @@ public class OfficialWosJsonImportEventParser implements WosImportEventParser {
         return records;
     }
 
-    private Double parseMetricValue(String rawValue) {
-        String value = normalizeText(rawValue);
-        if (isBlank(value)) {
-            return null;
-        }
-        try {
-            Double parsed = Double.parseDouble(value.replace(",", "."));
-            if (parsed <= -999.0) {
-                return null;
-            }
-            return WosCanonicalContractSupport.normalizeMetricValue(parsed);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private Integer parseInt(String rawValue) {
-        String value = normalizeText(rawValue);
-        if (isBlank(value)) {
-            return null;
-        }
-        try {
-            return Integer.parseInt(value);
-        } catch (Exception e) {
-            try {
-                return (int) Double.parseDouble(value);
-            } catch (Exception ignored) {
-                return null;
-            }
-        }
-    }
-
-    private String normalizeIssn(String rawIssn) {
-        String value = normalizeText(rawIssn);
-        if (isBlank(value) || "N/A".equalsIgnoreCase(value)) {
-            return null;
-        }
-        return WosCanonicalContractSupport.normalizeIssnToken(value);
-    }
-
-    private String text(JsonNode node, String field) {
-        JsonNode value = node == null ? null : node.path(field);
-        if (value == null || value.isNull() || value.isMissingNode()) {
-            return null;
-        }
-        return value.asText();
-    }
-
     private String firstNonBlank(String left, String right) {
         String first = normalizeText(left);
         if (!isBlank(first)) {
@@ -164,15 +116,4 @@ public class OfficialWosJsonImportEventParser implements WosImportEventParser {
         return normalizeText(right);
     }
 
-    private String normalizeText(String value) {
-        if (value == null) {
-            return null;
-        }
-        String normalized = value.trim();
-        return normalized.isBlank() ? null : normalized;
-    }
-
-    private boolean isBlank(String value) {
-        return value == null || value.isBlank();
-    }
 }

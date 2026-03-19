@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.model.scopus.canonical.HasReviewFields;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEvent;
 import ro.uvt.pokedex.core.model.scopus.canonical.UserDefinedForumFact;
@@ -159,27 +160,16 @@ public class UserDefinedFactBuilderService {
         markImportOrUpdate(result, created);
     }
 
-    private void applyReviewFields(UserDefinedPublicationFact fact, JsonNode payload, Instant now) {
+    private void applyReviewFields(HasReviewFields fact, JsonNode payload, Instant now) {
         Instant submittedAt = parseInstant(text(payload, "wizardSubmittedAt")).orElse(now);
+        String submitterEmail = text(payload, "wizardSubmitterEmail");
         fact.setWizardSubmittedAt(submittedAt);
-        fact.setWizardSubmitterEmail(text(payload, "wizardSubmitterEmail"));
+        fact.setWizardSubmitterEmail(submitterEmail);
         fact.setWizardSubmitterResearcherId(text(payload, "wizardSubmitterResearcherId"));
         fact.setReviewState(firstNonBlank(text(payload, "reviewState"), UserDefinedWizardOnboardingContract.REVIEW_STATE));
         fact.setReviewReason(firstNonBlank(text(payload, "reviewReason"), DEFAULT_REVIEW_REASON));
         fact.setReviewStateUpdatedAt(parseInstant(text(payload, "reviewStateUpdatedAt")).orElse(submittedAt));
-        fact.setReviewStateUpdatedBy(firstNonBlank(text(payload, "reviewStateUpdatedBy"), fact.getWizardSubmitterEmail()));
-        fact.setModerationFlow(firstNonBlank(text(payload, "moderationFlow"), UserDefinedWizardOnboardingContract.MODERATION_FLOW));
-    }
-
-    private void applyReviewFields(UserDefinedForumFact fact, JsonNode payload, Instant now) {
-        Instant submittedAt = parseInstant(text(payload, "wizardSubmittedAt")).orElse(now);
-        fact.setWizardSubmittedAt(submittedAt);
-        fact.setWizardSubmitterEmail(text(payload, "wizardSubmitterEmail"));
-        fact.setWizardSubmitterResearcherId(text(payload, "wizardSubmitterResearcherId"));
-        fact.setReviewState(firstNonBlank(text(payload, "reviewState"), UserDefinedWizardOnboardingContract.REVIEW_STATE));
-        fact.setReviewReason(firstNonBlank(text(payload, "reviewReason"), DEFAULT_REVIEW_REASON));
-        fact.setReviewStateUpdatedAt(parseInstant(text(payload, "reviewStateUpdatedAt")).orElse(submittedAt));
-        fact.setReviewStateUpdatedBy(firstNonBlank(text(payload, "reviewStateUpdatedBy"), fact.getWizardSubmitterEmail()));
+        fact.setReviewStateUpdatedBy(firstNonBlank(text(payload, "reviewStateUpdatedBy"), submitterEmail));
         fact.setModerationFlow(firstNonBlank(text(payload, "moderationFlow"), UserDefinedWizardOnboardingContract.MODERATION_FLOW));
     }
 

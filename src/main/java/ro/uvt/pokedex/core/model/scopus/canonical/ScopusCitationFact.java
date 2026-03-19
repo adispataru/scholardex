@@ -10,7 +10,7 @@ import java.time.Instant;
 @Data
 @Document(collection = "scopus.citation_facts")
 @CompoundIndex(name = "uniq_scopus_citation_fact_edge", def = "{'citedEid': 1, 'citingEid': 1}", unique = true)
-public class ScopusCitationFact {
+public class ScopusCitationFact implements HasLineageFields {
     @Id
     private String id;
     private String citedEid;

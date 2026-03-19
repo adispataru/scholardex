@@ -1,6 +1,6 @@
 package ro.uvt.pokedex.core.service.application.model;
 
-import ro.uvt.pokedex.core.service.application.WosBigBangMigrationService;
+import ro.uvt.pokedex.core.service.importing.model.MigrationStepResult;
 
 import java.time.Instant;
 
@@ -18,7 +18,7 @@ public record WosEnrichmentRunSummaryDto(
         String note
 ) {
     public static WosEnrichmentRunSummaryDto fromStep(
-            WosBigBangMigrationService.MigrationStepResult step,
+            MigrationStepResult step,
             Instant startedAt,
             Instant completedAt
     ) {

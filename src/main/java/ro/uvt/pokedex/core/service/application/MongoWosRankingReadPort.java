@@ -12,13 +12,10 @@ import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.regex.Pattern;
 
 @RequiredArgsConstructor
 public class MongoWosRankingReadPort implements WosRankingReadPort {
-
-    private static final int MAX_QUERY_LENGTH = 100;
 
     private final MongoTemplate mongoTemplate;
 
@@ -79,22 +76,11 @@ public class MongoWosRankingReadPort implements WosRankingReadPort {
     }
 
     private String normalizeText(String raw) {
-        if (raw == null) {
-            return null;
-        }
-        String normalized = raw.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
-        return normalized.isBlank() ? null : normalized;
+        return QueryNormalizationSupport.normalizeText(raw);
     }
 
     private String normalizeIssn(String raw) {
-        if (raw == null) {
-            return null;
-        }
-        String normalized = raw.trim()
-                .toUpperCase(Locale.ROOT)
-                .replace("-", "")
-                .replace(" ", "");
-        return normalized.isBlank() ? null : normalized;
+        return QueryNormalizationSupport.normalizeIssn(raw);
     }
 
     private String normalizeSort(String sort) {
@@ -106,24 +92,10 @@ public class MongoWosRankingReadPort implements WosRankingReadPort {
     }
 
     private Sort.Direction normalizeDirection(String direction) {
-        String normalized = direction == null ? "" : direction.trim().toLowerCase(Locale.ROOT);
-        if (!normalized.equals("asc") && !normalized.equals("desc")) {
-            throw new IllegalArgumentException("Invalid direction parameter. Allowed: asc, desc.");
-        }
-        return Sort.Direction.fromString(normalized);
+        return Sort.Direction.fromString(QueryNormalizationSupport.normalizeDirection(direction));
     }
 
     private String normalizeQuery(String q) {
-        if (q == null) {
-            return null;
-        }
-        String normalized = q.trim();
-        if (normalized.isEmpty()) {
-            return null;
-        }
-        if (normalized.length() > MAX_QUERY_LENGTH) {
-            throw new IllegalArgumentException("Invalid q parameter. Maximum length is " + MAX_QUERY_LENGTH + ".");
-        }
-        return normalized;
+        return QueryNormalizationSupport.normalizeQuery(q);
     }
 }

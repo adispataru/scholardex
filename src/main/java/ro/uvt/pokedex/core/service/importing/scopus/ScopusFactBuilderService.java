@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.model.scopus.canonical.HasLineageFields;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationFact;
@@ -654,52 +655,8 @@ public class ScopusFactBuilderService {
         }
     }
 
-    private void applyLineage(ScopusPublicationFact fact, ScopusImportEvent event) {
-        fact.setSourceEventId(event.getId());
-        fact.setSource(event.getSource());
-        fact.setSourceRecordId(event.getSourceRecordId());
-        fact.setSourceBatchId(event.getBatchId());
-        fact.setSourceCorrelationId(event.getCorrelationId());
-    }
-
-    private void applyLineage(ScopusCitationFact fact, ScopusImportEvent event) {
-        fact.setSourceEventId(event.getId());
-        fact.setSource(event.getSource());
-        fact.setSourceRecordId(event.getSourceRecordId());
-        fact.setSourceBatchId(event.getBatchId());
-        fact.setSourceCorrelationId(event.getCorrelationId());
-    }
-
-    private void applyLineage(ScopusForumFact fact, ScopusImportEvent event) {
-        fact.setSourceEventId(event.getId());
-        fact.setSource(event.getSource());
-        fact.setSourceRecordId(event.getSourceRecordId());
-        fact.setSourceBatchId(event.getBatchId());
-        fact.setSourceCorrelationId(event.getCorrelationId());
-    }
-
-    private void applyLineage(ScopusAuthorFact fact, ScopusImportEvent event) {
-        fact.setSourceEventId(event.getId());
-        fact.setSource(event.getSource());
-        fact.setSourceRecordId(event.getSourceRecordId());
-        fact.setSourceBatchId(event.getBatchId());
-        fact.setSourceCorrelationId(event.getCorrelationId());
-    }
-
-    private void applyLineage(ScopusAffiliationFact fact, ScopusImportEvent event) {
-        fact.setSourceEventId(event.getId());
-        fact.setSource(event.getSource());
-        fact.setSourceRecordId(event.getSourceRecordId());
-        fact.setSourceBatchId(event.getBatchId());
-        fact.setSourceCorrelationId(event.getCorrelationId());
-    }
-
-    private void applyLineage(ScopusFundingFact fact, ScopusImportEvent event) {
-        fact.setSourceEventId(event.getId());
-        fact.setSource(event.getSource());
-        fact.setSourceRecordId(event.getSourceRecordId());
-        fact.setSourceBatchId(event.getBatchId());
-        fact.setSourceCorrelationId(event.getCorrelationId());
+    private void applyLineage(HasLineageFields fact, ScopusImportEvent event) {
+        FactBuilderSupport.applyLineage(fact, event);
     }
 
     private String sample(ScopusImportEvent event, String message) {

@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
+import ro.uvt.pokedex.core.model.scopus.canonical.HasEdgeLineageFields;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
@@ -161,7 +162,7 @@ public class ScholardexEdgeWriterService {
             }
             edge.setPublicationId(command.leftId());
             edge.setAuthorId(command.rightId());
-            boolean lineageChanged = created || isAuthorshipLineageChanged(edge, command);
+            boolean lineageChanged = created || isLineageChanged(edge, command);
             if (lineageChanged) {
                 applyLineage(edge, command, now);
             }
@@ -274,14 +275,7 @@ public class ScholardexEdgeWriterService {
         }
         edge.setAuthorId(command.leftId());
         edge.setAffiliationId(command.rightId());
-        edge.setSource(command.source());
-        edge.setSourceRecordId(command.sourceRecordId());
-        edge.setSourceEventId(command.sourceEventId());
-        edge.setSourceBatchId(command.sourceBatchId());
-        edge.setSourceCorrelationId(command.sourceCorrelationId());
-        edge.setLinkState(command.linkState());
-        edge.setLinkReason(command.linkReason());
-        edge.setUpdatedAt(now);
+        applyLineage(edge, command, now);
         authorAffiliationFactRepository.save(edge);
 
         ScholardexSourceLinkService.SourceLinkWriteResult sourceLinkResult = writeSourceLink(
@@ -345,14 +339,7 @@ public class ScholardexEdgeWriterService {
         edge.setPublicationId(command.publicationId());
         edge.setAuthorId(command.leftId());
         edge.setAffiliationId(command.rightId());
-        edge.setSource(command.source());
-        edge.setSourceRecordId(command.sourceRecordId());
-        edge.setSourceEventId(command.sourceEventId());
-        edge.setSourceBatchId(command.sourceBatchId());
-        edge.setSourceCorrelationId(command.sourceCorrelationId());
-        edge.setLinkState(command.linkState());
-        edge.setLinkReason(command.linkReason());
-        edge.setUpdatedAt(now);
+        applyLineage(edge, command, now);
         publicationAuthorAffiliationFactRepository.save(edge);
 
         ScholardexSourceLinkService.SourceLinkWriteResult sourceLinkResult = writeSourceLink(
@@ -447,14 +434,7 @@ public class ScholardexEdgeWriterService {
             }
             edge.setAuthorId(command.leftId());
             edge.setAffiliationId(command.rightId());
-            edge.setSource(command.source());
-            edge.setSourceRecordId(command.sourceRecordId());
-            edge.setSourceEventId(command.sourceEventId());
-            edge.setSourceBatchId(command.sourceBatchId());
-            edge.setSourceCorrelationId(command.sourceCorrelationId());
-            edge.setLinkState(command.linkState());
-            edge.setLinkReason(command.linkReason());
-            edge.setUpdatedAt(now);
+            applyLineage(edge, command, now);
 
             working.put(key, edge);
             pendingSaves.put(key, edge);
@@ -593,16 +573,9 @@ public class ScholardexEdgeWriterService {
             edge.setPublicationId(command.publicationId());
             edge.setAuthorId(command.leftId());
             edge.setAffiliationId(command.rightId());
-            boolean lineageChanged = created || isPublicationAuthorAffiliationLineageChanged(edge, command);
+            boolean lineageChanged = created || isLineageChanged(edge, command);
             if (lineageChanged) {
-                edge.setSource(command.source());
-                edge.setSourceRecordId(command.sourceRecordId());
-                edge.setSourceEventId(command.sourceEventId());
-                edge.setSourceBatchId(command.sourceBatchId());
-                edge.setSourceCorrelationId(command.sourceCorrelationId());
-                edge.setLinkState(command.linkState());
-                edge.setLinkReason(command.linkReason());
-                edge.setUpdatedAt(now);
+                applyLineage(edge, command, now);
             }
             working.put(key, edge);
             if (created) {
@@ -751,7 +724,7 @@ public class ScholardexEdgeWriterService {
         );
     }
 
-    private void applyLineage(ScholardexAuthorshipFact edge, EdgeWriteCommand command, Instant now) {
+    private void applyLineage(HasEdgeLineageFields edge, EdgeWriteCommand command, Instant now) {
         edge.setSource(command.source());
         edge.setSourceRecordId(command.sourceRecordId());
         edge.setSourceEventId(command.sourceEventId());
@@ -762,19 +735,7 @@ public class ScholardexEdgeWriterService {
         edge.setUpdatedAt(now);
     }
 
-    private boolean isAuthorshipLineageChanged(ScholardexAuthorshipFact edge, EdgeWriteCommand command) {
-        return !Objects.equals(edge.getSourceRecordId(), command.sourceRecordId())
-                || !Objects.equals(edge.getSourceEventId(), command.sourceEventId())
-                || !Objects.equals(edge.getSourceBatchId(), command.sourceBatchId())
-                || !Objects.equals(edge.getSourceCorrelationId(), command.sourceCorrelationId())
-                || !Objects.equals(edge.getLinkState(), command.linkState())
-                || !Objects.equals(edge.getLinkReason(), command.linkReason());
-    }
-
-    private boolean isPublicationAuthorAffiliationLineageChanged(
-            ScholardexPublicationAuthorAffiliationFact edge,
-            EdgeWriteCommand command
-    ) {
+    private boolean isLineageChanged(HasEdgeLineageFields edge, EdgeWriteCommand command) {
         return !Objects.equals(edge.getSourceRecordId(), command.sourceRecordId())
                 || !Objects.equals(edge.getSourceEventId(), command.sourceEventId())
                 || !Objects.equals(edge.getSourceBatchId(), command.sourceBatchId())

@@ -16,7 +16,7 @@ import java.util.Locale;
 import java.util.Set;
 
 @Component
-public class GovAisRisImportEventParser implements WosImportEventParser {
+public class GovAisRisImportEventParser extends AbstractWosImportEventParser {
     private final ObjectMapper objectMapper;
 
     public GovAisRisImportEventParser(ObjectMapper objectMapper) {
@@ -239,62 +239,6 @@ public class GovAisRisImportEventParser implements WosImportEventParser {
     private String normalizeCategory(String rawCategory) {
         String category = normalizeText(rawCategory);
         return isBlank(category) ? null : category;
-    }
-
-    private Double parseMetricValue(String rawValue) {
-        String value = normalizeText(rawValue);
-        if (isBlank(value)) {
-            return null;
-        }
-        try {
-            Double parsed = Double.parseDouble(value.replace(",", "."));
-            if (parsed <= -999.0) {
-                return null;
-            }
-            return WosCanonicalContractSupport.normalizeMetricValue(parsed);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private Integer parseInt(String raw) {
-        String value = normalizeText(raw);
-        if (isBlank(value)) {
-            return null;
-        }
-        try {
-            return Integer.parseInt(value);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private String normalizeIssn(String rawIssn) {
-        String v = normalizeText(rawIssn);
-        if (isBlank(v) || "N/A".equalsIgnoreCase(v)) {
-            return null;
-        }
-        return WosCanonicalContractSupport.normalizeIssnToken(v);
-    }
-
-    private String text(JsonNode node, String field) {
-        JsonNode value = node == null ? null : node.path(field);
-        if (value == null || value.isMissingNode() || value.isNull()) {
-            return null;
-        }
-        return value.asText();
-    }
-
-    private String normalizeText(String value) {
-        if (value == null) {
-            return null;
-        }
-        String normalized = value.trim();
-        return normalized.isBlank() ? null : normalized;
-    }
-
-    private boolean isBlank(String value) {
-        return value == null || value.isBlank();
     }
 
     private static final class ParsedRow {

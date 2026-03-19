@@ -12,7 +12,7 @@ import java.util.List;
 @Data
 @Document(collection = "scopus.publication_facts")
 @CompoundIndex(name = "uniq_scopus_publication_fact_eid", def = "{'eid': 1}", unique = true)
-public class ScopusPublicationFact {
+public class ScopusPublicationFact implements HasLineageFields {
     @Id
     private String id;
     private String doi;

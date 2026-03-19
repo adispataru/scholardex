@@ -12,7 +12,7 @@ import java.util.List;
 @Data
 @Document(collection = "user_defined.publication_facts")
 @CompoundIndex(name = "uniq_user_defined_publication_source_record_id", def = "{'sourceRecordId': 1}", unique = true)
-public class UserDefinedPublicationFact {
+public class UserDefinedPublicationFact implements HasLineageFields, HasReviewFields {
     @Id
     private String id;
     private String source;

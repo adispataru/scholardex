@@ -20,6 +20,7 @@ import ro.uvt.pokedex.core.service.application.UserDefinedMaintenanceOrchestrati
 import ro.uvt.pokedex.core.service.application.WosBigBangMigrationService;
 import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
+import ro.uvt.pokedex.core.service.importing.model.MigrationStepResult;
 
 import java.time.Instant;
 import java.util.List;
@@ -450,7 +451,7 @@ class AdminInitializationControllerContractTest {
     @Test
     void ingestWosRedirectsToInitializationPage() throws Exception {
         when(rankingMaintenanceFacade.ingestWosEvents(eq("v2026")))
-                .thenReturn(new WosBigBangMigrationService.MigrationStepResult(
+                .thenReturn(new MigrationStepResult(
                         "ingest",
                         true,
                         100,
@@ -460,6 +461,7 @@ class AdminInitializationControllerContractTest {
                         0,
                         null,
                         List.of(),
+                        null,
                         null,
                         null,
                         null,
@@ -487,7 +489,7 @@ class AdminInitializationControllerContractTest {
     @Test
     void buildWosFactsRedirectsToInitializationPage() throws Exception {
         when(rankingMaintenanceFacade.buildWosFactsFromEvents(eq(200), eq("v2026"), eq(true)))
-                .thenReturn(new WosBigBangMigrationService.MigrationStepResult(
+                .thenReturn(new MigrationStepResult(
                         "build-facts",
                         true,
                         1000,
@@ -500,6 +502,7 @@ class AdminInitializationControllerContractTest {
                         200,
                         205,
                         6,
+                        null,
                         true,
                         199
                 ));
