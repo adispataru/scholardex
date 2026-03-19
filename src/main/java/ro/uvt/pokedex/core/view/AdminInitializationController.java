@@ -19,6 +19,7 @@ import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.ScopusBigBangMigrationService;
 import ro.uvt.pokedex.core.service.application.UserDefinedMaintenanceOrchestrationService;
 import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
+import ro.uvt.pokedex.core.service.importing.model.MigrationStepResult;
 
 import java.util.List;
 
@@ -736,7 +737,7 @@ public class AdminInitializationController {
         return "redirect:/admin/initialization";
     }
 
-    private String formatWosStep(String label, ro.uvt.pokedex.core.service.application.WosBigBangMigrationService.MigrationStepResult step) {
+    private String formatWosStep(String label, MigrationStepResult step) {
         String checkpointInfo = "";
         if (step.startBatch() != null || step.endBatch() != null || step.batchesProcessed() != null) {
             checkpointInfo = ", startBatch=" + step.startBatch()
@@ -753,7 +754,7 @@ public class AdminInitializationController {
                 + checkpointInfo + "].";
     }
 
-    private String formatScopusStep(String label, ScopusBigBangMigrationService.MigrationStepResult step) {
+    private String formatScopusStep(String label, MigrationStepResult step) {
         if (step == null) {
             return label + "[not-run].";
         }

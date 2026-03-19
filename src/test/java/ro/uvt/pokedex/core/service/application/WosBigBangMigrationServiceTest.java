@@ -15,6 +15,7 @@ import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosScoringViewRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
+import ro.uvt.pokedex.core.service.importing.model.MigrationStepResult;
 import ro.uvt.pokedex.core.service.importing.wos.WosFactBuilderService;
 import ro.uvt.pokedex.core.service.importing.wos.WosImportEventIngestionService;
 import ro.uvt.pokedex.core.service.importing.wos.WosImportEventParserOrchestrator;
@@ -177,7 +178,7 @@ class WosBigBangMigrationServiceTest {
         enrichmentResult.markUpdated();
         when(factBuilderService.enrichMissingCategoryRankingFields()).thenReturn(enrichmentResult);
 
-        WosBigBangMigrationService.MigrationStepResult step = service.runEnrichCategoryRankingsStep();
+        MigrationStepResult step = service.runEnrichCategoryRankingsStep();
 
         assertTrue(step.executed());
         assertEquals(1, step.processed());

@@ -32,6 +32,7 @@ import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.WosBigBangMigrationService;
 import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
+import ro.uvt.pokedex.core.service.importing.model.MigrationStepResult;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsViewModel;
 
@@ -153,14 +154,14 @@ class AdminViewControllerContractTest {
                         "v2026",
                         java.time.Instant.now(),
                         java.time.Instant.now(),
-                        new WosBigBangMigrationService.MigrationStepResult("ingest", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
-                                null, null, null, null, null),
-                        new WosBigBangMigrationService.MigrationStepResult("facts", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
-                                null, null, null, null, null),
-                        new WosBigBangMigrationService.MigrationStepResult("enrichment", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
-                                null, null, null, null, null),
-                        new WosBigBangMigrationService.MigrationStepResult("projections", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
-                                null, null, null, null, null),
+                        new MigrationStepResult("ingest", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
+                                null, null, null, null, null, null),
+                        new MigrationStepResult("facts", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
+                                null, null, null, null, null, null),
+                        new MigrationStepResult("enrichment", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
+                                null, null, null, null, null, null),
+                        new MigrationStepResult("projections", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
+                                null, null, null, null, null, null),
                         new WosBigBangMigrationService.VerificationSummary(
                                 0, 0, 0, 0, 0, 0,
                                 0, 0, 0, 0, List.of(),

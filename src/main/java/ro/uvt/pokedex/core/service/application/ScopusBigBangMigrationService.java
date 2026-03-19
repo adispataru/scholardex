@@ -37,6 +37,7 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusImportEventReposito
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
 import ro.uvt.pokedex.core.service.importing.ScopusDataService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
+import ro.uvt.pokedex.core.service.importing.model.MigrationStepResult;
 import ro.uvt.pokedex.core.service.importing.scopus.CanonicalBuildOptions;
 import ro.uvt.pokedex.core.service.importing.scopus.ScholardexAffiliationCanonicalizationService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationService;
@@ -286,44 +287,6 @@ public class ScopusBigBangMigrationService {
             IndexStepResult ensureIndexes,
             VerificationSummary verification
     ) {
-    }
-
-    public record MigrationStepResult(
-            String stepName,
-            boolean executed,
-            int processed,
-            int imported,
-            int updated,
-            int skipped,
-            int errors,
-            String note,
-            List<String> samples,
-            Integer startBatch,
-            Integer endBatch,
-            Integer batchesProcessed,
-            Integer totalBatches,
-            Boolean resumedFromCheckpoint,
-            Integer checkpointLastCompletedBatch
-    ) {
-        static MigrationStepResult executed(String stepName, ImportProcessingResult result) {
-            return new MigrationStepResult(
-                    stepName,
-                    true,
-                    result.getProcessedCount(),
-                    result.getImportedCount(),
-                    result.getUpdatedCount(),
-                    result.getSkippedCount(),
-                    result.getErrorCount(),
-                    null,
-                    result.getErrorsSample(),
-                    result.getStartBatch(),
-                    result.getEndBatch(),
-                    result.getBatchesProcessed(),
-                    result.getTotalBatches(),
-                    result.getResumedFromCheckpoint(),
-                    result.getCheckpointLastCompletedBatch()
-            );
-        }
     }
 
     public record IndexStepResult(

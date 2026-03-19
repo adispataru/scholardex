@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
+import ro.uvt.pokedex.core.service.importing.model.MigrationStepResult;
 import ro.uvt.pokedex.core.service.importing.wos.WosProjectionBuilderService;
 
 import java.util.List;
@@ -80,14 +81,14 @@ class RankingMaintenanceFacadeTest {
                         "v2026",
                         java.time.Instant.now(),
                         java.time.Instant.now(),
-                        new WosBigBangMigrationService.MigrationStepResult("ingest", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
-                                null, null, null, null, null),
-                        new WosBigBangMigrationService.MigrationStepResult("facts", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
-                                null, null, null, null, null),
-                        new WosBigBangMigrationService.MigrationStepResult("enrichment", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
-                                null, null, null, null, null),
-                        new WosBigBangMigrationService.MigrationStepResult("proj", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
-                                null, null, null, null, null),
+                        new MigrationStepResult("ingest", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
+                                null, null, null, null, null, null),
+                        new MigrationStepResult("facts", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
+                                null, null, null, null, null, null),
+                        new MigrationStepResult("enrichment", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
+                                null, null, null, null, null, null),
+                        new MigrationStepResult("proj", false, 0, 0, 0, 0, 0, "dry-run", List.of(),
+                                null, null, null, null, null, null),
                         new WosBigBangMigrationService.VerificationSummary(
                                 0, 0, 0, 0, 0, 0,
                                 0, 0, 0, 0, List.of(),
@@ -112,8 +113,8 @@ class RankingMaintenanceFacadeTest {
 
     @Test
     void buildWosFactsFromEventsDelegatesToMigrationService() {
-        WosBigBangMigrationService.MigrationStepResult expected =
-                new WosBigBangMigrationService.MigrationStepResult(
+        MigrationStepResult expected =
+                new MigrationStepResult(
                         "build-facts",
                         true,
                         10,
@@ -126,12 +127,13 @@ class RankingMaintenanceFacadeTest {
                         200,
                         204,
                         5,
+                        null,
                         true,
                         199
                 );
         when(wosBigBangMigrationService.runBuildFactsStep(200, "v2026", true)).thenReturn(expected);
 
-        WosBigBangMigrationService.MigrationStepResult result =
+        MigrationStepResult result =
                 facade.buildWosFactsFromEvents(200, "v2026", true);
 
         verify(wosBigBangMigrationService).runBuildFactsStep(200, "v2026", true);
@@ -140,8 +142,8 @@ class RankingMaintenanceFacadeTest {
 
     @Test
     void enrichWosCategoryRankingsDelegatesToMigrationService() {
-        WosBigBangMigrationService.MigrationStepResult expected =
-                new WosBigBangMigrationService.MigrationStepResult(
+        MigrationStepResult expected =
+                new MigrationStepResult(
                         "enrich-category-rankings",
                         true,
                         10,
@@ -155,11 +157,12 @@ class RankingMaintenanceFacadeTest {
                         null,
                         null,
                         null,
+                        null,
                         null
                 );
         when(wosBigBangMigrationService.runEnrichCategoryRankingsStep()).thenReturn(expected);
 
-        WosBigBangMigrationService.MigrationStepResult result = facade.enrichWosCategoryRankings();
+        MigrationStepResult result = facade.enrichWosCategoryRankings();
 
         verify(wosBigBangMigrationService).runEnrichCategoryRankingsStep();
         org.junit.jupiter.api.Assertions.assertSame(expected, result);
@@ -167,8 +170,8 @@ class RankingMaintenanceFacadeTest {
 
     @Test
     void runWosCategoryRankingEnrichmentWithSummaryMapsCountersDeterministically() {
-        WosBigBangMigrationService.MigrationStepResult step =
-                new WosBigBangMigrationService.MigrationStepResult(
+        MigrationStepResult step =
+                new MigrationStepResult(
                         "enrich-category-rankings",
                         true,
                         100,
@@ -178,6 +181,7 @@ class RankingMaintenanceFacadeTest {
                         5,
                         null,
                         List.of(),
+                        null,
                         null,
                         null,
                         null,
@@ -200,8 +204,8 @@ class RankingMaintenanceFacadeTest {
 
     @Test
     void latestWosCategoryRankingEnrichmentSummaryReturnsLastRunSummary() {
-        WosBigBangMigrationService.MigrationStepResult step =
-                new WosBigBangMigrationService.MigrationStepResult(
+        MigrationStepResult step =
+                new MigrationStepResult(
                         "enrich-category-rankings",
                         true,
                         10,
@@ -211,6 +215,7 @@ class RankingMaintenanceFacadeTest {
                         0,
                         null,
                         List.of(),
+                        null,
                         null,
                         null,
                         null,
@@ -231,8 +236,8 @@ class RankingMaintenanceFacadeTest {
 
     @Test
     void ingestWosEventsDelegatesToMigrationService() {
-        WosBigBangMigrationService.MigrationStepResult expected =
-                new WosBigBangMigrationService.MigrationStepResult(
+        MigrationStepResult expected =
+                new MigrationStepResult(
                         "ingest",
                         true,
                         10,
@@ -246,11 +251,12 @@ class RankingMaintenanceFacadeTest {
                         null,
                         null,
                         null,
+                        null,
                         null
                 );
         when(wosBigBangMigrationService.runIngestStep("v2026")).thenReturn(expected);
 
-        WosBigBangMigrationService.MigrationStepResult result = facade.ingestWosEvents("v2026");
+        MigrationStepResult result = facade.ingestWosEvents("v2026");
 
         verify(wosBigBangMigrationService).runIngestStep("v2026");
         org.junit.jupiter.api.Assertions.assertSame(expected, result);

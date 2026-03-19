@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
+import ro.uvt.pokedex.core.service.importing.model.MigrationStepResult;
 import ro.uvt.pokedex.core.service.importing.wos.WosProjectionBuilderService;
 
 import java.time.Instant;
@@ -57,11 +58,11 @@ public class RankingMaintenanceFacade {
         wosBigBangMigrationService.resetFactBuildCheckpoint();
     }
 
-    public WosBigBangMigrationService.MigrationStepResult ingestWosEvents(String sourceVersionOverride) {
+    public MigrationStepResult ingestWosEvents(String sourceVersionOverride) {
         return wosBigBangMigrationService.runIngestStep(sourceVersionOverride);
     }
 
-    public WosBigBangMigrationService.MigrationStepResult buildWosFactsFromEvents(
+    public MigrationStepResult buildWosFactsFromEvents(
             Integer startBatchOverride,
             String sourceVersionOverride,
             boolean useCheckpoint
@@ -69,7 +70,7 @@ public class RankingMaintenanceFacade {
         return wosBigBangMigrationService.runBuildFactsStep(startBatchOverride, sourceVersionOverride, useCheckpoint);
     }
 
-    public WosBigBangMigrationService.MigrationStepResult enrichWosCategoryRankings() {
+    public MigrationStepResult enrichWosCategoryRankings() {
         return executeAndTrackWosCategoryEnrichment().step();
     }
 
@@ -88,7 +89,7 @@ public class RankingMaintenanceFacade {
     private synchronized EnrichmentExecution executeAndTrackWosCategoryEnrichment() {
         Instant startedAt = Instant.now();
         log.info("WoS category ranking enrichment started: startedAt={}", startedAt);
-        WosBigBangMigrationService.MigrationStepResult step = wosBigBangMigrationService.runEnrichCategoryRankingsStep();
+        MigrationStepResult step = wosBigBangMigrationService.runEnrichCategoryRankingsStep();
         Instant completedAt = Instant.now();
         WosEnrichmentRunSummaryDto summary = WosEnrichmentRunSummaryDto.fromStep(step, startedAt, completedAt);
         log.info(
@@ -106,7 +107,7 @@ public class RankingMaintenanceFacade {
     }
 
     private record EnrichmentExecution(
-            WosBigBangMigrationService.MigrationStepResult step,
+            MigrationStepResult step,
             WosEnrichmentRunSummaryDto summary
     ) {
     }
