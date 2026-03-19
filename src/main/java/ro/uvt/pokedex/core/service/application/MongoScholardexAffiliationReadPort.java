@@ -13,14 +13,11 @@ import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationPageResponse;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class MongoScholardexAffiliationReadPort implements ScholardexAffiliationReadPort {
-
-    private static final int MAX_QUERY_LENGTH = 100;
 
     private final MongoTemplate mongoTemplate;
 
@@ -85,24 +82,10 @@ public class MongoScholardexAffiliationReadPort implements ScholardexAffiliation
     }
 
     private Sort.Direction normalizeDirection(String direction) {
-        String normalized = direction == null ? "" : direction.trim().toLowerCase(Locale.ROOT);
-        if (!normalized.equals("asc") && !normalized.equals("desc")) {
-            throw new IllegalArgumentException("Invalid direction parameter. Allowed: asc, desc.");
-        }
-        return Sort.Direction.fromString(normalized);
+        return Sort.Direction.fromString(QueryNormalizationSupport.normalizeDirection(direction));
     }
 
     private String normalizeQuery(String q) {
-        if (q == null) {
-            return null;
-        }
-        String normalized = q.trim();
-        if (normalized.isEmpty()) {
-            return null;
-        }
-        if (normalized.length() > MAX_QUERY_LENGTH) {
-            throw new IllegalArgumentException("Invalid q parameter. Maximum length is " + MAX_QUERY_LENGTH + ".");
-        }
-        return normalized;
+        return QueryNormalizationSupport.normalizeQuery(q);
     }
 }

@@ -9,14 +9,11 @@ import ro.uvt.pokedex.core.controller.dto.ScopusForumListItemResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusForumPageResponse;
 
 import java.util.List;
-import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "spring.datasource.url")
 public class PostgresScholardexForumReadPort implements ScholardexForumReadPort {
-
-    private static final int MAX_QUERY_LENGTH = 100;
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
@@ -76,31 +73,14 @@ public class PostgresScholardexForumReadPort implements ScholardexForumReadPort 
     }
 
     private String normalizeDirection(String direction) {
-        String normalized = direction == null ? "" : direction.trim().toLowerCase(Locale.ROOT);
-        if (!normalized.equals("asc") && !normalized.equals("desc")) {
-            throw new IllegalArgumentException("Invalid direction parameter. Allowed: asc, desc.");
-        }
-        return normalized.toUpperCase(Locale.ROOT);
+        return QueryNormalizationSupport.normalizeDirection(direction).toUpperCase(java.util.Locale.ROOT);
     }
 
     private String normalizeQuery(String q) {
-        if (q == null) {
-            return null;
-        }
-        String normalized = q.trim();
-        if (normalized.isEmpty()) {
-            return null;
-        }
-        if (normalized.length() > MAX_QUERY_LENGTH) {
-            throw new IllegalArgumentException("Invalid q parameter. Maximum length is " + MAX_QUERY_LENGTH + ".");
-        }
-        return normalized;
+        return QueryNormalizationSupport.normalizeQuery(q);
     }
 
     private String escapeLikePattern(String value) {
-        return value
-                .replace("\\", "\\\\")
-                .replace("%", "\\%")
-                .replace("_", "\\_");
+        return QueryNormalizationSupport.escapeLikePattern(value);
     }
 }

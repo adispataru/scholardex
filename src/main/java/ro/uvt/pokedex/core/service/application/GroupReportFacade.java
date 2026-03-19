@@ -379,14 +379,7 @@ public class GroupReportFacade {
     }
 
     private double calculatePublicationScore(Indicator indicator, List<Author> authors, List<Publication> publications) {
-        List<Publication> filteredPublications = publications;
-        if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR)) {
-            filteredPublications = publications.stream().filter(p -> authors.stream().anyMatch(a -> a.getId().equals(p.getAuthors().getFirst()))).collect(Collectors.toList());
-        } else if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_COAUTHOR)) {
-            filteredPublications = publications.stream().filter(p -> authors.stream().noneMatch(a -> a.getId().equals(p.getAuthors().getFirst()))).collect(Collectors.toList());
-        }
-        Map<String, Score> scores = scientificProductionService.calculateScientificProductionScore(filteredPublications, indicator);
-        return scores.get("total").getAuthorScore();
+        return ReportingComputationSupport.calculatePublicationScore(indicator, authors, publications, scientificProductionService);
     }
 
     private CitationScoreResult calculateCitationScore(
@@ -433,49 +426,7 @@ public class GroupReportFacade {
     }
 
     private void applyFinalSelector(Indicator indicator, Map<String, Map<String, Score>> scores) {
-        if (indicator.getSelector() != null && indicator.getSelector().equals(Indicator.Selector.TOP_10)) {
-            Map<String, Score> topScores = new HashMap<>();
-            scores.forEach((k, v) -> topScores.putAll(v));
-            List<String> top10 = topScores.entrySet().stream()
-                    .filter(x -> !x.getKey().equals("total"))
-                    .sorted(Map.Entry.<String, Score>comparingByValue(Comparator.comparingDouble(Score::getAuthorScore)).reversed())
-                    .limit(10)
-                    .map(Map.Entry::getKey)
-                    .toList();
-            Map<String, Integer> top10IndexByTitle = new HashMap<>();
-            for (int i = 0; i < top10.size(); i++) {
-                top10IndexByTitle.putIfAbsent(top10.get(i), i);
-            }
-            boolean[] used = new boolean[top10.size()];
-            for (String key : scores.keySet()) {
-                Iterator<String> titleIterator = scores.get(key).keySet().iterator();
-
-                while (titleIterator.hasNext()) {
-                    String title = titleIterator.next();
-                    if (title.equals("total")) {
-                        continue;
-                    }
-                    Integer top10Index = top10IndexByTitle.get(title);
-                    if (top10Index == null || used[top10Index]) {
-                        titleIterator.remove();
-                    }
-                    if (top10Index != null) {
-                        used[top10Index] = true;
-                    }
-                }
-                double totalA = 0.0;
-                double totalF = 0.0;
-                scores.get(key).remove("total");
-                for (Score score : scores.get(key).values()) {
-                    totalA += score.getAuthorScore();
-                    totalF += score.getScore();
-                }
-                Score score = new Score();
-                score.setScore(totalF);
-                score.setAuthorScore(totalA);
-                scores.get(key).put("total", score);
-            }
-        }
+        ReportingComputationSupport.applyFinalSelector(indicator, scores);
     }
 
     private String researcherDisplayName(Researcher researcher) {
