@@ -45,7 +45,6 @@ public abstract class AbstractWoSForumScoringService extends AbstractForumScorin
                             if (points.get().getCategory() != null) {
                                 result.bestCategory.set(CoreConferenceRanking.Rank.valueOf(points.get().getCategory()));
                             }
-//                            result.bestQuarter.set(getBestQuarter(ranking));
                             result.bestQuarter.set(WoSRanking.Quarter.valueOf(points.get().getQuarter()));
                             result.bestYear.set(year);
                             result.extra.putAll(points.get().getExtra());
