@@ -2,9 +2,12 @@ package ro.uvt.pokedex.core.service.application;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -136,6 +139,40 @@ class ScholardexCutoverGuardrailTest {
                 "Scheduler citations flow must emit citation edge events.");
         assertFalse(content.contains("citationPayload.put(\"citingItem\""),
                 "Scheduler citation payload must remain edge-only.");
+    }
+
+    @Test
+    void serviceApplicationLayerHasNoMongoReadAdapters() throws Exception {
+        // After H22.6 all Mongo read adapters were deleted. This guardrail has two purposes:
+        //
+        // 1. "class Mongo" check — prevents re-introduction of Mongo*ReadPort adapter classes.
+        //    Active services that use MongoTemplate for writes or for rankings not yet migrated
+        //    (e.g. ScholardexEdgeWriterService, CoreRankingQueryService) are not named "Mongo*"
+        //    and are therefore unaffected.
+        //
+        // 2. "Mongo callers" check — prevents stale Javadoc hints that reference a Mongo caller
+        //    path that no longer exists (the exact pattern that survived the H22.6 cleanup).
+        Path serviceRoot = Path.of("src/main/java/ro/uvt/pokedex/core/service/application");
+        List<String> violations = new ArrayList<>();
+        try (var paths = Files.walk(serviceRoot)) {
+            paths.filter(p -> p.toString().endsWith(".java"))
+                    .forEach(file -> {
+                        try {
+                            String content = Files.readString(file);
+                            if (content.contains("class Mongo")) {
+                                violations.add("Mongo adapter class declaration in: " + file);
+                            }
+                            if (content.contains("Mongo callers")) {
+                                violations.add("Stale 'Mongo callers' Javadoc hint in: " + file);
+                            }
+                        } catch (IOException e) {
+                            throw new UncheckedIOException(e);
+                        }
+                    });
+        }
+        assertTrue(violations.isEmpty(),
+                "Service application layer must not contain Mongo read adapter classes or stale Javadoc:\n"
+                        + String.join("\n", violations));
     }
 
     @Test

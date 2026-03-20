@@ -22,8 +22,7 @@ public final class QueryNormalizationSupport {
 
     /**
      * Validates direction and returns it lowercase ("asc" or "desc").
-     * Mongo callers: wrap with {@code Sort.Direction.fromString(...)}.
-     * Postgres callers: append {@code .toUpperCase(Locale.ROOT)}.
+     * Callers may append {@code .toUpperCase(Locale.ROOT)} for use in a JDBC ORDER BY clause.
      */
     public static String normalizeDirection(String direction) {
         String normalized = direction == null ? "" : direction.trim().toLowerCase(Locale.ROOT);
