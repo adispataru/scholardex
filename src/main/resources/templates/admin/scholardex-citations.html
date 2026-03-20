@@ -131,25 +131,6 @@
 <!-- Page level custom scripts -->
 <script src="/js/demo/datatables-demo.js"></script>
 
-<script>
-    function triggerScrape() {
-        var userId = document.getElementsByName('researcherId')[0].value; // Get the userId from hidden input
-        $.post('/api/scrape/papers', { researcherId: userId }, function(data) {
-            $('#scrape-result').text(data.message); // Display the response message
-        }).fail(function() {
-            $('#scrape-result').text('An error occurred while trying to start the scraping task.');
-        });
-    }
-
-    function triggerScrapeCitations() {
-        var userId = document.getElementsByName('researcherId')[0].value; // Get the userId from hidden input
-        $.post('/api/scrape/citations', { researcherId: userId }, function(data) {
-            $('#scrape-cit-result').text(data.message); // Display the response message
-        }).fail(function() {
-            $('#scrape-cit-result').text('An error occurred while trying to start the scraping task.');
-        });
-    }
-</script>
 
 </body>
 </html>
