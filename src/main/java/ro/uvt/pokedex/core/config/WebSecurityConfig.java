@@ -62,7 +62,6 @@ public class WebSecurityConfig {
                     ahr.requestMatchers("/api/rankings/core/**", "/api/rankings/urap/**").authenticated();
                     ahr.requestMatchers("/api/scopus/forums/**").authenticated();
                     ahr.requestMatchers("/api/scopus/authors/**", "/api/scopus/affiliations/**").authenticated();
-                    ahr.requestMatchers("/api/scrape", "/api/scrape/**").hasAuthority("PLATFORM_ADMIN");
                     ahr.requestMatchers("/researcher/**").hasAuthority("RESEARCHER");
                     ahr.requestMatchers("/api/supervisor/**").hasAuthority("SUPERVISOR");
                     ahr.anyRequest().authenticated();
