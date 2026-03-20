@@ -7,7 +7,7 @@ import ro.uvt.pokedex.core.model.scopus.Publication;
 import java.util.List;
 import java.util.Map;
 
-public record AdminScopusCitationsViewModel(
+public record ScholardexCitationsView(
         Publication publication,
         Forum publicationForum,
         List<Publication> citations,

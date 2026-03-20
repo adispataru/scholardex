@@ -15,7 +15,7 @@ import java.util.Set;
 @Service
 @Primary
 @RequiredArgsConstructor
-public class SwitchableReportingLookupFacade implements ReportingLookupPort {
+public class ReportingLookupFacade implements ReportingLookupPort {
 
     private final ObjectProvider<PostgresReportingLookupFacade> postgresFacadeProvider;
 

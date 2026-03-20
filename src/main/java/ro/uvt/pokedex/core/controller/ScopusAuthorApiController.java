@@ -3,6 +3,7 @@ package ro.uvt.pokedex.core.controller;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ro.uvt.pokedex.core.controller.dto.ScopusAuthorPageResponse;
-import ro.uvt.pokedex.core.service.application.ScholardexAuthorQueryService;
+import ro.uvt.pokedex.core.service.application.PostgresScholardexAuthorReadPort;
 
 @RestController
 @Validated
@@ -18,7 +19,7 @@ import ro.uvt.pokedex.core.service.application.ScholardexAuthorQueryService;
 @RequiredArgsConstructor
 public class ScopusAuthorApiController {
 
-    private final ScholardexAuthorQueryService scholardexAuthorQueryService;
+    private final ObjectProvider<PostgresScholardexAuthorReadPort> postgresScholardexAuthorReadPortProvider;
 
     @GetMapping("/authors")
     public ResponseEntity<ScopusAuthorPageResponse> listScopusAuthors(
@@ -29,6 +30,10 @@ public class ScopusAuthorApiController {
             @RequestParam(defaultValue = "asc") String direction,
             @RequestParam(required = false) String q
     ) {
-        return ResponseEntity.ok(scholardexAuthorQueryService.search(afid, page, size, sort, direction, q));
+        PostgresScholardexAuthorReadPort port = postgresScholardexAuthorReadPortProvider.getIfAvailable();
+        if (port == null) {
+            throw new IllegalStateException("Postgres author read port is not available.");
+        }
+        return ResponseEntity.ok(port.search(afid, page, size, sort, direction, q));
     }
 }

@@ -3,6 +3,7 @@ package ro.uvt.pokedex.core.controller;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationPageResponse;
-import ro.uvt.pokedex.core.service.application.ScholardexAffiliationQueryService;
+import ro.uvt.pokedex.core.service.application.PostgresScholardexAffiliationReadPort;
 
 @RestController
 @Validated
@@ -18,7 +19,7 @@ import ro.uvt.pokedex.core.service.application.ScholardexAffiliationQueryService
 @RequiredArgsConstructor
 public class ScopusAffiliationApiController {
 
-    private final ScholardexAffiliationQueryService scholardexAffiliationQueryService;
+    private final ObjectProvider<PostgresScholardexAffiliationReadPort> postgresScholardexAffiliationReadPortProvider;
 
     @GetMapping("/affiliations")
     public ResponseEntity<ScopusAffiliationPageResponse> listScopusAffiliations(
@@ -28,6 +29,10 @@ public class ScopusAffiliationApiController {
             @RequestParam(defaultValue = "asc") String direction,
             @RequestParam(required = false) String q
     ) {
-        return ResponseEntity.ok(scholardexAffiliationQueryService.search(page, size, sort, direction, q));
+        PostgresScholardexAffiliationReadPort port = postgresScholardexAffiliationReadPortProvider.getIfAvailable();
+        if (port == null) {
+            throw new IllegalStateException("Postgres affiliation read port is not available.");
+        }
+        return ResponseEntity.ok(port.search(page, size, sort, direction, q));
     }
 }

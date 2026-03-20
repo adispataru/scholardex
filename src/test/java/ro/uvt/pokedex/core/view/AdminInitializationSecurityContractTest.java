@@ -13,7 +13,6 @@ import ro.uvt.pokedex.core.config.WebSecurityConfig;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.CustomUserDetailsService;
 import ro.uvt.pokedex.core.service.application.GeneralInitializationService;
-import ro.uvt.pokedex.core.service.application.DualReadGateService;
 import ro.uvt.pokedex.core.service.application.H22OperationalStatusService;
 import ro.uvt.pokedex.core.service.application.PostgresMaterializedViewRefreshService;
 import ro.uvt.pokedex.core.service.application.PostgresReportingProjectionService;
@@ -50,8 +49,6 @@ class AdminInitializationSecurityContractTest {
     private PostgresReportingProjectionService postgresReportingProjectionService;
     @MockitoBean
     private PostgresMaterializedViewRefreshService postgresMaterializedViewRefreshService;
-    @MockitoBean
-    private DualReadGateService dualReadGateService;
     @MockitoBean
     private H22OperationalStatusService h22OperationalStatusService;
     @MockitoBean
@@ -187,24 +184,6 @@ class AdminInitializationSecurityContractTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/custom-error?error=403"));
         mockMvc.perform(get("/admin/initialization/postgres/materialized/status")
-                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/custom-error?error=403"));
-    }
-
-    @Test
-    void nonAdminCannotRunPostgresDualReadGateMaintenance() throws Exception {
-        mockMvc.perform(post("/admin/initialization/postgres/dualReadGate/run")
-                        .with(csrf())
-                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/custom-error?error=403"));
-        mockMvc.perform(post("/admin/initialization/postgres/dualReadGate/showStatus")
-                        .with(csrf())
-                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/custom-error?error=403"));
-        mockMvc.perform(get("/admin/initialization/postgres/dualReadGate/status")
                         .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/custom-error?error=403"));

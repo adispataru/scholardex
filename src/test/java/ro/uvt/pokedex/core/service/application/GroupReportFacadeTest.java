@@ -61,8 +61,6 @@ class GroupReportFacadeTest {
     @Mock
     private ScholardexProjectionReadService scholardexProjectionReadService;
     @Mock
-    private ReportingReadStoreSelector reportingReadStoreSelector;
-    @Mock
     private ResearcherAuthorLookupService researcherAuthorLookupService;
     @Mock
     private GroupIndividualReportRunRepository groupIndividualReportRunRepository;
@@ -85,7 +83,6 @@ class GroupReportFacadeTest {
             ((Runnable) invocation.getArgument(0)).run();
             return null;
         }).when(reportingLookupMemoization).withRefreshScope(any(Runnable.class));
-        lenient().when(reportingReadStoreSelector.readStore()).thenReturn(ReportingReadStore.MONGO);
     }
 
     @Test

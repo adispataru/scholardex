@@ -14,11 +14,11 @@ import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.service.CustomUserDetailsService;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.CoreRankingQueryService;
-import ro.uvt.pokedex.core.service.application.ScholardexAffiliationQueryService;
-import ro.uvt.pokedex.core.service.application.ScholardexAuthorQueryService;
-import ro.uvt.pokedex.core.service.application.ScholardexForumQueryService;
+import ro.uvt.pokedex.core.service.application.PostgresScholardexAffiliationReadPort;
+import ro.uvt.pokedex.core.service.application.PostgresScholardexAuthorReadPort;
+import ro.uvt.pokedex.core.service.application.PostgresScholardexForumReadPort;
 import ro.uvt.pokedex.core.service.application.UrapRankingQueryService;
-import ro.uvt.pokedex.core.service.application.WosRankingQueryService;
+import ro.uvt.pokedex.core.service.application.PostgresWosRankingReadPort;
 import ro.uvt.pokedex.core.controller.dto.CoreRankingPageResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationPageResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusAuthorPageResponse;
@@ -60,17 +60,17 @@ class ApiSecurityContractTest {
     @MockitoBean
     private UserService userService;
     @MockitoBean
-    private WosRankingQueryService wosRankingQueryService;
+    private PostgresWosRankingReadPort postgresWosRankingReadPort;
     @MockitoBean
     private CoreRankingQueryService coreRankingQueryService;
     @MockitoBean
     private UrapRankingQueryService urapRankingQueryService;
     @MockitoBean
-    private ScholardexForumQueryService scholardexForumQueryService;
+    private PostgresScholardexForumReadPort postgresScholardexForumReadPort;
     @MockitoBean
-    private ScholardexAuthorQueryService scholardexAuthorQueryService;
+    private PostgresScholardexAuthorReadPort postgresScholardexAuthorReadPort;
     @MockitoBean
-    private ScholardexAffiliationQueryService scholardexAffiliationQueryService;
+    private PostgresScholardexAffiliationReadPort postgresScholardexAffiliationReadPort;
     @MockitoBean
     private PasswordEncoder passwordEncoder;
     @Test
@@ -125,7 +125,7 @@ class ApiSecurityContractTest {
 
     @Test
     void authenticatedNonAdminCanAccessRankingsApi() throws Exception {
-        when(wosRankingQueryService.search(0, 25, "name", "asc", null))
+        when(postgresWosRankingReadPort.search(0, 25, "name", "asc", null))
                 .thenReturn(new WosRankingPageResponse(Collections.emptyList(), 0, 25, 0, 0));
 
         mockMvc.perform(get("/api/rankings/wos")
@@ -219,7 +219,7 @@ class ApiSecurityContractTest {
 
     @Test
     void authenticatedResearcherCanAccessScopusForumsApi() throws Exception {
-        when(scholardexForumQueryService.search(0, 25, "publicationName", "asc", null))
+        when(postgresScholardexForumReadPort.search(0, 25, "publicationName", "asc", null))
                 .thenReturn(new ScopusForumPageResponse(Collections.emptyList(), 0, 25, 0, 0));
 
         mockMvc.perform(get("/api/scopus/forums")
@@ -232,7 +232,7 @@ class ApiSecurityContractTest {
 
     @Test
     void authenticatedSupervisorCanAccessScopusForumsApi() throws Exception {
-        when(scholardexForumQueryService.search(0, 25, "publicationName", "asc", null))
+        when(postgresScholardexForumReadPort.search(0, 25, "publicationName", "asc", null))
                 .thenReturn(new ScopusForumPageResponse(Collections.emptyList(), 0, 25, 0, 0));
 
         mockMvc.perform(get("/api/scopus/forums")
@@ -245,7 +245,7 @@ class ApiSecurityContractTest {
 
     @Test
     void authenticatedAdminCanAccessScopusForumsApi() throws Exception {
-        when(scholardexForumQueryService.search(0, 25, "publicationName", "asc", null))
+        when(postgresScholardexForumReadPort.search(0, 25, "publicationName", "asc", null))
                 .thenReturn(new ScopusForumPageResponse(Collections.emptyList(), 0, 25, 0, 0));
 
         mockMvc.perform(get("/api/scopus/forums")
@@ -269,7 +269,7 @@ class ApiSecurityContractTest {
 
     @Test
     void authenticatedRolesCanAccessScopusAuthorsApi() throws Exception {
-        when(scholardexAuthorQueryService.search(null, 0, 25, "name", "asc", null))
+        when(postgresScholardexAuthorReadPort.search(null, 0, 25, "name", "asc", null))
                 .thenReturn(new ScopusAuthorPageResponse(Collections.emptyList(), 0, 25, 0, 0));
 
         mockMvc.perform(get("/api/scopus/authors")
@@ -304,7 +304,7 @@ class ApiSecurityContractTest {
 
     @Test
     void authenticatedRolesCanAccessScopusAffiliationsApi() throws Exception {
-        when(scholardexAffiliationQueryService.search(0, 25, "name", "asc", null))
+        when(postgresScholardexAffiliationReadPort.search(0, 25, "name", "asc", null))
                 .thenReturn(new ScopusAffiliationPageResponse(Collections.emptyList(), 0, 25, 0, 0));
 
         mockMvc.perform(get("/api/scopus/affiliations")

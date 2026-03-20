@@ -423,53 +423,10 @@
 
                 <div class="card shadow mb-4">
                     <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Postgres Dual-Read Gate (H22.6)</h6>
-                    </div>
-                    <div class="card-body">
-                        <p class="init-card-subtitle">Validation tooling: compare Mongo vs PostgreSQL parity/latency for migrated H22 read scenarios.</p>
-                        <div class="init-action-row mb-3">
-                            <div>Run full dual-read parity/performance gate</div>
-                            <form th:action="@{/admin/initialization/postgres/dualReadGate/run}" method="post">
-                                <button type="submit" class="btn btn-outline-primary btn-sm">Run gate</button>
-                            </form>
-                        </div>
-                        <div class="init-action-row mb-3">
-                            <div>Show latest dual-read gate status</div>
-                            <form th:action="@{/admin/initialization/postgres/dualReadGate/showStatus}" method="post">
-                                <button type="submit" class="btn btn-outline-secondary btn-sm">Show status</button>
-                            </form>
-                        </div>
-                        <div class="small text-muted">
-                            JSON status endpoint: <code>/admin/initialization/postgres/dualReadGate/status</code>
-                        </div>
-                        <div th:if="${dualReadGateLatestRun != null}" class="mt-3 pt-3 border-top">
-                            <div class="small">
-                                <strong>Latest run:</strong>
-                                <span th:text="${dualReadGateLatestRun.runId}"></span>,
-                                status=<span th:text="${dualReadGateLatestRun.status}"></span>,
-                                scenarios=<span th:text="${#lists.size(dualReadGateLatestRun.scenarios)}"></span>,
-                                failed=<span th:text="${#lists.size(dualReadGateFailedScenarios)}"></span>
-                            </div>
-                            <div class="small text-muted" th:if="${dualReadGateLatestRun.errorSample != null and !#strings.isEmpty(dualReadGateLatestRun.errorSample)}">
-                                Error sample: <span th:text="${dualReadGateLatestRun.errorSample}"></span>
-                            </div>
-                            <div th:if="${!#lists.isEmpty(dualReadGateFailedScenarios)}" class="mt-2">
-                                <div class="small font-weight-bold text-danger">Failed scenarios</div>
-                                <ul class="small mb-0 pl-3">
-                                    <li th:each="scenario : ${dualReadGateFailedScenarios}"
-                                        th:text="${scenario.scenarioId + ': ' + (scenario.mismatchSample != null ? scenario.mismatchSample : (scenario.p95ThresholdMs != null ? ('p95Ms=' + #numbers.formatDecimal(scenario.postgresP95Ms, 1, 1) + ', thresholdMs=' + #numbers.formatDecimal(scenario.p95ThresholdMs, 1, 1)) : (scenario.p95Ratio != null ? ('p95Ratio=' + #numbers.formatDecimal(scenario.p95Ratio, 1, 4)) : 'no mismatch sample')))}"></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
                         <h6 class="m-0 font-weight-bold text-primary">H22 Operational Status (H22.7)</h6>
                     </div>
                     <div class="card-body">
-                        <p class="init-card-subtitle">Consolidated health over projection, materialized-view refresh, and dual-read gate components (Postgres-first runtime).</p>
+                        <p class="init-card-subtitle">Consolidated health over projection and materialized-view refresh components (Postgres-first runtime).</p>
                         <div class="init-action-row mb-3">
                             <div>Show consolidated operational status</div>
                             <form th:action="@{/admin/initialization/postgres/operational/showStatus}" method="post">

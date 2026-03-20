@@ -15,7 +15,6 @@ class ScholardexCutoverGuardrailTest {
     @Test
     void projectionBackedReadFacadesDoNotCallLegacyScopusRepositories() throws Exception {
         List<Path> guardedFiles = List.of(
-                Path.of("src/main/java/ro/uvt/pokedex/core/service/application/ScholardexAdminReadFacade.java"),
                 Path.of("src/main/java/ro/uvt/pokedex/core/service/application/UserPublicationFacade.java"),
                 Path.of("src/main/java/ro/uvt/pokedex/core/service/application/AdminInstitutionReportFacade.java"),
                 Path.of("src/main/java/ro/uvt/pokedex/core/service/application/GroupExportFacade.java"),

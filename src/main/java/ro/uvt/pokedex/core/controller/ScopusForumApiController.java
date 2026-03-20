@@ -3,6 +3,7 @@ package ro.uvt.pokedex.core.controller;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ro.uvt.pokedex.core.controller.dto.ScopusForumPageResponse;
-import ro.uvt.pokedex.core.service.application.ScholardexForumQueryService;
+import ro.uvt.pokedex.core.service.application.PostgresScholardexForumReadPort;
 
 @RestController
 @Validated
@@ -18,7 +19,7 @@ import ro.uvt.pokedex.core.service.application.ScholardexForumQueryService;
 @RequiredArgsConstructor
 public class ScopusForumApiController {
 
-    private final ScholardexForumQueryService scholardexForumQueryService;
+    private final ObjectProvider<PostgresScholardexForumReadPort> postgresScholardexForumReadPortProvider;
 
     @GetMapping("/forums")
     public ResponseEntity<ScopusForumPageResponse> listScopusForums(
@@ -28,6 +29,10 @@ public class ScopusForumApiController {
             @RequestParam(defaultValue = "asc") String direction,
             @RequestParam(required = false) String q
     ) {
-        return ResponseEntity.ok(scholardexForumQueryService.search(page, size, sort, direction, q));
+        PostgresScholardexForumReadPort port = postgresScholardexForumReadPortProvider.getIfAvailable();
+        if (port == null) {
+            throw new IllegalStateException("Postgres forum read port is not available.");
+        }
+        return ResponseEntity.ok(port.search(page, size, sort, direction, q));
     }
 }

@@ -22,15 +22,16 @@ import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.user.UserRole;
-import ro.uvt.pokedex.core.service.application.ScholardexAdminReadFacade;
+import org.springframework.beans.factory.ObjectProvider;
+import ro.uvt.pokedex.core.service.application.PostgresScholardexAdminReadPort;
 import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.AdminInstitutionReportFacade;
 import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsViewModel;
-import ro.uvt.pokedex.core.service.application.model.AdminScopusCitationsViewModel;
-import ro.uvt.pokedex.core.service.application.model.AdminScopusPublicationSearchViewModel;
+import ro.uvt.pokedex.core.service.application.model.ScholardexCitationsView;
+import ro.uvt.pokedex.core.service.application.model.ScholardexPublicationSearchView;
 import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
@@ -48,7 +49,7 @@ public class AdminViewController {
     private final UserService userService;
     private final ResearcherService researcherService;
     private final AdminCatalogFacade adminCatalogFacade;
-    private final ScholardexAdminReadFacade scholardexAdminReadFacade;
+    private final ObjectProvider<PostgresScholardexAdminReadPort> postgresScholardexAdminReadPortProvider;
     private final AdminInstitutionReportFacade adminInstitutionReportFacade;
     private final RankingMaintenanceFacade rankingMaintenanceFacade;
     private final String Country = "Romania";
@@ -417,7 +418,11 @@ public class AdminViewController {
     public String searchScholardexPublications(@RequestParam String authorName,
                                      @RequestParam String paperTitle,
                                      Model model) {
-        AdminScopusPublicationSearchViewModel viewModel = scholardexAdminReadFacade.buildPublicationSearchView(paperTitle);
+        PostgresScholardexAdminReadPort adminReadPort = postgresScholardexAdminReadPortProvider.getIfAvailable();
+        if (adminReadPort == null) {
+            throw new IllegalStateException("Postgres admin read port is not available.");
+        }
+        ScholardexPublicationSearchView viewModel = adminReadPort.buildPublicationSearchView(paperTitle);
         model.addAttribute("authorMap", viewModel.authorMap());
         model.addAttribute("publications", viewModel.publications());
         return "admin/scholardex-publications-search";
@@ -430,7 +435,11 @@ public class AdminViewController {
 
     @GetMapping("/scholardex/publications/citations")
     public String showScholardexPublicationCitationsPage(Model model, @RequestParam("id") String id) {
-        Optional<AdminScopusCitationsViewModel> viewModel = scholardexAdminReadFacade.buildPublicationCitationsView(id);
+        PostgresScholardexAdminReadPort adminReadPort = postgresScholardexAdminReadPortProvider.getIfAvailable();
+        if (adminReadPort == null) {
+            throw new IllegalStateException("Postgres admin read port is not available.");
+        }
+        Optional<ScholardexCitationsView> viewModel = adminReadPort.buildPublicationCitationsView(id);
         viewModel.ifPresent(vm -> {
             model.addAttribute("citations", vm.citations());
             model.addAttribute("publication", vm.publication());

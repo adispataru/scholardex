@@ -11,7 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.ApiExceptionHandler;
 import ro.uvt.pokedex.core.controller.dto.ScopusAuthorListItemResponse;
 import ro.uvt.pokedex.core.controller.dto.ScopusAuthorPageResponse;
-import ro.uvt.pokedex.core.service.application.ScholardexAuthorQueryService;
+import ro.uvt.pokedex.core.service.application.PostgresScholardexAuthorReadPort;
 
 import java.util.List;
 
@@ -30,11 +30,11 @@ class ScopusAuthorApiControllerContractTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ScholardexAuthorQueryService scholardexAuthorQueryService;
+    private PostgresScholardexAuthorReadPort postgresScholardexAuthorReadPort;
 
     @Test
     void defaultRequestReturnsPagedEnvelope() throws Exception {
-        when(scholardexAuthorQueryService.search(null, 0, 25, "name", "asc", null))
+        when(postgresScholardexAuthorReadPort.search(null, 0, 25, "name", "asc", null))
                 .thenReturn(new ScopusAuthorPageResponse(
                         List.of(
                                 item("1", "Alice", List.of("UVT")),
@@ -56,7 +56,7 @@ class ScopusAuthorApiControllerContractTest {
 
     @Test
     void pagingSortingAndDirectionAreApplied() throws Exception {
-        when(scholardexAuthorQueryService.search("af-1", 1, 2, "id", "desc", null))
+        when(postgresScholardexAuthorReadPort.search("af-1", 1, 2, "id", "desc", null))
                 .thenReturn(new ScopusAuthorPageResponse(List.of(item("3", "Carol", List.of())), 1, 2, 3, 2));
 
         mockMvc.perform(get("/api/scopus/authors")
@@ -75,9 +75,9 @@ class ScopusAuthorApiControllerContractTest {
 
     @Test
     void queryMatchesConfiguredFields() throws Exception {
-        when(scholardexAuthorQueryService.search(null, 0, 25, "name", "asc", "alice"))
+        when(postgresScholardexAuthorReadPort.search(null, 0, 25, "name", "asc", "alice"))
                 .thenReturn(new ScopusAuthorPageResponse(List.of(item("name-hit", "Alice", List.of())), 0, 25, 1, 1));
-        when(scholardexAuthorQueryService.search(null, 0, 25, "name", "asc", "0001"))
+        when(postgresScholardexAuthorReadPort.search(null, 0, 25, "name", "asc", "0001"))
                 .thenReturn(new ScopusAuthorPageResponse(List.of(item("id-hit", "Author", List.of())), 0, 25, 1, 1));
 
         mockMvc.perform(get("/api/scopus/authors").param("q", "alice"))
@@ -91,11 +91,11 @@ class ScopusAuthorApiControllerContractTest {
 
     @Test
     void invalidParamsReturnBadRequestEnvelope() throws Exception {
-        when(scholardexAuthorQueryService.search(null, 0, 25, "bad", "asc", null))
+        when(postgresScholardexAuthorReadPort.search(null, 0, 25, "bad", "asc", null))
                 .thenThrow(new IllegalArgumentException("Invalid sort parameter. Allowed: name, id."));
-        when(scholardexAuthorQueryService.search(null, 0, 25, "name", "up", null))
+        when(postgresScholardexAuthorReadPort.search(null, 0, 25, "name", "up", null))
                 .thenThrow(new IllegalArgumentException("Invalid direction parameter. Allowed: asc, desc."));
-        when(scholardexAuthorQueryService.search(null, 0, 25, "name", "asc", "x".repeat(101)))
+        when(postgresScholardexAuthorReadPort.search(null, 0, 25, "name", "asc", "x".repeat(101)))
                 .thenThrow(new IllegalArgumentException("Invalid q parameter. Maximum length is 100."));
 
         mockMvc.perform(get("/api/scopus/authors").param("page", "-1"))

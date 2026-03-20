@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ro.uvt.pokedex.core.service.application.GeneralInitializationService;
-import ro.uvt.pokedex.core.service.application.DualReadGateService;
 import ro.uvt.pokedex.core.service.application.H22OperationalStatusService;
 import ro.uvt.pokedex.core.service.application.PostgresMaterializedViewRefreshService;
 import ro.uvt.pokedex.core.service.application.PostgresReportingProjectionService;
@@ -20,8 +19,6 @@ import ro.uvt.pokedex.core.service.application.ScopusBigBangMigrationService;
 import ro.uvt.pokedex.core.service.application.UserDefinedMaintenanceOrchestrationService;
 import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
 import ro.uvt.pokedex.core.service.importing.model.MigrationStepResult;
-
-import java.util.List;
 
 @Controller
 @RequestMapping("/admin/initialization")
@@ -34,27 +31,10 @@ public class AdminInitializationController {
     private final UserDefinedMaintenanceOrchestrationService userDefinedMaintenanceOrchestrationService;
     private final ObjectProvider<PostgresReportingProjectionService> postgresReportingProjectionServiceProvider;
     private final ObjectProvider<PostgresMaterializedViewRefreshService> postgresMaterializedViewRefreshServiceProvider;
-    private final ObjectProvider<DualReadGateService> dualReadGateServiceProvider;
     private final ObjectProvider<H22OperationalStatusService> h22OperationalStatusServiceProvider;
 
     @GetMapping
     public String showInitializationPage(Model model) {
-        DualReadGateService service = dualReadGateServiceProvider.getIfAvailable();
-        DualReadGateService.DualReadGateRunSummary latestRun = null;
-        if (service != null) {
-            DualReadGateService.DualReadGateStatusSnapshot status = service.latestStatus();
-            if (status != null) {
-                latestRun = status.latestRun();
-            }
-        }
-        List<DualReadGateService.DualReadScenarioResult> failedScenarios = latestRun == null
-                ? List.of()
-                : latestRun.scenarios()
-                .stream()
-                .filter(scenario -> !"SUCCESS".equals(scenario.status()))
-                .toList();
-        model.addAttribute("dualReadGateLatestRun", latestRun);
-        model.addAttribute("dualReadGateFailedScenarios", failedScenarios);
         return "admin/initialization";
     }
 
@@ -607,56 +587,6 @@ public class AdminInitializationController {
         return service.latestStatus();
     }
 
-    @PostMapping("/postgres/dualReadGate/run")
-    public String runPostgresDualReadGate(RedirectAttributes redirectAttributes) {
-        DualReadGateService service = dualReadGateServiceProvider.getIfAvailable();
-        if (service == null) {
-            redirectAttributes.addFlashAttribute(
-                    "errorMessage",
-                    "Postgres dual-read gate service is disabled. Enable postgres profile."
-            );
-            return "redirect:/admin/initialization";
-        }
-
-        var run = service.runFullGate();
-        redirectAttributes.addFlashAttribute("successMessage",
-                "Postgres dual-read gate " + run.status().toLowerCase()
-                        + ". runId=" + run.runId()
-                        + ", scenarios=" + run.scenarios().size()
-                        + ", failed="
-                        + run.scenarios().stream().filter(scenario -> !"SUCCESS".equals(scenario.status())).count()
-                        + ", error=" + (run.errorSample() == null ? "none" : run.errorSample()) + ".");
-        return "redirect:/admin/initialization";
-    }
-
-    @PostMapping("/postgres/dualReadGate/showStatus")
-    public String showPostgresDualReadGateStatus(RedirectAttributes redirectAttributes) {
-        DualReadGateService service = dualReadGateServiceProvider.getIfAvailable();
-        if (service == null) {
-            redirectAttributes.addFlashAttribute(
-                    "errorMessage",
-                    "Postgres dual-read gate service is disabled. Enable postgres profile."
-            );
-            return "redirect:/admin/initialization";
-        }
-        var latestRun = service.latestStatus().latestRun();
-        redirectAttributes.addFlashAttribute("successMessage",
-                latestRun == null
-                        ? "Postgres dual-read gate status: no run recorded yet."
-                        : formatDualReadGateStatus(latestRun));
-        return "redirect:/admin/initialization";
-    }
-
-    @GetMapping("/postgres/dualReadGate/status")
-    @ResponseBody
-    public DualReadGateService.DualReadGateStatusSnapshot postgresDualReadGateStatusApi() {
-        DualReadGateService service = dualReadGateServiceProvider.getIfAvailable();
-        if (service == null) {
-            return new DualReadGateService.DualReadGateStatusSnapshot(null);
-        }
-        return service.latestStatus();
-    }
-
     @PostMapping("/postgres/operational/showStatus")
     public String showPostgresOperationalStatus(RedirectAttributes redirectAttributes) {
         H22OperationalStatusService service = h22OperationalStatusServiceProvider.getIfAvailable();
@@ -673,7 +603,6 @@ public class AdminInitializationController {
                         + ", readStore=" + snapshot.readStore()
                         + ", projection=" + snapshot.projection().status()
                         + ", materialized=" + snapshot.materializedViewRefresh().status()
-                        + ", dualReadGate=" + snapshot.dualReadGate().status()
                         + ".");
         return "redirect:/admin/initialization";
     }
@@ -824,51 +753,6 @@ public class AdminInitializationController {
                 + ", skipped=" + summary.skipped()
                 + ", durationMs=" + summary.durationMs()
                 + "].";
-    }
-
-    private String formatDualReadGateStatus(DualReadGateService.DualReadGateRunSummary latestRun) {
-        var failedScenarios = latestRun.scenarios()
-                .stream()
-                .filter(scenario -> !"SUCCESS".equals(scenario.status()))
-                .toList();
-
-        if (failedScenarios.isEmpty()) {
-            return "Postgres dual-read gate status: runId=" + latestRun.runId()
-                    + ", status=" + latestRun.status()
-                    + ", scenarios=" + latestRun.scenarios().size()
-                    + ", failed=0.";
-        }
-
-        String failedScenarioIds = String.join(", ", failedScenarios.stream()
-                .map(DualReadGateService.DualReadScenarioResult::scenarioId)
-                .limit(3)
-                .toList());
-        String failedScenarioSuffix = failedScenarios.size() > 3 ? "..." : "";
-        String error = firstNonBlank(
-                latestRun.errorSample(),
-                failedScenarios.stream()
-                        .map(DualReadGateService.DualReadScenarioResult::mismatchSample)
-                        .filter(sample -> sample != null && !sample.isBlank())
-                        .findFirst()
-                        .orElse(null),
-                "none"
-        );
-
-        return "Postgres dual-read gate status: runId=" + latestRun.runId()
-                + ", status=" + latestRun.status()
-                + ", scenarios=" + latestRun.scenarios().size()
-                + ", failed=" + failedScenarios.size()
-                + ", failedScenarios=[" + failedScenarioIds + failedScenarioSuffix + "]"
-                + ", error=" + error + ".";
-    }
-
-    private String firstNonBlank(String... values) {
-        for (String value : values) {
-            if (value != null && !value.isBlank()) {
-                return value;
-            }
-        }
-        return "";
     }
 
     private String redirectAfterGeneralStep(

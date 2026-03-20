@@ -35,7 +35,6 @@ public class GroupReportFacade {
     private final ActivityReportingService activityReportingService;
     private final ScientificProductionService scientificProductionService;
     private final ScholardexProjectionReadService scholardexProjectionReadService;
-    private final ReportingReadStoreSelector reportingReadStoreSelector;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final GroupIndividualReportRunRepository groupIndividualReportRunRepository;
     private final ReportingLookupMemoization reportingLookupMemoization;
@@ -153,7 +152,7 @@ public class GroupReportFacade {
         long saveMs = nanosToMs(System.nanoTime() - saveStartNanos);
 
         long totalMs = nanosToMs(System.nanoTime() - refreshStartNanos);
-        String activeReadStore = reportingReadStoreSelector.readStore().name();
+        String activeReadStore = "POSTGRES";
         String refreshTimingMessage = String.format(
                 Locale.ROOT,
                 "Group report refresh timings: groupId=%s reportId=%s readStore=%s researchers=%d status=%s errors=%d counts[publications=%d, citationFacts=%d, citationIndicators=%d, activityIndicators=%d] timingsMs[lookup=%d, compute=%d, save=%d, total=%d] computeMs[authorLookup=%d, publicationLoad=%d, activityLoad=%d, citationLoad=%d, citationBasePrecompute=%d, scoring=%d, publicationScoring=%d, activityScoring=%d, citationScoring=%d, selector=%d, thresholdBuild=%d]",
