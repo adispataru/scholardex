@@ -410,7 +410,6 @@ public class ScopusUpdateScheduler {
                 continue;
             }
 
-//            LocalDate citingDate = parseCoverDate(citingCover);
             Optional<LocalDate> citingDateOpt = parseCoverDate(citingCover);
             if (citingDateOpt.isEmpty()) {
                 continue;

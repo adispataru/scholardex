@@ -111,7 +111,6 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
 
         Score score = new Score();
 
-        // TODO Come up with a better caching mechanism
         int top = lookupPort.getTopRankings(category, year);
         int numTop = (int) (0.2 * top);
         int rankPosition = rank.getRankAis().getOrDefault(year, Integer.MAX_VALUE);

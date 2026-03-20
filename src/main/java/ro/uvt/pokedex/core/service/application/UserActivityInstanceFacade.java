@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.service.application.model.UserActivityInstancesViewModel;
-import ro.uvt.pokedex.core.repository.ActivityIndicatorRepository;
 import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
 import ro.uvt.pokedex.core.repository.ActivityRepository;
 
@@ -22,8 +21,6 @@ public class UserActivityInstanceFacade {
 
     private final ActivityInstanceRepository activityInstanceRepository;
     private final ActivityRepository activityRepository;
-    @SuppressWarnings("unused")
-    private final ActivityIndicatorRepository activityIndicatorRepository;
 
     public UserActivityInstancesViewModel buildActivityInstancesView(String researcherId) {
         List<Activity> activities = activityRepository.findAll();

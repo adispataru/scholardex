@@ -413,11 +413,6 @@ public class RankingService {
         rankCounters.put(year, currentRank);
     }
 
-    @Deprecated(forRemoval = false)
-    public void updateImpactFactorsFromExcel(String fileName, int year) {
-        logger.warn("Ignoring deprecated JIF gov ingestion path for file {} and year {}. IF is accepted only from official WoS extracted data.", fileName, year);
-    }
-
 
     public void deleteWosRankings() {
         logger.info("Deleting all WoS rankings...");
