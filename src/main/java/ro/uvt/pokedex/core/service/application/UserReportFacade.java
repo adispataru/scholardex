@@ -22,7 +22,6 @@ import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
 import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndicatorRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
-import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
@@ -42,7 +41,6 @@ import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.WoSExtractor;
 import ro.uvt.pokedex.core.model.WoSRanking;
-import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -76,7 +74,6 @@ public class UserReportFacade {
     private final CacheService cacheService;
     private final PublicationEnrichmentLinkerService publicationEnrichmentLinkerService;
     private final ReportingLookupPort reportingLookupPort;
-    private final WosRankingViewRepository wosRankingViewRepository;
 
     public UserIndicatorsViewModel buildIndicatorsView(String userEmail) {
         // userEmail kept in signature to lock facade contract for later permission-aware extensions.
@@ -494,18 +491,6 @@ public class UserReportFacade {
                 if (journalId != null && !journalId.isBlank()) {
                     return journalId;
                 }
-            }
-            Optional<WosRankingView> byIssnNorm = wosRankingViewRepository.findFirstByIssnNorm(issn);
-            if (byIssnNorm.isPresent() && byIssnNorm.get().getId() != null && !byIssnNorm.get().getId().isBlank()) {
-                return byIssnNorm.get().getId();
-            }
-            Optional<WosRankingView> byEIssnNorm = wosRankingViewRepository.findFirstByeIssnNorm(issn);
-            if (byEIssnNorm.isPresent() && byEIssnNorm.get().getId() != null && !byEIssnNorm.get().getId().isBlank()) {
-                return byEIssnNorm.get().getId();
-            }
-            Optional<WosRankingView> byAltIssnNorm = wosRankingViewRepository.findFirstByAlternativeIssnsNormContains(issn);
-            if (byAltIssnNorm.isPresent() && byAltIssnNorm.get().getId() != null && !byAltIssnNorm.get().getId().isBlank()) {
-                return byAltIssnNorm.get().getId();
             }
         }
         return null;

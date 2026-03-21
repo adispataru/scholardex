@@ -10,10 +10,9 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
-import ro.uvt.pokedex.core.model.reporting.wos.WosJournalIdentity;
+import org.springframework.jdbc.core.namedparam.EmptySqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
-import ro.uvt.pokedex.core.repository.reporting.WosJournalIdentityRepository;
-import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
@@ -59,8 +58,7 @@ public class WosScholardexOnboardingService {
     private static final Pattern MULTI_SPACE = Pattern.compile("\\s+");
     private static final Pattern COMBINING_MARKS = Pattern.compile("\\p{M}+");
 
-    private final WosJournalIdentityRepository wosJournalIdentityRepository;
-    private final WosRankingViewRepository wosRankingViewRepository;
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     private final ScopusForumFactRepository scopusForumFactRepository;
     private final ScholardexForumFactRepository scholardexForumFactRepository;
     private final ScholardexSourceLinkService sourceLinkService;
@@ -69,13 +67,24 @@ public class WosScholardexOnboardingService {
 
     public ImportProcessingResult runWosOnboarding(String batchId, String correlationId) {
         ImportProcessingResult result = new ImportProcessingResult(20);
-        List<WosJournalIdentity> journals = new ArrayList<>(wosJournalIdentityRepository.findAll());
-        journals.sort(Comparator.comparing(WosJournalIdentity::getId, Comparator.nullsLast(String::compareTo)));
-
-        Map<String, WosRankingView> rankingById = new LinkedHashMap<>();
-        for (WosRankingView rankingView : wosRankingViewRepository.findAll()) {
-            rankingById.put(rankingView.getId(), rankingView);
-        }
+        List<WosRankingView> journals = namedParameterJdbcTemplate.query(
+                """
+                SELECT journal_id, name, issn, e_issn, alternative_issns, alternative_names
+                FROM reporting_read.wos_ranking_view
+                ORDER BY journal_id
+                """,
+                EmptySqlParameterSource.INSTANCE,
+                (rs, rowNum) -> {
+                    WosRankingView view = new WosRankingView();
+                    view.setId(rs.getString("journal_id"));
+                    view.setName(rs.getString("name"));
+                    view.setIssn(rs.getString("issn"));
+                    view.setEIssn(rs.getString("e_issn"));
+                    view.setAlternativeIssns(toStringList(rs.getArray("alternative_issns")));
+                    view.setAlternativeNames(toStringList(rs.getArray("alternative_names")));
+                    return view;
+                }
+        );
 
         List<ScopusForumFact> scopusForums = new ArrayList<>(scopusForumFactRepository.findAll());
         List<ScholardexForumFact> canonicalForums = new ArrayList<>(scholardexForumFactRepository.findAll());
@@ -85,17 +94,27 @@ public class WosScholardexOnboardingService {
         }
 
         Instant now = Instant.now();
-        for (WosJournalIdentity journal : journals) {
+        for (WosRankingView journal : journals) {
             result.markProcessed();
-            upsertForumFromWos(journal, rankingById.get(journal.getId()), scopusForums, canonicalById, batchId, correlationId, now, result);
+            upsertForumFromWos(journal, scopusForums, canonicalById, batchId, correlationId, now, result);
         }
 
         onboardPublicationWosLinks(batchId, correlationId, now, result);
         return result;
     }
 
+    private List<String> toStringList(java.sql.Array array) throws java.sql.SQLException {
+        if (array == null) {
+            return List.of();
+        }
+        Object value = array.getArray();
+        if (value instanceof String[] items) {
+            return List.of(items);
+        }
+        return List.of();
+    }
+
     private void upsertForumFromWos(
-            WosJournalIdentity journal,
             WosRankingView rankingView,
             List<ScopusForumFact> scopusForums,
             Map<String, ScholardexForumFact> canonicalById,
@@ -104,31 +123,27 @@ public class WosScholardexOnboardingService {
             Instant now,
             ImportProcessingResult result
     ) {
-        String sourceRecordId = normalizeBlank(journal.getId());
+        String sourceRecordId = normalizeBlank(rankingView.getId());
         if (sourceRecordId == null) {
             result.markSkipped("wos-journal-missing-id");
             return;
         }
 
         LinkedHashSet<String> normalizedIssns = normalizedIssnSet(
-                journal.getPrimaryIssn(),
-                journal.getEIssn(),
-                journal.getAliasIssns(),
-                rankingView == null ? null : rankingView.getIssn(),
-                rankingView == null ? null : rankingView.getEIssn(),
-                rankingView == null ? null : rankingView.getAlternativeIssns()
+                rankingView.getIssn(),
+                rankingView.getEIssn(),
+                rankingView.getAlternativeIssns(),
+                null,
+                null,
+                null
         );
-        String name = firstNonBlank(
-                journal.getTitle(),
-                rankingView == null ? null : rankingView.getName(),
-                sourceRecordId
-        );
+        String name = firstNonBlank(rankingView.getName(), sourceRecordId);
         String aggregationType = FORUM_DEFAULT_AGG;
         String nameNormalized = normalizeName(name);
         String aggregationTypeNormalized = normalizeToken(aggregationType);
         String nameAggKey = nameNormalized + "|" + aggregationTypeNormalized;
 
-        if (normalizedIssns.isEmpty() && hasAnyNonBlank(journal.getPrimaryIssn(), journal.getEIssn(), join(journal.getAliasIssns()))) {
+        if (normalizedIssns.isEmpty() && hasAnyNonBlank(rankingView.getIssn(), rankingView.getEIssn(), join(rankingView.getAlternativeIssns()))) {
             openConflict(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId, REASON_INVALID_ISSN, List.of(), batchId, correlationId);
         }
 

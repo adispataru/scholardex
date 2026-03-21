@@ -13,20 +13,17 @@ import ro.uvt.pokedex.core.model.scopus.Affiliation;
 import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import ro.uvt.pokedex.core.repository.ActivityRepository;
 import ro.uvt.pokedex.core.repository.ArtisticEventRepository;
 import ro.uvt.pokedex.core.repository.InstitutionRepository;
 import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndicatorRepository;
-import ro.uvt.pokedex.core.repository.reporting.RankingRepository;
-import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
-import ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -34,13 +31,13 @@ public class AdminCatalogFacade {
 
     private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final ArtisticEventRepository artisticEventRepository;
-    private final RankingRepository rankingRepository;
     private final CoreConferenceRankingRepository coreConferenceRankingRepository;
     private final IndicatorRepository indicatorRepository;
     private final DomainRepository domainRepository;
     private final InstitutionRepository institutionRepository;
     private final ActivityRepository activityRepository;
-    private final WosCategoryFactRepository wosCategoryFactRepository;
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    private final PostgresWosRankingDetailsReadPort postgresWosRankingDetailsReadPort;
 
     public List<Institution> listInstitutions() {
         return institutionRepository.findAll();
@@ -115,14 +112,18 @@ public class AdminCatalogFacade {
     }
 
     public List<String> listWosCategories() {
-        return wosCategoryFactRepository
-                .findAllByEditionNormalizedIn(Set.of(EditionNormalized.SCIE, EditionNormalized.SSCI))
-                .stream()
-                .filter(f -> f.getCategoryNameCanonical() != null && !f.getCategoryNameCanonical().isBlank())
-                .map(f -> f.getCategoryNameCanonical() + " - " + f.getEditionNormalized())
-                .distinct()
-                .sorted()
-                .toList();
+        return namedParameterJdbcTemplate.query(
+                """
+                SELECT DISTINCT category_name_canonical, edition_normalized
+                FROM reporting_read.wos_category_fact
+                WHERE edition_normalized IN ('SCIE', 'SSCI')
+                  AND category_name_canonical IS NOT NULL
+                  AND category_name_canonical != ''
+                ORDER BY category_name_canonical, edition_normalized
+                """,
+                org.springframework.jdbc.core.namedparam.EmptySqlParameterSource.INSTANCE,
+                (rs, rowNum) -> rs.getString("category_name_canonical") + " - " + rs.getString("edition_normalized")
+        );
     }
 
     public List<Forum> listScopusVenues() {
@@ -174,7 +175,7 @@ public class AdminCatalogFacade {
     }
 
     public Optional<WoSRanking> findWosRankingById(String id) {
-        return rankingRepository.findById(id);
+        return postgresWosRankingDetailsReadPort.findByJournalId(id);
     }
 
     public Optional<CoreConferenceRanking> findCoreRankingById(String id) {

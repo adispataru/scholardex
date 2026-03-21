@@ -1,14 +1,17 @@
 package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.namedparam.EmptySqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
 
+import java.sql.Array;
+import java.sql.SQLException;
 import java.text.Normalizer;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -23,7 +26,7 @@ public class WosForumResolutionService {
     private static final Pattern MULTI_SPACE = Pattern.compile("\\s+");
     private static final Pattern COMBINING_MARKS = Pattern.compile("\\p{M}+");
 
-    private final WosRankingViewRepository wosRankingViewRepository;
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     public String resolveJournalId(Forum forum) {
         ResolutionIndex index = buildResolutionIndex();
@@ -33,24 +36,28 @@ public class WosForumResolutionService {
     ResolutionIndex buildResolutionIndex() {
         Map<String, String> journalIdsByIssn = new HashMap<>();
         Map<String, String> journalIdsByName = new HashMap<>();
-        for (WosRankingView view : wosRankingViewRepository.findAll()) {
-            if (isBlank(view.getId())) {
-                continue;
-            }
-            putIfPresent(journalIdsByIssn, view.getIssnNorm(), view.getId());
-            putIfPresent(journalIdsByIssn, view.getEIssnNorm(), view.getId());
-            if (view.getAlternativeIssnsNorm() != null) {
-                for (String alternativeIssnNorm : view.getAlternativeIssnsNorm()) {
-                    putIfPresent(journalIdsByIssn, alternativeIssnNorm, view.getId());
+        namedParameterJdbcTemplate.query(
+                """
+                SELECT journal_id, issn_norm, e_issn_norm, alternative_issns_norm, name, alternative_names
+                FROM reporting_read.wos_ranking_view
+                """,
+                EmptySqlParameterSource.INSTANCE,
+                (rs, rowNum) -> {
+                    String id = rs.getString("journal_id");
+                    if (!isBlank(id)) {
+                        putIfPresent(journalIdsByIssn, rs.getString("issn_norm"), id);
+                        putIfPresent(journalIdsByIssn, rs.getString("e_issn_norm"), id);
+                        for (String altIssn : toStringList(rs.getArray("alternative_issns_norm"))) {
+                            putIfPresent(journalIdsByIssn, altIssn, id);
+                        }
+                        putIfPresent(journalIdsByName, normalizeName(rs.getString("name")), id);
+                        for (String altName : toStringList(rs.getArray("alternative_names"))) {
+                            putIfPresent(journalIdsByName, normalizeName(altName), id);
+                        }
+                    }
+                    return null;
                 }
-            }
-            putIfPresent(journalIdsByName, normalizeName(view.getName()), view.getId());
-            if (view.getAlternativeNames() != null) {
-                for (String alternativeName : view.getAlternativeNames()) {
-                    putIfPresent(journalIdsByName, normalizeName(alternativeName), view.getId());
-                }
-            }
-        }
+        );
         return new ResolutionIndex(journalIdsByIssn, journalIdsByName);
     }
 
@@ -97,6 +104,17 @@ public class WosForumResolutionService {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private List<String> toStringList(Array array) throws SQLException {
+        if (array == null) {
+            return List.of();
+        }
+        Object value = array.getArray();
+        if (value instanceof String[] items) {
+            return List.of(items);
+        }
+        return List.of();
     }
 
     record ResolutionIndex(
