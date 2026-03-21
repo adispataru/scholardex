@@ -12,21 +12,11 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationViewRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumViewRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorshipFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -45,34 +35,23 @@ import java.util.stream.Collectors;
 public class ScholardexProjectionReadService {
 
     private final ScholardexPublicationViewRepository publicationViewRepository;
-    private final ScholardexCitationFactRepository citationFactRepository;
-    private final ScholardexForumViewRepository forumViewRepository;
-    private final ScholardexAuthorViewRepository authorViewRepository;
-    private final ScholardexAffiliationViewRepository affiliationViewRepository;
     private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexAuthorFactRepository canonicalAuthorFactRepository;
     private final ScholardexAffiliationFactRepository canonicalAffiliationFactRepository;
     private final ScholardexForumFactRepository canonicalForumFactRepository;
-    private final ScholardexAuthorAffiliationFactRepository canonicalAuthorAffiliationFactRepository;
-    private final ScholardexAuthorshipFactRepository canonicalAuthorshipFactRepository;
     private final ScholardexEdgeWriterService edgeWriterService;
+    private final PostgresScholardexProjectionReadPort postgresProjectionReadPort;
 
     public List<Publication> findAllPublicationsByAuthorsIn(Collection<String> authorIds) {
         List<String> resolvedAuthorIds = resolveCanonicalIds(ScholardexEntityType.AUTHOR, authorIds);
         if (resolvedAuthorIds.isEmpty()) {
             return List.of();
         }
-        Set<String> publicationIds = canonicalAuthorshipFactRepository.findByAuthorIdIn(resolvedAuthorIds).stream()
-                .map(edge -> normalizeBlank(edge.getPublicationId()))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<String> publicationIds = postgresProjectionReadPort.findPublicationIdsByAuthorIdIn(resolvedAuthorIds);
         if (publicationIds.isEmpty()) {
             return List.of();
         }
-        return dedupeAndSortPublications(publicationViewRepository.findAllByIdIn(publicationIds)
-                .stream()
-                .map(this::toPublication)
-                .toList());
+        return dedupeAndSortPublications(postgresProjectionReadPort.findPublicationsByIdIn(publicationIds));
     }
 
     public List<Publication> findAllPublicationsByAuthorsContaining(String authorId) {
@@ -86,35 +65,23 @@ public class ScholardexProjectionReadService {
         }
         Set<String> authorIds = new LinkedHashSet<>();
         for (String canonicalAffiliationId : resolvedAffiliationIds) {
-            canonicalAuthorAffiliationFactRepository.findByAffiliationId(canonicalAffiliationId)
-                    .forEach(edge -> {
-                        String authorId = normalizeBlank(edge.getAuthorId());
-                        if (authorId != null) {
-                            authorIds.add(authorId);
-                        }
-                    });
+            authorIds.addAll(postgresProjectionReadPort.findAuthorIdsByAffiliationId(canonicalAffiliationId));
         }
         if (authorIds.isEmpty()) {
             return List.of();
         }
-        Set<String> publicationIds = canonicalAuthorshipFactRepository.findByAuthorIdIn(authorIds).stream()
-                .map(edge -> normalizeBlank(edge.getPublicationId()))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<String> publicationIds = postgresProjectionReadPort.findPublicationIdsByAuthorIdIn(authorIds);
         if (publicationIds.isEmpty()) {
             return List.of();
         }
-        return dedupeAndSortPublications(publicationViewRepository.findAllByIdIn(publicationIds)
-                .stream()
-                .map(this::toPublication)
-                .toList());
+        return dedupeAndSortPublications(postgresProjectionReadPort.findPublicationsByIdIn(publicationIds));
     }
 
     public List<Publication> findAllPublicationsByIdIn(Collection<String> ids) {
         Map<String, Publication> out = new LinkedHashMap<>();
-        publicationViewRepository.findAllByIdIn(ids).forEach(row -> out.putIfAbsent(row.getId(), toPublication(row)));
+        postgresProjectionReadPort.findPublicationsByIdIn(ids).forEach(pub -> out.putIfAbsent(pub.getId(), pub));
         if (!ids.isEmpty()) {
-            publicationViewRepository.findAllByEidIn(ids).forEach(row -> out.putIfAbsent(row.getId(), toPublication(row)));
+            postgresProjectionReadPort.findPublicationsByEidIn(ids).forEach(pub -> out.putIfAbsent(pub.getId(), pub));
         }
         List<Publication> publications = new ArrayList<>(out.values());
         PublicationOrderingSupport.sortPublicationsInPlace(publications);
@@ -122,29 +89,22 @@ public class ScholardexProjectionReadService {
     }
 
     public Optional<Publication> findPublicationById(String id) {
-        return publicationViewRepository.findById(id).map(this::toPublication);
+        return postgresProjectionReadPort.findPublicationById(id);
     }
 
     public Optional<Publication> findPublicationByEid(String eid) {
-        return publicationViewRepository.findByEid(eid).map(this::toPublication);
+        return postgresProjectionReadPort.findPublicationByEid(eid);
     }
 
     public Optional<Publication> findPublicationByAnyId(String key) {
         if (key == null || key.isBlank()) {
             return Optional.empty();
         }
-        return publicationViewRepository.findById(key)
-                .or(() -> publicationViewRepository.findByEid(key))
-                .or(() -> publicationViewRepository.findByWosId(key))
-                .or(() -> publicationViewRepository.findByGoogleScholarId(key))
-                .map(this::toPublication);
+        return postgresProjectionReadPort.findPublicationByAnyId(key);
     }
 
     public List<Publication> findPublicationsByTitleContainingIgnoreCaseOrderByCoverDateDesc(String title) {
-        List<Publication> out = publicationViewRepository.findByTitleContainingIgnoreCaseOrderByCoverDateDesc(title)
-                .stream()
-                .map(this::toPublication)
-                .collect(Collectors.toCollection(ArrayList::new));
+        List<Publication> out = new ArrayList<>(postgresProjectionReadPort.findPublicationsByTitleContainingIgnoreCase(title));
         PublicationOrderingSupport.sortPublicationsInPlace(out);
         return out;
     }
@@ -154,8 +114,8 @@ public class ScholardexProjectionReadService {
         if (publicationIds.isEmpty()) {
             return List.of();
         }
-        List<ScholardexCitationFact> facts = citationFactRepository.findByCitedPublicationIdIn(publicationIds);
-        return mapCitationFacts(facts);
+        List<Citation> citations = postgresProjectionReadPort.findCitationsByCitedPublicationIdIn(publicationIds);
+        return filterValidCitations(citations);
     }
 
     public List<Citation> findAllCitationsByCitedId(String citedId) {
@@ -163,8 +123,8 @@ public class ScholardexProjectionReadService {
         if (cited.isEmpty() || cited.get().getId() == null) {
             return List.of();
         }
-        List<ScholardexCitationFact> facts = citationFactRepository.findByCitedPublicationId(cited.get().getId());
-        return mapCitationFacts(facts);
+        List<Citation> citations = postgresProjectionReadPort.findCitationsByCitedPublicationId(cited.get().getId());
+        return filterValidCitations(citations);
     }
 
     public long countCitationsByCitedId(String citedId) {
@@ -173,78 +133,65 @@ public class ScholardexProjectionReadService {
 
     public List<Forum> findForumsByIdIn(Collection<String> forumIds) {
         List<String> resolvedForumIds = resolveCanonicalIds(ScholardexEntityType.FORUM, forumIds);
-        return forumViewRepository.findByIdIn(resolvedForumIds).stream()
-                .map(this::toForum)
-                .toList();
+        return postgresProjectionReadPort.findForumsByIdIn(resolvedForumIds);
     }
 
     public Optional<Forum> findForumById(String id) {
         List<String> resolvedForumIds = resolveCanonicalIds(ScholardexEntityType.FORUM, List.of(id));
-        return forumViewRepository.findByIdIn(resolvedForumIds).stream().findFirst().map(this::toForum);
+        return postgresProjectionReadPort.findForumsByIdIn(resolvedForumIds).stream().findFirst();
     }
 
     public List<Forum> findAllForums() {
-        return forumViewRepository.findAll().stream().map(this::toForum).toList();
+        return postgresProjectionReadPort.findAllForums();
     }
 
     public List<Author> findAuthorsByIdIn(Collection<String> authorIds) {
         List<String> resolvedAuthorIds = resolveCanonicalIds(ScholardexEntityType.AUTHOR, authorIds);
-        return authorViewRepository.findByIdIn(resolvedAuthorIds).stream()
-                .map(this::toAuthor)
-                .toList();
+        return postgresProjectionReadPort.findAuthorsByIdIn(resolvedAuthorIds);
     }
 
     public List<Author> findAllAuthors() {
-        return authorViewRepository.findAll().stream()
-                .map(this::toAuthor)
-                .toList();
+        return postgresProjectionReadPort.findAllAuthors();
     }
 
     public List<Author> findAuthorsByAffiliationId(String affiliationId) {
         List<String> resolvedAffiliationIds = resolveCanonicalIds(ScholardexEntityType.AFFILIATION, List.of(affiliationId));
         Set<String> authorIds = new LinkedHashSet<>();
         for (String canonicalAffiliationId : resolvedAffiliationIds) {
-            canonicalAuthorAffiliationFactRepository.findByAffiliationId(canonicalAffiliationId)
-                    .forEach(edge -> authorIds.add(edge.getAuthorId()));
+            authorIds.addAll(postgresProjectionReadPort.findAuthorIdsByAffiliationId(canonicalAffiliationId));
         }
-        return authorViewRepository.findByIdIn(authorIds).stream()
-                .map(this::toAuthor)
-                .toList();
+        return postgresProjectionReadPort.findAuthorsByIdIn(authorIds);
     }
 
     public Optional<Author> findAuthorById(String id) {
         List<String> resolvedAuthorIds = resolveCanonicalIds(ScholardexEntityType.AUTHOR, List.of(id));
-        return authorViewRepository.findByIdIn(resolvedAuthorIds).stream().findFirst().map(this::toAuthor);
+        return postgresProjectionReadPort.findAuthorsByIdIn(resolvedAuthorIds).stream().findFirst();
     }
 
     public List<Author> findAuthorsByNameContainsIgnoreCase(String authorName) {
-        return authorViewRepository.findAllByNameContainingIgnoreCase(authorName).stream()
-                .map(this::toAuthor)
-                .toList();
+        return postgresProjectionReadPort.findAuthorsByNameContainsIgnoreCase(authorName);
     }
 
     public List<Affiliation> findAllAffiliations() {
-        return affiliationViewRepository.findAll().stream().map(this::toAffiliation).toList();
+        return postgresProjectionReadPort.findAllAffiliations();
     }
 
     public Optional<Affiliation> findAffiliationById(String id) {
         List<String> resolvedAffiliationIds = resolveCanonicalIds(ScholardexEntityType.AFFILIATION, List.of(id));
-        return affiliationViewRepository.findByIdIn(resolvedAffiliationIds).stream().findFirst().map(this::toAffiliation);
+        return postgresProjectionReadPort.findAffiliationsByIdIn(resolvedAffiliationIds).stream().findFirst();
     }
 
     public List<Affiliation> findAffiliationsByCountry(String country) {
-        return affiliationViewRepository.findAllByCountry(country).stream().map(this::toAffiliation).toList();
+        return postgresProjectionReadPort.findAffiliationsByCountry(country);
     }
 
     public List<Affiliation> findAffiliationsByNameContains(String name) {
-        return affiliationViewRepository.findAllByNameContains(name).stream().map(this::toAffiliation).toList();
+        return postgresProjectionReadPort.findAffiliationsByNameContains(name);
     }
 
     public List<Affiliation> findAffiliationsByIdIn(Collection<String> ids) {
         if (ids == null || ids.isEmpty()) return List.of();
-        return affiliationViewRepository.findByIdIn(ids).stream()
-                .map(this::toAffiliation)
-                .toList();
+        return postgresProjectionReadPort.findAffiliationsByIdIn(ids);
     }
 
     public Optional<ScholardexPublicationView> findPublicationViewById(String id) {
@@ -483,8 +430,8 @@ public class ScholardexProjectionReadService {
         }
 
         if (!unresolvedKeys.isEmpty()) {
-            List<ScholardexPublicationView> idMatches = publicationViewRepository.findAllByIdIn(unresolvedKeys);
-            for (ScholardexPublicationView match : idMatches) {
+            List<Publication> idMatches = postgresProjectionReadPort.findPublicationsByIdIn(unresolvedKeys);
+            for (Publication match : idMatches) {
                 publicationIds.add(match.getId());
                 String matchedKey = normalizeBlank(match.getId());
                 if (matchedKey != null) {
@@ -494,8 +441,8 @@ public class ScholardexProjectionReadService {
         }
 
         if (!unresolvedKeys.isEmpty()) {
-            List<ScholardexPublicationView> eidMatches = publicationViewRepository.findAllByEidIn(unresolvedKeys);
-            for (ScholardexPublicationView match : eidMatches) {
+            List<Publication> eidMatches = postgresProjectionReadPort.findPublicationsByEidIn(unresolvedKeys);
+            for (Publication match : eidMatches) {
                 publicationIds.add(match.getId());
                 String matchedEid = normalizeBlank(match.getEid());
                 if (matchedEid != null) {
@@ -514,35 +461,24 @@ public class ScholardexProjectionReadService {
         return key != null && key.regionMatches(true, 0, "spub_", 0, "spub_".length());
     }
 
-    private List<Citation> mapCitationFacts(List<ScholardexCitationFact> facts) {
-        if (facts.isEmpty()) {
+    private List<Citation> filterValidCitations(List<Citation> citations) {
+        if (citations.isEmpty()) {
             return List.of();
         }
         Set<String> publicationIds = new LinkedHashSet<>();
-        for (ScholardexCitationFact fact : facts) {
-            if (!isBlank(fact.getCitedPublicationId())) {
-                publicationIds.add(fact.getCitedPublicationId());
-            }
-            if (!isBlank(fact.getCitingPublicationId())) {
-                publicationIds.add(fact.getCitingPublicationId());
-            }
+        for (Citation citation : citations) {
+            if (!isBlank(citation.getCitedId())) publicationIds.add(citation.getCitedId());
+            if (!isBlank(citation.getCitingId())) publicationIds.add(citation.getCitingId());
         }
-        Set<String> existingIds = publicationViewRepository.findAllByIdIn(publicationIds).stream()
-                .map(ScholardexPublicationView::getId)
-                .collect(Collectors.toSet());
+        Set<String> existingIds = postgresProjectionReadPort.findExistingPublicationIdsByIdIn(publicationIds);
         List<Citation> out = new ArrayList<>();
-        for (ScholardexCitationFact fact : facts) {
-            if (isBlank(fact.getCitedPublicationId()) || isBlank(fact.getCitingPublicationId())) {
+        for (Citation citation : citations) {
+            if (isBlank(citation.getCitedId()) || isBlank(citation.getCitingId())) {
                 continue;
             }
-            if (!existingIds.contains(fact.getCitedPublicationId())
-                    || !existingIds.contains(fact.getCitingPublicationId())) {
+            if (!existingIds.contains(citation.getCitedId()) || !existingIds.contains(citation.getCitingId())) {
                 continue;
             }
-            Citation citation = new Citation();
-            citation.setId(fact.getId());
-            citation.setCitedId(fact.getCitedPublicationId());
-            citation.setCitingId(fact.getCitingPublicationId());
             out.add(citation);
         }
         out.sort(Comparator.comparing(Citation::getCitedId, Comparator.nullsLast(String::compareTo))
@@ -552,77 +488,5 @@ public class ScholardexProjectionReadService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
-    }
-
-    private Publication toPublication(ScholardexPublicationView row) {
-        Publication publication = new Publication();
-        publication.setId(row.getId());
-        publication.setDoi(row.getDoi());
-        publication.setEid(row.getEid());
-        publication.setWosId(row.getWosId());
-        publication.setTitle(row.getTitle());
-        publication.setSubtype(row.getSubtype());
-        publication.setScopusSubtype(row.getScopusSubtype());
-        publication.setSubtypeDescription(row.getSubtypeDescription());
-        publication.setScopusSubtypeDescription(row.getScopusSubtypeDescription());
-        publication.setCreator(row.getCreator());
-        publication.setAffiliations(row.getAffiliationIds() == null ? List.of() : new ArrayList<>(row.getAffiliationIds()));
-        publication.setAuthorCount(row.getAuthorCount() == null ? 0 : row.getAuthorCount());
-        publication.setAuthors(row.getAuthorIds() == null ? List.of() : new ArrayList<>(row.getAuthorIds()));
-        publication.setCorrespondingAuthors(row.getCorrespondingAuthors() == null ? List.of() : new ArrayList<>(row.getCorrespondingAuthors()));
-        publication.setForum(row.getForumId());
-        publication.setVolume(row.getVolume());
-        publication.setIssueIdentifier(row.getIssueIdentifier());
-        publication.setCoverDate(row.getCoverDate());
-        publication.setCoverDisplayDate(row.getCoverDisplayDate());
-        publication.setDescription(row.getDescription());
-        publication.setCitedbyCount(row.getCitedByCount() == null ? 0 : row.getCitedByCount());
-        publication.setOpenAccess(row.isOpenAccess());
-        publication.setFreetoread(row.getFreetoread());
-        publication.setFreetoreadLabel(row.getFreetoreadLabel());
-        publication.setFundingId(row.getFundingId());
-        publication.setArticleNumber(row.getArticleNumber());
-        publication.setPageRange(row.getPageRange());
-        publication.setApproved(row.isApproved());
-        if (row.getCitingPublicationIds() != null) {
-            publication.setCitedBy(new LinkedHashSet<>(row.getCitingPublicationIds()));
-        }
-        return publication;
-    }
-
-    private Forum toForum(ScholardexForumView row) {
-        Forum forum = new Forum();
-        forum.setId(row.getId());
-        forum.setPublicationName(row.getPublicationName());
-        forum.setIssn(row.getIssn());
-        forum.setEIssn(row.getEIssn());
-        forum.setAggregationType(row.getAggregationType());
-        return forum;
-    }
-
-    private Author toAuthor(ScholardexAuthorView row) {
-        Author author = new Author();
-        author.setId(row.getId());
-        author.setName(row.getName());
-        List<Affiliation> affiliations = row.getAffiliationIds() == null
-                ? List.of()
-                : row.getAffiliationIds().stream()
-                .map(affiliationId -> {
-                    Affiliation affiliation = new Affiliation();
-                    affiliation.setAfid(affiliationId);
-                    return affiliation;
-                })
-                .toList();
-        author.setAffiliations(affiliations);
-        return author;
-    }
-
-    private Affiliation toAffiliation(ScholardexAffiliationView row) {
-        Affiliation affiliation = new Affiliation();
-        affiliation.setAfid(row.getId());
-        affiliation.setName(row.getName());
-        affiliation.setCity(row.getCity());
-        affiliation.setCountry(row.getCountry());
-        return affiliation;
     }
 }
