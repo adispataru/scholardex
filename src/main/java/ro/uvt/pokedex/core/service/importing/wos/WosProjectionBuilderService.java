@@ -5,11 +5,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized;
 import ro.uvt.pokedex.core.model.reporting.wos.MetricType;
 import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
@@ -17,17 +20,18 @@ import ro.uvt.pokedex.core.model.reporting.wos.WosJournalIdentity;
 import ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 import ro.uvt.pokedex.core.model.reporting.wos.WosScoringView;
-import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosJournalIdentityRepository;
-import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
-import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
-import ro.uvt.pokedex.core.repository.reporting.WosScoringViewRepository;
 import ro.uvt.pokedex.core.service.application.WosIndexMaintenanceService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.sql.Array;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -38,6 +42,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Consumer;
 
 @Service
 public class WosProjectionBuilderService {
@@ -45,32 +50,26 @@ public class WosProjectionBuilderService {
     private static final Logger log = LoggerFactory.getLogger(WosProjectionBuilderService.class);
 
     private final WosJournalIdentityRepository identityRepository;
-    private final WosMetricFactRepository metricFactRepository;
-    private final WosCategoryFactRepository categoryFactRepository;
-    private final WosRankingViewRepository rankingViewRepository;
-    private final WosScoringViewRepository scoringViewRepository;
     private final MongoTemplate mongoTemplate;
     private final WosIndexMaintenanceService wosIndexMaintenanceService;
     private final WosOptimizationProperties optimizationProperties;
+    private final JdbcTemplate jdbcTemplate;
+    private final TransactionTemplate transactionTemplate;
 
     public WosProjectionBuilderService(
             WosJournalIdentityRepository identityRepository,
-            WosMetricFactRepository metricFactRepository,
-            WosCategoryFactRepository categoryFactRepository,
-            WosRankingViewRepository rankingViewRepository,
-            WosScoringViewRepository scoringViewRepository,
             MongoTemplate mongoTemplate,
             WosIndexMaintenanceService wosIndexMaintenanceService,
-            WosOptimizationProperties optimizationProperties
+            WosOptimizationProperties optimizationProperties,
+            JdbcTemplate jdbcTemplate,
+            PlatformTransactionManager transactionManager
     ) {
         this.identityRepository = identityRepository;
-        this.metricFactRepository = metricFactRepository;
-        this.categoryFactRepository = categoryFactRepository;
-        this.rankingViewRepository = rankingViewRepository;
-        this.scoringViewRepository = scoringViewRepository;
         this.mongoTemplate = mongoTemplate;
         this.wosIndexMaintenanceService = wosIndexMaintenanceService;
         this.optimizationProperties = optimizationProperties;
+        this.jdbcTemplate = jdbcTemplate;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     public ImportProcessingResult rebuildWosProjections() {
@@ -84,175 +83,133 @@ public class WosProjectionBuilderService {
             int chunkSize = Math.max(1, optimizationProperties.getProjectionWriteChunkSize());
             log.info("WoS projection rebuild started: buildVersion={}, chunkSize={}", buildVersion, chunkSize);
             long totalStartedAtNanos = System.nanoTime();
-            long loadIdentityNs = 0L;
-            long loadMetricNs = 0L;
-            long loadCategoryNs = 0L;
-            long assembleRankingNs = 0L;
-            long assembleScoringNs = 0L;
-            long writeRankingNs = 0L;
-            long writeScoringNs = 0L;
 
-            rankingViewRepository.deleteAll();
-            scoringViewRepository.deleteAll();
+            // --- load all MongoDB facts upfront (full fields for PG insertion) ---
+            long loadMetricNs = System.nanoTime();
+            List<WosMetricFact> allMetricFacts = mongoTemplate.find(
+                    new Query().with(Sort.by(Sort.Order.asc("journalId"), Sort.Order.asc("year"), Sort.Order.asc("metricType"))),
+                    WosMetricFact.class
+            );
+            long loadMetricMs = nanosToMillis(System.nanoTime() - loadMetricNs);
 
+            long loadCategoryNs = System.nanoTime();
+            List<WosCategoryFact> allCategoryFacts = mongoTemplate.find(
+                    new Query().with(Sort.by(Sort.Order.asc("journalId"), Sort.Order.asc("year"), Sort.Order.asc("categoryNameCanonical"), Sort.Order.asc("metricType"))),
+                    WosCategoryFact.class
+            );
+            long loadCategoryMs = nanosToMillis(System.nanoTime() - loadCategoryNs);
+
+            // Build lookup maps for derivation
+            Map<String, List<WosMetricFact>> metricByJournal = new HashMap<>();
+            for (WosMetricFact fact : allMetricFacts) {
+                if (fact.getJournalId() != null) {
+                    metricByJournal.computeIfAbsent(fact.getJournalId(), k -> new ArrayList<>()).add(fact);
+                }
+            }
+            Map<String, List<WosCategoryFact>> categoryByJournal = new HashMap<>();
+            for (WosCategoryFact fact : allCategoryFacts) {
+                if (fact.getJournalId() != null) {
+                    categoryByJournal.computeIfAbsent(fact.getJournalId(), k -> new ArrayList<>()).add(fact);
+                }
+            }
+            Map<ScoreKey, WosMetricFact> scoreByKey = new HashMap<>();
+            for (WosMetricFact fact : allMetricFacts) {
+                if (fact.getJournalId() != null && fact.getYear() != null && fact.getMetricType() != null) {
+                    scoreByKey.put(new ScoreKey(fact.getJournalId(), fact.getYear(), fact.getMetricType()), fact);
+                }
+            }
+
+            log.info("WoS projection facts loaded: metricFacts={} loadMs={}, categoryFacts={} loadMs={}",
+                    allMetricFacts.size(), loadMetricMs, allCategoryFacts.size(), loadCategoryMs);
+
+            // --- assemble ranking views (paginate over journal identities) ---
+            long assembleRankingNs = System.nanoTime();
+            List<WosRankingView> allRankingViews = new ArrayList<>();
             int page = 0;
-            long rankingRows = 0L;
             int rankingChunkNo = 0;
             while (true) {
-                long rankingChunkStartedAtNanos = System.nanoTime();
-                long loadIdentityStartedAtNanos = System.nanoTime();
-                Page<WosJournalIdentity> identityPage = identityRepository.findAll(PageRequest.of(page, chunkSize, Sort.by(Sort.Order.asc("id"))));
-                long loadIdentityFinishedAtNanos = System.nanoTime();
-                loadIdentityNs += System.nanoTime() - loadIdentityStartedAtNanos;
+                long chunkNs = System.nanoTime();
+                Page<WosJournalIdentity> identityPage = identityRepository.findAll(
+                        PageRequest.of(page, chunkSize, Sort.by(Sort.Order.asc("id")))
+                );
                 List<WosJournalIdentity> identities = identityPage.getContent();
                 if (identities.isEmpty()) {
                     break;
                 }
-
-                Set<String> journalIds = identities.stream()
-                        .map(WosJournalIdentity::getId)
-                        .filter(Objects::nonNull)
-                        .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-
-                long loadMetricStartedAtNanos = System.nanoTime();
-                List<WosMetricFact> metricFacts = findMetricFactsByJournalIds(journalIds);
-                long loadMetricFinishedAtNanos = System.nanoTime();
-                loadMetricNs += System.nanoTime() - loadMetricStartedAtNanos;
-                long loadCategoryStartedAtNanos = System.nanoTime();
-                List<WosCategoryFact> categoryFacts = findCategoryFactsByJournalIds(journalIds);
-                long loadCategoryFinishedAtNanos = System.nanoTime();
-                loadCategoryNs += System.nanoTime() - loadCategoryStartedAtNanos;
-
-                Map<String, List<WosMetricFact>> metricByJournal = new HashMap<>();
-                for (WosMetricFact fact : metricFacts) {
-                    metricByJournal.computeIfAbsent(fact.getJournalId(), key -> new ArrayList<>()).add(fact);
-                }
-                Map<String, List<WosCategoryFact>> categoryByJournal = new HashMap<>();
-                for (WosCategoryFact fact : categoryFacts) {
-                    categoryByJournal.computeIfAbsent(fact.getJournalId(), key -> new ArrayList<>()).add(fact);
-                }
-
-                long assembleRankingStartedAtNanos = System.nanoTime();
-                List<WosRankingView> rankingViews = new ArrayList<>(identities.size());
                 for (WosJournalIdentity identity : identities) {
                     result.markProcessed();
-                    rankingViews.add(toRankingView(
+                    allRankingViews.add(toRankingView(
                             identity,
                             metricByJournal.getOrDefault(identity.getId(), List.of()),
                             categoryByJournal.getOrDefault(identity.getId(), List.of()),
                             buildVersion,
                             buildAt
                     ));
-                }
-                long assembleRankingFinishedAtNanos = System.nanoTime();
-                assembleRankingNs += assembleRankingFinishedAtNanos - assembleRankingStartedAtNanos;
-
-                long writeRankingStartedAtNanos = System.nanoTime();
-                rankingViewRepository.saveAll(rankingViews);
-                long writeRankingFinishedAtNanos = System.nanoTime();
-                writeRankingNs += writeRankingFinishedAtNanos - writeRankingStartedAtNanos;
-                rankingRows += rankingViews.size();
-                for (int i = 0; i < rankingViews.size(); i++) {
                     result.markImported();
                 }
                 rankingChunkNo++;
-                long rankingChunkTotalMs = nanosToMillis(System.nanoTime() - rankingChunkStartedAtNanos);
-                String rankingChunkHealth = rankingChunkTotalMs >= optimizationProperties.getSlowChunkThresholdMs() ? "SLOW" : "OK";
-                log.info("WoS projection ranking chunk {} complete [page={}]: rows={} cumulativeRows={} health={} timingsMs[loadIdentity={}, loadMetric={}, loadCategory={}, assembleRanking={}, writeRanking={}, total={}]",
-                        rankingChunkNo,
-                        page,
-                        rankingViews.size(),
-                        rankingRows,
-                        rankingChunkHealth,
-                        nanosToMillis(loadIdentityFinishedAtNanos - loadIdentityStartedAtNanos),
-                        nanosToMillis(loadMetricFinishedAtNanos - loadMetricStartedAtNanos),
-                        nanosToMillis(loadCategoryFinishedAtNanos - loadCategoryStartedAtNanos),
-                        nanosToMillis(assembleRankingFinishedAtNanos - assembleRankingStartedAtNanos),
-                        nanosToMillis(writeRankingFinishedAtNanos - writeRankingStartedAtNanos),
-                        rankingChunkTotalMs);
+                log.info("WoS projection ranking chunk {} [page={}]: rows={} cumulative={} chunkMs={}",
+                        rankingChunkNo, page, identities.size(), allRankingViews.size(), nanosToMillis(System.nanoTime() - chunkNs));
                 if (!identityPage.hasNext()) {
                     break;
                 }
                 page++;
             }
+            long assembleRankingMs = nanosToMillis(System.nanoTime() - assembleRankingNs);
 
-            page = 0;
-            long scoringRows = 0L;
-            int scoringChunkNo = 0;
-            String lastCategoryFactId = null;
-            while (true) {
-                long scoringChunkStartedAtNanos = System.nanoTime();
-                long loadCategoryStartedAtNanos = System.nanoTime();
-                List<WosCategoryFact> categoryFacts = findScoringCategoryFactChunk(lastCategoryFactId, chunkSize);
-                long loadCategoryFinishedAtNanos = System.nanoTime();
-                loadCategoryNs += System.nanoTime() - loadCategoryStartedAtNanos;
-                if (categoryFacts.isEmpty()) {
-                    break;
-                }
-                lastCategoryFactId = categoryFacts.getLast().getId();
-
-                long loadMetricStartedAtNanos = System.nanoTime();
-                Map<ScoreKey, WosMetricFact> scoreByKey = preloadMetricFactsByScoreKey(categoryFacts);
-                long loadMetricFinishedAtNanos = System.nanoTime();
-                loadMetricNs += System.nanoTime() - loadMetricStartedAtNanos;
-
-                long assembleScoringStartedAtNanos = System.nanoTime();
-                List<WosScoringView> scoringViews = new ArrayList<>(categoryFacts.size());
-                for (WosCategoryFact categoryFact : categoryFacts) {
-                    result.markProcessed();
-                    WosMetricFact score = scoreByKey.get(new ScoreKey(categoryFact.getJournalId(), categoryFact.getYear(), categoryFact.getMetricType()));
-                    scoringViews.add(toScoringView(categoryFact, score, buildVersion, buildAt));
-                }
-                long assembleScoringFinishedAtNanos = System.nanoTime();
-                assembleScoringNs += assembleScoringFinishedAtNanos - assembleScoringStartedAtNanos;
-
-                long writeScoringStartedAtNanos = System.nanoTime();
-                BulkOperations bulkOperations = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, WosScoringView.class);
-                bulkOperations.insert(scoringViews);
-                bulkOperations.execute();
-                long writeScoringFinishedAtNanos = System.nanoTime();
-                writeScoringNs += writeScoringFinishedAtNanos - writeScoringStartedAtNanos;
-                scoringRows += scoringViews.size();
-                for (int i = 0; i < scoringViews.size(); i++) {
-                    result.markImported();
-                }
-                scoringChunkNo++;
-                long scoringChunkTotalMs = nanosToMillis(System.nanoTime() - scoringChunkStartedAtNanos);
-                String scoringChunkHealth = scoringChunkTotalMs >= optimizationProperties.getSlowChunkThresholdMs() ? "SLOW" : "OK";
-                log.info("WoS projection scoring chunk {} complete [page={}]: rows={} cumulativeRows={} health={} timingsMs[loadCategory={}, loadMetric={}, assembleScoring={}, writeScoring={}, total={}]",
-                        scoringChunkNo,
-                        page,
-                        scoringViews.size(),
-                        scoringRows,
-                        scoringChunkHealth,
-                        nanosToMillis(loadCategoryFinishedAtNanos - loadCategoryStartedAtNanos),
-                        nanosToMillis(loadMetricFinishedAtNanos - loadMetricStartedAtNanos),
-                        nanosToMillis(assembleScoringFinishedAtNanos - assembleScoringStartedAtNanos),
-                        nanosToMillis(writeScoringFinishedAtNanos - writeScoringStartedAtNanos),
-                        scoringChunkTotalMs);
-                if (categoryFacts.size() < chunkSize) {
-                    break;
-                }
-                page++;
+            // --- assemble scoring views (iterate over all category facts) ---
+            long assembleScoringNs = System.nanoTime();
+            List<WosScoringView> allScoringViews = new ArrayList<>(allCategoryFacts.size());
+            for (WosCategoryFact categoryFact : allCategoryFacts) {
+                result.markProcessed();
+                WosMetricFact score = scoreByKey.get(
+                        new ScoreKey(categoryFact.getJournalId(), categoryFact.getYear(), categoryFact.getMetricType())
+                );
+                allScoringViews.add(toScoringView(categoryFact, score, buildVersion, buildAt));
+                result.markImported();
             }
+            long assembleScoringMs = nanosToMillis(System.nanoTime() - assembleScoringNs);
 
-            long totalNs = System.nanoTime() - totalStartedAtNanos;
-            log.info("WoS projection rebuild complete: buildVersion={}, rankingRows={}, scoringRows={} timingsMs[loadIdentity={}, loadMetric={}, loadCategory={}, assembleRanking={}, assembleScoring={}, writeRanking={}, writeScoring={}, total={}]",
-                    buildVersion, rankingRows, scoringRows,
-                    nanosToMillis(loadIdentityNs),
-                    nanosToMillis(loadMetricNs),
-                    nanosToMillis(loadCategoryNs),
-                    nanosToMillis(assembleRankingNs),
-                    nanosToMillis(assembleScoringNs),
-                    nanosToMillis(writeRankingNs),
-                    nanosToMillis(writeScoringNs),
-                    nanosToMillis(totalNs));
+            log.info("WoS projection assembly complete: rankingRows={} scoringRows={} assembleRankingMs={} assembleScoringMs={}",
+                    allRankingViews.size(), allScoringViews.size(), assembleRankingMs, assembleScoringMs);
+
+            // --- write to PostgreSQL atomically ---
+            long writePgNs = System.nanoTime();
+            List<WosRankingView> rankingViewsForWrite = allRankingViews;
+            List<WosScoringView> scoringViewsForWrite = allScoringViews;
+            List<WosMetricFact> metricFactsForWrite = allMetricFacts;
+            List<WosCategoryFact> categoryFactsForWrite = allCategoryFacts;
+            transactionTemplate.executeWithoutResult(status -> {
+                jdbcTemplate.execute("""
+                        TRUNCATE TABLE
+                            reporting_read.wos_scoring_view,
+                            reporting_read.wos_category_fact,
+                            reporting_read.wos_metric_fact,
+                            reporting_read.wos_ranking_view
+                        """);
+                insertWosRankingRows(rankingViewsForWrite);
+                insertWosMetricRows(metricFactsForWrite);
+                insertWosCategoryRows(categoryFactsForWrite);
+                insertWosScoringRows(scoringViewsForWrite);
+            });
+            long writePgMs = nanosToMillis(System.nanoTime() - writePgNs);
+
+            long totalMs = nanosToMillis(System.nanoTime() - totalStartedAtNanos);
+            log.info("WoS projection rebuild complete: buildVersion={} rankingRows={} scoringRows={} metricRows={} categoryRows={} timingsMs[loadMetric={} loadCategory={} assembleRanking={} assembleScoring={} writePg={} total={}]",
+                    buildVersion, allRankingViews.size(), allScoringViews.size(),
+                    allMetricFacts.size(), allCategoryFacts.size(),
+                    loadMetricMs, loadCategoryMs, assembleRankingMs, assembleScoringMs, writePgMs, totalMs);
+
         } catch (Exception e) {
             result.markError("projection-rebuild-error=" + e.getMessage());
             log.error("WoS projection rebuild failed", e);
         }
         return result;
     }
+
+    // -------------------------------------------------------------------------
+    // Derivation helpers (unchanged)
+    // -------------------------------------------------------------------------
 
     private WosRankingView toRankingView(
             WosJournalIdentity identity,
@@ -408,84 +365,204 @@ public class WosProjectionBuilderService {
     private record ScoreKey(String journalId, Integer year, MetricType metricType) {
     }
 
-    private List<WosMetricFact> findMetricFactsByJournalIds(Set<String> journalIds) {
-        if (journalIds == null || journalIds.isEmpty()) {
-            return List.of();
-        }
-        Query query = new Query(Criteria.where("journalId").in(journalIds));
-        query.fields()
-                .include("journalId")
-                .include("year")
-                .include("metricType")
-                .include("value");
-        return mongoTemplate.find(query, WosMetricFact.class);
-    }
+    // -------------------------------------------------------------------------
+    // PostgreSQL write methods
+    // -------------------------------------------------------------------------
 
-    private List<WosCategoryFact> findCategoryFactsByJournalIds(Set<String> journalIds) {
-        if (journalIds == null || journalIds.isEmpty()) {
-            return List.of();
-        }
-        Query query = new Query(Criteria.where("journalId").in(journalIds));
-        query.fields()
-                .include("journalId")
-                .include("year")
-                .include("metricType")
-                .include("editionNormalized")
-                .include("sourceVersion")
-                .include("sourceRowItem");
-        return mongoTemplate.find(query, WosCategoryFact.class);
-    }
-
-    private List<WosCategoryFact> findScoringCategoryFactChunk(String lastId, int chunkSize) {
-        Query query = new Query();
-        if (lastId != null) {
-            query.addCriteria(Criteria.where("_id").gt(lastId));
-        }
-        query.limit(chunkSize);
-        query.with(Sort.by(Sort.Order.asc("_id")));
-        query.fields()
-                .include("journalId")
-                .include("year")
-                .include("metricType")
-                .include("categoryNameCanonical")
-                .include("editionNormalized")
-                .include("quarter")
-                .include("quartileRank")
-                .include("rank");
-        return mongoTemplate.find(query, WosCategoryFact.class);
-    }
-
-    private Map<ScoreKey, WosMetricFact> preloadMetricFactsByScoreKey(List<WosCategoryFact> categoryFacts) {
-        if (categoryFacts == null || categoryFacts.isEmpty()) {
-            return Map.of();
-        }
-        Map<MetricPreloadGroup, Set<String>> groupToJournalIds = new HashMap<>();
-        for (WosCategoryFact fact : categoryFacts) {
-            if (fact.getJournalId() == null || fact.getYear() == null || fact.getMetricType() == null) {
-                continue;
+    private void insertWosRankingRows(List<WosRankingView> rows) {
+        String sql = """
+                INSERT INTO reporting_read.wos_ranking_view (
+                    journal_id, name, issn, e_issn, alternative_issns, alternative_names,
+                    name_norm, issn_norm, e_issn_norm, alternative_issns_norm,
+                    latest_ais_year, latest_ris_year, latest_edition_normalized,
+                    build_version, build_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+        batchInChunks(rows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                WosRankingView row = chunk.get(i);
+                ps.setString(1, row.getId());
+                ps.setString(2, row.getName());
+                ps.setString(3, row.getIssn());
+                ps.setString(4, row.getEIssn());
+                ps.setArray(5, textArray(ps.getConnection(), row.getAlternativeIssns()));
+                ps.setArray(6, textArray(ps.getConnection(), row.getAlternativeNames()));
+                ps.setString(7, row.getNameNorm());
+                ps.setString(8, row.getIssnNorm());
+                ps.setString(9, row.getEIssnNorm());
+                ps.setArray(10, textArray(ps.getConnection(), row.getAlternativeIssnsNorm()));
+                setInteger(ps, 11, row.getLatestAisYear());
+                setInteger(ps, 12, row.getLatestRisYear());
+                setEnum(ps, 13, row.getLatestEditionNormalized() == null ? null : row.getLatestEditionNormalized().name());
+                ps.setString(14, row.getBuildVersion());
+                setInstant(ps, 15, row.getBuildAt());
+                setInstant(ps, 16, row.getUpdatedAt());
             }
-            MetricPreloadGroup group = new MetricPreloadGroup(fact.getYear(), fact.getMetricType());
-            groupToJournalIds.computeIfAbsent(group, ignored -> new LinkedHashSet<>()).add(fact.getJournalId());
-        }
-        Map<ScoreKey, WosMetricFact> out = new HashMap<>();
-        for (Map.Entry<MetricPreloadGroup, Set<String>> entry : groupToJournalIds.entrySet()) {
-            MetricPreloadGroup group = entry.getKey();
-            Query query = new Query(new Criteria().andOperator(
-                    Criteria.where("year").is(group.year()),
-                    Criteria.where("metricType").is(group.metricType()),
-                    Criteria.where("journalId").in(entry.getValue())
-            ));
-            for (WosMetricFact fact : mongoTemplate.find(query, WosMetricFact.class)) {
-                out.put(new ScoreKey(fact.getJournalId(), fact.getYear(), fact.getMetricType()), fact);
+
+            @Override
+            public int getBatchSize() {
+                return chunk.size();
             }
-        }
-        return out;
+        }));
     }
 
-    private long nanosToMillis(long nanos) {
+    private void insertWosMetricRows(List<WosMetricFact> rows) {
+        String sql = """
+                INSERT INTO reporting_read.wos_metric_fact (
+                    id, journal_id, year, metric_type, value,
+                    source_type, source_event_id, source_file, source_version, source_row_item, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+        batchInChunks(rows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                WosMetricFact row = chunk.get(i);
+                ps.setString(1, row.getId());
+                ps.setString(2, row.getJournalId());
+                setInteger(ps, 3, row.getYear());
+                setEnum(ps, 4, row.getMetricType() == null ? null : row.getMetricType().name());
+                setDouble(ps, 5, row.getValue());
+                setEnum(ps, 6, row.getSourceType() == null ? null : row.getSourceType().name());
+                ps.setString(7, row.getSourceEventId());
+                ps.setString(8, row.getSourceFile());
+                ps.setString(9, row.getSourceVersion());
+                ps.setString(10, row.getSourceRowItem());
+                setInstant(ps, 11, row.getCreatedAt());
+            }
+
+            @Override
+            public int getBatchSize() {
+                return chunk.size();
+            }
+        }));
+    }
+
+    private void insertWosCategoryRows(List<WosCategoryFact> rows) {
+        String sql = """
+                INSERT INTO reporting_read.wos_category_fact (
+                    id, journal_id, year, category_name_canonical,
+                    edition_raw, edition_normalized, metric_type,
+                    quarter, quartile_rank, rank,
+                    source_type, source_event_id, source_file, source_version, source_row_item, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+        batchInChunks(rows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                WosCategoryFact row = chunk.get(i);
+                ps.setString(1, row.getId());
+                ps.setString(2, row.getJournalId());
+                setInteger(ps, 3, row.getYear());
+                ps.setString(4, row.getCategoryNameCanonical());
+                ps.setString(5, row.getEditionRaw());
+                setEnum(ps, 6, row.getEditionNormalized() == null ? null : row.getEditionNormalized().name());
+                setEnum(ps, 7, row.getMetricType() == null ? null : row.getMetricType().name());
+                ps.setString(8, row.getQuarter());
+                setInteger(ps, 9, row.getQuartileRank());
+                setInteger(ps, 10, row.getRank());
+                setEnum(ps, 11, row.getSourceType() == null ? null : row.getSourceType().name());
+                ps.setString(12, row.getSourceEventId());
+                ps.setString(13, row.getSourceFile());
+                ps.setString(14, row.getSourceVersion());
+                ps.setString(15, row.getSourceRowItem());
+                setInstant(ps, 16, row.getCreatedAt());
+            }
+
+            @Override
+            public int getBatchSize() {
+                return chunk.size();
+            }
+        }));
+    }
+
+    private void insertWosScoringRows(List<WosScoringView> rows) {
+        String sql = """
+                INSERT INTO reporting_read.wos_scoring_view (
+                    id, journal_id, year, category_name_canonical,
+                    edition_normalized, metric_type, value, quarter,
+                    quartile_rank, rank, build_version, build_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+        batchInChunks(rows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                WosScoringView row = chunk.get(i);
+                ps.setString(1, row.getId());
+                ps.setString(2, row.getJournalId());
+                setInteger(ps, 3, row.getYear());
+                ps.setString(4, row.getCategoryNameCanonical());
+                setEnum(ps, 5, row.getEditionNormalized() == null ? null : row.getEditionNormalized().name());
+                setEnum(ps, 6, row.getMetricType() == null ? null : row.getMetricType().name());
+                setDouble(ps, 7, row.getValue());
+                ps.setString(8, row.getQuarter());
+                setInteger(ps, 9, row.getQuartileRank());
+                setInteger(ps, 10, row.getRank());
+                ps.setString(11, row.getBuildVersion());
+                setInstant(ps, 12, row.getBuildAt());
+                setInstant(ps, 13, row.getUpdatedAt());
+            }
+
+            @Override
+            public int getBatchSize() {
+                return chunk.size();
+            }
+        }));
+    }
+
+    // -------------------------------------------------------------------------
+    // JDBC utility helpers
+    // -------------------------------------------------------------------------
+
+    private <T> void batchInChunks(List<T> rows, Consumer<List<T>> chunkWriter) {
+        if (rows == null || rows.isEmpty()) {
+            return;
+        }
+        int batchSize = Math.max(1, optimizationProperties.getProjectionWriteChunkSize());
+        for (int i = 0; i < rows.size(); i += batchSize) {
+            int to = Math.min(rows.size(), i + batchSize);
+            chunkWriter.accept(rows.subList(i, to));
+        }
+    }
+
+    private static Array textArray(Connection connection, List<String> values) throws SQLException {
+        String[] entries = values == null ? new String[0] : values.toArray(String[]::new);
+        return connection.createArrayOf("text", entries);
+    }
+
+    private static void setInstant(PreparedStatement ps, int index, Instant value) throws SQLException {
+        if (value == null) {
+            ps.setTimestamp(index, null);
+        } else {
+            ps.setTimestamp(index, Timestamp.from(value));
+        }
+    }
+
+    private static void setInteger(PreparedStatement ps, int index, Integer value) throws SQLException {
+        if (value == null) {
+            ps.setNull(index, java.sql.Types.INTEGER);
+        } else {
+            ps.setInt(index, value);
+        }
+    }
+
+    private static void setDouble(PreparedStatement ps, int index, Double value) throws SQLException {
+        if (value == null) {
+            ps.setNull(index, java.sql.Types.DOUBLE);
+        } else {
+            ps.setDouble(index, value);
+        }
+    }
+
+    private static void setEnum(PreparedStatement ps, int index, String value) throws SQLException {
+        if (value == null) {
+            ps.setNull(index, java.sql.Types.OTHER);
+        } else {
+            ps.setObject(index, value, java.sql.Types.OTHER);
+        }
+    }
+
+    private static long nanosToMillis(long nanos) {
         return nanos / 1_000_000L;
-    }
-
-    private record MetricPreloadGroup(Integer year, MetricType metricType) {
     }
 }
