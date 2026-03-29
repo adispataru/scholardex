@@ -372,7 +372,7 @@ public class ScopusProjectionBuilderService {
 
     private Map<String, List<String>> buildCitingMap() {
         Map<String, List<String>> out = new LinkedHashMap<>();
-        List<ScholardexCitationFact> facts = mongoTemplate.find(new Query(), ScholardexCitationFact.class);
+        List<ScholardexCitationFact> facts = new ArrayList<>(mongoTemplate.find(new Query(), ScholardexCitationFact.class));
         facts.sort(Comparator
                 .comparing(ScholardexCitationFact::getCitedPublicationId, Comparator.nullsLast(String::compareTo))
                 .thenComparing(ScholardexCitationFact::getCitingPublicationId, Comparator.nullsLast(String::compareTo)));

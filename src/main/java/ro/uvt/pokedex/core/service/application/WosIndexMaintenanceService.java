@@ -14,9 +14,6 @@ import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosImportEvent;
 import ro.uvt.pokedex.core.model.reporting.wos.WosJournalIdentity;
 import ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact;
-import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
-import ro.uvt.pokedex.core.model.reporting.wos.WosScoringView;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,15 +26,6 @@ public class WosIndexMaintenanceService {
     static final String IDX_METRIC_LOOKUP = "idx_wos_metric_lookup";
     static final String IDX_CATEGORY_UNIQ = "uniq_category_fact";
     static final String IDX_CATEGORY_LOOKUP = "idx_wos_category_lookup";
-    static final String IDX_RANKING_SORT_NAME = "idx_wos_ranking_sort_name";
-    static final String IDX_RANKING_SORT_ISSN = "idx_wos_ranking_sort_issn";
-    static final String IDX_RANKING_SORT_EISSN = "idx_wos_ranking_sort_eissn";
-    static final String IDX_RANKING_SEARCH_NAME_NORM = "idx_wos_ranking_name_norm";
-    static final String IDX_RANKING_SEARCH_ISSN_NORM = "idx_wos_ranking_issn_norm";
-    static final String IDX_RANKING_SEARCH_EISSN_NORM = "idx_wos_ranking_eissn_norm";
-    static final String IDX_RANKING_SEARCH_ALT_ISSNS_NORM = "idx_wos_ranking_alt_issns_norm";
-    static final String IDX_SCORING_LOOKUP = "idx_wos_scoring_lookup";
-    static final String IDX_SCORING_JOURNAL_TIMELINE = "idx_wos_scoring_journal_timeline";
     static final String IDX_IMPORT_EVENT_SOURCE_SORT = "idx_wos_import_event_source_sort";
     static final String IDX_JOURNAL_IDENTITY_KEY = "uniq_identity_key";
     static final String IDX_JOURNAL_PRIMARY_ISSN = "idx_wos_journal_identity_primary_issn";
@@ -60,8 +48,6 @@ public class WosIndexMaintenanceService {
 
         ensureMetricFactIndexes(created, present, invalid, errors);
         ensureCategoryFactIndexes(created, present, invalid, errors);
-        ensureRankingViewIndexes(created, present, invalid, errors);
-        ensureScoringViewIndexes(created, present, invalid, errors);
         ensureImportEventIndexes(created, present, invalid, errors);
         ensureJournalIdentityIndexes(created, present, invalid, errors);
         ensureSupportingIndexes(created, present, invalid, errors);
@@ -109,31 +95,6 @@ public class WosIndexMaintenanceService {
                 IDX_CATEGORY_LOOKUP,
                 false,
                 List.of(field("categoryNameCanonical"), field("year"), field("metricType"), field("editionNormalized"), field("journalId"))
-        ), created, present, invalid, errors);
-    }
-
-    private void ensureRankingViewIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
-        IndexOperations ops = mongoTemplate.indexOps(WosRankingView.class);
-        ensureNamedIndex(ops, new IndexDefinition(IDX_RANKING_SORT_NAME, false, List.of(field("name"))), created, present, invalid, errors);
-        ensureNamedIndex(ops, new IndexDefinition(IDX_RANKING_SORT_ISSN, false, List.of(field("issn"))), created, present, invalid, errors);
-        ensureNamedIndex(ops, new IndexDefinition(IDX_RANKING_SORT_EISSN, false, List.of(field("eIssn"))), created, present, invalid, errors);
-        ensureNamedIndex(ops, new IndexDefinition(IDX_RANKING_SEARCH_NAME_NORM, false, List.of(field("nameNorm"))), created, present, invalid, errors);
-        ensureNamedIndex(ops, new IndexDefinition(IDX_RANKING_SEARCH_ISSN_NORM, false, List.of(field("issnNorm"))), created, present, invalid, errors);
-        ensureNamedIndex(ops, new IndexDefinition(IDX_RANKING_SEARCH_EISSN_NORM, false, List.of(field("eIssnNorm"))), created, present, invalid, errors);
-        ensureNamedIndex(ops, new IndexDefinition(IDX_RANKING_SEARCH_ALT_ISSNS_NORM, false, List.of(field("alternativeIssnsNorm"))), created, present, invalid, errors);
-    }
-
-    private void ensureScoringViewIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
-        IndexOperations ops = mongoTemplate.indexOps(WosScoringView.class);
-        ensureNamedIndex(ops, new IndexDefinition(
-                IDX_SCORING_LOOKUP,
-                false,
-                List.of(field("categoryNameCanonical"), field("year"), field("metricType"), field("editionNormalized"))
-        ), created, present, invalid, errors);
-        ensureNamedIndex(ops, new IndexDefinition(
-                IDX_SCORING_JOURNAL_TIMELINE,
-                false,
-                List.of(field("journalId"), field("metricType"), field("year"), field("editionNormalized"))
         ), created, present, invalid, errors);
     }
 

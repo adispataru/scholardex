@@ -6,6 +6,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.DefaultResourceLoader;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.test.util.ReflectionTestUtils;
 import ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized;
 import ro.uvt.pokedex.core.model.reporting.wos.WosImportEvent;
@@ -17,13 +19,14 @@ import ro.uvt.pokedex.core.model.reporting.wos.WosSourceType;
 import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosImportEventRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
-import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
-import ro.uvt.pokedex.core.repository.reporting.WosScoringViewRepository;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,8 +35,7 @@ class WosParityReconciliationServiceTest {
     @Mock private WosImportEventRepository importEventRepository;
     @Mock private WosMetricFactRepository metricFactRepository;
     @Mock private WosCategoryFactRepository categoryFactRepository;
-    @Mock private WosRankingViewRepository rankingViewRepository;
-    @Mock private WosScoringViewRepository scoringViewRepository;
+    @Mock private JdbcTemplate jdbcTemplate;
 
     @Test
     void fullParityPassesWhenBaselineMatches() {
@@ -43,8 +45,7 @@ class WosParityReconciliationServiceTest {
                 importEventRepository,
                 metricFactRepository,
                 categoryFactRepository,
-                rankingViewRepository,
-                scoringViewRepository
+                jdbcTemplate
         );
         ReflectionTestUtils.setField(service, "baselineLocation", "classpath:wos/parity/baseline-test-pass.json");
 
@@ -64,14 +65,6 @@ class WosParityReconciliationServiceTest {
         categoryFact.setQuarter("Q1");
         categoryFact.setRank(1);
 
-        WosScoringView scoringView = new WosScoringView();
-        scoringView.setJournalId("j1");
-        scoringView.setYear(2023);
-        scoringView.setCategoryNameCanonical("Computer Science, Theory & Methods");
-        scoringView.setMetricType(MetricType.AIS);
-        scoringView.setEditionNormalized(EditionNormalized.SCIE);
-        scoringView.setQuarter("Q1");
-
         when(importEventRepository.count()).thenReturn(1L);
         WosImportEvent importEvent = new WosImportEvent();
         importEvent.setSourceType(WosSourceType.GOV_AIS_RIS);
@@ -81,11 +74,17 @@ class WosParityReconciliationServiceTest {
         when(importEventRepository.findAll()).thenReturn(List.of(importEvent));
         when(metricFactRepository.count()).thenReturn(1L);
         when(categoryFactRepository.count()).thenReturn(1L);
-        when(rankingViewRepository.count()).thenReturn(1L);
-        when(scoringViewRepository.count()).thenReturn(1L);
+        WosScoringView scoringView = new WosScoringView();
+        scoringView.setJournalId("j1");
+        scoringView.setCategoryNameCanonical("Computer Science, Theory & Methods");
+        scoringView.setEditionNormalized(EditionNormalized.SCIE);
+        scoringView.setMetricType(MetricType.AIS);
+        scoringView.setYear(2023);
+        scoringView.setQuarter("Q1");
+        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class))).thenReturn(1L);
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class))).thenReturn(List.of(scoringView));
         when(metricFactRepository.findAll()).thenReturn(List.of(metricFact));
         when(categoryFactRepository.findAll()).thenReturn(List.of(categoryFact));
-        when(scoringViewRepository.findAll()).thenReturn(List.of(scoringView));
 
         var result = service.runFullParity();
 
@@ -102,8 +101,7 @@ class WosParityReconciliationServiceTest {
                 importEventRepository,
                 metricFactRepository,
                 categoryFactRepository,
-                rankingViewRepository,
-                scoringViewRepository
+                jdbcTemplate
         );
         ReflectionTestUtils.setField(service, "baselineLocation", "classpath:wos/parity/baseline-test-fail.json");
 
@@ -111,11 +109,10 @@ class WosParityReconciliationServiceTest {
         when(importEventRepository.findAll()).thenReturn(List.of());
         when(metricFactRepository.count()).thenReturn(0L);
         when(categoryFactRepository.count()).thenReturn(0L);
-        when(rankingViewRepository.count()).thenReturn(0L);
-        when(scoringViewRepository.count()).thenReturn(0L);
+        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class))).thenReturn(0L);
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class))).thenReturn(List.of());
         when(metricFactRepository.findAll()).thenReturn(List.of());
         when(categoryFactRepository.findAll()).thenReturn(List.of());
-        when(scoringViewRepository.findAll()).thenReturn(List.of());
 
         var result = service.runFullParity();
 
@@ -133,8 +130,7 @@ class WosParityReconciliationServiceTest {
                 importEventRepository,
                 metricFactRepository,
                 categoryFactRepository,
-                rankingViewRepository,
-                scoringViewRepository
+                jdbcTemplate
         );
         ReflectionTestUtils.setField(service, "baselineLocation", "classpath:wos/parity/does-not-exist.json");
 

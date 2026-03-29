@@ -5,14 +5,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
-import ro.uvt.pokedex.core.model.reporting.wos.WosJournalIdentity;
-import ro.uvt.pokedex.core.repository.reporting.WosJournalIdentityRepository;
-import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
+import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
@@ -32,8 +33,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class WosScholardexOnboardingServiceTest {
 
-    @Mock private WosJournalIdentityRepository wosJournalIdentityRepository;
-    @Mock private WosRankingViewRepository wosRankingViewRepository;
+    @Mock private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     @Mock private ScopusForumFactRepository scopusForumFactRepository;
     @Mock private ScholardexForumFactRepository scholardexForumFactRepository;
     @Mock private ScholardexSourceLinkService sourceLinkService;
@@ -43,8 +43,7 @@ class WosScholardexOnboardingServiceTest {
     @Test
     void runWosOnboardingCreatesCanonicalForumForWosOnlyJournal() {
         WosScholardexOnboardingService service = new WosScholardexOnboardingService(
-                wosJournalIdentityRepository,
-                wosRankingViewRepository,
+                namedParameterJdbcTemplate,
                 scopusForumFactRepository,
                 scholardexForumFactRepository,
                 sourceLinkService,
@@ -52,12 +51,13 @@ class WosScholardexOnboardingServiceTest {
                 scholardexPublicationFactRepository
         );
 
-        WosJournalIdentity identity = new WosJournalIdentity();
-        identity.setId("wos-j-1");
-        identity.setTitle("Journal of Testing");
-        identity.setPrimaryIssn("1234567X");
-        when(wosJournalIdentityRepository.findAll()).thenReturn(List.of(identity));
-        when(wosRankingViewRepository.findAll()).thenReturn(List.of());
+        WosRankingView rankingView = new WosRankingView();
+        rankingView.setId("wos-j-1");
+        rankingView.setName("Journal of Testing");
+        rankingView.setIssn("1234567X");
+
+        when(namedParameterJdbcTemplate.query(any(String.class), any(SqlParameterSource.class), any(RowMapper.class)))
+                .thenReturn(List.of(rankingView));
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of());
@@ -80,8 +80,7 @@ class WosScholardexOnboardingServiceTest {
     @Test
     void runWosOnboardingQuarantinesPublicationSourceLinkCollision() {
         WosScholardexOnboardingService service = new WosScholardexOnboardingService(
-                wosJournalIdentityRepository,
-                wosRankingViewRepository,
+                namedParameterJdbcTemplate,
                 scopusForumFactRepository,
                 scholardexForumFactRepository,
                 sourceLinkService,
@@ -96,8 +95,8 @@ class WosScholardexOnboardingServiceTest {
         ScholardexSourceLink existing = new ScholardexSourceLink();
         existing.setCanonicalEntityId("spub_other");
 
-        when(wosJournalIdentityRepository.findAll()).thenReturn(List.of());
-        when(wosRankingViewRepository.findAll()).thenReturn(List.of());
+        when(namedParameterJdbcTemplate.query(any(String.class), any(SqlParameterSource.class), any(RowMapper.class)))
+                .thenReturn(List.of());
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of(publication));

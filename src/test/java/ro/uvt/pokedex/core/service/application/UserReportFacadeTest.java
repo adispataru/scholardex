@@ -22,7 +22,6 @@ import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
 import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndicatorRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
-import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
@@ -84,8 +83,6 @@ class UserReportFacadeTest {
     private PublicationEnrichmentLinkerService publicationEnrichmentLinkerService;
     @Mock
     private ReportingLookupPort reportingLookupPort;
-    @Mock
-    private WosRankingViewRepository wosRankingViewRepository;
     @Mock
     private ResearcherAuthorLookupService researcherAuthorLookupService;
 

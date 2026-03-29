@@ -5,6 +5,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import ro.uvt.pokedex.core.model.Institution;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
@@ -16,17 +19,14 @@ import ro.uvt.pokedex.core.repository.InstitutionRepository;
 import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndicatorRepository;
-import ro.uvt.pokedex.core.repository.reporting.RankingRepository;
-import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
-import ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized;
-import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,13 +34,13 @@ class AdminCatalogFacadeTest {
 
     @Mock private ScholardexProjectionReadService scholardexProjectionReadService;
     @Mock private ArtisticEventRepository artisticEventRepository;
-    @Mock private RankingRepository rankingRepository;
     @Mock private CoreConferenceRankingRepository coreConferenceRankingRepository;
     @Mock private IndicatorRepository indicatorRepository;
     @Mock private DomainRepository domainRepository;
     @Mock private InstitutionRepository institutionRepository;
     @Mock private ActivityRepository activityRepository;
-    @Mock private WosCategoryFactRepository wosCategoryFactRepository;
+    @Mock private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    @Mock private PostgresWosRankingDetailsReadPort postgresWosRankingDetailsReadPort;
 
     @InjectMocks
     private AdminCatalogFacade facade;
@@ -70,14 +70,8 @@ class AdminCatalogFacadeTest {
 
     @Test
     void listWosCategoriesReturnsSortedValues() {
-        WosCategoryFact factB = new WosCategoryFact();
-        factB.setCategoryNameCanonical("B");
-        factB.setEditionNormalized(EditionNormalized.SCIE);
-        WosCategoryFact factA = new WosCategoryFact();
-        factA.setCategoryNameCanonical("A");
-        factA.setEditionNormalized(EditionNormalized.SSCI);
-        when(wosCategoryFactRepository.findAllByEditionNormalizedIn(Set.of(EditionNormalized.SCIE, EditionNormalized.SSCI)))
-                .thenReturn(List.of(factB, factA));
+        when(namedParameterJdbcTemplate.query(anyString(), any(SqlParameterSource.class), any(RowMapper.class)))
+                .thenReturn(List.of("A - SSCI", "B - SCIE"));
 
         List<String> categories = facade.listWosCategories();
         assertEquals(List.of("A - SSCI", "B - SCIE"), categories);

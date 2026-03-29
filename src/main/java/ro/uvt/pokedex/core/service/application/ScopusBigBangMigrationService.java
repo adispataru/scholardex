@@ -10,20 +10,17 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCanonicalBuildCheckpoint;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
+import org.springframework.jdbc.core.JdbcTemplate;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationFactRepository;
@@ -86,7 +83,7 @@ public class ScopusBigBangMigrationService {
     private final ScholardexPublicationFactRepository scholardexPublicationFactRepository;
     private final ScholardexCitationFactRepository scholardexCitationFactRepository;
     private final ScholardexSourceLinkRepository scholardexSourceLinkRepository;
-    private final ScholardexPublicationViewRepository publicationViewRepository;
+    private final JdbcTemplate jdbcTemplate;
     private final MongoTemplate mongoTemplate;
 
     public ScopusBigBangMigrationResult runIngestStep() {
@@ -246,7 +243,7 @@ public class ScopusBigBangMigrationService {
                 authorSearchViewRepository.count(),
                 affiliationSearchViewRepository.count(),
                 scholardexSourceLinkRepository.count(),
-                publicationViewRepository.count()
+                jdbcTemplate.queryForObject("SELECT COUNT(*) FROM reporting_read.scholardex_publication_view", Long.class)
         );
     }
 
@@ -534,10 +531,10 @@ public class ScopusBigBangMigrationService {
         long canonicalAffiliationFacts = canonicalAffiliationIds.size();
         long canonicalForumFacts = canonicalForumIds.size();
 
-        long publicationViews = publicationViewRepository.count();
-        long canonicalAuthorViews = mongoTemplate.count(new Query(), ScholardexAuthorView.class);
-        long canonicalAffiliationViews = mongoTemplate.count(new Query(), ScholardexAffiliationView.class);
-        long canonicalForumViews = mongoTemplate.count(new Query(), ScholardexForumView.class);
+        long publicationViews = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM reporting_read.scholardex_publication_view", Long.class);
+        long canonicalAuthorViews = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM reporting_read.scholardex_author_view", Long.class);
+        long canonicalAffiliationViews = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM reporting_read.scholardex_affiliation_view", Long.class);
+        long canonicalForumViews = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM reporting_read.scholardex_forum_view", Long.class);
 
         long sourceLinks = mongoTemplate.count(scopusSourceLinkQuery(), "scholardex.source_links");
         long identityConflicts = mongoTemplate.count(scopusIncomingSourceQuery(), ScholardexIdentityConflict.class);
@@ -582,29 +579,17 @@ public class ScopusBigBangMigrationService {
                     Query.query(Criteria.where("_id").in(canonicalAuthorIds)),
                     ScholardexAuthorFact.class
             );
-            mongoTemplate.remove(
-                    Query.query(Criteria.where("_id").in(canonicalAuthorIds)),
-                    ScholardexAuthorView.class
-            );
         }
         if (!canonicalAffiliationIds.isEmpty()) {
             mongoTemplate.remove(
                     Query.query(Criteria.where("_id").in(canonicalAffiliationIds)),
                     ScholardexAffiliationFact.class
             );
-            mongoTemplate.remove(
-                    Query.query(Criteria.where("_id").in(canonicalAffiliationIds)),
-                    ScholardexAffiliationView.class
-            );
         }
         if (!canonicalForumIds.isEmpty()) {
             mongoTemplate.remove(
                     Query.query(Criteria.where("_id").in(canonicalForumIds)),
                     ScholardexForumFact.class
-            );
-            mongoTemplate.remove(
-                    Query.query(Criteria.where("_id").in(canonicalForumIds)),
-                    ScholardexForumView.class
             );
         }
 

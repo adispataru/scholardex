@@ -8,9 +8,8 @@ import ro.uvt.pokedex.core.repository.reporting.WosImportEventRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosJournalIdentityRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
-import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
-import ro.uvt.pokedex.core.repository.reporting.WosScoringViewRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosFactConflictRepository;
+import org.springframework.jdbc.core.JdbcTemplate;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.model.MigrationStepResult;
 import ro.uvt.pokedex.core.service.importing.wos.WosFactBuilderService;
@@ -39,8 +38,7 @@ public class WosBigBangMigrationService {
     private final WosCategoryFactRepository categoryFactRepository;
     private final WosIdentityConflictRepository identityConflictRepository;
     private final WosFactConflictRepository factConflictRepository;
-    private final WosRankingViewRepository rankingViewRepository;
-    private final WosScoringViewRepository scoringViewRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     @Value("${h14.wos.migration.data-dir:data/loaded}")
     private String migrationDataDirectory;
@@ -182,8 +180,8 @@ public class WosBigBangMigrationService {
         long journalIdentities = journalIdentityRepository.count();
         long metricFacts = metricFactRepository.count();
         long categoryFacts = categoryFactRepository.count();
-        long rankingRows = rankingViewRepository.count();
-        long scoringRows = scoringViewRepository.count();
+        long rankingRows = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM reporting_read.wos_ranking_view", Long.class);
+        long scoringRows = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM reporting_read.wos_scoring_view", Long.class);
 
         boolean rankingAligned = rankingRows <= journalIdentities;
         boolean scoringAligned = scoringRows <= metricFacts;
@@ -220,11 +218,10 @@ public class WosBigBangMigrationService {
         long categoryFacts = categoryFactRepository.count();
         long identityConflicts = identityConflictRepository.count();
         long factConflicts = factConflictRepository.count();
-        long rankingRows = rankingViewRepository.count();
-        long scoringRows = scoringViewRepository.count();
+        long rankingRows = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM reporting_read.wos_ranking_view", Long.class);
+        long scoringRows = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM reporting_read.wos_scoring_view", Long.class);
 
-        scoringViewRepository.deleteAll();
-        rankingViewRepository.deleteAll();
+        jdbcTemplate.execute("TRUNCATE TABLE reporting_read.wos_scoring_view, reporting_read.wos_category_fact, reporting_read.wos_metric_fact, reporting_read.wos_ranking_view");
         factConflictRepository.deleteAll();
         identityConflictRepository.deleteAll();
         categoryFactRepository.deleteAll();

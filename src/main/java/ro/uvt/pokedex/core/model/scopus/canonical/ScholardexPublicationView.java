@@ -1,17 +1,13 @@
 package ro.uvt.pokedex.core.model.scopus.canonical;
 
 import lombok.Data;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 @Data
-@Document(collection = "scholardex.publication_view")
 public class ScholardexPublicationView {
-    @Id
     private String id;
     private String doi;
     private String doiNormalized;

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosFactConflictRepository;
@@ -12,8 +13,6 @@ import ro.uvt.pokedex.core.repository.reporting.WosIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosImportEventRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosJournalIdentityRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
-import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
-import ro.uvt.pokedex.core.repository.reporting.WosScoringViewRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.model.MigrationStepResult;
 import ro.uvt.pokedex.core.service.importing.wos.WosFactBuilderService;
@@ -53,8 +52,7 @@ class WosBigBangMigrationServiceTest {
     @Mock private WosCategoryFactRepository categoryFactRepository;
     @Mock private WosIdentityConflictRepository identityConflictRepository;
     @Mock private WosFactConflictRepository factConflictRepository;
-    @Mock private WosRankingViewRepository rankingViewRepository;
-    @Mock private WosScoringViewRepository scoringViewRepository;
+    @Mock private JdbcTemplate jdbcTemplate;
 
     private WosBigBangMigrationService service;
 
@@ -73,8 +71,7 @@ class WosBigBangMigrationServiceTest {
                 categoryFactRepository,
                 identityConflictRepository,
                 factConflictRepository,
-                rankingViewRepository,
-                scoringViewRepository
+                jdbcTemplate
         );
         ReflectionTestUtils.setField(service, "migrationDataDirectory", "data/loaded");
 
@@ -86,8 +83,7 @@ class WosBigBangMigrationServiceTest {
         lenient().when(journalIdentityRepository.count()).thenReturn(4L);
         lenient().when(metricFactRepository.count()).thenReturn(10L);
         lenient().when(categoryFactRepository.count()).thenReturn(8L);
-        lenient().when(rankingViewRepository.count()).thenReturn(4L);
-        lenient().when(scoringViewRepository.count()).thenReturn(8L);
+        lenient().when(jdbcTemplate.queryForObject(anyString(), eq(Long.class))).thenReturn(4L);
         lenient().when(factBuilderService.readFactBuildCheckpoint()).thenReturn(Optional.empty());
         lenient().when(parityReconciliationService.runEligibilityCheck()).thenReturn(
                 new WosParityReconciliationService.ParityReconciliationResult(true, true, List.of("eligibility"), 0, 0, List.of())
@@ -160,8 +156,7 @@ class WosBigBangMigrationServiceTest {
         when(categoryFactRepository.count()).thenReturn(6L);
         when(identityConflictRepository.count()).thenReturn(3L);
         when(factConflictRepository.count()).thenReturn(2L);
-        when(rankingViewRepository.count()).thenReturn(5L);
-        when(scoringViewRepository.count()).thenReturn(4L);
+        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class))).thenReturn(5L);
 
         WosBigBangMigrationService.CanonicalResetResult result = service.resetCanonicalState();
 

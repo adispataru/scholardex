@@ -6,8 +6,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
@@ -64,7 +64,7 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ScholardexPublicationFactRepository scholardexPublicationFactRepository;
     @Mock private ScholardexCitationFactRepository scholardexCitationFactRepository;
     @Mock private ScholardexSourceLinkRepository scholardexSourceLinkRepository;
-    @Mock private ScholardexPublicationViewRepository publicationViewRepository;
+    @Mock private JdbcTemplate jdbcTemplate;
     @Mock private MongoTemplate mongoTemplate;
 
     private ScopusBigBangMigrationService service;
@@ -97,7 +97,7 @@ class ScopusBigBangMigrationServiceTest {
                 scholardexPublicationFactRepository,
                 scholardexCitationFactRepository,
                 scholardexSourceLinkRepository,
-                publicationViewRepository,
+                jdbcTemplate,
                 mongoTemplate
         );
         ReflectionTestUtils.setField(service, "scopusDataFile", "/tmp/scopus.json");
@@ -131,7 +131,10 @@ class ScopusBigBangMigrationServiceTest {
         when(authorSearchViewRepository.count()).thenReturn(40L);
         when(affiliationSearchViewRepository.count()).thenReturn(12L);
         when(scholardexSourceLinkRepository.count()).thenReturn(77L);
-        when(publicationViewRepository.count()).thenReturn(50L);
+        when(jdbcTemplate.queryForObject(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq(Long.class)
+        )).thenReturn(50L);
 
         ScopusBigBangMigrationService.ScopusBigBangMigrationResult full = service.runFull();
 

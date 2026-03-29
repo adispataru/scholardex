@@ -6,7 +6,9 @@ import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.repository.support.MongoRepositoryFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -17,23 +19,31 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized;
 import ro.uvt.pokedex.core.model.reporting.wos.MetricType;
 import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
+import ro.uvt.pokedex.core.model.reporting.wos.WosJournalIdentity;
 import ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact;
-import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
-import ro.uvt.pokedex.core.model.reporting.wos.WosScoringView;
 import ro.uvt.pokedex.core.model.reporting.wos.WosSourceType;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
+import ro.uvt.pokedex.core.repository.reporting.WosJournalIdentityRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
+import ro.uvt.pokedex.core.service.importing.scopus.ScopusProjectionBuilderService;
+import ro.uvt.pokedex.core.service.application.WosIndexMaintenanceService;
+import ro.uvt.pokedex.core.service.importing.wos.WosOptimizationProperties;
+import ro.uvt.pokedex.core.service.importing.wos.WosProjectionBuilderService;
 
 import java.time.Instant;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @Testcontainers
 class PostgresReportingProjectionServiceIntegrationTest {
@@ -75,7 +85,40 @@ class PostgresReportingProjectionServiceIntegrationTest {
         dataSource.setPassword(POSTGRES.getPassword());
 
         jdbcTemplate = new JdbcTemplate(dataSource);
+        DataSourceTransactionManager txManager = new DataSourceTransactionManager(dataSource);
         materializedViewRefreshService = new JdbcPostgresMaterializedViewRefreshService(jdbcTemplate);
+
+        MongoRepositoryFactory mongoRepoFactory = new MongoRepositoryFactory(mongoTemplate);
+        WosJournalIdentityRepository identityRepository = mongoRepoFactory.getRepository(WosJournalIdentityRepository.class);
+        ScopusForumFactRepository scopusForumFactRepository = mongoRepoFactory.getRepository(ScopusForumFactRepository.class);
+        ScholardexForumFactRepository canonicalForumFactRepository = mongoRepoFactory.getRepository(ScholardexForumFactRepository.class);
+        ScholardexAuthorFactRepository authorFactRepository = mongoRepoFactory.getRepository(ScholardexAuthorFactRepository.class);
+        ScholardexAffiliationFactRepository affiliationFactRepository = mongoRepoFactory.getRepository(ScholardexAffiliationFactRepository.class);
+        ScholardexPublicationFactRepository publicationFactRepository = mongoRepoFactory.getRepository(ScholardexPublicationFactRepository.class);
+
+        WosOptimizationProperties optimizationProperties = new WosOptimizationProperties();
+        optimizationProperties.setPreflightIndexesEnabled(false);
+        optimizationProperties.setProjectionWriteChunkSize(50);
+
+        WosProjectionBuilderService wosBuilder = new WosProjectionBuilderService(
+                identityRepository,
+                mongoTemplate,
+                Mockito.mock(WosIndexMaintenanceService.class),
+                optimizationProperties,
+                jdbcTemplate,
+                txManager
+        );
+
+        ScopusProjectionBuilderService scopusBuilder = new ScopusProjectionBuilderService(
+                scopusForumFactRepository,
+                canonicalForumFactRepository,
+                authorFactRepository,
+                affiliationFactRepository,
+                publicationFactRepository,
+                mongoTemplate,
+                jdbcTemplate,
+                txManager
+        );
 
         PostgresReportingProjectionProperties properties = new PostgresReportingProjectionProperties();
         properties.setEnabled(true);
@@ -85,9 +128,11 @@ class PostgresReportingProjectionServiceIntegrationTest {
         projectionService = new JdbcPostgresReportingProjectionService(
                 mongoTemplate,
                 jdbcTemplate,
-                new DataSourceTransactionManager(dataSource),
+                txManager,
                 properties,
-                materializedViewRefreshService
+                materializedViewRefreshService,
+                wosBuilder,
+                scopusBuilder
         );
     }
 
@@ -125,10 +170,11 @@ class PostgresReportingProjectionServiceIntegrationTest {
                 .count();
         assertEquals(2L, skippedSlices);
 
-        ScholardexPublicationView publication = mongoTemplate.findById("pub-1", ScholardexPublicationView.class);
-        assertNotNull(publication);
-        publication.setUpdatedAt(Instant.now().plusSeconds(60));
-        mongoTemplate.save(publication);
+        // Modify a publication fact to change the Scopus fingerprint
+        ScholardexPublicationFact pubFact = mongoTemplate.findById("pub-fact-1", ScholardexPublicationFact.class);
+        assert pubFact != null;
+        pubFact.setUpdatedAt(Instant.now().plusSeconds(60));
+        mongoTemplate.save(pubFact);
 
         PostgresReportingProjectionService.ProjectionRunSummary incrementalChanged = projectionService.runIncrementalSync();
         assertEquals("SUCCESS", incrementalChanged.status());
@@ -181,22 +227,17 @@ class PostgresReportingProjectionServiceIntegrationTest {
     private void seedMongoProjectionSources() {
         Instant now = Instant.parse("2026-03-11T10:00:00Z");
 
-        WosRankingView ranking = new WosRankingView();
-        ranking.setId("j1");
-        ranking.setName("Journal One");
-        ranking.setIssn("1234-5678");
-        ranking.setIssnNorm("12345678");
-        ranking.setEIssn("8765-4321");
-        ranking.setEIssnNorm("87654321");
-        ranking.setAlternativeIssns(List.of("1111-2222"));
-        ranking.setAlternativeIssnsNorm(List.of("11112222"));
-        ranking.setAlternativeNames(List.of("J One"));
-        ranking.setLatestAisYear(2025);
-        ranking.setLatestRisYear(2025);
-        ranking.setLatestEditionNormalized(EditionNormalized.SCIE);
-        ranking.setUpdatedAt(now);
-        mongoTemplate.save(ranking);
+        // WoS journal identity — used by WosProjectionBuilderService and WoS fingerprint
+        WosJournalIdentity identity = new WosJournalIdentity();
+        identity.setId("j1");
+        identity.setTitle("Journal One");
+        identity.setPrimaryIssn("1234-5678");
+        identity.setEIssn("8765-4321");
+        identity.setActive(true);
+        identity.setUpdatedAt(now);
+        mongoTemplate.save(identity);
 
+        // WoS metric facts
         WosMetricFact metricFact = new WosMetricFact();
         metricFact.setId("metric-1");
         metricFact.setJournalId("j1");
@@ -208,6 +249,7 @@ class PostgresReportingProjectionServiceIntegrationTest {
         metricFact.setCreatedAt(now);
         mongoTemplate.save(metricFact);
 
+        // WoS category facts
         WosCategoryFact categoryFact = new WosCategoryFact();
         categoryFact.setId("category-1");
         categoryFact.setJournalId("j1");
@@ -223,77 +265,66 @@ class PostgresReportingProjectionServiceIntegrationTest {
         categoryFact.setCreatedAt(now);
         mongoTemplate.save(categoryFact);
 
-        WosScoringView scoringView = new WosScoringView();
-        scoringView.setId("score-1");
-        scoringView.setJournalId("j1");
-        scoringView.setYear(2025);
-        scoringView.setCategoryNameCanonical("COMPUTER SCIENCE");
-        scoringView.setEditionNormalized(EditionNormalized.SCIE);
-        scoringView.setMetricType(MetricType.AIS);
-        scoringView.setValue(2.5);
-        scoringView.setQuarter("Q1");
-        scoringView.setQuartileRank(10);
-        scoringView.setRank(50);
-        scoringView.setUpdatedAt(now);
-        mongoTemplate.save(scoringView);
+        // Scopus forum fact — used by ScopusProjectionBuilderService (scopus.forum_facts)
+        ScopusForumFact forumFact = new ScopusForumFact();
+        forumFact.setId("forum-1");
+        forumFact.setSourceId("scopus-forum-1");
+        forumFact.setPublicationName("Forum One");
+        forumFact.setIssn("1234-5678");
+        forumFact.setCreatedAt(now);
+        forumFact.setUpdatedAt(now);
+        mongoTemplate.save(forumFact);
 
-        ScholardexPublicationView publication = new ScholardexPublicationView();
-        publication.setId("pub-1");
-        publication.setEid("EID-1");
-        publication.setTitle("Projection Test Publication");
-        publication.setAuthorIds(List.of("author-1"));
-        publication.setAffiliationIds(List.of("aff-1"));
-        publication.setForumId("forum-1");
-        publication.setCitingPublicationIds(List.of("pub-2"));
-        publication.setCitedByCount(1);
-        publication.setOpenAccess(true);
-        publication.setApproved(true);
-        publication.setBuildAt(now);
-        publication.setUpdatedAt(now);
-        mongoTemplate.save(publication);
+        // Scholardex author fact — used by ScopusProjectionBuilderService (scholardex.author_facts)
+        ScholardexAuthorFact authorFact = new ScholardexAuthorFact();
+        authorFact.setId("author-1");
+        authorFact.setDisplayName("Author One");
+        authorFact.setCreatedAt(now);
+        authorFact.setUpdatedAt(now);
+        mongoTemplate.save(authorFact);
 
-        ScholardexAuthorView author = new ScholardexAuthorView();
-        author.setId("author-1");
-        author.setName("Author One");
-        author.setAffiliationIds(List.of("aff-1"));
-        author.setBuildAt(now);
-        author.setUpdatedAt(now);
-        mongoTemplate.save(author);
+        // Scholardex affiliation fact — used by ScopusProjectionBuilderService (scholardex.affiliation_facts)
+        ScholardexAffiliationFact affiliationFact = new ScholardexAffiliationFact();
+        affiliationFact.setId("aff-1");
+        affiliationFact.setName("Affiliation One");
+        affiliationFact.setCountry("RO");
+        affiliationFact.setCreatedAt(now);
+        affiliationFact.setUpdatedAt(now);
+        mongoTemplate.save(affiliationFact);
 
-        ScholardexForumView forum = new ScholardexForumView();
-        forum.setId("forum-1");
-        forum.setPublicationName("Forum One");
-        forum.setIssn("1234-5678");
-        forum.setBuildAt(now);
-        forum.setUpdatedAt(now);
-        mongoTemplate.save(forum);
+        // Scholardex publication fact — used by ScopusProjectionBuilderService and Scopus fingerprint
+        ScholardexPublicationFact pubFact = new ScholardexPublicationFact();
+        pubFact.setId("pub-fact-1");
+        pubFact.setTitle("Projection Test Publication");
+        pubFact.setEid("EID-1");
+        pubFact.setForumId("forum-1");
+        pubFact.setOpenAccess(true);
+        pubFact.setApproved(true);
+        pubFact.setCreatedAt(now);
+        pubFact.setUpdatedAt(now);
+        mongoTemplate.save(pubFact);
 
-        ScholardexAffiliationView affiliation = new ScholardexAffiliationView();
-        affiliation.setId("aff-1");
-        affiliation.setName("Affiliation One");
-        affiliation.setCountry("RO");
-        affiliation.setBuildAt(now);
-        affiliation.setUpdatedAt(now);
-        mongoTemplate.save(affiliation);
-
+        // Scholardex citation fact — used by ScopusProjectionBuilderService (scholardex.citation_facts)
         ScholardexCitationFact citation = new ScholardexCitationFact();
         citation.setId("cit-1");
-        citation.setCitedPublicationId("pub-1");
-        citation.setCitingPublicationId("pub-1");
+        citation.setCitedPublicationId("pub-fact-1");
+        citation.setCitingPublicationId("pub-fact-1");
         citation.setSource("SCOPUS");
         citation.setCreatedAt(now);
         citation.setUpdatedAt(now);
         mongoTemplate.save(citation);
 
+        // Scholardex authorship fact (scholardex.authorship_facts)
         ScholardexAuthorshipFact authorship = new ScholardexAuthorshipFact();
         authorship.setId("authorship-1");
-        authorship.setPublicationId("pub-1");
+        authorship.setPublicationId("pub-fact-1");
         authorship.setAuthorId("author-1");
         authorship.setSource("SCOPUS");
         authorship.setCreatedAt(now);
         authorship.setUpdatedAt(now);
         mongoTemplate.save(authorship);
 
+        // Scholardex author-affiliation fact (scholardex.author_affiliation_facts)
         ScholardexAuthorAffiliationFact authorAffiliation = new ScholardexAuthorAffiliationFact();
         authorAffiliation.setId("author-aff-1");
         authorAffiliation.setAuthorId("author-1");

@@ -159,7 +159,7 @@ public class PostgresWosCategoryReadPort {
                 FROM reporting_read.wos_category_fact
                 """ + whereClause + """
                 GROUP BY category_name_canonical, edition_normalized
-                ORDER BY """ + normalizedSort + " " + normalizedDirection + """
+                ORDER BY """ + " " + normalizedSort + " " + normalizedDirection + " " + """
                 LIMIT :limit OFFSET :offset
                 """;
 

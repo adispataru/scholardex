@@ -2,31 +2,35 @@ package ro.uvt.pokedex.core.service.importing.scopus;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumViewRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorViewRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationViewRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
+import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,30 +47,27 @@ class ScopusProjectionBuilderServiceTest {
     @Mock
     private ScholardexPublicationFactRepository publicationFactRepository;
     @Mock
-    private ScholardexCitationFactRepository citationFactRepository;
+    private MongoTemplate mongoTemplate;
     @Mock
-    private ScholardexForumViewRepository forumViewRepository;
+    private JdbcTemplate jdbcTemplate;
     @Mock
-    private ScholardexAuthorViewRepository authorViewRepository;
-    @Mock
-    private ScholardexAffiliationViewRepository affiliationViewRepository;
-    @Mock
-    private ScholardexPublicationViewRepository publicationViewRepository;
+    private PlatformTransactionManager transactionManager;
 
     @Test
-    void rebuildViewsPreservesExistingWosEnrichment() {
+    void rebuildViewsProcessesPublicationWithCitationEdges() {
         ScopusProjectionBuilderService service = new ScopusProjectionBuilderService(
                 forumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
                 publicationFactRepository,
-                citationFactRepository,
-                forumViewRepository,
-                authorViewRepository,
-                affiliationViewRepository,
-                publicationViewRepository
+                mongoTemplate,
+                jdbcTemplate,
+                transactionManager
         );
+
+        TransactionStatus txStatus = mock(TransactionStatus.class);
+        when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenReturn(txStatus);
 
         ScholardexPublicationFact publicationFact = new ScholardexPublicationFact();
         publicationFact.setId("p1");
@@ -88,16 +89,15 @@ class ScopusProjectionBuilderServiceTest {
         when(authorFactRepository.findAll()).thenReturn(List.of());
         when(affiliationFactRepository.findAll()).thenReturn(List.of());
         when(publicationFactRepository.findAll()).thenReturn(List.of(publicationFact));
-        when(citationFactRepository.findAll()).thenReturn(List.of(citationFact));
+        when(mongoTemplate.find(any(), eq(ScholardexCitationFact.class))).thenReturn(List.of(citationFact));
+        when(mongoTemplate.find(any(), eq(ScholardexAuthorshipFact.class))).thenReturn(List.of());
+        when(mongoTemplate.find(any(), eq(ScholardexAuthorAffiliationFact.class))).thenReturn(List.of());
+        when(jdbcTemplate.batchUpdate(anyString(), anyList(), eq(500), any())).thenReturn(new int[0][]);
 
-        service.rebuildViews();
+        ImportProcessingResult result = service.rebuildViews();
 
-        ArgumentCaptor<List<ScholardexPublicationView>> publicationViewsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(publicationViewRepository).saveAll(publicationViewsCaptor.capture());
-        assertEquals(1, publicationViewsCaptor.getValue().size());
-        assertNull(publicationViewsCaptor.getValue().getFirst().getWosId());
-        assertEquals("10.1000/abc", publicationViewsCaptor.getValue().getFirst().getDoiNormalized());
-        assertEquals(List.of("p2"), publicationViewsCaptor.getValue().getFirst().getCitingPublicationIds());
+        // 1 publication = 1 imported
+        assertEquals(1, result.getImportedCount());
     }
 
     @Test
@@ -108,12 +108,13 @@ class ScopusProjectionBuilderServiceTest {
                 authorFactRepository,
                 affiliationFactRepository,
                 publicationFactRepository,
-                citationFactRepository,
-                forumViewRepository,
-                authorViewRepository,
-                affiliationViewRepository,
-                publicationViewRepository
+                mongoTemplate,
+                jdbcTemplate,
+                transactionManager
         );
+
+        TransactionStatus txStatus = mock(TransactionStatus.class);
+        when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenReturn(txStatus);
 
         ScholardexForumFact canonicalUserDefinedForum = new ScholardexForumFact();
         canonicalUserDefinedForum.setId("sforum_ud");
@@ -126,12 +127,14 @@ class ScopusProjectionBuilderServiceTest {
         when(authorFactRepository.findAll()).thenReturn(List.of());
         when(affiliationFactRepository.findAll()).thenReturn(List.of());
         when(publicationFactRepository.findAll()).thenReturn(List.of());
-        when(citationFactRepository.findAll()).thenReturn(List.of());
+        when(mongoTemplate.find(any(), eq(ScholardexCitationFact.class))).thenReturn(List.of());
+        when(mongoTemplate.find(any(), eq(ScholardexAuthorshipFact.class))).thenReturn(List.of());
+        when(mongoTemplate.find(any(), eq(ScholardexAuthorAffiliationFact.class))).thenReturn(List.of());
+        when(jdbcTemplate.batchUpdate(anyString(), anyList(), eq(500), any())).thenReturn(new int[0][]);
 
-        service.rebuildViews();
+        ImportProcessingResult result = service.rebuildViews();
 
-        ArgumentCaptor<List<ScholardexForumView>> forumViewsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(forumViewRepository).saveAll(forumViewsCaptor.capture());
-        assertTrue(forumViewsCaptor.getValue().stream().anyMatch(view -> "sforum_ud".equals(view.getId())));
+        // 1 forum from canonical
+        assertEquals(1, result.getImportedCount());
     }
 }

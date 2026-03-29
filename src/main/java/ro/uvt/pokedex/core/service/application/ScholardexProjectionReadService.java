@@ -16,7 +16,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationViewRepository;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ScholardexProjectionReadService {
 
-    private final ScholardexPublicationViewRepository publicationViewRepository;
+    private final JdbcTemplate jdbcTemplate;
     private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexAuthorFactRepository canonicalAuthorFactRepository;
     private final ScholardexAffiliationFactRepository canonicalAffiliationFactRepository;
@@ -195,11 +195,71 @@ public class ScholardexProjectionReadService {
     }
 
     public Optional<ScholardexPublicationView> findPublicationViewById(String id) {
-        return publicationViewRepository.findById(id);
+        List<ScholardexPublicationView> rows = jdbcTemplate.query(
+                "SELECT id, doi, doi_normalized, eid, title, subtype, subtype_description, scopus_subtype, scopus_subtype_description, creator, cover_date, cover_display_date, volume, issue_identifier, description, author_count, corresponding_authors, open_access, freetoread, freetoread_label, funding_id, article_number, page_range, approved, author_ids, affiliation_ids, forum_id, citing_publication_ids, cited_by_count, wos_id, google_scholar_id, build_version, build_at, updated_at, scopus_lineage, wos_lineage, scholar_lineage, linker_version, linker_run_id, linked_at FROM reporting_read.scholardex_publication_view WHERE id = ?",
+                (rs, rowNum) -> mapPublicationViewRow(rs),
+                id);
+        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
     }
 
     public void savePublicationView(ScholardexPublicationView view) {
-        publicationViewRepository.save(view);
+        jdbcTemplate.update(
+                "UPDATE reporting_read.scholardex_publication_view SET subtype = ?, subtype_description = ?, updated_at = ? WHERE id = ?",
+                view.getSubtype(), view.getSubtypeDescription(), java.sql.Timestamp.from(java.time.Instant.now()), view.getId());
+    }
+
+    private ScholardexPublicationView mapPublicationViewRow(java.sql.ResultSet rs) throws java.sql.SQLException {
+        ScholardexPublicationView v = new ScholardexPublicationView();
+        v.setId(rs.getString("id"));
+        v.setDoi(rs.getString("doi"));
+        v.setDoiNormalized(rs.getString("doi_normalized"));
+        v.setEid(rs.getString("eid"));
+        v.setTitle(rs.getString("title"));
+        v.setSubtype(rs.getString("subtype"));
+        v.setSubtypeDescription(rs.getString("subtype_description"));
+        v.setScopusSubtype(rs.getString("scopus_subtype"));
+        v.setScopusSubtypeDescription(rs.getString("scopus_subtype_description"));
+        v.setCreator(rs.getString("creator"));
+        v.setCoverDate(rs.getString("cover_date"));
+        v.setCoverDisplayDate(rs.getString("cover_display_date"));
+        v.setVolume(rs.getString("volume"));
+        v.setIssueIdentifier(rs.getString("issue_identifier"));
+        v.setDescription(rs.getString("description"));
+        v.setAuthorCount(rs.getObject("author_count", Integer.class));
+        v.setCorrespondingAuthors(toStringList(rs.getArray("corresponding_authors")));
+        v.setOpenAccess(rs.getBoolean("open_access"));
+        v.setFreetoread(rs.getString("freetoread"));
+        v.setFreetoreadLabel(rs.getString("freetoread_label"));
+        v.setFundingId(rs.getString("funding_id"));
+        v.setArticleNumber(rs.getString("article_number"));
+        v.setPageRange(rs.getString("page_range"));
+        v.setApproved(rs.getBoolean("approved"));
+        v.setAuthorIds(toStringList(rs.getArray("author_ids")));
+        v.setAffiliationIds(toStringList(rs.getArray("affiliation_ids")));
+        v.setForumId(rs.getString("forum_id"));
+        v.setCitingPublicationIds(toStringList(rs.getArray("citing_publication_ids")));
+        v.setCitedByCount(rs.getObject("cited_by_count", Integer.class));
+        v.setWosId(rs.getString("wos_id"));
+        v.setGoogleScholarId(rs.getString("google_scholar_id"));
+        v.setBuildVersion(rs.getString("build_version"));
+        java.sql.Timestamp buildAt = rs.getTimestamp("build_at");
+        v.setBuildAt(buildAt == null ? null : buildAt.toInstant());
+        java.sql.Timestamp updatedAt = rs.getTimestamp("updated_at");
+        v.setUpdatedAt(updatedAt == null ? null : updatedAt.toInstant());
+        v.setScopusLineage(rs.getString("scopus_lineage"));
+        v.setWosLineage(rs.getString("wos_lineage"));
+        v.setScholarLineage(rs.getString("scholar_lineage"));
+        v.setLinkerVersion(rs.getString("linker_version"));
+        v.setLinkerRunId(rs.getString("linker_run_id"));
+        java.sql.Timestamp linkedAt = rs.getTimestamp("linked_at");
+        v.setLinkedAt(linkedAt == null ? null : linkedAt.toInstant());
+        return v;
+    }
+
+    private List<String> toStringList(java.sql.Array sqlArray) throws java.sql.SQLException {
+        if (sqlArray == null) return new ArrayList<>();
+        String[] arr = (String[]) sqlArray.getArray();
+        return arr == null ? new ArrayList<>() : new ArrayList<>(java.util.Arrays.asList(arr));
     }
 
     public Forum saveForum(Forum forum) {

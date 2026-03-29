@@ -1,23 +1,20 @@
 package ro.uvt.pokedex.core.service.application;
 
-import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.aggregation.Aggregation;
-import org.springframework.data.mongodb.core.aggregation.AggregationResults;
-import ro.uvt.pokedex.core.controller.dto.WosCategoryPageResponse;
 import ro.uvt.pokedex.core.controller.dto.WosCategoryListItemResponse;
+import ro.uvt.pokedex.core.controller.dto.WosCategoryPageResponse;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -25,23 +22,22 @@ import static org.mockito.Mockito.when;
 class WosCategoryQueryServiceTest {
 
     @Mock
-    private MongoTemplate mongoTemplate;
+    private PostgresWosCategoryReadPort postgresWosCategoryReadPort;
 
     private WosCategoryQueryService service;
 
     @BeforeEach
     void setUp() {
-        service = new WosCategoryQueryService(mongoTemplate);
+        service = new WosCategoryQueryService(postgresWosCategoryReadPort);
     }
 
     @Test
-    void searchBuildsPagedSortedResponse() {
-        when(mongoTemplate.aggregate(any(Aggregation.class), eq("wos.category_facts"), eq(WosCategoryQueryService.CountRow.class)))
-                .thenReturn(new AggregationResults<>(List.of(new WosCategoryQueryService.CountRow(2L)), new Document()));
-        when(mongoTemplate.aggregate(any(Aggregation.class), eq("wos.category_facts"), eq(WosCategoryListItemResponse.class)))
-                .thenReturn(new AggregationResults<>(List.of(
-                        new WosCategoryListItemResponse("Computer Science - SCIE", "Computer Science", "SCIE", 2, 2024)
-                ), new Document()));
+    void searchDelegatesToPostgresPort() {
+        WosCategoryPageResponse expected = new WosCategoryPageResponse(
+                List.of(new WosCategoryListItemResponse("Computer Science - SCIE", "Computer Science", "SCIE", 2, 2024)),
+                0, 1, 2, 2);
+        when(postgresWosCategoryReadPort.search(anyInt(), anyInt(), anyString(), anyString(), isNull()))
+                .thenReturn(expected);
 
         WosCategoryPageResponse result = service.search(0, 1, "journalCount", "desc", null);
 
@@ -52,51 +48,20 @@ class WosCategoryQueryServiceTest {
         assertEquals(1, result.items().size());
         assertEquals("Computer Science - SCIE", result.items().get(0).key());
         assertEquals(2, result.items().get(0).journalCount());
-        verify(mongoTemplate).aggregate(any(Aggregation.class), eq("wos.category_facts"), eq(WosCategoryQueryService.CountRow.class));
-        verify(mongoTemplate).aggregate(any(Aggregation.class), eq("wos.category_facts"), eq(WosCategoryListItemResponse.class));
+        verify(postgresWosCategoryReadPort).search(0, 1, "journalCount", "desc", null);
     }
 
     @Test
-    void searchFiltersByCategoryNameAndEdition() {
-        when(mongoTemplate.aggregate(any(Aggregation.class), eq("wos.category_facts"), eq(WosCategoryQueryService.CountRow.class)))
-                .thenReturn(new AggregationResults<>(List.of(new WosCategoryQueryService.CountRow(1L)), new Document()));
-        when(mongoTemplate.aggregate(any(Aggregation.class), eq("wos.category_facts"), eq(WosCategoryListItemResponse.class)))
-                .thenReturn(new AggregationResults<>(List.of(
-                        new WosCategoryListItemResponse("Economics - SSCI", "Economics", "SSCI", 2, 2023)
-                ), new Document()));
+    void searchWithFilterDelegatesToPostgresPort() {
+        WosCategoryPageResponse expected = new WosCategoryPageResponse(
+                List.of(new WosCategoryListItemResponse("Economics - SSCI", "Economics", "SSCI", 2, 2023)),
+                0, 25, 1, 1);
+        when(postgresWosCategoryReadPort.search(anyInt(), anyInt(), anyString(), anyString(), anyString()))
+                .thenReturn(expected);
 
-        assertEquals(1, service.search(0, 25, "categoryName", "asc", "computer").items().size());
-        assertEquals("Economics - SSCI", service.search(0, 25, "categoryName", "asc", "ssci").items().get(0).key());
-    }
+        WosCategoryPageResponse result = service.search(0, 25, "categoryName", "asc", "ssci");
 
-    @Test
-    void pageBeyondTotalUsesLastPage() {
-        when(mongoTemplate.aggregate(any(Aggregation.class), eq("wos.category_facts"), eq(WosCategoryQueryService.CountRow.class)))
-                .thenReturn(new AggregationResults<>(List.of(new WosCategoryQueryService.CountRow(2L)), new Document()));
-        when(mongoTemplate.aggregate(any(Aggregation.class), eq("wos.category_facts"), eq(WosCategoryListItemResponse.class)))
-                .thenReturn(new AggregationResults<>(List.of(
-                        new WosCategoryListItemResponse("Economics - SSCI", "Economics", "SSCI", 1, 2023)
-                ), new Document()));
-
-        WosCategoryPageResponse result = service.search(9, 1, "categoryName", "asc", null);
-
-        assertEquals(1, result.page());
         assertEquals(1, result.items().size());
         assertEquals("Economics - SSCI", result.items().get(0).key());
-    }
-
-    @Test
-    void invalidSortThrowsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () -> service.search(0, 25, "bad", "asc", null));
-    }
-
-    @Test
-    void invalidDirectionThrowsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () -> service.search(0, 25, "categoryName", "up", null));
-    }
-
-    @Test
-    void invalidQueryLengthThrowsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () -> service.search(0, 25, "categoryName", "asc", "x".repeat(101)));
     }
 }

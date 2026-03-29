@@ -24,7 +24,6 @@ class ScholardexCutoverGuardrailTest {
                 Path.of("src/main/java/ro/uvt/pokedex/core/service/application/GroupReportFacade.java"),
                 Path.of("src/main/java/ro/uvt/pokedex/core/service/application/GroupCnfisExportFacade.java"),
                 Path.of("src/main/java/ro/uvt/pokedex/core/service/application/UserReportFacade.java"),
-                Path.of("src/main/java/ro/uvt/pokedex/core/service/application/UserRankingFacade.java"),
                 Path.of("src/main/java/ro/uvt/pokedex/core/service/application/AdminCatalogFacade.java"),
                 Path.of("src/main/java/ro/uvt/pokedex/core/service/scopus/ScopusUpdateScheduler.java")
         );
@@ -119,10 +118,10 @@ class ScholardexCutoverGuardrailTest {
         Path readServiceFile = Path.of("src/main/java/ro/uvt/pokedex/core/service/application/ScholardexProjectionReadService.java");
         String content = Files.readString(readServiceFile);
 
-        assertTrue(content.contains("canonicalAuthorshipFactRepository.findByAuthorIdIn"),
-                "Author -> publication traversal must remain edge-backed via authorship facts.");
-        assertTrue(content.contains("canonicalAuthorAffiliationFactRepository.findByAffiliationId"),
-                "Affiliation -> author traversal must remain edge-backed via author-affiliation facts.");
+        assertTrue(content.contains("postgresProjectionReadPort.findPublicationIdsByAuthorIdIn"),
+                "Author -> publication traversal must be backed by Postgres edge port.");
+        assertTrue(content.contains("postgresProjectionReadPort.findAuthorIdsByAffiliationId"),
+                "Affiliation -> author traversal must be backed by Postgres edge port.");
         assertFalse(content.contains("findByAuthorIdsContaining"),
                 "Author -> publication traversal must not regress to publication-view author arrays.");
         assertFalse(content.contains("findByAffiliationIdsContaining"),

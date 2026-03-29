@@ -15,8 +15,7 @@ import ro.uvt.pokedex.core.model.reporting.wos.WosScoringView;
 import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosImportEventRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
-import ro.uvt.pokedex.core.repository.reporting.WosRankingViewRepository;
-import ro.uvt.pokedex.core.repository.reporting.WosScoringViewRepository;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,8 +42,7 @@ public class WosParityReconciliationService {
     private final WosImportEventRepository importEventRepository;
     private final WosMetricFactRepository metricFactRepository;
     private final WosCategoryFactRepository categoryFactRepository;
-    private final WosRankingViewRepository rankingViewRepository;
-    private final WosScoringViewRepository scoringViewRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     @Value("${h14.wos.parity.baseline:classpath:wos/parity/baseline-v1.json}")
     private String baselineLocation;
@@ -84,12 +82,36 @@ public class WosParityReconciliationService {
         allowlistedMismatchCount += compareCount("counts.importEvents", baseline.root().path("counts").path("importEvents"), importEventRepository.count(), allowlist, mismatches);
         allowlistedMismatchCount += compareCount("counts.metricFacts", baseline.root().path("counts").path("metricFacts"), metricFactRepository.count(), allowlist, mismatches);
         allowlistedMismatchCount += compareCount("counts.categoryFacts", baseline.root().path("counts").path("categoryFacts"), categoryFactRepository.count(), allowlist, mismatches);
-        allowlistedMismatchCount += compareCount("counts.rankingView", baseline.root().path("counts").path("rankingView"), rankingViewRepository.count(), allowlist, mismatches);
-        allowlistedMismatchCount += compareCount("counts.scoringView", baseline.root().path("counts").path("scoringView"), scoringViewRepository.count(), allowlist, mismatches);
+        long rankingViewCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM reporting_read.wos_ranking_view", Long.class);
+        long scoringViewCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM reporting_read.wos_scoring_view", Long.class);
+        allowlistedMismatchCount += compareCount("counts.rankingView", baseline.root().path("counts").path("rankingView"), rankingViewCount, allowlist, mismatches);
+        allowlistedMismatchCount += compareCount("counts.scoringView", baseline.root().path("counts").path("scoringView"), scoringViewCount, allowlist, mismatches);
 
         List<WosMetricFact> metricFacts = metricFactRepository.findAll();
         List<WosCategoryFact> categoryFacts = categoryFactRepository.findAll();
-        List<WosScoringView> scoringRows = scoringViewRepository.findAll();
+        List<WosScoringView> scoringRows = jdbcTemplate.query(
+                "SELECT id, journal_id, year, category_name_canonical, edition_normalized, metric_type, value, quarter, quartile_rank, rank, build_version, build_at, updated_at FROM reporting_read.wos_scoring_view",
+                (rs, rowNum) -> {
+                    WosScoringView s = new WosScoringView();
+                    s.setId(rs.getString("id"));
+                    s.setJournalId(rs.getString("journal_id"));
+                    s.setYear(rs.getObject("year", Integer.class));
+                    s.setCategoryNameCanonical(rs.getString("category_name_canonical"));
+                    String editionStr = rs.getString("edition_normalized");
+                    s.setEditionNormalized(editionStr == null ? null : ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized.valueOf(editionStr));
+                    String metricStr = rs.getString("metric_type");
+                    s.setMetricType(metricStr == null ? null : ro.uvt.pokedex.core.model.reporting.wos.MetricType.valueOf(metricStr));
+                    s.setValue(rs.getObject("value", Double.class));
+                    s.setQuarter(rs.getString("quarter"));
+                    s.setQuartileRank(rs.getObject("quartile_rank", Integer.class));
+                    s.setRank(rs.getObject("rank", Integer.class));
+                    s.setBuildVersion(rs.getString("build_version"));
+                    java.sql.Timestamp buildAt = rs.getTimestamp("build_at");
+                    s.setBuildAt(buildAt == null ? null : buildAt.toInstant());
+                    java.sql.Timestamp updatedAt = rs.getTimestamp("updated_at");
+                    s.setUpdatedAt(updatedAt == null ? null : updatedAt.toInstant());
+                    return s;
+                });
 
         executedChecks.add("edition-normalization");
         allowlistedMismatchCount += checkEditionCounts(baseline.root().path("editionCounts"), categoryFacts, allowlist, mismatches);
