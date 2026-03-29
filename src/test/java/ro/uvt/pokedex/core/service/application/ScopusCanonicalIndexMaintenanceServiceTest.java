@@ -21,12 +21,9 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationSearchView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorSearchView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumSearchView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusFundingFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEvent;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
@@ -64,12 +61,6 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
     private IndexOperations affiliationFactOps;
     @Mock
     private IndexOperations fundingFactOps;
-    @Mock
-    private IndexOperations forumViewOps;
-    @Mock
-    private IndexOperations authorViewOps;
-    @Mock
-    private IndexOperations affiliationViewOps;
     @Mock
     private IndexOperations canonicalPublicationFactOps;
     @Mock
@@ -118,9 +109,6 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         when(mongoTemplate.indexOps(ScopusForumTouch.class)).thenReturn(forumTouchOps);
         when(mongoTemplate.indexOps(ScopusPublicationTouch.class)).thenReturn(publicationTouchOps);
         when(mongoTemplate.indexOps(ScopusCitationTouch.class)).thenReturn(citationTouchOps);
-        when(mongoTemplate.indexOps(ScopusForumSearchView.class)).thenReturn(forumViewOps);
-        when(mongoTemplate.indexOps(ScopusAuthorSearchView.class)).thenReturn(authorViewOps);
-        when(mongoTemplate.indexOps(ScopusAffiliationSearchView.class)).thenReturn(affiliationViewOps);
         when(mongoTemplate.indexOps(ScholardexPublicationFact.class)).thenReturn(canonicalPublicationFactOps);
         when(mongoTemplate.indexOps(ScholardexAuthorFact.class)).thenReturn(canonicalAuthorFactOps);
         when(mongoTemplate.indexOps(ScholardexAffiliationFact.class)).thenReturn(canonicalAffiliationFactOps);
@@ -147,9 +135,6 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         when(forumTouchOps.getIndexInfo()).thenReturn(List.of());
         when(publicationTouchOps.getIndexInfo()).thenReturn(List.of());
         when(citationTouchOps.getIndexInfo()).thenReturn(List.of());
-        when(forumViewOps.getIndexInfo()).thenReturn(List.of());
-        when(authorViewOps.getIndexInfo()).thenReturn(List.of());
-        when(affiliationViewOps.getIndexInfo()).thenReturn(List.of());
         when(canonicalPublicationFactOps.getIndexInfo()).thenReturn(List.of());
         when(canonicalAuthorFactOps.getIndexInfo()).thenReturn(List.of());
         when(canonicalAffiliationFactOps.getIndexInfo()).thenReturn(List.of());
@@ -163,7 +148,7 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
 
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult result = service.ensureIndexes();
 
-        assertEquals(88, result.created().size());
+        assertEquals(78, result.created().size());
         assertTrue(result.present().isEmpty());
         assertTrue(result.invalid().isEmpty());
         assertTrue(result.errors().isEmpty());
@@ -226,22 +211,6 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         when(citationTouchOps.getIndexInfo()).thenReturn(List.of(
                 info(ScopusCanonicalIndexMaintenanceService.IDX_TOUCH_CITATION_UNIQ, true, "source", "citedEid", "citingEid"),
                 info(ScopusCanonicalIndexMaintenanceService.IDX_TOUCH_CITATION_TOUCHED, false, "touchedAt")
-        ));
-        when(forumViewOps.getIndexInfo()).thenReturn(List.of(
-                info(ScopusCanonicalIndexMaintenanceService.IDX_FORUM_VIEW_NAME, false, "publicationName"),
-                info(ScopusCanonicalIndexMaintenanceService.IDX_FORUM_VIEW_ISSN, false, "issn"),
-                info(ScopusCanonicalIndexMaintenanceService.IDX_FORUM_VIEW_EISSN, false, "eIssn"),
-                info(ScopusCanonicalIndexMaintenanceService.IDX_FORUM_VIEW_AGG, false, "aggregationType")
-        ));
-        when(authorViewOps.getIndexInfo()).thenReturn(List.of(
-                info(ScopusCanonicalIndexMaintenanceService.IDX_AUTHOR_VIEW_NAME, false, "name"),
-                info(ScopusCanonicalIndexMaintenanceService.IDX_AUTHOR_VIEW_AFFILIATIONS, false, "affiliationIds")
-        ));
-        when(affiliationViewOps.getIndexInfo()).thenReturn(List.of(
-                info(ScopusCanonicalIndexMaintenanceService.IDX_AFFILIATION_VIEW_NAME, false, "name"),
-                info(ScopusCanonicalIndexMaintenanceService.IDX_AFFILIATION_VIEW_CITY, false, "city"),
-                info(ScopusCanonicalIndexMaintenanceService.IDX_AFFILIATION_VIEW_COUNTRY, false, "country"),
-                info(ScopusCanonicalIndexMaintenanceService.IDX_AFFILIATION_VIEW_AFID, false, "_id")
         ));
         when(canonicalPublicationFactOps.getIndexInfo()).thenReturn(List.of(
                 info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_PUBLICATION_EID, true, true, "eid"),
@@ -313,7 +282,7 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
 
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult result = service.ensureIndexes();
 
-        assertEquals(88, result.present().size());
+        assertEquals(78, result.present().size());
         assertTrue(result.created().isEmpty());
         assertTrue(result.invalid().isEmpty());
         assertTrue(result.errors().isEmpty());
@@ -329,9 +298,6 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         verify(forumTouchOps, never()).createIndex(any());
         verify(publicationTouchOps, never()).createIndex(any());
         verify(citationTouchOps, never()).createIndex(any());
-        verify(forumViewOps, never()).createIndex(any());
-        verify(authorViewOps, never()).createIndex(any());
-        verify(affiliationViewOps, never()).createIndex(any());
         verify(canonicalPublicationFactOps, never()).createIndex(any());
         verify(canonicalAuthorFactOps, never()).createIndex(any());
         verify(canonicalAffiliationFactOps, never()).createIndex(any());

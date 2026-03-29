@@ -18,12 +18,9 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationSearchView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorSearchView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumSearchView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusFundingFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEvent;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
@@ -79,19 +76,6 @@ public class ScopusCanonicalIndexMaintenanceService {
     static final String IDX_TOUCH_PUBLICATION_TOUCHED = "idx_scopus_publication_touch_touched";
     static final String IDX_TOUCH_CITATION_UNIQ = "uniq_scopus_citation_touch";
     static final String IDX_TOUCH_CITATION_TOUCHED = "idx_scopus_citation_touch_touched";
-
-    static final String IDX_FORUM_VIEW_NAME = "idx_scopus_forum_view_name";
-    static final String IDX_FORUM_VIEW_ISSN = "idx_scopus_forum_view_issn";
-    static final String IDX_FORUM_VIEW_EISSN = "idx_scopus_forum_view_eissn";
-    static final String IDX_FORUM_VIEW_AGG = "idx_scopus_forum_view_agg";
-
-    static final String IDX_AUTHOR_VIEW_NAME = "idx_scopus_author_view_name";
-    static final String IDX_AUTHOR_VIEW_AFFILIATIONS = "idx_scopus_author_view_affiliations";
-
-    static final String IDX_AFFILIATION_VIEW_NAME = "idx_scopus_affiliation_view_name";
-    static final String IDX_AFFILIATION_VIEW_CITY = "idx_scopus_affiliation_view_city";
-    static final String IDX_AFFILIATION_VIEW_COUNTRY = "idx_scopus_affiliation_view_country";
-    static final String IDX_AFFILIATION_VIEW_AFID = "idx_scopus_affiliation_view_afid";
 
     static final String IDX_CANON_PUBLICATION_DOI_NORMALIZED = "idx_scholardex_publication_fact_doi_normalized";
     static final String IDX_CANON_PUBLICATION_TITLE_NORMALIZED = "idx_scholardex_publication_fact_title_normalized";
@@ -168,9 +152,6 @@ public class ScopusCanonicalIndexMaintenanceService {
         ensureAffiliationFactIndexes(created, present, invalid, errors);
         ensureFundingFactIndexes(created, present, invalid, errors);
         ensureTouchQueueIndexes(created, present, invalid, errors);
-        ensureForumViewIndexes(created, present, invalid, errors);
-        ensureAuthorViewIndexes(created, present, invalid, errors);
-        ensureAffiliationViewIndexes(created, present, invalid, errors);
         ensureCanonicalPublicationFactIndexes(created, present, invalid, errors);
         ensureCanonicalAuthorFactIndexes(created, present, invalid, errors);
         ensureCanonicalAffiliationFactIndexes(created, present, invalid, errors);
@@ -291,38 +272,6 @@ public class ScopusCanonicalIndexMaintenanceService {
         ensureNamedIndex(citationOps, new IndexDefinition(IDX_TOUCH_CITATION_UNIQ, true, List.of(field("source"), field("citedEid"), field("citingEid"))),
                 created, present, invalid, errors);
         ensureNamedIndex(citationOps, new IndexDefinition(IDX_TOUCH_CITATION_TOUCHED, false, List.of(field("touchedAt"))),
-                created, present, invalid, errors);
-    }
-
-    private void ensureForumViewIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
-        IndexOperations ops = mongoTemplate.indexOps(ScopusForumSearchView.class);
-        ensureNamedIndex(ops, new IndexDefinition(IDX_FORUM_VIEW_NAME, false, List.of(field("publicationName"))),
-                created, present, invalid, errors);
-        ensureNamedIndex(ops, new IndexDefinition(IDX_FORUM_VIEW_ISSN, false, List.of(field("issn"))),
-                created, present, invalid, errors);
-        ensureNamedIndex(ops, new IndexDefinition(IDX_FORUM_VIEW_EISSN, false, List.of(field("eIssn"))),
-                created, present, invalid, errors);
-        ensureNamedIndex(ops, new IndexDefinition(IDX_FORUM_VIEW_AGG, false, List.of(field("aggregationType"))),
-                created, present, invalid, errors);
-    }
-
-    private void ensureAuthorViewIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
-        IndexOperations ops = mongoTemplate.indexOps(ScopusAuthorSearchView.class);
-        ensureNamedIndex(ops, new IndexDefinition(IDX_AUTHOR_VIEW_NAME, false, List.of(field("name"))),
-                created, present, invalid, errors);
-        ensureNamedIndex(ops, new IndexDefinition(IDX_AUTHOR_VIEW_AFFILIATIONS, false, List.of(field("affiliationIds"))),
-                created, present, invalid, errors);
-    }
-
-    private void ensureAffiliationViewIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
-        IndexOperations ops = mongoTemplate.indexOps(ScopusAffiliationSearchView.class);
-        ensureNamedIndex(ops, new IndexDefinition(IDX_AFFILIATION_VIEW_NAME, false, List.of(field("name"))),
-                created, present, invalid, errors);
-        ensureNamedIndex(ops, new IndexDefinition(IDX_AFFILIATION_VIEW_CITY, false, List.of(field("city"))),
-                created, present, invalid, errors);
-        ensureNamedIndex(ops, new IndexDefinition(IDX_AFFILIATION_VIEW_COUNTRY, false, List.of(field("country"))),
-                created, present, invalid, errors);
-        ensureNamedIndex(ops, new IndexDefinition(IDX_AFFILIATION_VIEW_AFID, false, List.of(field("_id"))),
                 created, present, invalid, errors);
     }
 

@@ -638,9 +638,6 @@ public class AdminInitializationController {
                         + ", forumFacts=" + result.forumFacts()
                         + ", authorFacts=" + result.authorFacts()
                         + ", affiliationFacts=" + result.affiliationFacts()
-                        + ", forumViews=" + result.forumViews()
-                        + ", authorViews=" + result.authorViews()
-                        + ", affiliationViews=" + result.affiliationViews()
                         + ", canonicalPublicationFacts=" + result.canonicalPublicationFacts()
                         + ", canonicalCitationFacts=" + result.canonicalCitationFacts()
                         + ", canonicalAuthorFacts=" + result.canonicalAuthorFacts()
@@ -713,9 +710,6 @@ public class AdminInitializationController {
                 + ", forumFacts=" + verification.forumFacts()
                 + ", authorFacts=" + verification.authorFacts()
                 + ", affiliationFacts=" + verification.affiliationFacts()
-                + ", forumViews=" + verification.forumViews()
-                + ", authorViews=" + verification.authorViews()
-                + ", affiliationViews=" + verification.affiliationViews()
                 + ", publicationViews=" + verification.publicationViews() + "].";
     }
 

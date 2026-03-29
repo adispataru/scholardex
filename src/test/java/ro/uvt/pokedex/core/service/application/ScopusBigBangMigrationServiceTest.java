@@ -12,12 +12,9 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFact
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationSearchViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorSearchViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumSearchViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusImportEventRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
 import ro.uvt.pokedex.core.service.importing.ScopusDataService;
@@ -58,9 +55,6 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ScopusForumFactRepository forumFactRepository;
     @Mock private ScopusAuthorFactRepository authorFactRepository;
     @Mock private ScopusAffiliationFactRepository affiliationFactRepository;
-    @Mock private ScopusForumSearchViewRepository forumSearchViewRepository;
-    @Mock private ScopusAuthorSearchViewRepository authorSearchViewRepository;
-    @Mock private ScopusAffiliationSearchViewRepository affiliationSearchViewRepository;
     @Mock private ScholardexPublicationFactRepository scholardexPublicationFactRepository;
     @Mock private ScholardexCitationFactRepository scholardexCitationFactRepository;
     @Mock private ScholardexSourceLinkRepository scholardexSourceLinkRepository;
@@ -91,9 +85,6 @@ class ScopusBigBangMigrationServiceTest {
                 forumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
-                forumSearchViewRepository,
-                authorSearchViewRepository,
-                affiliationSearchViewRepository,
                 scholardexPublicationFactRepository,
                 scholardexCitationFactRepository,
                 scholardexSourceLinkRepository,
@@ -127,9 +118,6 @@ class ScopusBigBangMigrationServiceTest {
         when(forumFactRepository.count()).thenReturn(10L);
         when(authorFactRepository.count()).thenReturn(40L);
         when(affiliationFactRepository.count()).thenReturn(12L);
-        when(forumSearchViewRepository.count()).thenReturn(10L);
-        when(authorSearchViewRepository.count()).thenReturn(40L);
-        when(affiliationSearchViewRepository.count()).thenReturn(12L);
         when(scholardexSourceLinkRepository.count()).thenReturn(77L);
         when(jdbcTemplate.queryForObject(
                 org.mockito.ArgumentMatchers.anyString(),

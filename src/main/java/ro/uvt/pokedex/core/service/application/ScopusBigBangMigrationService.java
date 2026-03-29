@@ -24,12 +24,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexSourceLinkRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAffiliationSearchViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusAuthorSearchViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumSearchViewRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusImportEventRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
 import ro.uvt.pokedex.core.service.importing.ScopusDataService;
@@ -77,9 +74,6 @@ public class ScopusBigBangMigrationService {
     private final ScopusForumFactRepository forumFactRepository;
     private final ScopusAuthorFactRepository authorFactRepository;
     private final ScopusAffiliationFactRepository affiliationFactRepository;
-    private final ScopusForumSearchViewRepository forumSearchViewRepository;
-    private final ScopusAuthorSearchViewRepository authorSearchViewRepository;
-    private final ScopusAffiliationSearchViewRepository affiliationSearchViewRepository;
     private final ScholardexPublicationFactRepository scholardexPublicationFactRepository;
     private final ScholardexCitationFactRepository scholardexCitationFactRepository;
     private final ScholardexSourceLinkRepository scholardexSourceLinkRepository;
@@ -239,9 +233,6 @@ public class ScopusBigBangMigrationService {
                 forumFactRepository.count(),
                 authorFactRepository.count(),
                 affiliationFactRepository.count(),
-                forumSearchViewRepository.count(),
-                authorSearchViewRepository.count(),
-                affiliationSearchViewRepository.count(),
                 scholardexSourceLinkRepository.count(),
                 jdbcTemplate.queryForObject("SELECT COUNT(*) FROM reporting_read.scholardex_publication_view", Long.class)
         );
@@ -306,9 +297,6 @@ public class ScopusBigBangMigrationService {
             long forumFacts,
             long authorFacts,
             long affiliationFacts,
-            long forumViews,
-            long authorViews,
-            long affiliationViews,
             long publicationSourceLinks,
             long publicationViews
     ) {
@@ -515,10 +503,6 @@ public class ScopusBigBangMigrationService {
         long forumFacts = forumFactRepository.count();
         long authorFacts = authorFactRepository.count();
         long affiliationFacts = affiliationFactRepository.count();
-        long forumViews = forumSearchViewRepository.count();
-        long authorViews = authorSearchViewRepository.count();
-        long affiliationViews = affiliationSearchViewRepository.count();
-
         List<String> canonicalPublicationIds = findCanonicalIdsBySource("scholardex.publication_facts");
         List<String> canonicalCitationIds = findCanonicalIdsBySource("scholardex.citation_facts");
         List<String> canonicalAuthorIds = findCanonicalIdsBySource("scholardex.author_facts");
@@ -546,9 +530,6 @@ public class ScopusBigBangMigrationService {
 
         mongoTemplate.remove(scopusSourceQuery(), "scopus.import_events");
 
-        affiliationSearchViewRepository.deleteAll();
-        authorSearchViewRepository.deleteAll();
-        forumSearchViewRepository.deleteAll();
         affiliationFactRepository.deleteAll();
         authorFactRepository.deleteAll();
         forumFactRepository.deleteAll();
@@ -568,10 +549,6 @@ public class ScopusBigBangMigrationService {
             mongoTemplate.remove(
                     Query.query(Criteria.where("_id").in(canonicalPublicationIds)),
                     ScholardexPublicationFact.class
-            );
-            mongoTemplate.remove(
-                    Query.query(Criteria.where("_id").in(canonicalPublicationIds)),
-                    "scholardex.publication_view"
             );
         }
         if (!canonicalAuthorIds.isEmpty()) {
@@ -600,9 +577,6 @@ public class ScopusBigBangMigrationService {
                 forumFacts,
                 authorFacts,
                 affiliationFacts,
-                forumViews,
-                authorViews,
-                affiliationViews,
                 canonicalPublicationFacts,
                 canonicalCitationFacts,
                 canonicalAuthorFacts,
@@ -771,9 +745,6 @@ public class ScopusBigBangMigrationService {
             long forumFacts,
             long authorFacts,
             long affiliationFacts,
-            long forumViews,
-            long authorViews,
-            long affiliationViews,
             long canonicalPublicationFacts,
             long canonicalCitationFacts,
             long canonicalAuthorFacts,

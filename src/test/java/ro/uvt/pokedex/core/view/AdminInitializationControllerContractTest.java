@@ -701,7 +701,7 @@ class AdminInitializationControllerContractTest {
     void resetScopusCanonicalStateRedirectsToInitializationPage() throws Exception {
         when(scopusBigBangMigrationService.resetCanonicalState())
                 .thenReturn(new ScopusBigBangMigrationService.CanonicalResetResult(
-                        10, 5, 5, 2, 3, 4, 2, 3, 4,
+                        10, 5, 5, 2, 3, 4,
                         5, 5, 3, 4, 2, 5, 3, 4, 2, 6, 1, 7, 8, 9, 4,
                         11, 12, 13, 14, 15
                 ));
