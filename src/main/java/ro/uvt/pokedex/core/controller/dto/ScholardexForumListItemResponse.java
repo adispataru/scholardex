@@ -5,8 +5,6 @@ public record ScholardexForumListItemResponse(
         String publicationName,
         String issn,
         String eIssn,
-        String aggregationType,
-        String wosStatus,
-        String wosJournalId
+        String aggregationType
 ) {
 }

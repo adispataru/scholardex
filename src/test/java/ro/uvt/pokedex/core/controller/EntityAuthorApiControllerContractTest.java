@@ -4,13 +4,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.ApiExceptionHandler;
-import ro.uvt.pokedex.core.controller.dto.ScopusAuthorListItemResponse;
-import ro.uvt.pokedex.core.controller.dto.ScopusAuthorPageResponse;
+import ro.uvt.pokedex.core.controller.dto.ScholardexAuthorListItemResponse;
+import ro.uvt.pokedex.core.controller.dto.ScholardexAuthorPageResponse;
 import ro.uvt.pokedex.core.service.application.PostgresScholardexAuthorReadPort;
 
 import java.util.List;
@@ -21,10 +21,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(ScopusAuthorApiController.class)
+@WebMvcTest(value = EntityAuthorApiController.class, properties = "spring.datasource.url=jdbc:postgresql://localhost:5432/test")
 @AutoConfigureMockMvc(addFilters = false)
 @Import(ApiExceptionHandler.class)
-class ScopusAuthorApiControllerContractTest {
+class EntityAuthorApiControllerContractTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -35,7 +35,7 @@ class ScopusAuthorApiControllerContractTest {
     @Test
     void defaultRequestReturnsPagedEnvelope() throws Exception {
         when(postgresScholardexAuthorReadPort.search(null, 0, 25, "name", "asc", null))
-                .thenReturn(new ScopusAuthorPageResponse(
+                .thenReturn(new ScholardexAuthorPageResponse(
                         List.of(
                                 item("1", "Alice", List.of("UVT")),
                                 item("2", "Bob", List.of("MIT", "Stanford"))
@@ -43,7 +43,7 @@ class ScopusAuthorApiControllerContractTest {
                         0, 25, 2, 1
                 ));
 
-        mockMvc.perform(get("/api/scopus/authors"))
+        mockMvc.perform(get("/api/entities/authors"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.items").isArray())
@@ -57,9 +57,9 @@ class ScopusAuthorApiControllerContractTest {
     @Test
     void pagingSortingAndDirectionAreApplied() throws Exception {
         when(postgresScholardexAuthorReadPort.search("af-1", 1, 2, "id", "desc", null))
-                .thenReturn(new ScopusAuthorPageResponse(List.of(item("3", "Carol", List.of())), 1, 2, 3, 2));
+                .thenReturn(new ScholardexAuthorPageResponse(List.of(item("3", "Carol", List.of())), 1, 2, 3, 2));
 
-        mockMvc.perform(get("/api/scopus/authors")
+        mockMvc.perform(get("/api/entities/authors")
                         .param("afid", "af-1")
                         .param("page", "1")
                         .param("size", "2")
@@ -76,15 +76,15 @@ class ScopusAuthorApiControllerContractTest {
     @Test
     void queryMatchesConfiguredFields() throws Exception {
         when(postgresScholardexAuthorReadPort.search(null, 0, 25, "name", "asc", "alice"))
-                .thenReturn(new ScopusAuthorPageResponse(List.of(item("name-hit", "Alice", List.of())), 0, 25, 1, 1));
+                .thenReturn(new ScholardexAuthorPageResponse(List.of(item("name-hit", "Alice", List.of())), 0, 25, 1, 1));
         when(postgresScholardexAuthorReadPort.search(null, 0, 25, "name", "asc", "0001"))
-                .thenReturn(new ScopusAuthorPageResponse(List.of(item("id-hit", "Author", List.of())), 0, 25, 1, 1));
+                .thenReturn(new ScholardexAuthorPageResponse(List.of(item("id-hit", "Author", List.of())), 0, 25, 1, 1));
 
-        mockMvc.perform(get("/api/scopus/authors").param("q", "alice"))
+        mockMvc.perform(get("/api/entities/authors").param("q", "alice"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].id").value("name-hit"));
 
-        mockMvc.perform(get("/api/scopus/authors").param("q", "0001"))
+        mockMvc.perform(get("/api/entities/authors").param("q", "0001"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].id").value("id-hit"));
     }
@@ -98,33 +98,33 @@ class ScopusAuthorApiControllerContractTest {
         when(postgresScholardexAuthorReadPort.search(null, 0, 25, "name", "asc", "x".repeat(101)))
                 .thenThrow(new IllegalArgumentException("Invalid q parameter. Maximum length is 100."));
 
-        mockMvc.perform(get("/api/scopus/authors").param("page", "-1"))
+        mockMvc.perform(get("/api/entities/authors").param("page", "-1"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("bad_request"));
 
-        mockMvc.perform(get("/api/scopus/authors").param("size", "101"))
+        mockMvc.perform(get("/api/entities/authors").param("size", "101"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("bad_request"));
 
-        mockMvc.perform(get("/api/scopus/authors").param("sort", "bad"))
+        mockMvc.perform(get("/api/entities/authors").param("sort", "bad"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("bad_request"));
 
-        mockMvc.perform(get("/api/scopus/authors").param("direction", "up"))
+        mockMvc.perform(get("/api/entities/authors").param("direction", "up"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("bad_request"));
 
-        mockMvc.perform(get("/api/scopus/authors").param("q", "x".repeat(101)))
+        mockMvc.perform(get("/api/entities/authors").param("q", "x".repeat(101)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("bad_request"));
     }
 
-    private ScopusAuthorListItemResponse item(String id, String name, List<String> affiliations) {
-        return new ScopusAuthorListItemResponse(id, name, affiliations);
+    private ScholardexAuthorListItemResponse item(String id, String name, List<String> affiliations) {
+        return new ScholardexAuthorListItemResponse(id, name, affiliations);
     }
 }

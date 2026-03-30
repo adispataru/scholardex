@@ -22,8 +22,6 @@ import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.user.UserRole;
-import org.springframework.beans.factory.ObjectProvider;
-import ro.uvt.pokedex.core.service.application.PostgresScholardexAdminReadPort;
 import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.AdminInstitutionReportFacade;
 import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
@@ -49,7 +47,6 @@ public class AdminViewController {
     private final UserService userService;
     private final ResearcherService researcherService;
     private final AdminCatalogFacade adminCatalogFacade;
-    private final ObjectProvider<PostgresScholardexAdminReadPort> postgresScholardexAdminReadPortProvider;
     private final AdminInstitutionReportFacade adminInstitutionReportFacade;
     private final RankingMaintenanceFacade rankingMaintenanceFacade;
     private final String Country = "Romania";
@@ -414,73 +411,9 @@ public class AdminViewController {
         return "redirect:/admin/scholardex/affiliations";
     }
 
-    @GetMapping("/scholardex/publications/search")
-    public String searchScholardexPublications(@RequestParam String authorName,
-                                     @RequestParam String paperTitle,
-                                     Model model) {
-        PostgresScholardexAdminReadPort adminReadPort = postgresScholardexAdminReadPortProvider.getIfAvailable();
-        if (adminReadPort == null) {
-            throw new IllegalStateException("Postgres admin read port is not available.");
-        }
-        ScholardexPublicationSearchView viewModel = adminReadPort.buildPublicationSearchView(paperTitle);
-        model.addAttribute("authorMap", viewModel.authorMap());
-        model.addAttribute("publications", viewModel.publications());
-        return "admin/scholardex-publications-search";
-    }
-
     @GetMapping("/scholardex/publications")
     public String showScholardexPublicationsPage() {
         return "admin/scholardex-publications";
-    }
-
-    @GetMapping("/scholardex/publications/citations")
-    public String showScholardexPublicationCitationsPage(Model model, @RequestParam("id") String id) {
-        PostgresScholardexAdminReadPort adminReadPort = postgresScholardexAdminReadPortProvider.getIfAvailable();
-        if (adminReadPort == null) {
-            throw new IllegalStateException("Postgres admin read port is not available.");
-        }
-        Optional<ScholardexCitationsView> viewModel = adminReadPort.buildPublicationCitationsView(id);
-        viewModel.ifPresent(vm -> {
-            model.addAttribute("citations", vm.citations());
-            model.addAttribute("publication", vm.publication());
-            model.addAttribute("forum", vm.publicationForum());
-            model.addAttribute("authorMap", vm.authorMap());
-            model.addAttribute("forumMap", vm.forumMap());
-        });
-        return "admin/scholardex-citations";
-    }
-
-    @PostMapping("/rankings/wos/computePositionsForKnownQuarters")
-    public String computeMissingRanks(RedirectAttributes redirectAttributes) {
-        try {
-            rankingMaintenanceFacade.computePositionsForKnownQuarters();
-            redirectAttributes.addFlashAttribute("successMessage", "Legacy WoS operation completed.");
-        } catch (IllegalStateException ex) {
-            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
-        }
-        return "redirect:/forums?wos=indexed";
-    }
-
-    @PostMapping("/rankings/wos/computeQuartersAndRankingsWhereMissing")
-    public String computeMissingQuartersAndRanks(RedirectAttributes redirectAttributes) {
-        try {
-            rankingMaintenanceFacade.computeQuartersAndRankingsWhereMissing();
-            redirectAttributes.addFlashAttribute("successMessage", "Legacy WoS operation completed.");
-        } catch (IllegalStateException ex) {
-            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
-        }
-        return "redirect:/forums?wos=indexed";
-    }
-
-    @PostMapping("/rankings/wos/mergeDuplicateRankings")
-    public String mergeDuplicateRankings(RedirectAttributes redirectAttributes) {
-        try {
-            rankingMaintenanceFacade.mergeDuplicateRankings();
-            redirectAttributes.addFlashAttribute("successMessage", "Legacy WoS operation completed.");
-        } catch (IllegalStateException ex) {
-            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
-        }
-        return "redirect:/forums?wos=indexed";
     }
 
     @PostMapping("/rankings/wos/rebuildProjections")

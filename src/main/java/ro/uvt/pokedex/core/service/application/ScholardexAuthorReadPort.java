@@ -1,7 +1,7 @@
 package ro.uvt.pokedex.core.service.application;
 
-import ro.uvt.pokedex.core.controller.dto.ScopusAuthorPageResponse;
+import ro.uvt.pokedex.core.controller.dto.ScholardexAuthorPageResponse;
 
 public interface ScholardexAuthorReadPort {
-    ScopusAuthorPageResponse search(String afid, int page, int size, String sort, String direction, String q);
+    ScholardexAuthorPageResponse search(String afid, int page, int size, String sort, String direction, String q);
 }

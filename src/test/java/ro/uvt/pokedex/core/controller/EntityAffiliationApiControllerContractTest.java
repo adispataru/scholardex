@@ -4,13 +4,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.ApiExceptionHandler;
-import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationListItemResponse;
-import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationPageResponse;
+import ro.uvt.pokedex.core.controller.dto.ScholardexAffiliationListItemResponse;
+import ro.uvt.pokedex.core.controller.dto.ScholardexAffiliationPageResponse;
 import ro.uvt.pokedex.core.service.application.PostgresScholardexAffiliationReadPort;
 
 import java.util.List;
@@ -21,10 +21,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(ScopusAffiliationApiController.class)
+@WebMvcTest(value = EntityAffiliationApiController.class, properties = "spring.datasource.url=jdbc:postgresql://localhost:5432/test")
 @AutoConfigureMockMvc(addFilters = false)
 @Import(ApiExceptionHandler.class)
-class ScopusAffiliationApiControllerContractTest {
+class EntityAffiliationApiControllerContractTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -35,7 +35,7 @@ class ScopusAffiliationApiControllerContractTest {
     @Test
     void defaultRequestReturnsPagedEnvelope() throws Exception {
         when(postgresScholardexAffiliationReadPort.search(0, 25, "name", "asc", null))
-                .thenReturn(new ScopusAffiliationPageResponse(
+                .thenReturn(new ScholardexAffiliationPageResponse(
                         List.of(
                                 item("1", "UVT", "Timisoara", "Romania"),
                                 item("2", "MIT", "Cambridge", "USA")
@@ -43,7 +43,7 @@ class ScopusAffiliationApiControllerContractTest {
                         0, 25, 2, 1
                 ));
 
-        mockMvc.perform(get("/api/scopus/affiliations"))
+        mockMvc.perform(get("/api/entities/affiliations"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.items").isArray())
@@ -57,9 +57,9 @@ class ScopusAffiliationApiControllerContractTest {
     @Test
     void pagingSortingAndDirectionAreApplied() throws Exception {
         when(postgresScholardexAffiliationReadPort.search(1, 2, "afid", "desc", null))
-                .thenReturn(new ScopusAffiliationPageResponse(List.of(item("3", "EPFL", "Lausanne", "Switzerland")), 1, 2, 3, 2));
+                .thenReturn(new ScholardexAffiliationPageResponse(List.of(item("3", "EPFL", "Lausanne", "Switzerland")), 1, 2, 3, 2));
 
-        mockMvc.perform(get("/api/scopus/affiliations")
+        mockMvc.perform(get("/api/entities/affiliations")
                         .param("page", "1")
                         .param("size", "2")
                         .param("sort", "afid")
@@ -75,27 +75,27 @@ class ScopusAffiliationApiControllerContractTest {
     @Test
     void queryMatchesConfiguredFields() throws Exception {
         when(postgresScholardexAffiliationReadPort.search(0, 25, "name", "asc", "uvt"))
-                .thenReturn(new ScopusAffiliationPageResponse(List.of(item("name-hit", "UVT", "Timisoara", "Romania")), 0, 25, 1, 1));
+                .thenReturn(new ScholardexAffiliationPageResponse(List.of(item("name-hit", "UVT", "Timisoara", "Romania")), 0, 25, 1, 1));
         when(postgresScholardexAffiliationReadPort.search(0, 25, "name", "asc", "0001"))
-                .thenReturn(new ScopusAffiliationPageResponse(List.of(item("id-hit", "Other", "City", "Country")), 0, 25, 1, 1));
+                .thenReturn(new ScholardexAffiliationPageResponse(List.of(item("id-hit", "Other", "City", "Country")), 0, 25, 1, 1));
         when(postgresScholardexAffiliationReadPort.search(0, 25, "name", "asc", "timisoara"))
-                .thenReturn(new ScopusAffiliationPageResponse(List.of(item("city-hit", "Other", "Timisoara", "Country")), 0, 25, 1, 1));
+                .thenReturn(new ScholardexAffiliationPageResponse(List.of(item("city-hit", "Other", "Timisoara", "Country")), 0, 25, 1, 1));
         when(postgresScholardexAffiliationReadPort.search(0, 25, "name", "asc", "romania"))
-                .thenReturn(new ScopusAffiliationPageResponse(List.of(item("country-hit", "Other", "City", "Romania")), 0, 25, 1, 1));
+                .thenReturn(new ScholardexAffiliationPageResponse(List.of(item("country-hit", "Other", "City", "Romania")), 0, 25, 1, 1));
 
-        mockMvc.perform(get("/api/scopus/affiliations").param("q", "uvt"))
+        mockMvc.perform(get("/api/entities/affiliations").param("q", "uvt"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].afid").value("name-hit"));
 
-        mockMvc.perform(get("/api/scopus/affiliations").param("q", "0001"))
+        mockMvc.perform(get("/api/entities/affiliations").param("q", "0001"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].afid").value("id-hit"));
 
-        mockMvc.perform(get("/api/scopus/affiliations").param("q", "timisoara"))
+        mockMvc.perform(get("/api/entities/affiliations").param("q", "timisoara"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].afid").value("city-hit"));
 
-        mockMvc.perform(get("/api/scopus/affiliations").param("q", "romania"))
+        mockMvc.perform(get("/api/entities/affiliations").param("q", "romania"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].afid").value("country-hit"));
     }
@@ -109,33 +109,33 @@ class ScopusAffiliationApiControllerContractTest {
         when(postgresScholardexAffiliationReadPort.search(0, 25, "name", "asc", "x".repeat(101)))
                 .thenThrow(new IllegalArgumentException("Invalid q parameter. Maximum length is 100."));
 
-        mockMvc.perform(get("/api/scopus/affiliations").param("page", "-1"))
+        mockMvc.perform(get("/api/entities/affiliations").param("page", "-1"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("bad_request"));
 
-        mockMvc.perform(get("/api/scopus/affiliations").param("size", "101"))
+        mockMvc.perform(get("/api/entities/affiliations").param("size", "101"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("bad_request"));
 
-        mockMvc.perform(get("/api/scopus/affiliations").param("sort", "bad"))
+        mockMvc.perform(get("/api/entities/affiliations").param("sort", "bad"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("bad_request"));
 
-        mockMvc.perform(get("/api/scopus/affiliations").param("direction", "up"))
+        mockMvc.perform(get("/api/entities/affiliations").param("direction", "up"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("bad_request"));
 
-        mockMvc.perform(get("/api/scopus/affiliations").param("q", "x".repeat(101)))
+        mockMvc.perform(get("/api/entities/affiliations").param("q", "x".repeat(101)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("bad_request"));
     }
 
-    private ScopusAffiliationListItemResponse item(String afid, String name, String city, String country) {
-        return new ScopusAffiliationListItemResponse(afid, name, city, country);
+    private ScholardexAffiliationListItemResponse item(String afid, String name, String city, String country) {
+        return new ScholardexAffiliationListItemResponse(afid, name, city, country);
     }
 }

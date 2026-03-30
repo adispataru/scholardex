@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(WosRankingApiController.class)
+@WebMvcTest(value = WosRankingApiController.class, properties = "spring.datasource.url=jdbc:postgresql://localhost:5432/test")
 @AutoConfigureMockMvc(addFilters = false)
 @Import(ApiExceptionHandler.class)
 class WosRankingApiControllerContractTest {

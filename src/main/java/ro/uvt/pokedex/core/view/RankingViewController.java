@@ -15,7 +15,7 @@ import ro.uvt.pokedex.core.service.application.ScholardexForumDetailService;
 import ro.uvt.pokedex.core.service.application.ScholardexForumMvcService;
 import ro.uvt.pokedex.core.service.application.UrapRankingFacade;
 import ro.uvt.pokedex.core.service.application.WosCategoryPageService;
-import ro.uvt.pokedex.core.controller.dto.ScholardexForumPageResponse;
+import ro.uvt.pokedex.core.controller.dto.ScholardexForumTablePageResponse;
 import ro.uvt.pokedex.core.service.application.model.ScholardexForumDetailViewModel;
 
 import java.util.List;
@@ -38,7 +38,7 @@ public class RankingViewController {
 
     @GetMapping("/forums/data")
     @ResponseBody
-    public ScholardexForumPageResponse listScholardexForumsData(
+    public ScholardexForumTablePageResponse listScholardexForumsData(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int size,
             @RequestParam(defaultValue = "publicationName") String sort,

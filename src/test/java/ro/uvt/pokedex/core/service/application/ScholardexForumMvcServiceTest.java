@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ro.uvt.pokedex.core.controller.dto.ScholardexForumPageResponse;
+import ro.uvt.pokedex.core.controller.dto.ScholardexForumTablePageResponse;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 
 import java.util.List;
@@ -41,7 +41,7 @@ class ScholardexForumMvcServiceTest {
         when(wosForumResolutionService.resolveJournalId(journal, resolutionIndex)).thenReturn("w1");
         when(wosForumResolutionService.resolveJournalId(conference, resolutionIndex)).thenReturn(null);
 
-        ScholardexForumPageResponse result = service.search(0, 25, "publicationName", "asc", null, "all");
+        ScholardexForumTablePageResponse result = service.search(0, 25, "publicationName", "asc", null, "all");
 
         assertEquals(2, result.items().size());
         assertEquals("indexed", result.items().get(1).wosStatus());

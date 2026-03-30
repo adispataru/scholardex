@@ -1,7 +1,7 @@
 package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
@@ -15,40 +15,33 @@ import java.util.Set;
 @Service
 @Primary
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "spring.datasource.url")
 public class ReportingLookupFacade implements ReportingLookupPort {
 
-    private final ObjectProvider<PostgresReportingLookupFacade> postgresFacadeProvider;
+    private final PostgresReportingLookupFacade postgresFacade;
 
     @Override
     public Forum getForum(String forumId) {
-        return activeFacade().getForum(forumId);
+        return postgresFacade.getForum(forumId);
     }
 
     @Override
     public List<WoSRanking> getRankingsByIssn(String issn) {
-        return activeFacade().getRankingsByIssn(issn);
+        return postgresFacade.getRankingsByIssn(issn);
     }
 
     @Override
     public List<CoreConferenceRanking> getConferenceRankings(String acronym) {
-        return activeFacade().getConferenceRankings(acronym);
+        return postgresFacade.getConferenceRankings(acronym);
     }
 
     @Override
     public int getTopRankings(String categoryIndex, Integer year) {
-        return activeFacade().getTopRankings(categoryIndex, year);
+        return postgresFacade.getTopRankings(categoryIndex, year);
     }
 
     @Override
     public Set<String> getUniversityAuthorIds() {
-        return activeFacade().getUniversityAuthorIds();
-    }
-
-    private ReportingLookupPort activeFacade() {
-        PostgresReportingLookupFacade postgresFacade = postgresFacadeProvider.getIfAvailable();
-        if (postgresFacade == null) {
-            throw new IllegalStateException("Postgres reporting lookup is not available.");
-        }
-        return postgresFacade;
+        return postgresFacade.getUniversityAuthorIds();
     }
 }

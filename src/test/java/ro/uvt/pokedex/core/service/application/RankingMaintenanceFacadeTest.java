@@ -12,10 +12,8 @@ import ro.uvt.pokedex.core.service.importing.wos.WosProjectionBuilderService;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,24 +28,6 @@ class RankingMaintenanceFacadeTest {
 
     @InjectMocks
     private RankingMaintenanceFacade facade;
-
-    @Test
-    void legacyComputePositionsOperationIsDisabled() {
-        assertThrows(IllegalStateException.class, facade::computePositionsForKnownQuarters);
-        verifyNoInteractions(wosProjectionBuilderService, wosIndexMaintenanceService, wosBigBangMigrationService);
-    }
-
-    @Test
-    void legacyComputeQuartersOperationIsDisabled() {
-        assertThrows(IllegalStateException.class, facade::computeQuartersAndRankingsWhereMissing);
-        verifyNoInteractions(wosProjectionBuilderService, wosIndexMaintenanceService, wosBigBangMigrationService);
-    }
-
-    @Test
-    void legacyMergeOperationIsDisabled() {
-        assertThrows(IllegalStateException.class, facade::mergeDuplicateRankings);
-        verifyNoInteractions(wosProjectionBuilderService, wosIndexMaintenanceService, wosBigBangMigrationService);
-    }
 
     @Test
     void rebuildWosProjectionsDelegatesToBuilder() {

@@ -187,7 +187,7 @@ Archived from `TASKS.md` on 2026-03-13 after H23.1-H23.5 closure.
   Handover:
   - Canonical public MVC routes are `/scholardex/forums`, `/scholardex/forums/{id}`, `/rankings/categories`, and `/rankings/categories/{key}`.
   - Canonical admin MVC routes are under `/admin/scholardex/**`; retained compatibility shims remain under `/admin/scopus/**`, `/admin/scopus/venues*`, `/rankings/wos`, and `/user/rankings/{id}`.
-  - Stable legacy APIs intentionally retained: `/api/scopus/**` and `/api/rankings/wos`.
+  - Historical note: as of H23 closeout, `/api/scopus/**` and `/api/rankings/wos` were retained as stable API namespaces; H27 later superseded the entity-read `/api/scopus/authors|forums|affiliations` contract with canonical `/api/entities/**`, while `/api/rankings/wos` remained unchanged.
   - New H23 paged category API: `/api/rankings/categories`.
   - Route map and closeout doc: `docs/tasks/closed/h23.5-route-map-and-closeout.md`.
   - H23 verification entrypoint: `npm run verify-h23-ui`.

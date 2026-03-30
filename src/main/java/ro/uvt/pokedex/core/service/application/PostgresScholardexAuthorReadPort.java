@@ -5,8 +5,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.controller.dto.ScopusAuthorListItemResponse;
-import ro.uvt.pokedex.core.controller.dto.ScopusAuthorPageResponse;
+import ro.uvt.pokedex.core.controller.dto.ScholardexAuthorListItemResponse;
+import ro.uvt.pokedex.core.controller.dto.ScholardexAuthorPageResponse;
 
 import java.sql.Array;
 import java.sql.ResultSet;
@@ -23,7 +23,7 @@ public class PostgresScholardexAuthorReadPort implements ScholardexAuthorReadPor
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     @Override
-    public ScopusAuthorPageResponse search(String afid, int page, int size, String sort, String direction, String q) {
+    public ScholardexAuthorPageResponse search(String afid, int page, int size, String sort, String direction, String q) {
         String normalizedSort = normalizeSort(sort);
         String normalizedDirection = normalizeDirection(direction);
         String normalizedQuery = normalizeQuery(q);
@@ -75,8 +75,8 @@ public class PostgresScholardexAuthorReadPort implements ScholardexAuthorReadPor
             entries.forEach(entry -> affiliationNamesById.putIfAbsent(entry.getKey(), entry.getValue()));
         }
 
-        List<ScopusAuthorListItemResponse> items = rows.stream()
-                .map(row -> new ScopusAuthorListItemResponse(
+        List<ScholardexAuthorListItemResponse> items = rows.stream()
+                .map(row -> new ScholardexAuthorListItemResponse(
                         row.id(),
                         row.name(),
                         row.affiliationIds().stream()
@@ -86,7 +86,7 @@ public class PostgresScholardexAuthorReadPort implements ScholardexAuthorReadPor
                 ))
                 .toList();
 
-        return new ScopusAuthorPageResponse(items, page, size, total, totalPages);
+        return new ScholardexAuthorPageResponse(items, page, size, total, totalPages);
     }
 
     private AuthorRow mapAuthorRow(ResultSet rs, int ignored) throws SQLException {

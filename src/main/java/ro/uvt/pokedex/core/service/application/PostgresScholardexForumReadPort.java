@@ -5,8 +5,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.controller.dto.ScopusForumListItemResponse;
-import ro.uvt.pokedex.core.controller.dto.ScopusForumPageResponse;
+import ro.uvt.pokedex.core.controller.dto.ScholardexForumListItemResponse;
+import ro.uvt.pokedex.core.controller.dto.ScholardexForumPageResponse;
 
 import java.util.List;
 
@@ -18,7 +18,7 @@ public class PostgresScholardexForumReadPort implements ScholardexForumReadPort 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     @Override
-    public ScopusForumPageResponse search(int page, int size, String sort, String direction, String q) {
+    public ScholardexForumPageResponse search(int page, int size, String sort, String direction, String q) {
         String normalizedSort = normalizeSort(sort);
         String normalizedDirection = normalizeDirection(direction);
         String normalizedQuery = normalizeQuery(q);
@@ -38,10 +38,10 @@ public class PostgresScholardexForumReadPort implements ScholardexForumReadPort 
                 """ + whereClause + " ORDER BY " + normalizedSort + " " + normalizedDirection
                 + ", id COLLATE \"C\" " + normalizedDirection + " LIMIT :limit OFFSET :offset";
 
-        List<ScopusForumListItemResponse> items = namedParameterJdbcTemplate.query(
+        List<ScholardexForumListItemResponse> items = namedParameterJdbcTemplate.query(
                 sql,
                 params,
-                (rs, rowNum) -> new ScopusForumListItemResponse(
+                (rs, rowNum) -> new ScholardexForumListItemResponse(
                         rs.getString("id"),
                         rs.getString("publication_name"),
                         rs.getString("issn"),
@@ -58,7 +58,7 @@ public class PostgresScholardexForumReadPort implements ScholardexForumReadPort 
         long total = totalItems == null ? 0L : totalItems;
         int totalPages = (int) Math.ceil(total / (double) size);
 
-        return new ScopusForumPageResponse(items, page, size, total, totalPages);
+        return new ScholardexForumPageResponse(items, page, size, total, totalPages);
     }
 
     private String normalizeSort(String sort) {

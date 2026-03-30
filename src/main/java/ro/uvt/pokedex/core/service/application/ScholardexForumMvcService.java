@@ -2,8 +2,8 @@ package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.controller.dto.ScholardexForumListItemResponse;
-import ro.uvt.pokedex.core.controller.dto.ScholardexForumPageResponse;
+import ro.uvt.pokedex.core.controller.dto.ScholardexForumTableListItemResponse;
+import ro.uvt.pokedex.core.controller.dto.ScholardexForumTablePageResponse;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 
 import java.util.ArrayList;
@@ -20,14 +20,14 @@ public class ScholardexForumMvcService {
     private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final WosForumResolutionService wosForumResolutionService;
 
-    public ScholardexForumPageResponse search(int page, int size, String sort, String direction, String q, String wos) {
+    public ScholardexForumTablePageResponse search(int page, int size, String sort, String direction, String q, String wos) {
         String normalizedSort = normalizeSort(sort);
         boolean ascending = normalizeDirection(direction);
         String normalizedQuery = normalizeQuery(q);
         String normalizedWosFilter = normalizeWosFilter(wos);
         WosForumResolutionService.ResolutionIndex resolutionIndex = wosForumResolutionService.buildResolutionIndex();
 
-        List<ScholardexForumListItemResponse> rows = scholardexProjectionReadService.findAllForums().stream()
+        List<ScholardexForumTableListItemResponse> rows = scholardexProjectionReadService.findAllForums().stream()
                 .map(forum -> toListItem(forum, resolutionIndex))
                 .filter(item -> matchesQuery(item, normalizedQuery))
                 .filter(item -> matchesWos(item, normalizedWosFilter))
@@ -39,16 +39,16 @@ public class ScholardexForumMvcService {
         int safePage = Math.max(0, page);
         int fromIndex = Math.min(safePage * size, rows.size());
         int toIndex = Math.min(fromIndex + size, rows.size());
-        List<ScholardexForumListItemResponse> items = fromIndex >= toIndex
+        List<ScholardexForumTableListItemResponse> items = fromIndex >= toIndex
                 ? List.of()
                 : new ArrayList<>(rows.subList(fromIndex, toIndex));
 
-        return new ScholardexForumPageResponse(items, safePage, size, totalItems, totalPages);
+        return new ScholardexForumTablePageResponse(items, safePage, size, totalItems, totalPages);
     }
 
-    private ScholardexForumListItemResponse toListItem(Forum forum, WosForumResolutionService.ResolutionIndex resolutionIndex) {
+    private ScholardexForumTableListItemResponse toListItem(Forum forum, WosForumResolutionService.ResolutionIndex resolutionIndex) {
         String wosJournalId = wosForumResolutionService.resolveJournalId(forum, resolutionIndex);
-        return new ScholardexForumListItemResponse(
+        return new ScholardexForumTableListItemResponse(
                 forum.getId(),
                 forum.getPublicationName(),
                 forum.getIssn(),
@@ -67,7 +67,7 @@ public class ScholardexForumMvcService {
         return "not_applicable";
     }
 
-    private boolean matchesQuery(ScholardexForumListItemResponse item, String query) {
+    private boolean matchesQuery(ScholardexForumTableListItemResponse item, String query) {
         if (query == null) {
             return true;
         }
@@ -78,15 +78,15 @@ public class ScholardexForumMvcService {
                 || normalize(displayWosStatus(item.wosStatus())).contains(query);
     }
 
-    private boolean matchesWos(ScholardexForumListItemResponse item, String wos) {
+    private boolean matchesWos(ScholardexForumTableListItemResponse item, String wos) {
         if ("all".equals(wos)) {
             return true;
         }
         return item.wosStatus().equals(wos);
     }
 
-    private Comparator<ScholardexForumListItemResponse> buildComparator(String sort, boolean ascending) {
-        Comparator<ScholardexForumListItemResponse> comparator = switch (sort) {
+    private Comparator<ScholardexForumTableListItemResponse> buildComparator(String sort, boolean ascending) {
+        Comparator<ScholardexForumTableListItemResponse> comparator = switch (sort) {
             case "publicationName" -> Comparator.comparing(
                     item -> normalize(item.publicationName()),
                     Comparator.naturalOrder()

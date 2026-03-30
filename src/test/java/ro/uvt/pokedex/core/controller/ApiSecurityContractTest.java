@@ -20,9 +20,9 @@ import ro.uvt.pokedex.core.service.application.PostgresScholardexForumReadPort;
 import ro.uvt.pokedex.core.service.application.UrapRankingQueryService;
 import ro.uvt.pokedex.core.service.application.PostgresWosRankingReadPort;
 import ro.uvt.pokedex.core.controller.dto.CoreRankingPageResponse;
-import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationPageResponse;
-import ro.uvt.pokedex.core.controller.dto.ScopusAuthorPageResponse;
-import ro.uvt.pokedex.core.controller.dto.ScopusForumPageResponse;
+import ro.uvt.pokedex.core.controller.dto.ScholardexAffiliationPageResponse;
+import ro.uvt.pokedex.core.controller.dto.ScholardexAuthorPageResponse;
+import ro.uvt.pokedex.core.controller.dto.ScholardexForumPageResponse;
 import ro.uvt.pokedex.core.controller.dto.UrapRankingPageResponse;
 import ro.uvt.pokedex.core.controller.dto.WosRankingPageResponse;
 
@@ -39,15 +39,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest({
+@WebMvcTest(value = {
         UserController.class,
         WosRankingApiController.class,
         CoreRankingApiController.class,
         UrapRankingApiController.class,
-        ScopusForumApiController.class,
-        ScopusAuthorApiController.class,
-        ScopusAffiliationApiController.class
-})
+        EntityForumApiController.class,
+        EntityAuthorApiController.class,
+        EntityAffiliationApiController.class
+}, properties = "spring.datasource.url=jdbc:postgresql://localhost:5432/test")
 @AutoConfigureMockMvc
 @Import(WebSecurityConfig.class)
 class ApiSecurityContractTest {
@@ -207,22 +207,22 @@ class ApiSecurityContractTest {
     }
 
     @Test
-    void unauthenticatedScopusForumsApiReturns401JsonEnvelope() throws Exception {
-        mockMvc.perform(get("/api/scopus/forums"))
+    void unauthenticatedEntityForumsApiReturns401JsonEnvelope() throws Exception {
+        mockMvc.perform(get("/api/entities/forums"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentType("application/json"))
                 .andExpect(jsonPath("$.status").value(401))
                 .andExpect(jsonPath("$.error").value("unauthorized"))
-                .andExpect(jsonPath("$.path").value("/api/scopus/forums"))
+                .andExpect(jsonPath("$.path").value("/api/entities/forums"))
                 .andExpect(jsonPath("$.timestamp").exists());
     }
 
     @Test
-    void authenticatedResearcherCanAccessScopusForumsApi() throws Exception {
+    void authenticatedResearcherCanAccessEntityForumsApi() throws Exception {
         when(postgresScholardexForumReadPort.search(0, 25, "publicationName", "asc", null))
-                .thenReturn(new ScopusForumPageResponse(Collections.emptyList(), 0, 25, 0, 0));
+                .thenReturn(new ScholardexForumPageResponse(Collections.emptyList(), 0, 25, 0, 0));
 
-        mockMvc.perform(get("/api/scopus/forums")
+        mockMvc.perform(get("/api/entities/forums")
                         .with(user("researcher@uvt.ro")
                                 .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
                 .andExpect(status().isOk())
@@ -231,11 +231,11 @@ class ApiSecurityContractTest {
     }
 
     @Test
-    void authenticatedSupervisorCanAccessScopusForumsApi() throws Exception {
+    void authenticatedSupervisorCanAccessEntityForumsApi() throws Exception {
         when(postgresScholardexForumReadPort.search(0, 25, "publicationName", "asc", null))
-                .thenReturn(new ScopusForumPageResponse(Collections.emptyList(), 0, 25, 0, 0));
+                .thenReturn(new ScholardexForumPageResponse(Collections.emptyList(), 0, 25, 0, 0));
 
-        mockMvc.perform(get("/api/scopus/forums")
+        mockMvc.perform(get("/api/entities/forums")
                         .with(user("supervisor@uvt.ro")
                                 .authorities(new SimpleGrantedAuthority("SUPERVISOR"))))
                 .andExpect(status().isOk())
@@ -244,11 +244,11 @@ class ApiSecurityContractTest {
     }
 
     @Test
-    void authenticatedAdminCanAccessScopusForumsApi() throws Exception {
+    void authenticatedAdminCanAccessEntityForumsApi() throws Exception {
         when(postgresScholardexForumReadPort.search(0, 25, "publicationName", "asc", null))
-                .thenReturn(new ScopusForumPageResponse(Collections.emptyList(), 0, 25, 0, 0));
+                .thenReturn(new ScholardexForumPageResponse(Collections.emptyList(), 0, 25, 0, 0));
 
-        mockMvc.perform(get("/api/scopus/forums")
+        mockMvc.perform(get("/api/entities/forums")
                         .with(user("admin@uvt.ro")
                                 .authorities(new SimpleGrantedAuthority("PLATFORM_ADMIN"))))
                 .andExpect(status().isOk())
@@ -257,34 +257,48 @@ class ApiSecurityContractTest {
     }
 
     @Test
-    void unauthenticatedScopusAuthorsApiReturns401JsonEnvelope() throws Exception {
-        mockMvc.perform(get("/api/scopus/authors"))
+    void unauthenticatedRemovedScopusEntityRoutesReturn401JsonEnvelope() throws Exception {
+        assertUnauthenticatedRemovedRouteReturns401("/api/scopus/forums");
+        assertUnauthenticatedRemovedRouteReturns401("/api/scopus/authors");
+        assertUnauthenticatedRemovedRouteReturns401("/api/scopus/affiliations");
+    }
+
+    @Test
+    void authenticatedRemovedScopusEntityRoutesReturn404() throws Exception {
+        assertAuthenticatedRemovedRouteReturns404("/api/scopus/forums");
+        assertAuthenticatedRemovedRouteReturns404("/api/scopus/authors");
+        assertAuthenticatedRemovedRouteReturns404("/api/scopus/affiliations");
+    }
+
+    @Test
+    void unauthenticatedEntityAuthorsApiReturns401JsonEnvelope() throws Exception {
+        mockMvc.perform(get("/api/entities/authors"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentType("application/json"))
                 .andExpect(jsonPath("$.status").value(401))
                 .andExpect(jsonPath("$.error").value("unauthorized"))
-                .andExpect(jsonPath("$.path").value("/api/scopus/authors"))
+                .andExpect(jsonPath("$.path").value("/api/entities/authors"))
                 .andExpect(jsonPath("$.timestamp").exists());
     }
 
     @Test
-    void authenticatedRolesCanAccessScopusAuthorsApi() throws Exception {
+    void authenticatedRolesCanAccessEntityAuthorsApi() throws Exception {
         when(postgresScholardexAuthorReadPort.search(null, 0, 25, "name", "asc", null))
-                .thenReturn(new ScopusAuthorPageResponse(Collections.emptyList(), 0, 25, 0, 0));
+                .thenReturn(new ScholardexAuthorPageResponse(Collections.emptyList(), 0, 25, 0, 0));
 
-        mockMvc.perform(get("/api/scopus/authors")
+        mockMvc.perform(get("/api/entities/authors")
                         .with(user("researcher@uvt.ro")
                                 .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isArray());
 
-        mockMvc.perform(get("/api/scopus/authors")
+        mockMvc.perform(get("/api/entities/authors")
                         .with(user("supervisor@uvt.ro")
                                 .authorities(new SimpleGrantedAuthority("SUPERVISOR"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isArray());
 
-        mockMvc.perform(get("/api/scopus/authors")
+        mockMvc.perform(get("/api/entities/authors")
                         .with(user("admin@uvt.ro")
                                 .authorities(new SimpleGrantedAuthority("PLATFORM_ADMIN"))))
                 .andExpect(status().isOk())
@@ -292,37 +306,54 @@ class ApiSecurityContractTest {
     }
 
     @Test
-    void unauthenticatedScopusAffiliationsApiReturns401JsonEnvelope() throws Exception {
-        mockMvc.perform(get("/api/scopus/affiliations"))
+    void unauthenticatedEntityAffiliationsApiReturns401JsonEnvelope() throws Exception {
+        mockMvc.perform(get("/api/entities/affiliations"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentType("application/json"))
                 .andExpect(jsonPath("$.status").value(401))
                 .andExpect(jsonPath("$.error").value("unauthorized"))
-                .andExpect(jsonPath("$.path").value("/api/scopus/affiliations"))
+                .andExpect(jsonPath("$.path").value("/api/entities/affiliations"))
                 .andExpect(jsonPath("$.timestamp").exists());
     }
 
     @Test
-    void authenticatedRolesCanAccessScopusAffiliationsApi() throws Exception {
+    void authenticatedRolesCanAccessEntityAffiliationsApi() throws Exception {
         when(postgresScholardexAffiliationReadPort.search(0, 25, "name", "asc", null))
-                .thenReturn(new ScopusAffiliationPageResponse(Collections.emptyList(), 0, 25, 0, 0));
+                .thenReturn(new ScholardexAffiliationPageResponse(Collections.emptyList(), 0, 25, 0, 0));
 
-        mockMvc.perform(get("/api/scopus/affiliations")
+        mockMvc.perform(get("/api/entities/affiliations")
                         .with(user("researcher@uvt.ro")
                                 .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isArray());
 
-        mockMvc.perform(get("/api/scopus/affiliations")
+        mockMvc.perform(get("/api/entities/affiliations")
                         .with(user("supervisor@uvt.ro")
                                 .authorities(new SimpleGrantedAuthority("SUPERVISOR"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isArray());
 
-        mockMvc.perform(get("/api/scopus/affiliations")
+        mockMvc.perform(get("/api/entities/affiliations")
                         .with(user("admin@uvt.ro")
                                 .authorities(new SimpleGrantedAuthority("PLATFORM_ADMIN"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isArray());
+    }
+
+    private void assertUnauthenticatedRemovedRouteReturns401(String path) throws Exception {
+        mockMvc.perform(get(path))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentType("application/json"))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").value("unauthorized"))
+                .andExpect(jsonPath("$.path").value(path))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    private void assertAuthenticatedRemovedRouteReturns404(String path) throws Exception {
+        mockMvc.perform(get(path)
+                        .with(user("researcher@uvt.ro")
+                                .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().isNotFound());
     }
 }

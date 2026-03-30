@@ -21,18 +21,6 @@ public class RankingMaintenanceFacade {
     private final AtomicReference<WosEnrichmentRunSummaryDto> lastWosEnrichmentSummary =
             new AtomicReference<>(WosEnrichmentRunSummaryDto.notRun());
 
-    public void computePositionsForKnownQuarters() {
-        throw new IllegalStateException("Legacy WoS maintenance operation is disabled. Use canonical WoS ingestion/facts/projections pipeline.");
-    }
-
-    public void computeQuartersAndRankingsWhereMissing() {
-        throw new IllegalStateException("Legacy WoS maintenance operation is disabled. Use canonical WoS ingestion/facts/projections pipeline.");
-    }
-
-    public void mergeDuplicateRankings() {
-        throw new IllegalStateException("Legacy WoS maintenance operation is disabled. Use canonical WoS ingestion/facts/projections pipeline.");
-    }
-
     public ImportProcessingResult rebuildWosProjections() {
         return wosProjectionBuilderService.rebuildWosProjections();
     }

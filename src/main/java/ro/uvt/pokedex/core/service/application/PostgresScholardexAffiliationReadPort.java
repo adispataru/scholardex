@@ -5,8 +5,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationListItemResponse;
-import ro.uvt.pokedex.core.controller.dto.ScopusAffiliationPageResponse;
+import ro.uvt.pokedex.core.controller.dto.ScholardexAffiliationListItemResponse;
+import ro.uvt.pokedex.core.controller.dto.ScholardexAffiliationPageResponse;
 
 import java.util.List;
 
@@ -18,7 +18,7 @@ public class PostgresScholardexAffiliationReadPort implements ScholardexAffiliat
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     @Override
-    public ScopusAffiliationPageResponse search(int page, int size, String sort, String direction, String q) {
+    public ScholardexAffiliationPageResponse search(int page, int size, String sort, String direction, String q) {
         String normalizedSort = normalizeSort(sort);
         String normalizedDirection = normalizeDirection(direction);
         String normalizedQuery = normalizeQuery(q);
@@ -38,10 +38,10 @@ public class PostgresScholardexAffiliationReadPort implements ScholardexAffiliat
                 """ + whereClause + " ORDER BY " + normalizedSort + " " + normalizedDirection
                 + ", id COLLATE \"C\" " + normalizedDirection + " LIMIT :limit OFFSET :offset";
 
-        List<ScopusAffiliationListItemResponse> items = namedParameterJdbcTemplate.query(
+        List<ScholardexAffiliationListItemResponse> items = namedParameterJdbcTemplate.query(
                 sql,
                 params,
-                (rs, rowNum) -> new ScopusAffiliationListItemResponse(
+                (rs, rowNum) -> new ScholardexAffiliationListItemResponse(
                         rs.getString("id"),
                         rs.getString("name"),
                         rs.getString("city"),
@@ -57,7 +57,7 @@ public class PostgresScholardexAffiliationReadPort implements ScholardexAffiliat
         long total = totalItems == null ? 0L : totalItems;
         int totalPages = (int) Math.ceil(total / (double) size);
 
-        return new ScopusAffiliationPageResponse(items, page, size, total, totalPages);
+        return new ScholardexAffiliationPageResponse(items, page, size, total, totalPages);
     }
 
     private String normalizeSort(String sort) {

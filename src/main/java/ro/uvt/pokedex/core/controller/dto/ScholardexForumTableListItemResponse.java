@@ -1,10 +1,12 @@
 package ro.uvt.pokedex.core.controller.dto;
 
-public record ScopusForumListItemResponse(
+public record ScholardexForumTableListItemResponse(
         String id,
         String publicationName,
         String issn,
         String eIssn,
-        String aggregationType
+        String aggregationType,
+        String wosStatus,
+        String wosJournalId
 ) {
 }

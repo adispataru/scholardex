@@ -27,7 +27,6 @@ import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.AdminInstitutionReportFacade;
-import ro.uvt.pokedex.core.service.application.PostgresScholardexAdminReadPort;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.WosBigBangMigrationService;
 import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
@@ -46,7 +45,6 @@ import java.util.TreeMap;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
@@ -74,50 +72,11 @@ class AdminViewControllerContractTest {
     @MockitoBean
     private AdminCatalogFacade adminCatalogFacade;
     @MockitoBean
-    private PostgresScholardexAdminReadPort postgresScholardexAdminReadPort;
-    @MockitoBean
     private AdminInstitutionReportFacade adminInstitutionReportFacade;
     @MockitoBean
     private RankingMaintenanceFacade rankingMaintenanceFacade;
     @MockitoBean
     private WosRankingDetailsReadService wosRankingDetailsReadService;
-
-    @Test
-    void computePositionsRedirectsAndDelegates() throws Exception {
-        mockMvc.perform(post("/admin/rankings/wos/computePositionsForKnownQuarters"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/forums?wos=indexed"));
-
-        verify(rankingMaintenanceFacade).computePositionsForKnownQuarters();
-    }
-
-    @Test
-    void computePositionsShowsErrorFlashWhenLegacyOperationDisabled() throws Exception {
-        doThrow(new IllegalStateException("disabled")).when(rankingMaintenanceFacade).computePositionsForKnownQuarters();
-
-        mockMvc.perform(post("/admin/rankings/wos/computePositionsForKnownQuarters"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/forums?wos=indexed"))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash().attributeExists("errorMessage"));
-    }
-
-    @Test
-    void computeMissingQuartersRedirectsAndDelegates() throws Exception {
-        mockMvc.perform(post("/admin/rankings/wos/computeQuartersAndRankingsWhereMissing"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/forums?wos=indexed"));
-
-        verify(rankingMaintenanceFacade).computeQuartersAndRankingsWhereMissing();
-    }
-
-    @Test
-    void mergeDuplicateRankingsRedirectsAndDelegates() throws Exception {
-        mockMvc.perform(post("/admin/rankings/wos/mergeDuplicateRankings"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/forums?wos=indexed"));
-
-        verify(rankingMaintenanceFacade).mergeDuplicateRankings();
-    }
 
     @Test
     void rebuildWosProjectionsRedirectsAndDelegates() throws Exception {

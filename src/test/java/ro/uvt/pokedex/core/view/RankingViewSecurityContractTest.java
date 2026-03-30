@@ -36,7 +36,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest({RankingViewController.class, AdminViewController.class})
+@WebMvcTest(
+        value = {RankingViewController.class, AdminViewController.class, AdminScholardexPublicationViewController.class},
+        properties = "spring.datasource.url=jdbc:postgresql://localhost:5432/test"
+)
 @AutoConfigureMockMvc
 @Import({WebSecurityConfig.class, GlobalControllerAdvice.class})
 class RankingViewSecurityContractTest {
@@ -143,16 +146,6 @@ class RankingViewSecurityContractTest {
     }
 
     @Test
-    void nonAdminCannotInvokeAdminRankingOperations() throws Exception {
-        mockMvc.perform(post("/admin/rankings/wos/mergeDuplicateRankings")
-                        .with(csrf())
-                        .with(user("researcher@uvt.ro")
-                                .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/custom-error?error=403"));
-    }
-
-    @Test
     void nonAdminCannotInvokeProjectionRebuildOperation() throws Exception {
         mockMvc.perform(post("/admin/rankings/wos/rebuildProjections")
                         .with(csrf())
@@ -176,6 +169,24 @@ class RankingViewSecurityContractTest {
     void nonAdminCannotInvokeBigBangMigrationOperation() throws Exception {
         mockMvc.perform(post("/admin/rankings/wos/runBigBangMigration")
                         .with(csrf())
+                        .with(user("researcher@uvt.ro")
+                                .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+    }
+
+    @Test
+    void nonAdminCannotAccessScholardexPublicationAdminRoutes() throws Exception {
+        mockMvc.perform(get("/admin/scholardex/publications/search")
+                        .param("authorName", "Author")
+                        .param("paperTitle", "Paper")
+                        .with(user("researcher@uvt.ro")
+                                .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+
+        mockMvc.perform(get("/admin/scholardex/publications/citations")
+                        .param("id", "p1")
                         .with(user("researcher@uvt.ro")
                                 .authorities(new SimpleGrantedAuthority("RESEARCHER"))))
                 .andExpect(status().is3xxRedirection())
