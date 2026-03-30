@@ -1,4 +1,4 @@
-name: H09 Security Gates
+name: Security Gates
 
 on:
   pull_request:
@@ -12,7 +12,7 @@ permissions:
   security-events: write
 
 concurrency:
-  group: h09-security-gates-${{ github.ref }}
+  group: security-gates-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

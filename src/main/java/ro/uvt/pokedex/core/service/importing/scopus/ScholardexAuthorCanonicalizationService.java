@@ -10,7 +10,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
-import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
+import ro.uvt.pokedex.core.observability.CanonicalObservabilityMetrics;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
@@ -676,7 +676,7 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
             conflict.setDetectedAt(Instant.now());
         }
         context.pendingConflicts.put(key, conflict);
-        H19CanonicalMetrics.recordConflictCreated(ScholardexEntityType.AUTHOR.name(), normalizedSource, reason);
+        CanonicalObservabilityMetrics.recordConflictCreated(ScholardexEntityType.AUTHOR.name(), normalizedSource, reason);
     }
 
     private void saveConflict(ScopusAuthorFact sourceFact, String sourceRecordId, String reason, List<String> candidates) {
@@ -702,7 +702,7 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
             conflict.setDetectedAt(Instant.now());
         }
         identityConflictRepository.save(conflict);
-        H19CanonicalMetrics.recordConflictCreated(ScholardexEntityType.AUTHOR.name(), sourceFact.getSource(), reason);
+        CanonicalObservabilityMetrics.recordConflictCreated(ScholardexEntityType.AUTHOR.name(), sourceFact.getSource(), reason);
     }
 
     private String buildCanonicalAffiliationFallbackId(String sourceToken, String sourceAffiliationId) {

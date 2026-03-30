@@ -8,7 +8,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
+import ro.uvt.pokedex.core.observability.CanonicalObservabilityMetrics;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
@@ -348,8 +348,8 @@ public class ScopusBigBangMigrationService {
                 applyEdgeReconcileSummary(combined, edgeReconciliationService.reconcileEdges());
             }
             String outcome = combined.getErrorCount() > 0 ? "failure" : "success";
-            H19CanonicalMetrics.recordCanonicalBuildRun("all", "SCOPUS", outcome, System.nanoTime() - startedAtNanos);
-            log.info("H19_TRIAGE canonical_build runId={} batchId={} correlationId={} entity={} source=SCOPUS outcome={} processed={} imported={} updated={} skipped={} errors={} totalMs={}",
+            CanonicalObservabilityMetrics.recordCanonicalBuildRun("all", "SCOPUS", outcome, System.nanoTime() - startedAtNanos);
+            log.info("CANONICAL_MAINTENANCE canonical_build runId={} batchId={} correlationId={} entity={} source=SCOPUS outcome={} processed={} imported={} updated={} skipped={} errors={} totalMs={}",
                     runId,
                     startBatchOverride,
                     "N/A",
@@ -387,8 +387,8 @@ public class ScopusBigBangMigrationService {
             applyEdgeReconcileSummary(result, edgeReconciliationService.reconcileEdges());
         }
         String outcome = result.getErrorCount() > 0 ? "failure" : "success";
-        H19CanonicalMetrics.recordCanonicalBuildRun(entity.trim().toLowerCase(), "SCOPUS", outcome, System.nanoTime() - startedAtNanos);
-        log.info("H19_TRIAGE canonical_build runId={} batchId={} correlationId={} entity={} source=SCOPUS outcome={} processed={} imported={} updated={} skipped={} errors={} totalMs={}",
+        CanonicalObservabilityMetrics.recordCanonicalBuildRun(entity.trim().toLowerCase(), "SCOPUS", outcome, System.nanoTime() - startedAtNanos);
+        log.info("CANONICAL_MAINTENANCE canonical_build runId={} batchId={} correlationId={} entity={} source=SCOPUS outcome={} processed={} imported={} updated={} skipped={} errors={} totalMs={}",
                 runId,
                 startBatchOverride,
                 "N/A",
@@ -405,7 +405,7 @@ public class ScopusBigBangMigrationService {
 
     public ScholardexSourceLinkService.ImportRepairSummary runSourceLinkReconcileStep() {
         ScholardexSourceLinkService.ImportRepairSummary summary = sourceLinkService.reconcileLinks();
-        log.info("H19_TRIAGE source_link_reconcile runId={} batchId={} correlationId={} entity=SOURCE_LINK source=ALL outcome={} updated={} skipped={} errors={}",
+        log.info("CANONICAL_RECONCILE source_link_reconcile runId={} batchId={} correlationId={} entity=SOURCE_LINK source=ALL outcome={} updated={} skipped={} errors={}",
                 java.util.UUID.randomUUID().toString(),
                 "N/A",
                 "N/A",
@@ -418,7 +418,7 @@ public class ScopusBigBangMigrationService {
 
     public ImportProcessingResult runEdgeReconcileStep() {
         ImportProcessingResult result = edgeReconciliationService.reconcileEdges();
-        log.info("H19_TRIAGE edge_reconcile runId={} batchId={} correlationId={} entity=EDGE source=CANONICAL outcome={} updated={} skipped={} errors={}",
+        log.info("CANONICAL_RECONCILE edge_reconcile runId={} batchId={} correlationId={} entity=EDGE source=CANONICAL outcome={} updated={} skipped={} errors={}",
                 java.util.UUID.randomUUID().toString(),
                 "N/A",
                 "N/A",

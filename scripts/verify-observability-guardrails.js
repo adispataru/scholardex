@@ -34,7 +34,7 @@ function runRg(pattern, paths) {
 
   if (missingToolCount === runners.length) {
     errors.push(
-      'H08 observability guardrail verification requires either `rg` (ripgrep) or `grep` to be available in PATH.'
+      'Observability guardrail verification requires either `rg` (ripgrep) or `grep` to be available in PATH.'
     );
     process.exit(1);
   }
@@ -51,7 +51,7 @@ function emitAllowlistShrinkHint(currentFiles, allowlist, label) {
   const missingAllowlisted = [...allowlist].filter((file) => !currentFiles.has(file));
   if (missingAllowlisted.length > 0) {
     console.log(
-      `H08 guardrail note: ${missingAllowlisted.length} ${label} allowlisted file(s) no longer match. Consider shrinking allowlist.`
+      `Observability guardrail note: ${missingAllowlisted.length} ${label} allowlisted file(s) no longer match. Consider shrinking allowlist.`
     );
   }
 }
@@ -134,7 +134,7 @@ for (const pattern of schedulerCorrelationPatterns) {
 
 const gradleFile = ['build.gradle'];
 if (runRg('spring-boot-starter-actuator', gradleFile).length === 0) {
-  errors.push('build.gradle: actuator dependency missing for H08-P2 baseline.');
+  errors.push('build.gradle: actuator dependency missing for the observability baseline.');
 }
 
 const propertiesFile = ['src/main/resources/application.properties'];
@@ -146,7 +146,7 @@ const managementPatterns = [
 ];
 for (const pattern of managementPatterns) {
   if (runRg(pattern, propertiesFile).length === 0) {
-    errors.push(`application.properties missing H08-P2 management config pattern: ${pattern}`);
+    errors.push(`application.properties missing management config pattern: ${pattern}`);
   }
 }
 
@@ -165,20 +165,20 @@ for (const pattern of actuatorSecurityPatterns) {
 
 const startupTrackerFile = ['src/main/java/ro/uvt/pokedex/core/observability/StartupReadinessTracker.java'];
 if (runRg('class StartupReadinessTracker', startupTrackerFile).length === 0) {
-  errors.push('StartupReadinessTracker missing for H08-P2 startup readiness baseline.');
+  errors.push('StartupReadinessTracker missing for startup readiness baseline.');
 }
 
 const startupHealthFile = ['src/main/java/ro/uvt/pokedex/core/observability/StartupHealthIndicator.java'];
 if (runRg('class StartupHealthIndicator', startupHealthFile).length === 0) {
-  errors.push('StartupHealthIndicator missing for H08-P2 readiness health contributor.');
+  errors.push('StartupHealthIndicator missing for readiness health contributor.');
 }
 
 const metricsMarkers = [
   { file: 'src/main/java/ro/uvt/pokedex/core/service/application/GeneralInitializationService.java', pattern: 'core\\.startup\\.phase\\.duration' },
   { file: 'src/main/java/ro/uvt/pokedex/core/service/scopus/ScopusUpdateScheduler.java', pattern: 'core\\.scheduler\\.scopus\\.poll\\.duration' },
-  { file: 'src/main/java/ro/uvt/pokedex/core/observability/H19CanonicalMetrics.java', pattern: 'core\\.h19\\.canonical\\.build\\.duration' },
-  { file: 'src/main/java/ro/uvt/pokedex/core/observability/H19CanonicalMetrics.java', pattern: 'core\\.h19\\.source_link\\.transitions' },
-  { file: 'src/main/java/ro/uvt/pokedex/core/observability/H19CanonicalMetrics.java', pattern: 'core\\.h19\\.identity_conflict\\.created' },
+  { file: 'src/main/java/ro/uvt/pokedex/core/observability/CanonicalObservabilityMetrics.java', pattern: 'core\\.h19\\.canonical\\.build\\.duration' },
+  { file: 'src/main/java/ro/uvt/pokedex/core/observability/CanonicalObservabilityMetrics.java', pattern: 'core\\.h19\\.source_link\\.transitions' },
+  { file: 'src/main/java/ro/uvt/pokedex/core/observability/CanonicalObservabilityMetrics.java', pattern: 'core\\.h19\\.identity_conflict\\.created' },
   { file: 'src/main/java/ro/uvt/pokedex/core/observability/ScholardexOperabilityGaugeBinder.java', pattern: 'core\\.h19\\.identity_conflicts\\.open' },
   { file: 'src/main/java/ro/uvt/pokedex/core/observability/ScholardexOperabilityGaugeBinder.java', pattern: 'core\\.h19\\.source_links\\.state' }
 ];
@@ -189,21 +189,21 @@ for (const marker of metricsMarkers) {
 }
 
 const h19TriageLogMarkers = [
-  { file: 'src/main/java/ro/uvt/pokedex/core/service/importing/scopus/ScopusCanonicalMaterializationService.java', pattern: 'H19_TRIAGE canonical_materialization' },
-  { file: 'src/main/java/ro/uvt/pokedex/core/service/application/ScopusBigBangMigrationService.java', pattern: 'H19_TRIAGE canonical_build' },
-  { file: 'src/main/java/ro/uvt/pokedex/core/service/application/ScholardexSourceLinkService.java', pattern: 'H19_TRIAGE source_link_reconcile' },
-  { file: 'src/main/java/ro/uvt/pokedex/core/service/application/ScholardexEdgeReconciliationService.java', pattern: 'H19_TRIAGE edge_reconcile' }
+  { file: 'src/main/java/ro/uvt/pokedex/core/service/importing/scopus/ScopusCanonicalMaterializationService.java', pattern: 'CANONICAL_MAINTENANCE canonical_materialization' },
+  { file: 'src/main/java/ro/uvt/pokedex/core/service/application/ScopusBigBangMigrationService.java', pattern: 'CANONICAL_MAINTENANCE canonical_build' },
+  { file: 'src/main/java/ro/uvt/pokedex/core/service/application/ScholardexSourceLinkService.java', pattern: 'CANONICAL_RECONCILE source_link_reconcile' },
+  { file: 'src/main/java/ro/uvt/pokedex/core/service/application/ScholardexEdgeReconciliationService.java', pattern: 'CANONICAL_RECONCILE edge_reconcile' }
 ];
 for (const marker of h19TriageLogMarkers) {
   if (runRg(marker.pattern, [marker.file]).length === 0) {
-    errors.push(`${marker.file} missing expected H19 triage log marker: ${marker.pattern}`);
+    errors.push(`${marker.file} missing expected canonical maintenance log marker: ${marker.pattern}`);
   }
 }
 
 if (errors.length > 0) {
-  console.error('H08 observability guardrail verification failed:');
+  console.error('Observability guardrail verification failed:');
   errors.forEach((error) => console.error(`- ${error}`));
   process.exit(1);
 }
 
-console.log('H08 observability guardrail verification passed.');
+console.log('Observability guardrail verification passed.');

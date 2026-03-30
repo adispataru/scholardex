@@ -239,13 +239,13 @@
                             </form>
                         </div>
                         <div class="init-action-row mb-3">
-                            <div>Maintenance: reconcile canonical edges (H19.12)</div>
+                            <div>Maintenance: reconcile canonical edges</div>
                             <form th:action="@{/admin/initialization/scopus/reconcileEdges}" method="post">
                                 <button type="submit" class="btn btn-outline-secondary btn-sm">Run reconcile</button>
                             </form>
                         </div>
                         <div class="init-action-row mb-3">
-                            <div>Maintenance: reconcile source-link ledger (H19.11)</div>
+                            <div>Maintenance: reconcile source-link ledger</div>
                             <form th:action="@{/admin/initialization/scopus/reconcileSourceLinks}" method="post">
                                 <button type="submit" class="btn btn-outline-secondary btn-sm">Run reconcile</button>
                             </form>
@@ -324,7 +324,7 @@
 
                 <div class="card shadow mb-4">
                     <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Postgres Reporting Projection (H22.3)</h6>
+                        <h6 class="m-0 font-weight-bold text-primary">Postgres Reporting Projection</h6>
                     </div>
                     <div class="card-body">
                         <p class="init-card-subtitle">Project canonical data into <code>reporting_read</code> PostgreSQL schema (full rebuild or fingerprint-gated incremental).</p>
@@ -362,7 +362,7 @@
 
                 <div class="card shadow mb-4">
                     <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Postgres Materialized Views (H22.5)</h6>
+                        <h6 class="m-0 font-weight-bold text-primary">Postgres Materialized Views</h6>
                     </div>
                     <div class="card-body">
                         <p class="init-card-subtitle">Refresh heavy-read materialized views after projection runs or large canonical updates.</p>
@@ -397,7 +397,7 @@
 
                 <div class="card shadow mb-4">
                     <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">H22 Operational Status (H22.7)</h6>
+                        <h6 class="m-0 font-weight-bold text-primary">Postgres Operational Status</h6>
                     </div>
                     <div class="card-body">
                         <p class="init-card-subtitle">Consolidated health over projection and materialized-view refresh components (Postgres-first runtime).</p>

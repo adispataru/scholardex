@@ -33,7 +33,7 @@ public class PostgresReadCutoverGuard implements ApplicationRunner {
         );
         if (checkpointCount == null || checkpointCount < 2) {
             throw new IllegalStateException(
-                    "Postgres read-store requires completed H22.3 projection checkpoints for both wos and scopus slices."
+                    "Postgres read-store requires completed projection checkpoints for both wos and scopus slices."
             );
         }
     }

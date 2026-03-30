@@ -84,11 +84,40 @@ tasks.register('verifyDatatablesOptin', Exec) {
     commandLine 'sh', '-lc', 'npm run verify-datatables-optin'
 }
 
+tasks.register('verifyArchitectureBoundaries', Exec) {
+    commandLine 'sh', '-lc', 'npm run verify-architecture-boundaries'
+}
+
+tasks.register('verifyRuntimeNamingGuardrails', Exec) {
+    commandLine 'sh', '-lc', 'npm run verify-runtime-naming-guardrails'
+}
+
+tasks.register('verifyPersistenceContracts', Exec) {
+    commandLine 'sh', '-lc', 'npm run verify-persistence-contracts'
+}
+
+tasks.register('verifySecurityValidationGuardrails', Exec) {
+    commandLine 'sh', '-lc', 'npm run verify-security-validation-guardrails'
+}
+
+tasks.register('verifyObservabilityGuardrails', Exec) {
+    commandLine 'sh', '-lc', 'npm run verify-observability-guardrails'
+}
+
 tasks.named('check') {
     dependsOn tasks.named('verifyFrontendAssets')
     dependsOn tasks.named('verifyTemplateAssets')
     dependsOn tasks.named('verifyDuplicationGuardrails')
     dependsOn tasks.named('verifyDatatablesOptin')
+}
+
+tasks.register('verifyQualityGatesBaseline') {
+    dependsOn tasks.named('verifyArchitectureBoundaries')
+    dependsOn tasks.named('verifyRuntimeNamingGuardrails')
+    dependsOn tasks.named('verifyPersistenceContracts')
+    dependsOn tasks.named('verifySecurityValidationGuardrails')
+    dependsOn tasks.named('verifyObservabilityGuardrails')
+    dependsOn tasks.named('check')
 }
 
 tasks.register('testH226DualReadGate', Test) {
@@ -120,7 +149,7 @@ tasks.register('testH2210Baseline', Test) {
         includeTestsMatching '*JdbcDualReadGateServiceTest'
         includeTestsMatching '*ReportingReadStoreRoutingTest'
         includeTestsMatching '*ScholardexCutoverGuardrailTest'
-        includeTestsMatching '*DefaultH22OperationalStatusServiceTest'
+        includeTestsMatching '*DefaultPostgresOperationalStatusServiceTest'
         includeTestsMatching '*AdminInitializationControllerContractTest'
         includeTestsMatching '*AdminInitializationSecurityContractTest'
     }

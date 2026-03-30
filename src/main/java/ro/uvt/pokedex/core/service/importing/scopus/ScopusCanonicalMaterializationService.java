@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
+import ro.uvt.pokedex.core.observability.CanonicalObservabilityMetrics;
 import ro.uvt.pokedex.core.service.application.ScholardexEdgeReconciliationService;
 import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
@@ -62,9 +62,9 @@ public class ScopusCanonicalMaterializationService {
                 + canonicalCitationResult.getErrorCount()
                 + projectionResult.getErrorCount()) > 0 ? "failure" : "success";
         long durationNanos = System.nanoTime() - startedAtNanos;
-        H19CanonicalMetrics.recordCanonicalBuildRun("all", SOURCE_CANONICAL_MIXED, outcome, durationNanos);
-        H19CanonicalMetrics.recordCanonicalBuildRun("all", "USER_DEFINED", outcome, durationNanos);
-        log.info("H19_TRIAGE canonical_materialization runId={} batchId={} correlationId={} trigger={} source={} entity=all outcome={} durationMs={} factProcessed={} factErrors={} userDefinedFactProcessed={} userDefinedFactErrors={} canonicalAffiliationProcessed={} canonicalAffiliationErrors={} canonicalAffiliationBatches={} canonicalAuthorProcessed={} canonicalAuthorErrors={} canonicalAuthorBatches={} canonicalPublicationProcessed={} canonicalPublicationErrors={} canonicalPublicationBatches={} canonicalUserDefinedProcessed={} canonicalUserDefinedErrors={} canonicalUserDefinedBatches={} canonicalCitationProcessed={} canonicalCitationErrors={} canonicalCitationBatches={} sourceLinkReconcileUpdated={} sourceLinkReconcileSkipped={} sourceLinkReconcileErrors={} edgeReconcileUpdated={} edgeReconcileSkipped={} edgeReconcileErrors={} projectionProcessed={} projectionErrors={}",
+        CanonicalObservabilityMetrics.recordCanonicalBuildRun("all", SOURCE_CANONICAL_MIXED, outcome, durationNanos);
+        CanonicalObservabilityMetrics.recordCanonicalBuildRun("all", "USER_DEFINED", outcome, durationNanos);
+        log.info("CANONICAL_MAINTENANCE canonical_materialization runId={} batchId={} correlationId={} trigger={} source={} entity=all outcome={} durationMs={} factProcessed={} factErrors={} userDefinedFactProcessed={} userDefinedFactErrors={} canonicalAffiliationProcessed={} canonicalAffiliationErrors={} canonicalAffiliationBatches={} canonicalAuthorProcessed={} canonicalAuthorErrors={} canonicalAuthorBatches={} canonicalPublicationProcessed={} canonicalPublicationErrors={} canonicalPublicationBatches={} canonicalUserDefinedProcessed={} canonicalUserDefinedErrors={} canonicalUserDefinedBatches={} canonicalCitationProcessed={} canonicalCitationErrors={} canonicalCitationBatches={} sourceLinkReconcileUpdated={} sourceLinkReconcileSkipped={} sourceLinkReconcileErrors={} edgeReconcileUpdated={} edgeReconcileSkipped={} edgeReconcileErrors={} projectionProcessed={} projectionErrors={}",
                 runId,
                 batchId,
                 trigger,

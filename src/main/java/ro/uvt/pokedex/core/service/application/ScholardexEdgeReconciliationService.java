@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
+import ro.uvt.pokedex.core.observability.CanonicalObservabilityMetrics;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
@@ -50,8 +50,8 @@ public class ScholardexEdgeReconciliationService {
         reconcilePublicationAuthorEdges(result);
         reconcileAuthorAffiliationEdges(result);
         String outcome = result.getErrorCount() > 0 ? "failure" : "success";
-        H19CanonicalMetrics.recordReconcileRun("edges", outcome, System.nanoTime() - startedAtNanos);
-        log.info("H19_TRIAGE edge_reconcile runId={} batchId={} correlationId={} entity=EDGE source=CANONICAL outcome={} updated={} skipped={} errors={}",
+        CanonicalObservabilityMetrics.recordReconcileRun("edges", outcome, System.nanoTime() - startedAtNanos);
+        log.info("CANONICAL_RECONCILE edge_reconcile runId={} batchId={} correlationId={} entity=EDGE source=CANONICAL outcome={} updated={} skipped={} errors={}",
                 runId,
                 "N/A",
                 "N/A",
@@ -254,7 +254,7 @@ public class ScholardexEdgeReconciliationService {
             conflict.setDetectedAt(Instant.now());
         }
         identityConflictRepository.save(conflict);
-        H19CanonicalMetrics.recordConflictCreated(entityType.name(), source, REASON_EDGE_ARRAY_DIVERGENCE_AMBIGUOUS);
+        CanonicalObservabilityMetrics.recordConflictCreated(entityType.name(), source, REASON_EDGE_ARRAY_DIVERGENCE_AMBIGUOUS);
     }
 
     private boolean needsAuthorshipRepair(

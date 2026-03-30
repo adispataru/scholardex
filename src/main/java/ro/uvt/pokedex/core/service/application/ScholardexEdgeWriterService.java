@@ -7,7 +7,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
+import ro.uvt.pokedex.core.observability.CanonicalObservabilityMetrics;
 import ro.uvt.pokedex.core.model.scopus.canonical.HasEdgeLineageFields;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
@@ -781,7 +781,7 @@ public class ScholardexEdgeWriterService {
             conflict.setDetectedAt(Instant.now());
         }
         identityConflictRepository.save(conflict);
-        H19CanonicalMetrics.recordConflictCreated(entityType.name(), normalizedSource, reasonCode);
+        CanonicalObservabilityMetrics.recordConflictCreated(entityType.name(), normalizedSource, reasonCode);
     }
 
     private String shortHash(String value) {

@@ -44,7 +44,7 @@ npm run verify-architecture-boundaries
 For CI parity on build/test/security-sensitive changes:
 
 ```bash
-npm run verify-h09-baseline
+npm run verify-quality-gates-baseline
 ```
 
 For failure diagnosis paths, use `docs/tasks/closed/h10-failure-triage.md`.
@@ -70,25 +70,25 @@ npm run verify-h04-baseline
 
 ```bash
 npm run verify-h04-mongo-integration
-npm run verify-h06-persistence
+npm run verify-persistence-contracts
 ```
 
 3. Security/validation/error-handling changes:
 
 ```bash
-npm run verify-h07-guardrails
+npm run verify-security-validation-guardrails
 ```
 
 4. Observability/operability changes:
 
 ```bash
-npm run verify-h08-baseline
+npm run verify-observability-baseline
 ```
 
 5. CI/quality-gate workflow changes:
 
 ```bash
-npm run verify-h09-baseline
+npm run verify-quality-gates-baseline
 ```
 
 If multiple categories apply, run the union of commands.
@@ -100,7 +100,7 @@ When editing templates, do not add new `/vendor/*` asset references. Use `/asset
 Do not commit backup templates (`*-bak.html`) under `src/main/resources/templates/**`; checks will fail.
 Do not reintroduce removed legacy CNFIS artifacts (`CNFISScoringService`, `CNFISReport`) or null-fallback scoring dispatch; `verify-duplication-guardrails` enforces these guardrails.
 Do not add new controller/view imports from `core.repository` or `core.service.reporting`; `verify-architecture-boundaries` enforces these guardrails.
-Do not introduce new mutating `GET` routes, transport-layer `printStackTrace`, or unsafe `start/end` year parsing in controllers; `verify-h07-guardrails` enforces debt-aware guardrails.
+Do not introduce new mutating `GET` routes, transport-layer `printStackTrace`, or unsafe `start/end` year parsing in controllers; `verify-security-validation-guardrails` enforces debt-aware guardrails.
 
 ## Pull Request Checklist
 

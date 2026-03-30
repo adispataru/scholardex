@@ -25,8 +25,8 @@ const command = `./gradlew test ${args}`;
 
 try {
   execSync(command, { stdio: 'inherit' });
-  console.log('H19 baseline verification passed.');
+  console.log('Canonical baseline verification passed.');
 } catch (error) {
-  console.error('H19 baseline verification failed.');
+  console.error('Canonical baseline verification failed.');
   process.exit(error.status || 1);
 }

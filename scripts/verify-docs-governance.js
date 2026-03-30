@@ -152,7 +152,7 @@ const closedReferenceAllowlist = new Set([
   'docs/release-hygiene.md',
   'TASKS-done.md',
   'scripts/verify-docs-governance.js',
-  'scripts/verify-h25-route-guardrails.js'
+  'scripts/verify-route-guardrails.js'
 ]);
 
 const activeDocs = [readmePath, ...topLevelDocs];

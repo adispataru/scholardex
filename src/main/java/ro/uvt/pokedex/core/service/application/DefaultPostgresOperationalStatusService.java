@@ -7,7 +7,7 @@ import java.time.Instant;
 import java.util.Locale;
 
 @Service
-public class DefaultH22OperationalStatusService implements H22OperationalStatusService {
+public class DefaultPostgresOperationalStatusService implements PostgresOperationalStatusService {
 
     private static final String STATUS_SUCCESS = "SUCCESS";
     private static final String STATUS_FAILED = "FAILED";
@@ -17,7 +17,7 @@ public class DefaultH22OperationalStatusService implements H22OperationalStatusS
     private final ObjectProvider<PostgresReportingProjectionService> projectionServiceProvider;
     private final ObjectProvider<PostgresMaterializedViewRefreshService> materializedViewRefreshServiceProvider;
 
-    public DefaultH22OperationalStatusService(
+    public DefaultPostgresOperationalStatusService(
             ObjectProvider<PostgresReportingProjectionService> projectionServiceProvider,
             ObjectProvider<PostgresMaterializedViewRefreshService> materializedViewRefreshServiceProvider
     ) {
@@ -26,7 +26,7 @@ public class DefaultH22OperationalStatusService implements H22OperationalStatusS
     }
 
     @Override
-    public H22OperationalStatusSnapshot latestStatus() {
+    public PostgresOperationalStatusSnapshot latestStatus() {
         ComponentStatus projection = projectionComponentStatus();
         ComponentStatus materializedViewRefresh = materializedViewRefreshComponentStatus();
 
@@ -39,7 +39,7 @@ public class DefaultH22OperationalStatusService implements H22OperationalStatusS
         }
 
         String readStore = "postgres";
-        return new H22OperationalStatusSnapshot(
+        return new PostgresOperationalStatusSnapshot(
                 overallState,
                 readStore,
                 projection,

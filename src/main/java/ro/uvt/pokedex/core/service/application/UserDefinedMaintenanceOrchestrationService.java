@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
+import ro.uvt.pokedex.core.observability.CanonicalObservabilityMetrics;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusProjectionBuilderService;
 import ro.uvt.pokedex.core.service.importing.scopus.UserDefinedCanonicalizationService;
@@ -74,8 +74,8 @@ public class UserDefinedMaintenanceOrchestrationService {
                 + edgeReconcile.getErrorCount()
                 + projections.getErrorCount()) > 0 ? "failure" : "success";
         long durationNanos = System.nanoTime() - startedAtNanos;
-        H19CanonicalMetrics.recordCanonicalBuildRun("all", SOURCE_USER_DEFINED, outcome, durationNanos);
-        log.info("H19_TRIAGE canonical_build runId={} batchId={} correlationId={} entity=all source=USER_DEFINED outcome={} buildFactsProcessed={} buildFactsErrors={} canonicalizeProcessed={} canonicalizeErrors={} sourceLinkReconcileUpdated={} sourceLinkReconcileSkipped={} sourceLinkReconcileErrors={} edgeReconcileUpdated={} edgeReconcileSkipped={} edgeReconcileErrors={} projectionsProcessed={} projectionsErrors={} durationMs={}",
+        CanonicalObservabilityMetrics.recordCanonicalBuildRun("all", SOURCE_USER_DEFINED, outcome, durationNanos);
+        log.info("CANONICAL_MAINTENANCE canonical_build runId={} batchId={} correlationId={} entity=all source=USER_DEFINED outcome={} buildFactsProcessed={} buildFactsErrors={} canonicalizeProcessed={} canonicalizeErrors={} sourceLinkReconcileUpdated={} sourceLinkReconcileSkipped={} sourceLinkReconcileErrors={} edgeReconcileUpdated={} edgeReconcileSkipped={} edgeReconcileErrors={} projectionsProcessed={} projectionsErrors={} durationMs={}",
                 runId,
                 batchId,
                 "N/A",

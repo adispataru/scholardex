@@ -38,7 +38,7 @@ function runRg(pattern, paths) {
 
   if (missingToolCount === runners.length) {
     errors.push(
-      'H12 integration guardrail verification requires either `rg` (ripgrep) or `grep` to be available in PATH.'
+      'Import integration guardrail verification requires either `rg` (ripgrep) or `grep` to be available in PATH.'
     );
     process.exit(1);
   }
@@ -53,7 +53,6 @@ const scopusDataServicePath =
 const taskModelPath =
   'src/main/java/ro/uvt/pokedex/core/model/tasks/Task.java';
 const rankingImporterPaths = [
-  'src/main/java/ro/uvt/pokedex/core/service/importing/RankingService.java',
   'src/main/java/ro/uvt/pokedex/core/service/importing/CoreConferenceRankingService.java',
   'src/main/java/ro/uvt/pokedex/core/service/importing/URAPRankingService.java'
 ];
@@ -119,9 +118,9 @@ for (const filePath of rankingImporterPaths) {
 }
 
 if (errors.length > 0) {
-  console.error('H12 integration guardrail verification failed:');
+  console.error('Import integration guardrail verification failed:');
   errors.forEach((error) => console.error(`- ${error}`));
   process.exit(1);
 }
 
-console.log('H12 integration guardrail verification passed.');
+console.log('Import integration guardrail verification passed.');

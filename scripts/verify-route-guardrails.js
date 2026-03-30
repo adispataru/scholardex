@@ -139,7 +139,7 @@ for (const check of checks) {
   }
   for (const forbidden of check.forbidden) {
     if (content.includes(forbidden)) {
-      errors.push(`${check.file}: contains forbidden H25 route regression '${forbidden}'`);
+      errors.push(`${check.file}: contains forbidden route regression '${forbidden}'`);
     }
   }
 }
@@ -183,7 +183,7 @@ for (const file of runtimeTemplateRoots.flatMap((dir) => listFiles(dir, '.html')
   ];
   for (const token of staleViewNamingTokens) {
     if (content.includes(token)) {
-      errors.push(`${file}: contains forbidden stale H26 view/template naming token '${token}'`);
+      errors.push(`${file}: contains forbidden stale view/template naming token '${token}'`);
     }
   }
 }
@@ -241,11 +241,11 @@ for (const file of listFiles('src/main/resources/static/js', '.js')) {
 }
 
 if (errors.length > 0) {
-  console.error('H25 route guardrail verification failed:');
+  console.error('Route guardrail verification failed:');
   for (const error of errors) {
     console.error(`- ${error}`);
   }
   process.exit(1);
 }
 
-console.log('H25 route guardrail verification passed.');
+console.log('Route guardrail verification passed.');

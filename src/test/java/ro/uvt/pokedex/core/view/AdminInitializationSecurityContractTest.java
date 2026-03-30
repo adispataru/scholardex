@@ -13,7 +13,7 @@ import ro.uvt.pokedex.core.config.WebSecurityConfig;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.CustomUserDetailsService;
 import ro.uvt.pokedex.core.service.application.GeneralInitializationService;
-import ro.uvt.pokedex.core.service.application.H22OperationalStatusService;
+import ro.uvt.pokedex.core.service.application.PostgresOperationalStatusService;
 import ro.uvt.pokedex.core.service.application.PostgresMaterializedViewRefreshService;
 import ro.uvt.pokedex.core.service.application.PostgresReportingProjectionService;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
@@ -50,7 +50,7 @@ class AdminInitializationSecurityContractTest {
     @MockitoBean
     private PostgresMaterializedViewRefreshService postgresMaterializedViewRefreshService;
     @MockitoBean
-    private H22OperationalStatusService h22OperationalStatusService;
+    private PostgresOperationalStatusService postgresOperationalStatusService;
     @MockitoBean
     private UserDefinedMaintenanceOrchestrationService userDefinedMaintenanceOrchestrationService;
 
@@ -212,6 +212,36 @@ class AdminInitializationSecurityContractTest {
     @Test
     void nonAdminCannotReadWosEnrichmentSummaryApi() throws Exception {
         mockMvc.perform(get("/admin/initialization/wos/enrichment/summary")
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+    }
+
+    @Test
+    void nonAdminCannotRunWosWorkflowSteps() throws Exception {
+        mockMvc.perform(post("/admin/initialization/wos/ingest")
+                        .with(csrf())
+                        .param("sourceVersion", "workflow-2026")
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+
+        mockMvc.perform(post("/admin/initialization/wos/buildFacts")
+                        .with(csrf())
+                        .param("sourceVersion", "workflow-2026")
+                        .param("startBatchOverride", "0")
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+
+        mockMvc.perform(post("/admin/initialization/wos/enrichCategoryRankings")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+
+        mockMvc.perform(post("/admin/initialization/wos/rebuildProjections")
+                        .with(csrf())
                         .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/custom-error?error=403"));

@@ -1,4 +1,4 @@
-name: H09 Quality Gates
+name: Quality Gates
 
 on:
   pull_request:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: h09-quality-gates-${{ github.ref }}
+  group: quality-gates-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -53,11 +53,11 @@ jobs:
           }
 
           run_guardrail verify-architecture-boundaries
-          run_guardrail verify-h06-persistence
-          run_guardrail verify-h07-guardrails
-          run_guardrail verify-h08-baseline
-          run_guardrail verify-h12-integrations
-          run_guardrail verify-h19-baseline
+          run_guardrail verify-persistence-contracts
+          run_guardrail verify-security-validation-guardrails
+          run_guardrail verify-observability-baseline
+          run_guardrail verify-import-integrations
+          run_guardrail verify-canonical-baseline
           run_guardrail verify-duplication-guardrails
           run_guardrail verify-wos-parity-baseline
 
@@ -193,7 +193,7 @@ jobs:
         run: |
           set -euo pipefail
           {
-            echo "## H09 Quality Gates Summary"
+            echo "## Quality Gates Summary"
             echo ""
             echo "- guardrails: ${{ needs.guardrails.result }}"
             echo "- java-smoke: ${{ needs.java-smoke.result }}"

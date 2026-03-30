@@ -12,7 +12,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationFact;
-import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
+import ro.uvt.pokedex.core.observability.CanonicalObservabilityMetrics;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
@@ -421,7 +421,7 @@ public class ScholardexCitationCanonicalizationService extends AbstractCanonical
         conflict.setSourceEventId(sourceFact.getSourceEventId());
         conflict.setSourceBatchId(sourceFact.getSourceBatchId());
         conflict.setSourceCorrelationId(sourceFact.getSourceCorrelationId());
-        H19CanonicalMetrics.recordConflictCreated(ScholardexEntityType.CITATION.name(), incomingSource, reasonCode);
+        CanonicalObservabilityMetrics.recordConflictCreated(ScholardexEntityType.CITATION.name(), incomingSource, reasonCode);
     }
 
     // ── Chunk context ───────────────────────────────────────────────────────

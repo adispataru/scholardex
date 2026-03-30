@@ -35,7 +35,7 @@ function runRg(pattern, paths) {
 
   if (missingToolCount === runners.length) {
     errors.push(
-      'H07 guardrail verification requires either `rg` (ripgrep) or `grep` to be available in PATH.'
+      'Security validation guardrail verification requires either `rg` (ripgrep) or `grep` to be available in PATH.'
     );
     process.exit(1);
   }
@@ -102,7 +102,7 @@ function emitAllowlistShrinkHint(currentFiles, allowlist, label) {
   const missingAllowlisted = [...allowlist].filter((file) => !currentFiles.has(file));
   if (missingAllowlisted.length > 0) {
     console.log(
-      `H07 guardrail note: ${missingAllowlisted.length} ${label} allowlisted file(s) no longer match. Consider shrinking allowlist.`
+      `Security validation guardrail note: ${missingAllowlisted.length} ${label} allowlisted file(s) no longer match. Consider shrinking allowlist.`
     );
   }
 }
@@ -152,7 +152,7 @@ if (!/autocomplete="current-password"/.test(loginTemplate)) {
 const securityConfigPath = 'src/main/java/ro/uvt/pokedex/core/config/WebSecurityConfig.java';
 const securityConfig = fs.readFileSync(securityConfigPath, 'utf8');
 if (/csrf\(AbstractHttpConfigurer::disable\)/.test(securityConfig)) {
-  errors.push(`${securityConfigPath}: global CSRF disable is forbidden in H07-R4.`);
+  errors.push(`${securityConfigPath}: global CSRF disable is forbidden by the security validation baseline.`);
 }
 const csrfIgnoresApiOnlyAntMatcher = /ignoringRequestMatchers\(new AntPathRequestMatcher\("\/api\/\*\*"\)\)/.test(securityConfig);
 const csrfIgnoresApiOnlyPathPattern = /ignoringRequestMatchers\(PathPatternRequestMatcher\.pathPattern\("\/api\/\*\*"\)\)/.test(securityConfig);
@@ -207,9 +207,9 @@ if (!/ResponseEntity\.status\(HttpStatus\.CONFLICT\)/.test(userController)) {
 }
 
 if (errors.length > 0) {
-  console.error('H07 guardrail verification failed:');
+  console.error('Security validation guardrail verification failed:');
   errors.forEach((error) => console.error(`- ${error}`));
   process.exit(1);
 }
 
-console.log('H07 guardrail verification passed.');
+console.log('Security validation guardrail verification passed.');

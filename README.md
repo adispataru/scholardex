@@ -135,7 +135,7 @@ Other actuator endpoints are restricted by security policy.
 3. Security/login redirects look wrong locally:
    - confirm you are using `/login` and that cookies are enabled for localhost.
 4. Guardrail/CI parity check:
-   - run `npm run verify-h09-baseline` before opening CI-sensitive PRs.
+   - run `npm run verify-quality-gates-baseline` before opening CI-sensitive PRs.
 
 ## Repository Workflow
 

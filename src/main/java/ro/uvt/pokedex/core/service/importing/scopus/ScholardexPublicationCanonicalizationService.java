@@ -12,7 +12,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
-import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
+import ro.uvt.pokedex.core.observability.CanonicalObservabilityMetrics;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
@@ -859,7 +859,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
             context.conflictSaveMs += nanosToMillis(System.nanoTime() - startedAt);
             context.conflictWriteCount += context.pendingIdentityConflicts.size();
             for (ScholardexIdentityConflict conflict : context.pendingIdentityConflicts.values()) {
-                H19CanonicalMetrics.recordConflictCreated(
+                CanonicalObservabilityMetrics.recordConflictCreated(
                         conflict.getEntityType().name(),
                         conflict.getIncomingSource(),
                         conflict.getReasonCode()

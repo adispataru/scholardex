@@ -97,7 +97,7 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
     @Override
     public void resetProjectionState() {
         jdbcTemplate.update("DELETE FROM reporting_read.projection_checkpoint");
-        log.info("H22.3 projection checkpoints reset");
+        log.info("Postgres projection checkpoints reset");
     }
 
     static boolean shouldRebuildSlice(boolean fullRebuild, String sourceFingerprint, String checkpointFingerprint) {
@@ -110,7 +110,7 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
         long runStartedNs = System.nanoTime();
 
         log.info(
-                "H22.3 projection run started: runId={} mode={} fullRebuild={} chunkSize={} statementTimeoutMs={}",
+                "Postgres projection run started: runId={} mode={} fullRebuild={} chunkSize={} statementTimeoutMs={}",
                 runId, mode, fullRebuild, properties.getChunkSize(), properties.getStatementTimeoutMs()
         );
 
@@ -139,7 +139,7 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
             Instant sliceStartedAt = Instant.now();
             long sliceStartedNs = System.nanoTime();
             log.info(
-                    "H22.3 projection slice planned: runId={} slice={} rebuild={} sourceFingerprint={} checkpointFingerprint={}",
+                    "Postgres projection slice planned: runId={} slice={} rebuild={} sourceFingerprint={} checkpointFingerprint={}",
                     runId, slice, rebuildSlice, shortFingerprint(sourceFingerprint), shortFingerprint(checkpointFingerprint)
             );
 
@@ -150,7 +150,7 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
                 persistSliceRun(runId, summary);
                 slices.add(summary);
                 log.info(
-                        "H22.3 projection slice skipped: runId={} slice={} durationMs={} reason={}",
+                        "Postgres projection slice skipped: runId={} slice={} durationMs={} reason={}",
                         runId, slice, elapsedMs(sliceStartedNs), summary.note()
                 );
                 continue;
@@ -168,13 +168,13 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
                 persistSliceRun(runId, summary);
                 slices.add(summary);
                 log.info(
-                        "H22.3 projection slice completed: runId={} slice={} insertedRows={} durationMs={} note={}",
+                        "Postgres projection slice completed: runId={} slice={} insertedRows={} durationMs={} note={}",
                         runId, slice, summary.insertedRows(), elapsedMs(sliceStartedNs), summary.note()
                 );
             } catch (Exception e) {
                 finalStatus = STATUS_FAILED;
                 errorSample = trimError(e.getMessage());
-                log.error("H22.3 projection slice failed: runId={} slice={} mode={}", runId, slice, mode, e);
+                log.error("Postgres projection slice failed: runId={} slice={} mode={}", runId, slice, mode, e);
 
                 SliceRunSummary failedSlice = new SliceRunSummary(
                         slice, STATUS_FAILED, sourceFingerprint, 0, errorSample, sliceStartedAt, Instant.now()
@@ -196,7 +196,7 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
         long skippedSlices = slices.stream().filter(slice -> STATUS_SKIPPED.equals(slice.status())).count();
         long failedSlices = slices.stream().filter(slice -> STATUS_FAILED.equals(slice.status())).count();
         log.info(
-                "H22.3 projection run completed: runId={} status={} durationMs={} successSlices={} skippedSlices={} failedSlices={} error={}",
+                "Postgres projection run completed: runId={} status={} durationMs={} successSlices={} skippedSlices={} failedSlices={} error={}",
                 runId, finalStatus, elapsedMs(runStartedNs), successSlices, skippedSlices, failedSlices, errorSample == null ? "none" : errorSample
         );
 

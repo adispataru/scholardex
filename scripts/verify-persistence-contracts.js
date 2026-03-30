@@ -48,8 +48,6 @@ const userPublicationFacadePath =
   'src/main/java/ro/uvt/pokedex/core/service/application/UserPublicationFacade.java';
 const adminCatalogFacadePath =
   'src/main/java/ro/uvt/pokedex/core/service/application/AdminCatalogFacade.java';
-const rankingRepositoryPath =
-  'src/main/java/ro/uvt/pokedex/core/repository/reporting/RankingRepository.java';
 const scopusPublicationUpdateModelPath =
   'src/main/java/ro/uvt/pokedex/core/model/tasks/ScopusPublicationUpdate.java';
 const scopusCitationsUpdateModelPath =
@@ -70,7 +68,6 @@ const userReportContent = readFile(userReportFacadePath);
 const groupCnfisContent = readFile(groupCnfisFacadePath);
 const userPublicationFacadeContent = readFile(userPublicationFacadePath);
 const adminCatalogFacadeContent = readFile(adminCatalogFacadePath);
-const rankingRepositoryContent = readFile(rankingRepositoryPath);
 const scopusPublicationUpdateModelContent = readFile(scopusPublicationUpdateModelPath);
 const scopusCitationsUpdateModelContent = readFile(scopusCitationsUpdateModelPath);
 const rawYearPattern = /(substring\(\s*0\s*,\s*4\s*\))|(split\(\s*"-"\s*\)\s*\[\s*0\s*\])/;
@@ -114,12 +111,6 @@ if (groupFilterMethod == null) {
     `${groupCnfisFacadePath}: filterPublicationsByYear must not use substring(0, 4) year parsing.`
   );
 }
-
-assertContains(
-  rankingRepositoryContent,
-  '@Query("{ \'eIssn\': ?0 }")',
-  `${rankingRepositoryPath}: findAllByEIssn must be query-annotated to avoid Spring derived-property parsing ambiguity.`
-);
 
 assertContains(
   userPublicationFacadeContent,
@@ -262,7 +253,7 @@ function runRg(pattern, paths) {
 
   if (missingToolCount === runners.length) {
     errors.push(
-      'H06 persistence verification requires either `rg` (ripgrep) or `grep` to be available in PATH.'
+      'Persistence contract verification requires either `rg` (ripgrep) or `grep` to be available in PATH.'
     );
     process.exit(1);
   }
@@ -278,9 +269,9 @@ if (typoMatches.length > 0) {
 }
 
 if (errors.length > 0) {
-  console.error('H06 persistence verification failed:');
+  console.error('Persistence contract verification failed:');
   errors.forEach((error) => console.error(`- ${error}`));
   process.exit(1);
 }
 
-console.log('H06 persistence verification passed.');
+console.log('Persistence contract verification passed.');

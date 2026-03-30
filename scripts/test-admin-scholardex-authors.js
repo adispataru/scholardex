@@ -89,7 +89,6 @@ function createHarness(fetchImpl) {
 function parseQuery(url) {
   const query = new URL(url, 'http://localhost').searchParams;
   return {
-    afid: query.get('afid'),
     page: query.get('page'),
     size: query.get('size'),
     sort: query.get('sort'),
@@ -112,7 +111,6 @@ async function testDefaultLoadRequestsExpectedParams() {
   await wait(10);
   assert.strictEqual(calls.length, 1);
   assert.deepStrictEqual(parseQuery(calls[0]), {
-    afid: '60000434',
     page: '0',
     size: '25',
     sort: 'name',
@@ -137,7 +135,7 @@ async function testControlChangesTriggerRequestsAndCanonicalLinks() {
   });
 
   await wait(10);
-  assert.ok(els['admin-authors-table-body'].innerHTML.includes('/admin/scholardex/authors/edit/a'));
+  assert.ok(els['admin-authors-table-body'].innerHTML.includes('/user/authors/view/a'));
 
   els['admin-authors-next'].dispatch('click');
   await wait(10);

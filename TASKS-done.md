@@ -2,6 +2,114 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H28 Descriptive Runtime Naming Cleanup For Legacy `Hxx` Identifiers
+
+Archived from `TASKS.md` on 2026-03-31 after H28.1-H28.6 completion.
+
+- [x] `H28` Descriptive runtime naming cleanup for legacy `Hxx` identifiers.
+  Goal: remove backlog-task ids from live runtime code and runtime-facing surfaces so classes, interfaces, metrics helpers, tests, logs, and admin UI labels use descriptive domain terminology instead of historical implementation-wave names.
+  Deliverable: runtime renaming plan and implementation for the remaining `Hxx`-named live artifacts, centered on operational-status services and canonical observability helpers, with aligned tests, wiring, and visible admin/operator strings.
+  Exit criteria: no live runtime class/interface/test/template/property/log label uses `Hxx` naming as its primary identifier where a descriptive domain name is available; runtime behavior and public routes remain unchanged; historical task/docs references remain archival only.
+  Status: completed on 2026-03-31.
+  Handover:
+  - Operational-status runtime types were renamed to `PostgresOperationalStatus*`, with controller wiring and tests aligned to the descriptive names.
+  - `H19CanonicalMetrics` was replaced by `CanonicalObservabilityMetrics` while preserving the existing `core.h19.*` meter ids.
+  - Remaining runtime-facing H-task labels were removed from admin UI text, runtime logs, active config comments, and contributor-facing workflow/script/command names.
+  - New workflow/script names are active under `.github/workflows/quality-gates.yml`, `.github/workflows/security-gates.yml`, and the descriptive `verify-*` command/script family in `package.json` and `scripts/`.
+  - Runtime naming regression protection now lives in `scripts/verify-runtime-naming-guardrails.js` and is wired into `verify-quality-gates-baseline`.
+  - Archived contract source of truth: `docs/tasks/closed/h28.1-descriptive-runtime-naming-contract.md`.
+  - Closeout source of truth: `docs/tasks/closed/h28.6-runtime-naming-cleanup-closeout.md`.
+  - Preserved non-goals remain intentionally unchanged: `core.h19.*` meter ids, `core.h22.*` / `H22_*` property-env contracts, HTTP routes, JSON wire contracts, and historical archival docs.
+  Subtasks:
+  - [x] `H28.1` Lock the descriptive runtime naming contract.
+    Handover:
+    - Archived contract lock: `docs/tasks/closed/h28.1-descriptive-runtime-naming-contract.md`.
+  - [x] `H28.2` Rename operational-status runtime types from task-coded to domain-coded names.
+    Handover:
+    - Runtime operational status now resolves through `PostgresOperationalStatusService` and `DefaultPostgresOperationalStatusService`.
+  - [x] `H28.3` Rename canonical observability helpers from task-coded to domain-coded names.
+    Handover:
+    - Runtime canonical metrics helper now resolves through `CanonicalObservabilityMetrics`.
+  - [x] `H28.4` Remove residual `Hxx` naming from runtime-facing strings and labels.
+    Handover:
+    - Active runtime strings/log labels now use descriptive domain wording rather than H-task labels.
+  - [x] `H28.5` Remove residual `Hxx` naming from quality-gate workflows and guardrail scripts.
+    Handover:
+    - Live workflows, script filenames, and contributor-facing verification commands now use descriptive capability-based naming.
+  - [x] `H28.6` Refresh verification and closeout documentation for the naming cleanup.
+    Handover:
+    - Closeout note: `docs/tasks/closed/h28.6-runtime-naming-cleanup-closeout.md`.
+
+## H13 Workflow-Level Functional Confidence Suite
+
+Archived from `TASKS.md` on 2026-03-30 after H13.1-H13.3 completion.
+
+- [x] `H13` Workflow-level functional confidence suite.
+  Goal: move beyond slice-level guardrails and prove critical modern admin/user workflows across the current canonical architecture, centered on WoS admin initialization, user reporting/export behavior, and Postgres projection-readiness failure handling.
+  Deliverable: focused workflow-level tests for the highest-value operational paths, using deterministic fixtures and asserting state transitions across controller -> orchestration -> persistence/read-model boundaries for both success and degraded scenarios.
+  Exit criteria: the selected modern workflows under `/admin/initialization/wos/*`, `/user/individual-reports/view/{id}`, and Postgres projection/readiness handling are validated across success and failure paths, and regressions are caught before merge by repeatable automated checks.
+  Status: completed on 2026-03-30.
+  Handover:
+  - WoS admin initialization happy-path workflow coverage now exists in `WosAdminInitializationWorkflowIntegrationTest`, covering `ingest -> build facts -> enrich category rankings -> rebuild projections` plus Mongo/Postgres read-state verification.
+  - The exact WoS admin step routes are protected by admin-only security assertions in `AdminInitializationSecurityContractTest`.
+  - User reporting/export happy-path workflow coverage now exists in `UserReportRefreshCnfisWorkflowIntegrationTest`, covering latest-run creation, `/refresh-all-indicators`, persisted snapshot/result updates, and downstream CNFIS workbook export continuity.
+  - Projection-failure degraded workflow coverage now exists in `PostgresProjectionFailureOperationalWorkflowTest`, proving failed projection state surfaces as operator-visible `RED` status through the current Postgres operational/admin endpoints.
+  - Consolidated failure precedence is locked in `DefaultH22OperationalStatusServiceTest`: projection failure keeps `overallState = RED` even when materialized-view refresh is `SUCCESS`.
+  - H13 required no standalone task-doc artifacts; the source of truth is the archived task entry plus the workflow tests above.
+  Subtasks:
+  - [x] `H13.1` Admin WoS maintenance end-to-end flow.
+    Handover:
+    - Workflow coverage: `WosAdminInitializationWorkflowIntegrationTest`.
+    - Supporting route/auth evidence: `AdminInitializationControllerContractTest`, `AdminInitializationSecurityContractTest`.
+  - [x] `H13.2` User indicator refresh/export workflow.
+    Handover:
+    - Workflow coverage: `UserReportRefreshCnfisWorkflowIntegrationTest`.
+    - Supporting route/auth evidence: `UserViewControllerContractTest`, `UserViewSecurityContractTest`.
+  - [x] `H13.3` Failure-path workflow gate.
+    Handover:
+    - Degraded workflow coverage: `PostgresProjectionFailureOperationalWorkflowTest`.
+    - Failure-precedence guardrail: `DefaultH22OperationalStatusServiceTest`.
+
+## H21 User-Defined Source Onboarding Into Scholardex
+
+Archived from `TASKS.md` on 2026-03-30 after H21.1-H21.6 closure audit.
+
+- [x] `H21` User-defined source onboarding into Scholardex.
+  Goal: support user-triggered non-Scopus/WoS/Scholar publication imports as first-class canonical ingestion into Scholardex identity/link models.
+  Deliverable: migrated in-place user publication wizard onboarding flow modeled as `USER_DEFINED` source events/facts with deterministic IDs, explicit review/moderation metadata, and integration with canonical Scholardex identity, source-link, conflict, and projection contracts.
+  Exit criteria: the existing `/user/publications/add` wizard submits `USER_DEFINED` publication onboarding through the canonical Scholardex ingestion path; publication/forum/authorship/linked-affiliation lineage is deterministic and replay-safe; review/moderation state is explicit in metadata without requiring a separate admin approval workflow; imported records become visible through canonical Scholardex projections and existing user/admin operability surfaces.
+  Status: completed on 2026-03-30.
+  Handover:
+  - The user publication wizard remains canonical and in-place at `GET /user/publications/add`.
+  - Wizard submit now emits canonical `USER_DEFINED` import events with deterministic `USER_DEFINED:FORUM:*`, `USER_DEFINED:PUBLICATION:*`, and `USER_DEFINED:EID:*` identifiers.
+  - USER_DEFINED source facts, canonicalization, source-link integration, and projection rebuild flow are implemented without a separate admin approval workflow.
+  - Admin diagnostics and maintenance surfaces exist under `/admin/user-defined-triage` and `/admin/initialization/user-defined/*`.
+  - Archived contract and closeout docs:
+    - `docs/tasks/closed/h21.1-user-defined-wizard-onboarding-contract.md`
+    - `docs/tasks/closed/h21.2-user-defined-wizard-submit-migration.md`
+    - `docs/tasks/closed/h21.3-user-defined-facts-canonicalization.md`
+    - `docs/tasks/closed/h21.4-user-defined-operability-admin-triage.md`
+    - `docs/tasks/closed/h21.6-user-defined-onboarding-closeout.md`
+  Subtasks:
+  - [x] `H21.1` Lock the `USER_DEFINED` wizard-onboarding contract.
+    Handover:
+    - Archived contract lock: `docs/tasks/closed/h21.1-user-defined-wizard-onboarding-contract.md`.
+  - [x] `H21.2` Migrate wizard submission into first-class `USER_DEFINED` canonical ingest.
+    Handover:
+    - Runtime wizard submit path now ingests `USER_DEFINED` publication events through the canonical import-event pipeline.
+  - [x] `H21.3` Align canonical linking, lineage, and review metadata for wizard-created entities.
+    Handover:
+    - USER_DEFINED source facts and canonicalization now propagate lineage and review metadata into Scholardex facts/source-links.
+  - [x] `H21.4` Integrate operability and admin triage for `USER_DEFINED` onboarding.
+    Handover:
+    - USER_DEFINED triage and maintenance surfaces are live and source-filtered.
+  - [x] `H21.5` Add regression and projection-visibility coverage for migrated wizard onboarding.
+    Handover:
+    - Regression coverage includes wizard submit, source-link alias normalization, USER_DEFINED fact building/canonicalization, triage, initialization, and operability metrics.
+  - [x] `H21.6` Closeout docs and route/task handoff.
+    Handover:
+    - Closeout source of truth: `docs/tasks/closed/h21.6-user-defined-onboarding-closeout.md`.
+
 ## H27 Canonical Entity API Migration From Scopus Compatibility Routes
 
 Archived from `TASKS.md` on 2026-03-30 after H27.1-H27.4 closure.

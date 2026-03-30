@@ -2,21 +2,21 @@ package ro.uvt.pokedex.core.service.application;
 
 import java.time.Instant;
 
-public interface H22OperationalStatusService {
+public interface PostgresOperationalStatusService {
 
-    H22OperationalStatusSnapshot latestStatus();
+    PostgresOperationalStatusSnapshot latestStatus();
 
-    record H22OperationalStatusSnapshot(
+    record PostgresOperationalStatusSnapshot(
             String overallState,
             String readStore,
             ComponentStatus projection,
             ComponentStatus materializedViewRefresh,
             Instant evaluatedAt
     ) {
-        public static H22OperationalStatusSnapshot unavailable() {
+        public static PostgresOperationalStatusSnapshot unavailable() {
             Instant now = Instant.now();
             ComponentStatus unavailable = ComponentStatus.unavailable("service-unavailable");
-            return new H22OperationalStatusSnapshot(
+            return new PostgresOperationalStatusSnapshot(
                     "RED",
                     "unknown",
                     unavailable,

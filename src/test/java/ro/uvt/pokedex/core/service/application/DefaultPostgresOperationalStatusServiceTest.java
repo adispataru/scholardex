@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class DefaultH22OperationalStatusServiceTest {
+class DefaultPostgresOperationalStatusServiceTest {
 
     @Test
     void latestStatusIsGreenWhenAllSignalsSuccessful() {
@@ -42,7 +42,7 @@ class DefaultH22OperationalStatusServiceTest {
                 )
         ));
 
-        H22OperationalStatusService.H22OperationalStatusSnapshot snapshot = fixture.service.latestStatus();
+        PostgresOperationalStatusService.PostgresOperationalStatusSnapshot snapshot = fixture.service.latestStatus();
 
         assertEquals("GREEN", snapshot.overallState());
         assertEquals("postgres", snapshot.readStore());
@@ -57,7 +57,7 @@ class DefaultH22OperationalStatusServiceTest {
         when(fixture.projectionService.latestRunStatus()).thenReturn(new PostgresReportingProjectionService.ProjectionStatusSnapshot(null, Map.of()));
         when(fixture.mvService.latestStatus()).thenReturn(new PostgresMaterializedViewRefreshService.MaterializedViewRefreshStatusSnapshot(null));
 
-        H22OperationalStatusService.H22OperationalStatusSnapshot snapshot = fixture.service.latestStatus();
+        PostgresOperationalStatusService.PostgresOperationalStatusSnapshot snapshot = fixture.service.latestStatus();
 
         assertEquals("GREEN", snapshot.overallState());
         assertEquals("postgres", snapshot.readStore());
@@ -83,10 +83,46 @@ class DefaultH22OperationalStatusServiceTest {
         ));
         when(fixture.mvService.latestStatus()).thenReturn(new PostgresMaterializedViewRefreshService.MaterializedViewRefreshStatusSnapshot(null));
 
-        H22OperationalStatusService.H22OperationalStatusSnapshot snapshot = fixture.service.latestStatus();
+        PostgresOperationalStatusService.PostgresOperationalStatusSnapshot snapshot = fixture.service.latestStatus();
 
         assertEquals("RED", snapshot.overallState());
         assertEquals("FAILED", snapshot.projection().status());
+    }
+
+    @Test
+    void latestStatusStaysRedWhenProjectionFailedEvenIfMaterializedViewSucceeded() {
+        Fixture fixture = fixture();
+
+        when(fixture.projectionService.latestRunStatus()).thenReturn(new PostgresReportingProjectionService.ProjectionStatusSnapshot(
+                new PostgresReportingProjectionService.ProjectionRunSummary(
+                        "projection-failed",
+                        "INCREMENTAL_SYNC",
+                        "FAILED",
+                        Instant.now(),
+                        Instant.now(),
+                        List.of(),
+                        "projection failed"
+                ),
+                Map.of()
+        ));
+        when(fixture.mvService.latestStatus()).thenReturn(new PostgresMaterializedViewRefreshService.MaterializedViewRefreshStatusSnapshot(
+                new PostgresMaterializedViewRefreshService.MaterializedViewRefreshRunSummary(
+                        "mv-success",
+                        "MANUAL",
+                        null,
+                        "SUCCESS",
+                        Instant.now(),
+                        Instant.now(),
+                        List.of(),
+                        null
+                )
+        ));
+
+        PostgresOperationalStatusService.PostgresOperationalStatusSnapshot snapshot = fixture.service.latestStatus();
+
+        assertEquals("RED", snapshot.overallState());
+        assertEquals("FAILED", snapshot.projection().status());
+        assertEquals("SUCCESS", snapshot.materializedViewRefresh().status());
     }
 
     @Test
@@ -94,7 +130,7 @@ class DefaultH22OperationalStatusServiceTest {
         PostgresReportingProjectionService projectionService = mock(PostgresReportingProjectionService.class);
         PostgresMaterializedViewRefreshService mvService = mock(PostgresMaterializedViewRefreshService.class);
 
-        DefaultH22OperationalStatusService service = new DefaultH22OperationalStatusService(
+        DefaultPostgresOperationalStatusService service = new DefaultPostgresOperationalStatusService(
                 provider(projectionService),
                 provider(mvService)
         );
@@ -110,7 +146,7 @@ class DefaultH22OperationalStatusServiceTest {
     }
 
     private record Fixture(
-            DefaultH22OperationalStatusService service,
+            DefaultPostgresOperationalStatusService service,
             PostgresReportingProjectionService projectionService,
             PostgresMaterializedViewRefreshService mvService
     ) {

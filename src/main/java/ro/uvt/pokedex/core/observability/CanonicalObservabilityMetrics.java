@@ -5,9 +5,9 @@ import io.micrometer.core.instrument.Timer;
 
 import java.util.concurrent.TimeUnit;
 
-public final class H19CanonicalMetrics {
+public final class CanonicalObservabilityMetrics {
 
-    private H19CanonicalMetrics() {
+    private CanonicalObservabilityMetrics() {
     }
 
     public static void recordCanonicalBuildRun(String entity, String source, String outcome, long durationNanos) {

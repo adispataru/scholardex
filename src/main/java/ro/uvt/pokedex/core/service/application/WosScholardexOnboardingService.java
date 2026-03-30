@@ -2,7 +2,7 @@ package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
+import ro.uvt.pokedex.core.observability.CanonicalObservabilityMetrics;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
@@ -460,7 +460,7 @@ public class WosScholardexOnboardingService {
             conflict.setDetectedAt(Instant.now());
         }
         scholardexIdentityConflictRepository.save(conflict);
-        H19CanonicalMetrics.recordConflictCreated(entityType.name(), source, reasonCode);
+        CanonicalObservabilityMetrics.recordConflictCreated(entityType.name(), source, reasonCode);
     }
 
     private LinkedHashSet<String> normalizedIssnSet(

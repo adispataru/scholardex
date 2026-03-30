@@ -18,11 +18,12 @@ npm run verify-architecture-boundaries
 ## Focused Verification
 
 - Docs tree changes: `npm run verify-docs-governance`
-- Route and shared UI changes: `npm run verify-h25-route-guardrails`
-- CI-sensitive changes: `npm run verify-h09-baseline`
-- Persistence changes: `npm run verify-h06-persistence`
-- Security/validation changes: `npm run verify-h07-guardrails`
-- Observability changes: `npm run verify-h08-baseline`
+- Route and shared UI changes: `npm run verify-route-guardrails`
+- CI-sensitive changes: `npm run verify-quality-gates-baseline`
+- Runtime naming cleanup changes: `npm run verify-runtime-naming-guardrails`
+- Persistence changes: `npm run verify-persistence-contracts`
+- Security/validation changes: `npm run verify-security-validation-guardrails`
+- Observability changes: `npm run verify-observability-baseline`
 
 ## Rule
 

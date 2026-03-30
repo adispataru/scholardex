@@ -17,7 +17,7 @@ For USER_DEFINED wizard-onboarding failures, inspect in this order:
 2. `/admin/source-links?source=USER_DEFINED` for link-state drift.
 3. `/admin/conflicts?incomingSource=USER_DEFINED` for unresolved/ambiguous identity conflicts.
 4. `/admin/initialization/user-defined/*` run outcomes (buildFacts, canonicalize, runAll).
-5. `H19_TRIAGE canonical_build` logs and `core.h21.user_defined.*` gauges/counters.
+5. `CANONICAL_MAINTENANCE canonical_build` logs and `core.h21.user_defined.*` gauges/counters.
 
 ## Common Areas
 

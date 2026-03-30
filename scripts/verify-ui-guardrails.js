@@ -45,11 +45,11 @@ for (const check of checks) {
 }
 
 if (errors.length > 0) {
-  console.error('H23 UI guardrail verification failed:');
+  console.error('UI guardrail verification failed:');
   for (const error of errors) {
     console.error(`- ${error}`);
   }
   process.exit(1);
 }
 
-console.log('H23 UI guardrail verification passed.');
+console.log('UI guardrail verification passed.');

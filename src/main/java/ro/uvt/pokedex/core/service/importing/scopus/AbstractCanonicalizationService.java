@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCanonicalBuildCheckpoint;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
-import ro.uvt.pokedex.core.observability.H19CanonicalMetrics;
+import ro.uvt.pokedex.core.observability.CanonicalObservabilityMetrics;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
@@ -187,7 +187,7 @@ public abstract class AbstractCanonicalizationService<S, C> {
                 resumedFromCheckpoint, checkpointLastCompletedBatch,
                 nanosToMillis(System.nanoTime() - startedAtNanos));
 
-        H19CanonicalMetrics.recordCanonicalBuildRun(
+        CanonicalObservabilityMetrics.recordCanonicalBuildRun(
                 label,
                 "SCOPUS",
                 result.getErrorCount() > 0 ? "failure" : "success",
@@ -261,7 +261,7 @@ public abstract class AbstractCanonicalizationService<S, C> {
         if (conflict.getDetectedAt() == null) {
             conflict.setDetectedAt(Instant.now());
         }
-        H19CanonicalMetrics.recordConflictCreated(getEntityType().name(), source, reasonCode);
+        CanonicalObservabilityMetrics.recordConflictCreated(getEntityType().name(), source, reasonCode);
         return conflict;
     }
 }
