@@ -65,7 +65,6 @@ public class ScopusBigBangMigrationService {
     private final ScholardexCanonicalBuildCheckpointService canonicalBuildCheckpointService;
     private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexEdgeReconciliationService edgeReconciliationService;
-    private final ScholardexPublicationBackfillService publicationBackfillService;
     private final ScopusImportEventRepository importEventRepository;
     private final ScopusPublicationFactRepository publicationFactRepository;
     private final ScopusCitationFactRepository citationFactRepository;
@@ -298,10 +297,6 @@ public class ScopusBigBangMigrationService {
             long publicationSourceLinks,
             long publicationViews
     ) {
-    }
-
-    public ImportProcessingResult runPublicationIdentityBackfill() {
-        return publicationBackfillService.backfillFromLegacyProjection();
     }
 
     public ImportProcessingResult runCitationIdentityBackfill() {

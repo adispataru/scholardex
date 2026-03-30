@@ -1,24 +1,15 @@
 package ro.uvt.pokedex.core.model;
 
 import lombok.Data;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.*;
 
 @Data
-@Document(collection = "wos.rankings")
 public class WoSRanking {
-    @Id
     private String id; // Unique composite ID
-    @Indexed
     private String name;
-    @Indexed
     private String issn;
-    @Indexed
     private String eIssn;
-    @Indexed
     private List<String> alternativeIssns = new ArrayList<>();
     private List<String> alternativeNames = new ArrayList<>();
     private Score score;
