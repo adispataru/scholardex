@@ -2,6 +2,39 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H27 Canonical Entity API Migration From Scopus Compatibility Routes
+
+Archived from `TASKS.md` on 2026-03-30 after H27.1-H27.4 closure.
+
+- [x] `H27` Canonical entity API migration from Scopus compatibility routes.
+  Goal: replace the legacy public `/api/scopus/**` contract with a canonical source-agnostic entity API that matches the current Scholardex-backed runtime model.
+  Deliverable: breaking public API migration from `/api/scopus/authors`, `/api/scopus/forums`, and `/api/scopus/affiliations` to canonical `/api/entities/authors`, `/api/entities/forums`, and `/api/entities/affiliations`, including aligned DTO naming, controller/service contract updates, and documentation/test refresh.
+  Exit criteria: the public entity-read API no longer exposes Scopus-branded routes or `Scopus*` response contract names for Scholardex-backed author/forum/affiliation reads; canonical `/api/entities/**` endpoints are the only supported routes; docs, tests, and guardrails reflect the new contract explicitly.
+  Status: completed on 2026-03-30.
+  Handover:
+  - Canonical public entity-read APIs are `GET /api/entities/authors`, `GET /api/entities/forums`, and `GET /api/entities/affiliations`.
+  - Public Java/API response types for these APIs are `Scholardex*` rather than `Scopus*`, while the JSON wire shape remains unchanged.
+  - Legacy `/api/scopus/authors|forums|affiliations` routes are removed with no redirect or alias compatibility window.
+  - Positive contract/security coverage now targets `/api/entities/**`, and negative coverage locks the removed `/api/scopus/**` routes for both unauthenticated and authenticated access paths.
+  - Contract source of truth: `docs/tasks/closed/h27.1-canonical-entity-api-contract.md`.
+  - Closeout source of truth: `docs/tasks/closed/h27.3-entity-api-cutover-closeout.md`.
+  Subtasks:
+  - [x] `H27.1` Lock the canonical entity API contract.
+    Handover:
+    - Archived contract lock: `docs/tasks/closed/h27.1-canonical-entity-api-contract.md`.
+  - [x] `H27.2` Implement canonical entity routes and DTO renames.
+    Handover:
+    - Runtime entity-read APIs now resolve only through `/api/entities/**`.
+    - Public `Scopus*` entity API DTO names were replaced with `Scholardex*`.
+  - [x] `H27.3` Remove Scopus API compatibility routes and update public docs.
+    Handover:
+    - Closeout note: `docs/tasks/closed/h27.3-entity-api-cutover-closeout.md`.
+    - Historical H17/H23 notes remain unchanged as historical evidence only.
+  - [x] `H27.4` Refresh regression coverage and route guardrails for canonical entity APIs.
+    Handover:
+    - Removed-route behavior is protected in `ApiSecurityContractTest`.
+    - Legacy route-mapping guardrail lives in `EntityApiRouteGuardrailTest`.
+
 ## H25 Uniform Entity Routes And Shared Read-View Consolidation
 
 Archived from `TASKS.md` on 2026-03-13 after H25.1-H25.5 closure.

@@ -58,22 +58,3 @@ Done history moved to `TASKS-done.md`.
   - [ ] `H21.6` Closeout docs and route/task handoff.
     Deliverable: backlog/docs/task notes updated so the publication wizard is documented as the canonical in-place `USER_DEFINED` onboarding surface into Scholardex.
     Exit criteria: active docs no longer describe the wizard as a legacy manual exception path; H21 handoff is explicit about retained UI route, canonical source family, and no-admin-approval-workflow scope.
-
-- [ ] `H27` Canonical entity API migration from Scopus compatibility routes.
-  Goal: replace the legacy public `/api/scopus/**` contract with a canonical source-agnostic entity API that matches the current Scholardex-backed runtime model.
-  Deliverable: breaking public API migration from `/api/scopus/authors`, `/api/scopus/forums`, and `/api/scopus/affiliations` to canonical `/api/entities/authors`, `/api/entities/forums`, and `/api/entities/affiliations`, including aligned DTO naming, controller/service contract updates, and documentation/test refresh.
-  Exit criteria: the public entity-read API no longer exposes Scopus-branded routes or `Scopus*` response contract names for Scholardex-backed author/forum/affiliation reads; canonical `/api/entities/**` endpoints are the only supported routes; docs, tests, and guardrails reflect the new contract explicitly.
-  Subtasks:
-  - [ ] `H27.1` Lock the canonical entity API contract.
-    Deliverable: implementation-ready contract for `/api/entities/authors`, `/api/entities/forums`, and `/api/entities/affiliations`, including route shapes, parameter semantics, response envelope naming, and explicit breaking-change scope.
-    Exit criteria: the replacement contract is decision-locked; the migration is explicitly recorded as a breaking external API cutover with no retained `/api/scopus/**` alias behavior.
-    Reference: `docs/tasks/active/h27.1-canonical-entity-api-contract.md`.
-  - [ ] `H27.2` Implement canonical entity routes and DTO renames.
-    Deliverable: controller/read-port/DTO migration so the current Scholardex-backed author/forum/affiliation APIs are exposed only through `/api/entities/**` with source-agnostic response types.
-    Exit criteria: runtime entity-read endpoints and response types no longer use Scopus-branded API names; behavior, paging, sort, and query semantics remain aligned unless intentionally changed in H27.1.
-  - [ ] `H27.3` Remove Scopus API compatibility routes and update public docs.
-    Deliverable: removal of `/api/scopus/**` controller mappings and Scopus-branded public API references from active docs and handoff guidance.
-    Exit criteria: no active public route/docs/tests present `/api/scopus/**` as supported for author/forum/affiliation reads; closeout notes explicitly call out the breaking contract change.
-  - [x] `H27.4` Refresh regression coverage and route guardrails for canonical entity APIs.
-    Deliverable: updated contract/security tests and guardrails for `/api/entities/**` plus explicit negative coverage for removed `/api/scopus/**` routes.
-    Exit criteria: automated coverage protects the new canonical endpoints, verifies removed-route behavior, and fails on regressions that reintroduce Scopus-branded API contracts.
