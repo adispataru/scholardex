@@ -74,9 +74,6 @@ class AdminInitializationControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/resetCanonicalState")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/backfillCanonicalCitations")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/buildCanonical")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/showTouchQueueBacklog")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/rebuildTouchQueuesFromEvents")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/drainTouchQueues")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/reconcileEdges")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/resetCanonicalCheckpoints")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/user-defined/buildFacts")))
@@ -625,7 +622,7 @@ class AdminInitializationControllerContractTest {
         result.setTotalBatches(10);
         result.setResumedFromCheckpoint(true);
         result.setCheckpointLastCompletedBatch(1);
-        when(scopusBigBangMigrationService.runCanonicalBuildStep(eq("citation"), eq(2), eq(true), eq(500), eq(false), eq(false), eq(false), eq(true))).thenReturn(result);
+        when(scopusBigBangMigrationService.runCanonicalBuildStep(eq("citation"), eq(2), eq(true), eq(500), eq(false), eq(false))).thenReturn(result);
 
         mockMvc.perform(post("/admin/initialization/scopus/buildCanonical")
                         .param("entity", "citation")
@@ -635,31 +632,7 @@ class AdminInitializationControllerContractTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/initialization"));
 
-        verify(scopusBigBangMigrationService).runCanonicalBuildStep("citation", 2, true, 500, false, false, false, true);
-    }
-
-    @Test
-    void touchQueueMaintenanceActionsRedirectToInitializationPage() throws Exception {
-        when(scopusBigBangMigrationService.showTouchQueueBacklog())
-                .thenReturn(new ro.uvt.pokedex.core.service.importing.scopus.ScopusTouchQueueService.TouchBacklog(1, 2, 3, 4, 5));
-        when(scopusBigBangMigrationService.rebuildTouchQueuesFromEvents())
-                .thenReturn(new ro.uvt.pokedex.core.service.importing.scopus.ScopusTouchQueueService.TouchBacklog(5, 4, 3, 2, 1));
-        when(scopusBigBangMigrationService.drainAllTouchQueues())
-                .thenReturn(new ro.uvt.pokedex.core.service.importing.scopus.ScopusTouchQueueService.TouchBacklog(0, 0, 0, 0, 0));
-
-        mockMvc.perform(post("/admin/initialization/scopus/showTouchQueueBacklog"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/initialization"));
-        mockMvc.perform(post("/admin/initialization/scopus/rebuildTouchQueuesFromEvents"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/initialization"));
-        mockMvc.perform(post("/admin/initialization/scopus/drainTouchQueues"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/initialization"));
-
-        verify(scopusBigBangMigrationService).showTouchQueueBacklog();
-        verify(scopusBigBangMigrationService).rebuildTouchQueuesFromEvents();
-        verify(scopusBigBangMigrationService).drainAllTouchQueues();
+        verify(scopusBigBangMigrationService).runCanonicalBuildStep("citation", 2, true, 500, false, false);
     }
 
     @Test
@@ -702,8 +675,7 @@ class AdminInitializationControllerContractTest {
         when(scopusBigBangMigrationService.resetCanonicalState())
                 .thenReturn(new ScopusBigBangMigrationService.CanonicalResetResult(
                         10, 5, 5, 2, 3, 4,
-                        5, 5, 3, 4, 2, 5, 3, 4, 2, 6, 1, 7, 8, 9, 4,
-                        11, 12, 13, 14, 15
+                        5, 5, 3, 4, 2, 5, 3, 4, 2, 6, 1, 7, 8, 9, 4
                 ));
 
         mockMvc.perform(post("/admin/initialization/scopus/resetCanonicalState")

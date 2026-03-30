@@ -147,7 +147,7 @@
                             </div>
                         </div>
                         <div class="init-action-row mb-3">
-                            <div>4. Build projections/views</div>
+                            <div>4. Build projections</div>
                             <form th:action="@{/admin/initialization/wos/rebuildProjections}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                             </form>
@@ -166,7 +166,7 @@
                             </form>
                         </div>
                         <div class="init-action-row">
-                            <div>Maintenance: clear canonical WoS state (events, facts, views)</div>
+                            <div>Maintenance: clear canonical WoS state (events, facts, reporting tables)</div>
                             <form th:action="@{/admin/initialization/wos/resetCanonicalState}" method="post" class="d-flex align-items-center">
                                 <input type="text"
                                        name="confirmation"
@@ -202,17 +202,18 @@
                             </form>
                         </div>
                         <div class="init-action-row mb-3">
-                            <div>3. Build projections/views</div>
+                            <div>3. Build projections</div>
                             <form th:action="@{/admin/initialization/scopus/buildProjections}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                             </form>
                         </div>
-                        <div class="init-action-row mb-3">
+                        <div class="init-action-row">
                             <div>4. Ensure canonical indexes</div>
                             <form th:action="@{/admin/initialization/scopus/ensureIndexes}" method="post">
                                 <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                             </form>
                         </div>
+                        <div class="init-maintenance">
                         <div class="init-action-row mb-3">
                             <div>Maintenance: backfill canonical citations</div>
                             <form th:action="@{/admin/initialization/scopus/backfillCanonicalCitations}" method="post">
@@ -233,34 +234,8 @@
                                     <input type="checkbox" class="form-check-input mt-1" name="reconcileEdges" value="true">
                                     reconcile edges
                                 </label>
-                                <label class="form-check-label small mr-2">
-                                    <input type="checkbox" class="form-check-input mt-1" name="drainQueues" value="true" checked>
-                                    drain queues
-                                </label>
-                                <label class="form-check-label small mr-2">
-                                    <input type="checkbox" class="form-check-input mt-1" name="fullRescan" value="true">
-                                    full rescan
-                                </label>
                                 <input type="hidden" name="useCheckpoint" value="true">
                                 <button type="submit" class="btn btn-outline-secondary btn-sm">Run canonical</button>
-                            </form>
-                        </div>
-                        <div class="init-action-row mb-3">
-                            <div>Maintenance: show Scopus touch queue backlog</div>
-                            <form th:action="@{/admin/initialization/scopus/showTouchQueueBacklog}" method="post">
-                                <button type="submit" class="btn btn-outline-secondary btn-sm">Show backlog</button>
-                            </form>
-                        </div>
-                        <div class="init-action-row mb-3">
-                            <div>Maintenance: rebuild touch queues from import events</div>
-                            <form th:action="@{/admin/initialization/scopus/rebuildTouchQueuesFromEvents}" method="post">
-                                <button type="submit" class="btn btn-outline-secondary btn-sm">Rebuild queues</button>
-                            </form>
-                        </div>
-                        <div class="init-action-row mb-3">
-                            <div>Maintenance: drain all touch queues via canonical incremental runs</div>
-                            <form th:action="@{/admin/initialization/scopus/drainTouchQueues}" method="post">
-                                <button type="submit" class="btn btn-outline-secondary btn-sm">Drain queues</button>
                             </form>
                         </div>
                         <div class="init-action-row mb-3">
@@ -281,9 +256,8 @@
                                 <button type="submit" class="btn btn-outline-warning btn-sm">Reset checkpoints</button>
                             </form>
                         </div>
-                        <div class="init-maintenance">
                         <div class="init-action-row">
-                            <div>Maintenance: clear canonical Scopus state (events, facts, views, checkpoints)</div>
+                            <div>Maintenance: clear canonical Scopus state (events, facts, reporting tables, checkpoints)</div>
                             <form th:action="@{/admin/initialization/scopus/resetCanonicalState}" method="post" class="d-flex align-items-center">
                                 <input type="text"
                                        name="confirmation"

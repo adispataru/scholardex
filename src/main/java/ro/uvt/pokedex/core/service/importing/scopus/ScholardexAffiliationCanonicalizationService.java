@@ -56,10 +56,9 @@ public class ScholardexAffiliationCanonicalizationService extends AbstractCanoni
             ScholardexAffiliationFactRepository scholardexAffiliationFactRepository,
             ScholardexSourceLinkService sourceLinkService,
             ScholardexIdentityConflictRepository identityConflictRepository,
-            ScholardexCanonicalBuildCheckpointService checkpointService,
-            ScopusTouchQueueService touchQueueService
+            ScholardexCanonicalBuildCheckpointService checkpointService
     ) {
-        super(sourceLinkService, identityConflictRepository, checkpointService, touchQueueService);
+        super(sourceLinkService, identityConflictRepository, checkpointService);
         this.scopusAffiliationFactRepository = scopusAffiliationFactRepository;
         this.scholardexAffiliationFactRepository = scholardexAffiliationFactRepository;
     }
@@ -104,19 +103,6 @@ public class ScholardexAffiliationCanonicalizationService extends AbstractCanoni
 
     @Override
     protected List<ScopusAffiliationFact> loadSourceFacts(CanonicalBuildOptions options) {
-        if (!options.fullRescan() && options.incremental()) {
-            long startedAtNanos = System.nanoTime();
-            log.info("Scholardex affiliation canonicalization source load started: mode=incremental drainQueues={}", options.drainQueues());
-            List<String> touchedIds = touchQueueService.consumeAffiliationIds(options.drainQueues());
-            if (!touchedIds.isEmpty()) {
-                List<ScopusAffiliationFact> facts = new ArrayList<>(scopusAffiliationFactRepository.findByAfidIn(touchedIds));
-                log.info("Scholardex affiliation canonicalization source load completed: mode=incremental records={} elapsedMs={}",
-                        facts.size(), nanosToMillis(System.nanoTime() - startedAtNanos));
-                return facts;
-            }
-            log.info("Scholardex affiliation canonicalization incremental run has empty touch queue; skipping source scan.");
-            return new ArrayList<>();
-        }
         long startedAtNanos = System.nanoTime();
         log.info("Scholardex affiliation canonicalization source load started: mode=full-rescan");
         List<ScopusAffiliationFact> facts = new ArrayList<>(scopusAffiliationFactRepository.findAll());

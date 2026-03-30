@@ -35,7 +35,7 @@ public class ScopusDataService {
     private static final int INGEST_HEARTBEAT = 5_000;
     private static final int CITATION_INGEST_BATCH_SIZE = 1_000;
     private static final CanonicalBuildOptions BOOTSTRAP_FULL_RESCAN_OPTIONS =
-            new CanonicalBuildOptions(null, null, true, null, false, false, false, false, true);
+            new CanonicalBuildOptions(null, null, true, null, false, false);
 
     private final ScopusPublicationRepository publicationRepository;
     private final ScopusCitationRepository citationRepository;
@@ -100,8 +100,7 @@ public class ScopusDataService {
                             batchId,
                             "bootstrap-publication-" + i,
                             PAYLOAD_FORMAT_JSON_OBJECT,
-                            payload,
-                            false
+                            payload
                     );
                     applyIngestionOutcome(result, outcome, "publication index=" + i + ", eid=" + eid);
                 } catch (IntegrationException ex) {
@@ -202,7 +201,6 @@ public class ScopusDataService {
         long cumulativePublicationDbMs = 0L;
         long cumulativeCitationSerializeMs = 0L;
         long cumulativeCitationDbMs = 0L;
-        long cumulativeTouchMs = 0L;
         int sequence = 0;
 
         for (Map.Entry<String, List<JsonNode>> entry : citations.entrySet()) {
@@ -242,7 +240,6 @@ public class ScopusDataService {
                     cumulativePublicationDbMs += batchOutcome.publicationOutcome().dbInsertEventMs();
                     cumulativeCitationSerializeMs += batchOutcome.citationOutcome().serializeMs();
                     cumulativeCitationDbMs += batchOutcome.citationOutcome().dbInsertEventMs();
-                    cumulativeTouchMs += batchOutcome.publicationOutcome().touchQueueUpsertMs() + batchOutcome.citationOutcome().touchQueueUpsertMs();
                     pendingPublicationEvents.clear();
                     pendingCitationEvents.clear();
                 }
@@ -250,7 +247,7 @@ public class ScopusDataService {
                 if (result.getProcessedCount() % INGEST_HEARTBEAT == 0) {
                     long elapsedMs = (System.nanoTime() - startedAtNanos) / 1_000_000L;
                     double rate = elapsedMs == 0 ? 0.0 : (result.getProcessedCount() * 1000.0) / elapsedMs;
-                    logger.info("Scopus citation ingest progress: processed={} imported={} skipped={} errors={} elapsedMs={} ratePerSec={} timingsMs[publicationSerialize={}, citationSerialize={}, publicationEventInsert={}, citationEventInsert={}, touchQueueUpsert={}, total={}]",
+                    logger.info("Scopus citation ingest progress: processed={} imported={} skipped={} errors={} elapsedMs={} ratePerSec={} timingsMs[publicationSerialize={}, citationSerialize={}, publicationEventInsert={}, citationEventInsert={}, total={}]",
                             result.getProcessedCount(),
                             result.getImportedCount(),
                             result.getSkippedCount(),
@@ -261,8 +258,7 @@ public class ScopusDataService {
                             cumulativeCitationSerializeMs,
                             cumulativePublicationDbMs,
                             cumulativeCitationDbMs,
-                            cumulativeTouchMs,
-                            cumulativePublicationSerializeMs + cumulativeCitationSerializeMs + cumulativePublicationDbMs + cumulativeCitationDbMs + cumulativeTouchMs);
+                            cumulativePublicationSerializeMs + cumulativeCitationSerializeMs + cumulativePublicationDbMs + cumulativeCitationDbMs);
                 }
             }
         }
@@ -282,16 +278,14 @@ public class ScopusDataService {
                 SOURCE_SCOPUS_JSON_BOOTSTRAP,
                 batchId,
                 PAYLOAD_FORMAT_JSON_OBJECT,
-                pendingPublicationEvents,
-                false
+                pendingPublicationEvents
         );
         ScopusImportEventIngestionService.BatchIngestionOutcome citationOutcome = importEventIngestionService.ingestBatch(
                 ScopusImportEntityType.CITATION,
                 SOURCE_SCOPUS_JSON_BOOTSTRAP,
                 batchId,
                 PAYLOAD_FORMAT_JSON_OBJECT,
-                pendingCitationEvents,
-                false
+                pendingCitationEvents
         );
         return new CitationBatchOutcome(publicationOutcome, citationOutcome);
     }

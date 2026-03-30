@@ -63,10 +63,9 @@ public class ScholardexCitationCanonicalizationService extends AbstractCanonical
             ScholardexCitationFactRepository scholardexCitationFactRepository,
             ScholardexSourceLinkService sourceLinkService,
             ScholardexIdentityConflictRepository identityConflictRepository,
-            ScholardexCanonicalBuildCheckpointService checkpointService,
-            ScopusTouchQueueService touchQueueService
+            ScholardexCanonicalBuildCheckpointService checkpointService
     ) {
-        super(sourceLinkService, identityConflictRepository, checkpointService, touchQueueService);
+        super(sourceLinkService, identityConflictRepository, checkpointService);
         this.scopusCitationFactRepository = scopusCitationFactRepository;
         this.scholardexPublicationFactRepository = scholardexPublicationFactRepository;
         this.scholardexCitationFactRepository = scholardexCitationFactRepository;
@@ -93,41 +92,6 @@ public class ScholardexCitationCanonicalizationService extends AbstractCanonical
 
     @Override
     protected List<ScopusCitationFact> loadSourceFacts(CanonicalBuildOptions options) {
-        if (!options.fullRescan() && options.incremental()) {
-            long startedAtNanos = System.nanoTime();
-            log.info("Scholardex citation canonicalization source load started: mode=incremental drainQueues={}", options.drainQueues());
-            List<ScopusTouchQueueService.CitationEdge> touchedEdges = touchQueueService.consumeCitationEdges(options.drainQueues());
-            if (!touchedEdges.isEmpty()) {
-                LinkedHashMap<String, ScopusTouchQueueService.CitationEdge> deduped = new LinkedHashMap<>();
-                LinkedHashSet<String> citedEids = new LinkedHashSet<>();
-                LinkedHashSet<String> citingEids = new LinkedHashSet<>();
-                for (ScopusTouchQueueService.CitationEdge edge : touchedEdges) {
-                    if (edge == null || isBlank(edge.citedEid()) || isBlank(edge.citingEid())) {
-                        continue;
-                    }
-                    String key = edge.citedEid() + "->" + edge.citingEid();
-                    deduped.putIfAbsent(key, edge);
-                    citedEids.add(edge.citedEid());
-                    citingEids.add(edge.citingEid());
-                }
-                if (!deduped.isEmpty()) {
-                    List<ScopusCitationFact> candidates = scopusCitationFactRepository.findByCitedEidInAndCitingEidIn(citedEids, citingEids);
-                    List<ScopusCitationFact> result = new ArrayList<>();
-                    for (ScopusCitationFact fact : candidates) {
-                        String key = fact.getCitedEid() + "->" + fact.getCitingEid();
-                        if (deduped.containsKey(key)) {
-                            result.add(fact);
-                        }
-                    }
-                    log.info("Scholardex citation canonicalization source load completed: mode=incremental records={} elapsedMs={}",
-                            result.size(),
-                            nanosToMillis(System.nanoTime() - startedAtNanos));
-                    return result;
-                }
-            }
-            log.info("Scholardex citation canonicalization incremental run has empty touch queue; skipping source scan.");
-            return new ArrayList<>();
-        }
         long startedAtNanos = System.nanoTime();
         long totalRecords = scopusCitationFactRepository.count();
         int pageSize = Math.max(1_000, Math.min(10_000, loadProgressRecordInterval));

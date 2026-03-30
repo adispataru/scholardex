@@ -66,10 +66,9 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
             ScholardexEdgeWriterService edgeWriterService,
             ScholardexSourceLinkService sourceLinkService,
             ScholardexIdentityConflictRepository identityConflictRepository,
-            ScholardexCanonicalBuildCheckpointService checkpointService,
-            ScopusTouchQueueService touchQueueService
+            ScholardexCanonicalBuildCheckpointService checkpointService
     ) {
-        super(sourceLinkService, identityConflictRepository, checkpointService, touchQueueService);
+        super(sourceLinkService, identityConflictRepository, checkpointService);
         this.scopusAuthorFactRepository = scopusAuthorFactRepository;
         this.scholardexAuthorFactRepository = scholardexAuthorFactRepository;
         this.scholardexAuthorAffiliationFactRepository = scholardexAuthorAffiliationFactRepository;
@@ -172,20 +171,6 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
 
     @Override
     protected List<ScopusAuthorFact> loadSourceFacts(CanonicalBuildOptions options) {
-        if (!options.fullRescan() && options.incremental()) {
-            long startedAtNanos = System.nanoTime();
-            log.info("Scholardex author canonicalization source load started: mode=incremental drainQueues={}", options.drainQueues());
-            List<String> touchedIds = touchQueueService.consumeAuthorIds(options.drainQueues());
-            if (!touchedIds.isEmpty()) {
-                List<ScopusAuthorFact> facts = new ArrayList<>(scopusAuthorFactRepository.findByAuthorIdIn(touchedIds));
-                log.info("Scholardex author canonicalization source load completed: mode=incremental records={} elapsedMs={}",
-                        facts.size(),
-                        nanosToMillis(System.nanoTime() - startedAtNanos));
-                return facts;
-            }
-            log.info("Scholardex author canonicalization incremental run has empty touch queue; skipping source scan.");
-            return new ArrayList<>();
-        }
         long startedAtNanos = System.nanoTime();
         log.info("Scholardex author canonicalization source load started: mode=full-rescan");
         List<ScopusAuthorFact> facts = new ArrayList<>(scopusAuthorFactRepository.findAll());

@@ -46,8 +46,6 @@ class ScholardexPublicationCanonicalizationServiceTest {
     private ScholardexEdgeWriterService edgeWriterService;
     @Mock
     private ScholardexCanonicalBuildCheckpointService checkpointService;
-    @Mock
-    private ScopusTouchQueueService touchQueueService;
 
     private ScholardexPublicationCanonicalizationService service;
 
@@ -59,8 +57,7 @@ class ScholardexPublicationCanonicalizationServiceTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService,
-                touchQueueService
+                checkpointService
         );
     }
 
@@ -136,7 +133,7 @@ class ScholardexPublicationCanonicalizationServiceTest {
     }
 
     private CanonicalBuildOptions fullRescanOptions() {
-        return new CanonicalBuildOptions(null, null, true, null, false, false, false, false, true);
+        return new CanonicalBuildOptions(null, null, true, null, false, false);
     }
 
     @Test

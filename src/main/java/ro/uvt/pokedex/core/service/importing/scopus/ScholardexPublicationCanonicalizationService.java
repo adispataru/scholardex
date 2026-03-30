@@ -70,10 +70,9 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
             ScholardexEdgeWriterService edgeWriterService,
             ScholardexSourceLinkService sourceLinkService,
             ScholardexIdentityConflictRepository identityConflictRepository,
-            ScholardexCanonicalBuildCheckpointService checkpointService,
-            ScopusTouchQueueService touchQueueService
+            ScholardexCanonicalBuildCheckpointService checkpointService
     ) {
-        super(sourceLinkService, identityConflictRepository, checkpointService, touchQueueService);
+        super(sourceLinkService, identityConflictRepository, checkpointService);
         this.scopusPublicationFactRepository = scopusPublicationFactRepository;
         this.scholardexPublicationFactRepository = scholardexPublicationFactRepository;
         this.edgeWriterService = edgeWriterService;
@@ -174,20 +173,6 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
 
     @Override
     protected List<ScopusPublicationFact> loadSourceFacts(CanonicalBuildOptions options) {
-        if (!options.fullRescan() && options.incremental()) {
-            long startedAtNanos = System.nanoTime();
-            log.info("Scholardex publication canonicalization source load started: mode=incremental drainQueues={}", options.drainQueues());
-            List<String> touchedIds = touchQueueService.consumePublicationIds(options.drainQueues());
-            if (!touchedIds.isEmpty()) {
-                List<ScopusPublicationFact> facts = new ArrayList<>(scopusPublicationFactRepository.findByEidIn(touchedIds));
-                log.info("Scholardex publication canonicalization source load completed: mode=incremental records={} elapsedMs={}",
-                        facts.size(),
-                        nanosToMillis(System.nanoTime() - startedAtNanos));
-                return facts;
-            }
-            log.info("Scholardex publication canonicalization incremental run has empty touch queue; skipping source scan.");
-            return new ArrayList<>();
-        }
         long startedAtNanos = System.nanoTime();
         long totalRecords = scopusPublicationFactRepository.count();
         int pageSize = Math.max(1_000, Math.min(10_000, loadProgressRecordInterval));

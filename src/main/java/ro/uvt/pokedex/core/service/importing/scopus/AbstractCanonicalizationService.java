@@ -37,18 +37,15 @@ public abstract class AbstractCanonicalizationService<S, C> {
     protected final ScholardexSourceLinkService sourceLinkService;
     protected final ScholardexIdentityConflictRepository identityConflictRepository;
     protected final ScholardexCanonicalBuildCheckpointService checkpointService;
-    protected final ScopusTouchQueueService touchQueueService;
 
     protected AbstractCanonicalizationService(
             ScholardexSourceLinkService sourceLinkService,
             ScholardexIdentityConflictRepository identityConflictRepository,
-            ScholardexCanonicalBuildCheckpointService checkpointService,
-            ScopusTouchQueueService touchQueueService
+            ScholardexCanonicalBuildCheckpointService checkpointService
     ) {
         this.sourceLinkService = sourceLinkService;
         this.identityConflictRepository = identityConflictRepository;
         this.checkpointService = checkpointService;
-        this.touchQueueService = touchQueueService;
     }
 
     // ── Abstract hooks ──────────────────────────────────────────────────────
@@ -107,10 +104,9 @@ public abstract class AbstractCanonicalizationService<S, C> {
                 : effectiveOptions.chunkSizeOverride();
 
         String label = getEntityTypeLabel();
-        log.info("Scholardex {} canonicalization phase started: mode={} fullRescan={} chunkSize={} useCheckpoint={}",
+        log.info("Scholardex {} canonicalization phase started: mode={} chunkSize={} useCheckpoint={}",
                 label,
-                effectiveOptions.incremental() ? "INCREMENTAL" : "FULL",
-                effectiveOptions.fullRescan(),
+                "FULL_RESCAN",
                 chunkSize,
                 effectiveOptions.useCheckpoint());
 

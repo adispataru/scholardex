@@ -42,8 +42,6 @@ class ScholardexCitationCanonicalizationServiceTest {
     private ScholardexIdentityConflictRepository scholardexIdentityConflictRepository;
     @Mock
     private ScholardexCanonicalBuildCheckpointService checkpointService;
-    @Mock
-    private ScopusTouchQueueService touchQueueService;
 
     @Test
     void rebuildCanonicalCitationFactsCreatesCanonicalEdgeAndSourceLink() {
@@ -53,8 +51,7 @@ class ScholardexCitationCanonicalizationServiceTest {
                 scholardexCitationFactRepository,
                 sourceLinkService,
                 scholardexIdentityConflictRepository,
-                checkpointService,
-                touchQueueService
+                checkpointService
         );
 
         ScholardexPublicationFact cited = new ScholardexPublicationFact();
@@ -102,8 +99,7 @@ class ScholardexCitationCanonicalizationServiceTest {
                 scholardexCitationFactRepository,
                 sourceLinkService,
                 scholardexIdentityConflictRepository,
-                checkpointService,
-                touchQueueService
+                checkpointService
         );
 
         when(scholardexPublicationFactRepository.findAllByEidIn(any())).thenReturn(List.of());
@@ -124,6 +120,6 @@ class ScholardexCitationCanonicalizationServiceTest {
     }
 
     private CanonicalBuildOptions fullRescanOptions() {
-        return new CanonicalBuildOptions(null, null, true, null, false, false, false, false, true);
+        return new CanonicalBuildOptions(null, null, true, null, false, false);
     }
 }

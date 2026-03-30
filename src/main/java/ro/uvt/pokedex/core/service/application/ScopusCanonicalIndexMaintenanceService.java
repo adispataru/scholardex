@@ -24,11 +24,6 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusFundingFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEvent;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationTouch;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorTouch;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationTouch;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumTouch;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationTouch;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -66,16 +61,6 @@ public class ScopusCanonicalIndexMaintenanceService {
 
     static final String IDX_FUNDING_UNIQ = "uniq_scopus_funding_fact_key";
     static final String IDX_FUNDING_SPONSOR = "idx_scopus_funding_sponsor";
-    static final String IDX_TOUCH_AFFILIATION_UNIQ = "uniq_scopus_affiliation_touch";
-    static final String IDX_TOUCH_AFFILIATION_TOUCHED = "idx_scopus_affiliation_touch_touched";
-    static final String IDX_TOUCH_AUTHOR_UNIQ = "uniq_scopus_author_touch";
-    static final String IDX_TOUCH_AUTHOR_TOUCHED = "idx_scopus_author_touch_touched";
-    static final String IDX_TOUCH_FORUM_UNIQ = "uniq_scopus_forum_touch";
-    static final String IDX_TOUCH_FORUM_TOUCHED = "idx_scopus_forum_touch_touched";
-    static final String IDX_TOUCH_PUBLICATION_UNIQ = "uniq_scopus_publication_touch";
-    static final String IDX_TOUCH_PUBLICATION_TOUCHED = "idx_scopus_publication_touch_touched";
-    static final String IDX_TOUCH_CITATION_UNIQ = "uniq_scopus_citation_touch";
-    static final String IDX_TOUCH_CITATION_TOUCHED = "idx_scopus_citation_touch_touched";
 
     static final String IDX_CANON_PUBLICATION_DOI_NORMALIZED = "idx_scholardex_publication_fact_doi_normalized";
     static final String IDX_CANON_PUBLICATION_TITLE_NORMALIZED = "idx_scholardex_publication_fact_title_normalized";
@@ -151,7 +136,6 @@ public class ScopusCanonicalIndexMaintenanceService {
         ensureAuthorFactIndexes(created, present, invalid, errors);
         ensureAffiliationFactIndexes(created, present, invalid, errors);
         ensureFundingFactIndexes(created, present, invalid, errors);
-        ensureTouchQueueIndexes(created, present, invalid, errors);
         ensureCanonicalPublicationFactIndexes(created, present, invalid, errors);
         ensureCanonicalAuthorFactIndexes(created, present, invalid, errors);
         ensureCanonicalAffiliationFactIndexes(created, present, invalid, errors);
@@ -240,38 +224,6 @@ public class ScopusCanonicalIndexMaintenanceService {
         ensureNamedIndex(ops, new IndexDefinition(IDX_FUNDING_UNIQ, true, List.of(field("fundingKey"))),
                 created, present, invalid, errors);
         ensureNamedIndex(ops, new IndexDefinition(IDX_FUNDING_SPONSOR, false, List.of(field("sponsor"))),
-                created, present, invalid, errors);
-    }
-
-    private void ensureTouchQueueIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
-        IndexOperations affiliationOps = mongoTemplate.indexOps(ScopusAffiliationTouch.class);
-        ensureNamedIndex(affiliationOps, new IndexDefinition(IDX_TOUCH_AFFILIATION_UNIQ, true, List.of(field("source"), field("afid"))),
-                created, present, invalid, errors);
-        ensureNamedIndex(affiliationOps, new IndexDefinition(IDX_TOUCH_AFFILIATION_TOUCHED, false, List.of(field("touchedAt"))),
-                created, present, invalid, errors);
-
-        IndexOperations authorOps = mongoTemplate.indexOps(ScopusAuthorTouch.class);
-        ensureNamedIndex(authorOps, new IndexDefinition(IDX_TOUCH_AUTHOR_UNIQ, true, List.of(field("source"), field("authorId"))),
-                created, present, invalid, errors);
-        ensureNamedIndex(authorOps, new IndexDefinition(IDX_TOUCH_AUTHOR_TOUCHED, false, List.of(field("touchedAt"))),
-                created, present, invalid, errors);
-
-        IndexOperations forumOps = mongoTemplate.indexOps(ScopusForumTouch.class);
-        ensureNamedIndex(forumOps, new IndexDefinition(IDX_TOUCH_FORUM_UNIQ, true, List.of(field("source"), field("sourceId"))),
-                created, present, invalid, errors);
-        ensureNamedIndex(forumOps, new IndexDefinition(IDX_TOUCH_FORUM_TOUCHED, false, List.of(field("touchedAt"))),
-                created, present, invalid, errors);
-
-        IndexOperations publicationOps = mongoTemplate.indexOps(ScopusPublicationTouch.class);
-        ensureNamedIndex(publicationOps, new IndexDefinition(IDX_TOUCH_PUBLICATION_UNIQ, true, List.of(field("source"), field("eid"))),
-                created, present, invalid, errors);
-        ensureNamedIndex(publicationOps, new IndexDefinition(IDX_TOUCH_PUBLICATION_TOUCHED, false, List.of(field("touchedAt"))),
-                created, present, invalid, errors);
-
-        IndexOperations citationOps = mongoTemplate.indexOps(ScopusCitationTouch.class);
-        ensureNamedIndex(citationOps, new IndexDefinition(IDX_TOUCH_CITATION_UNIQ, true, List.of(field("source"), field("citedEid"), field("citingEid"))),
-                created, present, invalid, errors);
-        ensureNamedIndex(citationOps, new IndexDefinition(IDX_TOUCH_CITATION_TOUCHED, false, List.of(field("touchedAt"))),
                 created, present, invalid, errors);
     }
 
