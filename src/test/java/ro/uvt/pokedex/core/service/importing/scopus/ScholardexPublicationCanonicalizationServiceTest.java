@@ -8,17 +8,23 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorshipFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationAuthorAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
 import ro.uvt.pokedex.core.service.application.ScholardexEdgeWriterService;
 import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,6 +34,8 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -38,6 +46,10 @@ class ScholardexPublicationCanonicalizationServiceTest {
     private ScopusPublicationFactRepository scopusPublicationFactRepository;
     @Mock
     private ScholardexPublicationFactRepository scholardexPublicationFactRepository;
+    @Mock
+    private ScholardexAuthorshipFactRepository scholardexAuthorshipFactRepository;
+    @Mock
+    private ScholardexPublicationAuthorAffiliationFactRepository scholardexPublicationAuthorAffiliationFactRepository;
     @Mock
     private ScholardexIdentityConflictRepository identityConflictRepository;
     @Mock
@@ -54,6 +66,8 @@ class ScholardexPublicationCanonicalizationServiceTest {
         service = new ScholardexPublicationCanonicalizationService(
                 scopusPublicationFactRepository,
                 scholardexPublicationFactRepository,
+                scholardexAuthorshipFactRepository,
+                scholardexPublicationAuthorAffiliationFactRepository,
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
@@ -115,10 +129,11 @@ class ScholardexPublicationCanonicalizationServiceTest {
         when(scopusPublicationFactRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(scopusFact)));
         when(scholardexPublicationFactRepository.findAllByEidIn(any())).thenReturn(List.of());
         when(scholardexPublicationFactRepository.findAllByDoiNormalizedIn(any())).thenReturn(List.of());
+        when(scholardexAuthorshipFactRepository.findByPublicationIdIn(any())).thenReturn(List.of());
         when(checkpointService.readCheckpoint(anyString())).thenReturn(Optional.empty());
         when(sourceLinkService.findByKey(any(), any(), any()))
                 .thenReturn(Optional.empty());
-        when(edgeWriterService.batchUpsertAuthorshipEdges(any(), any(), any(), eq(false)))
+        when(edgeWriterService.batchUpsertAuthorshipEdges(any(), any(), any(), eq(true)))
                 .thenReturn(new ScholardexEdgeWriterService.BatchEdgeWriteResult(1, 0, 1, 0, 0));
 
         ImportProcessingResult result = service.rebuildCanonicalPublicationFactsFromScopusFacts(fullRescanOptions());
@@ -127,13 +142,13 @@ class ScholardexPublicationCanonicalizationServiceTest {
         assertEquals(1, result.getImportedCount());
         verify(scholardexPublicationFactRepository).insert(anyList());
         verify(sourceLinkService, atLeastOnce()).batchUpsertWithState(any(), any(), eq(false));
-        verify(edgeWriterService, atLeastOnce()).batchUpsertAuthorshipEdges(any(), any(), any(), eq(false));
+        verify(edgeWriterService, atLeastOnce()).batchUpsertAuthorshipEdges(any(), any(), any(), eq(true));
         verify(sourceLinkService, atLeastOnce()).findByKey(
                 eq(ScholardexEntityType.AUTHOR), eq("SCOPUS_JSON_BOOTSTRAP"), eq("au-1"));
     }
 
     private CanonicalBuildOptions fullRescanOptions() {
-        return new CanonicalBuildOptions(null, null, true, null, false, false);
+        return new CanonicalBuildOptions(null, null, true, null, null, false, false);
     }
 
     @Test
@@ -168,9 +183,10 @@ class ScholardexPublicationCanonicalizationServiceTest {
 
         when(scholardexPublicationFactRepository.findByEid("2-s2.0-new")).thenReturn(Optional.empty());
         when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1000/xyz")).thenReturn(List.of(existingByDoi));
+        when(scholardexAuthorshipFactRepository.findByPublicationIdIn(any())).thenReturn(List.of());
         when(sourceLinkService.findByKey(any(), any(), any()))
                 .thenReturn(Optional.empty());
-        when(edgeWriterService.batchUpsertAuthorshipEdges(any(), any(), any(), eq(false)))
+        when(edgeWriterService.batchUpsertAuthorshipEdges(any(), any(), any(), eq(true)))
                 .thenReturn(new ScholardexEdgeWriterService.BatchEdgeWriteResult(1, 0, 1, 0, 0));
 
         ImportProcessingResult result = new ImportProcessingResult(10);
@@ -198,13 +214,194 @@ class ScholardexPublicationCanonicalizationServiceTest {
                 .thenReturn(Optional.of(authorLink));
         when(sourceLinkService.findByKey(eq(ScholardexEntityType.AFFILIATION), eq("SCOPUS"), eq("af1")))
                 .thenReturn(Optional.of(affiliationLink));
-        when(edgeWriterService.batchUpsertAuthorshipEdges(any(), any(), any(), eq(false)))
+        when(scholardexAuthorshipFactRepository.findByPublicationIdIn(any())).thenReturn(List.of());
+        when(scholardexPublicationAuthorAffiliationFactRepository.findByPublicationIdIn(any())).thenReturn(List.of());
+        when(edgeWriterService.batchUpsertAuthorshipEdges(any(), any(), any(), eq(true)))
                 .thenReturn(new ScholardexEdgeWriterService.BatchEdgeWriteResult(1, 0, 1, 0, 0));
-        when(edgeWriterService.batchUpsertPublicationAuthorAffiliationEdges(any(), any(), any(), eq(false)))
+        when(edgeWriterService.batchUpsertPublicationAuthorAffiliationEdges(any(), any(), any(), eq(true)))
                 .thenReturn(new ScholardexEdgeWriterService.BatchEdgeWriteResult(1, 0, 1, 0, 0));
 
         service.upsertFromScopusFact(scopusFact, new ImportProcessingResult(10));
 
-        verify(edgeWriterService).batchUpsertPublicationAuthorAffiliationEdges(any(), any(), any(), eq(false));
+        verify(edgeWriterService).batchUpsertPublicationAuthorAffiliationEdges(any(), any(), any(), eq(true));
+    }
+
+    @Test
+    void rebuildCanonicalPublicationFactsPreloadsPersistedAuthorshipEdgesForReplay() {
+        ScopusPublicationFact scopusFact = new ScopusPublicationFact();
+        scopusFact.setEid("2-s2.0-replay");
+        scopusFact.setTitle("Replay Title");
+        scopusFact.setSource("SCOPUS_JSON_UPLOAD");
+        scopusFact.setSourceRecordId("2-s2.0-replay");
+        scopusFact.setAuthors(List.of("au-1"));
+
+        ScholardexPublicationFact existingPublication = new ScholardexPublicationFact();
+        existingPublication.setId("spub_replay");
+        existingPublication.setEid("2-s2.0-replay");
+
+        ScholardexSourceLink authorLink = new ScholardexSourceLink();
+        authorLink.setCanonicalEntityId("sauth_1");
+
+        ScholardexAuthorshipFact persistedEdge = new ScholardexAuthorshipFact();
+        persistedEdge.setId("sae_existing");
+        persistedEdge.setPublicationId("spub_replay");
+        persistedEdge.setAuthorId("sauth_1");
+        persistedEdge.setSource("SCOPUS_JSON_UPLOAD");
+
+        lenient().when(scopusPublicationFactRepository.count()).thenReturn(1L);
+        lenient().when(scopusPublicationFactRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(scopusFact)));
+        lenient().when(scholardexPublicationFactRepository.findAllByEidIn(any())).thenReturn(List.of(existingPublication));
+        lenient().when(scholardexPublicationFactRepository.findAllByDoiNormalizedIn(any())).thenReturn(List.of());
+        lenient().when(scholardexAuthorshipFactRepository.findByPublicationIdIn(any())).thenReturn(List.of(persistedEdge));
+        lenient().when(scholardexPublicationAuthorAffiliationFactRepository.findByPublicationIdIn(any())).thenReturn(List.of());
+        lenient().when(checkpointService.readCheckpoint(anyString())).thenReturn(Optional.empty());
+        authorLink.setEntityType(ScholardexEntityType.AUTHOR);
+        authorLink.setSource("SCOPUS_JSON_UPLOAD");
+        authorLink.setSourceRecordId("au-1");
+        lenient().when(sourceLinkService.findByEntityTypeAndSourceRecordIds(eq(ScholardexEntityType.AUTHOR), any()))
+                .thenReturn(List.of(authorLink));
+        lenient().when(sourceLinkService.findByEntityTypeAndSourceRecordIds(eq(ScholardexEntityType.AFFILIATION), any()))
+                .thenReturn(List.of());
+        lenient().when(sourceLinkService.findByEntityTypeAndSourceRecordIds(eq(ScholardexEntityType.PUBLICATION), any()))
+                .thenReturn(List.of());
+        lenient().when(edgeWriterService.batchUpsertAuthorshipEdges(any(), any(), any(), eq(true)))
+                .thenReturn(new ScholardexEdgeWriterService.BatchEdgeWriteResult(1, 0, 0, 1, 0));
+
+        service.rebuildCanonicalPublicationFactsFromScopusFacts(fullRescanOptions());
+
+        verify(edgeWriterService).batchUpsertAuthorshipEdges(
+                any(),
+                argThat(map -> map instanceof Map<?, ?> typedMap
+                        && typedMap.containsKey("spub_replay|sauth_1|SCOPUS_JSON_UPLOAD")
+                        && typedMap.get("spub_replay|sauth_1|SCOPUS_JSON_UPLOAD") == persistedEdge),
+                any(),
+                eq(true)
+        );
+    }
+
+    @Test
+    void rebuildCanonicalPublicationFactsPreloadsPersistedPublicationAuthorAffiliationEdgesForReplay() {
+        ScopusPublicationFact scopusFact = new ScopusPublicationFact();
+        scopusFact.setEid("2-s2.0-replay-paf");
+        scopusFact.setTitle("Replay Title");
+        scopusFact.setSource("SCOPUS_JSON_UPLOAD");
+        scopusFact.setSourceRecordId("2-s2.0-replay-paf");
+        scopusFact.setAuthors(List.of("au-1"));
+        scopusFact.setAuthorAffiliationSourceIds(List.of("af1"));
+
+        ScholardexPublicationFact existingPublication = new ScholardexPublicationFact();
+        existingPublication.setId("spub_replay");
+        existingPublication.setEid("2-s2.0-replay-paf");
+
+        ScholardexSourceLink authorLink = new ScholardexSourceLink();
+        authorLink.setEntityType(ScholardexEntityType.AUTHOR);
+        authorLink.setSource("SCOPUS_JSON_UPLOAD");
+        authorLink.setSourceRecordId("au-1");
+        authorLink.setCanonicalEntityId("sauth_1");
+
+        ScholardexSourceLink affiliationLink = new ScholardexSourceLink();
+        affiliationLink.setEntityType(ScholardexEntityType.AFFILIATION);
+        affiliationLink.setSource("SCOPUS_JSON_UPLOAD");
+        affiliationLink.setSourceRecordId("af1");
+        affiliationLink.setCanonicalEntityId("saff_1");
+
+        ScholardexPublicationAuthorAffiliationFact persistedEdge = new ScholardexPublicationAuthorAffiliationFact();
+        persistedEdge.setId("spaaf_existing");
+        persistedEdge.setPublicationId("spub_replay");
+        persistedEdge.setAuthorId("sauth_1");
+        persistedEdge.setAffiliationId("saff_1");
+        persistedEdge.setSource("SCOPUS_JSON_UPLOAD");
+
+        lenient().when(scopusPublicationFactRepository.count()).thenReturn(1L);
+        lenient().when(scopusPublicationFactRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(scopusFact)));
+        lenient().when(scholardexPublicationFactRepository.findAllByEidIn(any())).thenReturn(List.of(existingPublication));
+        lenient().when(scholardexPublicationFactRepository.findAllByDoiNormalizedIn(any())).thenReturn(List.of());
+        lenient().when(scholardexAuthorshipFactRepository.findByPublicationIdIn(any())).thenReturn(List.of());
+        lenient().when(scholardexPublicationAuthorAffiliationFactRepository.findByPublicationIdIn(any())).thenReturn(List.of(persistedEdge));
+        lenient().when(checkpointService.readCheckpoint(anyString())).thenReturn(Optional.empty());
+        lenient().when(sourceLinkService.findByEntityTypeAndSourceRecordIds(eq(ScholardexEntityType.AUTHOR), any()))
+                .thenReturn(List.of(authorLink));
+        lenient().when(sourceLinkService.findByEntityTypeAndSourceRecordIds(eq(ScholardexEntityType.AFFILIATION), any()))
+                .thenReturn(List.of(affiliationLink));
+        lenient().when(sourceLinkService.findByEntityTypeAndSourceRecordIds(eq(ScholardexEntityType.PUBLICATION), any()))
+                .thenReturn(List.of());
+        lenient().when(edgeWriterService.batchUpsertAuthorshipEdges(any(), any(), any(), eq(true)))
+                .thenReturn(new ScholardexEdgeWriterService.BatchEdgeWriteResult(1, 0, 0, 1, 0));
+        lenient().when(edgeWriterService.batchUpsertPublicationAuthorAffiliationEdges(any(), any(), any(), eq(true)))
+                .thenReturn(new ScholardexEdgeWriterService.BatchEdgeWriteResult(1, 0, 0, 1, 0));
+
+        service.rebuildCanonicalPublicationFactsFromScopusFacts(fullRescanOptions());
+
+        verify(edgeWriterService).batchUpsertPublicationAuthorAffiliationEdges(
+                any(),
+                argThat(map -> map instanceof Map<?, ?> typedMap
+                        && typedMap.containsKey("spub_replay|sauth_1|saff_1|SCOPUS_JSON_UPLOAD")
+                        && typedMap.get("spub_replay|sauth_1|saff_1|SCOPUS_JSON_UPLOAD") == persistedEdge),
+                any(),
+                eq(true)
+        );
+    }
+
+    @Test
+    void replayReusesExistingOpenPublicationAuthorAffiliationConflict() {
+        ScopusPublicationFact scopusFact = new ScopusPublicationFact();
+        scopusFact.setEid("2-s2.0-conflict");
+        scopusFact.setTitle("Replay Title");
+        scopusFact.setSource("SCOPUS_JSON_UPLOAD");
+        scopusFact.setSourceRecordId("2-s2.0-105000527065");
+        scopusFact.setAuthors(List.of("36057720300"));
+        scopusFact.setAuthorAffiliationSourceIds(List.of("60024417"));
+
+        ScholardexPublicationFact existingPublication = new ScholardexPublicationFact();
+        existingPublication.setId("spub_conflict");
+        existingPublication.setEid("2-s2.0-conflict");
+
+        ScholardexSourceLink authorLink = new ScholardexSourceLink();
+        authorLink.setEntityType(ScholardexEntityType.AUTHOR);
+        authorLink.setSource("SCOPUS_JSON_UPLOAD");
+        authorLink.setSourceRecordId("36057720300");
+        authorLink.setCanonicalEntityId("sauth_1");
+
+        ScholardexIdentityConflict existingConflict = new ScholardexIdentityConflict();
+        existingConflict.setId("sic_existing");
+        existingConflict.setEntityType(ScholardexEntityType.PUBLICATION_AUTHOR_AFFILIATION);
+        existingConflict.setIncomingSource("SCOPUS_JSON_UPLOAD");
+        existingConflict.setIncomingSourceRecordId("2-s2.0-105000527065::author::36057720300::affiliation::60024417");
+        existingConflict.setReasonCode("PUBLICATION_AUTHOR_AFFILIATION_UNRESOLVED");
+        existingConflict.setStatus("OPEN");
+
+        lenient().when(scopusPublicationFactRepository.count()).thenReturn(1L);
+        lenient().when(scopusPublicationFactRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(scopusFact)));
+        lenient().when(scholardexPublicationFactRepository.findAllByEidIn(any())).thenReturn(List.of(existingPublication));
+        lenient().when(scholardexPublicationFactRepository.findAllByDoiNormalizedIn(any())).thenReturn(List.of());
+        lenient().when(scholardexAuthorshipFactRepository.findByPublicationIdIn(any())).thenReturn(List.of());
+        lenient().when(scholardexPublicationAuthorAffiliationFactRepository.findByPublicationIdIn(any())).thenReturn(List.of());
+        lenient().when(checkpointService.readCheckpoint(anyString())).thenReturn(Optional.empty());
+        lenient().when(sourceLinkService.findByEntityTypeAndSourceRecordIds(eq(ScholardexEntityType.AUTHOR), any()))
+                .thenReturn(List.of(authorLink));
+        lenient().when(sourceLinkService.findByEntityTypeAndSourceRecordIds(eq(ScholardexEntityType.AFFILIATION), any()))
+                .thenReturn(List.of());
+        lenient().when(sourceLinkService.findByEntityTypeAndSourceRecordIds(eq(ScholardexEntityType.PUBLICATION), any()))
+                .thenReturn(List.of());
+        lenient().when(edgeWriterService.batchUpsertAuthorshipEdges(any(), any(), any(), eq(true)))
+                .thenReturn(new ScholardexEdgeWriterService.BatchEdgeWriteResult(1, 0, 0, 1, 0));
+        lenient().when(identityConflictRepository.findByEntityTypeAndIncomingSourceAndIncomingSourceRecordIdAndReasonCodeAndStatus(
+                eq(ScholardexEntityType.PUBLICATION_AUTHOR_AFFILIATION),
+                eq("SCOPUS_JSON_UPLOAD"),
+                eq("2-s2.0-105000527065::author::36057720300::affiliation::60024417"),
+                eq("PUBLICATION_AUTHOR_AFFILIATION_UNRESOLVED"),
+                eq("OPEN")
+        )).thenReturn(Optional.of(existingConflict));
+
+        service.rebuildCanonicalPublicationFactsFromScopusFacts(fullRescanOptions());
+
+        verify(identityConflictRepository).saveAll(argThat(conflicts -> {
+            for (Object candidate : conflicts) {
+                if (candidate == existingConflict) {
+                    return true;
+                }
+            }
+            return false;
+        }));
     }
 }

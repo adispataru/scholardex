@@ -109,6 +109,7 @@ async function testDefaultLoadRequestsExpectedParams() {
 
   await wait(10);
   assert.strictEqual(calls.length, 1);
+  assert.ok(calls[0].startsWith('/api/entities/affiliations?'));
   assert.deepStrictEqual(parseQuery(calls[0]), {
     page: '0',
     size: '25',
@@ -134,6 +135,7 @@ async function testControlChangesTriggerRequestsAndCanonicalLinks() {
   });
 
   await wait(10);
+  assert.ok(calls[0].startsWith('/api/entities/affiliations?'));
   assert.ok(els['admin-affiliations-table-body'].innerHTML.includes('/admin/scholardex/affiliations/edit/a'));
 
   els['admin-affiliations-next'].dispatch('click');

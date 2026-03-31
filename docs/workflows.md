@@ -8,6 +8,20 @@ Status: active project workflow summary.
 - Conflict and source-link triage use the existing admin investigatory surfaces instead of one-off workflow-specific tooling.
 - Ranking/reporting cutovers require projection/readiness verification before steady-state use.
 
+### Scopus Maintenance Workflow
+
+- Upload-driven Scopus maintenance runs through `/admin/incremental-updates/scopus` and stays batch-scoped:
+  - ingest uploaded Scopus payload
+  - build facts
+  - run batch-scoped canonical materialization
+  - optionally run batch projection rebuild, edge reconcile, and source-link repair follow-up for that stored upload batch
+- Scheduler publication/citation maintenance also stays batch-scoped:
+  - ingest scheduler-fetched publication/citation payloads into import events
+  - run batch-scoped canonical materialization
+  - run batch-scoped projection refresh
+- Full Scopus initialization and rebuild flows remain explicit full-corpus maintenance under `/admin/initialization`.
+- Contributor rule: incremental Scopus changes must preserve batch scope, replay safety, and non-destructive projection behavior; full-rebuild assumptions such as full rescans or `TRUNCATE`-style replacement must not leak into upload or scheduler flows.
+
 ## User Flows
 
 - Dashboard and personal views run under the canonical `/user/*` route family.

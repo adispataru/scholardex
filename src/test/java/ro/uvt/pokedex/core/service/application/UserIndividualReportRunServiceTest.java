@@ -16,6 +16,7 @@ import ro.uvt.pokedex.core.repository.reporting.UserIndividualReportRunRepositor
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
 import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
+import ro.uvt.pokedex.core.service.application.model.ReportScopedIndividualReportComputation;
 
 import java.time.Instant;
 import java.util.List;
@@ -25,6 +26,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,12 +42,14 @@ class UserIndividualReportRunServiceTest {
     private UserService userService;
     @Mock
     private UserIndicatorResultService indicatorResultService;
+    @Mock
+    private UserReportFacade userReportFacade;
 
     private UserIndividualReportRunService service;
 
     @BeforeEach
     void setUp() {
-        service = new UserIndividualReportRunService(runRepository, reportRepository, userService, indicatorResultService);
+        service = new UserIndividualReportRunService(runRepository, reportRepository, userService, indicatorResultService, userReportFacade);
     }
 
     @Test
@@ -87,22 +91,28 @@ class UserIndividualReportRunServiceTest {
         user.setResearcherId("r-1");
         when(userService.getUserByEmail("u@uvt.ro")).thenReturn(Optional.of(user));
 
-        when(indicatorResultService.getOrCreateLatest("u@uvt.ro", "ind-1"))
-                .thenReturn(new IndicatorApplyResultDto(
-                        "res-1",
-                        "ind-1",
-                        "user/indicators-apply-publications",
-                        Map.of(),
-                        new IndicatorApplyResultDto.Summary(5.0, null, List.of(), List.of()),
-                        IndicatorApplyResultDto.Source.PERSISTED,
-                        Instant.now(),
-                        Instant.now(),
-                        0
-                ));
+        when(userReportFacade.computeReportScopedIndividualReport("u@uvt.ro", "rep-1"))
+                .thenReturn(Optional.of(new ReportScopedIndividualReportComputation(
+                        Map.of(indicator, 5.0),
+                        Map.of("ind-1", 5.0),
+                        Map.of(0, 5.0),
+                        Map.of("ind-1", new IndicatorApplyResultDto(
+                                null,
+                                "ind-1",
+                                "user/indicators-apply-publications",
+                                Map.of("total", "5.00"),
+                                new IndicatorApplyResultDto.Summary(5.0, null, List.of(), List.of()),
+                                IndicatorApplyResultDto.Source.COMPUTED,
+                                null,
+                                null,
+                                0
+                        ))
+                )));
 
         UserIndicatorResult snapshot = new UserIndicatorResult();
         snapshot.setId("snap-1");
-        when(indicatorResultService.createSnapshotFromLatest("u@uvt.ro", "ind-1", "rep-1")).thenReturn(snapshot);
+        when(indicatorResultService.createSnapshotFromComputed(eq("u@uvt.ro"), eq("ind-1"), eq("rep-1"), any(), eq(0)))
+                .thenReturn(snapshot);
 
         when(runRepository.save(any(UserIndividualReportRun.class))).thenAnswer(invocation -> {
             UserIndividualReportRun run = invocation.getArgument(0);
@@ -115,6 +125,7 @@ class UserIndividualReportRunServiceTest {
         assertTrue(dto.isPresent());
         assertEquals("run-2", dto.get().runId());
         assertEquals(5.0, dto.get().criteriaScores().get(0));
+        verify(indicatorResultService, never()).getOrCreateLatest(any(), any());
     }
 
     @Test
@@ -163,37 +174,43 @@ class UserIndividualReportRunServiceTest {
                         1
                 ));
 
-        when(indicatorResultService.getOrCreateLatest("u@uvt.ro", "ind-1"))
-                .thenReturn(new IndicatorApplyResultDto(
-                        "latest-1",
-                        "ind-1",
-                        "user/indicators-apply-publications",
-                        Map.of(),
-                        new IndicatorApplyResultDto.Summary(7.0, null, List.of(), List.of()),
-                        IndicatorApplyResultDto.Source.PERSISTED,
-                        Instant.now(),
-                        Instant.now(),
-                        1
-                ));
-        when(indicatorResultService.getOrCreateLatest("u@uvt.ro", "ind-2"))
-                .thenReturn(new IndicatorApplyResultDto(
-                        "latest-2",
-                        "ind-2",
-                        "user/indicators-apply-publications",
-                        Map.of(),
-                        new IndicatorApplyResultDto.Summary(3.0, null, List.of(), List.of()),
-                        IndicatorApplyResultDto.Source.PERSISTED,
-                        Instant.now(),
-                        Instant.now(),
-                        1
-                ));
+        when(userReportFacade.computeReportScopedIndividualReport("u@uvt.ro", "rep-1"))
+                .thenReturn(Optional.of(new ReportScopedIndividualReportComputation(
+                        Map.of(indicator1, 10.0, indicator2, 1.0),
+                        Map.of("ind-1", 10.0, "ind-2", 1.0),
+                        Map.of(0, 11.0),
+                        Map.of(
+                                "ind-1", new IndicatorApplyResultDto(
+                                        null,
+                                        "ind-1",
+                                        "user/indicators-apply-publications",
+                                        Map.of("total", "10.00"),
+                                        new IndicatorApplyResultDto.Summary(10.0, null, List.of(), List.of()),
+                                        IndicatorApplyResultDto.Source.COMPUTED,
+                                        null,
+                                        null,
+                                        0
+                                ),
+                                "ind-2", new IndicatorApplyResultDto(
+                                        null,
+                                        "ind-2",
+                                        "user/indicators-apply-publications",
+                                        Map.of("total", "1.00"),
+                                        new IndicatorApplyResultDto.Summary(1.0, null, List.of(), List.of()),
+                                        IndicatorApplyResultDto.Source.COMPUTED,
+                                        null,
+                                        null,
+                                        0
+                                )
+                        )
+                )));
 
         UserIndicatorResult snapshot1 = new UserIndicatorResult();
         snapshot1.setId("snap-1");
         UserIndicatorResult snapshot2 = new UserIndicatorResult();
         snapshot2.setId("snap-2");
-        when(indicatorResultService.createSnapshotFromLatest("u@uvt.ro", "ind-1", "rep-1")).thenReturn(snapshot1);
-        when(indicatorResultService.createSnapshotFromLatest("u@uvt.ro", "ind-2", "rep-1")).thenReturn(snapshot2);
+        when(indicatorResultService.createSnapshotFromComputed(eq("u@uvt.ro"), eq("ind-1"), eq("rep-1"), any(), eq(1))).thenReturn(snapshot1);
+        when(indicatorResultService.createSnapshotFromComputed(eq("u@uvt.ro"), eq("ind-2"), eq("rep-1"), any(), eq(1))).thenReturn(snapshot2);
 
         when(runRepository.save(any(UserIndividualReportRun.class))).thenAnswer(invocation -> {
             UserIndividualReportRun run = invocation.getArgument(0);
@@ -205,9 +222,12 @@ class UserIndividualReportRunServiceTest {
 
         assertTrue(dto.isPresent());
         assertEquals("run-3", dto.get().runId());
-        assertEquals(10.0, dto.get().criteriaScores().get(0));
+        assertEquals(11.0, dto.get().criteriaScores().get(0));
+        assertEquals(10.0, dto.get().indicatorScoresByIndicatorId().get("ind-1"));
+        assertEquals(1.0, dto.get().indicatorScoresByIndicatorId().get("ind-2"));
         verify(indicatorResultService).refreshLatest("u@uvt.ro", "ind-1");
         verify(indicatorResultService).refreshLatest("u@uvt.ro", "ind-2");
+        verify(indicatorResultService, never()).getOrCreateLatest(any(), any());
     }
 
     @Test

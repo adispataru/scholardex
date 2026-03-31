@@ -1,5 +1,6 @@
 package ro.uvt.pokedex.core.service.importing.scopus;
 
+import org.springframework.dao.DuplicateKeyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -172,9 +173,15 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
     @Override
     protected List<ScopusAuthorFact> loadSourceFacts(CanonicalBuildOptions options) {
         long startedAtNanos = System.nanoTime();
-        log.info("Scholardex author canonicalization source load started: mode=full-rescan");
-        List<ScopusAuthorFact> facts = new ArrayList<>(scopusAuthorFactRepository.findAll());
-        log.info("Scholardex author canonicalization source load completed: mode=full-rescan records={} elapsedMs={}",
+        String sourceBatchIdFilter = options == null ? null : options.sourceBatchIdFilter();
+        String mode = isBlank(sourceBatchIdFilter) ? "full-rescan" : "batch-filter";
+        log.info("Scholardex author canonicalization source load started: mode={} sourceBatchIdFilter={}", mode, sourceBatchIdFilter);
+        List<ScopusAuthorFact> facts = isBlank(sourceBatchIdFilter)
+                ? new ArrayList<>(scopusAuthorFactRepository.findAll())
+                : new ArrayList<>(scopusAuthorFactRepository.findBySourceBatchId(sourceBatchIdFilter));
+        log.info("Scholardex author canonicalization source load completed: mode={} sourceBatchIdFilter={} records={} elapsedMs={}",
+                mode,
+                sourceBatchIdFilter,
                 facts.size(),
                 nanosToMillis(System.nanoTime() - startedAtNanos));
         return facts;
@@ -366,8 +373,16 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
         context.lastConflictsWritten = context.pendingConflicts.size();
 
         if (!context.pendingAuthorFacts.isEmpty()) {
-            scholardexAuthorFactRepository.saveAll(context.pendingAuthorFacts.values());
-            context.lastAuthorFactWrites = context.pendingAuthorFacts.size();
+            try {
+                scholardexAuthorFactRepository.saveAll(context.pendingAuthorFacts.values());
+                context.lastAuthorFactWrites = context.pendingAuthorFacts.size();
+            } catch (DuplicateKeyException ex) {
+                log.warn("Scholardex author canonicalization chunk saveAll hit duplicate key; falling back to per-record recovery path for {} facts.",
+                        context.pendingAuthorFacts.size());
+                for (ScholardexAuthorFact fact : context.pendingAuthorFacts.values()) {
+                    recoverAuthorWrite(fact, context);
+                }
+            }
         }
         if (!context.pendingConflicts.isEmpty()) {
             identityConflictRepository.saveAll(context.pendingConflicts.values());
@@ -376,7 +391,7 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
         List<ScholardexSourceLinkService.SourceLinkUpsertCommand> sourceLinkCommands =
                 new ArrayList<>(context.pendingSourceLinkCommands.values());
         ScholardexSourceLinkService.BatchWriteResult sourceLinkResults =
-                sourceLinkService.batchUpsertWithState(sourceLinkCommands, context.sourceLinkCache, false);
+                sourceLinkService.batchUpsertWithState(sourceLinkCommands, context.sourceLinkCache, true);
         for (ScholardexSourceLinkService.SourceLinkBatchItemResult item : sourceLinkResults.results()) {
             if (!item.accepted()) {
                 continue;
@@ -398,7 +413,7 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
                         new ArrayList<>(context.pendingEdgeCommands.values()),
                         context.authorAffiliationEdgeByNaturalKey,
                         context.sourceLinkCache,
-                        false
+                        true
                 );
         context.lastEdgeWrites = edgeResult.accepted();
         context.lastConflictsWritten += edgeResult.conflicts();
@@ -708,6 +723,83 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
     private String buildCanonicalAffiliationFallbackId(String sourceToken, String sourceAffiliationId) {
         String normalizedSource = isBlank(sourceToken) ? "unknown" : sourceToken;
         return "saff_" + shortHash("source|" + normalizedSource + "|affiliation|" + normalizeToken(sourceAffiliationId));
+    }
+
+    private void recoverAuthorWrite(ScholardexAuthorFact fact, ChunkContext context) {
+        if (fact == null) {
+            return;
+        }
+        String sourceRecordId = normalizeBlank(fact.getSourceRecordId());
+        try {
+            scholardexAuthorFactRepository.save(fact);
+            context.lastAuthorFactWrites++;
+        } catch (DuplicateKeyException duplicateKeyException) {
+            Optional<ScholardexAuthorFact> existingBySourceId = sourceRecordId == null
+                    ? Optional.empty()
+                    : scholardexAuthorFactRepository.findByScopusAuthorIdsContains(sourceRecordId);
+            if (existingBySourceId.isEmpty()) {
+                throw duplicateKeyException;
+            }
+            ScholardexAuthorFact recovered = existingBySourceId.get();
+            mergeRecoveredAuthor(recovered, fact);
+            scholardexAuthorFactRepository.save(recovered);
+            context.lastAuthorFactWrites++;
+            context.authorByCanonicalId.put(recovered.getId(), recovered);
+            if (sourceRecordId != null) {
+                context.authorBySourceId.put(sourceRecordId, recovered);
+                rewritePendingAuthorSourceLinkCanonicalId(sourceRecordId, recovered.getId(), context);
+            }
+        }
+    }
+
+    private void mergeRecoveredAuthor(ScholardexAuthorFact target, ScholardexAuthorFact incoming) {
+        if (target == null || incoming == null) {
+            return;
+        }
+        String sourceRecordId = normalizeBlank(incoming.getSourceRecordId());
+        if (sourceRecordId != null) {
+            addUnique(target.getScopusAuthorIds(), sourceRecordId);
+        }
+        target.setDisplayName(incoming.getDisplayName());
+        target.setNameNormalized(incoming.getNameNormalized());
+        target.setAffiliationIds(incoming.getAffiliationIds());
+        target.setPendingAffiliationSourceIds(incoming.getPendingAffiliationSourceIds());
+        target.setSourceEventId(incoming.getSourceEventId());
+        target.setSource(incoming.getSource());
+        target.setSourceRecordId(incoming.getSourceRecordId());
+        target.setSourceBatchId(incoming.getSourceBatchId());
+        target.setSourceCorrelationId(incoming.getSourceCorrelationId());
+        target.setUpdatedAt(Instant.now());
+    }
+
+    private void rewritePendingAuthorSourceLinkCanonicalId(
+            String sourceRecordId,
+            String canonicalId,
+            ChunkContext context
+    ) {
+        if (sourceRecordId == null || canonicalId == null) {
+            return;
+        }
+        context.pendingSourceLinkCommands.replaceAll((key, command) -> {
+            if (command == null || command.entityType() != ScholardexEntityType.AUTHOR) {
+                return command;
+            }
+            if (!sourceRecordId.equals(normalizeBlank(command.sourceRecordId()))) {
+                return command;
+            }
+            return new ScholardexSourceLinkService.SourceLinkUpsertCommand(
+                    command.entityType(),
+                    command.source(),
+                    command.sourceRecordId(),
+                    canonicalId,
+                    command.targetState(),
+                    command.reason(),
+                    command.sourceEventId(),
+                    command.sourceBatchId(),
+                    command.sourceCorrelationId(),
+                    command.explicitReplayAttempt()
+            );
+        });
     }
 
     private String buildAuthorAffiliationSourceRecordId(String sourceAuthorRecordId, String sourceAffiliationId) {

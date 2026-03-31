@@ -9,11 +9,15 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
+import org.springframework.test.util.ReflectionTestUtils;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusAuthorFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusCitationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEvent;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
@@ -387,5 +391,117 @@ class ScopusFactBuilderServiceTest {
         assertEquals(1, result.getProcessedCount());
         verify(importEventRepository).findByBatchId("b-target");
         verify(importEventRepository, never()).findAll();
+    }
+
+    @Test
+    void buildFactsFromImportEventsRefreshesBatchLineageForUnchangedPublicationAndDimensions() throws Exception {
+        ScopusImportEvent publicationEvent = new ScopusImportEvent();
+        publicationEvent.setId("ev-replay");
+        publicationEvent.setEntityType(ScopusImportEntityType.PUBLICATION);
+        publicationEvent.setSource("SCOPUS_JSON_UPLOAD");
+        publicationEvent.setSourceRecordId("2-s2.0-105014402872");
+        publicationEvent.setBatchId("b-replay");
+        publicationEvent.setCorrelationId("corr-replay");
+        publicationEvent.setPayloadHash("pub-same-hash");
+        publicationEvent.setPayload(mapper.writeValueAsString(java.util.Map.ofEntries(
+                java.util.Map.entry("eid", "2-s2.0-105014402872"),
+                java.util.Map.entry("title", "Replay Paper"),
+                java.util.Map.entry("author_ids", "55637349100"),
+                java.util.Map.entry("author_names", "Spataru, Adrian"),
+                java.util.Map.entry("author_afids", "60024417"),
+                java.util.Map.entry("afid", "60024417"),
+                java.util.Map.entry("affilname", "UVT"),
+                java.util.Map.entry("affiliation_city", "Timisoara"),
+                java.util.Map.entry("affiliation_country", "RO"),
+                java.util.Map.entry("source_id", "forum-1"),
+                java.util.Map.entry("publicationName", "Forum 1"),
+                java.util.Map.entry("issn", "12345678"),
+                java.util.Map.entry("eIssn", "87654321"),
+                java.util.Map.entry("aggregationType", "Journal")
+        )));
+
+        ScopusPublicationFact existingPublication = new ScopusPublicationFact();
+        existingPublication.setEid("2-s2.0-105014402872");
+        existingPublication.setLastPayloadHash("pub-same-hash");
+        existingPublication.setSourceBatchId("b-old");
+
+        ScopusForumFact existingForum = new ScopusForumFact();
+        existingForum.setSourceId("forum-1");
+        existingForum.setLastPayloadHash(hashKey("forum", "forum-1", "Forum 1", "12345678", "87654321", "Journal"));
+        existingForum.setSourceBatchId("b-old");
+
+        ScopusAuthorFact existingAuthor = new ScopusAuthorFact();
+        existingAuthor.setAuthorId("55637349100");
+        existingAuthor.setLastPayloadHash(hashKey("author", "55637349100", "Spataru, Adrian", "60024417"));
+        existingAuthor.setSourceBatchId("b-old");
+
+        ScopusAffiliationFact existingAffiliation = new ScopusAffiliationFact();
+        existingAffiliation.setAfid("60024417");
+        existingAffiliation.setLastPayloadHash(hashKey("affiliation", "60024417", "UVT", "Timisoara", "RO"));
+        existingAffiliation.setSourceBatchId("b-old");
+
+        when(importEventRepository.findByBatchId("b-replay")).thenReturn(List.of(publicationEvent));
+        when(publicationFactRepository.findByEidIn(anyCollection())).thenReturn(List.of(existingPublication));
+        when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of(existingForum));
+        when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of(existingAuthor));
+        when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of(existingAffiliation));
+        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
+
+        ImportProcessingResult result = service.buildFactsFromImportEvents("b-replay");
+
+        assertEquals(1, result.getProcessedCount());
+        assertEquals(1, result.getSkippedCount());
+
+        ArgumentCaptor<java.util.Collection<ScopusPublicationFact>> publicationCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
+        ArgumentCaptor<java.util.Collection<ScopusForumFact>> forumCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
+        ArgumentCaptor<java.util.Collection<ScopusAuthorFact>> authorCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
+        ArgumentCaptor<java.util.Collection<ScopusAffiliationFact>> affiliationCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(publicationFactRepository).saveAll(publicationCaptor.capture());
+        verify(forumFactRepository).saveAll(forumCaptor.capture());
+        verify(authorFactRepository).saveAll(authorCaptor.capture());
+        verify(affiliationFactRepository).saveAll(affiliationCaptor.capture());
+
+        assertEquals("b-replay", publicationCaptor.getValue().iterator().next().getSourceBatchId());
+        assertEquals("b-replay", forumCaptor.getValue().iterator().next().getSourceBatchId());
+        assertEquals("b-replay", authorCaptor.getValue().iterator().next().getSourceBatchId());
+        assertEquals("b-replay", affiliationCaptor.getValue().iterator().next().getSourceBatchId());
+    }
+
+    @Test
+    void buildFactsFromImportEventsRefreshesBatchLineageForUnchangedCitation() throws Exception {
+        ScopusImportEvent citationEvent = new ScopusImportEvent();
+        citationEvent.setId("ev-citation");
+        citationEvent.setEntityType(ScopusImportEntityType.CITATION);
+        citationEvent.setSource("SCOPUS_JSON_UPLOAD");
+        citationEvent.setSourceRecordId("2-s2.0-105014402872->2-s2.0-105000527065");
+        citationEvent.setBatchId("b-replay");
+        citationEvent.setCorrelationId("corr-citation");
+        citationEvent.setPayloadHash("citation-same-hash");
+        citationEvent.setPayload(mapper.writeValueAsString(java.util.Map.of(
+                "citedEid", "2-s2.0-105014402872",
+                "citingEid", "2-s2.0-105000527065"
+        )));
+
+        ScopusCitationFact existingCitation = new ScopusCitationFact();
+        existingCitation.setCitedEid("2-s2.0-105014402872");
+        existingCitation.setCitingEid("2-s2.0-105000527065");
+        existingCitation.setLastPayloadHash("citation-same-hash");
+        existingCitation.setSourceBatchId("b-old");
+
+        when(importEventRepository.findByBatchId("b-replay")).thenReturn(List.of(citationEvent));
+        when(citationFactRepository.findByCitedEidInAndCitingEidIn(anyCollection(), anyCollection())).thenReturn(List.of(existingCitation));
+
+        ImportProcessingResult result = service.buildFactsFromImportEvents("b-replay");
+
+        assertEquals(1, result.getProcessedCount());
+        assertEquals(1, result.getSkippedCount());
+
+        ArgumentCaptor<java.util.Collection<ScopusCitationFact>> citationCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(citationFactRepository).saveAll(citationCaptor.capture());
+        assertEquals("b-replay", citationCaptor.getValue().iterator().next().getSourceBatchId());
+    }
+
+    private String hashKey(String... values) {
+        return ReflectionTestUtils.invokeMethod(service, "hashKey", (Object) values);
     }
 }

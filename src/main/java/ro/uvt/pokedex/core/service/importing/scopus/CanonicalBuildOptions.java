@@ -4,16 +4,17 @@ public record CanonicalBuildOptions(
         Integer chunkSizeOverride,
         Integer startBatchOverride,
         boolean useCheckpoint,
+        String sourceBatchIdFilter,
         String sourceVersionOverride,
         boolean reconcileSourceLinks,
         boolean reconcileEdges
 ) {
 
     public static CanonicalBuildOptions defaults() {
-        return new CanonicalBuildOptions(null, null, true, null, false, false);
+        return new CanonicalBuildOptions(null, null, true, null, null, false, false);
     }
 
     public static CanonicalBuildOptions noCheckpoint() {
-        return new CanonicalBuildOptions(null, null, false, null, false, false);
+        return new CanonicalBuildOptions(null, null, false, null, null, false, false);
     }
 }

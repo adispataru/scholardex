@@ -14,5 +14,6 @@ public interface ScholardexAuthorshipFactRepository extends MongoRepository<Scho
             String source
     );
     List<ScholardexAuthorshipFact> findByPublicationId(String publicationId);
+    List<ScholardexAuthorshipFact> findByPublicationIdIn(Collection<String> publicationIds);
     List<ScholardexAuthorshipFact> findByAuthorIdIn(Collection<String> authorIds);
 }

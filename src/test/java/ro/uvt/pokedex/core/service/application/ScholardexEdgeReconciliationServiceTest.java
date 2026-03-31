@@ -18,6 +18,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -104,5 +105,28 @@ class ScholardexEdgeReconciliationServiceTest {
         assertEquals(2, result.getUpdatedCount());
         verify(authorshipFactRepository).delete(staleEdge);
         verify(edgeWriterService).upsertAuthorshipEdge(any());
+    }
+
+    @Test
+    void reconcileEdgesForBatchUsesBatchScopedCanonicalSources() {
+        ScholardexEdgeReconciliationService service = new ScholardexEdgeReconciliationService(
+                publicationFactRepository,
+                authorFactRepository,
+                authorshipFactRepository,
+                authorAffiliationFactRepository,
+                identityConflictRepository,
+                edgeWriterService
+        );
+
+        when(publicationFactRepository.findBySourceBatchId("upload-batch-7")).thenReturn(List.of());
+        when(authorFactRepository.findBySourceBatchId("upload-batch-7")).thenReturn(List.of());
+
+        ImportProcessingResult result = service.reconcileEdges("upload-batch-7");
+
+        assertEquals(0, result.getErrorCount());
+        verify(publicationFactRepository).findBySourceBatchId("upload-batch-7");
+        verify(authorFactRepository).findBySourceBatchId("upload-batch-7");
+        verify(publicationFactRepository, never()).findAll();
+        verify(authorFactRepository, never()).findAll();
     }
 }

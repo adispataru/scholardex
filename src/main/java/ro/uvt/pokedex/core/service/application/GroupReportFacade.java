@@ -7,7 +7,6 @@ import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.*;
 import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Citation;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
@@ -242,7 +241,8 @@ public class GroupReportFacade {
             long publicationLoadStartNanos = System.nanoTime();
             List<String> authorIds = authors.stream().map(Author::getId).toList();
             List<Publication> publications = scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
-            if (!"ANY".equals(report.getIndividualAffiliation().getName())) {
+            if (report.getIndividualAffiliation() != null
+                    && !"ANY".equals(report.getIndividualAffiliation().getName())) {
                 publications = publications.stream()
                         .filter(p -> report.getIndividualAffiliation().getScopusAffiliations().stream()
                                 .anyMatch(aff -> p.getAffiliations().contains(aff.getAfid())))
@@ -262,15 +262,20 @@ public class GroupReportFacade {
                 timings.activityLoadNanos += (System.nanoTime() - activityLoadStartNanos);
             }
 
-            CitationContext citationContext = CitationContext.empty();
+            ReportScopedIndicatorScoringSupport.CitationContext citationContext =
+                    ReportScopedIndicatorScoringSupport.CitationContext.empty();
             Map<Indicator, Map<String, Score>> citationBaseScoresByIndicator = Map.of();
             if (hasCitationIndicators) {
                 long citationLoadStartNanos = System.nanoTime();
-                citationContext = prepareCitationContext(publications);
+                citationContext = ReportScopedIndicatorScoringSupport.prepareCitationContext(publications, scholardexProjectionReadService);
                 timings.citationLoadNanos += (System.nanoTime() - citationLoadStartNanos);
                 timings.citationFacts += citationContext.citationFactsCount();
                 long citationBasePrecomputeStartNanos = System.nanoTime();
-                citationBaseScoresByIndicator = precomputeCitationBaseScoresByIndicator(indicators, citationContext);
+                citationBaseScoresByIndicator = ReportScopedIndicatorScoringSupport.precomputeCitationBaseScoresByIndicator(
+                        indicators,
+                        citationContext,
+                        scientificProductionService
+                );
                 timings.citationBasePrecomputeNanos += (System.nanoTime() - citationBasePrecomputeStartNanos);
             }
 
@@ -298,13 +303,14 @@ public class GroupReportFacade {
                     timings.publicationScoringNanos += (System.nanoTime() - indicatorScoringStartNanos);
                 } else if (indicator.getOutputType().equals(Indicator.Type.CITATIONS)
                         || indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF)) {
-                    CitationScoreResult citationScoreResult =
-                            calculateCitationScore(
+                    ReportScopedIndicatorScoringSupport.CitationScoreResult citationScoreResult =
+                            ReportScopedIndicatorScoringSupport.calculateCitationScore(
                                     indicator,
                                     publications,
                                     researcherAuthorIds,
                                     citationContext,
-                                    citationBaseScoresByIndicator.getOrDefault(indicator, Map.of())
+                                    citationBaseScoresByIndicator.getOrDefault(indicator, Map.of()),
+                                    scientificProductionService
                             );
                     indicatorScore = citationScoreResult.score();
                     timings.selectorNanos += citationScoreResult.selectorNanos();
@@ -381,122 +387,11 @@ public class GroupReportFacade {
         return ReportingComputationSupport.calculatePublicationScore(indicator, authors, publications, scientificProductionService);
     }
 
-    private CitationScoreResult calculateCitationScore(
-            Indicator indicator,
-            List<Publication> publications,
-            Set<String> researcherAuthorIds,
-            CitationContext citationContext,
-            Map<String, Score> cachedCitationBaseScoresByCitingPublicationId
-    ) {
-        boolean excludeSelf = indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF);
-        Map<String, Map<String, Score>> scores = new HashMap<>();
-        long selectorStartNanos = 0L;
-
-        for (Publication pub : publications) {
-            List<Publication> citations = citationContext.citingPublicationsByCitedPublicationId()
-                    .getOrDefault(pub.getId(), List.of());
-            if (excludeSelf) {
-                citations = citations.stream()
-                        .filter(citing -> !sharesAnyAuthor(citing, researcherAuthorIds))
-                        .toList();
-            }
-
-            Map<String, Score> citScores = scientificProductionService.calculateScientificImpactScore(
-                    pub,
-                    citations,
-                    indicator,
-                    cachedCitationBaseScoresByCitingPublicationId
-            );
-            scores.put(pub.getTitle(), citScores);
-        }
-
-        selectorStartNanos = System.nanoTime();
-        applyFinalSelector(indicator, scores);
-        long selectorNanos = System.nanoTime() - selectorStartNanos;
-        double score = scores.values().stream().map(value -> {
-            double t = 0.0;
-            value.remove("total");
-            for (Score entryScore : value.values()) {
-                t += entryScore.getAuthorScore();
-            }
-            return t;
-        }).reduce(0.0, Double::sum);
-        return new CitationScoreResult(score, selectorNanos);
-    }
-
-    private void applyFinalSelector(Indicator indicator, Map<String, Map<String, Score>> scores) {
-        ReportingComputationSupport.applyFinalSelector(indicator, scores);
-    }
-
     private String researcherDisplayName(Researcher researcher) {
         String first = researcher.getFirstName() == null ? "" : researcher.getFirstName().trim();
         String last = researcher.getLastName() == null ? "" : researcher.getLastName().trim();
         String full = (first + " " + last).trim();
         return full.isBlank() ? researcher.getId() : full;
-    }
-
-    private CitationContext prepareCitationContext(List<Publication> publications) {
-        List<String> pubIds = publications.stream().map(Publication::getId).toList();
-        List<Citation> allCitations = scholardexProjectionReadService.findAllCitationsByCitedIdIn(pubIds);
-        List<String> citationIds = allCitations.stream().map(Citation::getCitingId).toList();
-        List<Publication> citingPublications = scholardexProjectionReadService.findAllPublicationsByIdIn(citationIds);
-        Map<String, Publication> citingPublicationsById = new HashMap<>();
-        for (Publication publication : citingPublications) {
-            if (publication != null && publication.getId() != null) {
-                citingPublicationsById.putIfAbsent(publication.getId(), publication);
-            }
-        }
-        Map<String, List<Publication>> citingPublicationsByCitedPublicationId = new HashMap<>();
-        for (Citation citation : allCitations) {
-            if (citation == null) {
-                continue;
-            }
-            Publication citing = citingPublicationsById.get(citation.getCitingId());
-            if (citing == null || citation.getCitedId() == null) {
-                continue;
-            }
-            citingPublicationsByCitedPublicationId
-                    .computeIfAbsent(citation.getCitedId(), ignored -> new ArrayList<>())
-                    .add(citing);
-        }
-        return new CitationContext(citingPublicationsById, citingPublicationsByCitedPublicationId, allCitations.size());
-    }
-
-    private Map<Indicator, Map<String, Score>> precomputeCitationBaseScoresByIndicator(
-            List<Indicator> indicators,
-            CitationContext citationContext
-    ) {
-        if (indicators == null || indicators.isEmpty()) {
-            return Map.of();
-        }
-        List<Publication> uniqueCitingPublications = new ArrayList<>(citationContext.citingPublicationsById().values());
-        if (uniqueCitingPublications.isEmpty()) {
-            return Map.of();
-        }
-        Map<Indicator, Map<String, Score>> cached = new HashMap<>();
-        for (Indicator indicator : indicators) {
-            if (indicator == null) {
-                continue;
-            }
-            if (!Indicator.Type.CITATIONS.equals(indicator.getOutputType())
-                    && !Indicator.Type.CITATIONS_EXCLUDE_SELF.equals(indicator.getOutputType())) {
-                continue;
-            }
-            cached.put(indicator, scientificProductionService.precomputeCitationBaseScores(uniqueCitingPublications, indicator));
-        }
-        return cached;
-    }
-
-    private boolean sharesAnyAuthor(Publication publication, Set<String> authorIds) {
-        if (publication == null || publication.getAuthors() == null || publication.getAuthors().isEmpty() || authorIds.isEmpty()) {
-            return false;
-        }
-        for (String authorId : publication.getAuthors()) {
-            if (authorIds.contains(authorId)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private long nanosToMs(long nanos) {
@@ -526,22 +421,6 @@ public class GroupReportFacade {
             long activityIndicators,
             long thresholdBuildMs
     ) {
-    }
-
-    private record CitationScoreResult(
-            double score,
-            long selectorNanos
-    ) {
-    }
-
-    private record CitationContext(
-            Map<String, Publication> citingPublicationsById,
-            Map<String, List<Publication>> citingPublicationsByCitedPublicationId,
-            int citationFactsCount
-    ) {
-        static CitationContext empty() {
-            return new CitationContext(Map.of(), Map.of(), 0);
-        }
     }
 
     private static class ComputeTimingsAccumulator {

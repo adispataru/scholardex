@@ -24,8 +24,10 @@ import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.StandardCopyOption;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
@@ -43,6 +45,7 @@ import java.util.regex.Pattern;
 public class WosImportEventIngestionService {
     private static final Logger log = LoggerFactory.getLogger(WosImportEventIngestionService.class);
     private static final Pattern YEAR_FROM_FILENAME = Pattern.compile(".*?(\\d{4}).*");
+    private static final String TEMP_FILE_PREFIX = "wos-upload-";
 
     private final WosImportEventRepository importEventRepository;
     private final ObjectMapper objectMapper;
@@ -139,6 +142,32 @@ public class WosImportEventIngestionService {
         return new WosIngestionPreview(filesScanned, plannedEvents, errors, List.copyOf(samples));
     }
 
+    public String resolveEffectiveSourceVersion(String sourceVersionOverride, String sourceName) {
+        if (sourceVersionOverride != null && !sourceVersionOverride.isBlank()) {
+            return sourceVersionOverride.trim();
+        }
+        return inferSourceVersion(sourceName);
+    }
+
+    public ImportProcessingResult ingestUploadedFile(
+            ro.uvt.pokedex.core.service.application.IncrementalUpdateUploadFacade.WosUploadSourceType sourceType,
+            String originalFilename,
+            String sourceVersionOverride,
+            byte[] bytes
+    ) {
+        if (sourceType == null) {
+            throw new IllegalArgumentException("WoS upload source type is required.");
+        }
+        if (originalFilename == null || originalFilename.isBlank()) {
+            throw new IllegalArgumentException("Uploaded WoS filename is required.");
+        }
+        String effectiveSourceVersion = resolveEffectiveSourceVersion(sourceVersionOverride, originalFilename);
+        return switch (sourceType) {
+            case OFFICIAL_JSON -> ingestUploadedOfficialJson(originalFilename, effectiveSourceVersion, bytes);
+            case GOVERNMENT_EXCEL -> ingestUploadedGovernmentExcel(originalFilename, effectiveSourceVersion, bytes);
+        };
+    }
+
     private void ingestGovernmentAisRisExcel(File dataDir, String sourceVersionOverride, ImportProcessingResult total) {
         File[] files = dataDir.listFiles((d, name) -> name.matches("AIS_\\d{4}\\.xlsx*") || name.matches("RIS_\\d{4}\\.xlsx*"));
         if (files == null) {
@@ -229,6 +258,100 @@ public class WosImportEventIngestionService {
                     nanosToMillis(totalNs),
                     eventsPerSecond(fileResult.getProcessedCount(), totalNs));
         }
+    }
+
+    private ImportProcessingResult ingestUploadedGovernmentExcel(
+            String originalFilename,
+            String sourceVersion,
+            byte[] bytes
+    ) {
+        ImportProcessingResult fileResult = new ImportProcessingResult(10);
+        ImportProcessingResult total = new ImportProcessingResult(10);
+        String metricType = extractGovernmentMetricType(originalFilename);
+        String year = extractYear(originalFilename);
+        long fileStartedAtNanos = System.nanoTime();
+        long readExistingNs = 0L;
+        long parseSanitizeNs = 0L;
+        long checksumNormalizeNs = 0L;
+        long persistBatchNs = 0L;
+        long flushCount = 0L;
+        Path tempFile = null;
+        try {
+            tempFile = createTempUploadFile(originalFilename, bytes);
+            long readExistingStartedAtNanos = System.nanoTime();
+            Map<String, WosImportEvent> existingByRowItem =
+                    loadExistingByRowItem(WosSourceType.GOV_AIS_RIS, originalFilename, sourceVersion);
+            readExistingNs += System.nanoTime() - readExistingStartedAtNanos;
+            List<WosImportEvent> toPersist = new ArrayList<>();
+            try (Workbook workbook = openWorkbook(tempFile.toFile(), metricType)) {
+                Sheet sheet = workbook.getSheetAt(0);
+                FormulaEvaluator formulaEvaluator = workbook.getCreationHelper().createFormulaEvaluator();
+                DataFormatter dataFormatter = new DataFormatter(Locale.ROOT);
+                int numRows = sheet.getPhysicalNumberOfRows();
+                for (int i = 1; i < numRows; i++) {
+                    long parseStartedAtNanos = System.nanoTime();
+                    Row row = sheet.getRow(i);
+                    if (row == null) {
+                        continue;
+                    }
+                    Map<String, Object> payload = new LinkedHashMap<>();
+                    payload.put("metricType", metricType);
+                    payload.put("year", year);
+                    payload.put("cells", extractCells(row, formulaEvaluator, dataFormatter));
+                    if (shouldSkipGovEvent(payload, fileResult, total, originalFilename, Integer.toString(i))) {
+                        parseSanitizeNs += System.nanoTime() - parseStartedAtNanos;
+                        continue;
+                    }
+                    parseSanitizeNs += System.nanoTime() - parseStartedAtNanos;
+                    long processStartedAtNanos = System.nanoTime();
+                    processEventFast(
+                            WosSourceType.GOV_AIS_RIS,
+                            originalFilename,
+                            sourceVersion,
+                            Integer.toString(i),
+                            "excel-row",
+                            payload,
+                            existingByRowItem,
+                            toPersist,
+                            fileResult,
+                            total
+                    );
+                    checksumNormalizeNs += System.nanoTime() - processStartedAtNanos;
+                    long flushDurationNs = flushBatchIfNeeded(toPersist);
+                    persistBatchNs += flushDurationNs;
+                    if (flushDurationNs > 0) {
+                        flushCount++;
+                    }
+                    maybeLogFileHeartbeat(originalFilename, fileResult, fileStartedAtNanos, persistBatchNs, flushCount);
+                }
+                long flushDurationNs = flushBatch(toPersist);
+                persistBatchNs += flushDurationNs;
+            }
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Failed to parse uploaded WoS government Excel file.", e);
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to ingest uploaded WoS government Excel file.", e);
+        } finally {
+            deleteTempFileQuietly(tempFile);
+        }
+        long totalNs = System.nanoTime() - fileStartedAtNanos;
+        log.info("WoS uploaded GOV file summary for {}: processed={}, imported={}, updated={}, skipped={}, errors={}, sample={}, timingsMs[readExisting={}, parse+sanitize={}, checksum+normalize={}, persistBatch={}, total={}], throughputPerSec={}",
+                originalFilename,
+                fileResult.getProcessedCount(),
+                fileResult.getImportedCount(),
+                fileResult.getUpdatedCount(),
+                fileResult.getSkippedCount(),
+                fileResult.getErrorCount(),
+                fileResult.getErrorsSample(),
+                nanosToMillis(readExistingNs),
+                nanosToMillis(parseSanitizeNs),
+                nanosToMillis(checksumNormalizeNs),
+                nanosToMillis(persistBatchNs),
+                nanosToMillis(totalNs),
+                eventsPerSecond(fileResult.getProcessedCount(), totalNs));
+        return total;
     }
 
     private void ingestOfficialWosJson(File dataDir, String sourceVersionOverride, ImportProcessingResult total) {
@@ -326,6 +449,92 @@ public class WosImportEventIngestionService {
                     nanosToMillis(totalNs),
                     eventsPerSecond(fileResult.getProcessedCount(), totalNs));
         }
+    }
+
+    private ImportProcessingResult ingestUploadedOfficialJson(
+            String originalFilename,
+            String sourceVersion,
+            byte[] bytes
+    ) {
+        ImportProcessingResult fileResult = new ImportProcessingResult(10);
+        ImportProcessingResult total = new ImportProcessingResult(10);
+        long fileStartedAtNanos = System.nanoTime();
+        long readExistingNs = 0L;
+        long parseSanitizeNs = 0L;
+        long checksumNormalizeNs = 0L;
+        long persistBatchNs = 0L;
+        long flushCount = 0L;
+        try {
+            long readExistingStartedAtNanos = System.nanoTime();
+            Map<String, WosImportEvent> existingByRowItem =
+                    loadExistingByRowItem(WosSourceType.OFFICIAL_WOS_EXTRACT, originalFilename, sourceVersion);
+            readExistingNs += System.nanoTime() - readExistingStartedAtNanos;
+            List<WosImportEvent> toPersist = new ArrayList<>();
+            long parseStartedAtNanos = System.nanoTime();
+            JsonNode root = objectMapper.readTree(bytes);
+            parseSanitizeNs += System.nanoTime() - parseStartedAtNanos;
+            if (!root.isArray()) {
+                throw new IllegalArgumentException("Uploaded WoS official JSON must contain a JSON array.");
+            }
+            Iterator<JsonNode> iterator = root.elements();
+            int idx = 0;
+            while (iterator.hasNext()) {
+                long sanitizeStartedAtNanos = System.nanoTime();
+                JsonNode item = iterator.next();
+                JsonNode sanitizedItem = sanitizeOfficialJsonIdentity(item);
+                parseSanitizeNs += System.nanoTime() - sanitizeStartedAtNanos;
+                if (sanitizedItem == null) {
+                    markIdentitySkipped(fileResult, total, originalFilename, Integer.toString(idx));
+                    idx++;
+                    continue;
+                }
+                long processStartedAtNanos = System.nanoTime();
+                processEventFast(
+                        WosSourceType.OFFICIAL_WOS_EXTRACT,
+                        originalFilename,
+                        sourceVersion,
+                        Integer.toString(idx),
+                        "json-item",
+                        sanitizedItem,
+                        existingByRowItem,
+                        toPersist,
+                        fileResult,
+                        total
+                );
+                checksumNormalizeNs += System.nanoTime() - processStartedAtNanos;
+                long flushDurationNs = flushBatchIfNeeded(toPersist);
+                persistBatchNs += flushDurationNs;
+                if (flushDurationNs > 0) {
+                    flushCount++;
+                }
+                maybeLogFileHeartbeat(originalFilename, fileResult, fileStartedAtNanos, persistBatchNs, flushCount);
+                idx++;
+            }
+            long flushDurationNs = flushBatch(toPersist);
+            persistBatchNs += flushDurationNs;
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Failed to parse uploaded WoS official JSON file.", e);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to ingest uploaded WoS official JSON file.", e);
+        }
+        long totalNs = System.nanoTime() - fileStartedAtNanos;
+        log.info("WoS uploaded official JSON summary for {}: processed={}, imported={}, updated={}, skipped={}, errors={}, sample={}, timingsMs[readExisting={}, parse+sanitize={}, checksum+normalize={}, persistBatch={}, total={}], throughputPerSec={}",
+                originalFilename,
+                fileResult.getProcessedCount(),
+                fileResult.getImportedCount(),
+                fileResult.getUpdatedCount(),
+                fileResult.getSkippedCount(),
+                fileResult.getErrorCount(),
+                fileResult.getErrorsSample(),
+                nanosToMillis(readExistingNs),
+                nanosToMillis(parseSanitizeNs),
+                nanosToMillis(checksumNormalizeNs),
+                nanosToMillis(persistBatchNs),
+                nanosToMillis(totalNs),
+                eventsPerSecond(fileResult.getProcessedCount(), totalNs));
+        return total;
     }
 
     private void processEventFast(
@@ -567,6 +776,41 @@ public class WosImportEventIngestionService {
     private String inferSourceVersion(String sourceName) {
         String year = extractYear(sourceName);
         return "v" + year;
+    }
+
+    private String extractGovernmentMetricType(String originalFilename) {
+        String normalized = originalFilename == null ? "" : originalFilename.trim().toUpperCase(Locale.ROOT);
+        if (normalized.startsWith("AIS_")) {
+            return "AIS";
+        }
+        if (normalized.startsWith("RIS_")) {
+            return "RIS";
+        }
+        throw new IllegalArgumentException("WoS government Excel filename must start with AIS_ or RIS_.");
+    }
+
+    private Path createTempUploadFile(String originalFilename, byte[] bytes) throws IOException {
+        String suffix = "";
+        if (originalFilename != null) {
+            int dotIndex = originalFilename.lastIndexOf('.');
+            if (dotIndex >= 0) {
+                suffix = originalFilename.substring(dotIndex);
+            }
+        }
+        Path tempFile = Files.createTempFile(TEMP_FILE_PREFIX, suffix);
+        Files.write(tempFile, bytes);
+        return tempFile;
+    }
+
+    private void deleteTempFileQuietly(Path tempFile) {
+        if (tempFile == null) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(tempFile);
+        } catch (IOException e) {
+            log.warn("Failed to delete WoS upload temp file {}", tempFile, e);
+        }
     }
 
     private Map<String, Object> extractCells(Row row, FormulaEvaluator formulaEvaluator, DataFormatter dataFormatter) {

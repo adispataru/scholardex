@@ -236,6 +236,12 @@
             <span>Initialization</span>
         </a>
     </li>
+    <li class="nav-item" th:classappend="${activeSection} == 'incremental-updates' ? 'active' : ''">
+        <a class="nav-link" th:href="@{/admin/incremental-updates}">
+            <i class="fa-solid fa-fw fa-upload"></i>
+            <span>Incremental Updates</span>
+        </a>
+    </li>
     <li class="nav-item" th:classappend="${activeSection} == 'conflicts' ? 'active' : ''">
         <a class="nav-link" th:href="@{/admin/conflicts}">
             <i class="fa-solid fa-fw fa-triangle-exclamation"></i>

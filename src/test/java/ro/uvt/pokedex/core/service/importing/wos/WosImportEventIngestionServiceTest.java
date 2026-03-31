@@ -25,6 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -215,6 +216,100 @@ class WosImportEventIngestionServiceTest {
         JsonNode payload = new ObjectMapper().readTree(persisted.getPayload());
         assertEquals("1234-5678", payload.path("issn").asText());
         assertTrue(payload.path("eissn").isNull());
+    }
+
+    @Test
+    void ingestUploadedOfficialJsonCreatesAndUpdatesEventsUsingUploadedFilename() throws Exception {
+        EventStore store = new EventStore();
+        WosImportEventRepository repository = repositoryMock(store);
+        WosImportEventIngestionService service = newService(repository);
+
+        ImportProcessingResult first = service.ingestUploadedFile(
+                ro.uvt.pokedex.core.service.application.IncrementalUpdateUploadFacade.WosUploadSourceType.OFFICIAL_JSON,
+                "journals-SCIE-year-2024.json",
+                null,
+                """
+                        [
+                          {"journalTitle":"Journal A","year":2024,"edition":"SCIE","issn":"1234-5678","articleInfluenceScore":1.2,"categoryName":"ACOUSTICS"}
+                        ]
+                        """.getBytes()
+        );
+
+        assertEquals(1, first.getImportedCount());
+        WosImportEvent initial = store.get(WosSourceType.OFFICIAL_WOS_EXTRACT, "journals-SCIE-year-2024.json", "v2024", "0");
+        assertNotNull(initial);
+
+        ImportProcessingResult second = service.ingestUploadedFile(
+                ro.uvt.pokedex.core.service.application.IncrementalUpdateUploadFacade.WosUploadSourceType.OFFICIAL_JSON,
+                "journals-SCIE-year-2024.json",
+                null,
+                """
+                        [
+                          {"journalTitle":"Journal A Updated","year":2024,"edition":"SCIE","issn":"1234-5678","articleInfluenceScore":1.5,"categoryName":"ACOUSTICS"}
+                        ]
+                        """.getBytes()
+        );
+
+        assertEquals(1, second.getUpdatedCount());
+        assertEquals(1, store.list(WosSourceType.OFFICIAL_WOS_EXTRACT, "journals-SCIE-year-2024.json", "v2024").size());
+    }
+
+    @Test
+    void ingestUploadedGovernmentExcelCreatesEventsAndHonorsExplicitSourceVersion() throws Exception {
+        Path file = Files.createTempFile("AIS_2024-upload", ".xlsx");
+        createSampleExcel(file, 1.1);
+        byte[] bytes = Files.readAllBytes(file);
+
+        EventStore store = new EventStore();
+        WosImportEventRepository repository = repositoryMock(store);
+        WosImportEventIngestionService service = newService(repository);
+
+        ImportProcessingResult result = service.ingestUploadedFile(
+                ro.uvt.pokedex.core.service.application.IncrementalUpdateUploadFacade.WosUploadSourceType.GOVERNMENT_EXCEL,
+                "AIS_2024.xlsx",
+                "workflow-2026",
+                bytes
+        );
+
+        assertEquals(2, result.getImportedCount());
+        assertEquals(2, store.list(WosSourceType.GOV_AIS_RIS, "AIS_2024.xlsx", "workflow-2026").size());
+    }
+
+    @Test
+    void ingestUploadedFileUsesUnknownFallbackSourceVersionWhenYearMissing() {
+        EventStore store = new EventStore();
+        WosImportEventRepository repository = repositoryMock(store);
+        WosImportEventIngestionService service = newService(repository);
+
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> service.ingestUploadedFile(
+                ro.uvt.pokedex.core.service.application.IncrementalUpdateUploadFacade.WosUploadSourceType.OFFICIAL_JSON,
+                "journal-upload.json",
+                null,
+                "{\"bad\":true}".getBytes()
+        ));
+
+        assertEquals("Uploaded WoS official JSON must contain a JSON array.", thrown.getMessage());
+        assertEquals("vunknown", service.resolveEffectiveSourceVersion(null, "journal-upload.json"));
+    }
+
+    @Test
+    void ingestUploadedGovernmentExcelRejectsUnsupportedMetricFilename() throws Exception {
+        Path file = Files.createTempFile("WOS_2024-upload", ".xlsx");
+        createSampleExcel(file, 1.1);
+        byte[] bytes = Files.readAllBytes(file);
+
+        EventStore store = new EventStore();
+        WosImportEventRepository repository = repositoryMock(store);
+        WosImportEventIngestionService service = newService(repository);
+
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> service.ingestUploadedFile(
+                ro.uvt.pokedex.core.service.application.IncrementalUpdateUploadFacade.WosUploadSourceType.GOVERNMENT_EXCEL,
+                "WOS_2024.xlsx",
+                null,
+                bytes
+        ));
+
+        assertEquals("WoS government Excel filename must start with AIS_ or RIS_.", thrown.getMessage());
     }
 
     private void assertJournalTitle(EventStore store, String sourceFile, String sourceVersion, String rowItem, String expectedTitle)

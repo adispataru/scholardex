@@ -38,21 +38,24 @@ public class ScopusCanonicalMaterializationService {
     public void rebuildFactsAndViews(String trigger, String batchId, CanonicalBuildOptions canonicalOptions) {
         String runId = java.util.UUID.randomUUID().toString();
         long startedAtNanos = System.nanoTime();
-        ImportProcessingResult factResult = factBuilderService.buildFactsFromImportEvents(batchId);
-        ImportProcessingResult userDefinedFactResult = userDefinedFactBuilderService.buildFactsFromImportEvents(batchId);
-        CanonicalBuildOptions effectiveOptions = canonicalOptions == null ? CanonicalBuildOptions.defaults() : canonicalOptions;
-        ImportProcessingResult canonicalAffiliationResult = affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(effectiveOptions);
-        ImportProcessingResult canonicalAuthorResult = authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(effectiveOptions);
-        ImportProcessingResult canonicalPublicationResult = publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(effectiveOptions);
+        CanonicalBuildInputs buildInputs = isIncrementalBatchRun(batchId, canonicalOptions)
+                ? runIncrementalBatchMaintenance(batchId, canonicalOptions)
+                : runFullMaintenance(canonicalOptions);
+        ImportProcessingResult factResult = buildInputs.factResult();
+        ImportProcessingResult userDefinedFactResult = buildInputs.userDefinedFactResult();
+        CanonicalBuildOptions effectiveOptions = buildInputs.effectiveOptions();
+        ImportProcessingResult canonicalAffiliationResult = buildInputs.canonicalAffiliationResult();
+        ImportProcessingResult canonicalAuthorResult = buildInputs.canonicalAuthorResult();
+        ImportProcessingResult canonicalPublicationResult = buildInputs.canonicalPublicationResult();
         ImportProcessingResult canonicalUserDefinedResult = userDefinedCanonicalizationService.rebuildCanonicalFacts();
-        ImportProcessingResult canonicalCitationResult = citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(effectiveOptions);
+        ImportProcessingResult canonicalCitationResult = buildInputs.canonicalCitationResult();
         ScholardexSourceLinkService.ImportRepairSummary sourceLinkRepair = effectiveOptions.reconcileSourceLinks()
                 ? sourceLinkService.reconcileLinks()
                 : new ScholardexSourceLinkService.ImportRepairSummary(0L, 0L, 0L);
         ImportProcessingResult edgeRepair = effectiveOptions.reconcileEdges()
-                ? edgeReconciliationService.reconcileEdges()
+                ? reconcileEdges(effectiveOptions)
                 : new ImportProcessingResult(0);
-        ImportProcessingResult projectionResult = projectionBuilderService.rebuildViews();
+        ImportProcessingResult projectionResult = rebuildProjections(effectiveOptions);
         String outcome = (factResult.getErrorCount()
                 + userDefinedFactResult.getErrorCount()
                 + canonicalAffiliationResult.getErrorCount()
@@ -99,5 +102,105 @@ public class ScopusCanonicalMaterializationService {
                 edgeRepair.getErrorCount(),
                 projectionResult.getProcessedCount(),
                 projectionResult.getErrorCount());
+    }
+
+    private CanonicalBuildInputs runFullMaintenance(CanonicalBuildOptions canonicalOptions) {
+        CanonicalBuildOptions effectiveOptions = canonicalOptions == null ? CanonicalBuildOptions.defaults() : canonicalOptions;
+        ImportProcessingResult factResult = factBuilderService.buildFactsFromImportEvents(null);
+        ImportProcessingResult userDefinedFactResult = userDefinedFactBuilderService.buildFactsFromImportEvents(null);
+        ImportProcessingResult canonicalAffiliationResult = affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(effectiveOptions);
+        ImportProcessingResult canonicalAuthorResult = authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(effectiveOptions);
+        ImportProcessingResult canonicalPublicationResult = publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(effectiveOptions);
+        ImportProcessingResult canonicalCitationResult = citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(effectiveOptions);
+        return new CanonicalBuildInputs(
+                factResult,
+                userDefinedFactResult,
+                effectiveOptions,
+                canonicalAffiliationResult,
+                canonicalAuthorResult,
+                canonicalPublicationResult,
+                canonicalCitationResult
+        );
+    }
+
+    private CanonicalBuildInputs runIncrementalBatchMaintenance(String batchId, CanonicalBuildOptions canonicalOptions) {
+        CanonicalBuildOptions effectiveOptions = buildIncrementalOptions(batchId, canonicalOptions);
+        String sourceBatchId = effectiveOptions.sourceBatchIdFilter();
+        ImportProcessingResult factResult = factBuilderService.buildFactsFromImportEvents(sourceBatchId);
+        ImportProcessingResult userDefinedFactResult = userDefinedFactBuilderService.buildFactsFromImportEvents(sourceBatchId);
+        ImportProcessingResult canonicalAffiliationResult = affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(effectiveOptions);
+        ImportProcessingResult canonicalAuthorResult = authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(effectiveOptions);
+        ImportProcessingResult canonicalPublicationResult = publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(effectiveOptions);
+        ImportProcessingResult canonicalCitationResult = citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(effectiveOptions);
+        return new CanonicalBuildInputs(
+                factResult,
+                userDefinedFactResult,
+                effectiveOptions,
+                canonicalAffiliationResult,
+                canonicalAuthorResult,
+                canonicalPublicationResult,
+                canonicalCitationResult
+        );
+    }
+
+    private CanonicalBuildOptions buildIncrementalOptions(String batchId, CanonicalBuildOptions canonicalOptions) {
+        CanonicalBuildOptions effectiveOptions = canonicalOptions == null ? CanonicalBuildOptions.defaults() : canonicalOptions;
+        if (!isBlank(effectiveOptions.sourceBatchIdFilter())) {
+            return new CanonicalBuildOptions(
+                    effectiveOptions.chunkSizeOverride(),
+                    effectiveOptions.startBatchOverride(),
+                    false,
+                    effectiveOptions.sourceBatchIdFilter(),
+                    effectiveOptions.sourceVersionOverride(),
+                    effectiveOptions.reconcileSourceLinks(),
+                    effectiveOptions.reconcileEdges()
+            );
+        }
+        if (isBlank(batchId)) {
+            return effectiveOptions;
+        }
+        return new CanonicalBuildOptions(
+                effectiveOptions.chunkSizeOverride(),
+                effectiveOptions.startBatchOverride(),
+                false,
+                batchId,
+                effectiveOptions.sourceVersionOverride(),
+                effectiveOptions.reconcileSourceLinks(),
+                effectiveOptions.reconcileEdges()
+        );
+    }
+
+    private boolean isIncrementalBatchRun(String batchId, CanonicalBuildOptions canonicalOptions) {
+        CanonicalBuildOptions effectiveOptions = canonicalOptions == null ? CanonicalBuildOptions.defaults() : canonicalOptions;
+        return !isBlank(batchId) || !isBlank(effectiveOptions.sourceBatchIdFilter());
+    }
+
+    private ImportProcessingResult reconcileEdges(CanonicalBuildOptions options) {
+        if (isBlank(options.sourceBatchIdFilter())) {
+            return edgeReconciliationService.reconcileEdges();
+        }
+        return edgeReconciliationService.reconcileEdges(options.sourceBatchIdFilter());
+    }
+
+    private ImportProcessingResult rebuildProjections(CanonicalBuildOptions options) {
+        if (isBlank(options.sourceBatchIdFilter())) {
+            return projectionBuilderService.rebuildViews();
+        }
+        return projectionBuilderService.rebuildViewsForBatch(options.sourceBatchIdFilter());
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    private record CanonicalBuildInputs(
+            ImportProcessingResult factResult,
+            ImportProcessingResult userDefinedFactResult,
+            CanonicalBuildOptions effectiveOptions,
+            ImportProcessingResult canonicalAffiliationResult,
+            ImportProcessingResult canonicalAuthorResult,
+            ImportProcessingResult canonicalPublicationResult,
+            ImportProcessingResult canonicalCitationResult
+    ) {
     }
 }

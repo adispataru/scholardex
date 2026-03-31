@@ -7,6 +7,7 @@ Status: active operational recovery and maintenance baseline.
 - `/admin/conflicts`
 - `/admin/source-links`
 - `/admin/user-defined-triage`
+- `/admin/incremental-updates`
 - `/admin/initialization`
 - actuator metrics and canonical build/reconcile logs
 
@@ -14,6 +15,32 @@ USER_DEFINED deep-link filters:
 - `/admin/source-links?source=USER_DEFINED`
 - `/admin/conflicts?incomingSource=USER_DEFINED`
 - `/admin/initialization` -> `USER_DEFINED Initialization` section (`/admin/initialization/user-defined/*`)
+
+Incremental upload split:
+- `/admin/incremental-updates` is for one-file WoS or Scopus upload-driven maintenance only.
+- Use `/admin/initialization` for broader rebuild, reconcile, recovery, or downstream follow-up after an incremental upload.
+- Current upload scope:
+  - WoS upload runs ingest plus fact build only.
+  - Scopus upload runs ingest plus fact and canonical materialization only.
+
+## Scopus Incremental Maintenance
+
+Normal entrypoints:
+- Use `/admin/incremental-updates` for one uploaded Scopus file plus batch follow-up actions tied to that uploaded batch.
+- Use `/admin/initialization` for full rebuild, recovery, global maintenance, or any situation where state is uncertain beyond one batch.
+- Do not use full initialization as the default retry path for a single uploaded Scopus file or a single scheduler task.
+
+Scopus replay/update invariants:
+- Repeating the same Scopus upload or scheduler batch must reuse existing canonical facts, source links, edges, and OPEN conflicts rather than inserting duplicates.
+- Unchanged Scopus facts still belong to the current `sourceBatchId`; batch-scoped canonicalization/projection must see the full uploaded payload, not only materially changed rows.
+- Batch-scoped Scopus canonicalization must run with checkpoint resume disabled.
+- Scheduler-driven Scopus publication/citation updates should run batch-scoped canonicalization and batch-scoped projection rebuilds, not full-corpus rescans.
+- Incremental Scopus projection maintenance must refresh only the reconstructible batch graph scope and must not remove still-valid cross-batch citations, authorships, or author-affiliation edges.
+
+Scopus maintenance modes:
+- Upload-driven Scopus path: ingest -> fact build -> canonical materialization -> optional batch projection rebuild / edge reconcile / source-link repair follow-up.
+- Scheduler publication/citation path: ingest/import events -> batch-scoped canonical materialization -> batch-scoped projection refresh.
+- Full initialization path: explicit full-corpus Scopus maintenance with full rebuild semantics.
 
 ## Standard Recovery Sequence
 
@@ -35,6 +62,7 @@ For USER_DEFINED onboarding incidents, prefer:
 
 - Recovery steps must be replay-safe and deterministic.
 - Rebuilds must not duplicate canonical facts, links, or projections.
+- Repeated Scopus upload/scheduler runs must not require manual cleanup of duplicate-key rows in canonical Mongo collections.
 - Postgres read cutovers must fail loudly if required read ports or projection state are unavailable.
 
 ## Documentation Rule

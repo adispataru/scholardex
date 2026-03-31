@@ -43,6 +43,14 @@ public class UserIndicatorResultService {
 
     public UserIndicatorResult createSnapshotFromLatest(String userEmail, String indicatorId, String sourceReportId) {
         IndicatorApplyResultDto latest = getOrCreateLatest(userEmail, indicatorId);
+        return createSnapshotFromComputed(userEmail, indicatorId, sourceReportId, latest, latest.refreshVersion());
+    }
+
+    public UserIndicatorResult createSnapshotFromComputed(String userEmail,
+                                                          String indicatorId,
+                                                          String sourceReportId,
+                                                          IndicatorApplyResultDto computed,
+                                                          int refreshVersion) {
         UserIndicatorResult snapshot = new UserIndicatorResult();
         Instant now = Instant.now();
         snapshot.setUserEmail(userEmail);
@@ -52,16 +60,23 @@ public class UserIndicatorResultService {
         snapshot.setSourceType(UserIndicatorResult.SourceType.REPORT_RUN);
         snapshot.setSourceReportId(sourceReportId);
         snapshot.setFingerprint(buildFingerprint(indicatorId));
-        snapshot.setViewName(latest.viewName());
-        snapshot.setRawGraph(payloadSerializer.serialize(latest.rawGraph()));
-        snapshot.setTotalScore(latest.summary().totalScore());
-        snapshot.setTotalCount(latest.summary().totalCount());
-        snapshot.setQuarterLabels(latest.summary().quarterLabels());
-        snapshot.setQuarterValues(latest.summary().quarterValues());
+        snapshot.setViewName(computed.viewName());
+        snapshot.setRawGraph(payloadSerializer.serialize(computed.rawGraph()));
+        snapshot.setTotalScore(computed.summary().totalScore());
+        snapshot.setTotalCount(computed.summary().totalCount());
+        snapshot.setQuarterLabels(computed.summary().quarterLabels());
+        snapshot.setQuarterValues(computed.summary().quarterValues());
         snapshot.setCreatedAt(now);
         snapshot.setUpdatedAt(now);
-        snapshot.setRefreshVersion(latest.refreshVersion());
+        snapshot.setRefreshVersion(refreshVersion);
         return userIndicatorResultRepository.save(snapshot);
+    }
+
+    public int getLatestRefreshVersion(String userEmail, String indicatorId) {
+        return userIndicatorResultRepository
+                .findByUserEmailAndIndicatorIdAndMode(userEmail, indicatorId, UserIndicatorResult.Mode.LATEST)
+                .map(UserIndicatorResult::getRefreshVersion)
+                .orElse(0);
     }
 
     public Optional<IndicatorApplyResultDto> getById(String id) {

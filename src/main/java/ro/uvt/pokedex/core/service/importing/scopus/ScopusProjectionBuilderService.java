@@ -22,8 +22,11 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorshipFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
@@ -61,6 +64,9 @@ public class ScopusProjectionBuilderService {
     private final ScholardexAuthorFactRepository authorFactRepository;
     private final ScholardexAffiliationFactRepository affiliationFactRepository;
     private final ScholardexPublicationFactRepository publicationFactRepository;
+    private final ScholardexCitationFactRepository citationFactRepository;
+    private final ScholardexAuthorshipFactRepository authorshipFactRepository;
+    private final ScholardexAuthorAffiliationFactRepository authorAffiliationFactRepository;
     private final MongoTemplate mongoTemplate;
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactionTemplate;
@@ -71,6 +77,9 @@ public class ScopusProjectionBuilderService {
             ScholardexAuthorFactRepository authorFactRepository,
             ScholardexAffiliationFactRepository affiliationFactRepository,
             ScholardexPublicationFactRepository publicationFactRepository,
+            ScholardexCitationFactRepository citationFactRepository,
+            ScholardexAuthorshipFactRepository authorshipFactRepository,
+            ScholardexAuthorAffiliationFactRepository authorAffiliationFactRepository,
             MongoTemplate mongoTemplate,
             JdbcTemplate jdbcTemplate,
             PlatformTransactionManager transactionManager
@@ -80,6 +89,9 @@ public class ScopusProjectionBuilderService {
         this.authorFactRepository = authorFactRepository;
         this.affiliationFactRepository = affiliationFactRepository;
         this.publicationFactRepository = publicationFactRepository;
+        this.citationFactRepository = citationFactRepository;
+        this.authorshipFactRepository = authorshipFactRepository;
+        this.authorAffiliationFactRepository = authorAffiliationFactRepository;
         this.mongoTemplate = mongoTemplate;
         this.jdbcTemplate = jdbcTemplate;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
@@ -187,6 +199,7 @@ public class ScopusProjectionBuilderService {
                             && publicationIds.contains(row.getCitedPublicationId())
                             && publicationIds.contains(row.getCitingPublicationId()))
                     .toList();
+            validCitationFacts = dedupeCitationFactsByPair(validCitationFacts);
             List<ScholardexAuthorshipFact> validAuthorshipFacts = authorshipFacts.stream()
                     .filter(row -> row.getPublicationId() != null
                             && row.getAuthorId() != null
@@ -210,32 +223,15 @@ public class ScopusProjectionBuilderService {
 
             // --- write all 7 tables to PostgreSQL atomically ---
             long writePgNs = System.nanoTime();
-            List<ScholardexForumView> forumViewsForWrite = forumViews;
-            List<ScholardexAuthorView> authorViewsForWrite = authorViews;
-            List<ScholardexAffiliationView> affiliationViewsForWrite = affiliationViews;
-            List<ScholardexPublicationView> publicationViewsForWrite = publicationViews;
-            List<ScholardexCitationFact> citationFactsForWrite = validCitationFacts;
-            List<ScholardexAuthorshipFact> authorshipFactsForWrite = validAuthorshipFacts;
-            List<ScholardexAuthorAffiliationFact> authorAffiliationFactsForWrite = validAuthorAffiliationFacts;
-            transactionTemplate.executeWithoutResult(status -> {
-                jdbcTemplate.execute("""
-                        TRUNCATE TABLE
-                            reporting_read.scholardex_author_affiliation_fact,
-                            reporting_read.scholardex_authorship_fact,
-                            reporting_read.scholardex_citation_fact,
-                            reporting_read.scholardex_publication_view,
-                            reporting_read.scholardex_affiliation_view,
-                            reporting_read.scholardex_author_view,
-                            reporting_read.scholardex_forum_view
-                        """);
-                insertForumRows(forumViewsForWrite);
-                insertAuthorRows(authorViewsForWrite);
-                insertAffiliationRows(affiliationViewsForWrite);
-                insertPublicationRows(publicationViewsForWrite);
-                insertCitationRows(citationFactsForWrite);
-                insertAuthorshipRows(authorshipFactsForWrite);
-                insertAuthorAffiliationRows(authorAffiliationFactsForWrite);
-            });
+            executeFullReplacementWrite(
+                    forumViews,
+                    authorViews,
+                    affiliationViews,
+                    publicationViews,
+                    validCitationFacts,
+                    validAuthorshipFacts,
+                    validAuthorAffiliationFacts
+            );
             long writePgMs = nanosToMillis(System.nanoTime() - writePgNs);
 
             long totalMs = nanosToMillis(System.nanoTime() - totalStartedAtNanos);
@@ -246,6 +242,44 @@ public class ScopusProjectionBuilderService {
         } catch (Exception e) {
             result.markError("scopus-projection-rebuild-error=" + e.getMessage());
             log.error("Scopus projection rebuild failed", e);
+        }
+        return result;
+    }
+
+    public ImportProcessingResult rebuildViewsForBatch(String sourceBatchId) {
+        ImportProcessingResult result = new ImportProcessingResult(20);
+        if (sourceBatchId == null || sourceBatchId.isBlank()) {
+            result.markError("scopus-projection-batch-id-missing");
+            return result;
+        }
+
+        Instant buildAt = Instant.now();
+        String buildVersion = buildAt.toString();
+        long totalStartedAtNanos = System.nanoTime();
+        try {
+            BatchRefreshState batchRefreshState = loadBatchRefreshState(sourceBatchId, buildVersion, buildAt);
+            executeBatchRefreshWrite(batchRefreshState);
+
+            markImported(result, batchRefreshState.forumViews().size());
+            markImported(result, batchRefreshState.authorViews().size());
+            markImported(result, batchRefreshState.affiliationViews().size());
+            markImported(result, batchRefreshState.publicationViews().size());
+            markImported(result, batchRefreshState.citationFacts().size());
+            markImported(result, batchRefreshState.authorshipFacts().size());
+            markImported(result, batchRefreshState.authorAffiliationFacts().size());
+            log.info("Scopus projection batch rebuild complete: sourceBatchId={} forums={} authors={} affiliations={} publications={} citations={} authorships={} authorAffiliations={} totalMs={}",
+                    sourceBatchId,
+                    batchRefreshState.forumViews().size(),
+                    batchRefreshState.authorViews().size(),
+                    batchRefreshState.affiliationViews().size(),
+                    batchRefreshState.publicationViews().size(),
+                    batchRefreshState.citationFacts().size(),
+                    batchRefreshState.authorshipFacts().size(),
+                    batchRefreshState.authorAffiliationFacts().size(),
+                    nanosToMillis(System.nanoTime() - totalStartedAtNanos));
+        } catch (Exception e) {
+            result.markError("scopus-projection-batch-rebuild-error=" + e.getMessage());
+            log.error("Scopus projection batch rebuild failed: sourceBatchId={}", sourceBatchId, e);
         }
         return result;
     }
@@ -372,7 +406,33 @@ public class ScopusProjectionBuilderService {
 
     private Map<String, List<String>> buildCitingMap() {
         Map<String, List<String>> out = new LinkedHashMap<>();
-        List<ScholardexCitationFact> facts = new ArrayList<>(mongoTemplate.find(new Query(), ScholardexCitationFact.class));
+        List<ScholardexCitationFact> facts = new ArrayList<>(dedupeCitationFactsByPair(
+                new ArrayList<>(mongoTemplate.find(new Query(), ScholardexCitationFact.class))
+        ));
+        facts.sort(Comparator
+                .comparing(ScholardexCitationFact::getCitedPublicationId, Comparator.nullsLast(String::compareTo))
+                .thenComparing(ScholardexCitationFact::getCitingPublicationId, Comparator.nullsLast(String::compareTo)));
+        for (ScholardexCitationFact fact : facts) {
+            if (fact.getCitedPublicationId() == null || fact.getCitingPublicationId() == null) {
+                continue;
+            }
+            out.computeIfAbsent(fact.getCitedPublicationId(), key -> new ArrayList<>());
+            List<String> values = out.get(fact.getCitedPublicationId());
+            if (!values.contains(fact.getCitingPublicationId())) {
+                values.add(fact.getCitingPublicationId());
+            }
+        }
+        return out;
+    }
+
+    private Map<String, List<String>> buildCitingMapForPublications(Set<String> citedPublicationIds) {
+        Map<String, List<String>> out = new LinkedHashMap<>();
+        if (citedPublicationIds == null || citedPublicationIds.isEmpty()) {
+            return out;
+        }
+        List<ScholardexCitationFact> facts = new ArrayList<>(dedupeCitationFactsByPair(
+                new ArrayList<>(citationFactRepository.findByCitedPublicationIdIn(citedPublicationIds))
+        ));
         facts.sort(Comparator
                 .comparing(ScholardexCitationFact::getCitedPublicationId, Comparator.nullsLast(String::compareTo))
                 .thenComparing(ScholardexCitationFact::getCitingPublicationId, Comparator.nullsLast(String::compareTo)));
@@ -399,6 +459,28 @@ public class ScopusProjectionBuilderService {
                     (id, publication_name, issn, e_issn, aggregation_type, build_version, build_at, updated_at, source_event_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
+        writeForumRows(rows, sql);
+    }
+
+    private void upsertForumRows(List<ScholardexForumView> rows) {
+        String sql = """
+                INSERT INTO reporting_read.scholardex_forum_view
+                    (id, publication_name, issn, e_issn, aggregation_type, build_version, build_at, updated_at, source_event_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (id) DO UPDATE SET
+                    publication_name = EXCLUDED.publication_name,
+                    issn = EXCLUDED.issn,
+                    e_issn = EXCLUDED.e_issn,
+                    aggregation_type = EXCLUDED.aggregation_type,
+                    build_version = EXCLUDED.build_version,
+                    build_at = EXCLUDED.build_at,
+                    updated_at = EXCLUDED.updated_at,
+                    source_event_id = EXCLUDED.source_event_id
+                """;
+        writeForumRows(rows, sql);
+    }
+
+    private void writeForumRows(List<ScholardexForumView> rows, String sql) {
         batchInChunks(rows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
             @Override
             public void setValues(PreparedStatement ps, int i) throws SQLException {
@@ -427,6 +509,26 @@ public class ScopusProjectionBuilderService {
                     (id, name, affiliation_ids, build_version, build_at, updated_at, source_event_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """;
+        writeAuthorRows(rows, sql);
+    }
+
+    private void upsertAuthorRows(List<ScholardexAuthorView> rows) {
+        String sql = """
+                INSERT INTO reporting_read.scholardex_author_view
+                    (id, name, affiliation_ids, build_version, build_at, updated_at, source_event_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (id) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    affiliation_ids = EXCLUDED.affiliation_ids,
+                    build_version = EXCLUDED.build_version,
+                    build_at = EXCLUDED.build_at,
+                    updated_at = EXCLUDED.updated_at,
+                    source_event_id = EXCLUDED.source_event_id
+                """;
+        writeAuthorRows(rows, sql);
+    }
+
+    private void writeAuthorRows(List<ScholardexAuthorView> rows, String sql) {
         batchInChunks(rows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
             @Override
             public void setValues(PreparedStatement ps, int i) throws SQLException {
@@ -453,6 +555,27 @@ public class ScopusProjectionBuilderService {
                     (id, name, city, country, build_version, build_at, updated_at, source_event_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """;
+        writeAffiliationRows(rows, sql);
+    }
+
+    private void upsertAffiliationRows(List<ScholardexAffiliationView> rows) {
+        String sql = """
+                INSERT INTO reporting_read.scholardex_affiliation_view
+                    (id, name, city, country, build_version, build_at, updated_at, source_event_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (id) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    city = EXCLUDED.city,
+                    country = EXCLUDED.country,
+                    build_version = EXCLUDED.build_version,
+                    build_at = EXCLUDED.build_at,
+                    updated_at = EXCLUDED.updated_at,
+                    source_event_id = EXCLUDED.source_event_id
+                """;
+        writeAffiliationRows(rows, sql);
+    }
+
+    private void writeAffiliationRows(List<ScholardexAffiliationView> rows, String sql) {
         batchInChunks(rows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
             @Override
             public void setValues(PreparedStatement ps, int i) throws SQLException {
@@ -486,6 +609,65 @@ public class ScopusProjectionBuilderService {
                     scopus_lineage, wos_lineage, scholar_lineage, linker_version, linker_run_id, linked_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
+        writePublicationRows(rows, sql);
+    }
+
+    private void upsertPublicationRows(List<ScholardexPublicationView> rows) {
+        String sql = """
+                INSERT INTO reporting_read.scholardex_publication_view (
+                    id, doi, doi_normalized, eid, title, subtype, subtype_description,
+                    scopus_subtype, scopus_subtype_description, creator, cover_date, cover_display_date,
+                    volume, issue_identifier, description, author_count, corresponding_authors,
+                    open_access, freetoread, freetoread_label, funding_id, article_number, page_range,
+                    approved, author_ids, affiliation_ids, forum_id, citing_publication_ids, cited_by_count,
+                    wos_id, google_scholar_id, build_version, build_at, updated_at,
+                    scopus_lineage, wos_lineage, scholar_lineage, linker_version, linker_run_id, linked_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (id) DO UPDATE SET
+                    doi = EXCLUDED.doi,
+                    doi_normalized = EXCLUDED.doi_normalized,
+                    eid = EXCLUDED.eid,
+                    title = EXCLUDED.title,
+                    subtype = EXCLUDED.subtype,
+                    subtype_description = EXCLUDED.subtype_description,
+                    scopus_subtype = EXCLUDED.scopus_subtype,
+                    scopus_subtype_description = EXCLUDED.scopus_subtype_description,
+                    creator = EXCLUDED.creator,
+                    cover_date = EXCLUDED.cover_date,
+                    cover_display_date = EXCLUDED.cover_display_date,
+                    volume = EXCLUDED.volume,
+                    issue_identifier = EXCLUDED.issue_identifier,
+                    description = EXCLUDED.description,
+                    author_count = EXCLUDED.author_count,
+                    corresponding_authors = EXCLUDED.corresponding_authors,
+                    open_access = EXCLUDED.open_access,
+                    freetoread = EXCLUDED.freetoread,
+                    freetoread_label = EXCLUDED.freetoread_label,
+                    funding_id = EXCLUDED.funding_id,
+                    article_number = EXCLUDED.article_number,
+                    page_range = EXCLUDED.page_range,
+                    approved = EXCLUDED.approved,
+                    author_ids = EXCLUDED.author_ids,
+                    affiliation_ids = EXCLUDED.affiliation_ids,
+                    forum_id = EXCLUDED.forum_id,
+                    citing_publication_ids = EXCLUDED.citing_publication_ids,
+                    cited_by_count = EXCLUDED.cited_by_count,
+                    wos_id = EXCLUDED.wos_id,
+                    google_scholar_id = EXCLUDED.google_scholar_id,
+                    build_version = EXCLUDED.build_version,
+                    build_at = EXCLUDED.build_at,
+                    updated_at = EXCLUDED.updated_at,
+                    scopus_lineage = EXCLUDED.scopus_lineage,
+                    wos_lineage = EXCLUDED.wos_lineage,
+                    scholar_lineage = EXCLUDED.scholar_lineage,
+                    linker_version = EXCLUDED.linker_version,
+                    linker_run_id = EXCLUDED.linker_run_id,
+                    linked_at = EXCLUDED.linked_at
+                """;
+        writePublicationRows(rows, sql);
+    }
+
+    private void writePublicationRows(List<ScholardexPublicationView> rows, String sql) {
         batchInChunks(rows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
             @Override
             public void setValues(PreparedStatement ps, int i) throws SQLException {
@@ -540,6 +722,10 @@ public class ScopusProjectionBuilderService {
     }
 
     private void insertCitationRows(List<ScholardexCitationFact> rows) {
+        List<ScholardexCitationFact> dedupedRows = dedupeCitationFactsByPair(rows);
+        if (dedupedRows.isEmpty()) {
+            return;
+        }
         String sql = """
                 INSERT INTO reporting_read.scholardex_citation_fact (
                     id, cited_publication_id, citing_publication_id, source,
@@ -547,7 +733,7 @@ public class ScopusProjectionBuilderService {
                     created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
-        batchInChunks(rows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+        batchInChunks(dedupedRows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
             @Override
             public void setValues(PreparedStatement ps, int i) throws SQLException {
                 ScholardexCitationFact row = chunk.get(i);
@@ -636,6 +822,210 @@ public class ScopusProjectionBuilderService {
         }));
     }
 
+    private List<ScholardexCitationFact> loadBatchCitationFacts(Set<String> affectedPublicationIds) {
+        if (affectedPublicationIds == null || affectedPublicationIds.isEmpty()) {
+            return List.of();
+        }
+        Map<String, ScholardexCitationFact> factsById = new LinkedHashMap<>();
+        for (ScholardexCitationFact fact : citationFactRepository.findByCitedPublicationIdIn(affectedPublicationIds)) {
+            if (fact.getId() != null) {
+                factsById.put(fact.getId(), fact);
+            }
+        }
+        for (ScholardexCitationFact fact : citationFactRepository.findByCitingPublicationIdIn(affectedPublicationIds)) {
+            if (fact.getId() != null) {
+                factsById.put(fact.getId(), fact);
+            }
+        }
+        return dedupeCitationFactsByPair(new ArrayList<>(factsById.values()));
+    }
+
+    private BatchRefreshState loadBatchRefreshState(String sourceBatchId, String buildVersion, Instant buildAt) {
+        List<ScopusForumFact> forumFacts = new ArrayList<>(forumFactRepository.findBySourceBatchId(sourceBatchId));
+        forumFacts.sort(Comparator.comparing(ScopusForumFact::getSourceId, Comparator.nullsLast(String::compareTo)));
+        List<ScholardexForumView> forumViews = forumFacts.stream()
+                .map(fact -> toForumView(fact, buildVersion, buildAt))
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        List<ScholardexAuthorFact> authorFacts = new ArrayList<>(authorFactRepository.findBySourceBatchId(sourceBatchId));
+        authorFacts.sort(Comparator.comparing(ScholardexAuthorFact::getId, Comparator.nullsLast(String::compareTo)));
+        List<ScholardexAuthorView> authorViews = authorFacts.stream()
+                .map(fact -> toAuthorView(fact, buildVersion, buildAt))
+                .toList();
+
+        List<ScholardexAffiliationFact> affiliationFacts = new ArrayList<>(affiliationFactRepository.findBySourceBatchId(sourceBatchId));
+        affiliationFacts.sort(Comparator.comparing(ScholardexAffiliationFact::getId, Comparator.nullsLast(String::compareTo)));
+        List<ScholardexAffiliationView> affiliationViews = affiliationFacts.stream()
+                .map(fact -> toAffiliationView(fact, buildVersion, buildAt))
+                .toList();
+
+        List<ScholardexPublicationFact> publicationFacts = new ArrayList<>(publicationFactRepository.findBySourceBatchId(sourceBatchId));
+        publicationFacts.sort(Comparator.comparing(ScholardexPublicationFact::getEid, Comparator.nullsLast(String::compareTo)));
+        Set<String> affectedPublicationIds = publicationFacts.stream()
+                .map(ScholardexPublicationFact::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(HashSet::new));
+        Map<String, List<String>> citingByCited = buildCitingMapForPublications(affectedPublicationIds);
+        List<ScholardexPublicationView> publicationViews = new ArrayList<>(publicationFacts.size());
+        for (ScholardexPublicationFact fact : publicationFacts) {
+            publicationViews.add(toPublicationView(fact, citingByCited, buildVersion, buildAt));
+        }
+
+        Set<String> affectedAuthorIds = authorViews.stream()
+                .map(ScholardexAuthorView::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(HashSet::new));
+        Set<String> affectedAffiliationIds = affiliationViews.stream()
+                .map(ScholardexAffiliationView::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(HashSet::new));
+
+        List<ScholardexCitationFact> citationFacts = loadBatchCitationFacts(affectedPublicationIds).stream()
+                .filter(row -> row.getCitedPublicationId() != null
+                        && row.getCitingPublicationId() != null
+                        && (affectedPublicationIds.contains(row.getCitedPublicationId())
+                        || affectedPublicationIds.contains(row.getCitingPublicationId())))
+                .toList();
+        citationFacts = dedupeCitationFactsByPair(citationFacts);
+        List<ScholardexAuthorshipFact> authorshipFacts = affectedPublicationIds.isEmpty()
+                ? List.of()
+                : authorshipFactRepository.findByPublicationIdIn(affectedPublicationIds).stream()
+                .filter(row -> row.getPublicationId() != null
+                        && row.getAuthorId() != null
+                        && affectedPublicationIds.contains(row.getPublicationId())
+                        && affectedAuthorIds.contains(row.getAuthorId()))
+                .toList();
+        List<ScholardexAuthorAffiliationFact> authorAffiliationFacts = affectedAuthorIds.isEmpty()
+                ? List.of()
+                : authorAffiliationFactRepository.findByAuthorIdIn(affectedAuthorIds).stream()
+                .filter(row -> row.getAuthorId() != null
+                        && row.getAffiliationId() != null
+                        && affectedAuthorIds.contains(row.getAuthorId())
+                        && affectedAffiliationIds.contains(row.getAffiliationId()))
+                .toList();
+        return new BatchRefreshState(
+                affectedPublicationIds,
+                affectedAuthorIds,
+                affectedAffiliationIds,
+                forumViews,
+                authorViews,
+                affiliationViews,
+                publicationViews,
+                citationFacts,
+                authorshipFacts,
+                authorAffiliationFacts
+        );
+    }
+
+    private void executeFullReplacementWrite(
+            List<ScholardexForumView> forumViews,
+            List<ScholardexAuthorView> authorViews,
+            List<ScholardexAffiliationView> affiliationViews,
+            List<ScholardexPublicationView> publicationViews,
+            List<ScholardexCitationFact> citationFacts,
+            List<ScholardexAuthorshipFact> authorshipFacts,
+            List<ScholardexAuthorAffiliationFact> authorAffiliationFacts
+    ) {
+        transactionTemplate.executeWithoutResult(status -> {
+            jdbcTemplate.execute("""
+                    TRUNCATE TABLE
+                        reporting_read.scholardex_author_affiliation_fact,
+                        reporting_read.scholardex_authorship_fact,
+                        reporting_read.scholardex_citation_fact,
+                        reporting_read.scholardex_publication_view,
+                        reporting_read.scholardex_affiliation_view,
+                        reporting_read.scholardex_author_view,
+                        reporting_read.scholardex_forum_view
+                    """);
+            insertForumRows(forumViews);
+            insertAuthorRows(authorViews);
+            insertAffiliationRows(affiliationViews);
+            insertPublicationRows(publicationViews);
+            insertCitationRows(citationFacts);
+            insertAuthorshipRows(authorshipFacts);
+            insertAuthorAffiliationRows(authorAffiliationFacts);
+        });
+    }
+
+    private void executeBatchRefreshWrite(BatchRefreshState batchRefreshState) {
+        transactionTemplate.executeWithoutResult(status -> {
+            upsertForumRows(batchRefreshState.forumViews());
+            upsertAuthorRows(batchRefreshState.authorViews());
+            upsertAffiliationRows(batchRefreshState.affiliationViews());
+            upsertPublicationRows(batchRefreshState.publicationViews());
+            refreshCitationRowsForBatch(batchRefreshState.affectedPublicationIds(), batchRefreshState.citationFacts());
+            refreshAuthorshipRowsForBatch(batchRefreshState.affectedPublicationIds(), batchRefreshState.authorshipFacts());
+            refreshAuthorAffiliationRowsForBatch(batchRefreshState.affectedAuthorIds(), batchRefreshState.authorAffiliationFacts());
+        });
+    }
+
+    private void refreshCitationRowsForBatch(Set<String> publicationIds, List<ScholardexCitationFact> citationFacts) {
+        deleteByTextArray(
+                "DELETE FROM reporting_read.scholardex_citation_fact WHERE cited_publication_id = ANY (?) OR citing_publication_id = ANY (?)",
+                publicationIds,
+                publicationIds
+        );
+        insertCitationRows(citationFacts);
+    }
+
+    private List<ScholardexCitationFact> dedupeCitationFactsByPair(List<ScholardexCitationFact> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return List.of();
+        }
+        Map<String, ScholardexCitationFact> deduped = new LinkedHashMap<>();
+        for (ScholardexCitationFact row : rows) {
+            if (row == null || row.getCitedPublicationId() == null || row.getCitingPublicationId() == null) {
+                continue;
+            }
+            String pairKey = row.getCitedPublicationId() + "|" + row.getCitingPublicationId();
+            deduped.putIfAbsent(pairKey, row);
+        }
+        return new ArrayList<>(deduped.values());
+    }
+
+    private void refreshAuthorshipRowsForBatch(Set<String> publicationIds, List<ScholardexAuthorshipFact> authorshipFacts) {
+        deleteByTextArray(
+                "DELETE FROM reporting_read.scholardex_authorship_fact WHERE publication_id = ANY (?)",
+                publicationIds
+        );
+        insertAuthorshipRows(authorshipFacts);
+    }
+
+    private void refreshAuthorAffiliationRowsForBatch(Set<String> authorIds, List<ScholardexAuthorAffiliationFact> authorAffiliationFacts) {
+        deleteByTextArray(
+                "DELETE FROM reporting_read.scholardex_author_affiliation_fact WHERE author_id = ANY (?)",
+                authorIds
+        );
+        insertAuthorAffiliationRows(authorAffiliationFacts);
+    }
+
+    private void deleteByTextArray(String sql, Set<String> firstValues, Set<String> secondValues) {
+        if ((firstValues == null || firstValues.isEmpty()) && (secondValues == null || secondValues.isEmpty())) {
+            return;
+        }
+        jdbcTemplate.execute((Connection connection) -> {
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                ps.setArray(1, textArray(connection, firstValues == null ? List.of() : new ArrayList<>(firstValues)));
+                ps.setArray(2, textArray(connection, secondValues == null ? List.of() : new ArrayList<>(secondValues)));
+                ps.executeUpdate();
+            }
+            return null;
+        });
+    }
+
+    private void deleteByTextArray(String sql, Set<String> values) {
+        if (values == null || values.isEmpty()) {
+            return;
+        }
+        jdbcTemplate.execute((Connection connection) -> {
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                ps.setArray(1, textArray(connection, new ArrayList<>(values)));
+                ps.executeUpdate();
+            }
+            return null;
+        });
+    }
+
     // -------------------------------------------------------------------------
     // JDBC utility helpers
     // -------------------------------------------------------------------------
@@ -703,4 +1093,17 @@ public class ScopusProjectionBuilderService {
         normalized = normalized.trim().toLowerCase(Locale.ROOT);
         return normalized.isEmpty() ? null : normalized;
     }
+
+    private record BatchRefreshState(
+            Set<String> affectedPublicationIds,
+            Set<String> affectedAuthorIds,
+            Set<String> affectedAffiliationIds,
+            List<ScholardexForumView> forumViews,
+            List<ScholardexAuthorView> authorViews,
+            List<ScholardexAffiliationView> affiliationViews,
+            List<ScholardexPublicationView> publicationViews,
+            List<ScholardexCitationFact> citationFacts,
+            List<ScholardexAuthorshipFact> authorshipFacts,
+            List<ScholardexAuthorAffiliationFact> authorAffiliationFacts
+    ) {}
 }

@@ -32,7 +32,10 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
 import ro.uvt.pokedex.core.repository.reporting.WosJournalIdentityRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorshipFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
@@ -95,6 +98,9 @@ class PostgresReportingProjectionServiceIntegrationTest {
         ScholardexAuthorFactRepository authorFactRepository = mongoRepoFactory.getRepository(ScholardexAuthorFactRepository.class);
         ScholardexAffiliationFactRepository affiliationFactRepository = mongoRepoFactory.getRepository(ScholardexAffiliationFactRepository.class);
         ScholardexPublicationFactRepository publicationFactRepository = mongoRepoFactory.getRepository(ScholardexPublicationFactRepository.class);
+        ScholardexCitationFactRepository citationFactRepository = mongoRepoFactory.getRepository(ScholardexCitationFactRepository.class);
+        ScholardexAuthorshipFactRepository authorshipFactRepository = mongoRepoFactory.getRepository(ScholardexAuthorshipFactRepository.class);
+        ScholardexAuthorAffiliationFactRepository authorAffiliationFactRepository = mongoRepoFactory.getRepository(ScholardexAuthorAffiliationFactRepository.class);
 
         WosOptimizationProperties optimizationProperties = new WosOptimizationProperties();
         optimizationProperties.setPreflightIndexesEnabled(false);
@@ -115,6 +121,9 @@ class PostgresReportingProjectionServiceIntegrationTest {
                 authorFactRepository,
                 affiliationFactRepository,
                 publicationFactRepository,
+                citationFactRepository,
+                authorshipFactRepository,
+                authorAffiliationFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
                 txManager

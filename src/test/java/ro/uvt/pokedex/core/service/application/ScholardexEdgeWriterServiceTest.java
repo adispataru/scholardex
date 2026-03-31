@@ -146,6 +146,66 @@ class ScholardexEdgeWriterServiceTest {
     }
 
     @Test
+    void batchUpsertAuthorAffiliationEdgesPropagatesFallbackLookupToSourceLinks() {
+        ScholardexEdgeWriterService service = new ScholardexEdgeWriterService(
+                authorshipFactRepository,
+                authorAffiliationFactRepository,
+                publicationAuthorAffiliationFactRepository,
+                sourceLinkService,
+                identityConflictRepository,
+                mongoTemplate
+        );
+        when(sourceLinkService.batchUpsertWithState(any(), any(), eq(true)))
+                .thenReturn(new ScholardexSourceLinkService.BatchWriteResult(List.of()));
+
+        ScholardexEdgeWriterService.BatchEdgeWriteResult result = service.batchUpsertAuthorAffiliationEdges(
+                List.of(new ScholardexEdgeWriterService.EdgeWriteCommand(
+                        "a1", "f1", "SCOPUS_JSON_UPLOAD", "rec-2", "evt", "b1", "c1",
+                        ScholardexSourceLinkService.STATE_LINKED,
+                        "bridge",
+                        false
+                )),
+                Map.of(),
+                Map.of(),
+                true
+        );
+
+        assertEquals(1, result.accepted());
+        verify(authorAffiliationFactRepository).findByAuthorIdAndAffiliationIdAndSource("a1", "f1", "SCOPUS_JSON_UPLOAD");
+        verify(sourceLinkService).batchUpsertWithState(any(), any(), eq(true));
+    }
+
+    @Test
+    void batchUpsertAuthorshipEdgesPropagatesFallbackLookupToSourceLinks() {
+        ScholardexEdgeWriterService service = new ScholardexEdgeWriterService(
+                authorshipFactRepository,
+                authorAffiliationFactRepository,
+                publicationAuthorAffiliationFactRepository,
+                sourceLinkService,
+                identityConflictRepository,
+                mongoTemplate
+        );
+        when(sourceLinkService.batchUpsertWithState(any(), any(), eq(true)))
+                .thenReturn(new ScholardexSourceLinkService.BatchWriteResult(List.of()));
+
+        ScholardexEdgeWriterService.BatchEdgeWriteResult result = service.batchUpsertAuthorshipEdges(
+                List.of(new ScholardexEdgeWriterService.EdgeWriteCommand(
+                        "p1", "a1", "SCOPUS_JSON_UPLOAD", "rec-1", "evt", "b1", "c1",
+                        ScholardexSourceLinkService.STATE_LINKED,
+                        "bridge",
+                        false
+                )),
+                Map.of(),
+                Map.of(),
+                true
+        );
+
+        assertEquals(1, result.accepted());
+        verify(authorshipFactRepository).findByPublicationIdAndAuthorIdAndSource("p1", "a1", "SCOPUS_JSON_UPLOAD");
+        verify(sourceLinkService).batchUpsertWithState(any(), any(), eq(true));
+    }
+
+    @Test
     void upsertPublicationAuthorAffiliationEdgeCreatesDeterministicEdgeAndSourceLink() {
         ScholardexEdgeWriterService service = new ScholardexEdgeWriterService(
                 authorshipFactRepository,
@@ -179,5 +239,43 @@ class ScholardexEdgeWriterServiceTest {
         assertTrue(result.accepted());
         assertTrue(result.canonicalEdgeId().startsWith("spaaf_"));
         verify(publicationAuthorAffiliationFactRepository).save(any(ScholardexPublicationAuthorAffiliationFact.class));
+    }
+
+    @Test
+    void batchUpsertPublicationAuthorAffiliationEdgesPropagatesFallbackLookupToSourceLinks() {
+        ScholardexEdgeWriterService service = new ScholardexEdgeWriterService(
+                authorshipFactRepository,
+                authorAffiliationFactRepository,
+                publicationAuthorAffiliationFactRepository,
+                sourceLinkService,
+                identityConflictRepository,
+                mongoTemplate
+        );
+        when(sourceLinkService.batchUpsertWithState(any(), any(), eq(true)))
+                .thenReturn(new ScholardexSourceLinkService.BatchWriteResult(List.of()));
+
+        ScholardexEdgeWriterService.BatchEdgeWriteResult result = service.batchUpsertPublicationAuthorAffiliationEdges(
+                List.of(new ScholardexEdgeWriterService.EdgeWriteCommand(
+                        "p1",
+                        "a1",
+                        "f1",
+                        "SCOPUS_JSON_UPLOAD",
+                        "rec-4",
+                        "evt",
+                        "b1",
+                        "c1",
+                        ScholardexSourceLinkService.STATE_LINKED,
+                        "bridge",
+                        false
+                )),
+                Map.of(),
+                Map.of(),
+                true
+        );
+
+        assertEquals(1, result.accepted());
+        verify(publicationAuthorAffiliationFactRepository)
+                .findByPublicationIdAndAuthorIdAndAffiliationIdAndSource("p1", "a1", "f1", "SCOPUS_JSON_UPLOAD");
+        verify(sourceLinkService).batchUpsertWithState(any(), any(), eq(true));
     }
 }

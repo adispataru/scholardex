@@ -12,6 +12,7 @@ import ro.uvt.pokedex.core.repository.reporting.UserIndividualReportRunRepositor
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
 import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
+import ro.uvt.pokedex.core.service.application.model.ReportScopedIndividualReportComputation;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ public class UserIndividualReportRunService {
     private final IndividualReportRepository individualReportRepository;
     private final UserService userService;
     private final UserIndicatorResultService userIndicatorResultService;
+    private final UserReportFacade userReportFacade;
 
     public Optional<IndividualReportRunDto> getOrCreateLatestRun(String userEmail, String reportDefinitionId) {
         Optional<UserIndividualReportRun> existing = userIndividualReportRunRepository
@@ -35,11 +37,11 @@ public class UserIndividualReportRunService {
         if (existing.isPresent()) {
             return Optional.of(toDto(existing.get(), IndividualReportRunDto.Source.PERSISTED));
         }
-        return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT);
+        return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT, Map.of());
     }
 
     public Optional<IndividualReportRunDto> refreshRun(String userEmail, String reportDefinitionId) {
-        return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT);
+        return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT, Map.of());
     }
 
     public Optional<IndividualReportRunDto> refreshRunWithAllIndicators(String userEmail, String reportDefinitionId) {
@@ -49,21 +51,24 @@ public class UserIndividualReportRunService {
         }
 
         IndividualReport report = reportOpt.get();
+        Map<String, Integer> latestRefreshVersionsByIndicatorId = new HashMap<>();
         if (report.getIndicators() != null) {
             for (Indicator indicator : report.getIndicators()) {
                 if (indicator == null || indicator.getId() == null) {
                     continue;
                 }
-                userIndicatorResultService.refreshLatest(userEmail, indicator.getId());
+                IndicatorApplyResultDto refreshed = userIndicatorResultService.refreshLatest(userEmail, indicator.getId());
+                latestRefreshVersionsByIndicatorId.put(indicator.getId(), refreshed.refreshVersion());
             }
         }
 
-        return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT);
+        return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT, latestRefreshVersionsByIndicatorId);
     }
 
     private Optional<IndividualReportRunDto> buildAndSaveRun(String userEmail,
                                                              String reportDefinitionId,
-                                                             IndividualReportRunDto.Source source) {
+                                                             IndividualReportRunDto.Source source,
+                                                             Map<String, Integer> latestRefreshVersionsByIndicatorId) {
         Optional<IndividualReport> reportOpt = individualReportRepository.findById(reportDefinitionId);
         if (reportOpt.isEmpty()) {
             return Optional.empty();
@@ -77,44 +82,42 @@ public class UserIndividualReportRunService {
         run.setCreatedAt(Instant.now());
 
         List<String> indicatorResultIds = new ArrayList<>();
-        Map<String, Double> indicatorScoresByIndicatorId = new HashMap<>();
         List<String> errors = new ArrayList<>();
+        Optional<ReportScopedIndividualReportComputation> computationOpt =
+                userReportFacade.computeReportScopedIndividualReport(userEmail, reportDefinitionId);
+        if (computationOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        ReportScopedIndividualReportComputation computation = computationOpt.get();
+        Map<String, Double> indicatorScoresByIndicatorId = new HashMap<>(computation.indicatorScoresByIndicatorId());
 
         for (Indicator indicator : report.getIndicators()) {
             if (indicator == null || indicator.getId() == null) {
                 errors.add("Missing indicator id in report definition.");
                 continue;
             }
-            IndicatorApplyResultDto latest = userIndicatorResultService.getOrCreateLatest(userEmail, indicator.getId());
-            UserIndicatorResult snapshot = userIndicatorResultService.createSnapshotFromLatest(userEmail, indicator.getId(), reportDefinitionId);
-            indicatorResultIds.add(snapshot.getId());
-            indicatorScoresByIndicatorId.put(indicator.getId(), latest.summary().totalScore() == null ? 0.0 : latest.summary().totalScore());
-        }
-
-        Map<Integer, Double> criteriaScores = new HashMap<>();
-
-        List<AbstractReport.Criterion> criteria = report.getCriteria() == null ? List.of() : report.getCriteria();
-        for (int i = 0; i < criteria.size(); i++) {
-            AbstractReport.Criterion criterion = criteria.get(i);
-            double criterionScore = 0.0;
-            if (criterion.getIndicatorIndices() != null) {
-                for (Integer idx : criterion.getIndicatorIndices()) {
-                    if (idx == null || idx < 0 || idx >= report.getIndicators().size()) {
-                        errors.add("Invalid criterion indicator index: " + idx);
-                        continue;
-                    }
-                    Indicator indicator = report.getIndicators().get(idx);
-                    if (indicator != null && indicator.getId() != null) {
-                        criterionScore += indicatorScoresByIndicatorId.getOrDefault(indicator.getId(), 0.0);
-                    }
-                }
+            IndicatorApplyResultDto computedIndicatorResult = computation.reportScopedIndicatorResultsByIndicatorId()
+                    .get(indicator.getId());
+            if (computedIndicatorResult == null) {
+                errors.add("Missing computed indicator result for indicator " + indicator.getId());
+                continue;
             }
-            criteriaScores.put(i, criterionScore);
+            UserIndicatorResult snapshot = userIndicatorResultService.createSnapshotFromComputed(
+                    userEmail,
+                    indicator.getId(),
+                    reportDefinitionId,
+                    computedIndicatorResult,
+                    latestRefreshVersionsByIndicatorId.getOrDefault(
+                            indicator.getId(),
+                            userIndicatorResultService.getLatestRefreshVersion(userEmail, indicator.getId())
+                    )
+            );
+            indicatorResultIds.add(snapshot.getId());
         }
 
         run.setIndicatorResultIds(indicatorResultIds);
         run.setIndicatorScoresByIndicatorId(indicatorScoresByIndicatorId);
-        run.setCriteriaScores(criteriaScores);
+        run.setCriteriaScores(new HashMap<>(computation.criterionScores()));
         run.setBuildErrors(errors);
         if (!errors.isEmpty()) {
             run.setStatus(indicatorResultIds.isEmpty() ? UserIndividualReportRun.Status.FAILED : UserIndividualReportRun.Status.PARTIAL);

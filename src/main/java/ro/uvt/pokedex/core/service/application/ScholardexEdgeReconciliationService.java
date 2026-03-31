@@ -44,16 +44,20 @@ public class ScholardexEdgeReconciliationService {
     private final ScholardexEdgeWriterService edgeWriterService;
 
     public ImportProcessingResult reconcileEdges() {
+        return reconcileEdges(null);
+    }
+
+    public ImportProcessingResult reconcileEdges(String sourceBatchIdFilter) {
         long startedAtNanos = System.nanoTime();
         String runId = java.util.UUID.randomUUID().toString();
         ImportProcessingResult result = new ImportProcessingResult(20);
-        reconcilePublicationAuthorEdges(result);
-        reconcileAuthorAffiliationEdges(result);
+        reconcilePublicationAuthorEdges(result, sourceBatchIdFilter);
+        reconcileAuthorAffiliationEdges(result, sourceBatchIdFilter);
         String outcome = result.getErrorCount() > 0 ? "failure" : "success";
         CanonicalObservabilityMetrics.recordReconcileRun("edges", outcome, System.nanoTime() - startedAtNanos);
         log.info("CANONICAL_RECONCILE edge_reconcile runId={} batchId={} correlationId={} entity=EDGE source=CANONICAL outcome={} updated={} skipped={} errors={}",
                 runId,
-                "N/A",
+                sourceBatchIdFilter == null ? "N/A" : sourceBatchIdFilter,
                 "N/A",
                 outcome,
                 result.getUpdatedCount(),
@@ -62,8 +66,11 @@ public class ScholardexEdgeReconciliationService {
         return result;
     }
 
-    private void reconcilePublicationAuthorEdges(ImportProcessingResult result) {
-        for (ScholardexPublicationFact publication : publicationFactRepository.findAll()) {
+    private void reconcilePublicationAuthorEdges(ImportProcessingResult result, String sourceBatchIdFilter) {
+        List<ScholardexPublicationFact> publications = sourceBatchIdFilter == null || sourceBatchIdFilter.isBlank()
+                ? publicationFactRepository.findAll()
+                : publicationFactRepository.findBySourceBatchId(sourceBatchIdFilter);
+        for (ScholardexPublicationFact publication : publications) {
             if (publication.getId() == null) {
                 continue;
             }
@@ -140,8 +147,11 @@ public class ScholardexEdgeReconciliationService {
         }
     }
 
-    private void reconcileAuthorAffiliationEdges(ImportProcessingResult result) {
-        for (ScholardexAuthorFact author : authorFactRepository.findAll()) {
+    private void reconcileAuthorAffiliationEdges(ImportProcessingResult result, String sourceBatchIdFilter) {
+        List<ScholardexAuthorFact> authors = sourceBatchIdFilter == null || sourceBatchIdFilter.isBlank()
+                ? authorFactRepository.findAll()
+                : authorFactRepository.findBySourceBatchId(sourceBatchIdFilter);
+        for (ScholardexAuthorFact author : authors) {
             if (author.getId() == null) {
                 continue;
             }

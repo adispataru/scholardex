@@ -359,7 +359,13 @@ public class ScopusFactBuilderService {
             fact = new ScopusPublicationFact();
             state.publicationByEid.put(eid, fact);
         } else if (samePayloadHash(fact.getLastPayloadHash(), event.getPayloadHash())) {
+            refreshLineageForReplay(fact, event);
+            state.pendingPublicationSaves.put(eid, fact);
             result.markSkipped(sample(event, "publication payload unchanged"));
+            upsertForumFact(event, payload, result, state);
+            upsertAuthorFacts(event, payload, result, state);
+            upsertAffiliationFacts(event, payload, result, state);
+            upsertFundingFact(event, payload, result, state);
             return;
         }
 
@@ -439,6 +445,8 @@ public class ScopusFactBuilderService {
             fact = new ScopusCitationFact();
             citationByEdge.put(edgeKey, fact);
         } else if (samePayloadHash(fact.getLastPayloadHash(), event.getPayloadHash())) {
+            refreshLineageForReplay(fact, event);
+            pendingCitationSaves.put(edgeKey, fact);
             result.markSkipped(sample(event, "citation payload unchanged"));
             return;
         }
@@ -481,6 +489,8 @@ public class ScopusFactBuilderService {
                 normalizeIssn(text(payload, "eIssn")),
                 text(payload, "aggregationType"));
         if (!created && samePayloadHash(fact.getLastPayloadHash(), payloadHash)) {
+            refreshLineageForReplay(fact, event);
+            state.pendingForumSaves.put(sourceId, fact);
             return;
         }
 
@@ -529,6 +539,8 @@ public class ScopusFactBuilderService {
                     trim(authorNames.get(i)),
                     String.join(",", distinctNonBlank(splitDash(authorAfids.get(i)))));
             if (!created && samePayloadHash(fact.getLastPayloadHash(), payloadHash)) {
+                refreshLineageForReplay(fact, event);
+                state.pendingAuthorSaves.put(authorId, fact);
                 continue;
             }
 
@@ -577,6 +589,8 @@ public class ScopusFactBuilderService {
                     arrayValue(cities, i),
                     arrayValue(countries, i));
             if (!created && samePayloadHash(fact.getLastPayloadHash(), payloadHash)) {
+                refreshLineageForReplay(fact, event);
+                state.pendingAffiliationSaves.put(afid, fact);
                 continue;
             }
 
@@ -617,6 +631,8 @@ public class ScopusFactBuilderService {
         }
         String payloadHash = hashKey("funding", acronym, text(payload, "fund_no"), text(payload, "fund_sponsor"));
         if (!created && samePayloadHash(fact.getLastPayloadHash(), payloadHash)) {
+            refreshLineageForReplay(fact, event);
+            state.pendingFundingSaves.put(fundingKey, fact);
             return;
         }
 
@@ -657,6 +673,10 @@ public class ScopusFactBuilderService {
 
     private void applyLineage(HasLineageFields fact, ScopusImportEvent event) {
         FactBuilderSupport.applyLineage(fact, event);
+    }
+
+    private void refreshLineageForReplay(HasLineageFields fact, ScopusImportEvent event) {
+        applyLineage(fact, event);
     }
 
     private String sample(ScopusImportEvent event, String message) {

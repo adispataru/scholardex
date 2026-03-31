@@ -9,5 +9,6 @@ import java.util.Optional;
 
 public interface ScopusForumFactRepository extends MongoRepository<ScopusForumFact, String> {
     Optional<ScopusForumFact> findBySourceId(String sourceId);
+    List<ScopusForumFact> findBySourceBatchId(String sourceBatchId);
     List<ScopusForumFact> findBySourceIdIn(Collection<String> sourceIds);
 }

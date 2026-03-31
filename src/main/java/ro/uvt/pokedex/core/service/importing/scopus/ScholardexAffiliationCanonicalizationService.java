@@ -1,5 +1,6 @@
 package ro.uvt.pokedex.core.service.importing.scopus;
 
+import org.springframework.dao.DuplicateKeyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -104,9 +105,15 @@ public class ScholardexAffiliationCanonicalizationService extends AbstractCanoni
     @Override
     protected List<ScopusAffiliationFact> loadSourceFacts(CanonicalBuildOptions options) {
         long startedAtNanos = System.nanoTime();
-        log.info("Scholardex affiliation canonicalization source load started: mode=full-rescan");
-        List<ScopusAffiliationFact> facts = new ArrayList<>(scopusAffiliationFactRepository.findAll());
-        log.info("Scholardex affiliation canonicalization source load completed: mode=full-rescan records={} elapsedMs={}",
+        String sourceBatchIdFilter = options == null ? null : options.sourceBatchIdFilter();
+        String mode = isBlank(sourceBatchIdFilter) ? "full-rescan" : "batch-filter";
+        log.info("Scholardex affiliation canonicalization source load started: mode={} sourceBatchIdFilter={}", mode, sourceBatchIdFilter);
+        List<ScopusAffiliationFact> facts = isBlank(sourceBatchIdFilter)
+                ? new ArrayList<>(scopusAffiliationFactRepository.findAll())
+                : new ArrayList<>(scopusAffiliationFactRepository.findBySourceBatchId(sourceBatchIdFilter));
+        log.info("Scholardex affiliation canonicalization source load completed: mode={} sourceBatchIdFilter={} records={} elapsedMs={}",
+                mode,
+                sourceBatchIdFilter,
                 facts.size(), nanosToMillis(System.nanoTime() - startedAtNanos));
         return facts;
     }
@@ -264,7 +271,15 @@ public class ScholardexAffiliationCanonicalizationService extends AbstractCanoni
     @Override
     protected CanonicalBuildChunkTimings flushPendingWrites(long chunkStartedAtNanos, long preloadFinishedAtNanos, long resolveFinishedAtNanos, ChunkContext context) {
         if (!context.pendingAffiliationSaves.isEmpty()) {
-            scholardexAffiliationFactRepository.saveAll(context.pendingAffiliationSaves.values());
+            try {
+                scholardexAffiliationFactRepository.saveAll(context.pendingAffiliationSaves.values());
+            } catch (DuplicateKeyException ex) {
+                log.warn("Scholardex affiliation canonicalization chunk saveAll hit duplicate key; falling back to per-record recovery path for {} facts.",
+                        context.pendingAffiliationSaves.size());
+                for (ScholardexAffiliationFact fact : context.pendingAffiliationSaves.values()) {
+                    recoverAffiliationWrite(fact, context);
+                }
+            }
         }
         if (!context.pendingSourceLinkCommands.isEmpty()) {
             sourceLinkService.batchUpsertWithState(
@@ -291,6 +306,87 @@ public class ScholardexAffiliationCanonicalizationService extends AbstractCanoni
     private String normalizeAlias(String name, String city, String country) {
         String alias = normalizeToken(normalizeName(name)) + "|" + normalizeToken(city) + "|" + normalizeToken(country);
         return alias.equals("||") ? null : alias;
+    }
+
+    private void recoverAffiliationWrite(ScholardexAffiliationFact fact, ChunkContext context) {
+        if (fact == null) {
+            return;
+        }
+        String sourceRecordId = normalizeBlank(fact.getSourceRecordId());
+        try {
+            scholardexAffiliationFactRepository.save(fact);
+        } catch (DuplicateKeyException duplicateKeyException) {
+            Optional<ScholardexAffiliationFact> existingBySourceId = sourceRecordId == null
+                    ? Optional.empty()
+                    : scholardexAffiliationFactRepository.findByScopusAffiliationIdsContains(sourceRecordId);
+            if (existingBySourceId.isEmpty()) {
+                throw duplicateKeyException;
+            }
+            ScholardexAffiliationFact recovered = existingBySourceId.get();
+            mergeRecoveredAffiliation(recovered, fact);
+            scholardexAffiliationFactRepository.save(recovered);
+            context.affiliationByCanonicalId.put(recovered.getId(), recovered);
+            if (sourceRecordId != null) {
+                context.affiliationBySourceId.put(sourceRecordId, recovered);
+                rewritePendingSourceLinkCommandCanonicalId(sourceRecordId, recovered.getId(), context);
+            }
+        }
+    }
+
+    private void mergeRecoveredAffiliation(ScholardexAffiliationFact target, ScholardexAffiliationFact incoming) {
+        if (target == null || incoming == null) {
+            return;
+        }
+        String sourceRecordId = normalizeBlank(incoming.getSourceRecordId());
+        if (sourceRecordId != null) {
+            addUnique(target.getScopusAffiliationIds(), sourceRecordId);
+        }
+        target.setName(incoming.getName());
+        target.setNameNormalized(incoming.getNameNormalized());
+        target.setCity(incoming.getCity());
+        target.setCountry(incoming.getCountry());
+        for (String alias : safeList(incoming.getAliases())) {
+            addUnique(target.getAliases(), alias);
+        }
+        target.setSourceEventId(incoming.getSourceEventId());
+        target.setSource(incoming.getSource());
+        target.setSourceRecordId(incoming.getSourceRecordId());
+        target.setSourceBatchId(incoming.getSourceBatchId());
+        target.setSourceCorrelationId(incoming.getSourceCorrelationId());
+        target.setUpdatedAt(Instant.now());
+    }
+
+    private void rewritePendingSourceLinkCommandCanonicalId(
+            String sourceRecordId,
+            String canonicalId,
+            ChunkContext context
+    ) {
+        if (sourceRecordId == null || canonicalId == null) {
+            return;
+        }
+        context.pendingSourceLinkCommands.replaceAll((key, command) -> {
+            if (key == null || command == null) {
+                return command;
+            }
+            if (key.entityType() != ScholardexEntityType.AFFILIATION) {
+                return command;
+            }
+            if (!sourceRecordId.equals(normalizeBlank(key.sourceRecordId()))) {
+                return command;
+            }
+            return new ScholardexSourceLinkService.SourceLinkUpsertCommand(
+                    command.entityType(),
+                    command.source(),
+                    command.sourceRecordId(),
+                    canonicalId,
+                    command.targetState(),
+                    command.reason(),
+                    command.sourceEventId(),
+                    command.sourceBatchId(),
+                    command.sourceCorrelationId(),
+                    command.explicitReplayAttempt()
+            );
+        });
     }
 
     private void upsertSourceLinkCommand(

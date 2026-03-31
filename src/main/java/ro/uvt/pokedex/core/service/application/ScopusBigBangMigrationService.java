@@ -108,7 +108,7 @@ public class ScopusBigBangMigrationService {
                 startBatchOverride, useCheckpoint, chunkSizeOverride);
         ImportProcessingResult facts = runStepWithTiming("scopus-fact-builder", scopusFactBuilderService::buildFactsFromImportEvents);
         CanonicalBuildOptions options = new CanonicalBuildOptions(
-                chunkSizeOverride, startBatchOverride, useCheckpoint, null, false, false);
+                chunkSizeOverride, startBatchOverride, useCheckpoint, null, null, false, false);
         log.info("Scopus build-facts next step: scholardex-affiliation-canonicalization");
         ImportProcessingResult canonicalAffiliations = runStepWithTiming(
                 "scholardex-affiliation-canonicalization",
@@ -144,11 +144,85 @@ public class ScopusBigBangMigrationService {
             );
     }
 
+    public ScopusBigBangMigrationResult runIncrementalUploadBuildStep(
+            String sourceBatchIdFilter,
+            Integer chunkSizeOverride
+    ) {
+        Instant startedAt = Instant.now();
+        log.info("Scopus incremental upload build orchestration started: sourceBatchIdFilter={} chunkSizeOverride={}",
+                sourceBatchIdFilter, chunkSizeOverride);
+        ImportProcessingResult facts = runStepWithTiming(
+                "scopus-fact-builder",
+                () -> scopusFactBuilderService.buildFactsFromImportEvents(sourceBatchIdFilter)
+        );
+        CanonicalBuildOptions options = new CanonicalBuildOptions(
+                chunkSizeOverride,
+                null,
+                false,
+                sourceBatchIdFilter,
+                null,
+                false,
+                false
+        );
+        log.info("Scopus incremental upload next step: scholardex-affiliation-canonicalization");
+        ImportProcessingResult canonicalAffiliations = runStepWithTiming(
+                "scholardex-affiliation-canonicalization",
+                () -> affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(options));
+        log.info("Scopus incremental upload next step: scholardex-author-canonicalization");
+        ImportProcessingResult canonicalAuthors = runStepWithTiming(
+                "scholardex-author-canonicalization",
+                () -> authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options));
+        log.info("Scopus incremental upload next step: scholardex-publication-canonicalization");
+        ImportProcessingResult canonicalPublications = runStepWithTiming(
+                "scholardex-publication-canonicalization",
+                () -> publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(options));
+        log.info("Scopus incremental upload next step: scholardex-citation-canonicalization");
+        ImportProcessingResult canonicalCitations = runStepWithTiming(
+                "scholardex-citation-canonicalization",
+                () -> citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options));
+        ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors, canonicalPublications, canonicalCitations));
+        log.info("Scopus incremental upload build orchestration completed: sourceBatchIdFilter={} processed={} imported={} updated={} skipped={} errors={}",
+                sourceBatchIdFilter,
+                buildFactsCombined.getProcessedCount(),
+                buildFactsCombined.getImportedCount(),
+                buildFactsCombined.getUpdatedCount(),
+                buildFactsCombined.getSkippedCount(),
+                buildFactsCombined.getErrorCount());
+        return new ScopusBigBangMigrationResult(
+                scopusDataFile,
+                startedAt,
+                Instant.now(),
+                null,
+                MigrationStepResult.executed("build-facts", buildFactsCombined),
+                null,
+                null,
+                buildVerificationSummary()
+        );
+    }
+
     public ScopusBigBangMigrationResult runBuildProjectionsStep() {
         Instant startedAt = Instant.now();
         ImportProcessingResult projections = runStepWithTiming(
                 "scopus-projection-builder",
                 scopusProjectionBuilderService::rebuildViews
+        );
+        return new ScopusBigBangMigrationResult(
+                scopusDataFile,
+                startedAt,
+                Instant.now(),
+                null,
+                null,
+                MigrationStepResult.executed("build-projections", projections),
+                null,
+                buildVerificationSummary()
+        );
+    }
+
+    public ScopusBigBangMigrationResult runIncrementalUploadProjectionStep(String sourceBatchIdFilter) {
+        Instant startedAt = Instant.now();
+        ImportProcessingResult projections = runStepWithTiming(
+                "scopus-projection-builder",
+                () -> scopusProjectionBuilderService.rebuildViewsForBatch(sourceBatchIdFilter)
         );
         return new ScopusBigBangMigrationResult(
                 scopusDataFile,
@@ -318,6 +392,7 @@ public class ScopusBigBangMigrationService {
                 startBatchOverride,
                 useCheckpoint,
                 null,
+                null,
                 reconcileSourceLinks,
                 reconcileEdges
         );
@@ -421,6 +496,19 @@ public class ScopusBigBangMigrationService {
         log.info("CANONICAL_RECONCILE edge_reconcile runId={} batchId={} correlationId={} entity=EDGE source=CANONICAL outcome={} updated={} skipped={} errors={}",
                 java.util.UUID.randomUUID().toString(),
                 "N/A",
+                "N/A",
+                result.getErrorCount() > 0 ? "failure" : "success",
+                result.getUpdatedCount(),
+                result.getSkippedCount(),
+                result.getErrorCount());
+        return result;
+    }
+
+    public ImportProcessingResult runIncrementalUploadEdgeReconcileStep(String sourceBatchIdFilter) {
+        ImportProcessingResult result = edgeReconciliationService.reconcileEdges(sourceBatchIdFilter);
+        log.info("CANONICAL_RECONCILE edge_reconcile runId={} batchId={} correlationId={} entity=EDGE source=CANONICAL outcome={} updated={} skipped={} errors={}",
+                java.util.UUID.randomUUID().toString(),
+                sourceBatchIdFilter,
                 "N/A",
                 result.getErrorCount() > 0 ? "failure" : "success",
                 result.getUpdatedCount(),

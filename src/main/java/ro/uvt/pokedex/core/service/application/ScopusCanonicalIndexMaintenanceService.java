@@ -265,7 +265,7 @@ public class ScopusCanonicalIndexMaintenanceService {
     private void ensureCanonicalCitationIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
         IndexOperations ops = mongoTemplate.indexOps(ScholardexCitationFact.class);
         ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_CITATION_UNIQ_EDGE, true,
-                        List.of(field("citedPublicationId"), field("citingPublicationId"), field("source"))),
+                        List.of(field("citedPublicationId"), field("citingPublicationId"))),
                 created, present, invalid, errors);
         ensureNamedIndex(ops, new IndexDefinition(IDX_CANON_CITATION_CITED, false, List.of(field("citedPublicationId"))),
                 created, present, invalid, errors);

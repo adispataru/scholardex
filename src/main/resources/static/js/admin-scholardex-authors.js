@@ -75,7 +75,7 @@
     params.set('sort', state.sort);
     params.set('direction', state.direction);
     if (state.q) params.set('q', state.q);
-    return '/api/scopus/authors?' + params.toString();
+    return '/api/entities/authors?' + params.toString();
   }
 
   async function fetchPage() {

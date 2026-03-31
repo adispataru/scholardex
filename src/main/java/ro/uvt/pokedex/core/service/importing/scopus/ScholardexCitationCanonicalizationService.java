@@ -93,6 +93,16 @@ public class ScholardexCitationCanonicalizationService extends AbstractCanonical
     @Override
     protected List<ScopusCitationFact> loadSourceFacts(CanonicalBuildOptions options) {
         long startedAtNanos = System.nanoTime();
+        String sourceBatchIdFilter = options == null ? null : options.sourceBatchIdFilter();
+        if (!isBlank(sourceBatchIdFilter)) {
+            log.info("Scholardex citation canonicalization source load started: mode=batch-filter sourceBatchIdFilter={}", sourceBatchIdFilter);
+            List<ScopusCitationFact> facts = new ArrayList<>(scopusCitationFactRepository.findBySourceBatchId(sourceBatchIdFilter));
+            log.info("Scholardex citation canonicalization source load completed: mode=batch-filter sourceBatchIdFilter={} records={} elapsedMs={}",
+                    sourceBatchIdFilter,
+                    facts.size(),
+                    nanosToMillis(System.nanoTime() - startedAtNanos));
+            return facts;
+        }
         long totalRecords = scopusCitationFactRepository.count();
         int pageSize = Math.max(1_000, Math.min(10_000, loadProgressRecordInterval));
         log.info("Scholardex citation canonicalization source load started: mode=full-rescan totalRecords={} pageSize={}", totalRecords, pageSize);
@@ -188,11 +198,10 @@ public class ScholardexCitationCanonicalizationService extends AbstractCanonical
             if (sourceFact == null) {
                 continue;
             }
-            String source = normalizeBlank(sourceFact.getSource());
             String citedPublicationId = context.publicationIdByEid.get(sourceFact.getCitedEid());
             String citingPublicationId = context.publicationIdByEid.get(sourceFact.getCitingEid());
-            if (!isBlank(source) && !isBlank(citedPublicationId) && !isBlank(citingPublicationId)) {
-                edgeIds.add(buildCanonicalCitationId(citedPublicationId, citingPublicationId, source));
+            if (!isBlank(citedPublicationId) && !isBlank(citingPublicationId)) {
+                edgeIds.add(buildCanonicalCitationId(citedPublicationId, citingPublicationId));
             }
         }
         if (!edgeIds.isEmpty()) {
@@ -237,7 +246,7 @@ public class ScholardexCitationCanonicalizationService extends AbstractCanonical
         }
 
         Optional<ScholardexSourceLink> existingSourceLink = resolveFromChunkSourceLinks(source, sourceRecordId, context);
-        String edgeId = buildCanonicalCitationId(citedPublicationId, citingPublicationId, source);
+        String edgeId = buildCanonicalCitationId(citedPublicationId, citingPublicationId);
         ScholardexCitationFact existingEdge = context.citationById.get(edgeId);
         if (existingSourceLink.isPresent()
                 && !isBlank(existingSourceLink.get().getCanonicalEntityId())
@@ -248,11 +257,15 @@ public class ScholardexCitationCanonicalizationService extends AbstractCanonical
             return;
         }
 
-        ScholardexCitationFact canonicalFact = existingEdge == null ? new ScholardexCitationFact() : existingEdge;
-        Instant now = Instant.now();
-        if (canonicalFact.getCreatedAt() == null) {
-            canonicalFact.setCreatedAt(now);
+        if (existingEdge != null) {
+            queueSourceLinkCommand(sourceFact, sourceRecordId, existingEdge.getId(), context);
+            result.markSkipped("citation-edge-already-known=" + edgeId);
+            return;
         }
+
+        ScholardexCitationFact canonicalFact = new ScholardexCitationFact();
+        Instant now = Instant.now();
+        canonicalFact.setCreatedAt(now);
         canonicalFact.setId(edgeId);
         canonicalFact.setCitedPublicationId(citedPublicationId);
         canonicalFact.setCitingPublicationId(citingPublicationId);
@@ -264,13 +277,8 @@ public class ScholardexCitationCanonicalizationService extends AbstractCanonical
         canonicalFact.setUpdatedAt(now);
         context.citationById.put(edgeId, canonicalFact);
         context.pendingCitationFacts.put(edgeId, canonicalFact);
-        queueSourceLinkCommand(canonicalFact, context);
-
-        if (existingEdge != null) {
-            result.markUpdated();
-        } else {
-            result.markImported();
-        }
+        queueSourceLinkCommand(sourceFact, sourceRecordId, canonicalFact.getId(), context);
+        result.markImported();
     }
 
     @Override
@@ -327,9 +335,9 @@ public class ScholardexCitationCanonicalizationService extends AbstractCanonical
 
     // ── Private helpers ─────────────────────────────────────────────────────
 
-    private String buildCanonicalCitationId(String citedPublicationId, String citingPublicationId, String source) {
+    private String buildCanonicalCitationId(String citedPublicationId, String citingPublicationId) {
         return "scit_" + shortHash(
-                normalizeBlank(citedPublicationId) + "|" + normalizeBlank(citingPublicationId) + "|" + normalizeToken(source)
+                normalizeBlank(citedPublicationId) + "|" + normalizeBlank(citingPublicationId)
         );
     }
 
@@ -372,21 +380,27 @@ public class ScholardexCitationCanonicalizationService extends AbstractCanonical
         );
     }
 
-    private void queueSourceLinkCommand(ScholardexCitationFact citationFact, ChunkContext context) {
-        if (isBlank(citationFact.getSource()) || isBlank(citationFact.getSourceRecordId())) {
+    private void queueSourceLinkCommand(
+            ScopusCitationFact sourceFact,
+            String sourceRecordId,
+            String canonicalCitationId,
+            ChunkContext context
+    ) {
+        String source = normalizeBlank(sourceFact.getSource());
+        if (isBlank(source) || isBlank(sourceRecordId) || isBlank(canonicalCitationId)) {
             return;
         }
-        String key = normalizeToken(citationFact.getSource()) + "|" + normalizeToken(citationFact.getSourceRecordId());
+        String key = normalizeToken(source) + "|" + normalizeToken(sourceRecordId);
         context.pendingSourceLinkCommands.put(key, new ScholardexSourceLinkService.SourceLinkUpsertCommand(
                 ScholardexEntityType.CITATION,
-                citationFact.getSource(),
-                citationFact.getSourceRecordId(),
-                citationFact.getId(),
+                source,
+                sourceRecordId,
+                canonicalCitationId,
                 ScholardexSourceLinkService.STATE_LINKED,
                 LINK_REASON_SCOPUS_BRIDGE,
-                citationFact.getSourceEventId(),
-                citationFact.getSourceBatchId(),
-                citationFact.getSourceCorrelationId(),
+                sourceFact.getSourceEventId(),
+                sourceFact.getSourceBatchId(),
+                sourceFact.getSourceCorrelationId(),
                 false
         ));
     }
@@ -408,19 +422,29 @@ public class ScholardexCitationCanonicalizationService extends AbstractCanonical
         String key = normalizeToken(incomingSource) + "|" + normalizeToken(sourceRecordId) + "|" + normalizeToken(reasonCode);
         ScholardexIdentityConflict conflict = context.pendingConflicts.get(key);
         if (conflict == null) {
-            conflict = new ScholardexIdentityConflict();
-            conflict.setEntityType(ScholardexEntityType.CITATION);
-            conflict.setIncomingSource(incomingSource);
-            conflict.setIncomingSourceRecordId(sourceRecordId);
-            conflict.setReasonCode(reasonCode);
-            conflict.setStatus(CanonicalizationSupport.STATUS_OPEN);
+            conflict = identityConflictRepository
+                    .findByEntityTypeAndIncomingSourceAndIncomingSourceRecordIdAndReasonCodeAndStatus(
+                            ScholardexEntityType.CITATION,
+                            incomingSource,
+                            sourceRecordId,
+                            reasonCode,
+                            CanonicalizationSupport.STATUS_OPEN
+                    )
+                    .orElseGet(ScholardexIdentityConflict::new);
+        }
+        conflict.setEntityType(ScholardexEntityType.CITATION);
+        conflict.setIncomingSource(incomingSource);
+        conflict.setIncomingSourceRecordId(sourceRecordId);
+        conflict.setReasonCode(reasonCode);
+        conflict.setStatus(CanonicalizationSupport.STATUS_OPEN);
+        if (conflict.getDetectedAt() == null) {
             conflict.setDetectedAt(Instant.now());
-            context.pendingConflicts.put(key, conflict);
         }
         conflict.setCandidateCanonicalIds(candidates == null ? List.of() : new ArrayList<>(candidates));
         conflict.setSourceEventId(sourceFact.getSourceEventId());
         conflict.setSourceBatchId(sourceFact.getSourceBatchId());
         conflict.setSourceCorrelationId(sourceFact.getSourceCorrelationId());
+        context.pendingConflicts.put(key, conflict);
         CanonicalObservabilityMetrics.recordConflictCreated(ScholardexEntityType.CITATION.name(), incomingSource, reasonCode);
     }
 

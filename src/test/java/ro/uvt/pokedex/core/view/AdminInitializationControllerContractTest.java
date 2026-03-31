@@ -88,6 +88,7 @@ class AdminInitializationControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/materialized/showStatus")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/operational/showStatus")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/postgres/operational/status")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/incremental-updates")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("docs/operational-playbook.md")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/runAll")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/adminUser")))

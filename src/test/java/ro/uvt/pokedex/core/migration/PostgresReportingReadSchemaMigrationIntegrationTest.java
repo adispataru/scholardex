@@ -142,7 +142,7 @@ class PostgresReportingReadSchemaMigrationIntegrationTest {
             assertUniqueViolation(connection, """
                     INSERT INTO reporting_read.scholardex_citation_fact
                     (id, cited_publication_id, citing_publication_id, source)
-                    VALUES ('sci2', 'p1', 'p2', 'SCOPUS');
+                    VALUES ('sci2', 'p1', 'p2', 'SCOPUS_PYTHON_CITATIONS_EDGE');
                     """);
 
             execute(connection, """
@@ -251,6 +251,57 @@ class PostgresReportingReadSchemaMigrationIntegrationTest {
                     WHERE cited_publication_id = 'p1';
                     """);
             assertEquals(1L, citationTraversalFromMv);
+        }
+    }
+
+    @Test
+    void v9DedupesExistingCitationPairsBeforeAddingSourceAgnosticUniqueConstraint() throws Exception {
+        Flyway baselineToV8 = Flyway.configure()
+                .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
+                .schemas("reporting_read")
+                .locations("classpath:db/migration")
+                .cleanDisabled(false)
+                .target("8")
+                .load();
+        baselineToV8.clean();
+        baselineToV8.migrate();
+
+        try (Connection connection = openConnection()) {
+            execute(connection, """
+                    INSERT INTO reporting_read.scholardex_publication_view (id, eid, title)
+                    VALUES ('p1', 'EID-1', 'Publication One'),
+                           ('p2', 'EID-2', 'Publication Two');
+                    """);
+            execute(connection, """
+                    INSERT INTO reporting_read.scholardex_citation_fact
+                    (id, cited_publication_id, citing_publication_id, source, created_at, updated_at)
+                    VALUES ('sci1', 'p1', 'p2', 'SCOPUS_JSON_BOOTSTRAP', TIMESTAMP '2026-03-31 10:00:00', TIMESTAMP '2026-03-31 10:00:00'),
+                           ('sci2', 'p1', 'p2', 'SCOPUS_PYTHON_CITATIONS_EDGE', TIMESTAMP '2026-04-01 10:00:00', TIMESTAMP '2026-04-01 10:00:00');
+                    """);
+        }
+
+        Flyway migrateToLatest = Flyway.configure()
+                .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
+                .schemas("reporting_read")
+                .locations("classpath:db/migration")
+                .cleanDisabled(false)
+                .load();
+        migrateToLatest.migrate();
+
+        try (Connection connection = openConnection()) {
+            long remainingRows = queryLong(connection, """
+                    SELECT COUNT(*)
+                    FROM reporting_read.scholardex_citation_fact
+                    WHERE cited_publication_id = 'p1'
+                      AND citing_publication_id = 'p2';
+                    """);
+            assertEquals(1L, remainingRows);
+
+            assertUniqueViolation(connection, """
+                    INSERT INTO reporting_read.scholardex_citation_fact
+                    (id, cited_publication_id, citing_publication_id, source)
+                    VALUES ('sci3', 'p1', 'p2', 'SCOPUS_JSON_BOOTSTRAP');
+                    """);
         }
     }
 

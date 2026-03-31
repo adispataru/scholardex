@@ -110,6 +110,7 @@ async function testDefaultLoadRequestsExpectedParams() {
 
   await wait(10);
   assert.strictEqual(calls.length, 1);
+  assert.ok(calls[0].startsWith('/api/entities/authors?'));
   assert.deepStrictEqual(parseQuery(calls[0]), {
     page: '0',
     size: '25',
@@ -135,6 +136,7 @@ async function testControlChangesTriggerRequestsAndCanonicalLinks() {
   });
 
   await wait(10);
+  assert.ok(calls[0].startsWith('/api/entities/authors?'));
   assert.ok(els['admin-authors-table-body'].innerHTML.includes('/user/authors/view/a'));
 
   els['admin-authors-next'].dispatch('click');

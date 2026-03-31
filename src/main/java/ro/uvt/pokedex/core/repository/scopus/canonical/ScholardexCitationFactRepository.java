@@ -8,12 +8,12 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ScholardexCitationFactRepository extends MongoRepository<ScholardexCitationFact, String> {
-    Optional<ScholardexCitationFact> findByCitedPublicationIdAndCitingPublicationIdAndSource(
+    Optional<ScholardexCitationFact> findByCitedPublicationIdAndCitingPublicationId(
             String citedPublicationId,
-            String citingPublicationId,
-            String source
+            String citingPublicationId
     );
 
+    List<ScholardexCitationFact> findBySourceBatchId(String sourceBatchId);
     List<ScholardexCitationFact> findByCitedPublicationId(String citedPublicationId);
 
     List<ScholardexCitationFact> findByCitedPublicationIdIn(Collection<String> citedPublicationIds);

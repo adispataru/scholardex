@@ -10,4 +10,5 @@ import java.util.Optional;
 public interface ScopusAuthorFactRepository extends MongoRepository<ScopusAuthorFact, String> {
     Optional<ScopusAuthorFact> findByAuthorId(String authorId);
     List<ScopusAuthorFact> findByAuthorIdIn(Collection<String> authorIds);
+    List<ScopusAuthorFact> findBySourceBatchId(String sourceBatchId);
 }

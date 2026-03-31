@@ -76,7 +76,7 @@
     params.set('sort', state.sort);
     params.set('direction', state.direction);
     if (state.q) params.set('q', state.q);
-    return '/api/scopus/affiliations?' + params.toString();
+    return '/api/entities/affiliations?' + params.toString();
   }
 
   async function fetchPage() {

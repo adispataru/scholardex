@@ -205,7 +205,7 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
                 info(ScopusCanonicalIndexMaintenanceService.IDX_AUTHORSHIP_AUTHOR, false, "authorId")
         ));
         when(canonicalCitationFactOps.getIndexInfo()).thenReturn(List.of(
-                info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_CITATION_UNIQ_EDGE, true, "citedPublicationId", "citingPublicationId", "source"),
+                info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_CITATION_UNIQ_EDGE, true, "citedPublicationId", "citingPublicationId"),
                 info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_CITATION_CITED, false, "citedPublicationId"),
                 info(ScopusCanonicalIndexMaintenanceService.IDX_CANON_CITATION_CITING, false, "citingPublicationId")
         ));

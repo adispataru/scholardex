@@ -30,6 +30,8 @@ import ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonic
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -130,6 +132,30 @@ class ScopusBigBangMigrationServiceTest {
         assertEquals(50L, full.verification().publicationViews());
     }
 
+    @Test
+    void incrementalUploadProjectionStepUsesBatchScopedProjectionBuilder() {
+        ImportProcessingResult projections = result(3, 2, 1, 0, 0);
+        when(scopusProjectionBuilderService.rebuildViewsForBatch("upload-batch-7")).thenReturn(projections);
+        stubVerificationSummary();
+
+        ScopusBigBangMigrationService.ScopusBigBangMigrationResult run = service.runIncrementalUploadProjectionStep("upload-batch-7");
+
+        assertEquals(3, run.buildProjections().processed());
+        verify(scopusProjectionBuilderService).rebuildViewsForBatch("upload-batch-7");
+        verify(scopusProjectionBuilderService, never()).rebuildViews();
+    }
+
+    @Test
+    void incrementalUploadEdgeReconcileUsesBatchScopedEdgeService() {
+        ImportProcessingResult edgeResult = result(2, 0, 1, 1, 0);
+        when(edgeReconciliationService.reconcileEdges("upload-batch-7")).thenReturn(edgeResult);
+
+        ImportProcessingResult run = service.runIncrementalUploadEdgeReconcileStep("upload-batch-7");
+
+        assertEquals(1, run.getUpdatedCount());
+        verify(edgeReconciliationService).reconcileEdges("upload-batch-7");
+    }
+
     private ImportProcessingResult result(int processed, int imported, int updated, int skipped, int errors) {
         ImportProcessingResult result = new ImportProcessingResult(10);
         for (int i = 0; i < processed; i++) {
@@ -148,5 +174,21 @@ class ScopusBigBangMigrationServiceTest {
             result.markError("e" + i);
         }
         return result;
+    }
+
+    private void stubVerificationSummary() {
+        when(importEventRepository.count()).thenReturn(0L);
+        when(publicationFactRepository.count()).thenReturn(0L);
+        when(citationFactRepository.count()).thenReturn(0L);
+        when(scholardexPublicationFactRepository.count()).thenReturn(0L);
+        when(scholardexCitationFactRepository.count()).thenReturn(0L);
+        when(forumFactRepository.count()).thenReturn(0L);
+        when(authorFactRepository.count()).thenReturn(0L);
+        when(affiliationFactRepository.count()).thenReturn(0L);
+        when(scholardexSourceLinkRepository.count()).thenReturn(0L);
+        when(jdbcTemplate.queryForObject(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq(Long.class)
+        )).thenReturn(0L);
     }
 }

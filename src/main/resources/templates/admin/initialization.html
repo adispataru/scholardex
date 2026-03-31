@@ -41,7 +41,10 @@
         <div id="content">
             <div th:replace="~{fragments :: navbar('Initialization')}"></div>
             <div class="container-fluid">
-                <p class="mb-4">Run initialization and operational maintenance steps. WoS/Scopus/USER_DEFINED pipelines are deterministic and admin-triggered.</p>
+                <div class="d-flex justify-content-between align-items-start mb-4">
+                    <p class="mb-0">Run initialization and operational maintenance steps. WoS/Scopus/USER_DEFINED pipelines are deterministic and admin-triggered.</p>
+                    <a th:href="@{/admin/incremental-updates}" class="btn btn-outline-primary btn-sm ml-3">Open Incremental Uploads</a>
+                </div>
 
                 <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
                 <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>

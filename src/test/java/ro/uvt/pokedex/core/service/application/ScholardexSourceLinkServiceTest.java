@@ -18,6 +18,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -169,5 +170,122 @@ class ScholardexSourceLinkServiceTest {
         assertEquals(1, result.rejectedCount());
         verify(sourceLinkRepository).saveAll(any());
         verify(identityConflictRepository).save(any(ScholardexIdentityConflict.class));
+    }
+
+    @Test
+    void batchUpsertFallsBackToRepositoryLookupOnCacheMissWhenEnabled() {
+        ScholardexSourceLinkService service = new ScholardexSourceLinkService(sourceLinkRepository, identityConflictRepository);
+        ScholardexSourceLink existing = new ScholardexSourceLink();
+        existing.setId("link-1");
+        existing.setEntityType(ScholardexEntityType.AUTHOR);
+        existing.setSource("SCOPUS_JSON_UPLOAD");
+        existing.setSourceRecordId("14027901400");
+        existing.setCanonicalEntityId("sauth_existing");
+        existing.setLinkState("LINKED");
+
+        when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
+                ScholardexEntityType.AUTHOR, "SCOPUS_JSON_UPLOAD", "14027901400"
+        )).thenReturn(Optional.of(existing));
+
+        ScholardexSourceLinkService.BatchWriteResult result = service.batchUpsertWithState(
+                List.of(new ScholardexSourceLinkService.SourceLinkUpsertCommand(
+                        ScholardexEntityType.AUTHOR,
+                        "SCOPUS_JSON_UPLOAD",
+                        "14027901400",
+                        "sauth_existing",
+                        "LINKED",
+                        "scopus-author-bridge",
+                        "event-1",
+                        "batch-2",
+                        "corr-2",
+                        true
+                )),
+                Map.of(),
+                true
+        );
+
+        assertEquals(1, result.acceptedCount());
+        verify(sourceLinkRepository).saveAll(argThat(savedLinks -> {
+            if (!(savedLinks instanceof Iterable<?> iterable)) {
+                return false;
+            }
+            java.util.Iterator<?> iterator = iterable.iterator();
+            if (!iterator.hasNext()) {
+                return false;
+            }
+            Object value = iterator.next();
+            if (!(value instanceof ScholardexSourceLink saved)) {
+                return false;
+            }
+            return "link-1".equals(saved.getId())
+                    && "batch-2".equals(saved.getSourceBatchId())
+                    && "SCOPUS_JSON_UPLOAD".equals(saved.getSource());
+        }));
+    }
+
+    @Test
+    void batchUpsertReplacesSyntheticPlaceholderWithPersistedRowWhenFallbackIsEnabled() {
+        ScholardexSourceLinkService service = new ScholardexSourceLinkService(sourceLinkRepository, identityConflictRepository);
+
+        ScholardexSourceLink placeholder = new ScholardexSourceLink();
+        placeholder.setEntityType(ScholardexEntityType.AUTHOR);
+        placeholder.setSource("SCOPUS_JSON_UPLOAD");
+        placeholder.setSourceRecordId("14027901400");
+        placeholder.setCanonicalEntityId("sauth_placeholder");
+        placeholder.setLinkState("LINKED");
+
+        ScholardexSourceLink persisted = new ScholardexSourceLink();
+        persisted.setId("persisted-link-1");
+        persisted.setEntityType(ScholardexEntityType.AUTHOR);
+        persisted.setSource("SCOPUS_JSON_UPLOAD");
+        persisted.setSourceRecordId("14027901400");
+        persisted.setCanonicalEntityId("sauth_existing");
+        persisted.setLinkState("LINKED");
+
+        ScholardexSourceLinkService.SourceLinkKey key =
+                ScholardexSourceLinkService.SourceLinkKey.of(
+                        ScholardexEntityType.AUTHOR,
+                        "SCOPUS_JSON_UPLOAD",
+                        "14027901400"
+                );
+
+        when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
+                ScholardexEntityType.AUTHOR, "SCOPUS_JSON_UPLOAD", "14027901400"
+        )).thenReturn(Optional.of(persisted));
+
+        ScholardexSourceLinkService.BatchWriteResult result = service.batchUpsertWithState(
+                List.of(new ScholardexSourceLinkService.SourceLinkUpsertCommand(
+                        ScholardexEntityType.AUTHOR,
+                        "SCOPUS_JSON_UPLOAD",
+                        "14027901400",
+                        "sauth_existing",
+                        "LINKED",
+                        "scopus-author-bridge",
+                        "event-2",
+                        "batch-3",
+                        "corr-3",
+                        true
+                )),
+                Map.of(key, placeholder),
+                true
+        );
+
+        assertEquals(1, result.acceptedCount());
+        verify(sourceLinkRepository).saveAll(argThat(savedLinks -> {
+            if (!(savedLinks instanceof Iterable<?> iterable)) {
+                return false;
+            }
+            java.util.Iterator<?> iterator = iterable.iterator();
+            if (!iterator.hasNext()) {
+                return false;
+            }
+            Object value = iterator.next();
+            if (!(value instanceof ScholardexSourceLink saved)) {
+                return false;
+            }
+            return "persisted-link-1".equals(saved.getId())
+                    && "sauth_existing".equals(saved.getCanonicalEntityId())
+                    && "batch-3".equals(saved.getSourceBatchId());
+        }));
     }
 }

@@ -159,4 +159,42 @@ class UserIndicatorResultServiceTest {
 
         assertEquals(4, dto.refreshVersion());
     }
+
+    @Test
+    void createSnapshotFromComputedPersistsReportScopedPayloadWithoutReadingLatest() {
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-1");
+        indicator.setOutputType(Indicator.Type.CITATIONS);
+        when(indicatorRepository.findById("ind-1")).thenReturn(Optional.of(indicator));
+
+        User user = new User();
+        user.setResearcherId("r-1");
+        when(userService.getUserByEmail("u@uvt.ro")).thenReturn(Optional.of(user));
+
+        when(userIndicatorResultRepository.save(any(UserIndicatorResult.class))).thenAnswer(invocation -> {
+            UserIndicatorResult entity = invocation.getArgument(0);
+            entity.setId("snap-1");
+            return entity;
+        });
+
+        IndicatorApplyResultDto computed = new IndicatorApplyResultDto(
+                null,
+                "ind-1",
+                "user/indicators-apply-citations",
+                Map.of("total", "9.50"),
+                new IndicatorApplyResultDto.Summary(9.5, 3, List.of("Q1"), List.of(3)),
+                IndicatorApplyResultDto.Source.COMPUTED,
+                null,
+                null,
+                0
+        );
+
+        UserIndicatorResult snapshot = service.createSnapshotFromComputed("u@uvt.ro", "ind-1", "rep-1", computed, 7);
+
+        assertEquals("snap-1", snapshot.getId());
+        assertEquals("rep-1", snapshot.getSourceReportId());
+        assertEquals(9.5, snapshot.getTotalScore());
+        assertEquals(7, snapshot.getRefreshVersion());
+        verify(userReportFacade, times(0)).buildIndicatorApplyView(any(), any());
+    }
 }

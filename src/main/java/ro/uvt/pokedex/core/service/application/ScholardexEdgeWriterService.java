@@ -216,7 +216,7 @@ public class ScholardexEdgeWriterService {
         }
 
         ScholardexSourceLinkService.BatchWriteResult sourceLinkResults =
-                sourceLinkService.batchUpsertWithState(linkCommands, preloadedSourceLinks, false);
+                sourceLinkService.batchUpsertWithState(linkCommands, preloadedSourceLinks, allowFallbackLookup);
         if (sourceLinkResults.rejectedCount() > 0) {
             for (ScholardexSourceLinkService.SourceLinkBatchItemResult item : sourceLinkResults.results()) {
                 if (item.accepted()) {
@@ -464,7 +464,7 @@ public class ScholardexEdgeWriterService {
         }
 
         ScholardexSourceLinkService.BatchWriteResult sourceLinkResults =
-                sourceLinkService.batchUpsertWithState(linkCommands, preloadedSourceLinks, false);
+                sourceLinkService.batchUpsertWithState(linkCommands, preloadedSourceLinks, allowFallbackLookup);
         if (sourceLinkResults.rejectedCount() > 0) {
             for (ScholardexSourceLinkService.SourceLinkBatchItemResult item : sourceLinkResults.results()) {
                 if (item.accepted()) {
@@ -629,7 +629,7 @@ public class ScholardexEdgeWriterService {
             bulkOps.execute();
         }
         ScholardexSourceLinkService.BatchWriteResult sourceLinkResults =
-                sourceLinkService.batchUpsertWithState(linkCommands, preloadedSourceLinks, false);
+                sourceLinkService.batchUpsertWithState(linkCommands, preloadedSourceLinks, allowFallbackLookup);
         if (sourceLinkResults.rejectedCount() > 0) {
             for (ScholardexSourceLinkService.SourceLinkBatchItemResult item : sourceLinkResults.results()) {
                 if (item.accepted()) {

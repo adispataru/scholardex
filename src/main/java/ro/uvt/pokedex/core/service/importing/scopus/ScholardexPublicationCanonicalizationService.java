@@ -9,12 +9,16 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusPublicationFact;
 import ro.uvt.pokedex.core.observability.CanonicalObservabilityMetrics;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorshipFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationAuthorAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
 import ro.uvt.pokedex.core.service.application.ScholardexEdgeWriterService;
 import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
@@ -57,6 +61,8 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
 
     private final ScopusPublicationFactRepository scopusPublicationFactRepository;
     private final ScholardexPublicationFactRepository scholardexPublicationFactRepository;
+    private final ScholardexAuthorshipFactRepository scholardexAuthorshipFactRepository;
+    private final ScholardexPublicationAuthorAffiliationFactRepository scholardexPublicationAuthorAffiliationFactRepository;
     private final ScholardexEdgeWriterService edgeWriterService;
 
     @Value("${scopus.canonical.telemetry.heartbeat-seconds:10}")
@@ -67,6 +73,8 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
     public ScholardexPublicationCanonicalizationService(
             ScopusPublicationFactRepository scopusPublicationFactRepository,
             ScholardexPublicationFactRepository scholardexPublicationFactRepository,
+            ScholardexAuthorshipFactRepository scholardexAuthorshipFactRepository,
+            ScholardexPublicationAuthorAffiliationFactRepository scholardexPublicationAuthorAffiliationFactRepository,
             ScholardexEdgeWriterService edgeWriterService,
             ScholardexSourceLinkService sourceLinkService,
             ScholardexIdentityConflictRepository identityConflictRepository,
@@ -75,6 +83,8 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         super(sourceLinkService, identityConflictRepository, checkpointService);
         this.scopusPublicationFactRepository = scopusPublicationFactRepository;
         this.scholardexPublicationFactRepository = scholardexPublicationFactRepository;
+        this.scholardexAuthorshipFactRepository = scholardexAuthorshipFactRepository;
+        this.scholardexPublicationAuthorAffiliationFactRepository = scholardexPublicationAuthorAffiliationFactRepository;
         this.edgeWriterService = edgeWriterService;
     }
 
@@ -174,6 +184,16 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
     @Override
     protected List<ScopusPublicationFact> loadSourceFacts(CanonicalBuildOptions options) {
         long startedAtNanos = System.nanoTime();
+        String sourceBatchIdFilter = options == null ? null : options.sourceBatchIdFilter();
+        if (!isBlank(sourceBatchIdFilter)) {
+            log.info("Scholardex publication canonicalization source load started: mode=batch-filter sourceBatchIdFilter={}", sourceBatchIdFilter);
+            List<ScopusPublicationFact> facts = new ArrayList<>(scopusPublicationFactRepository.findBySourceBatchId(sourceBatchIdFilter));
+            log.info("Scholardex publication canonicalization source load completed: mode=batch-filter sourceBatchIdFilter={} records={} elapsedMs={}",
+                    sourceBatchIdFilter,
+                    facts.size(),
+                    nanosToMillis(System.nanoTime() - startedAtNanos));
+            return facts;
+        }
         long totalRecords = scopusPublicationFactRepository.count();
         int pageSize = Math.max(1_000, Math.min(10_000, loadProgressRecordInterval));
         log.info("Scholardex publication canonicalization source load started: mode=full-rescan totalRecords={} pageSize={}", totalRecords, pageSize);
@@ -674,6 +694,25 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         return Optional.empty();
     }
 
+    private String authorshipEdgeNaturalKey(String publicationId, String authorId, String source, ChunkContext context) {
+        return normalizeBlank(publicationId, context)
+                + "|" + normalizeBlank(authorId, context)
+                + "|" + normalizeBlank(source, context);
+    }
+
+    private String publicationAuthorAffiliationEdgeNaturalKey(
+            String publicationId,
+            String authorId,
+            String affiliationId,
+            String source,
+            ChunkContext context
+    ) {
+        return normalizeBlank(publicationId, context)
+                + "|" + normalizeBlank(authorId, context)
+                + "|" + normalizeBlank(affiliationId, context)
+                + "|" + normalizeBlank(source, context);
+    }
+
     private void queueSourceLinkCommand(
             ScholardexEntityType entityType,
             String source,
@@ -832,23 +871,25 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
             context.sourceLinkWriteCount += context.pendingSourceLinkCommands.size();
         }
         if (!context.pendingAuthorshipCommands.isEmpty()) {
+            preloadAuthorshipEdges(context);
             long startedAt = System.nanoTime();
             edgeWriterService.batchUpsertAuthorshipEdges(
                     new ArrayList<>(context.pendingAuthorshipCommands.values()),
-                    Map.of(),
+                    context.authorshipEdgeByNaturalKey,
                     context.sourceLinkCache,
-                    false
+                    true
             );
             context.authorshipEdgeUpsertMs += nanosToMillis(System.nanoTime() - startedAt);
             context.authorshipEdgeWriteCount += context.pendingAuthorshipCommands.size();
         }
         if (!context.pendingPublicationAuthorAffiliationCommands.isEmpty()) {
+            preloadPublicationAuthorAffiliationEdges(context);
             long startedAt = System.nanoTime();
             edgeWriterService.batchUpsertPublicationAuthorAffiliationEdges(
                     new ArrayList<>(context.pendingPublicationAuthorAffiliationCommands.values()),
-                    Map.of(),
+                    context.publicationAuthorAffiliationEdgeByNaturalKey,
                     context.sourceLinkCache,
-                    false
+                    true
             );
             context.publicationAuthorAffiliationEdgeUpsertMs += nanosToMillis(System.nanoTime() - startedAt);
             context.publicationAuthorAffiliationEdgeWriteCount += context.pendingPublicationAuthorAffiliationCommands.size();
@@ -865,6 +906,57 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
                         conflict.getReasonCode()
                 );
             }
+        }
+    }
+
+    private void preloadAuthorshipEdges(ChunkContext context) {
+        if (context == null || context.pendingAuthorshipCommands.isEmpty()) {
+            return;
+        }
+        Set<String> publicationIds = new LinkedHashSet<>();
+        for (ScholardexEdgeWriterService.EdgeWriteCommand command : context.pendingAuthorshipCommands.values()) {
+            String publicationId = normalizeBlank(command.leftId(), context);
+            if (publicationId != null) {
+                publicationIds.add(publicationId);
+            }
+        }
+        if (publicationIds.isEmpty()) {
+            return;
+        }
+        for (ScholardexAuthorshipFact edge : scholardexAuthorshipFactRepository.findByPublicationIdIn(publicationIds)) {
+            context.authorshipEdgeByNaturalKey.put(
+                    authorshipEdgeNaturalKey(edge.getPublicationId(), edge.getAuthorId(), edge.getSource(), context),
+                    edge
+            );
+        }
+    }
+
+    private void preloadPublicationAuthorAffiliationEdges(ChunkContext context) {
+        if (context == null || context.pendingPublicationAuthorAffiliationCommands.isEmpty()) {
+            return;
+        }
+        Set<String> publicationIds = new LinkedHashSet<>();
+        for (ScholardexEdgeWriterService.EdgeWriteCommand command : context.pendingPublicationAuthorAffiliationCommands.values()) {
+            String publicationId = normalizeBlank(command.publicationId(), context);
+            if (publicationId != null) {
+                publicationIds.add(publicationId);
+            }
+        }
+        if (publicationIds.isEmpty()) {
+            return;
+        }
+        for (ScholardexPublicationAuthorAffiliationFact edge :
+                scholardexPublicationAuthorAffiliationFactRepository.findByPublicationIdIn(publicationIds)) {
+            context.publicationAuthorAffiliationEdgeByNaturalKey.put(
+                    publicationAuthorAffiliationEdgeNaturalKey(
+                            edge.getPublicationId(),
+                            edge.getAuthorId(),
+                            edge.getAffiliationId(),
+                            edge.getSource(),
+                            context
+                    ),
+                    edge
+            );
         }
     }
 
@@ -978,19 +1070,29 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
                 + "|" + normalizeToken(reasonCode, context);
         ScholardexIdentityConflict conflict = context.pendingIdentityConflicts.get(key);
         if (conflict == null) {
-            conflict = new ScholardexIdentityConflict();
-            conflict.setEntityType(ScholardexEntityType.PUBLICATION_AUTHOR_AFFILIATION);
-            conflict.setIncomingSource(normalizedSource);
-            conflict.setIncomingSourceRecordId(normalizedRecordId);
-            conflict.setReasonCode(reasonCode);
-            conflict.setStatus(CanonicalizationSupport.STATUS_OPEN);
-            conflict.setCandidateCanonicalIds(List.of());
+            conflict = identityConflictRepository
+                    .findByEntityTypeAndIncomingSourceAndIncomingSourceRecordIdAndReasonCodeAndStatus(
+                            ScholardexEntityType.PUBLICATION_AUTHOR_AFFILIATION,
+                            normalizedSource,
+                            normalizedRecordId,
+                            reasonCode,
+                            CanonicalizationSupport.STATUS_OPEN
+                    )
+                    .orElseGet(ScholardexIdentityConflict::new);
+        }
+        conflict.setEntityType(ScholardexEntityType.PUBLICATION_AUTHOR_AFFILIATION);
+        conflict.setIncomingSource(normalizedSource);
+        conflict.setIncomingSourceRecordId(normalizedRecordId);
+        conflict.setReasonCode(reasonCode);
+        conflict.setStatus(CanonicalizationSupport.STATUS_OPEN);
+        conflict.setCandidateCanonicalIds(List.of());
+        if (conflict.getDetectedAt() == null) {
             conflict.setDetectedAt(Instant.now());
-            context.pendingIdentityConflicts.put(key, conflict);
         }
         conflict.setSourceEventId(CanonicalizationSupport.normalizeBlank(fact.getSourceEventId()));
         conflict.setSourceBatchId(CanonicalizationSupport.normalizeBlank(fact.getSourceBatchId()));
         conflict.setSourceCorrelationId(CanonicalizationSupport.normalizeBlank(fact.getSourceCorrelationId()));
+        context.pendingIdentityConflicts.put(key, conflict);
     }
 
     private String buildCanonicalAuthorFallbackId(String sourceToken, String sourceAuthorId, ChunkContext context) {
@@ -1070,6 +1172,8 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         private final Set<ScholardexSourceLinkService.SourceLinkKey> missingSourceLinkKeys = new LinkedHashSet<>();
         private final Map<String, ScholardexPublicationFact> publicationByEid = new HashMap<>();
         private final Map<String, ScholardexPublicationFact> publicationByDoi = new HashMap<>();
+        private final Map<String, ScholardexAuthorshipFact> authorshipEdgeByNaturalKey = new HashMap<>();
+        private final Map<String, ScholardexPublicationAuthorAffiliationFact> publicationAuthorAffiliationEdgeByNaturalKey = new HashMap<>();
         private final Set<String> existingPublicationIds = new LinkedHashSet<>();
         private final Set<String> pendingInsertPublicationIds = new LinkedHashSet<>();
         private final Map<String, ScholardexPublicationFact> pendingPublicationFacts = new LinkedHashMap<>();

@@ -149,7 +149,8 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
                 userIndividualReportRunRepository,
                 individualReportRepository,
                 userService,
-                userIndicatorResultService
+                userIndicatorResultService,
+                userReportFacade
         );
     }
 
@@ -174,14 +175,15 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
         assertTrue(initialRunOpt.isPresent());
         IndividualReportRunDto initialRun = initialRunOpt.orElseThrow();
         assertEquals(IndividualReportRunDto.Source.BUILT, initialRun.source());
-        assertEquals(Map.of("ind-1", 1.0, "ind-2", 2.0), initialRun.indicatorScoresByIndicatorId());
-        assertEquals(Map.of(0, 3.0), initialRun.criteriaScores());
+        assertEquals(Map.of("ind-1", 4.0, "ind-2", 6.0), initialRun.indicatorScoresByIndicatorId());
+        assertEquals(Map.of(0, 10.0), initialRun.criteriaScores());
 
         List<UserIndividualReportRun> runsAfterInitialView = runsNewestFirst();
         assertEquals(1, runsAfterInitialView.size());
         UserIndividualReportRun persistedInitialRun = runsAfterInitialView.getFirst();
         assertEquals(UserIndividualReportRun.Status.READY, persistedInitialRun.getStatus());
         assertEquals(2, snapshotResults().size());
+        assertEquals(List.of(4.0, 6.0), snapshotResults().stream().map(UserIndicatorResult::getTotalScore).sorted().toList());
         assertEquals(List.of(0, 0), latestRefreshVersionsSorted());
 
         Optional<IndividualReportRunDto> refreshedRunOpt =

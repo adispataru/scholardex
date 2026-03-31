@@ -318,10 +318,13 @@ public class ScholardexSourceLinkService {
 
             SourceLinkKey key = SourceLinkKey.of(command.entityType(), normalizedSource, normalizedRecordId);
             ScholardexSourceLink existing = working.get(key);
-            if (existing == null && allowFallbackLookup) {
+            boolean unresolvedPlaceholder = existing != null && existing.getId() == null;
+            if ((existing == null || unresolvedPlaceholder) && allowFallbackLookup) {
                 existing = findByKey(command.entityType(), normalizedSource, normalizedRecordId).orElse(null);
                 if (existing != null) {
                     working.put(key, existing);
+                } else if (unresolvedPlaceholder) {
+                    existing = working.get(key);
                 }
             }
             String existingState = normalizeState(existing == null ? null : existing.getLinkState());

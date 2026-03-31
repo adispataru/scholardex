@@ -12,4 +12,5 @@ public interface ScopusCitationFactRepository extends MongoRepository<ScopusCita
     List<ScopusCitationFact> findByCitedEid(String citedEid);
     List<ScopusCitationFact> findByCitedEidIn(Collection<String> citedEids);
     List<ScopusCitationFact> findByCitedEidInAndCitingEidIn(Collection<String> citedEids, Collection<String> citingEids);
+    List<ScopusCitationFact> findBySourceBatchId(String sourceBatchId);
 }

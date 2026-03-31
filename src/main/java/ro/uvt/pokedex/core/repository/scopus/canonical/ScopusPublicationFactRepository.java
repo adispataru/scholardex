@@ -10,4 +10,5 @@ import java.util.Optional;
 public interface ScopusPublicationFactRepository extends MongoRepository<ScopusPublicationFact, String> {
     Optional<ScopusPublicationFact> findByEid(String eid);
     List<ScopusPublicationFact> findByEidIn(Collection<String> eids);
+    List<ScopusPublicationFact> findBySourceBatchId(String sourceBatchId);
 }

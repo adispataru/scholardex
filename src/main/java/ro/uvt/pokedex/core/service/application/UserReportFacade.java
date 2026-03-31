@@ -26,6 +26,8 @@ import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorApplyViewModel;
+import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
+import ro.uvt.pokedex.core.service.application.model.ReportScopedIndividualReportComputation;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorsViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserIndividualReportViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorWorkbookExportViewModel;
@@ -286,73 +288,148 @@ public class UserReportFacade {
     }
 
     public UserIndividualReportViewModel buildIndividualReportView(String userEmail, String reportId) {
-        Optional<User> userOpt = userService.getUserByEmail(userEmail);
-        if (userOpt.isEmpty()) {
-            return new UserIndividualReportViewModel("redirect:/error", Map.of());
-        }
-        User currentUser = userOpt.get();
-
         Optional<IndividualReport> reportOpt = individualReportRepository.findById(reportId);
-        Map<String, Object> attrs = new HashMap<>();
         if (reportOpt.isEmpty()) {
-            return new UserIndividualReportViewModel(null, attrs);
+            return new UserIndividualReportViewModel(null, Map.of());
         }
 
         IndividualReport report = reportOpt.get();
+        Map<String, Object> attrs = new HashMap<>();
         attrs.put("report", report);
-
-        Researcher researcher = researcherService.findResearcherById(currentUser.getResearcherId()).orElse(null);
-        if (researcher == null) {
+        Optional<ReportScopedIndividualReportComputation> computationOpt = computeReportScopedIndividualReport(userEmail, reportId);
+        if (computationOpt.isEmpty()) {
             return new UserIndividualReportViewModel("redirect:/error", attrs);
+        }
+        ReportScopedIndividualReportComputation computation = computationOpt.get();
+        attrs.put("indicatorScores", computation.indicatorScores());
+        attrs.put("criterionScores", computation.criterionScores());
+
+        return new UserIndividualReportViewModel(null, attrs);
+    }
+
+    public Optional<ReportScopedIndividualReportComputation> computeReportScopedIndividualReport(String userEmail, String reportId) {
+        Optional<User> userOpt = userService.getUserByEmail(userEmail);
+        if (userOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        Optional<IndividualReport> reportOpt = individualReportRepository.findById(reportId);
+        if (reportOpt.isEmpty()) {
+            return Optional.empty();
+        }
+
+        IndividualReport report = reportOpt.get();
+        Researcher researcher = researcherService.findResearcherById(userOpt.get().getResearcherId()).orElse(null);
+        if (researcher == null) {
+            return Optional.empty();
         }
 
         List<Author> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
         if (authors.isEmpty()) {
-            return new UserIndividualReportViewModel("redirect:/error", attrs);
+            return Optional.empty();
         }
 
         List<String> authorIds = authors.stream().map(Author::getId).toList();
         List<Publication> publications = findPublicationsByAuthorIds(authorIds);
-        if (!"ANY".equals(report.getIndividualAffiliation().getName())) {
-            publications = publications.stream().filter(p -> report.getIndividualAffiliation().getScopusAffiliations().stream().anyMatch(aff -> p.getAffiliations().contains(aff.getAfid()))).collect(Collectors.toList());
+        if (report.getIndividualAffiliation() != null
+                && !"ANY".equals(report.getIndividualAffiliation().getName())) {
+            publications = publications.stream()
+                    .filter(p -> report.getIndividualAffiliation().getScopusAffiliations().stream()
+                            .anyMatch(aff -> p.getAffiliations().contains(aff.getAfid())))
+                    .collect(Collectors.toList());
         }
 
-        List<Indicator> indicators = report.getIndicators();
+        List<Indicator> indicators = report.getIndicators() == null ? List.of() : report.getIndicators();
         Map<Indicator, Double> indicatorScores = new HashMap<>();
+        Map<String, Double> indicatorScoresByIndicatorId = new HashMap<>();
+        Map<String, IndicatorApplyResultDto> reportScopedIndicatorResultsByIndicatorId = new HashMap<>();
+
+        boolean hasCitationIndicators = indicators.stream()
+                .filter(Objects::nonNull)
+                .anyMatch(indicator -> Indicator.Type.CITATIONS.equals(indicator.getOutputType())
+                        || Indicator.Type.CITATIONS_EXCLUDE_SELF.equals(indicator.getOutputType()));
+        List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(researcher.getId());
+        Set<String> researcherAuthorIds = authors.stream()
+                .map(Author::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        ReportScopedIndicatorScoringSupport.CitationContext citationContext = hasCitationIndicators
+                ? ReportScopedIndicatorScoringSupport.prepareCitationContext(publications, scholardexProjectionReadService)
+                : ReportScopedIndicatorScoringSupport.CitationContext.empty();
+        Map<Indicator, Map<String, Score>> citationBaseScoresByIndicator = hasCitationIndicators
+                ? ReportScopedIndicatorScoringSupport.precomputeCitationBaseScoresByIndicator(indicators, citationContext, scientificProductionService)
+                : Map.of();
 
         for (Indicator indicator : indicators) {
-            double indicatorScore = 0;
+            if (indicator == null || indicator.getId() == null) {
+                continue;
+            }
+
+            double indicatorScore = 0.0;
             if (indicator.getOutputType().toString().contains("ACTIVIT")) {
-                List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(researcher.getId());
-                activities = activities.stream().filter(act -> act.getActivity().getName().equals(indicator.getActivity().getName())).toList();
-                indicatorScore = activityReportingService.calculateActivityScores(activities, indicator).get("total").getAuthorScore();
+                List<ActivityInstance> filteredActivities = activities.stream()
+                        .filter(act -> act.getActivity().getName().equals(indicator.getActivity().getName()))
+                        .toList();
+                indicatorScore = activityReportingService.calculateActivityScores(filteredActivities, indicator)
+                        .get("total")
+                        .getAuthorScore();
             }
             if (indicator.getOutputType().toString().contains("PUBLICATIONS")) {
                 indicatorScore = calculatePublicationScore(indicator, authors, publications);
-            } else if (indicator.getOutputType().equals(Indicator.Type.CITATIONS) || indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF)) {
-                indicatorScore = calculateCitationScore(indicator, authors, publications);
+            } else if (indicator.getOutputType().equals(Indicator.Type.CITATIONS)
+                    || indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF)) {
+                indicatorScore = ReportScopedIndicatorScoringSupport.calculateCitationScore(
+                                indicator,
+                                publications,
+                                researcherAuthorIds,
+                                citationContext,
+                                citationBaseScoresByIndicator.getOrDefault(indicator, Map.of()),
+                                scientificProductionService)
+                        .score();
             }
 
             indicatorScores.put(indicator, indicatorScore);
+            indicatorScoresByIndicatorId.put(indicator.getId(), indicatorScore);
+            reportScopedIndicatorResultsByIndicatorId.put(
+                    indicator.getId(),
+                    new IndicatorApplyResultDto(
+                            null,
+                            indicator.getId(),
+                            ReportScopedIndicatorScoringSupport.viewNameFor(indicator),
+                            Map.of("indicator", indicator, "total", String.format(Locale.ROOT, "%.2f", indicatorScore)),
+                            new IndicatorApplyResultDto.Summary(indicatorScore, null, List.of(), List.of()),
+                            IndicatorApplyResultDto.Source.COMPUTED,
+                            null,
+                            null,
+                            0
+                    )
+            );
         }
 
         Map<Integer, Double> criterionScores = new HashMap<>();
-        for (int i = 0; i < report.getCriteria().size(); i++) {
-            AbstractReport.Criterion criterion = report.getCriteria().get(i);
+        List<AbstractReport.Criterion> criteria = report.getCriteria() == null ? List.of() : report.getCriteria();
+        for (int i = 0; i < criteria.size(); i++) {
+            AbstractReport.Criterion criterion = criteria.get(i);
             double criterionScore = 0;
-            for (Integer in : criterion.getIndicatorIndices()) {
-                Indicator ind = report.getIndicators().get(in);
-                if (indicatorScores.containsKey(ind)) {
-                    criterionScore += indicatorScores.get(ind);
+            if (criterion.getIndicatorIndices() != null) {
+                for (Integer indicatorIndex : criterion.getIndicatorIndices()) {
+                    if (indicatorIndex == null || indicatorIndex < 0 || indicatorIndex >= indicators.size()) {
+                        continue;
+                    }
+                    Indicator indicator = indicators.get(indicatorIndex);
+                    if (indicator != null && indicator.getId() != null) {
+                        criterionScore += indicatorScoresByIndicatorId.getOrDefault(indicator.getId(), 0.0);
+                    }
                 }
             }
             criterionScores.put(i, criterionScore);
         }
 
-        attrs.put("indicatorScores", indicatorScores);
-        attrs.put("criterionScores", criterionScores);
-
-        return new UserIndividualReportViewModel(null, attrs);
+        return Optional.of(new ReportScopedIndividualReportComputation(
+                indicatorScores,
+                indicatorScoresByIndicatorId,
+                criterionScores,
+                reportScopedIndicatorResultsByIndicatorId
+        ));
     }
 
     private UserIndicatorApplyViewModel handlePublications(Indicator indicator, List<Author> authors, List<Publication> publications, Map<String, Object> attrs) {
@@ -408,62 +485,41 @@ public class UserReportFacade {
     }
 
     private UserIndicatorApplyViewModel handleCitations(Indicator indicator, List<Author> authors, List<Publication> publications, Map<String, Object> attrs) {
-        AtomicInteger totalCit = new AtomicInteger();
-        boolean excludeSelf = indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF);
-        Map<String, Map<String, Score>> scores = new HashMap<>();
-        Map<String, Publication> citationsMap = new HashMap<>();
+        Set<String> researcherAuthorIds = authors.stream()
+                .map(Author::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        ReportScopedIndicatorScoringSupport.CitationContext citationContext =
+                ReportScopedIndicatorScoringSupport.prepareCitationContext(publications, scholardexProjectionReadService);
+        Map<Indicator, Map<String, Score>> citationBaseScores =
+                ReportScopedIndicatorScoringSupport.precomputeCitationBaseScoresByIndicator(
+                        List.of(indicator),
+                        citationContext,
+                        scientificProductionService
+                );
+        ReportScopedIndicatorScoringSupport.CitationViewComputation citationView =
+                ReportScopedIndicatorScoringSupport.computeCitationView(
+                        indicator,
+                        publications,
+                        researcherAuthorIds,
+                        citationContext,
+                        citationBaseScores.getOrDefault(indicator, Map.of()),
+                        scientificProductionService
+                );
 
-        List<String> pubIds = publications.stream().map(Publication::getId).toList();
-        List<Citation> allCitations = findCitationsByCitedIds(pubIds);
-        List<String> allCitationsIds = allCitations.stream().map(Citation::getCitingId).collect(Collectors.toList());
-        List<Publication> allByEidIn = findPublicationsByIds(allCitationsIds);
-        Map<String, List<Publication>> citationsMapRetrieved = allByEidIn.stream().collect(Collectors.groupingBy(Publication::getId));
-
-        Set<String> forumKeys = new HashSet<>();
-        for (Publication pub : publications) {
-            forumKeys.add(pub.getForum());
-            List<Publication> citations = new ArrayList<>();
-            for (Citation cit : allCitations) {
-                if (cit.getCitedId().equals(pub.getId())) {
-                    Publication citing = citationsMapRetrieved.get(cit.getCitingId()).getFirst();
-                    if (excludeSelf && authors.stream().anyMatch(a -> citing.getAuthors().contains(a.getId()))) {
-                        continue;
-                    }
-                    citations.add(citing);
-                    citationsMap.put(citing.getTitle(), citing);
-                    totalCit.getAndIncrement();
-                }
-            }
-
-            citations.forEach(c -> forumKeys.add(c.getForum()));
-            Map<String, Score> citScores = scientificProductionService.calculateScientificImpactScore(pub, citations, indicator);
-            scores.put(pub.getTitle(), citScores);
-        }
-
-        applyFinalSelector(indicator, scores);
-        double total = scores.values().stream().mapToDouble(s -> s.get("total").getAuthorScore()).sum();
-
-        List<Forum> forums = findForumsByIds(forumKeys);
+        List<Forum> forums = findForumsByIds(citationView.forumIds());
         Map<String, Forum> forumMap = new HashMap<>();
         forums.forEach(f -> forumMap.put(f.getId(), f));
         attrs.put("forumMap", forumMap);
         attrs.put("forumWosLinkMap", buildForumWosLinkMap(forums));
 
-        Map<String, Integer> quarterHistogram = new HashMap<>();
-        scores.forEach((k, v) -> v.forEach((kk, vv) -> {
-            quarterHistogram.putIfAbsent(vv.getQuarter(), 0);
-            quarterHistogram.put(vv.getQuarter(), quarterHistogram.get(vv.getQuarter()) + 1);
-        }));
-        quarterHistogram.remove(null);
-
-        attrs.put("allQuarters", quarterHistogram.keySet());
-        attrs.put("allValues", quarterHistogram.values());
-        attrs.put("total", String.format("%.2f", total));
-        attrs.put("totalCit", totalCit.get());
-        scores.remove("total");
-        attrs.put("scores", scores);
+        attrs.put("allQuarters", citationView.quarterLabels());
+        attrs.put("allValues", citationView.quarterValues());
+        attrs.put("total", String.format("%.2f", citationView.totalScore()));
+        attrs.put("totalCit", citationView.totalCitationCount());
+        attrs.put("scores", citationView.displayScores());
         attrs.put("publications", publications);
-        attrs.put("citationMap", citationsMap);
+        attrs.put("citationMap", citationView.citationMap());
 
         return new UserIndicatorApplyViewModel("user/indicators-apply-citations", attrs);
     }
@@ -536,39 +592,27 @@ public class UserReportFacade {
     }
 
     private double calculateCitationScore(Indicator indicator, List<Author> authors, List<Publication> publications) {
-        boolean excludeSelf = indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF);
-
-        List<String> pubIds = publications.stream().map(Publication::getId).toList();
-        List<Citation> allCitations = findCitationsByCitedIds(pubIds);
-        List<String> citationIds = allCitations.stream().map(Citation::getCitingId).toList();
-        List<Publication> allCitationsPub = findPublicationsByIds(citationIds);
-        Map<String, List<Publication>> pubCitationsMap = allCitationsPub.stream().collect(Collectors.groupingBy(Publication::getId));
-        Map<String, Map<String, Score>> scores = new HashMap<>();
-
-        for (Publication pub : publications) {
-            List<Publication> citations = new ArrayList<>();
-            for (Citation cit : allCitations) {
-                if (cit.getCitedId().equals(pub.getId())) {
-                    Publication citing = pubCitationsMap.get(cit.getCitingId()).getFirst();
-                    if (excludeSelf && authors.stream().anyMatch(a -> citing.getAuthors().contains(a.getId()))) {
-                        continue;
-                    }
-                    citations.add(citing);
-                }
-            }
-            Map<String, Score> citScores = scientificProductionService.calculateScientificImpactScore(pub, citations, indicator);
-            scores.put(pub.getTitle(), citScores);
-        }
-
-        applyFinalSelector(indicator, scores);
-        return scores.values().stream().map(value -> {
-            double t = 0.0;
-            value.remove("total");
-            for (Score score : value.values()) {
-                t += score.getAuthorScore();
-            }
-            return t;
-        }).reduce(0.0, Double::sum);
+        Set<String> researcherAuthorIds = authors.stream()
+                .map(Author::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        ReportScopedIndicatorScoringSupport.CitationContext citationContext =
+                ReportScopedIndicatorScoringSupport.prepareCitationContext(publications, scholardexProjectionReadService);
+        Map<Indicator, Map<String, Score>> cachedCitationBaseScores =
+                ReportScopedIndicatorScoringSupport.precomputeCitationBaseScoresByIndicator(
+                        List.of(indicator),
+                        citationContext,
+                        scientificProductionService
+                );
+        return ReportScopedIndicatorScoringSupport.calculateCitationScore(
+                        indicator,
+                        publications,
+                        researcherAuthorIds,
+                        citationContext,
+                        cachedCitationBaseScores.getOrDefault(indicator, Map.of()),
+                        scientificProductionService
+                )
+                .score();
     }
 
     private void handlePublicationsWorkbook(Workbook workbook, Indicator indicator, List<Publication> publications, Map<String, Forum> forumMap) {

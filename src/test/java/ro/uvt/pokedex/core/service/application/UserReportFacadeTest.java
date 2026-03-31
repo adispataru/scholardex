@@ -15,6 +15,7 @@ import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.reporting.WoSExtractor;
 import ro.uvt.pokedex.core.model.scopus.Author;
+import ro.uvt.pokedex.core.model.scopus.Citation;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.model.user.User;
@@ -25,6 +26,7 @@ import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
+import ro.uvt.pokedex.core.service.application.model.UserIndicatorApplyViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserWorkbookExportStatus;
 import ro.uvt.pokedex.core.service.reporting.ActivityReportingService;
 import ro.uvt.pokedex.core.service.reporting.CNFISReportExportService;
@@ -40,6 +42,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -491,5 +494,98 @@ class UserReportFacadeTest {
         verify(exportService).generateCNFISReportWorkbook(publicationCaptor.capture(), anyList(), anyMap(), eq(List.of("a1")), eq(false));
         assertEquals(1, publicationCaptor.getValue().size());
         assertEquals("p-valid", publicationCaptor.getValue().getFirst().getId());
+    }
+
+    @Test
+    void buildIndicatorApplyViewCitationsMatchesReportScopedTotalForEquivalentScope() {
+        User user = new User();
+        user.setEmail("user@uvt.ro");
+        user.setResearcherId("r1");
+
+        Researcher researcher = new Researcher();
+        researcher.setId("r1");
+        researcher.setScopusId(List.of("a1"));
+
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-cit");
+        indicator.setOutputType(Indicator.Type.CITATIONS);
+        indicator.setSelector(Indicator.Selector.TOP_10);
+        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+
+        IndividualReport report = new IndividualReport();
+        report.setId("rep-cit");
+        report.setIndicators(List.of(indicator));
+        report.setCriteria(List.of());
+        var anyInstitution = new ro.uvt.pokedex.core.model.Institution();
+        anyInstitution.setName("ANY");
+        report.setIndividualAffiliation(anyInstitution);
+
+        Author author = new Author();
+        author.setId("a1");
+        author.setName("Author One");
+
+        Publication cited = new Publication();
+        cited.setId("p1");
+        cited.setTitle("Root Publication");
+        cited.setAuthors(List.of("a1"));
+        cited.setForum("f-root");
+
+        List<Citation> citations = new java.util.ArrayList<>();
+        List<Publication> citingPublications = new java.util.ArrayList<>();
+        List<String> citingIds = new java.util.ArrayList<>();
+        for (int i = 1; i <= 12; i++) {
+            String citingId = "cp-" + i;
+            Citation citation = new Citation();
+            citation.setCitedId("p1");
+            citation.setCitingId(citingId);
+            citations.add(citation);
+
+            Publication citing = new Publication();
+            citing.setId(citingId);
+            citing.setTitle("Citing " + i);
+            citing.setAuthors(List.of("a" + (i + 1)));
+            citing.setForum("f-" + i);
+            citingPublications.add(citing);
+            citingIds.add(citingId);
+        }
+
+        when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
+        when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
+        when(indicatorRepository.findById("ind-cit")).thenReturn(Optional.of(indicator));
+        when(individualReportRepository.findById("rep-cit")).thenReturn(Optional.of(report));
+        when(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher)).thenReturn(List.of("a1"));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(cited));
+        when(scholardexProjectionReadService.findAllCitationsByCitedIdIn(List.of("p1"))).thenReturn(citations);
+        when(scholardexProjectionReadService.findAllPublicationsByIdIn(citingIds)).thenReturn(citingPublications);
+        when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of());
+        when(scientificProductionService.precomputeCitationBaseScores(anyList(), eq(indicator))).thenReturn(Map.of());
+        when(scientificProductionService.calculateScientificImpactScore(any(Publication.class), anyList(), eq(indicator), anyMap()))
+                .thenAnswer(invocation -> {
+                    @SuppressWarnings("unchecked")
+                    List<Publication> currentCiting = invocation.getArgument(1);
+                    Map<String, Score> scores = new java.util.LinkedHashMap<>();
+                    int value = 1;
+                    for (Publication publication : currentCiting) {
+                        Score score = new Score();
+                        score.setAuthorScore((double) value++);
+                        score.setScore(1.0);
+                        score.setQuarter("Q1");
+                        scores.put(publication.getTitle(), score);
+                    }
+                    Score total = new Score();
+                    total.setAuthorScore(currentCiting.size() * (currentCiting.size() + 1) / 2.0);
+                    scores.put("total", total);
+                    return scores;
+                });
+
+        UserIndicatorApplyViewModel applyView = facade.buildIndicatorApplyView("user@uvt.ro", "ind-cit");
+        var reportComputationOpt = facade.computeReportScopedIndividualReport("user@uvt.ro", "rep-cit");
+
+        assertEquals("user/indicators-apply-citations", applyView.viewName());
+        assertNotNull(reportComputationOpt.orElse(null));
+        double applyTotal = Double.parseDouble(applyView.attributes().get("total").toString().replace(',', '.'));
+        assertEquals(75.0, applyTotal);
+        assertEquals(75.0, reportComputationOpt.orElseThrow().indicatorScoresByIndicatorId().get("ind-cit"));
     }
 }

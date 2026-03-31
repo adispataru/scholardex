@@ -11,7 +11,7 @@ import java.time.Instant;
 @Document(collection = "scholardex.citation_facts")
 @CompoundIndex(
         name = "uniq_scholardex_citation_edge",
-        def = "{'citedPublicationId': 1, 'citingPublicationId': 1, 'source': 1}",
+        def = "{'citedPublicationId': 1, 'citingPublicationId': 1}",
         unique = true
 )
 public class ScholardexCitationFact {
