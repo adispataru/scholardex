@@ -10,19 +10,14 @@
 <body id="page-top">
 
 <div id="wrapper">
-    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: sidebar('individual-reports')}"></div>
-        <div class="text-center d-none d-md-inline">
-            <button class="rounded-circle border-0" id="sidebarToggle"></button>
-        </div>
-    </ul>
+    <div th:replace="~{fragments :: sidebar('individual-reports')}"></div>
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
             <div th:replace="~{fragments :: navbar(${report.title})}"></div>
-            <div class="container-fluid individual-report-dashboard"
+            <div class="container-fluid app-page-content individual-report-dashboard"
                  th:attr="data-researcher-position=${researcherPosition}">
-                <div class="d-sm-flex align-items-center justify-content-end mb-4">
+                <div class="app-page-toolbar">
                     <div class="d-flex gap-2">
                         <form th:action="@{/user/individual-reports/view/{id}/refresh(id=${report.id})}" method="post">
                             <button type="submit" class="btn btn-sm btn-outline-primary shadow-sm">Refresh Report</button>

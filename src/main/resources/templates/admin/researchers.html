@@ -10,13 +10,7 @@
 
 <div id="wrapper">
     <!-- Sidebar -->
-    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: sidebar('researchers')}"></div>
-        <!-- Sidebar Toggler (Sidebar) -->
-        <div class="text-center d-none d-md-inline">
-            <button class="rounded-circle border-0" id="sidebarToggle"></button>
-        </div>
-    </ul>
+    <div th:replace="~{fragments :: sidebar('researchers')}"></div>
 
     <!-- Content Wrapper -->
     <div id="content-wrapper" class="d-flex flex-column">
@@ -26,8 +20,7 @@
             <div th:replace="~{fragments :: navbar('Researchers')}"></div>
 
             <!-- Begin Page Content -->
-            <div class="container-fluid">
-                <!-- Page Heading -->
+            <div class="container-fluid app-page-content">
                 <p class="mb-4">Overview of all researchers and their details.</p>
 
                 <div class="card shadow mb-4">

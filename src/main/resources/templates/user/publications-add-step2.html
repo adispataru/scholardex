@@ -12,13 +12,7 @@
 
 <div id="wrapper">
     <!-- Sidebar -->
-    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: sidebar('publications')}"></div>
-        <!-- Sidebar Toggler (Sidebar) -->
-        <div class="text-center d-none d-md-inline">
-            <button class="rounded-circle border-0" id="sidebarToggle"></button>
-        </div>
-    </ul>
+    <div th:replace="~{fragments :: sidebar('publications')}"></div>
 
     <!-- Content Wrapper -->
     <div id="content-wrapper" class="d-flex flex-column">
@@ -28,8 +22,7 @@
             <div th:replace="~{fragments :: navbar('Select Authors')}"></div>
 
             <!-- Begin Page Content -->
-            <div class="container-fluid">
-                <h1 class="h3 mb-4 text-gray-800">Select Authors</h1>
+            <div class="container-fluid app-page-content">
                 <div class="card shadow">
                     <div class="card-body">
                         <form th:action="@{/user/publications/add/step2}" method="post">

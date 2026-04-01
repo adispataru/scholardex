@@ -30,17 +30,12 @@
 </head>
 <body id="page-top">
 <div id="wrapper">
-    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: sidebar('incremental-updates')}"></div>
-        <div class="text-center d-none d-md-inline">
-            <button class="rounded-circle border-0" id="sidebarToggle"></button>
-        </div>
-    </ul>
+    <div th:replace="~{fragments :: sidebar('incremental-updates')}"></div>
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
             <div th:replace="~{fragments :: navbar('Incremental Updates')}"></div>
-            <div class="container-fluid">
+            <div class="container-fluid app-page-content">
                 <div class="d-flex justify-content-between align-items-start mb-4">
                     <div>
                         <p class="mb-2">Upload one file per run for incremental WoS or Scopus maintenance. This page is for upload-driven incremental ingest runs, not for full rebuild, reconcile, or recovery maintenance.</p>

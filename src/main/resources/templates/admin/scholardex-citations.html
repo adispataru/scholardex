@@ -10,13 +10,7 @@
 
 <div id="wrapper">
     <!-- Sidebar -->
-    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: sidebar('scholardex-publications')}"></div>
-        <!-- Sidebar Toggler (Sidebar) -->
-        <div class="text-center d-none d-md-inline">
-            <button class="rounded-circle border-0" id="sidebarToggle"></button>
-        </div>
-    </ul>
+    <div th:replace="~{fragments :: sidebar('scholardex-publications')}"></div>
 
     <!-- Content Wrapper -->
     <div id="content-wrapper" class="d-flex flex-column">
@@ -26,9 +20,8 @@
             <div th:replace="~{fragments :: navbar('Publications')}"></div>
 
             <!-- Begin Page Content -->
-            <div class="container-fluid">
-                <!-- Page Heading -->
-                <div class="d-sm-flex align-items-center justify-content-end mb-4">
+            <div class="container-fluid app-page-content">
+                <div class="app-page-toolbar">
 <!--                    <p class="mb-4">List of your publications scraped from different sources.</p>-->
                     <!--                    <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i-->
                     <!--                            class="fa-solid fa-download fa-sm text-white-50"></i> Generate Report</a>-->

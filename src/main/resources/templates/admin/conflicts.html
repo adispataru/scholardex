@@ -8,17 +8,12 @@
 </head>
 <body id="page-top">
 <div id="wrapper">
-    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: sidebar('conflicts')}"></div>
-        <div class="text-center d-none d-md-inline">
-            <button class="rounded-circle border-0" id="sidebarToggle"></button>
-        </div>
-    </ul>
+    <div th:replace="~{fragments :: sidebar('conflicts')}"></div>
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
             <div th:replace="~{fragments :: navbar('Canonical Identity Conflicts')}"></div>
-            <div class="container-fluid">
+            <div class="container-fluid app-page-content">
                 <p class="mb-4">Primary conflict operations for <code>scholardex.identity_conflicts</code>.</p>
 
                 <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>

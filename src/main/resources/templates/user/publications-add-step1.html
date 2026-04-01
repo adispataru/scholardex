@@ -12,13 +12,7 @@
 
 <div id="wrapper">
     <!-- Sidebar -->
-    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: sidebar('publications')}"></div>
-        <!-- Sidebar Toggler (Sidebar) -->
-        <div class="text-center d-none d-md-inline">
-            <button class="rounded-circle border-0" id="sidebarToggle"></button>
-        </div>
-    </ul>
+    <div th:replace="~{fragments :: sidebar('publications')}"></div>
 
     <!-- Content Wrapper -->
     <div id="content-wrapper" class="d-flex flex-column">
@@ -28,8 +22,7 @@
             <div th:replace="~{fragments :: navbar('Select Forum')}"></div>
 
             <!-- Begin Page Content -->
-            <div class="container-fluid">
-                <!-- Page Heading -->
+            <div class="container-fluid app-page-content">
 
                 <div class="card shadow mb-4">
                     <div class="card-header py-3">

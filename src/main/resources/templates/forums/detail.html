@@ -73,17 +73,12 @@
 <body id="page-top">
 
 <div id="wrapper">
-    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: sidebar('scholardex-forums')}"></div>
-        <div class="text-center d-none d-md-inline">
-            <button class="rounded-circle border-0" id="sidebarToggle"></button>
-        </div>
-    </ul>
+    <div th:replace="~{fragments :: sidebar('scholardex-forums')}"></div>
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
             <div th:replace="~{fragments :: navbar('Forum')}"></div>
-            <div class="container-fluid">
+            <div class="container-fluid app-page-content">
                 <p class="mb-4">Canonical Scholardex forum detail page. Ranking content is shown by forum type.</p>
 
                 <div class="card shadow mb-4 card-spacing">

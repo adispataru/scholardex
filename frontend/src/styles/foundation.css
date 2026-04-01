@@ -1,0 +1,164 @@
+:root,
+:root[data-bs-theme='light'] {
+  --app-color-page-bg: #f3f6fb;
+  --app-color-content-bg: #f8fafc;
+  --app-color-shell-surface: rgba(255, 255, 255, 0.82);
+  --app-color-shell-surface-strong: #ffffff;
+  --app-color-shell-border: rgba(148, 163, 184, 0.18);
+  --app-color-card-bg: #ffffff;
+  --app-color-card-bg-muted: #f8fafc;
+  --app-color-border: rgba(148, 163, 184, 0.22);
+  --app-color-text-strong: #0f172a;
+  --app-color-text: #334155;
+  --app-color-text-muted: #64748b;
+  --app-color-primary: #4361ee;
+  --app-color-primary-soft: rgba(67, 97, 238, 0.12);
+  --app-color-primary-strong: #3a56d4;
+  --app-color-focus: rgba(67, 97, 238, 0.65);
+  --app-color-success: #059669;
+  --app-color-warning: #d97706;
+  --app-color-danger: #dc2626;
+  --app-shadow-shell: 0 14px 32px rgba(15, 23, 42, 0.06);
+  --app-shadow-card: 0 16px 32px rgba(15, 23, 42, 0.05);
+  --app-shadow-float: 0 20px 45px rgba(15, 23, 42, 0.12);
+  --app-radius-shell: 1.25rem;
+  --app-radius-card: 1rem;
+  --app-content-max-width: 112rem;
+  --app-content-gutter-x: 1.5rem;
+  --app-content-gutter-y: 1.5rem;
+}
+
+:root[data-bs-theme='dark'] {
+  --app-color-page-bg: #020617;
+  --app-color-content-bg: #0b1220;
+  --app-color-shell-surface: rgba(15, 23, 42, 0.88);
+  --app-color-shell-surface-strong: #0f172a;
+  --app-color-shell-border: rgba(71, 85, 105, 0.45);
+  --app-color-card-bg: #0f172a;
+  --app-color-card-bg-muted: #111c30;
+  --app-color-border: rgba(71, 85, 105, 0.55);
+  --app-color-text-strong: #f8fafc;
+  --app-color-text: #cbd5e1;
+  --app-color-text-muted: #94a3b8;
+  --app-color-primary: #7c93ff;
+  --app-color-primary-soft: rgba(124, 147, 255, 0.16);
+  --app-color-primary-strong: #97a9ff;
+  --app-color-focus: rgba(129, 140, 248, 0.75);
+  --app-color-success: #34d399;
+  --app-color-warning: #f59e0b;
+  --app-color-danger: #f87171;
+  --app-shadow-shell: 0 16px 34px rgba(2, 6, 23, 0.4);
+  --app-shadow-card: 0 18px 36px rgba(2, 6, 23, 0.34);
+  --app-shadow-float: 0 24px 52px rgba(2, 6, 23, 0.5);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background: var(--app-color-page-bg);
+  color: var(--app-color-text);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+#content-wrapper {
+  background: var(--app-color-content-bg);
+}
+
+#content {
+  min-height: 100vh;
+}
+
+.app-page-content {
+  width: 100%;
+  max-width: var(--app-content-max-width);
+  margin: 0 auto;
+  padding: 0 var(--app-content-gutter-x) var(--app-content-gutter-y);
+}
+
+.app-page-toolbar {
+  margin-top: 0.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.card {
+  background: var(--app-color-card-bg);
+  color: var(--app-color-text);
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-card);
+  box-shadow: var(--app-shadow-card);
+}
+
+.card .card-header {
+  background: var(--app-color-card-bg);
+  border-bottom: 1px solid var(--app-color-border);
+  border-top-left-radius: calc(var(--app-radius-card) - 1px);
+  border-top-right-radius: calc(var(--app-radius-card) - 1px);
+}
+
+.card .card-footer {
+  background: var(--app-color-card-bg);
+  border-top: 1px solid var(--app-color-border);
+}
+
+.text-gray-800,
+.text-dark,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--app-color-text-strong) !important;
+}
+
+.text-gray-600,
+.text-muted,
+.small,
+small {
+  color: var(--app-color-text-muted) !important;
+}
+
+.sticky-footer {
+  background: transparent !important;
+  color: var(--app-color-text-muted);
+}
+
+.sticky-footer .copyright span {
+  color: inherit;
+}
+
+.btn-primary {
+  background-color: var(--app-color-primary);
+  border-color: var(--app-color-primary);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: var(--app-color-primary-strong);
+  border-color: var(--app-color-primary-strong);
+}
+
+.btn-outline-primary {
+  color: var(--app-color-primary);
+  border-color: var(--app-color-primary);
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:focus {
+  background-color: var(--app-color-primary);
+  border-color: var(--app-color-primary);
+}
+
+*:focus-visible {
+  outline-color: var(--app-color-focus);
+}
+
+@media (max-width: 767.98px) {
+  .app-page-content {
+    padding-inline: 1rem;
+    padding-bottom: 1.25rem;
+  }
+}

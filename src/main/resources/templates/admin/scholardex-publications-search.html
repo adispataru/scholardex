@@ -9,17 +9,12 @@
 <body id="page-top">
 
 <div id="wrapper">
-    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: sidebar('scholardex-publications')}"></div>
-        <div class="text-center d-none d-md-inline">
-            <button class="rounded-circle border-0" id="sidebarToggle"></button>
-        </div>
-    </ul>
+    <div th:replace="~{fragments :: sidebar('scholardex-publications')}"></div>
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
             <div th:replace="~{fragments :: navbar('Search Publications')}"></div>
-            <div class="container-fluid">
+            <div class="container-fluid app-page-content">
                 <div class="row">
                     <div id="scrape-result" class="mt-3"></div>
                     <div id="scrape-cit-result" class="mt-3"></div>

@@ -15,19 +15,14 @@
 
 <div id="wrapper">
     <!-- Sidebar -->
-    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: sidebar('rankings-core')}"></div>
-        <div class="text-center d-none d-md-inline">
-            <button class="rounded-circle border-0" id="sidebarToggle"></button>
-        </div>
-    </ul>
+    <div th:replace="~{fragments :: sidebar('rankings-core')}"></div>
 
     <!-- Content Wrapper -->
     <div id="content-wrapper" class="d-flex flex-column">
         <!-- Main Content -->
         <div id="content">
             <div th:replace="~{fragments :: navbar('URAP University Ranking Details')}"></div>
-            <div class="container-fluid">
+            <div class="container-fluid app-page-content">
 
                 <div class="card shadow mb-4 card-spacing">
                     <div class="card-header py-3">

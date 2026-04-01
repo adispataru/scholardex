@@ -1,25 +1,28 @@
 # ScholarDex UX Design Guide
 
-Status: active contributor UX guidance under current frontend constraints.
+Status: active contributor UX guidance for the ScholarDex-owned UI/UX migration.
 
 **Version:** 1.1
 **Date:** April 2026
-**Purpose:** define the current UX direction for contributors working within the existing ScholarDex frontend stack
+**Purpose:** define the target UX direction for contributors migrating the product toward a ScholarDex-owned design system and interaction model
 **Audience:** contributors improving templates, shared fragments, frontend modules, and UI behavior
 
-This guide is the current-source UX reference for ScholarDex. It is intentionally grounded in the repo as it exists today: contributors should use it to improve consistency, readability, and interaction quality without assuming a full shell rewrite or frontend stack migration is already in place.
+This guide is the current-source UX reference for ScholarDex. It is grounded in the repo as it exists today, but it defines the intended steady-state direction rather than the legacy runtime baseline. Contributors should use it to migrate the product away from SB Admin 2, Bootstrap 4-era UI conventions, and jQuery-driven interaction patterns toward a ScholarDex-owned UI/UX system with Bootstrap 5-compatible implementation and support for both light and dark themes.
 
 ---
 
 ## 1. Current Frontend Baseline
 
-Before applying any UX changes, work from the repo's actual frontend contract:
+Before applying UX changes, work from the repo's actual frontend contract and migration target:
 
 - Authored frontend code lives under `frontend/src/**`.
 - Runtime templates consume built assets through `/assets/app.css` and `/assets/app.js`.
 - Shared shell work flows through Thymeleaf fragments and the role-aware sidebar composition path.
-- SB Admin 2 styling, Bootstrap 4-era markup/classes, jQuery behaviors, and `dataTables.bootstrap4` are still active transitional dependencies.
-- Broad shell migration, dependency removal, or component-engine replacement should happen only in dedicated cleanup slices, not as incidental fallout from page-level UX work.
+- SB Admin 2 styling/JS, Bootstrap 4-era markup/classes, jQuery-driven UI behavior, and BS4 DataTables coupling are still present in parts of the runtime today.
+- Those dependencies are migration debt, not acceptable steady-state constraints to preserve.
+- Shared-shell modernization under `H30` should retire SB Admin 2 assumptions from the authenticated shell rather than preserve or extend them.
+- New and touched UI work should converge on Bootstrap 5-compatible markup, repo-owned behavior, and ScholarDex-owned design patterns.
+- The target product direction is one ScholarDex UI/UX system that supports both light and dark themes, not continued operation on a Bootstrap 4/SB Admin baseline.
 
 Use this guide together with:
 
@@ -31,7 +34,7 @@ Use this guide together with:
 
 ## 2. Design Principles
 
-These principles should guide UI decisions even when implementation remains constrained by the current stack.
+These principles should guide UI decisions throughout the migration. Legacy runtime constraints may still exist in untouched areas, but they are not the design target.
 
 ### 2.1 Clarity Over Density
 
@@ -60,6 +63,8 @@ Not every page needs to be rebuilt at once. Improvements should layer onto the e
 ## 3. Color System
 
 The visual direction should move away from loud default theme coloring and toward restrained, intentional use of color. This is guidance for new and revised UI work; it does not imply that all current pages already follow it.
+
+The product should support both light and dark themes through one cohesive ScholarDex design language. Themes are presentation modes within the same system, not separate product directions.
 
 ### 3.1 Core Palette
 
@@ -98,12 +103,14 @@ Info Light:          #EFF6FF
 - Use semantic colors for status and consequence.
 - Avoid stacking multiple colored treatments inside the same card or row.
 - Prefer a light neutral page background with white cards for new or refreshed layouts, even if some legacy pages still render on pure white.
+- Every color decision should have a corresponding dark-theme treatment with comparable hierarchy, contrast, and restraint.
+- Theme support should be implemented through repo-owned tokens and shared styles rather than page-specific overrides.
 
 ---
 
 ## 4. Typography
 
-Typography guidance should be applied through the existing asset pipeline and shared styles, not through page-by-page ad hoc overrides.
+Typography guidance should be applied through the existing asset pipeline and shared styles, not through page-by-page ad hoc overrides. Typography hierarchy should remain consistent across both light and dark themes.
 
 ### 4.1 Font Direction
 
@@ -158,7 +165,7 @@ Use a consistent 4px-derived spacing rhythm:
 16: 4rem     (64px)
 ```
 
-Contributors may map this scale onto existing utility classes or custom styles, but the design goal is consistency rather than reliance on any particular utility framework.
+Contributors may map this scale onto existing utility classes or custom styles, but the design goal is consistency rather than reliance on any particular utility framework. As the migration progresses, touched UI should converge on Bootstrap 5-compatible markup and repo-owned spacing primitives instead of extending Bootstrap 4-only utility conventions.
 
 ### 5.2 Page Structure
 
@@ -185,12 +192,13 @@ Responsive expectations should be met within the current templates and fragment 
 - stat cards should stack cleanly on smaller screens
 - wide tables should remain usable with horizontal overflow where needed
 - primary actions must stay visible and discoverable on small screens
+- the same page structure must remain legible and navigable in both light and dark themes
 
 ---
 
 ## 6. Navigation And Shared Shell
 
-This section defines UX direction for the shell while acknowledging current implementation constraints.
+This section defines the active shell baseline and the UX direction it now establishes for the rest of the migration while acknowledging current runtime debt outside the touched shell areas.
 
 ### 6.1 Sidebar Direction
 
@@ -200,8 +208,12 @@ For current work:
 
 - preserve the unified sidebar composition path used by shared fragments
 - prefer reducing noise over adding more visual treatment
-- improve grouping, label clarity, and active-state legibility before attempting deeper shell restructuring
+- improve grouping, label clarity, and active-state legibility as part of the migration toward repo-owned shell patterns
 - avoid introducing one-off sidebars or bypassing the role-aware fragment path
+- do not preserve SB Admin 2 visual patterns as the intended long-term sidebar baseline
+- ensure sidebar styling and behavior support both light and dark themes within one consistent navigation model
+
+The authenticated shared shell now uses a repo-owned sidebar implementation through `fragments.html` and `frontend/src/**`; touched shell work should treat that model as the current baseline rather than falling back to SB Admin or per-template sidebar wiring.
 
 ### 6.2 Topbar Direction
 
@@ -212,7 +224,11 @@ The topbar should prioritize orientation and context:
 - room for breadcrumbs on deeper pages
 - user/account actions on the right
 
-Current implementation details such as the `Access Control` dropdown are migration concerns, not permanent UX doctrine. Page-level changes should not hard-code new shell patterns outside shared fragments.
+Current implementation details such as the `Switch Workspace` dropdown remain shared-shell concerns, not page-owned UX doctrine. Page-level changes should not hard-code new shell patterns outside shared fragments.
+
+Shared-shell work under `H30` is expected to move the authenticated shell away from SB Admin 2 styling/JS assumptions where those assumptions conflict with the intended shell hierarchy and visual direction.
+Touched shell behavior should also move away from jQuery-driven Bootstrap 4 conventions and converge on Bootstrap 5-compatible, repo-owned behavior.
+The migrated shared header now owns the topbar, page-title presentation, theme toggle, and shared toolbar rhythm for authenticated shared-shell pages. Page templates should treat that header contract as the baseline and avoid reintroducing duplicate title wrappers.
 
 ### 6.3 Shared-Shell Rule
 
@@ -220,7 +236,16 @@ If a change affects navigation, topbar, or shared layout:
 
 - implement it through shared fragments and existing composition paths
 - preserve the `/assets/app.css` and `/assets/app.js` asset contract
-- treat shell-wide dependency removal or major structural rewrites as dedicated cleanup work
+- use `data-bs-theme` on the root element as the theme-state source of truth for migrated shell work
+- treat shell-wide dependency removal and Bootstrap 5-compatible cutover as intentional migration work
+- do not extend SB Admin 2, Bootstrap 4-era, or jQuery-driven shell usage as part of shared-shell modernization
+
+The shared authenticated shell established by `H30` is the contributor-facing baseline for later work:
+
+- `fragments.html` owns shared sidebar/topbar/page-header composition
+- `frontend/src/**` owns shell behavior, shell styling, and theme behavior
+- `data-bs-theme` on the root element owns theme state for the migrated shell
+- bounded content layout and shared toolbar spacing should be reused rather than rebuilt per page
 
 ---
 
@@ -237,6 +262,7 @@ Guidance:
 - moderate corner radius
 - optional header with clear separation from body
 - no decorative color accents unless they carry meaning
+- provide equivalent dark-theme surface treatment with clear elevation and contrast, not a direct inversion of light-theme colors
 
 ### 7.2 Stat Cards
 
@@ -249,6 +275,7 @@ Preferred treatment:
 - optional trend or context line
 - restrained icon treatment
 - a single semantic accent if needed
+- equal clarity and hierarchy in both light and dark themes
 
 ### 7.3 Data Tables
 
@@ -263,7 +290,7 @@ Guidance:
 - monospace presentation for identifier-heavy columns
 - restrained row hover states
 
-Because the current repo still uses DataTables and BS4 styling in many places, table UX work should focus on standardization of appearance and behavior without assuming immediate replacement of the underlying engine.
+Table UX work should converge on ScholarDex-owned patterns rather than preserving BS4 DataTables styling as the target presentation. Filtering, sorting, pagination, and row states must remain legible in both light and dark themes.
 
 ### 7.4 Buttons
 
@@ -298,6 +325,7 @@ Guidance:
 - visibly distinct readonly fields
 - consistent input sizing across similar contexts
 - multi-step flows should expose current step and progress
+- touched form behavior should migrate away from Bootstrap 4 modal/tooltip assumptions and remain coherent in both light and dark themes
 
 ### 7.7 Empty States
 
@@ -316,6 +344,7 @@ Prefer explicit user feedback after significant actions:
 - clear confirmation for destructive actions
 
 The exact implementation may vary while the shared notification pattern is still evolving, but new work should move toward consistent messaging rather than one-off alerts.
+Feedback patterns must remain recognizable and accessible in both light and dark themes.
 
 ---
 
@@ -333,6 +362,7 @@ Dashboards should surface the most useful summary information for the user role:
 - quick actions
 
 Avoid empty dashboards that provide only navigation chrome.
+Dashboard, summary, and quick-action patterns should maintain contrast, emphasis, and readable hierarchy in both themes.
 
 ### 8.2 List And Table Pages
 
@@ -381,6 +411,7 @@ These are requirements, not optional enhancements.
 - Landmarks such as navigation and main content should remain explicit.
 - Dynamic feedback should be announced appropriately when needed.
 - New or refreshed UI work should maintain WCAG AA contrast expectations for text and controls.
+- These expectations must be validated in both light and dark themes, not only the default theme.
 
 ---
 
@@ -400,15 +431,17 @@ Motion should be minimal and functional.
 These notes are intentionally separate from the durable UX rules above.
 
 - The current shared shell still includes SB Admin 2 styling and JS behavior.
-- Many templates still use Bootstrap 4-era classes and `bg-gradient-primary sidebar` patterns.
-- Topbar role switching currently appears as an `Access Control` dropdown in shared fragments.
-- Many tables still rely on DataTables with BS4 integration and should be improved through consistent behavior and styling before any engine swap is considered.
-- New UX work should improve the current shell incrementally rather than assume an immediate Bootstrap 5 migration, jQuery removal, or global component rewrite.
+- Many templates still use Bootstrap 4-era classes and patterns, and some page surfaces still rely on BS4 DataTables or jQuery-driven UI behavior.
+- Topbar role switching currently appears as a `Switch Workspace` dropdown in shared fragments.
+- New and touched UX work should treat SB Admin 2, Bootstrap 4-era conventions, BS4 DataTables coupling, and jQuery-driven UI behavior as migration debt to retire rather than a baseline to preserve.
 
 When performing migration or shell cleanup work:
 
 - preserve the runtime asset contract: `/assets/app.css` and `/assets/app.js`
 - evolve styles and behavior through `frontend/src/**` and shared fragments
+- replace SB Admin 2-dependent shared-shell behavior with repo-owned shared-shell behavior where the slice touches those areas
+- converge touched UI on Bootstrap 5-compatible markup/data APIs and repo-owned behavior
+- implement light/dark support through shared tokens and theme-aware styles rather than page-by-page special cases
 - remove legacy dependencies only in explicit cleanup slices
 - keep route- and role-aware shared composition intact while modernizing the shell
 

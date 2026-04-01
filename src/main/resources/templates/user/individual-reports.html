@@ -10,18 +10,13 @@
 
 <div id="wrapper">
     <!-- Sidebar -->
-    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: sidebar('individual-reports')}"></div>
-        <div class="text-center d-none d-md-inline">
-            <button class="rounded-circle border-0" id="sidebarToggle"></button>
-        </div>
-    </ul>
+    <div th:replace="~{fragments :: sidebar('individual-reports')}"></div>
 
     <!-- Content Wrapper -->
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
             <div th:replace="~{fragments :: navbar('Individual Reports')}"></div>
-            <div class="container-fluid">
+            <div class="container-fluid app-page-content">
                 <p class="mb-4">This is a list of all Individual Reports currently managed by the system.</p>
 
                 <div class="card shadow mb-4">

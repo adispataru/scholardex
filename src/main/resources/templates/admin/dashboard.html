@@ -10,13 +10,7 @@
 
 <div id="wrapper">
     <!-- Sidebar -->
-    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: sidebar('dashboard')}"></div>
-        <!-- Sidebar Toggler (Sidebar) -->
-        <div class="text-center d-none d-md-inline">
-            <button class="rounded-circle border-0" id="sidebarToggle"></button>
-        </div>
-    </ul>
+    <div th:replace="~{fragments :: sidebar('dashboard')}"></div>
 
     <!-- Content Wrapper -->
     <div id="content-wrapper" class="d-flex flex-column">
@@ -26,9 +20,7 @@
             <div th:replace="~{fragments :: navbar('Admin Dashboard')}"></div>
 
             <!-- Begin Page Content -->
-            <div class="container-fluid">
-                <!-- Page Heading -->
-                <h1 class="h3 mb-4 text-gray-800">Admin Dashboard</h1>
+            <div class="container-fluid app-page-content">
                 <!-- Content here -->
             </div>
             <!-- End of Main Content -->

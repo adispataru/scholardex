@@ -9,17 +9,12 @@
 <body id="page-top">
 
 <div id="wrapper">
-    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: sidebar('profile')}"></div>
-        <div class="text-center d-none d-md-inline">
-            <button class="rounded-circle border-0" id="sidebarToggle"></button>
-        </div>
-    </ul>
+    <div th:replace="~{fragments :: sidebar('profile')}"></div>
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
             <div th:replace="~{fragments :: navbar('Profile')}"></div>
-            <div class="container-fluid">
+            <div class="container-fluid app-page-content">
 
                 <div th:if="${researchProfile == null}">
                     <button class="btn btn-primary" onclick="toggleEditForm()">Create Profile</button>

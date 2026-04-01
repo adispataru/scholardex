@@ -10,19 +10,14 @@
 
 <div id="wrapper">
     <!-- Sidebar -->
-    <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
-        <div th:replace="~{fragments :: sidebar('groups')}"></div>
-        <div class="text-center d-none d-md-inline">
-            <button class="rounded-circle border-0" id="sidebarToggle"></button>
-        </div>
-    </ul>
+    <div th:replace="~{fragments :: sidebar('groups')}"></div>
 
     <!-- Content Wrapper -->
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
             <div th:replace="~{fragments :: navbar(${report.title})}"></div>
-            <div class="container-fluid">
-                <div class="d-sm-flex align-items-center justify-content-end mb-4">
+            <div class="container-fluid app-page-content">
+                <div class="app-page-toolbar">
                     <form th:action="@{/admin/groups/{gid}/reports/view/{id}/refresh(gid=${group.id},id=${report.id})}" method="post">
                         <button type="submit" class="btn btn-primary btn-sm">Refresh scores</button>
                     </form>
