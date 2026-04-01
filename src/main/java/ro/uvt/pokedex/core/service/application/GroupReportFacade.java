@@ -16,6 +16,9 @@ import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 import ro.uvt.pokedex.core.service.application.model.GroupIndividualReportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupPublicationsViewModel;
 import ro.uvt.pokedex.core.service.reporting.ActivityReportingService;
+import ro.uvt.pokedex.core.service.reporting.CNFISScoringService2025;
+import ro.uvt.pokedex.core.service.reporting.ComputerScienceConferenceScoringService;
+import ro.uvt.pokedex.core.service.reporting.PublicationSubtypeSupport;
 import ro.uvt.pokedex.core.service.reporting.Score;
 import ro.uvt.pokedex.core.service.reporting.ScientificProductionService;
 
@@ -27,12 +30,17 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GroupReportFacade {
     private static final long REFRESH_SLOW_WARN_THRESHOLD_MS = 5_000L;
+    private static final List<String> VENUE_CLASS_BUCKET_ORDER = List.of(
+            "Q1", "Q2", "Q3", "Q4", "A_STAR", "A", "B", "C", "D", "LNCS", "BOOK_LNCS", "SCOPUS", "NON_RANK", "Unranked"
+    );
 
     private final GroupRepository groupRepository;
     private final IndividualReportRepository individualReportRepository;
     private final ActivityInstanceRepository activityInstanceRepository;
     private final ActivityReportingService activityReportingService;
     private final ScientificProductionService scientificProductionService;
+    private final CNFISScoringService2025 cnfisScoringService2025;
+    private final ComputerScienceConferenceScoringService computerScienceConferenceScoringService;
     private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final GroupIndividualReportRunRepository groupIndividualReportRunRepository;
@@ -93,6 +101,15 @@ public class GroupReportFacade {
                 .map(Optional::get)
                 .collect(Collectors.groupingBy(year -> year, TreeMap::new, Collectors.counting()));
 
+        Map<Integer, Map<String, Long>> venueClassCountByYear = new TreeMap<>();
+        publications.forEach(publication -> PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)
+                .ifPresent(year -> {
+                    String bucket = classifyVenueBucket(publication, forumMap.get(publication.getForum()));
+                    venueClassCountByYear
+                            .computeIfAbsent(year, ignored -> new LinkedHashMap<>(initializeVenueClassBuckets()))
+                            .merge(bucket, 1L, Long::sum);
+                }));
+
         List<IndividualReport> all = individualReportRepository.findAll();
 
         return Optional.of(new GroupPublicationsViewModel(
@@ -103,8 +120,93 @@ public class GroupReportFacade {
                 forumMap,
                 publicationsByYear,
                 publicationsCountByYear,
+                venueClassCountByYear,
                 all
         ));
+    }
+
+    private Map<String, Long> initializeVenueClassBuckets() {
+        Map<String, Long> buckets = new LinkedHashMap<>();
+        VENUE_CLASS_BUCKET_ORDER.forEach(bucket -> buckets.put(bucket, 0L));
+        return buckets;
+    }
+
+    private String classifyVenueBucket(Publication publication, Forum forum) {
+        if (PublicationSubtypeSupport.isSubtype(publication, "ar", "re")) {
+            return classifyJournalBucket(publication);
+        }
+        if (isLncsBookChapter(publication, forum)) {
+            return classifyLncsBookChapterBucket(publication, forum);
+        }
+        if (PublicationSubtypeSupport.isSubtype(publication, "cp")) {
+            return classifyConferenceBucket(publication);
+        }
+        return "Unranked";
+    }
+
+    private boolean isLncsBookChapter(Publication publication, Forum forum) {
+        if (!PublicationSubtypeSupport.isSubtype(publication, "ch")) {
+            return false;
+        }
+        String publicationName = forum == null || forum.getPublicationName() == null
+                ? ""
+                : forum.getPublicationName().trim();
+        return publicationName.contains("Lecture Notes in ")
+                || publicationName.contains("Lecture Notes on ");
+    }
+
+    private String classifyLncsBookChapterBucket(Publication publication, Forum forum) {
+        int year = PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)
+                .orElse(2023);
+        Optional<Score> conferenceScore = computerScienceConferenceScoringService.tryResolveCoreScore(forum, year);
+        if (conferenceScore.isPresent()) {
+            Score score = conferenceScore.get();
+            if (score.getCategory() != null && !score.getCategory().isBlank()) {
+                return score.getCategory().trim();
+            }
+        }
+        return "BOOK_LNCS";
+    }
+
+    private String classifyJournalBucket(Publication publication) {
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        CNFISReport2025 report = cnfisScoringService2025.getReport(publication, domain);
+        if (report.isIsiQ1()) {
+            return "Q1";
+        }
+        if (report.isIsiQ2()) {
+            return "Q2";
+        }
+        if (report.isIsiQ3()) {
+            return "Q3";
+        }
+        if (report.isIsiQ4()) {
+            return "Q4";
+        }
+        return "Unranked";
+    }
+
+    private String classifyConferenceBucket(Publication publication) {
+        Score score = computerScienceConferenceScoringService.getScore(publication, venueClassificationIndicator());
+        if ("LNCS".equalsIgnoreCase(score.getQuarter())) {
+            return "LNCS";
+        }
+        if ("SCOPUS".equalsIgnoreCase(score.getQuarter())) {
+            return "SCOPUS";
+        }
+        if (score.getCategory() == null || score.getCategory().isBlank()) {
+            return "Unranked";
+        }
+        return score.getCategory().trim();
+    }
+
+    private Indicator venueClassificationIndicator() {
+        Indicator indicator = new Indicator();
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        indicator.setDomain(domain);
+        return indicator;
     }
 
     public GroupIndividualReportViewModel buildGroupIndividualReportView(String groupId, String reportId) {

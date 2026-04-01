@@ -518,7 +518,19 @@ public class UserReportFacade {
         attrs.put("total", String.format("%.2f", citationView.totalScore()));
         attrs.put("totalCit", citationView.totalCitationCount());
         attrs.put("scores", citationView.displayScores());
-        attrs.put("publications", publications);
+        attrs.put("publications", publications.stream()
+                .filter(publication -> {
+                    if (publication == null || publication.getTitle() == null) {
+                        return false;
+                    }
+                    Map<String, Score> publicationScores = citationView.displayScores().get(publication.getTitle());
+                    if (publicationScores == null) {
+                        return false;
+                    }
+                    Score totalScore = publicationScores.get("total");
+                    return totalScore != null && totalScore.getAuthorScore() > 0.0;
+                })
+                .toList());
         attrs.put("citationMap", citationView.citationMap());
 
         return new UserIndicatorApplyViewModel("user/indicators-apply-citations", attrs);

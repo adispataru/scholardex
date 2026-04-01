@@ -586,6 +586,13 @@ class UserReportFacadeTest {
         assertNotNull(reportComputationOpt.orElse(null));
         double applyTotal = Double.parseDouble(applyView.attributes().get("total").toString().replace(',', '.'));
         assertEquals(75.0, applyTotal);
+        @SuppressWarnings("unchecked")
+        Map<String, Map<String, Score>> scores = (Map<String, Map<String, Score>>) applyView.attributes().get("scores");
+        assertNotNull(scores.get("Root Publication").get("total"));
+        assertEquals(75.0, scores.get("Root Publication").get("total").getAuthorScore());
+        @SuppressWarnings("unchecked")
+        List<Publication> visiblePublications = (List<Publication>) applyView.attributes().get("publications");
+        assertEquals(List.of(cited), visiblePublications);
         assertEquals(75.0, reportComputationOpt.orElseThrow().indicatorScoresByIndicatorId().get("ind-cit"));
     }
 }

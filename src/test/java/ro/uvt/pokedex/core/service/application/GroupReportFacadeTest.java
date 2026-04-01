@@ -7,12 +7,14 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.Researcher;
+import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.Institution;
 import ro.uvt.pokedex.core.model.reporting.Group;
 import ro.uvt.pokedex.core.model.reporting.GroupIndividualReportRun;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.reporting.AbstractReport;
+import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.scopus.Author;
@@ -24,6 +26,8 @@ import ro.uvt.pokedex.core.repository.reporting.GroupIndividualReportRunReposito
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 import ro.uvt.pokedex.core.service.reporting.ActivityReportingService;
+import ro.uvt.pokedex.core.service.reporting.CNFISScoringService2025;
+import ro.uvt.pokedex.core.service.reporting.ComputerScienceConferenceScoringService;
 import ro.uvt.pokedex.core.service.reporting.Score;
 import ro.uvt.pokedex.core.service.reporting.ScientificProductionService;
 
@@ -58,6 +62,10 @@ class GroupReportFacadeTest {
     private ActivityReportingService activityReportingService;
     @Mock
     private ScientificProductionService scientificProductionService;
+    @Mock
+    private CNFISScoringService2025 cnfisScoringService2025;
+    @Mock
+    private ComputerScienceConferenceScoringService computerScienceConferenceScoringService;
     @Mock
     private ScholardexProjectionReadService scholardexProjectionReadService;
     @Mock
@@ -223,6 +231,147 @@ class GroupReportFacadeTest {
 
         assertTrue(result.isPresent());
         assertEquals(1, result.get().publications().size());
+    }
+
+    @Test
+    void buildGroupPublicationsViewBuildsVenueClassCountByYear() {
+        Group group = new Group();
+        Researcher researcher = new Researcher();
+        researcher.setId("r1");
+        researcher.setFirstName("R");
+        researcher.setLastName("One");
+        researcher.setScopusId(List.of("a1"));
+        group.setResearchers(new ArrayList<>(List.of(researcher)));
+
+        Publication q1Journal = new Publication();
+        q1Journal.setId("p1");
+        q1Journal.setTitle("Q1 Journal");
+        q1Journal.setCoverDate("2023-01-01");
+        q1Journal.setAuthors(List.of("a1"));
+        q1Journal.setForum("fj1");
+        q1Journal.setSubtype("ar");
+
+        Publication q3Journal = new Publication();
+        q3Journal.setId("p2");
+        q3Journal.setTitle("Q3 Journal");
+        q3Journal.setCoverDate("2023-02-01");
+        q3Journal.setAuthors(List.of("a1"));
+        q3Journal.setForum("fj2");
+        q3Journal.setSubtype("re");
+
+        Publication aConference = new Publication();
+        aConference.setId("p3");
+        aConference.setTitle("A Conference");
+        aConference.setCoverDate("2024-03-01");
+        aConference.setAuthors(List.of("a1"));
+        aConference.setForum("fc1");
+        aConference.setSubtype("cp");
+
+        Publication bConference = new Publication();
+        bConference.setId("p4");
+        bConference.setTitle("B Conference");
+        bConference.setCoverDate("2024-04-01");
+        bConference.setAuthors(List.of("a1"));
+        bConference.setForum("fc2");
+        bConference.setSubtype("cp");
+
+        Publication unranked = new Publication();
+        unranked.setId("p5");
+        unranked.setTitle("Unranked");
+        unranked.setCoverDate("2024-05-01");
+        unranked.setAuthors(List.of("a1"));
+        unranked.setForum("fu1");
+        unranked.setSubtype("bk");
+
+        Publication bookLncs = new Publication();
+        bookLncs.setId("p6");
+        bookLncs.setTitle("LNCS Chapter");
+        bookLncs.setCoverDate("2024-06-01");
+        bookLncs.setAuthors(List.of("a1"));
+        bookLncs.setForum("fl1");
+        bookLncs.setSubtype("ch");
+
+        Publication bookLncsConference = new Publication();
+        bookLncsConference.setId("p7");
+        bookLncsConference.setTitle("LNCS Chapter With Conference Match");
+        bookLncsConference.setCoverDate("2024-07-01");
+        bookLncsConference.setAuthors(List.of("a1"));
+        bookLncsConference.setForum("fl2");
+        bookLncsConference.setSubtype("ch");
+
+        Author author = new Author();
+        author.setId("a1");
+        author.setName("Author One");
+
+        Forum journalForum1 = new Forum();
+        journalForum1.setId("fj1");
+        journalForum1.setPublicationName("Journal One");
+
+        Forum journalForum2 = new Forum();
+        journalForum2.setId("fj2");
+        journalForum2.setPublicationName("Journal Two");
+
+        Forum conferenceForum1 = new Forum();
+        conferenceForum1.setId("fc1");
+        conferenceForum1.setPublicationName("Conference A");
+
+        Forum conferenceForum2 = new Forum();
+        conferenceForum2.setId("fc2");
+        conferenceForum2.setPublicationName("Conference B");
+
+        Forum unrankedForum = new Forum();
+        unrankedForum.setId("fu1");
+        unrankedForum.setPublicationName("Book Venue");
+
+        Forum lncsBookForum = new Forum();
+        lncsBookForum.setId("fl1");
+        lncsBookForum.setPublicationName("Lecture Notes in Computer Science");
+
+        Forum lncsBookConferenceForum = new Forum();
+        lncsBookConferenceForum.setId("fl2");
+        lncsBookConferenceForum.setPublicationName("Lecture Notes in Computer Science, ICSE 2024");
+
+        CNFISReport2025 q1Report = new CNFISReport2025();
+        q1Report.setIsiQ1(true);
+        CNFISReport2025 q3Report = new CNFISReport2025();
+        q3Report.setIsiQ3(true);
+
+        Score aScore = new Score();
+        aScore.setCategory(CoreConferenceRanking.Rank.A_STAR.toString());
+        Score bScore = new Score();
+        bScore.setCategory(CoreConferenceRanking.Rank.B.toString());
+        bScore.setQuarter("LNCS");
+        Score chapterConferenceScore = new Score();
+        chapterConferenceScore.setCategory(CoreConferenceRanking.Rank.B.toString());
+
+        when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
+        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
+                .thenReturn(List.of(q1Journal, q3Journal, aConference, bConference, unranked, bookLncs, bookLncsConference));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
+        when(scholardexProjectionReadService.findForumsByIdIn(anyCollection()))
+                .thenReturn(List.of(journalForum1, journalForum2, conferenceForum1, conferenceForum2, unrankedForum, lncsBookForum, lncsBookConferenceForum));
+        when(individualReportRepository.findAll()).thenReturn(List.of());
+        when(cnfisScoringService2025.getReport(org.mockito.ArgumentMatchers.eq(q1Journal), org.mockito.ArgumentMatchers.any())).thenReturn(q1Report);
+        when(cnfisScoringService2025.getReport(org.mockito.ArgumentMatchers.eq(q3Journal), org.mockito.ArgumentMatchers.any())).thenReturn(q3Report);
+        when(computerScienceConferenceScoringService.getScore(org.mockito.ArgumentMatchers.eq(aConference), org.mockito.ArgumentMatchers.any(Indicator.class)))
+                .thenReturn(aScore);
+        when(computerScienceConferenceScoringService.getScore(org.mockito.ArgumentMatchers.eq(bConference), org.mockito.ArgumentMatchers.any(Indicator.class)))
+                .thenReturn(bScore);
+        when(computerScienceConferenceScoringService.tryResolveCoreScore(org.mockito.ArgumentMatchers.eq(lncsBookForum), org.mockito.ArgumentMatchers.anyInt()))
+                .thenReturn(Optional.empty());
+        when(computerScienceConferenceScoringService.tryResolveCoreScore(org.mockito.ArgumentMatchers.eq(lncsBookConferenceForum), org.mockito.ArgumentMatchers.anyInt()))
+                .thenReturn(Optional.of(chapterConferenceScore));
+
+        var result = facade.buildGroupPublicationsView("g1");
+
+        assertTrue(result.isPresent());
+        assertEquals(1L, result.get().venueClassCountByYear().get(2023).get("Q1"));
+        assertEquals(1L, result.get().venueClassCountByYear().get(2023).get("Q3"));
+        assertEquals(1L, result.get().venueClassCountByYear().get(2024).get("A_STAR"));
+        assertEquals(1L, result.get().venueClassCountByYear().get(2024).get("B"));
+        assertEquals(1L, result.get().venueClassCountByYear().get(2024).get("LNCS"));
+        assertEquals(1L, result.get().venueClassCountByYear().get(2024).get("BOOK_LNCS"));
+        assertEquals(1L, result.get().venueClassCountByYear().get(2024).get("Unranked"));
     }
 
     @Test

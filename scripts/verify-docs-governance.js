@@ -10,10 +10,12 @@ const tasksDonePath = path.join(root, 'TASKS-done.md');
 const allowedTopLevelDocs = new Set([
   'docs/README.md',
   'docs/architecture.md',
+  'docs/case-study-coding-agent-research-reporting-platform.md',
   'docs/contracts.md',
   'docs/workflows.md',
   'docs/operational-playbook.md',
   'docs/frontend-conventions.md',
+  'docs/ux-design-guide.md',
   'docs/quality-gates.md',
   'docs/failure-triage.md',
   'docs/doc-governance.md',
@@ -150,6 +152,8 @@ const closedReferenceAllowlist = new Set([
   'docs/failure-triage.md',
   'docs/doc-governance.md',
   'docs/release-hygiene.md',
+  'docs/case-study-coding-agent-research-reporting-platform.md',
+  'docs/ux-design-guide.md',
   'TASKS-done.md',
   'scripts/verify-docs-governance.js',
   'scripts/verify-route-guardrails.js'

@@ -19,9 +19,10 @@ import ro.uvt.pokedex.core.service.application.GroupExportFacade;
 import ro.uvt.pokedex.core.service.application.GroupManagementFacade;
 import ro.uvt.pokedex.core.service.application.GroupReportFacade;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisZipExportViewModel;
+import ro.uvt.pokedex.core.service.application.model.GroupIndividualReportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupMemberCnfisWorkbook;
 import ro.uvt.pokedex.core.service.application.model.GroupPublicationCsvExportViewModel;
-import ro.uvt.pokedex.core.service.application.model.GroupIndividualReportViewModel;
+import ro.uvt.pokedex.core.service.application.model.GroupPublicationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupWorkbookExportResult;
 import ro.uvt.pokedex.core.service.importing.GroupService;
 
@@ -62,6 +63,76 @@ class AdminGroupControllerContractTest {
     private GroupCnfisExportFacade groupCnfisExportFacade;
     @MockitoBean
     private GroupService groupService;
+
+    @Test
+    void groupPublicationsViewRendersVenueQualityChartData() throws Exception {
+        Group group = new Group();
+        group.setId("g1");
+        group.setName("Group One");
+
+        Publication publication = new Publication();
+        publication.setId("p1");
+        publication.setTitle("Paper One");
+        publication.setAuthors(List.of("a1"));
+        publication.setForum("f1");
+        publication.setCoverDate("2023-01-01");
+
+        Author author = new Author();
+        author.setId("a1");
+        author.setName("Author One");
+
+        Forum forum = new Forum();
+        forum.setId("f1");
+        forum.setPublicationName("Forum One");
+
+        IndividualReport report = new IndividualReport();
+        report.setId("rep1");
+        report.setTitle("Report One");
+
+        when(groupReportFacade.buildGroupPublicationsView("g1"))
+                .thenReturn(Optional.of(new GroupPublicationsViewModel(
+                        group,
+                        List.of(),
+                        List.of(publication),
+                        Map.of("a1", author),
+                        Map.of("f1", forum),
+                        Map.of(2023, List.of(publication)),
+                        Map.of(2023, 1L),
+                        Map.of(2023, Map.ofEntries(
+                                Map.entry("Q1", 1L),
+                                Map.entry("Q2", 0L),
+                                Map.entry("Q3", 0L),
+                                Map.entry("Q4", 0L),
+                                Map.entry("A_STAR", 0L),
+                                Map.entry("A", 0L),
+                                Map.entry("B", 0L),
+                                Map.entry("C", 0L),
+                                Map.entry("D", 0L),
+                                Map.entry("LNCS", 0L),
+                                Map.entry("BOOK_LNCS", 0L),
+                                Map.entry("SCOPUS", 0L),
+                                Map.entry("NON_RANK", 0L),
+                                Map.entry("Unranked", 0L)
+                        )),
+                        List.of(report)
+                )));
+
+        String html = mockMvc.perform(get("/admin/groups/{id}/publications", "g1"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertTrue(html.contains("chart-publications"));
+        assertTrue(html.contains("chart-venue-quality"));
+        assertTrue(html.contains("Venue Quality Distribution By Year"));
+        assertTrue(html.contains("Q1"));
+        assertTrue(html.contains("A_STAR"));
+        assertTrue(html.contains("LNCS"));
+        assertTrue(html.contains("BOOK_LNCS"));
+        assertTrue(html.contains("SCOPUS"));
+        assertTrue(html.contains("Unranked"));
+    }
 
     @Test
     void exportCnfis2025ReturnsWorkbookHeadersAndBody() throws Exception {

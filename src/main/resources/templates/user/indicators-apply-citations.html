@@ -134,22 +134,23 @@
                                         </tr>
                                         </thead>
                                         <tbody id="citations-main-body">
-                                        <th:block th:each="publication, pStat : ${publications}">
+                                        <th:block th:each="publication, pStat : ${publications}"
+                                                  th:with="publicationScores=${scores[publication.title]}, totalScore=${publicationScores != null ? publicationScores['total'] : null}">
                                             <tr class="js-citation-main"
-                                                th:if="${scores[publication.title]['total'].authorScore > 0.0}"
+                                                th:if="${totalScore != null and totalScore.authorScore > 0.0}"
                                                 th:attr="data-key=${pStat.index},
                                                          data-search=${(publication.title ?: '') + ' ' + (publication.subtypeDescription ?: '') + ' ' + ((forumMap[publication.forum] != null ? forumMap[publication.forum].publicationName : ''))},
                                                          data-type=${publication.subtypeDescription},
-                                                         data-quarter=${scores[publication.title]['total'].quarter},
-                                                         data-author-score=${scores[publication.title]['total'].authorScore},
-                                                         data-forum-score=${scores[publication.title]['total'].score},
-                                                         data-citation-count=${#maps.size(scores[publication.title]) - 1}">
+                                                         data-quarter=${totalScore.quarter},
+                                                         data-author-score=${totalScore.authorScore},
+                                                         data-forum-score=${totalScore.score},
+                                                         data-citation-count=${#maps.size(publicationScores) - 1}">
                                                 <td><a th:text="${publication.title}" th:href="@{/user/publications/citations(eid=${publication.eid})}">Title</a></td>
                                                 <td th:text="${publication.subtypeDescription}">Type</td>
-                                                <td th:text="${scores[publication.title]['total'].score}">0</td>
+                                                <td th:text="${totalScore.score}">0</td>
                                                 <td th:text="${publication.authors.size()}">0</td>
-                                                <td th:text="${#numbers.formatDecimal(scores[publication.title]['total'].authorScore, 1, 2)}">0</td>
-                                                <td th:text="${#maps.size(scores[publication.title]) - 1}">0</td>
+                                                <td th:text="${#numbers.formatDecimal(totalScore.authorScore, 1, 2)}">0</td>
+                                                <td th:text="${#maps.size(publicationScores) - 1}">0</td>
                                                 <td class="text-center">
                                                     <button type="button" class="btn btn-sm btn-outline-primary js-expand" th:attr="data-key=${pStat.index}" aria-expanded="false">Details</button>
                                                 </td>
@@ -172,7 +173,7 @@
                                                                 </tr>
                                                                 </thead>
                                                                 <tbody>
-                                                                <tr th:each="e : ${scores[publication.title]}" th:if="${!e.key.equals('total') && e.value.authorScore > 0.0}">
+                                                                <tr th:each="e : ${publicationScores}" th:if="${!e.key.equals('total') && e.value.authorScore > 0.0}">
                                                                     <td>
                                                                         <a th:if="${citationMap[e.key] != null}" th:text="${e.key}" th:href="@{/user/publications/citations(eid=${citationMap[e.key].eid})}">Citing</a>
                                                                         <span th:if="${citationMap[e.key] == null}" th:text="${e.key}">Citing</span>
@@ -206,7 +207,7 @@
                                                             </table>
                                                         </div>
                                                         <div class="d-md-none">
-                                                            <div th:each="e : ${scores[publication.title]}" th:if="${!e.key.equals('total') && e.value.authorScore > 0.0}" class="mobile-detail-card">
+                                                            <div th:each="e : ${publicationScores}" th:if="${!e.key.equals('total') && e.value.authorScore > 0.0}" class="mobile-detail-card">
                                                                 <div class="font-weight-bold" th:text="${e.key}"></div>
                                                                 <div class="small text-muted" th:text="${'Type: ' + (citationMap[e.key] != null && citationMap[e.key].subtypeDescription != null ? citationMap[e.key].subtypeDescription : (citationMap[e.key] != null ? citationMap[e.key].subtype : ''))}"></div>
                                                                 <div class="small" th:text="${'Category/Quarter: ' + e.value.category + ' / ' + e.value.quarter}"></div>

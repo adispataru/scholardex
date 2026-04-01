@@ -99,6 +99,7 @@ public class AdminGroupController {
         model.addAttribute("authorMap", vm.authorMap());
         model.addAttribute("publicationsByYear", vm.publicationsByYear());
         model.addAttribute("publicationsCountByYear", vm.publicationsCountByYear());
+        model.addAttribute("venueClassCountByYear", vm.venueClassCountByYear());
         model.addAttribute("individualReports", vm.individualReports());
         model.addAttribute("forumMap", vm.forumMap());
         model.addAttribute("group", vm.group());

@@ -18,6 +18,8 @@ This directory now separates durable project docs from task-specific history.
 - `docs/workflows.md`
 - `docs/operational-playbook.md`
 - `docs/frontend-conventions.md`
+- `docs/ux-design-guide.md`
+- `docs/case-study-coding-agent-research-reporting-platform.md`
 - `docs/quality-gates.md`
 - `docs/failure-triage.md`
 - `docs/doc-governance.md`

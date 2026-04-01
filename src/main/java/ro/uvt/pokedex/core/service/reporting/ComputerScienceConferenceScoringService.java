@@ -13,6 +13,8 @@ import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 
 import java.util.*;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Scoring service that evaluates Computer Science conferences based on CORE rankings.
@@ -22,6 +24,12 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
 
     private static final Logger logger = LoggerFactory.getLogger(ComputerScienceConferenceScoringService.class);
     private static final int LAST_CORE_YEAR = 2023;
+    private static final Pattern ORDINAL_PREFIX = Pattern.compile("^\\d+(st|nd|rd|th)\\s+", Pattern.CASE_INSENSITIVE);
+    private static final Pattern YEAR_TOKEN = Pattern.compile("\\b(19|20)\\d{2}\\b");
+    private static final Set<String> BOILERPLATE_TOKENS = Set.of(
+            "proceedings", "of", "the", "international", "conference", "symposium", "workshop",
+            "on", "for", "and", "in", "annual", "ieee", "acm", "ifip", "euromicro", "joint"
+    );
 
     @Autowired
     public ComputerScienceConferenceScoringService(ReportingLookupPort lookupPort) {
@@ -114,38 +122,27 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     /* ------------------------------------------------------------------ */
 
     private Optional<Score> computeCOREScore(Forum forum, int year) {
-        if(forum.getPublicationName() == null) {
-            return Optional.empty();
-        }
-        String acronym = getAcronym(forum.getPublicationName());
-        if (acronym.isEmpty()) {
-            return Optional.empty();
-        }
+        return tryResolveCoreScore(forum, year);
+    }
 
-        List<CoreConferenceRanking> confRankings = lookupPort.getConferenceRankings(acronym);
+    public Optional<Score> tryResolveCoreScore(Forum forum, int year) {
+        ConferenceMatch match = resolveConferenceMatch(forum == null ? null : forum.getPublicationName());
+        if (!match.resolved()) {
+            return Optional.empty();
+        }
         Score scoreResult = new Score();
-        // Filter rankings by exact name match if multiple exist
-        if (confRankings.size() > 1) {
-            confRankings = confRankings.stream()
-                    .filter(r -> forum.getPublicationName().contains(r.getName()))
-                    .toList();
-        }
-
-
         List<Double> scores = new ArrayList<>();
-        for (CoreConferenceRanking conf : confRankings) {
-            Optional<CoreConferenceRanking.YearlyRanking> yearlyRankOptional = Optional.ofNullable(conf.getClosestYear(year));
-            if (yearlyRankOptional.isPresent()) {
-                CoreConferenceRanking.YearlyRanking yearlyRank = yearlyRankOptional.get();
-                double score = switch (yearlyRank.getRank()) {
-                    case A_STAR -> 12.0;
-                    case A -> 8.0;
-                    case B -> 4.0;
-                    case C -> 2.0;
-                    default -> 1.0;
-                };
-                scores.add(score);
-            }
+        Optional<CoreConferenceRanking.YearlyRanking> yearlyRankOptional = Optional.ofNullable(match.ranking().getClosestYear(year));
+        if (yearlyRankOptional.isPresent()) {
+            CoreConferenceRanking.YearlyRanking yearlyRank = yearlyRankOptional.get();
+            double score = switch (yearlyRank.getRank()) {
+                case A_STAR -> 12.0;
+                case A -> 8.0;
+                case B -> 4.0;
+                case C -> 2.0;
+                default -> 1.0;
+            };
+            scores.add(score);
         }
 
         if (scores.isEmpty()) {
@@ -164,10 +161,173 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         return Optional.of(scoreResult);
     }
 
-    private static String getAcronym(String publicationName) {
-        String[] tokens = publicationName.split(", ");
-        String[] split = tokens[tokens.length - 1].split(" ");
-        return split[0];
+    private ConferenceMatch resolveConferenceMatch(String publicationName) {
+        if (publicationName == null || publicationName.isBlank()) {
+            return ConferenceMatch.unresolved();
+        }
+        String normalizedPublicationName = normalizeVenueName(publicationName);
+        if (normalizedPublicationName.isBlank()) {
+            return ConferenceMatch.unresolved();
+        }
+
+        Map<CoreConferenceRanking, MatchConfidence> candidateConfidence = new LinkedHashMap<>();
+        for (String acronymCandidate : extractAcronymCandidates(publicationName)) {
+            List<CoreConferenceRanking> confRankings = Optional.ofNullable(lookupPort.getConferenceRankings(acronymCandidate))
+                    .orElse(List.of());
+            for (CoreConferenceRanking ranking : confRankings) {
+                MatchConfidence confidence = scoreMatchConfidence(normalizedPublicationName, ranking);
+                if (confidence == MatchConfidence.NONE) {
+                    continue;
+                }
+                MatchConfidence existing = candidateConfidence.get(ranking);
+                if (existing == null || confidence.score > existing.score) {
+                    candidateConfidence.put(ranking, confidence);
+                }
+            }
+        }
+
+        if (candidateConfidence.isEmpty()) {
+            return ConferenceMatch.unresolved();
+        }
+
+        int bestScore = candidateConfidence.values().stream()
+                .mapToInt(confidence -> confidence.score)
+                .max()
+                .orElse(MatchConfidence.NONE.score);
+        if (bestScore < MatchConfidence.NORMALIZED_CONTAINS.score) {
+            return ConferenceMatch.unresolved();
+        }
+
+        List<CoreConferenceRanking> winners = candidateConfidence.entrySet().stream()
+                .filter(entry -> entry.getValue().score == bestScore)
+                .map(Map.Entry::getKey)
+                .toList();
+        if (winners.size() != 1) {
+            return ConferenceMatch.unresolved();
+        }
+
+        return new ConferenceMatch(true, winners.getFirst());
+    }
+
+    private List<String> extractAcronymCandidates(String publicationName) {
+        Set<String> candidates = new LinkedHashSet<>();
+        String[] fragments = publicationName.split(",");
+        for (String fragment : fragments) {
+            String trimmed = fragment == null ? "" : fragment.trim();
+            if (trimmed.isBlank()) {
+                continue;
+            }
+            String[] tokens = trimmed.split("\\s+");
+            for (String token : tokens) {
+                String normalized = normalizeAcronymToken(token);
+                if (normalized.length() >= 2) {
+                    candidates.add(normalized);
+                }
+            }
+            if (tokens.length > 0) {
+                String leading = normalizeAcronymToken(tokens[0]);
+                if (leading.length() >= 2) {
+                    candidates.add(leading);
+                }
+            }
+        }
+        return new ArrayList<>(candidates);
+    }
+
+    private String normalizeAcronymToken(String token) {
+        if (token == null) {
+            return "";
+        }
+        return token
+                .replaceAll("^[^A-Za-z0-9]+|[^A-Za-z0-9]+$", "")
+                .replaceAll("[^A-Za-z0-9-]", "")
+                .toUpperCase(Locale.ROOT);
+    }
+
+    private MatchConfidence scoreMatchConfidence(String normalizedPublicationName, CoreConferenceRanking ranking) {
+        String rankingName = normalizeVenueName(ranking.getName());
+        if (rankingName.isBlank()) {
+            return MatchConfidence.NONE;
+        }
+        if (normalizedPublicationName.equals(rankingName)) {
+            return MatchConfidence.EXACT_NORMALIZED_NAME;
+        }
+
+        String normalizedWithoutBoilerplate = normalizeWithoutBoilerplate(normalizedPublicationName);
+        String rankingWithoutBoilerplate = normalizeWithoutBoilerplate(rankingName);
+        if (!normalizedWithoutBoilerplate.isBlank() && normalizedWithoutBoilerplate.equals(rankingWithoutBoilerplate)) {
+            return MatchConfidence.NORMALIZED_NAME_WITHOUT_BOILERPLATE;
+        }
+
+        if (normalizedPublicationName.contains(rankingName) || rankingName.contains(normalizedPublicationName)) {
+            return MatchConfidence.NORMALIZED_CONTAINS;
+        }
+
+        Set<String> publicationTokens = significantTokens(normalizedWithoutBoilerplate);
+        Set<String> rankingTokens = significantTokens(rankingWithoutBoilerplate);
+        if (!publicationTokens.isEmpty() && publicationTokens.equals(rankingTokens)) {
+            return MatchConfidence.TOKEN_SET_EQUAL;
+        }
+        if (!publicationTokens.isEmpty() && !rankingTokens.isEmpty() && publicationTokens.containsAll(rankingTokens)) {
+            return MatchConfidence.TOKEN_SUPERSET;
+        }
+        return MatchConfidence.NONE;
+    }
+
+    private String normalizeVenueName(String value) {
+        if (value == null) {
+            return "";
+        }
+        String normalized = value
+                .replace('\u00A0', ' ')
+                .replaceAll("[()/:\\-]", " ")
+                .replaceAll("[,.;]", " ")
+                .replaceAll("\\s+", " ")
+                .trim()
+                .toLowerCase(Locale.ROOT);
+        normalized = ORDINAL_PREFIX.matcher(normalized).replaceFirst("");
+        normalized = YEAR_TOKEN.matcher(normalized).replaceAll(" ");
+        return normalized.replaceAll("\\s+", " ").trim();
+    }
+
+    private String normalizeWithoutBoilerplate(String normalizedValue) {
+        if (normalizedValue == null || normalizedValue.isBlank()) {
+            return "";
+        }
+        return Arrays.stream(normalizedValue.split("\\s+"))
+                .filter(token -> !BOILERPLATE_TOKENS.contains(token))
+                .collect(Collectors.joining(" "))
+                .trim();
+    }
+
+    private Set<String> significantTokens(String normalizedValue) {
+        if (normalizedValue == null || normalizedValue.isBlank()) {
+            return Set.of();
+        }
+        return Arrays.stream(normalizedValue.split("\\s+"))
+                .filter(token -> token.length() > 1)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private record ConferenceMatch(boolean resolved, CoreConferenceRanking ranking) {
+        static ConferenceMatch unresolved() {
+            return new ConferenceMatch(false, null);
+        }
+    }
+
+    private enum MatchConfidence {
+        NONE(0),
+        NORMALIZED_CONTAINS(1),
+        TOKEN_SUPERSET(2),
+        TOKEN_SET_EQUAL(3),
+        NORMALIZED_NAME_WITHOUT_BOILERPLATE(4),
+        EXACT_NORMALIZED_NAME(5);
+
+        private final int score;
+
+        MatchConfidence(int score) {
+            this.score = score;
+        }
     }
 
     /* ------------------------------------------------------------------ */

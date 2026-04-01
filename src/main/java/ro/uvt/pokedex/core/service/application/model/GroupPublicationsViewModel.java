@@ -18,6 +18,7 @@ public record GroupPublicationsViewModel(
         Map<String, Forum> forumMap,
         Map<Integer, List<Publication>> publicationsByYear,
         Map<Integer, Long> publicationsCountByYear,
+        Map<Integer, Map<String, Long>> venueClassCountByYear,
         List<IndividualReport> individualReports
 ) {
 }

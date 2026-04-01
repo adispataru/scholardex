@@ -136,7 +136,7 @@ final class ReportScopedIndicatorScoringSupport {
         ReportingComputationSupport.applyFinalSelector(indicator, rawScores);
         long selectorNanos = System.nanoTime() - selectorStartNanos;
         double totalScore = sumDisplayedCitationScores(rawScores.values());
-        Map<String, Map<String, Score>> displayScores = stripTotalEntries(rawScores);
+        Map<String, Map<String, Score>> displayScores = copyScores(rawScores);
         Map<String, Integer> quarterHistogram = buildQuarterHistogram(displayScores);
 
         return new CitationViewComputation(
@@ -190,15 +190,13 @@ final class ReportScopedIndicatorScoringSupport {
         return total;
     }
 
-    private static Map<String, Map<String, Score>> stripTotalEntries(Map<String, Map<String, Score>> scores) {
+    private static Map<String, Map<String, Score>> copyScores(Map<String, Map<String, Score>> scores) {
         Map<String, Map<String, Score>> displayScores = new LinkedHashMap<>();
         for (Map.Entry<String, Map<String, Score>> publicationEntry : scores.entrySet()) {
             Map<String, Score> filtered = new LinkedHashMap<>();
             if (publicationEntry.getValue() != null) {
                 for (Map.Entry<String, Score> scoreEntry : publicationEntry.getValue().entrySet()) {
-                    if (!"total".equals(scoreEntry.getKey())) {
-                        filtered.put(scoreEntry.getKey(), scoreEntry.getValue());
-                    }
+                    filtered.put(scoreEntry.getKey(), scoreEntry.getValue());
                 }
             }
             displayScores.put(publicationEntry.getKey(), filtered);
