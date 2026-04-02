@@ -76,6 +76,11 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
     }
 
     @Override
+    public List<CoreConferenceRanking> getConferenceRankingsByNormalizedTitle(String normalizedTitle) {
+        return cacheService.getCachedConfRankingsByNormalizedTitle(normalizedTitle);
+    }
+
+    @Override
     public int getTopRankings(String categoryIndex, Integer year) {
         if (year == null || categoryIndex == null || categoryIndex.isBlank()) {
             return 0;

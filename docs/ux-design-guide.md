@@ -1,517 +1,411 @@
 # ScholarDex UX Design Guide
 
-Status: active contributor UX guidance for the ScholarDex-owned UI/UX migration.
+Status: active contributor UX guidance.
 
-**Version:** 1.1
+**Version:** 2.0
 **Date:** April 2026
-**Purpose:** define the target UX direction for contributors migrating the product toward a ScholarDex-owned design system and interaction model
-**Audience:** contributors improving templates, shared fragments, frontend modules, and UI behavior
+**Visual direction:** Clean, modern SaaS — restrained surfaces, intentional color, confident typography
+**Audience:** Contributors improving templates, shared fragments, frontend modules, and UI behavior
 
-This guide is the current-source UX reference for ScholarDex. It is grounded in the repo as it exists today, but it defines the intended steady-state direction rather than the legacy runtime baseline. Contributors should use it to keep the product on a ScholarDex-owned UI/UX system with Bootstrap 5-compatible implementation and support for both light and dark themes, while continuing to retire remaining Bootstrap-era debt only where later tasks explicitly reopen untouched legacy surfaces.
+This guide defines the UX target for ScholarDex. It describes what the product should feel like, how users should experience each surface, and what design qualities contributors should aim for when touching any page. It is a design compass, not an implementation spec — specific pages and page families will make their own implementation choices within these guidelines.
 
-The `H30`-`H35` wave established that steady-state baseline for the authenticated shell, table/list, workflow, summary, footer, and shared runtime families. For those surfaces, accessibility, visible focus treatment, responsive behavior, light/dark parity, and removal of Bootstrap 4 / SB Admin presentation remnants are now part of the expected frontend contract rather than deferred cleanup goals.
+The authenticated shell, table/list, workflow, summary, footer, and shared runtime families already operate on a ScholarDex-owned frontend baseline with light and dark theme support. This guide builds on that foundation and pushes toward a more polished, more intentional product experience.
 
----
-
-## 1. Current Frontend Baseline
-
-Before applying UX changes, work from the repo's actual frontend contract and migration target:
-
-- Authored frontend code lives under `frontend/src/**`.
-- Runtime templates consume built assets through `/assets/app.css` and `/assets/app.js`.
-- Shared shell work flows through Thymeleaf fragments and the role-aware sidebar composition path.
-- The authenticated baseline now resolves through ScholarDex-owned shell, footer, theme, and shared runtime behavior rather than SB Admin 2 or Bootstrap 4 shell assets.
-- New and touched UI work should converge on Bootstrap 5-compatible markup, repo-owned behavior, and ScholarDex-owned design patterns.
-- The target product direction is one ScholarDex UI/UX system that supports both light and dark themes, not continued operation on a Bootstrap 4/SB Admin baseline.
-- Remaining Bootstrap 4 / SB Admin debt is intentionally bounded to untouched non-authenticated or otherwise deferred legacy pages until a later task explicitly reopens those surfaces.
-
-Use this guide together with:
-
-- `docs/frontend-conventions.md` for template and asset rules
-- `docs/doc-governance.md` for doc placement and update expectations
-- `docs/quality-gates.md` for verification commands tied to frontend and doc changes
+Use this guide together with `docs/frontend-conventions.md` for template and asset rules, `docs/doc-governance.md` for doc placement, and `docs/quality-gates.md` for verification expectations.
 
 ---
 
-## 2. Design Principles
+## 1. Design Principles
 
-These principles should guide UI decisions throughout ongoing frontend work. Legacy runtime constraints may still exist in untouched areas, but they are not the design target.
+### 1.1 Calm Confidence
 
-### 2.1 Clarity Over Density
+ScholarDex handles complex academic data — publications, citations, rankings, institutional hierarchies, scoring criteria. The interface should project calm authority. Generous whitespace, restrained color, and clear hierarchy tell users: "this tool knows what it's doing, and so will you." Avoid visual noise, decoration-for-its-own-sake, and cramped layouts that make complexity feel overwhelming.
 
-Academic data is inherently complex. The UI should reduce cognitive load, not mirror the underlying complexity. Every screen should answer one question clearly: **"What am I looking at, and what can I do here?"**
+### 1.2 One Question Per Screen
 
-In practice this means generous spacing between sections, one primary action per view or section, and progressive disclosure for secondary options.
+Every page should have a clear primary purpose that a user can articulate in one sentence. "I'm looking at my publications." "I'm editing this institution." "I'm reviewing open conflicts." When a page tries to answer too many questions at once, it should be restructured around progressive disclosure — surface the primary answer immediately, and let secondary information unfold on demand.
 
-### 2.2 Consistency Builds Trust
+### 1.3 Meaningful Defaults
 
-Researchers and administrators need to trust the data they see. Visual inconsistency across pagination, card layouts, forms, or actions erodes that trust. Similar pages should use the same patterns unless there is a specific workflow reason to diverge.
+Users shouldn't need to configure, filter, or click through to reach useful information. Dashboards should show the most actionable data by default. Tables should open with sensible sorting. Filters should start from the most useful position (usually "all open items" or "my items"), not from blank. The first thing a user sees after landing on a page should already be valuable.
 
-### 2.3 Guide, Don't Just Display
+### 1.4 Trust Through Consistency
 
-Raw tables are useful, but the interface should help users understand what the data means. Favor contextual helper text, explicit statuses, empty states, and summary views that turn raw records into understandable signals.
+Every list paginates the same way. Every form validates the same way. Every destructive action confirms the same way. Every empty state explains itself. Users build muscle memory and mental models. Breaking consistency — even for a single page — costs trust. When two pages serve similar functions, they should be visually and structurally indistinguishable until the data differs.
 
-### 2.4 Respect Both Audiences
+### 1.5 Respect Both Audiences
 
-Researchers and administrators have different workflows. The same design language should serve both, but each role's surfaces should be optimized for that role's tasks and level of complexity.
+Researchers managing their own publications and administrators overseeing institutional data have different mental models and priorities. Admin pages can tolerate more density, more batch operations, more technical identifiers. Researcher pages should feel warmer, more personal, and more guided. The same design language serves both, but the emphasis shifts.
 
-### 2.5 Progressive Enhancement
+### 1.6 Accessibility Is Not Optional
 
-Not every page needs to be rebuilt at once. Improvements should layer onto the existing shell incrementally, with each change producing a visible UX win without requiring the whole application to be modernized first.
-
----
-
-## 3. Color System
-
-The visual direction should move away from loud default theme coloring and toward restrained, intentional use of color. This is guidance for new and revised UI work; it does not imply that all current pages already follow it.
-
-The product should support both light and dark themes through one cohesive ScholarDex design language. Themes are presentation modes within the same system, not separate product directions.
-
-### 3.1 Core Palette
-
-```text
-Brand Primary:       #4361EE
-Brand Primary Hover: #3A56D4
-Brand Primary Light: #EEF1FD
-
-Neutral 900:         #111827
-Neutral 700:         #374151
-Neutral 500:         #6B7280
-Neutral 300:         #D1D5DB
-Neutral 200:         #E5E7EB
-Neutral 100:         #F3F4F6
-Neutral 50:          #F9FAFB
-White:               #FFFFFF
-```
-
-### 3.2 Semantic Colors
-
-```text
-Success:             #059669
-Success Light:       #ECFDF5
-Warning:             #D97706
-Warning Light:       #FFFBEB
-Danger:              #DC2626
-Danger Light:        #FEF2F2
-Info:                #2563EB
-Info Light:          #EFF6FF
-```
-
-### 3.3 Usage Rules
-
-- Use neutrals for the majority of text, borders, and surfaces.
-- Use primary blue for interactive emphasis, not generic decoration.
-- Use semantic colors for status and consequence.
-- Avoid stacking multiple colored treatments inside the same card or row.
-- Prefer a light neutral page background with white cards for new or refreshed layouts, even if some legacy pages still render on pure white.
-- Every color decision should have a corresponding dark-theme treatment with comparable hierarchy, contrast, and restraint.
-- Theme support should be implemented through repo-owned tokens and shared styles rather than page-specific overrides.
+Keyboard navigation, visible focus states, screen reader support, sufficient contrast, and semantic markup are baseline requirements, not stretch goals. Both light and dark themes must meet WCAG AA contrast standards. Every interactive element must be operable without a mouse.
 
 ---
 
-## 4. Typography
+## 2. Visual Identity
 
-Typography guidance should be applied through the existing asset pipeline and shared styles, not through page-by-page ad hoc overrides. Typography hierarchy should remain consistent across both light and dark themes.
+### 2.1 The Feel
 
-### 4.1 Font Direction
+ScholarDex should feel like a well-made professional tool — closer to Linear, Notion, or Stripe Dashboard than to a generic admin panel. The keywords are: **clean, spacious, quietly sophisticated.** Surfaces should breathe. Cards should float gently, not press down with heavy shadows. Color should appear with purpose, not because a component needs decoration.
 
-Preferred direction:
+### 2.2 Light and Dark as First-Class Citizens
 
-```css
---font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
---font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
-```
+Both themes are full product experiences, not afterthoughts. Light mode uses soft warm-neutral backgrounds with white cards. Dark mode uses deep blue-blacks with subtle surface elevation. Neither theme should feel like a simple color inversion of the other — each should feel intentionally designed with its own sense of depth, hierarchy, and warmth.
 
-Inter is the preferred UI font direction, but adoption should happen through the existing frontend build and asset contract. Until it is fully adopted, contributors should still follow the type hierarchy below using the fonts available in the current stack.
+### 2.3 Color Philosophy
 
-### 4.2 Type Scale
+Color carries meaning, not decoration. The palette should be used as follows:
 
-```text
-xs:   0.75rem   (12px)
-sm:   0.875rem  (14px)
-base: 1rem      (16px)
-lg:   1.125rem  (18px)
-xl:   1.25rem   (20px)
-2xl:  1.5rem    (24px)
-3xl:  1.875rem  (30px)
-```
+**Primary blue** is reserved for interactive elements: links, primary buttons, active navigation, focus rings. It should never appear as a static label color or background wash without interaction intent.
 
-### 4.3 Rules
+**Semantic colors** signal consequence: green for success/resolved/passed, amber for pending/attention/threshold, red for errors/open conflicts/danger. These should appear on badges, status dots, alert surfaces, and card accents — always paired with a text label so color is never the only carrier of meaning.
 
-- Page titles: `2xl`, semi-bold, high-contrast text, no forced uppercase.
-- Card headers: `lg`, semi-bold, neutral text rather than accent-colored static labels.
-- Body text: `base`, regular weight, comfortable line height.
-- Data values and hero metrics: `2xl` to `3xl`, bold, visually dominant.
-- Small metadata labels: `xs`, medium weight; uppercase is acceptable only for compact descriptive labels.
-- Monospace styling is appropriate for IDs, codes, and system identifiers.
+**Neutrals** do most of the work. Text, borders, backgrounds, dividers, and structural elements should all live in the neutral range. The visual experience should feel predominantly grayscale with purposeful color punctuation.
+
+**Restraint rule:** No card, row, or section should carry more than one accent color. If a stat card has a colored left border, its interior text should be neutral. If a table row has a colored badge, it shouldn't also have a colored background.
+
+### 2.4 Surface and Depth
+
+The product uses a layered surface model: page background sits behind content cards, which sit behind floating elements (dropdowns, modals, tooltips). Depth should come primarily from subtle background-color differences and borders rather than heavy drop shadows. In dark mode, brighter surfaces mean closer to the user. In light mode, whiter surfaces mean closer to the user.
 
 ---
 
-## 5. Layout And Spacing
+## 3. Typography
 
-### 5.1 Spacing Scale
+### 3.1 Hierarchy Through Weight, Not Ornamentation
 
-Use a consistent 4px-derived spacing rhythm:
+Typography does more work than color in ScholarDex. The type system should create clear, scannable hierarchy through weight and size differences alone — without relying on uppercase, letter-spacing, or color to distinguish levels.
 
-```text
-1:  0.25rem  (4px)
-2:  0.5rem   (8px)
-3:  0.75rem  (12px)
-4:  1rem     (16px)
-5:  1.25rem  (20px)
-6:  1.5rem   (24px)
-8:  2rem     (32px)
-10: 2.5rem   (40px)
-12: 3rem     (48px)
-16: 4rem     (64px)
-```
+**Page titles** should feel authoritative but not shouty: large, semi-bold, high-contrast. No forced uppercase.
 
-Contributors may map this scale onto existing utility classes or custom styles, but the design goal is consistency rather than reliance on any particular utility framework. As the migration progresses, touched UI should converge on Bootstrap 5-compatible markup and repo-owned spacing primitives instead of extending Bootstrap 4-only utility conventions.
+**Section and card titles** are one step down: moderately sized, semi-bold, neutral color. They should orient users within the page without competing with the page title.
 
-### 5.2 Page Structure
+**Body text and table cells** are the workhorse layer: readable, comfortable line-height, regular weight. This is where users spend most of their reading time, so legibility is paramount.
 
-Target structure for authenticated application pages:
+**Hero metrics** — the big numbers on stat cards and dashboards — are the visual anchor of any summary surface. They should be bold, noticeably larger than surrounding text, and the first thing the eye lands on.
 
-- persistent role-aware sidebar
-- top navigation row
-- page header with title and actions
-- bounded content area for readable cards and forms
-- footer or bottom spacing that does not crowd content
+**Metadata labels** above hero metrics, in table headers, and on form sections are small, medium-weight, and muted. They explain; they don't compete.
 
-### 5.3 Key Layout Rules
+**System identifiers** (Scopus IDs, ISSN numbers, WoS codes, formulas) should use monospace styling. This is a subtle but important signal that the value is a reference code, not prose.
 
-- Cap general content width for readability on wide screens.
-- Use comfortable card padding, with more space than legacy cramped headers/bodies.
-- Keep clear separation between major page sections.
-- Prefer subtle borders or very light shadows over heavy card shadows.
+### 3.2 Content Voice
 
-### 5.4 Responsive Behavior
+Labels, helper text, intro paragraphs, and empty states are all part of the UX. They should be:
 
-Responsive expectations should be met within the current templates and fragment structure:
+**Concise.** Don't explain what the user can already see. "Publications" as a card title doesn't need "This is a list of your publications" underneath.
 
-- sidebar behavior may differ by breakpoint, but primary navigation must remain reachable
-- stat cards should stack cleanly on smaller screens
-- wide tables should remain usable with horizontal overflow where needed
-- primary actions must stay visible and discoverable on small screens
-- the same page structure must remain legible and navigable in both light and dark themes
+**Helpful where non-obvious.** When a field has constraints, side-effects, or sources the user might not know about, explain briefly: "Find your Scopus Author ID on your Scopus profile page."
 
-### 5.5 Current Summary Baseline
+**Human but professional.** Avoid jargon when a plain term works. "No publications yet" is better than "Zero records returned." But technical terms that the audience understands (h-Index, ISSN, WoS) should be used without dumbing them down.
 
-The post-`H33` summary baseline is now part of the active ScholarDex UI language:
-
-- shared summary and dashboard styles live under `frontend/src/**`
-- touched summary-heavy pages should use shared summary grids, summary cards, summary panels, chart frames, and empty states
-- touched feedback-heavy pages should use shared inline or surface-level feedback treatment instead of raw `alert alert-*` blocks as the visible contract
-- touched chart-plus-table or summary-plus-table pages should let the H33 summary layer frame the context above the H31 table surface rather than stacking unrelated legacy cards
-
-SB Admin stat cards, placeholder dashboard shells, and Bootstrap 4 alert/card treatment remain migration debt only on untouched pages.
+**Action-oriented in empty states.** "No publications yet — add your first one to start tracking your research" is better than "No data available."
 
 ---
 
-## 6. Navigation And Shared Shell
+## 4. Layout and Spatial Design
 
-This section defines the active shell baseline and the UX direction it now establishes for the rest of the migration while acknowledging current runtime debt outside the touched shell areas.
+### 4.1 Breathing Room
 
-### 6.1 Sidebar Direction
+The most common UX sin in data-heavy apps is cramming. ScholarDex should err on the side of more space, not less. Cards need generous internal padding. Sections need clear separation. Tables need comfortable cell padding. The user's eye should move through a page smoothly, not fight through walls of information.
 
-The long-term direction is a quieter, more structured sidebar with clear grouping, consistent icon sizing, and predictable active states.
+### 4.2 Content Width
 
-For current work:
+On wide screens, unconstrained content becomes unreadable. The content area should be bounded at a comfortable maximum width and centered. Tables and data-heavy views may expand beyond this when they genuinely need the space, but body text, forms, and card grids should stay within the readable zone.
 
-- preserve the unified sidebar composition path used by shared fragments
-- prefer reducing noise over adding more visual treatment
-- improve grouping, label clarity, and active-state legibility as part of the migration toward repo-owned shell patterns
-- avoid introducing one-off sidebars or bypassing the role-aware fragment path
-- do not preserve SB Admin 2 visual patterns as the intended long-term sidebar baseline
-- ensure sidebar styling and behavior support both light and dark themes within one consistent navigation model
+### 4.3 Page Anatomy
 
-The authenticated shared shell now uses a repo-owned sidebar implementation through `fragments.html` and `frontend/src/**`; touched shell work should treat that model as the current baseline rather than falling back to SB Admin or per-template sidebar wiring.
+Every authenticated page follows the same structural skeleton:
 
-### 6.2 Topbar Direction
+1. **Sidebar** — persistent, role-aware, collapsible. Always available for navigation.
+2. **Header area** — page title, optional breadcrumb, workspace context, theme toggle, and global actions.
+3. **Content area** — the page's primary content, bounded for readability, with consistent horizontal and vertical padding.
+4. **Footer** — minimal, pushed to the bottom via flex layout.
 
-The topbar should prioritize orientation and context:
+Within the content area, the rhythm should be:
 
-- clear page title
-- role/context clarity
-- room for breadcrumbs on deeper pages
-- user/account actions on the right
+1. **Page toolbar** (optional) — primary action buttons, export links, right-aligned.
+2. **Intro text** (optional) — one line of context. Not every page needs this; use it only when the page purpose is non-obvious or when the context changes (e.g., viewing publications scoped to a specific author).
+3. **Summary cards** (optional) — stat cards or key metrics above the main content.
+4. **Primary content** — the table, form, report grid, or detail view that is the reason the page exists.
 
-Current implementation details such as the `Switch Workspace` dropdown remain shared-shell concerns, not page-owned UX doctrine. Page-level changes should not hard-code new shell patterns outside shared fragments.
+### 4.4 Responsive Behavior
 
-Shared-shell work under `H30` is expected to move the authenticated shell away from SB Admin 2 styling/JS assumptions where those assumptions conflict with the intended shell hierarchy and visual direction.
-Touched shell behavior should also move away from jQuery-driven Bootstrap 4 conventions and converge on Bootstrap 5-compatible, repo-owned behavior.
-The migrated shared header now owns the topbar, page-title presentation, theme toggle, and shared toolbar rhythm for authenticated shared-shell pages. Page templates should treat that header contract as the baseline and avoid reintroducing duplicate title wrappers.
+Desktop is the primary context, but tablet and phone experiences should be genuinely usable, not just technically functional.
 
-### 6.3 Shared-Shell Rule
+**Sidebar** should collapse to icon-only on medium screens and become an off-canvas drawer on small screens. Navigation must remain reachable at all sizes.
 
-If a change affects navigation, topbar, or shared layout:
+**Stat card grids** should flow from multi-column to single-column gracefully, maintaining card proportions rather than stretching oddly.
 
-- implement it through shared fragments and existing composition paths
-- preserve the `/assets/app.css` and `/assets/app.js` asset contract
-- use `data-bs-theme` on the root element as the theme-state source of truth for migrated shell work
-- treat shell-wide dependency removal and Bootstrap 5-compatible cutover as intentional migration work
-- do not extend SB Admin 2, Bootstrap 4-era, or jQuery-driven shell usage as part of shared-shell modernization
+**Tables** should scroll horizontally on small screens, but critical columns (name, status, primary action) should be prioritized on the left so they remain visible without scrolling.
 
-The shared authenticated shell established by `H30` is the contributor-facing baseline for later work:
+**Action buttons** must never disappear on mobile. If a page has primary actions (Add Publication, Export, Refresh), they should be accessible at every breakpoint — relocated into a more compact layout if needed, but never hidden behind `d-none d-sm-inline-block`.
 
-- `fragments.html` owns shared sidebar/topbar/page-header composition
-- `frontend/src/**` owns shell behavior, shell styling, and theme behavior
-- `data-bs-theme` on the root element owns theme state for the migrated shell
-- bounded content layout and shared toolbar spacing should be reused rather than rebuilt per page
+**Forms** should go single-column on small screens. Two-up or three-up field grids should collapse naturally.
 
 ---
 
-## 7. Component Patterns
+## 5. Navigation
 
-### 7.1 Cards
+### 5.1 Sidebar
 
-Cards are the primary content container.
+The sidebar is the user's primary orientation tool. It answers "where am I?" and "where can I go?" at all times. It should feel calm, scannable, and predictable.
 
-Guidance:
+**Grouping.** Items should be organized into clearly labeled sections. Section labels are quiet — small, muted, uppercase is acceptable here because these labels are pure structural organizers. Each section should contain 3-6 items; more than that and the section should be split or items should be nested.
 
-- white or near-white background on a light neutral page background
-- 1px neutral border or extremely subtle shadow
-- moderate corner radius
-- optional header with clear separation from body
-- no decorative color accents unless they carry meaning
-- provide equivalent dark-theme surface treatment with clear elevation and contrast, not a direct inversion of light-theme colors
+**Active state.** The current page's sidebar item should be immediately obvious — a background highlight, a left accent bar, or both. The user should never have to scan the sidebar to figure out which page they're on.
 
-### 7.2 Stat Cards
+**Label clarity.** Every sidebar label should be understandable to a first-time user of that role. Technical internal names (like "USER_DEFINED Triage") should be translated to user-facing language (like "Data Triage"). If a label requires explanation, it's the wrong label.
 
-The existing stat-card pattern is a good foundation and should be refined rather than discarded.
+**Collapse behavior.** When collapsed to icon-only mode, icons must be distinctive enough to navigate by. Tooltips on hover should reveal the full label. The collapsed state should feel intentional, not broken.
 
-Preferred treatment:
+### 5.2 Header and Page Context
 
-- small descriptive label
-- large metric value
-- optional trend or context line
-- restrained icon treatment
-- a single semantic accent if needed
-- equal clarity and hierarchy in both light and dark themes
+The header area serves two functions: global orientation (what workspace am I in? what theme? who am I?) and page-level context (what page is this? what can I do here?).
 
-### 7.3 Data Tables
+**Page title** is the single most important orientation element. It should be prominent but not overwhelming — semi-bold, clearly the largest text in the header area.
 
-Tables are a core ScholarDex interaction surface and should be a high-priority consistency target.
+**Workspace switcher** should make the current role context immediately visible. Users who only have one role should still see their context but shouldn't see a switcher dropdown. Users with multiple roles should be able to switch with one click.
 
-Guidance:
-
-- consistent table title and actions area
-- standardized filtering and pagination affordances across pages
-- horizontal row separation rather than heavy full-grid borders
-- clear status treatment using badges or other structured indicators
-- monospace presentation for identifier-heavy columns
-- restrained row hover states
-- on migrated fetch-driven pages, prefer a lighter integrated filter panel plus one primary table surface rather than stacked legacy SB Admin cards
-- on migrated DataTables-backed pages, DataTables may remain as behavior compatibility, but it should not own the visible table presentation
-
-Table UX work should converge on ScholarDex-owned patterns rather than preserving BS4 DataTables styling as the target presentation. Filtering, sorting, pagination, and row states must remain legible in both light and dark themes.
-The current H31 baseline now includes shared table surfaces, shared badge and identifier treatment, shared empty-state and pager styling, and the lighter filter-panel pattern on migrated list pages. Contributors should treat that as the active baseline for touched list/table work rather than reinventing per-page table presentation.
-
-### 7.4 Buttons
-
-Use a clear action hierarchy:
-
-- primary for the main action in a view or section
-- secondary for supporting actions
-- ghost or tertiary for low-emphasis actions
-- danger only for destructive operations
-
-Icon-only actions must remain legible, accessible, and consistently sized.
-
-### 7.5 Badges And Status Indicators
-
-Prefer structured status indicators over raw text. A status badge should combine:
-
-- semantic color
-- text label
-- optional dot or icon
-
-Color must not be the only signal.
-
-### 7.6 Forms
-
-Forms should emphasize readability and predictability.
-
-Guidance:
-
-- labels above inputs
-- helpful, concise supporting text where needed
-- clear required/optional states
-- visibly distinct readonly fields
-- consistent input sizing across similar contexts
-- multi-step flows should expose current step and progress
-- grouped sections and action bars should make long workflows easier to scan
-- modal and create/edit flows should use the shared workflow surface, helper text, and footer action hierarchy rather than cramped Bootstrap 4 card or modal scaffolding
-- touched form behavior should migrate away from Bootstrap 4 modal/tooltip/input-group assumptions and remain coherent in both light and dark themes
-
-The current H32 baseline now includes shared workflow surfaces, section grouping, step shells for multi-step flows, lighter workflow control panels, shared helper/readonly treatment, and shared modal/action-bar presentation on migrated admin and user workflows. Contributors should treat that as the active baseline for touched form and workflow work rather than preserving page-local Bootstrap 4 form patterns.
-
-### 7.7 Empty States
-
-List and table views should not fail into blank space. Empty states should explain:
-
-- what is missing
-- why the page is empty
-- what action, if any, the user can take next
-
-### 7.8 Feedback And Notifications
-
-Prefer explicit user feedback after significant actions:
-
-- success/error/information messaging for mutations or background operations
-- inline validation for form issues
-- clear confirmation for destructive actions
-
-The exact implementation may vary while the shared notification pattern is still evolving, but new work should move toward consistent messaging rather than one-off alerts.
-Feedback patterns must remain recognizable and accessible in both light and dark themes.
+**Breadcrumbs** should appear on pages deeper than one level in a navigation path (e.g., "Publications > Edit Publication" or "Reports > CNFIS 2025"). They provide a return path and contextual orientation. Not every page needs them — top-level section pages don't.
 
 ---
 
-## 8. Page-Level Heuristics
+## 6. Component Patterns
 
-These are durable guidance patterns, not a backlog.
+These patterns describe the intended UX behavior and visual qualities for each component family. They are not implementation specs — specific surfaces will make their own choices about markup and class names within these patterns.
 
-### 8.1 Dashboards
+### 6.1 Cards
 
-Dashboards should surface the most useful summary information for the user role:
+Cards are the fundamental grouping container. They separate content from the page surface and create scannable visual blocks.
 
-- key metrics
-- recent activity
-- items needing attention
-- quick actions
+- Background should be the brightest surface in the hierarchy (white in light mode, the nearest elevated dark surface in dark mode).
+- Borders should be subtle — a faint neutral line. Heavy borders make cards feel boxy rather than floating.
+- Corner radius should be generous enough to feel modern (not sharp-cornered) but not so round that it feels toy-like.
+- Internal padding should be comfortable — noticeably more than the minimum needed. Cramped cards feel cheap.
+- Card headers, when present, should be separated from the body by a subtle divider. The header title should be the card's "name" — concise, semi-bold, neutral-colored.
+- Cards should not carry colored left borders, top borders, or background washes unless the color communicates specific semantic meaning (e.g., a stat card for "open conflicts" might use a danger accent).
 
-Avoid empty dashboards that provide only navigation chrome.
-Dashboard, summary, and quick-action patterns should maintain contrast, emphasis, and readable hierarchy in both themes.
+### 6.2 Summary and Stat Cards
 
-### 8.2 List And Table Pages
+These are the "hero" elements on dashboards and overview pages. They exist to give the user a fast read on key numbers before diving into detail.
 
-Standard direction:
+**The metric value is king.** It should be the largest, boldest element in the card — the thing the eye hits first. Everything else (label, icon, context line) is supporting cast.
 
-1. Page header with title and primary action.
-2. Optional summary context above the main table.
-3. Filtering/search affordances near the table.
-4. Consistent table structure and pagination.
-5. Explicit empty-state behavior.
+**Labels** sit above the value, small and muted. They name the metric without competing visually.
 
-For migrated pages under `H31`, the preferred implementation pattern is:
+**Context lines** (optional) sit below the value. These can show trend ("up 12 from last month"), scope ("for the current report period"), or status ("2 need attention"). They should be small and muted.
 
-1. H30 page header and page-level toolbar.
-2. Optional intro or summary copy.
-3. Light integrated filter panel when the page uses server-driven filtering.
-4. One primary table surface that owns title, totals, state blocks, table, and pager.
-5. DataTables behavior only as compatibility where the page still needs it.
+**Semantic accents** (a colored left border, a colored dot on the label) should appear only when the metric category has inherent meaning: danger for open problems, success for completed items, warning for pending attention. Neutral metrics (total publications, total researchers) should stay unaccented.
 
-### 8.3 Edit And Detail Pages
+**Grid behavior.** Stat cards should sit in an auto-flowing grid that adapts from 3-4 columns on desktop to 1 column on mobile. Cards should all be the same height within a row.
 
-Standard direction:
+### 6.3 Data Tables
 
-1. Clear page title and route context.
-2. Grouped form or detail content.
-3. Save/cancel actions that remain discoverable on long pages.
-4. Distinct treatment for readonly or system-managed fields.
+Tables are ScholarDex's most-used pattern. They must be excellent.
 
-### 8.4 Reports And Score Views
+**Visual treatment.** Tables should feel light and open, not gridded and heavy. Prefer horizontal row dividers only — vertical cell borders add visual noise without aiding readability. Alternating row backgrounds (very subtle) help track the eye across wide tables. Row hover should be a gentle highlight.
 
-Report-like views should emphasize:
+**Header row.** Column headers should be small, semi-bold, and muted — they're labels, not content. Sortable columns should have a subtle visual indicator. Sticky headers on long tables help users maintain column context while scrolling.
 
-- scannable score or criterion blocks
-- collapsible supporting detail where dense data is unavoidable
-- visual consistency between summary values and supporting explanations
+**Status columns.** Never display raw text like "OPEN" or "RESOLVED" in a table cell. Use structured badges with semantic color and a text label. Status should be immediately scannable without reading.
 
-### 8.5 Error Views
+**Identifier columns.** Scopus IDs, WoS IDs, ISSN numbers, and similar reference codes should render in monospace at a slightly muted color. This visually separates "data for machines" from "data for humans" and improves scannability.
 
-Authenticated error pages should preserve orientation and navigation context when practical. Unauthenticated error pages may use a simpler standalone layout.
+**Action columns.** Row-level actions (edit, view, delete, apply) should be compact icon buttons or small text links. Avoid full-sized buttons in table cells — they create visual clutter. If a row has more than two actions, consider an overflow menu ("...").
 
----
+**Pagination.** Every paginated table should use the same pagination pattern: a previous/next control, a page position indicator ("Page 2 of 14"), and optionally a page-size selector. Whether pagination is client-side or server-side is an implementation choice, but the visible controls must be identical.
 
-## 9. Accessibility Checklist
+**Filtering.** When a table supports filtering, the filter controls should live in a lightweight panel directly above or within the table card — not in a separate card that creates visual separation between the filter and the data it controls. Filters should feel like they belong to the table, not like a separate UI concern.
 
-These are requirements, not optional enhancements.
+**Empty state.** When filters return no results or when the table has no data, display a clear empty state inside the table area — not a blank white space.
 
-- All interactive controls must be keyboard reachable.
-- Labels and controls must be programmatically associated.
-- Focus states must remain visible.
-- Color must not be the only carrier of meaning.
-- Icon-only controls must have meaningful `aria-label` text.
-- Images must use correct decorative vs meaningful alt treatment.
-- Tables must use semantic table structure.
-- Landmarks such as navigation and main content should remain explicit.
-- Dynamic feedback should be announced appropriately when needed.
-- New or refreshed UI work should maintain WCAG AA contrast expectations for text and controls.
-- These expectations must be validated in both light and dark themes, not only the default theme.
+### 6.4 Forms
 
----
+Forms are how users create and modify data. They should feel approachable, not like paperwork.
 
-## 10. Motion And Interaction Polish
+**Labels above inputs, always.** No floating labels, no inline labels, no labels that only appear on focus. The user should see the field name before they start typing.
 
-Motion should be minimal and functional.
+**Input sizing.** Inputs should be tall enough to feel comfortable (not cramped single-line fields) and wide enough to show meaningful content. Full-width is the default for single-column forms.
 
-- Use short transitions for sidebar collapse, menus, and expandable sections.
-- Avoid theatrical page transitions for server-rendered navigation.
-- Use loading states that explain waiting without overwhelming the interface.
-- Prefer consistency and responsiveness over ornamental animation.
+**Readonly fields** should be visually distinct from editable ones — a muted background, no border, or a lock indicator. They should also explain *why* they're readonly when that isn't obvious ("Auto-populated from Scopus" is better than a silently grayed-out field).
 
----
+**Helper text** belongs below the input, small and muted. Use it to explain sourcing, constraints, or formatting expectations. Don't use it to restate the label.
 
-## 11. Current Constraints And Migration Notes
+**Required vs optional.** Mark whichever is the minority. If most fields are required, mark the optional ones with "(optional)." If most are optional, mark the required ones with a red asterisk.
 
-These notes are intentionally separate from the durable UX rules above.
+**Multi-step flows** must show the user where they are. A step indicator (numbered steps with labels, showing current/completed/upcoming) gives orientation and progress sense. The user should never wonder "how many more screens until I'm done?"
 
-- The authenticated shared shell, footer, and shared runtime now resolve through repo-owned fragments and `frontend/src/**` rather than SB Admin 2 styling or JS behavior.
-- Many untouched or deferred legacy pages still use Bootstrap 4-era classes and patterns, and some non-authenticated surfaces still rely on older DataTables or jQuery-driven behavior.
-- Topbar role switching currently appears as a `Switch Workspace` dropdown in shared fragments.
-- New and touched UX work should treat remaining Bootstrap 4-era conventions, older DataTables coupling, and jQuery-driven UI behavior as debt to retire rather than a baseline to preserve.
-- Touched list/table work should use the shared ScholarDex table/list foundation from `frontend/src/**` rather than preserving bordered-grid Bootstrap-era tables or legacy DataTables styling as the visible contract.
+**Dynamic collections** (add/remove lists of IDs, affiliations, etc.) should use a clean list-plus-add pattern: each item in a row with a subtle remove control, and an "Add another" action below the list. Adding and removing should feel lightweight, not like a major operation.
 
-When performing migration or shell cleanup work:
+**Validation** should happen on blur (when the user leaves a field), not on every keystroke. Error messages appear below the offending field with a clear visual treatment (red text, red border). Success validation (green checks) should be used sparingly — only for fields where correctness is actively verified (like ISSN format validation).
 
-- preserve the runtime asset contract: `/assets/app.css` and `/assets/app.js`
-- evolve styles and behavior through `frontend/src/**` and shared fragments
-- converge touched UI on Bootstrap 5-compatible markup/data APIs and repo-owned behavior
-- implement light/dark support through shared tokens and theme-aware styles rather than page-by-page special cases
-- remove legacy dependencies only in explicit cleanup slices
-- keep route- and role-aware shared composition intact while modernizing the shell
+### 6.5 Badges and Status Indicators
 
-Implementation work touching templates, assets, or shared UI behavior should still follow the repo's frontend and verification guardrails.
+Structured status indicators replace raw text wherever a piece of data represents a state.
 
----
+A badge combines a semantic background color (at low opacity), matching text color, and a text label. Optionally a small dot or icon reinforces the color signal. Badges should be compact — pill-shaped, small text, just enough padding to be legible.
 
-## 12. Design Tokens Direction
+Common status mappings:
+- **Open, Active, In Progress** — primary or warning treatment depending on context
+- **Resolved, Completed, Passed** — success treatment
+- **Dismissed, Archived, Inactive** — neutral/muted treatment
+- **Failed, Error, Conflict** — danger treatment
 
-A shared token layer is still the right direction, but it must fit inside the current frontend build pipeline.
+### 6.6 Empty States
 
-Illustrative starter variables:
+Every view that can be empty must handle that state explicitly. An empty state has three parts:
 
-```css
-:root {
-  --color-primary: #4361EE;
-  --color-primary-hover: #3A56D4;
-  --color-primary-light: #EEF1FD;
-  --color-success: #059669;
-  --color-warning: #D97706;
-  --color-danger: #DC2626;
-  --color-info: #2563EB;
-  --color-neutral-900: #111827;
-  --color-neutral-700: #374151;
-  --color-neutral-500: #6B7280;
-  --color-neutral-300: #D1D5DB;
-  --color-neutral-200: #E5E7EB;
-  --color-neutral-100: #F3F4F6;
-  --color-neutral-50: #F9FAFB;
-  --color-white: #FFFFFF;
-}
-```
+1. **What's missing** — a clear title: "No publications yet," "No conflicts match your filters."
+2. **Why it matters or what happened** — a brief explanation: "Add your first publication to start tracking your research output" or "Try broadening your filter criteria."
+3. **What to do** (when applicable) — a primary action button: "Add Publication," "Clear Filters."
 
-These should be introduced and evolved through the existing frontend source and emitted asset bundle rather than by creating a separate runtime styling contract.
+Empty states for filtered-to-zero should be visually lighter than empty states for genuinely-no-data, since the former is temporary and the latter may need onboarding guidance.
+
+### 6.7 Feedback and Notifications
+
+After a user takes an action, the interface should confirm what happened.
+
+**Toasts** for ephemeral confirmations: "Publication saved," "Report refreshed," "Conflict resolved." These appear briefly, then disappear. They should be small, positioned consistently (e.g., top-right below the header), and carry a semantic color accent matching the action outcome.
+
+**Inline alerts** for persistent page-level messages: errors from a failed save, success from a completed batch operation, warnings about data integrity. These live within the content flow and persist until the user navigates away or the condition clears.
+
+**Confirmation dialogs** for destructive or irreversible actions: deleting records, clearing all conflicts, bulk status changes. The dialog should name what will happen, state consequences if any, and offer a clear cancel path. The destructive action button should be visually distinct (danger-colored) and should never be the default/pre-focused button.
+
+### 6.8 Modals and Overlays
+
+Modals should be used sparingly — only when an action genuinely needs to interrupt the current context (confirmations, quick create/edit that doesn't warrant a full page, selecting from a complex list). Never use a modal for something that should be a page.
+
+When used, modals should: have a clear title, be dismissible via Escape and clicking outside, trap focus while open, and restore focus on close.
+
+### 6.9 Charts and Data Visualization
+
+When charts appear (indicator dashboards, report views), they should follow the same visual restraint as the rest of the product. Avoid gratuitous 3D effects, excessive gridlines, or rainbow color schemes. Charts should use the product's semantic color palette, have clear axis labels, and include a legend when the meaning isn't self-evident.
+
+Charts must be legible in both themes. Avoid colors that lose contrast against dark backgrounds.
 
 ---
 
-## 13. Frontend Organization Notes
+## 7. Page Family Guidelines
 
-The current contract remains:
+These describe the UX intent for each major page type. They are durable direction, not a task backlog.
 
-- authored source in `frontend/src/**`
-- emitted runtime assets in `src/main/resources/static/assets/**`
-- template usage through `/assets/app.css` and `/assets/app.js`
+### 7.1 Dashboards
 
-If contributors choose to further organize shared styles or UI modules, that organization should remain internal to the existing frontend build pipeline. It should not create a second parallel frontend structure or bypass the current asset contract.
+A dashboard is the user's home base. It should answer: "What should I pay attention to right now?"
+
+**User Dashboard** should surface: publication and citation summary metrics, recent activity or changes, any pending actions (reports to review, profiles to complete), and quick links to the most common tasks.
+
+**Admin Dashboard** should surface: operational health indicators (open conflicts, data integrity status), recent system activity (latest updates, sync status), items needing admin attention, and quick links to the most common admin operations.
+
+Dashboards should never be empty shells. If live data isn't available for a card or section, show a meaningful placeholder state that explains what will appear there, not a blank card with a static label.
+
+### 7.2 List and Table Pages
+
+These are the most common page type. The pattern should be:
+
+1. Page header with title and primary action(s).
+2. Optional summary context (stat cards, author profile card) above the table when the data has meaningful aggregate metrics.
+3. Filter controls integrated with the table surface.
+4. The data table itself, with consistent column styling, status badges, and row actions.
+5. Pagination controls below the table.
+6. Empty state when no data matches.
+
+Lists that represent a researcher's personal data (publications, activities, reports) should feel warm and ownership-oriented: "Your Publications," personal stat cards, profile context.
+
+Lists in the admin context can be more operational and neutral: "Researchers List," "Identity Conflict Queue."
+
+### 7.3 Edit and Detail Pages
+
+The pattern should be:
+
+1. Page header with title and breadcrumb back to the parent list.
+2. Form content in a clean card surface, with field groups separated by subtle section dividers or headings.
+3. Readonly fields styled distinctly with an explanation of why they can't be edited.
+4. Save/Cancel actions at the bottom of the form (or sticky at the bottom for long forms).
+
+Long forms should group related fields under section headings. A form with 15 ungrouped fields is harder to scan than three groups of five.
+
+### 7.4 Multi-Step Workflows
+
+Any process that spans more than one page (like adding a publication) should have:
+
+1. A step indicator showing current position, total steps, and step labels.
+2. Clear forward/back navigation with a labeled "Next" button (not just a generic "Submit").
+3. Preservation of entered data when navigating between steps.
+4. A review or summary step at the end when the operation is significant.
+
+Steps should have action-oriented labels that describe what the user does at each step ("Select Forum," "Add Authors," "Review & Submit") rather than generic labels ("Step 1," "Step 2").
+
+### 7.5 Report and Score Views
+
+The individual report view (with criterion cards, threshold icons, and collapsible indicator lists) is the most design-advanced page in the current product. Its patterns should be the reference for other report-like surfaces:
+
+- **Card-per-criterion** layout with a scannable grid.
+- **Score values** as the visual anchor of each card.
+- **Threshold indicators** that show progress through a career-level scale using semantic icons and color states (passed, failed, selected).
+- **Collapsible detail** for secondary information (individual indicator scores) that the user can expand on demand.
+- **Refresh actions** clearly positioned and scoped (refresh one indicator vs. refresh all).
+
+### 7.6 Error Pages
+
+Authenticated users who hit an error should stay inside the application shell — sidebar and navigation remain available so they can self-recover. The error content should be centered, friendly, and provide clear escape routes ("Go back," "Go to dashboard").
+
+Unauthenticated errors (like a 404 on a public URL) can use a standalone centered layout.
+
+Error pages should work in both themes.
+
+---
+
+## 8. Interaction Quality
+
+### 8.1 Motion
+
+Motion should be functional, not decorative. It communicates state changes and spatial relationships.
+
+- **Sidebar collapse/expand:** smooth width transition, fast enough to feel responsive (~200ms).
+- **Dropdown menus and workspace switcher:** subtle fade-in with slight vertical shift. Opens fast, closes immediately.
+- **Collapsible sections** (filter panels, indicator lists): height transition with ease-in-out.
+- **Page navigation:** No transition. Server-rendered pages should load fast; adding animated transitions would feel sluggish.
+- **Hover states:** Instant color change, no transition delay. Interactive elements should feel immediately responsive.
+- **Loading states:** For data that takes time to load, prefer skeleton shimmer placeholders (gray boxes that pulse) over spinners. Spinners should only appear on explicit user-triggered actions (button clicks that trigger server operations).
+
+### 8.2 Progressive Disclosure
+
+Not everything needs to be visible at once. Dense pages should layer information:
+
+- **Level 1:** Summary metrics and status — visible immediately.
+- **Level 2:** Detailed data tables and lists — visible immediately but scrollable.
+- **Level 3:** Secondary detail (individual indicator scores, author affiliations, conflict candidate lists) — collapsed by default, expandable on demand.
+
+The toggle between levels should be obvious (a clear "show more" or chevron affordance) and maintain the user's scroll position.
+
+### 8.3 Keyboard Navigation
+
+All interactive elements must be reachable and operable via keyboard. Tab order should follow the visual layout. Focus rings must be visible in both themes. Modal focus must be trapped. Escape should close overlays and menus. Enter should activate focused buttons and links.
+
+### 8.4 Error Recovery
+
+When something goes wrong (a form save fails, a network request errors, a batch operation partially succeeds), the interface should:
+
+1. Tell the user what happened in plain language.
+2. Preserve their work (don't clear a form because the save failed).
+3. Suggest what to do next ("Try again" or "Check your connection").
+4. Make the retry path obvious (a button, not just a message).
+
+---
+
+## 9. Accessibility Requirements
+
+These are requirements for all new and touched UI work.
+
+- All interactive controls must be keyboard reachable and operable.
+- Focus states must be visible in both light and dark themes.
+- Labels and inputs must be programmatically associated (via `for`/`id` or `aria-labelledby`).
+- Color must never be the only carrier of meaning — always pair with text, icons, or patterns.
+- Icon-only buttons must have descriptive `aria-label` text (e.g., "Edit publication," not "Edit").
+- Images use meaningful `alt` text for content images and `alt=""` with `role="presentation"` for decorative images.
+- Tables use semantic structure: `<thead>`, `<tbody>`, `scope="col"` on header cells.
+- ARIA landmarks (`<nav>`, `<main>`, `<aside>`) should be present in the page structure.
+- Dynamic content updates (toasts, filtered table results, async load completions) should be announced to screen readers when appropriate.
+- All text and interactive controls must meet WCAG AA contrast ratios (4.5:1 for normal text, 3:1 for large text) in both themes.

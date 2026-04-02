@@ -31,6 +31,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -98,6 +99,7 @@ class AdminInitializationControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/cncsis")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/coreConference")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/sense")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/initialization/general/dblpLnChapterEnrichment")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/initialization/wos/runBigBangMigration"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/initialization/scopus/runBigBang"))));
     }
@@ -204,6 +206,10 @@ class AdminInitializationControllerContractTest {
                 .thenReturn(new GeneralInitializationService.GeneralInitializationStepResult(
                         "sense", true, false, 10L, Instant.now(), Instant.now(), "ok"
                 ));
+        when(generalInitializationService.runDblpLnChapterEnrichment())
+                .thenReturn(new GeneralInitializationService.GeneralInitializationStepResult(
+                        "dblp-ln-chapter-enrichment", true, false, 10L, Instant.now(), Instant.now(), "ok"
+                ));
 
         mockMvc.perform(post("/admin/initialization/general/adminUser"))
                 .andExpect(status().is3xxRedirection())
@@ -226,6 +232,9 @@ class AdminInitializationControllerContractTest {
         mockMvc.perform(post("/admin/initialization/general/sense"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/initialization"));
+        mockMvc.perform(post("/admin/initialization/general/dblpLnChapterEnrichment"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"));
 
         verify(generalInitializationService).runAdminUserBootstrap();
         verify(generalInitializationService).runSpecialDomainBootstrap();
@@ -234,6 +243,20 @@ class AdminInitializationControllerContractTest {
         verify(generalInitializationService).runCncsisImport();
         verify(generalInitializationService).runCoreConferenceImport();
         verify(generalInitializationService).runSenseImport();
+        verify(generalInitializationService).runDblpLnChapterEnrichment();
+    }
+
+    @Test
+    void failedDblpGeneralStepUsesErrorFlashMessage() throws Exception {
+        when(generalInitializationService.runDblpLnChapterEnrichment())
+                .thenReturn(new GeneralInitializationService.GeneralInitializationStepResult(
+                        "dblp-ln-chapter-enrichment", false, false, 10L, Instant.now(), Instant.now(), "missing dump path"
+                ));
+
+        mockMvc.perform(post("/admin/initialization/general/dblpLnChapterEnrichment"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/initialization"))
+                .andExpect(flash().attribute("errorMessage", org.hamcrest.Matchers.containsString("missing dump path")));
     }
 
     @Test

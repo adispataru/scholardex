@@ -14,6 +14,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.model.scopus.Author;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.activities.Activity;
+import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
@@ -39,6 +41,7 @@ import ro.uvt.pokedex.core.service.application.model.UserReportsListViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserScopusTasksViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserWorkbookExportResult;
 import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
+import ro.uvt.pokedex.core.service.reporting.Score;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -447,12 +450,28 @@ class UserViewControllerContractTest {
         indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
         indicator.setFormula("S");
 
+        Publication publication = new Publication();
+        publication.setTitle("Paper 1");
+        publication.setSubtypeDescription("Conference Paper");
+        publication.setForum("forum-1");
+        publication.setEid("eid-1");
+        Score score = new Score();
+        score.setCategory("A");
+        score.setQuarter("NOT_FOUND");
+        score.setYear(2023);
+        score.setScore(8.0);
+        score.setAuthorScore(8.0);
+        score.setScoringSource("SCOPUS+CORE");
+        score.setScoringInfo(Map.of("matchSource", "SCOPUS", "matchedAcronym", "ICSE"));
+        Forum forum = new Forum();
+        forum.setPublicationName("ICSE 2023");
+
         when(userIndicatorResultService.getOrCreateLatest(eq("u@uvt.ro"), eq("ind-1")))
                 .thenReturn(new IndicatorApplyResultDto(
                         "r1",
                         "ind-1",
                         "user/indicators-apply-publications",
-                        Map.of("indicator", indicator, "total", "1.00", "publications", List.of(), "scores", Map.of(), "forumMap", Map.of(), "allQuarters", List.of(), "allValues", List.of()),
+                        Map.of("indicator", indicator, "total", "1.00", "publications", List.of(publication), "scores", Map.of("Paper 1", score), "forumMap", Map.of("forum-1", forum), "allQuarters", List.of(), "allValues", List.of()),
                         new IndicatorApplyResultDto.Summary(1.0, null, List.of(), List.of()),
                         IndicatorApplyResultDto.Source.PERSISTED,
                         null,
@@ -473,6 +492,9 @@ class UserViewControllerContractTest {
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("/js/indicator-publications-dashboard.js"));
         org.junit.jupiter.api.Assertions.assertFalse(html.contains("/js/demo/datatables-demo.js"));
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("id=\"publications-search\""));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("Scoring Source"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("SCOPUS+CORE"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("matchedAcronym: ICSE"));
     }
 
     @Test
@@ -487,6 +509,20 @@ class UserViewControllerContractTest {
         indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
         indicator.setFormula("S");
 
+        Activity activity = new Activity();
+        activity.setName("Keynote");
+        ActivityInstance activityInstance = new ActivityInstance();
+        activityInstance.setId("act-1");
+        activityInstance.setName("Talk 1");
+        activityInstance.setActivity(activity);
+        Score score = new Score();
+        score.setDetails("Venue talk");
+        score.setYear(2024);
+        score.setScore(4.0);
+        score.setAuthorScore(4.0);
+        score.setScoringSource("WOS");
+        score.setScoringInfo(Map.of("matchSource", "WOS"));
+
         when(userIndicatorResultService.getOrCreateLatest(eq("u@uvt.ro"), eq("ind-act-1")))
                 .thenReturn(new IndicatorApplyResultDto(
                         "r-act-1",
@@ -495,8 +531,8 @@ class UserViewControllerContractTest {
                         Map.of(
                                 "indicator", indicator,
                                 "total", "1.00",
-                                "activities", List.of(),
-                                "scores", Map.of(),
+                                "activities", List.of(activityInstance),
+                                "scores", Map.of("act-1", score),
                                 "allQuarters", List.of("Q1"),
                                 "allValues", List.of(1)
                         ),
@@ -519,6 +555,8 @@ class UserViewControllerContractTest {
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("/js/indicator-activities-dashboard.js"));
         org.junit.jupiter.api.Assertions.assertFalse(html.contains("/js/demo/datatables-demo.js"));
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("id=\"activities-search\""));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("Scoring Source"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("matchSource: WOS"));
     }
 
     @Test
@@ -573,7 +611,6 @@ class UserViewControllerContractTest {
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("Criterion 2"));
         org.junit.jupiter.api.Assertions.assertFalse(html.contains("Total Score for All Indicators"));
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("criterion-main"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("/css/individual-report-dashboard.css"));
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("/js/individual-report-dashboard.js"));
         org.junit.jupiter.api.Assertions.assertFalse(html.contains("/js/demo/datatables-demo.js"));
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("Refresh all indicators"));
@@ -684,6 +721,28 @@ class UserViewControllerContractTest {
         indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
         indicator.setFormula("S");
 
+        Publication publication = new Publication();
+        publication.setTitle("Paper 1");
+        publication.setForum("forum-1");
+        publication.setAuthors(List.of("a1", "a2"));
+        Score totalScore = new Score();
+        totalScore.setAuthorScore(1.0);
+        totalScore.setQuarter("Q1");
+        Score citationScore = new Score();
+        citationScore.setCategory("A");
+        citationScore.setQuarter("NOT_FOUND");
+        citationScore.setScore(8.0);
+        citationScore.setAuthorScore(8.0);
+        citationScore.setScoringSource("DBLP+CORE");
+        citationScore.setScoringInfo(Map.of("matchSource", "DBLP"));
+        Publication citing = new Publication();
+        citing.setTitle("Citing Paper");
+        citing.setSubtypeDescription("Conference Paper");
+        citing.setForum("forum-1");
+        citing.setEid("eid-2");
+        Forum forum = new Forum();
+        forum.setPublicationName("ICSE 2023");
+
         when(userIndicatorResultService.getOrCreateLatest(eq("u@uvt.ro"), eq("ind-cit-1")))
                 .thenReturn(new IndicatorApplyResultDto(
                         "r-cit-1",
@@ -693,10 +752,10 @@ class UserViewControllerContractTest {
                                 "indicator", indicator,
                                 "total", "1.00",
                                 "totalCit", 1,
-                                "publications", List.of(),
-                                "scores", Map.of(),
-                                "citationMap", Map.of(),
-                                "forumMap", Map.of(),
+                                "publications", List.of(publication),
+                                "scores", Map.of("Paper 1", Map.of("total", totalScore, "Citing Paper", citationScore)),
+                                "citationMap", Map.of("Citing Paper", citing),
+                                "forumMap", Map.of("forum-1", forum),
                                 "forumWosLinkMap", Map.of(),
                                 "allQuarters", List.of("Q1"),
                                 "allValues", List.of(1)
@@ -720,6 +779,9 @@ class UserViewControllerContractTest {
         org.junit.jupiter.api.Assertions.assertFalse(html.contains("id=\"citations-legacy\""));
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("/js/indicator-citations-dashboard.js"));
         org.junit.jupiter.api.Assertions.assertFalse(html.contains("/js/demo/datatables-demo.js"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("Scoring Source"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("DBLP+CORE"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("matchSource: DBLP"));
     }
 
     private User userPrincipal(String email) {

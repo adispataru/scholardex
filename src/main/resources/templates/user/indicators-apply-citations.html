@@ -170,6 +170,7 @@
                                                                     <th scope="col">Venue</th>
                                                                     <th scope="col">Category</th>
                                                                     <th scope="col">Quarter</th>
+                                                                    <th scope="col">Scoring Source</th>
                                                                     <th scope="col">Forum</th>
                                                                     <th scope="col">Author</th>
                                                                     <th scope="col">Extra</th>
@@ -198,9 +199,13 @@
                                                                     </td>
                                                                     <td th:text="${e.value.category}"></td>
                                                                     <td th:text="${e.value.quarter}"></td>
+                                                                    <td th:text="${e.value.scoringSource}"></td>
                                                                     <td th:text="${e.value.score}"></td>
                                                                     <td th:text="${#numbers.formatDecimal(e.value.authorScore, 1, 2)}"></td>
                                                                     <td>
+                                                                        <ul class="mb-2 pl-3" th:if="${e.value.scoringInfo != null && !e.value.scoringInfo.isEmpty()}">
+                                                                            <li th:each="entry : ${e.value.scoringInfo.entrySet()}" th:text="${entry.key + ': ' + entry.value}"></li>
+                                                                        </ul>
                                                                         <ul class="mb-0 pl-3" th:if="${e.value.extra != null}">
                                                                             <li th:each="entry : ${e.value.extra.entrySet()}" th:text="${entry.key + ': ' + entry.value}"></li>
                                                                         </ul>
@@ -214,6 +219,7 @@
                                                                 <p class="app-summary-card__label" th:text="${e.key}"></p>
                                                                 <p class="app-dashboard-copy" th:text="${'Type: ' + (citationMap[e.key] != null && citationMap[e.key].subtypeDescription != null ? citationMap[e.key].subtypeDescription : (citationMap[e.key] != null ? citationMap[e.key].subtype : ''))}"></p>
                                                                 <p class="app-dashboard-copy" th:text="${'Category/Quarter: ' + e.value.category + ' / ' + e.value.quarter}"></p>
+                                                                <p class="app-dashboard-copy" th:if="${e.value.scoringSource != null}" th:text="${'Source: ' + e.value.scoringSource}"></p>
                                                                 <p class="app-dashboard-copy" th:text="${'Forum/Author: ' + e.value.score + ' / ' + #numbers.formatDecimal(e.value.authorScore, 1, 2)}"></p>
                                                             </div>
                                                         </div>

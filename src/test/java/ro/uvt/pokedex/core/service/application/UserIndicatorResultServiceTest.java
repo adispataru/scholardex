@@ -12,6 +12,7 @@ import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.repository.reporting.IndicatorRepository;
 import ro.uvt.pokedex.core.repository.reporting.UserIndicatorResultRepository;
 import ro.uvt.pokedex.core.service.UserService;
+import ro.uvt.pokedex.core.service.reporting.Score;
 import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorApplyViewModel;
 
@@ -21,7 +22,9 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
@@ -55,15 +58,23 @@ class UserIndicatorResultServiceTest {
 
     @Test
     void getOrCreateLatestReusesPersistedResultWhenPresent() {
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-1");
+        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
+        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        indicator.setFormula("S");
+
         UserIndicatorResult persisted = new UserIndicatorResult();
         persisted.setId("r1");
         persisted.setIndicatorId("ind-1");
         persisted.setMode(UserIndicatorResult.Mode.LATEST);
+        persisted.setFingerprint("ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance");
         persisted.setViewName("user/indicators-apply-publications");
         persisted.setRawGraph(new IndicatorPayloadSerializer(new ObjectMapper()).serialize(Map.of("total", "1.00")));
         persisted.setCreatedAt(Instant.now());
         persisted.setUpdatedAt(Instant.now());
 
+        when(indicatorRepository.findById("ind-1")).thenReturn(Optional.of(indicator));
         when(userIndicatorResultRepository.findByUserEmailAndIndicatorIdAndMode("u@uvt.ro", "ind-1", UserIndicatorResult.Mode.LATEST))
                 .thenReturn(Optional.of(persisted));
 
@@ -196,5 +207,43 @@ class UserIndicatorResultServiceTest {
         assertEquals(9.5, snapshot.getTotalScore());
         assertEquals(7, snapshot.getRefreshVersion());
         verify(userReportFacade, times(0)).buildIndicatorApplyView(any(), any());
+    }
+
+    @Test
+    void persistedPayloadKeepsScoreProvenanceFields() {
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-1");
+        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
+        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        indicator.setFormula("S");
+
+        Score score = new Score();
+        score.setCategory("A");
+        score.setQuarter("NOT_FOUND");
+        score.setScoringSource("DBLP+CORE");
+        score.setScoringInfo(Map.of("matchSource", "DBLP", "resolvedRank", "A"));
+
+        UserIndicatorResult persisted = new UserIndicatorResult();
+        persisted.setId("r2");
+        persisted.setIndicatorId("ind-1");
+        persisted.setMode(UserIndicatorResult.Mode.LATEST);
+        persisted.setFingerprint("ind-1|PUBLICATIONS|GENERIC_COUNT|S||||payload-v2-scoring-provenance");
+        persisted.setViewName("user/indicators-apply-publications");
+        persisted.setRawGraph(new IndicatorPayloadSerializer(new ObjectMapper()).serialize(
+                Map.of("total", "1.00", "scores", Map.of("Paper", score))
+        ));
+        persisted.setCreatedAt(Instant.now());
+        persisted.setUpdatedAt(Instant.now());
+
+        when(indicatorRepository.findById("ind-1")).thenReturn(Optional.of(indicator));
+        when(userIndicatorResultRepository.findByUserEmailAndIndicatorIdAndMode("u@uvt.ro", "ind-1", UserIndicatorResult.Mode.LATEST))
+                .thenReturn(Optional.of(persisted));
+
+        IndicatorApplyResultDto dto = service.getOrCreateLatest("u@uvt.ro", "ind-1");
+
+        Object rawScore = ((Map<String, Object>) dto.rawGraph().get("scores")).get("Paper");
+        assertInstanceOf(Score.class, rawScore);
+        assertEquals("DBLP+CORE", ((Score) rawScore).getScoringSource());
+        assertTrue(((Score) rawScore).getScoringInfo().containsKey("matchSource"));
     }
 }

@@ -48,6 +48,7 @@ public abstract class AbstractWoSForumScoringService extends AbstractForumScorin
 //                            result.bestQuarter.set(getBestQuarter(ranking));
                             result.bestQuarter.set(WoSRanking.Quarter.valueOf(points.get().getQuarter()));
                             result.bestYear.set(year);
+                            copyProvenance(points.get(), result);
                             result.extra.putAll(points.get().getExtra());
                         }
                     }

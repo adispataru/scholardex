@@ -255,6 +255,8 @@ public class ScientificProductionService {
         target.setYear(source.getYear());
         target.setCategory(source.getCategory());
         target.setQuarter(source.getQuarter());
+        target.setScoringSource(source.getScoringSource());
+        target.setScoringInfo(new HashMap<>(source.getScoringInfo() == null ? Map.of() : source.getScoringInfo()));
         target.setAuthorScore(source.getAuthorScore());
         target.setDetails(source.getDetails());
         target.setErrors(new HashMap<>(source.getErrors() == null ? Map.of() : source.getErrors()));

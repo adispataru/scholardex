@@ -33,6 +33,7 @@ public class GeneralInitializationService {
     private final CNCSISService cncsisService;
     private final CoreConferenceRankingService coreConferenceRankingService;
     private final SenseRankingService senseRankingService;
+    private final DblpPublicationEnrichmentService dblpPublicationEnrichmentService;
     private final DomainRepository domainRepository;
     private final MeterRegistry meterRegistry;
     private final StartupReadinessTracker startupReadinessTracker;
@@ -108,6 +109,12 @@ public class GeneralInitializationService {
             senseRankingService.importBookRankingsFromExcelSync(senseFilePath);
             return "sense import completed from " + senseFilePath;
         });
+    }
+
+    public GeneralInitializationStepResult runDblpLnChapterEnrichment() {
+        return runStep("dblp-ln-chapter-enrichment", false, "dblp-ln-chapter-enrichment", () ->
+                dblpPublicationEnrichmentService.runConfiguredEnrichment().formatForMessage()
+        );
     }
 
     private void createSpecialDomainIfNotExist() {

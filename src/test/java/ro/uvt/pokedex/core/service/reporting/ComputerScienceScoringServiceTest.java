@@ -144,6 +144,93 @@ class ComputerScienceScoringServiceTest {
     }
 
     @Test
+    void journalAggregationOverridesConferenceSubtypeForPublicationDispatch() {
+        ComputerScienceScoringService service = new ComputerScienceScoringService(
+                journalScoringService,
+                conferenceScoringService,
+                bookScoringService,
+                cacheService
+        );
+
+        Score journalScore = score(4.0, 2023, "B", "Q2");
+        when(journalScoringService.getScore(any(Publication.class), any(Indicator.class))).thenReturn(journalScore);
+
+        Publication publication = new Publication();
+        publication.setId("p-journal-1");
+        publication.setForum("forum-1");
+        publication.setScopusSubtype("cp");
+        publication.setSubtype("cp");
+
+        Forum forum = new Forum();
+        forum.setAggregationType("Journal");
+        when(cacheService.getForum("forum-1")).thenReturn(forum);
+
+        Score score = service.getScore(publication, new Indicator());
+
+        assertEquals(4.0, score.getScore());
+        verify(journalScoringService, times(1)).getScore(any(Publication.class), any(Indicator.class));
+        verifyNoInteractions(conferenceScoringService, bookScoringService);
+    }
+
+    @Test
+    void conferenceAggregationOverridesArticleSubtypeForPublicationDispatch() {
+        ComputerScienceScoringService service = new ComputerScienceScoringService(
+                journalScoringService,
+                conferenceScoringService,
+                bookScoringService,
+                cacheService
+        );
+
+        Score conferenceScore = score(2.0, 2023, "C", "NOT_FOUND");
+        when(conferenceScoringService.getScore(any(Publication.class), any(Indicator.class))).thenReturn(conferenceScore);
+
+        Publication publication = new Publication();
+        publication.setId("p-conf-1");
+        publication.setForum("forum-2");
+        publication.setScopusSubtype("ar");
+        publication.setSubtype("ar");
+
+        Forum forum = new Forum();
+        forum.setAggregationType("Conference Proceeding");
+        when(cacheService.getForum("forum-2")).thenReturn(forum);
+
+        Score score = service.getScore(publication, new Indicator());
+
+        assertEquals(2.0, score.getScore());
+        verify(conferenceScoringService, times(1)).getScore(any(Publication.class), any(Indicator.class));
+        verifyNoInteractions(journalScoringService, bookScoringService);
+    }
+
+    @Test
+    void lncsBookSeriesKeepsConferenceDispatchForConferencePaperSubtype() {
+        ComputerScienceScoringService service = new ComputerScienceScoringService(
+                journalScoringService,
+                conferenceScoringService,
+                bookScoringService,
+                cacheService
+        );
+
+        Score conferenceScore = score(4.0, 2023, "B", "NOT_FOUND");
+        when(conferenceScoringService.getScore(any(Publication.class), any(Indicator.class))).thenReturn(conferenceScore);
+
+        Publication publication = new Publication();
+        publication.setId("p-lncs-cp-1");
+        publication.setForum("forum-lncs");
+        publication.setScopusSubtype("cp");
+        publication.setSubtype("cp");
+
+        Forum forum = new Forum();
+        forum.setAggregationType("Book Series");
+        when(cacheService.getForum("forum-lncs")).thenReturn(forum);
+
+        Score score = service.getScore(publication, new Indicator());
+
+        assertEquals(4.0, score.getScore());
+        verify(conferenceScoringService, times(1)).getScore(any(Publication.class), any(Indicator.class));
+        verifyNoInteractions(journalScoringService, bookScoringService);
+    }
+
+    @Test
     void nullActivityFallsBackToEmptyScore() {
         ComputerScienceScoringService service = new ComputerScienceScoringService(
                 journalScoringService,

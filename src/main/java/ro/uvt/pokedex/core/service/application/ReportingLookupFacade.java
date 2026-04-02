@@ -36,6 +36,11 @@ public class ReportingLookupFacade implements ReportingLookupPort {
     }
 
     @Override
+    public List<CoreConferenceRanking> getConferenceRankingsByNormalizedTitle(String normalizedTitle) {
+        return postgresFacade.getConferenceRankingsByNormalizedTitle(normalizedTitle);
+    }
+
+    @Override
     public int getTopRankings(String categoryIndex, Integer year) {
         return postgresFacade.getTopRankings(categoryIndex, year);
     }

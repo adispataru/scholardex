@@ -12,7 +12,9 @@ import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -40,7 +42,7 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = getAllowedYearsForPublication(publication, indicator);
 
-        if (isArticleOrReview(publication)) {
+        if (isJournalPublicationCandidate(publication, forum)) {
             computeScores(
                     domain,
                     forum,
@@ -58,10 +60,27 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
                 scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
                 scoreResult.bestQuarter.set(WoSRanking.Quarter.SCOPUS);
                 scoreResult.bestYear.set(LAST_YEAR);
+                scoreResult.scoringSource.set("SCOPUS");
+                scoreResult.scoringInfo.put("matchSource", "SCOPUS");
+                scoreResult.scoringInfo.put("fallbackReason", "SCOPUS_FALLBACK");
+                scoreResult.scoringInfo.put("sourcesConsulted", List.of("SCOPUS"));
             }
         }
 
+        if (scoreResult.bestPoints.get() > 0 && "WOS".equals(scoreResult.scoringSource.get())) {
+            scoreResult.scoringSource.set("SCOPUS+WOS");
+            scoreResult.scoringInfo.put("matchSource", "WOS");
+            scoreResult.scoringInfo.put("sourcesConsulted", List.of("SCOPUS", "WOS"));
+        }
+
         return createScore(scoreResult);
+    }
+
+    private boolean isJournalPublicationCandidate(Publication publication, Forum forum) {
+        if (isArticleOrReview(publication)) {
+            return true;
+        }
+        return forum != null && "Journal".equals(forum.getAggregationType());
     }
 
     /* ------------------------------------------------------------------ */
@@ -94,6 +113,10 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
             scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
             scoreResult.bestQuarter.set(WoSRanking.Quarter.SCOPUS);
             scoreResult.bestYear.set(LAST_YEAR);
+            scoreResult.scoringSource.set("SCOPUS");
+            scoreResult.scoringInfo.put("matchSource", "SCOPUS");
+            scoreResult.scoringInfo.put("fallbackReason", "SCOPUS_FALLBACK");
+            scoreResult.scoringInfo.put("sourcesConsulted", List.of("SCOPUS"));
         }
 
         return createScore(scoreResult);
@@ -128,6 +151,14 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
         score.setScore(points);
         score.setQuarter(quarter.toString());
         score.setCategory(getCategory(points).toString());
+        Map<String, Object> scoringInfo = new LinkedHashMap<>();
+        scoringInfo.put("matchSource", "WOS");
+        scoringInfo.put("resolvedYear", year);
+        scoringInfo.put("resolvedRank", score.getCategory());
+        scoringInfo.put("quarter", quarter.toString());
+        scoringInfo.put("wosCategory", category);
+        scoringInfo.put("sourcesConsulted", List.of("WOS"));
+        setProvenance(score, "WOS", scoringInfo);
         return Optional.of(score);
     }
 

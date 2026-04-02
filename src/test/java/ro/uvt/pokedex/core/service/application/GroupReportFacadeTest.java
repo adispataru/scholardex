@@ -357,9 +357,9 @@ class GroupReportFacadeTest {
                 .thenReturn(aScore);
         when(computerScienceConferenceScoringService.getScore(org.mockito.ArgumentMatchers.eq(bConference), org.mockito.ArgumentMatchers.any(Indicator.class)))
                 .thenReturn(bScore);
-        when(computerScienceConferenceScoringService.tryResolveCoreScore(org.mockito.ArgumentMatchers.eq(lncsBookForum), org.mockito.ArgumentMatchers.anyInt()))
+        when(computerScienceConferenceScoringService.tryResolveCoreScore(org.mockito.ArgumentMatchers.eq(bookLncs), org.mockito.ArgumentMatchers.eq(lncsBookForum), org.mockito.ArgumentMatchers.anyInt()))
                 .thenReturn(Optional.empty());
-        when(computerScienceConferenceScoringService.tryResolveCoreScore(org.mockito.ArgumentMatchers.eq(lncsBookConferenceForum), org.mockito.ArgumentMatchers.anyInt()))
+        when(computerScienceConferenceScoringService.tryResolveCoreScore(org.mockito.ArgumentMatchers.eq(bookLncsConference), org.mockito.ArgumentMatchers.eq(lncsBookConferenceForum), org.mockito.ArgumentMatchers.anyInt()))
                 .thenReturn(Optional.of(chapterConferenceScore));
 
         var result = facade.buildGroupPublicationsView("g1");

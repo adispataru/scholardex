@@ -41,6 +41,8 @@ class GeneralInitializationServiceTest {
     @Mock
     private SenseRankingService senseRankingService;
     @Mock
+    private DblpPublicationEnrichmentService dblpPublicationEnrichmentService;
+    @Mock
     private DomainRepository domainRepository;
 
     private GeneralInitializationService service;
@@ -54,6 +56,7 @@ class GeneralInitializationServiceTest {
                 cncsisService,
                 coreConferenceRankingService,
                 senseRankingService,
+                dblpPublicationEnrichmentService,
                 domainRepository,
                 new SimpleMeterRegistry(),
                 new StartupReadinessTracker()
@@ -78,6 +81,20 @@ class GeneralInitializationServiceTest {
         verify(cncsisService).importPublisherListFromExcelSync("data/cncsis/publisher_list.xlsx");
         verify(coreConferenceRankingService).loadRankingsFromCSVSync("data/core-conf");
         verify(senseRankingService).importBookRankingsFromExcelSync("data/sense/SENSE-rankings.xlsx");
+    }
+
+    @Test
+    void dblpLnChapterEnrichmentDelegatesToConfiguredService() {
+        when(dblpPublicationEnrichmentService.runConfiguredEnrichment())
+                .thenReturn(new DblpPublicationEnrichmentService.DblpEnrichmentRunSummary(
+                        "/tmp/dblp.xml.gz", "march-2026", 3, 42L, 1, 1, 0, 1, 0, 0
+                ));
+
+        GeneralInitializationService.GeneralInitializationStepResult step = service.runDblpLnChapterEnrichment();
+
+        assertThat(step.success()).isTrue();
+        assertThat(step.message()).contains("march-2026");
+        verify(dblpPublicationEnrichmentService).runConfiguredEnrichment();
     }
 
     @Test

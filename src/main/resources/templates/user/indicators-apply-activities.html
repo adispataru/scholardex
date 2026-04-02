@@ -120,6 +120,7 @@
                                     <th scope="col">Title</th>
                                     <th scope="col">Type</th>
                                     <th scope="col">Details</th>
+                                    <th scope="col">Scoring Source</th>
                                     <th scope="col">Year</th>
                                     <th scope="col">Forum Score</th>
                                     <th scope="col">Author Score</th>
@@ -138,10 +139,14 @@
                                     <td><span th:text="${act.name}">Title</span></td>
                                     <td th:text="${act.activity != null ? act.activity.name : ''}"></td>
                                     <td><span th:text="${scores[act.id] != null ? scores[act.id].details : ''}">0</span></td>
+                                    <td><span th:text="${scores[act.id] != null ? scores[act.id].scoringSource : ''}">WOS</span></td>
                                     <td><span th:text="${scores[act.id] != null ? scores[act.id].year : ''}">0</span></td>
                                     <td><span th:text="${scores[act.id] != null ? scores[act.id].score : ''}">0</span></td>
                                     <td><span th:text="${scores[act.id] != null ? #numbers.formatDecimal(scores[act.id].authorScore, 1, 2) : ''}">0</span></td>
                                     <td>
+                                        <ul class="mb-2 pl-3" th:if="${scores[act.id] != null && scores[act.id].scoringInfo != null && !scores[act.id].scoringInfo.isEmpty()}">
+                                            <li th:each="entry : ${scores[act.id].scoringInfo.entrySet()}" th:text="${entry.key + ': ' + entry.value}"></li>
+                                        </ul>
                                         <ul class="mb-0 pl-3" th:if="${scores[act.id] != null && scores[act.id].extra != null}">
                                             <li th:each="entry : ${scores[act.id].extra.entrySet()}" th:text="${entry.key + ': ' + entry.value}"></li>
                                         </ul>

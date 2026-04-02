@@ -40,7 +40,9 @@ class CacheServiceTest {
         Forum forum = new Forum();
         forum.setId("f1");
         CoreConferenceRanking core = new CoreConferenceRanking();
+        core.setId("ICSE-International Conference on Software Engineering");
         core.setAcronym("ICSE");
+        core.setName("International Conference on Software Engineering");
         Author author = new Author();
         author.setId("a1");
         Affiliation affiliation = new Affiliation();
@@ -70,6 +72,19 @@ class CacheServiceTest {
     void conferenceRankingLookupUsesCacheMap() {
         List<CoreConferenceRanking> rankings = cacheService.getCachedConfRankings("ICSE");
         assertEquals(1, rankings.size());
+    }
+
+    @Test
+    void conferenceRankingLookupByNormalizedTitleUsesCacheMap() {
+        List<CoreConferenceRanking> fullTitle = cacheService.getCachedConfRankingsByNormalizedTitle(
+                "international conference on software engineering");
+        List<CoreConferenceRanking> withoutBoilerplate = cacheService.getCachedConfRankingsByNormalizedTitle(
+                "software engineering");
+
+        assertEquals(1, fullTitle.size());
+        assertEquals("ICSE", fullTitle.getFirst().getAcronym());
+        assertEquals(1, withoutBoilerplate.size());
+        assertEquals("ICSE", withoutBoilerplate.getFirst().getAcronym());
     }
 
     @Test

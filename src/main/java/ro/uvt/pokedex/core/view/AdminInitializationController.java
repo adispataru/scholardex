@@ -84,6 +84,11 @@ public class AdminInitializationController {
         return redirectAfterGeneralStep(generalInitializationService.runSenseImport(), redirectAttributes);
     }
 
+    @PostMapping("/general/dblpLnChapterEnrichment")
+    public String runGeneralDblpLnChapterEnrichment(RedirectAttributes redirectAttributes) {
+        return redirectAfterGeneralStep(generalInitializationService.runDblpLnChapterEnrichment(), redirectAttributes);
+    }
+
     @GetMapping("/wos/enrichment")
     public String showWosEnrichmentPage(Model model) {
         model.addAttribute("summary", rankingMaintenanceFacade.latestWosCategoryRankingEnrichmentSummary());

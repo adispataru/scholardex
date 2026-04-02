@@ -126,6 +126,7 @@
                                     <th scope="col">Venue</th>
                                     <th scope="col">Category</th>
                                     <th scope="col">Quarter</th>
+                                    <th scope="col">Scoring Source</th>
                                     <th scope="col">Year</th>
                                     <th scope="col">Forum Score</th>
                                     <th scope="col">Author Score</th>
@@ -148,10 +149,14 @@
                                     <td><span th:text="${forumMap[pub.forum] != null ? forumMap[pub.forum].publicationName : ''}">Venue</span></td>
                                     <td><span th:text="${scores[pub.title] != null ? scores[pub.title].category : ''}">0</span></td>
                                     <td><span th:text="${scores[pub.title] != null ? scores[pub.title].quarter : ''}">0</span></td>
+                                    <td><span th:text="${scores[pub.title] != null ? scores[pub.title].scoringSource : ''}">SCOPUS+CORE</span></td>
                                     <td><span th:text="${scores[pub.title] != null ? scores[pub.title].year : ''}">0</span></td>
                                     <td><span th:text="${scores[pub.title] != null ? scores[pub.title].score : ''}">0</span></td>
                                     <td><span th:text="${scores[pub.title] != null ? #numbers.formatDecimal(scores[pub.title].authorScore, 1, 2) : ''}">0</span></td>
                                     <td>
+                                        <ul class="mb-2 pl-3" th:if="${scores[pub.title] != null && scores[pub.title].scoringInfo != null && !scores[pub.title].scoringInfo.isEmpty()}">
+                                            <li th:each="entry : ${scores[pub.title].scoringInfo.entrySet()}" th:text="${entry.key + ': ' + entry.value}"></li>
+                                        </ul>
                                         <ul class="mb-0 pl-3" th:if="${scores[pub.title] != null && scores[pub.title].extra != null}">
                                             <li th:each="entry : ${scores[pub.title].extra.entrySet()}" th:text="${entry.key + ': ' + entry.value}"></li>
                                         </ul>

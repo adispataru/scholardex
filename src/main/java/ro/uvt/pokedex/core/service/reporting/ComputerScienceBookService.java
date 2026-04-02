@@ -12,7 +12,9 @@ import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 import ro.uvt.pokedex.core.repository.reporting.SenseRankingRepository;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -56,6 +58,12 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
             if("ch".equals(subtype)) {
                 scoreResult.bestPoints.set(scoreResult.bestPoints.get() / 2);
             }
+        }
+
+        if (scoreResult.bestPoints.get() > 0 && "SENSE".equals(scoreResult.scoringSource.get())) {
+            scoreResult.scoringSource.set("SCOPUS+SENSE");
+            scoreResult.scoringInfo.put("matchSource", "SENSE");
+            scoreResult.scoringInfo.put("sourcesConsulted", List.of("SCOPUS", "SENSE"));
         }
 
         return createScore(scoreResult);
@@ -115,6 +123,13 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
                 score.setCategory("Unlisted");
             }
         }
+        Map<String, Object> scoringInfo = new LinkedHashMap<>();
+        scoringInfo.put("matchSource", "SENSE");
+        scoringInfo.put("publisher", forum.getPublisher());
+        scoringInfo.put("resolvedYear", year);
+        scoringInfo.put("resolvedRank", conf.getRanking().name());
+        scoringInfo.put("sourcesConsulted", List.of("SENSE"));
+        setProvenance(score, "SENSE", scoringInfo);
         return Optional.of(score);
     }
 

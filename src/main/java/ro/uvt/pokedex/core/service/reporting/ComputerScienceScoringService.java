@@ -46,6 +46,26 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
             return createEmptyScore();
         }
 
+        Forum forum = publication.getForum() == null ? null : lookupPort.getForum(publication.getForum());
+        if (forum != null && forum.getAggregationType() != null) {
+            return switch (forum.getAggregationType()) {
+                case "Journal" -> journalScoringService.getScore(publication, indicator);
+                case "Conference Proceeding" -> conferenceScoringService.getScore(publication, indicator);
+                case "Book", "Book Series" -> PublicationSubtypeSupport.isSubtype(publication, "cp")
+                        ? conferenceScoringService.getScore(publication, indicator)
+                        : bookScoringService.getScore(publication, indicator);
+                default -> scoreBySubtype(publication, indicator);
+            };
+        }
+
+        return scoreBySubtype(publication, indicator);
+    }
+
+    private Score scoreBySubtype(Publication publication, Indicator indicator) {
+        if (publication == null) {
+            return createEmptyScore();
+        }
+
         String subtype = PublicationSubtypeSupport.resolveSubtype(publication);
         if (subtype.isEmpty()) {
             logger.warn("Publication has empty subtype: {}", publication.getId());

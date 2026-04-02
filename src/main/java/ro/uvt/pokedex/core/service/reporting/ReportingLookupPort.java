@@ -14,6 +14,8 @@ public interface ReportingLookupPort {
 
     List<CoreConferenceRanking> getConferenceRankings(String acronym);
 
+    List<CoreConferenceRanking> getConferenceRankingsByNormalizedTitle(String normalizedTitle);
+
     int getTopRankings(String categoryIndex, Integer year);
 
     Set<String> getUniversityAuthorIds();

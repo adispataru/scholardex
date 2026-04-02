@@ -11,6 +11,7 @@ import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
 import ro.uvt.pokedex.core.service.application.ResearcherAuthorLookupService;
 import ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService;
+import ro.uvt.pokedex.core.service.reporting.ConferenceTitleNormalizationSupport;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,6 +28,7 @@ public class CacheService {
     private final GroupRepository groupRepository;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final ConcurrentMap<String, List<CoreConferenceRanking>> confRankingCache;
+    private final ConcurrentMap<String, List<CoreConferenceRanking>> confRankingTitleCache;
     private final Map<String, Affiliation> affiliationCache = new HashMap<>();
     private final Map<String, Author> authorCache = new HashMap<>();
     private final Set<String> universityAuthorIds = new HashSet<>();
@@ -48,7 +50,10 @@ public class CacheService {
         });
 
         this.confRankingCache = new ConcurrentHashMap<>();
-        confRankingCache.putAll(coreConferenceRankingRepository.findAll().stream().collect(Collectors.groupingBy(CoreConferenceRanking::getAcronym)));
+        this.confRankingTitleCache = new ConcurrentHashMap<>();
+        List<CoreConferenceRanking> allConferenceRankings = coreConferenceRankingRepository.findAll();
+        confRankingCache.putAll(allConferenceRankings.stream().collect(Collectors.groupingBy(CoreConferenceRanking::getAcronym)));
+        allConferenceRankings.forEach(this::indexConferenceRankingByTitle);
         List<Author> all = scholardexProjectionReadService.findAllAuthors();
         groupRepository.findAll().forEach(group ->
                 group.getResearchers().forEach(researcher -> {
@@ -67,6 +72,13 @@ public class CacheService {
 
     public List<CoreConferenceRanking> getCachedConfRankings(String acronym) {
         return confRankingCache.computeIfAbsent(acronym, coreConferenceRankingRepository::findAllByAcronymIgnoreCase);
+    }
+
+    public List<CoreConferenceRanking> getCachedConfRankingsByNormalizedTitle(String normalizedTitle) {
+        if (normalizedTitle == null || normalizedTitle.isBlank()) {
+            return List.of();
+        }
+        return confRankingTitleCache.getOrDefault(normalizedTitle, List.of());
     }
 
     public Forum getCachedForums(String issn) {
@@ -117,5 +129,45 @@ public class CacheService {
 
     public void saveAllAffiliations() {
         affiliationCache.values().forEach(scholardexProjectionReadService::saveAffiliation);
+    }
+
+    private void indexConferenceRankingByTitle(CoreConferenceRanking ranking) {
+        if (ranking == null || ranking.getName() == null || ranking.getName().isBlank()) {
+            return;
+        }
+        String normalizedTitle = ConferenceTitleNormalizationSupport.normalizeVenueName(ranking.getName());
+        String normalizedWithoutBoilerplate = ConferenceTitleNormalizationSupport.normalizeWithoutBoilerplate(normalizedTitle);
+        registerConferenceTitleKey(normalizedTitle, ranking);
+        if (!normalizedWithoutBoilerplate.isBlank() && !normalizedWithoutBoilerplate.equals(normalizedTitle)) {
+            registerConferenceTitleKey(normalizedWithoutBoilerplate, ranking);
+        }
+    }
+
+    private void registerConferenceTitleKey(String key, CoreConferenceRanking ranking) {
+        if (key == null || key.isBlank()) {
+            return;
+        }
+        confRankingTitleCache.compute(key, (ignored, existing) -> {
+            List<CoreConferenceRanking> updated = existing == null ? new ArrayList<>() : new ArrayList<>(existing);
+            String rankingKey = conferenceRankingKey(ranking);
+            boolean alreadyIndexed = updated.stream()
+                    .anyMatch(candidate -> Objects.equals(conferenceRankingKey(candidate), rankingKey));
+            if (!alreadyIndexed) {
+                updated.add(ranking);
+            }
+            return List.copyOf(updated);
+        });
+    }
+
+    private String conferenceRankingKey(CoreConferenceRanking ranking) {
+        if (ranking == null) {
+            return "";
+        }
+        if (ranking.getId() != null && !ranking.getId().isBlank()) {
+            return ranking.getId();
+        }
+        return String.join("|",
+                Objects.toString(ranking.getAcronym(), ""),
+                Objects.toString(ranking.getName(), ""));
     }
 }

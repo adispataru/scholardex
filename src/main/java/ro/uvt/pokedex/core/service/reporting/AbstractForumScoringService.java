@@ -62,6 +62,8 @@ public abstract class AbstractForumScoringService implements ScoringService {
                 new AtomicReference<>(CoreConferenceRanking.Rank.NON_RANK);
         final AtomicReference<WoSRanking.Quarter> bestQuarter =
                 new AtomicReference<>(WoSRanking.Quarter.NOT_FOUND);
+        final AtomicReference<String> scoringSource = new AtomicReference<>(null);
+        final Map<String, Object> scoringInfo = new HashMap<>();
         final Map<String, Object> extra = new HashMap<>();
     }
 
@@ -75,8 +77,29 @@ public abstract class AbstractForumScoringService implements ScoringService {
         s.setYear(r.bestYear.get());
         s.setCategory(r.bestCategory.get().toString());
         s.setQuarter(r.bestQuarter.get().toString());
+        s.setScoringSource(r.scoringSource.get());
+        s.setScoringInfo(new HashMap<>(r.scoringInfo));
         s.setExtra(r.extra);
         return s;
+    }
+
+    protected void copyProvenance(Score source, ScoreResult target) {
+        if (source == null) {
+            return;
+        }
+        target.scoringSource.set(source.getScoringSource());
+        target.scoringInfo.clear();
+        if (source.getScoringInfo() != null) {
+            target.scoringInfo.putAll(source.getScoringInfo());
+        }
+    }
+
+    protected void setProvenance(Score score, String scoringSource, Map<String, Object> scoringInfo) {
+        if (score == null) {
+            return;
+        }
+        score.setScoringSource(scoringSource);
+        score.setScoringInfo(scoringInfo == null ? new HashMap<>() : new HashMap<>(scoringInfo));
     }
 
     /* ----------  Generic ranking helpers  ---------- */
@@ -133,6 +156,7 @@ public abstract class AbstractForumScoringService implements ScoringService {
                     result.bestCategory.set(CoreConferenceRanking.Rank.valueOf(points.get().getCategory()));
                 }
                 result.bestYear.set(year);
+                copyProvenance(points.get(), result);
                 result.extra.putAll(points.get().getExtra());
             }
         }

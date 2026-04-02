@@ -85,6 +85,15 @@
                                             <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
                                         </form>
                                     </div>
+                                    <div class="app-ops-action-row">
+                                        <div class="app-ops-action-copy">
+                                            <p class="app-ops-action-title">Enrich LN* book chapters from DBLP snapshot</p>
+                                            <p class="app-ops-action-meta">Streams the configured <code>dblp.xml.gz</code> snapshot and stores compact DBLP evidence for targeted Lecture Notes chapter records.</p>
+                                        </div>
+                                        <form th:action="@{/admin/initialization/general/dblpLnChapterEnrichment}" method="post">
+                                            <button type="submit" class="btn btn-outline-primary btn-sm">Run step</button>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
                         </section>

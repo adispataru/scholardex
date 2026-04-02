@@ -18,6 +18,7 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class UserIndicatorResultService {
+    private static final String PAYLOAD_VERSION = "payload-v2-scoring-provenance";
 
     private final UserIndicatorResultRepository userIndicatorResultRepository;
     private final IndicatorRepository indicatorRepository;
@@ -28,7 +29,8 @@ public class UserIndicatorResultService {
     public IndicatorApplyResultDto getOrCreateLatest(String userEmail, String indicatorId) {
         Optional<UserIndicatorResult> existing = userIndicatorResultRepository
                 .findByUserEmailAndIndicatorIdAndMode(userEmail, indicatorId, UserIndicatorResult.Mode.LATEST);
-        if (existing.isPresent()) {
+        String expectedFingerprint = buildFingerprint(indicatorId);
+        if (existing.isPresent() && expectedFingerprint.equals(existing.get().getFingerprint())) {
             return toDto(existing.get(), IndicatorApplyResultDto.Source.PERSISTED);
         }
         return computeAndSaveLatest(userEmail, indicatorId, 0, IndicatorApplyResultDto.Source.COMPUTED);
@@ -169,7 +171,8 @@ public class UserIndicatorResultService {
                 ind.getFormula() == null ? "" : ind.getFormula(),
                 ind.getYearRange() == null ? "" : ind.getYearRange(),
                 ind.getScoreYearRange() == null ? "" : ind.getScoreYearRange(),
-                ind.getSelector() == null ? "" : ind.getSelector().name()
+                ind.getSelector() == null ? "" : ind.getSelector().name(),
+                PAYLOAD_VERSION
         );
     }
 

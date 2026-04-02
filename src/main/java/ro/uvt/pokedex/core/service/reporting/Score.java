@@ -11,6 +11,8 @@ public class Score {
     private int year;
     private String category;
     private String quarter;
+    private String scoringSource;
+    private Map<String, Object> scoringInfo = new HashMap<>();
     private double authorScore;
     private Map<String, String> errors = new HashMap<>();
     private Map<String, Object> extra = new HashMap<>();

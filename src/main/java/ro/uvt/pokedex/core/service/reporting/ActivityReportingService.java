@@ -65,6 +65,8 @@ public class ActivityReportingService {
                 result.setQuarter(score.getQuarter());
                 result.setYear(score.getYear());
                 result.setScore(score.getScore());
+                result.setScoringSource(score.getScoringSource());
+                result.setScoringInfo(new HashMap<>(score.getScoringInfo() == null ? Map.of() : score.getScoringInfo()));
                 result.setExtra(score.getExtra());
                 variables.put("S", score.getScore());
                 for(String key: score.getExtra().keySet()){

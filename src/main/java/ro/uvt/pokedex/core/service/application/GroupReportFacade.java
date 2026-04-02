@@ -158,7 +158,7 @@ public class GroupReportFacade {
     private String classifyLncsBookChapterBucket(Publication publication, Forum forum) {
         int year = PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)
                 .orElse(2023);
-        Optional<Score> conferenceScore = computerScienceConferenceScoringService.tryResolveCoreScore(forum, year);
+        Optional<Score> conferenceScore = computerScienceConferenceScoringService.tryResolveCoreScore(publication, forum, year);
         if (conferenceScore.isPresent()) {
             Score score = conferenceScore.get();
             if (score.getCategory() != null && !score.getCategory().isBlank()) {
