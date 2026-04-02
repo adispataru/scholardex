@@ -7,7 +7,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
@@ -21,14 +23,19 @@ import ro.uvt.pokedex.core.service.application.WosIndexMaintenanceService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -60,8 +67,7 @@ class WosProjectionBuilderServiceTest {
                         category("jid-1", 2023, MetricType.RIS, EditionNormalized.SSCI, "ACOUSTICS", "Q2", null, 3)
                 )
         );
-        when(jdbcTemplate.batchUpdate(anyString(), anyList(), eq(500), any())).thenReturn(new int[0][]);
-
+        when(jdbcTemplate.batchUpdate(anyString(), any(BatchPreparedStatementSetter.class))).thenReturn(new int[0]);
         ImportProcessingResult result = service.rebuildWosProjections();
 
         // 1 journal identity + 2 category facts = 3 imported items
@@ -85,13 +91,81 @@ class WosProjectionBuilderServiceTest {
                 .thenReturn(new PageImpl<>(List.of(identity)), new PageImpl<>(List.of()));
         when(mongoTemplate.find(any(), eq(WosMetricFact.class))).thenReturn(List.of());
         when(mongoTemplate.find(any(), eq(WosCategoryFact.class))).thenReturn(List.of());
-        when(jdbcTemplate.batchUpdate(anyString(), anyList(), eq(500), any())).thenReturn(new int[0][]);
-
+        when(jdbcTemplate.batchUpdate(anyString(), any(BatchPreparedStatementSetter.class))).thenReturn(new int[0]);
         // Just verify the service runs without error; normalized fields are written to DB
         ImportProcessingResult result = service.rebuildWosProjections();
 
         // 1 processed for the identity
         assertEquals(1, result.getImportedCount());
+    }
+
+    @Test
+    void scopedRebuildDeletesOnlyAffectedJournalsAndDoesNotTruncate() {
+        WosProjectionBuilderService service = service();
+
+        TransactionStatus txStatus = mock(TransactionStatus.class);
+        when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenReturn(txStatus);
+
+        when(identityRepository.findAllById(List.of("jid-1"))).thenReturn(List.of(identity("jid-1")));
+        when(mongoTemplate.find(any(), eq(WosMetricFact.class)))
+                .thenAnswer(invocation -> {
+                    Query query = invocation.getArgument(0);
+                    Object journalId = query.getQueryObject().get("journalId");
+                    Object year = query.getQueryObject().get("year");
+                    Object metricType = query.getQueryObject().get("metricType");
+                    if ("jid-1".equals(journalId) && Integer.valueOf(2024).equals(year) && MetricType.AIS.equals(metricType)) {
+                        return List.of(metric("jid-1", 2024, MetricType.AIS, 1.2));
+                    }
+                    if ("jid-1".equals(journalId) && year == null && metricType == null) {
+                        return List.of(
+                                metric("jid-1", 2024, MetricType.AIS, 1.2),
+                                metric("jid-1", 2023, MetricType.RIS, 0.8)
+                        );
+                    }
+                    return List.of();
+                });
+        when(mongoTemplate.find(any(), eq(WosCategoryFact.class)))
+                .thenAnswer(invocation -> {
+                    Query query = invocation.getArgument(0);
+                    Object journalId = query.getQueryObject().get("journalId");
+                    Object year = query.getQueryObject().get("year");
+                    Object categoryNameCanonical = query.getQueryObject().get("categoryNameCanonical");
+                    Object editionNormalized = query.getQueryObject().get("editionNormalized");
+                    Object metricType = query.getQueryObject().get("metricType");
+                    if ("jid-1".equals(journalId)
+                            && Integer.valueOf(2024).equals(year)
+                            && "ECONOMICS".equals(categoryNameCanonical)
+                            && EditionNormalized.SCIE.equals(editionNormalized)
+                            && MetricType.AIS.equals(metricType)) {
+                        return List.of(category("jid-1", 2024, MetricType.AIS, EditionNormalized.SCIE, "ECONOMICS", null, null, null));
+                    }
+                    if ("jid-1".equals(journalId)
+                            && year == null
+                            && categoryNameCanonical == null
+                            && editionNormalized == null
+                            && metricType == null) {
+                        return List.of(
+                                category("jid-1", 2024, MetricType.AIS, EditionNormalized.SCIE, "ECONOMICS", null, null, null),
+                                category("jid-1", 2023, MetricType.RIS, EditionNormalized.SSCI, "HISTORY", "Q2", null, 3)
+                        );
+                    }
+                    return List.of();
+                });
+        when(jdbcTemplate.batchUpdate(anyString(), any(BatchPreparedStatementSetter.class))).thenReturn(new int[0]);
+        when(jdbcTemplate.batchUpdate(anyString(), anyList(), anyInt(), any())).thenReturn(new int[0][]);
+
+        ImportProcessingResult result = service.rebuildWosProjectionsForScope(
+                new LinkedHashSet<>(Set.of("jid-1")),
+                List.of(metric("jid-1", 2024, MetricType.AIS, 1.2)),
+                List.of(category("jid-1", 2024, MetricType.AIS, EditionNormalized.SCIE, "ECONOMICS", null, null, null))
+        );
+
+        assertEquals(2, result.getImportedCount());
+        verify(jdbcTemplate, never()).execute(anyString());
+        verify(jdbcTemplate, never()).batchUpdate(eq("DELETE FROM reporting_read.wos_ranking_view WHERE journal_id = ?"), anyList(), anyInt(), any());
+        verify(jdbcTemplate).batchUpdate(eq("DELETE FROM reporting_read.wos_metric_fact WHERE journal_id = ? AND year = ? AND metric_type = ?"), anyList(), anyInt(), any());
+        verify(jdbcTemplate).batchUpdate(eq("DELETE FROM reporting_read.wos_category_fact WHERE journal_id = ? AND year = ? AND category_name_canonical = ? AND edition_normalized = ? AND metric_type = ?"), anyList(), anyInt(), any());
+        verify(jdbcTemplate).batchUpdate(eq("DELETE FROM reporting_read.wos_scoring_view WHERE journal_id = ? AND year = ? AND category_name_canonical = ? AND edition_normalized = ? AND metric_type = ?"), anyList(), anyInt(), any());
     }
 
     private WosProjectionBuilderService service() {

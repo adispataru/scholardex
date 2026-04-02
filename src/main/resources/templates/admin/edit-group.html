@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Edit Group</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
@@ -17,63 +16,76 @@
         <div id="content">
             <div th:replace="~{fragments :: navbar('Edit Group')}"></div>
             <div class="container-fluid app-page-content">
-                <p class="mb-4">Edit the details of the group.</p>
+                <div class="app-workflow">
+                <p class="app-workflow__intro">Edit the group and its relationships in one workflow surface with shared sections for identity, domains, institution, and researchers.</p>
 
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Edit Group</h6>
+                <div class="app-form-surface">
+                    <div class="app-form-surface__panel">
+                    <div class="app-form-surface__header">
+                        <h6 class="app-form-surface__title">Edit Group</h6>
                     </div>
-                    <div class="card-body">
+                    <div class="app-form-surface__body">
                         <form th:action="@{/admin/groups/update}" th:object="${group}" method="post">
                             <div class="form-group">
 <!--                                <label for="groupName">Name</label>-->
                                 <input type="text" class="form-control" id="groupId" th:field="*{id}" required hidden>
                             </div>
-                            <div class="form-group">
-                                <label for="groupName">Name</label>
-                                <input type="text" class="form-control" id="groupName" th:field="*{name}" required>
+                            <div class="app-form-section mb-3">
+                                <div class="app-form-section__header">
+                                    <h6 class="app-form-section__title">Group profile</h6>
+                                </div>
+                                <div class="app-form-grid">
+                                    <div class="form-group app-form-field">
+                                        <label for="groupName">Name</label>
+                                        <input type="text" class="form-control" id="groupName" th:field="*{name}" required>
+                                    </div>
+                                    <div class="form-group app-form-field">
+                                        <label for="groupDescription">Description</label>
+                                        <textarea class="form-control" id="groupDescription" th:field="*{description}" required></textarea>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label for="groupDescription">Description</label>
-                                <textarea class="form-control" id="groupDescription" th:field="*{description}" required></textarea>
-                            </div>
-                            <div class="form-group">
+                            <div class="form-group app-form-field app-form-section">
                                 <label for="groupDomains">Domains</label>
-                                <div id="domainsContainer">
-                                    <div class="input-group mb-2" th:each="domain, iterStat : *{domains}">
+                                <div id="domainsContainer" class="app-collection">
+                                    <div class="input-group mb-2 app-collection__item" th:each="domain, iterStat : *{domains}">
                                         <select class="form-control" th:field="*{domains[__${iterStat.index}__]}" th:selected="${domain}">
                                             <option th:each="domain : ${allDomains}" th:value="${domain.id}" th:text="${domain.name}"></option>
                                         </select>
-                                        <div class="input-group-append">
-                                            <button class="btn btn-danger remove-domain" type="button">Remove</button>
-                                        </div>
+                                        <button class="btn btn-danger remove-domain" type="button">Remove</button>
                                     </div>
                                 </div>
-                                <button id="addDomain" class="btn btn-primary" type="button">Add Domain</button>
+                                <div class="app-form-actions app-form-actions--inline">
+                                    <button id="addDomain" class="btn btn-primary" type="button">Add Domain</button>
+                                </div>
                             </div>
-                            <div class="form-group">
+                            <div class="form-group app-form-field app-form-section">
                                 <label for="groupAffiliation">Institution</label>
                                 <select class="form-control" id="groupAffiliation" th:field="*{institution}">
                                     <option th:each="affiliation : ${affiliations}" th:value="${affiliation.name}" th:text="${affiliation.name}"></option>
                                 </select>
                             </div>
-                            <div class="form-group">
+                            <div class="form-group app-form-field app-form-section">
                                 <label for="groupResearchers">Researchers</label>
-                                <div id="researchersContainer">
-                                    <div class="input-group mb-2" th:each="researcher, iterStat : *{researchers}">
+                                <div id="researchersContainer" class="app-collection">
+                                    <div class="input-group mb-2 app-collection__item" th:each="researcher, iterStat : *{researchers}">
                                         <select class="form-control" th:field="*{researchers[__${iterStat.index}__]}" th:selected="${researcher}">
                                             <option th:each="researcher : ${allResearchers}" th:value="${researcher.id}" th:text="${researcher.name}"></option>
                                         </select>
-                                        <div class="input-group-append">
-                                            <button class="btn btn-danger remove-researcher" type="button">Remove</button>
-                                        </div>
+                                        <button class="btn btn-danger remove-researcher" type="button">Remove</button>
                                     </div>
                                 </div>
-                                <button id="addResearcher" class="btn btn-primary" type="button">Add Researcher</button>
+                                <div class="app-form-actions app-form-actions--inline">
+                                    <button id="addResearcher" class="btn btn-primary" type="button">Add Researcher</button>
+                                </div>
                             </div>
-                            <button type="submit" class="btn btn-primary">Update</button>
+                            <div class="app-form-actions">
+                                <button type="submit" class="btn btn-primary">Update</button>
+                            </div>
                         </form>
                     </div>
+                    </div>
+                </div>
                 </div>
             </div>
 
@@ -85,7 +97,6 @@
 <!-- Bootstrap core JavaScript-->
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
 
-<script src="/js/demo/datatables-demo.js"></script>
 
 <script th:inline="javascript">
     $(document).ready(function() {
@@ -97,13 +108,11 @@
         $('#addDomain').click(function() {
             let index = domainsContainer.children().length;
             let domainTemplate = `
-                <div class="input-group mb-2">
+                <div class="input-group mb-2 app-collection__item">
                     <select class="form-control" name="domains[${index}]">
                         ${allDomains.map(domain => `<option value="${domain.id}">${domain.name}</option>`).join('')}
                     </select>
-                    <div class="input-group-append">
-                        <button class="btn btn-danger remove-domain" type="button">Remove</button>
-                    </div>
+                    <button class="btn btn-danger remove-domain" type="button">Remove</button>
                 </div>`;
             domainsContainer.append(domainTemplate);
         });
@@ -119,13 +128,11 @@
         $('#addResearcher').click(function() {
             let index = researchersContainer.children().length;
             let researcherTemplate = `
-                <div class="input-group mb-2">
+                <div class="input-group mb-2 app-collection__item">
                     <select class="form-control" name="researchers[${index}]">
                         ${allResearchers.map(researcher => `<option value="${researcher.id}">${researcher.name}</option>`).join('')}
                     </select>
-                    <div class="input-group-append">
-                        <button class="btn btn-danger remove-researcher" type="button">Remove</button>
-                    </div>
+                    <button class="btn btn-danger remove-researcher" type="button">Remove</button>
                 </div>`;
             researchersContainer.append(researcherTemplate);
         });

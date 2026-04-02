@@ -5,8 +5,6 @@
     <title>Publications</title>
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css"/>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
@@ -23,27 +21,73 @@
 
             <!-- Begin Page Content -->
             <div class="container-fluid app-page-content">
-                <div class="card shadow">
-                    <div class="card-body">
-                        <form th:action="@{/user/publications/add/step2}" method="post">
-                            <div class="form-group">
-                                <input type="hidden" name="forumId" th:value="${forumId}"/>
-                                <input type="hidden" name="wizardForumPublicationName" th:value="${wizardForumPublicationName}"/>
-                                <input type="hidden" name="wizardForumIssn" th:value="${wizardForumIssn}"/>
-                                <input type="hidden" name="wizardForumEIssn" th:value="${wizardForumEIssn}"/>
-                                <input type="hidden" name="wizardForumIsbn" th:value="${wizardForumIsbn}"/>
-                                <input type="hidden" name="wizardForumAggregationType" th:value="${wizardForumAggregationType}"/>
-                                <input type="hidden" name="wizardForumPublisher" th:value="${wizardForumPublisher}"/>
+                <div class="app-workflow">
+                    <p class="app-workflow__intro">Build the author list for this publication before moving to the final metadata step. Search first, then add each selected author to the staged list below.</p>
+                    <div class="app-form-surface app-step-shell">
+                            <div class="app-step-shell__header">
+                            <div class="app-step-shell__meta">Publication Workflow</div>
+                            <h2 class="app-step-shell__title">Select Authors</h2>
+                            <ol class="app-step-shell__steps" aria-label="Publication workflow progress">
+                                <li class="app-step-shell__step">
+                                    <span class="app-step-shell__step-index">1</span>
+                                    Forum
+                                </li>
+                                <li class="app-step-shell__step is-active" aria-current="step">
+                                    <span class="app-step-shell__step-index">2</span>
+                                    Authors
+                                </li>
+                                <li class="app-step-shell__step">
+                                    <span class="app-step-shell__step-index">3</span>
+                                    Metadata
+                                </li>
+                            </ol>
+                        </div>
+                        <div class="app-form-surface__panel">
+                            <div class="app-form-surface__body">
+                                <div class="app-step-shell__body">
+                                    <form th:action="@{/user/publications/add/step2}" method="post">
+                                        <div class="form-group">
+                                            <input type="hidden" name="forumId" th:value="${forumId}"/>
+                                            <input type="hidden" name="wizardForumPublicationName" th:value="${wizardForumPublicationName}"/>
+                                            <input type="hidden" name="wizardForumIssn" th:value="${wizardForumIssn}"/>
+                                            <input type="hidden" name="wizardForumEIssn" th:value="${wizardForumEIssn}"/>
+                                            <input type="hidden" name="wizardForumIsbn" th:value="${wizardForumIsbn}"/>
+                                            <input type="hidden" name="wizardForumAggregationType" th:value="${wizardForumAggregationType}"/>
+                                            <input type="hidden" name="wizardForumPublisher" th:value="${wizardForumPublisher}"/>
+                                        </div>
+                                        <div class="app-form-section">
+                                            <div class="app-form-section__header">
+                                                <h3 class="app-form-section__title">Find authors</h3>
+                                                <p class="app-form-section__description">Search and stage each contributor in order. The selected list below becomes the final author handoff for the next step.</p>
+                                            </div>
+                                            <div class="app-form-grid">
+                                                <div class="form-group app-form-field">
+                                                    <label for="author-search">Author</label>
+                                                    <input id="author-search" class="form-control" placeholder="Search author…" aria-describedby="author-search-help"/>
+                                                    <input type="hidden" name="authorIds" id="author-ids"/>
+                                                    <p class="app-form-help mb-0" id="author-search-help">Use the search input to locate an existing author, then add them to the staged list.</p>
+                                                </div>
+                                            </div>
+                                            <div class="app-form-actions app-form-actions--inline">
+                                                <button type="button" class="btn btn-secondary" id="add-author-btn">Add Author</button>
+                                            </div>
+                                        </div>
+                                        <div class="app-form-section">
+                                            <div class="app-form-section__header">
+                                                <h3 class="app-form-section__title">Selected authors</h3>
+                                                <p class="app-form-section__description">Review the staged list before continuing to publication metadata.</p>
+                                            </div>
+                                            <p class="app-form-help mb-0" id="selected-authors-help">Selected authors will appear in this list after you add them.</p>
+                                            <ul class="app-selection-list" id="selected-authors" aria-live="polite" aria-describedby="selected-authors-help" aria-label="Selected authors"></ul>
+                                        </div>
+                                        <div class="app-form-actions">
+                                            <button type="button" class="btn btn-outline-secondary" onclick="window.history.back()">Back</button>
+                                            <button type="submit" class="btn btn-primary">Next</button>
+                                        </div>
+                                    </form>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label for="author-search">Author</label>
-                                <input id="author-search" class="form-control" placeholder="Search author…"/>
-                                <input type="hidden" name="authorIds" id="author-ids"/>
-                            </div>
-                            <button type="button" class="btn btn-secondary" id="add-author-btn">Add Author</button>
-                            <ul class="list-group mt-3" id="selected-authors"></ul>
-                            <button type="submit" class="btn btn-primary mt-4">Next</button>
-                        </form>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -69,7 +113,6 @@
 <!-- Page level plugins -->
 
 <!-- Page level custom scripts -->
-<script src="/js/demo/datatables-demo.js"></script>
 
 <script>
 

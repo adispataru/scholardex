@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Scopus Update Tasks History</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
@@ -17,86 +16,121 @@
         <div id="content">
             <div th:replace="~{fragments :: navbar('Scopus Update Tasks History')}"></div>
             <div class="container-fluid app-page-content">
-                <div class="card mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Researcher Scopus IDs</h6>
+                <div class="app-dashboard">
+                    <div class="app-page-toolbar">
+                        <p class="app-dashboard__intro">Manage Scopus refresh actions and review the resulting task history from one page.</p>
                     </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered" id="scopusTable" width="100%" cellspacing="0">
-                                <thead>
-                                <tr>
-                                    <th>Scopus ID</th>
-                                    <th>Actions</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <tr th:each="entry : ${researcher.scopusId}">
-                                    <td th:text="${entry}">1234567890</td>
-                                    <td>
-                                        <button type="button" class="btn btn-sm btn-primary"
-                                                th:attr="data-scopus-id=${entry},data-url=@{/user/tasks/scopus/update-publications}"
-                                                onclick="sendScopusUpdate(this)">Update Publications</button>
-                                        <button type="button" class="btn btn-sm btn-primary"
-                                                th:attr="data-scopus-id=${entry},data-url=@{/user/tasks/scopus/update-citations}"
-                                                onclick="sendScopusCitationsUpdate(this)">Update Citations</button>
-                                    </td>
-                                </tr>
-                                </tbody>
-                            </table>
+
+                    <div class="app-summary-grid">
+                        <div class="app-summary-card">
+                            <p class="app-summary-card__label">Scopus IDs</p>
+                            <p class="app-summary-card__value" th:text="${#lists.size(researcher.scopusId)}">0</p>
+                            <p class="app-summary-card__meta">Identifiers available for publication and citation refresh actions.</p>
+                        </div>
+                        <div class="app-summary-card app-summary-card--success">
+                            <p class="app-summary-card__label">Publication Tasks</p>
+                            <p class="app-summary-card__value" th:text="${#lists.size(tasks)}">0</p>
+                            <p class="app-summary-card__meta">Tracked publication update runs currently visible in history.</p>
+                        </div>
+                        <div class="app-summary-card app-summary-card--warning">
+                            <p class="app-summary-card__label">Citation Tasks</p>
+                            <p class="app-summary-card__value" th:text="${#lists.size(citationsTasks)}">0</p>
+                            <p class="app-summary-card__meta">Tracked citation update runs currently visible in history.</p>
                         </div>
                     </div>
-                </div>
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Task History</h6>
+
+                    <div id="task-feedback" class="app-feedback app-feedback--info" hidden role="status" aria-live="polite" aria-atomic="true">
+                        <p class="app-feedback__title" id="task-feedback-title">Task status</p>
+                        <p class="app-feedback__body" id="task-feedback-body">Updates will appear here.</p>
                     </div>
-                    <div class="card-body">
-                        <h6 class="m-0 font-weight-bold text-primary">Publication Updates</h6>
-                        <div class="table-responsive">
-                            <table class="table table-bordered js-datatable" id="dataTablePub" width="100%" cellspacing="0">
-                                <thead>
-                                <tr>
-                                    <th>Task ID</th>
-                                    <th>Start Time</th>
-                                    <th>End Time</th>
-                                    <th>Status</th>
-                                    <th>Message</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <tr th:each="task : ${tasks}">
-                                    <td th:text="${task.id}">1</td>
-                                    <td th:text="${task.getInitiatedDate()}">2024-06-01 10:00</td>
-                                    <td th:text="${task.getExecutionDate()}">2024-06-01 10:05</td>
-                                    <td th:text="${task.getStatus()}">SUCCESS</td>
-                                    <td th:text="${task.getMessage()}">Update completed</td>
-                                </tr>
-                                </tbody>
-                            </table>
+
+                    <div class="app-summary-panel">
+                        <div class="app-summary-panel__header">
+                            <h2 class="app-summary-panel__title">Researcher Scopus IDs</h2>
                         </div>
-                        <h6 class="m-0 font-weight-bold text-primary mt-4">Citation Updates</h6>
-                        <div class="table-responsive">
-                            <table class="table table-bordered js-datatable" id="dataTableCit" width="100%" cellspacing="0">
-                                <thead>
-                                <tr>
-                                    <th>Task ID</th>
-                                    <th>Start Time</th>
-                                    <th>End Time</th>
-                                    <th>Status</th>
-                                    <th>Message</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <tr th:each="task : ${citationsTasks}">
-                                    <td th:text="${task.id}">1</td>
-                                    <td th:text="${task.getInitiatedDate()}">2024-06-01 10:00</td>
-                                    <td th:text="${task.getExecutionDate()}">2024-06-01 10:05</td>
-                                    <td th:text="${task.getStatus()}">SUCCESS</td>
-                                    <td th:text="${task.getMessage()}">Update completed</td>
-                                </tr>
-                                </tbody>
-                            </table>
+                        <div class="app-summary-panel__body">
+                            <div class="app-table-scroll">
+                                <table class="table app-table" id="scopusTable" width="100%" cellspacing="0">
+                                    <caption class="app-table-caption app-table-caption--sr-only">Scopus identifier table with actions to request publication and citation update tasks.</caption>
+                                    <thead>
+                                    <tr>
+                                        <th scope="col">Scopus ID</th>
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="entry : ${researcher.scopusId}">
+                                        <td th:text="${entry}">1234567890</td>
+                                        <td>
+                                            <div class="app-dashboard__actions">
+                                                <button type="button" class="btn btn-sm btn-primary"
+                                                        th:attr="data-scopus-id=${entry},data-url=@{/user/tasks/scopus/update-publications}"
+                                                        onclick="sendScopusUpdate(this)">Update Publications</button>
+                                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                                        th:attr="data-scopus-id=${entry},data-url=@{/user/tasks/scopus/update-citations}"
+                                                        onclick="sendScopusCitationsUpdate(this)">Update Citations</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="app-summary-panel">
+                        <div class="app-summary-panel__header">
+                            <h2 class="app-summary-panel__title">Task History</h2>
+                        </div>
+                        <div class="app-summary-panel__body">
+                            <p class="app-summary-panel__section-title">Publication Updates</p>
+                            <div class="app-table-scroll">
+                                <table class="table js-datatable app-table" id="dataTablePub" width="100%" cellspacing="0">
+                                    <caption class="app-table-caption app-table-caption--sr-only">Publication task history table showing task identifiers, timing, status, and messages for publication update runs.</caption>
+                                    <thead>
+                                    <tr>
+                                        <th scope="col">Task ID</th>
+                                        <th scope="col">Start Time</th>
+                                        <th scope="col">End Time</th>
+                                        <th scope="col">Status</th>
+                                        <th scope="col">Message</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="task : ${tasks}">
+                                        <td th:text="${task.id}">1</td>
+                                        <td th:text="${task.getInitiatedDate()}">2024-06-01 10:00</td>
+                                        <td th:text="${task.getExecutionDate()}">2024-06-01 10:05</td>
+                                        <td th:text="${task.getStatus()}">SUCCESS</td>
+                                        <td th:text="${task.getMessage()}">Update completed</td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p class="app-summary-panel__section-title">Citation Updates</p>
+                            <div class="app-table-scroll">
+                                <table class="table js-datatable app-table" id="dataTableCit" width="100%" cellspacing="0">
+                                    <caption class="app-table-caption app-table-caption--sr-only">Citation task history table showing task identifiers, timing, status, and messages for citation update runs.</caption>
+                                    <thead>
+                                    <tr>
+                                        <th scope="col">Task ID</th>
+                                        <th scope="col">Start Time</th>
+                                        <th scope="col">End Time</th>
+                                        <th scope="col">Status</th>
+                                        <th scope="col">Message</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="task : ${citationsTasks}">
+                                        <td th:text="${task.id}">1</td>
+                                        <td th:text="${task.getInitiatedDate()}">2024-06-01 10:00</td>
+                                        <td th:text="${task.getExecutionDate()}">2024-06-01 10:05</td>
+                                        <td th:text="${task.getStatus()}">SUCCESS</td>
+                                        <td th:text="${task.getMessage()}">Update completed</td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -110,10 +144,34 @@
 </div>
 <script th:inline="javascript">
     /*<![CDATA[*/
+    function showTaskFeedback(type, title, message) {
+        const host = document.getElementById('task-feedback');
+        const titleEl = document.getElementById('task-feedback-title');
+        const bodyEl = document.getElementById('task-feedback-body');
+        if (!host || !titleEl || !bodyEl) {
+            return;
+        }
+
+        host.hidden = false;
+        host.className = 'app-feedback';
+        host.classList.add('app-feedback--' + type);
+        if (type === 'danger') {
+            host.setAttribute('role', 'alert');
+            host.setAttribute('aria-live', 'assertive');
+        } else {
+            host.setAttribute('role', 'status');
+            host.setAttribute('aria-live', 'polite');
+        }
+        titleEl.textContent = title;
+        bodyEl.textContent = message;
+    }
+
     function sendScopusUpdate(el){
         const scopusId = el.getAttribute('data-scopus-id');
         const url = el.getAttribute('data-url');
         const headers = {'Content-Type':'application/x-www-form-urlencoded'};
+
+        showTaskFeedback('pending', 'Sending publication update', 'Submitting a publication refresh for Scopus ID ' + scopusId + '.');
 
         const csrfHeaderMeta = document.querySelector('meta[name="_csrf_header"]');
         const csrfTokenMeta = document.querySelector('meta[name="_csrf"]');
@@ -138,9 +196,8 @@
             const status = data && data.status ? data.status : 'PENDING';
             const message = data && data.message ? data.message : 'Update started';
 
-            // If dataTablePubs is initialized, use its API to add the row (keeps paging/sorting)
-            if (window.jQuery && $.fn.dataTablePub && $.fn.dataTablePub.isdataTablePub('#dataTablePub')) {
-                const table = $('#dataTablePub').dataTablePub();
+            const table = window.appDataTables ? window.appDataTables.getInstance('#dataTablePub') : null;
+            if (table) {
                 table.row.add([id, initiated, execution, status, message]).draw(false);
             } else {
                 // Fallback DOM insertion: prepend to tbody
@@ -156,15 +213,17 @@
                 }
             }
 
-            alert('Update sent');
+            showTaskFeedback('success', 'Publication update queued', 'The request was accepted and the new task row has been added to the history table.');
         }).catch(err => {
-            alert('Error: ' + err.message);
+            showTaskFeedback('danger', 'Publication update failed', err.message);
         });
     }
     function sendScopusCitationsUpdate(el){
         const scopusId = el.getAttribute('data-scopus-id');
         const url = el.getAttribute('data-url');
         const headers = {'Content-Type':'application/x-www-form-urlencoded'};
+
+        showTaskFeedback('pending', 'Sending citation update', 'Submitting a citation refresh for Scopus ID ' + scopusId + '.');
 
         const csrfHeaderMeta = document.querySelector('meta[name="_csrf_header"]');
         const csrfTokenMeta = document.querySelector('meta[name="_csrf"]');
@@ -189,9 +248,8 @@
             const status = data && data.status ? data.status : 'PENDING';
             const message = data && data.message ? data.message : 'Update started';
 
-            // If dataTablePubs is initialized, use its API to add the row (keeps paging/sorting)
-            if (window.jQuery && $.fn.dataTableCit && $.fn.dataTableCit.dataTableCit('#dataTableCit')) {
-                const table = $('#dataTableCit').dataTableCit();
+            const table = window.appDataTables ? window.appDataTables.getInstance('#dataTableCit') : null;
+            if (table) {
                 table.row.add([id, initiated, execution, status, message]).draw(false);
             } else {
                 // Fallback DOM insertion: prepend to tbody
@@ -207,15 +265,14 @@
                 }
             }
 
-            alert('Update sent');
+            showTaskFeedback('success', 'Citation update queued', 'The request was accepted and the new citation task row has been added to the history table.');
         }).catch(err => {
-            alert('Error: ' + err.message);
+            showTaskFeedback('danger', 'Citation update failed', err.message);
         });
     }
     /*]]>*/
 </script>
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
 
-<script src="/js/demo/datatables-demo.js"></script>
 </body>
 </html>

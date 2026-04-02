@@ -4,13 +4,6 @@
     <meta charset="UTF-8">
     <title>Activity Instances</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
-    <style>
-        .chart-container {
-            height: 100px; /* Adjust this value as needed */
-            width: 100px;  /* Adjust this value as needed */
-        }
-    </style>
 </head>
 <body id="page-top">
 
@@ -27,45 +20,60 @@
 
             <!-- Begin Page Content -->
             <div class="container-fluid app-page-content">
-                <div class="app-page-toolbar">
-                    <button class="btn btn-primary" data-toggle="modal" data-target="#createActivityInstanceModal">
-                        <i class="fa-solid fa-plus"></i> Create New Activity Instance
-                    </button>
-                </div>
-
-                <div class="row">
-                    <div class="col-xl-12 col-md-12 mb-12">
-                        <div class="card border-left-primary shadow h-100 py-2">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                            Activity Types</div>
-                                        <div class="chart-container">
-                                            <canvas id="activityTypeChart"></canvas>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                <div class="app-dashboard">
+                    <div class="app-page-toolbar">
+                        <div class="app-dashboard__actions">
+                            <button class="btn btn-primary" data-toggle="modal" data-target="#createActivityInstanceModal" aria-haspopup="dialog" aria-controls="createActivityInstanceModal">
+                                <i class="fa-solid fa-plus"></i> Create New Activity Instance
+                            </button>
                         </div>
                     </div>
-                </div>
 
-                <!-- DataTales Example -->
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Activity Instances</h6>
+                    <p class="app-dashboard__intro">Track your activity history, review the activity distribution, and create new activity instances from one page.</p>
+
+                    <div class="app-summary-grid">
+                        <div class="app-summary-card">
+                            <p class="app-summary-card__label">Instances</p>
+                            <p class="app-summary-card__value" th:text="${#lists.size(activityInstances)}">0</p>
+                            <p class="app-summary-card__meta">Recorded activity instances currently visible in your workspace.</p>
+                        </div>
+                        <div class="app-summary-card app-summary-card--success">
+                            <p class="app-summary-card__label">Activity Types</p>
+                            <p class="app-summary-card__value" th:text="${#lists.size(activities)}">0</p>
+                            <p class="app-summary-card__meta">Configured activity types available for new instances.</p>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered js-datatable" id="dataTable" width="100%" cellspacing="0">
+
+                    <div class="app-summary-panel">
+                        <div class="app-summary-panel__header">
+                            <h2 class="app-summary-panel__title">Activity Type Overview</h2>
+                        </div>
+                            <div class="app-summary-panel__body">
+                                <p class="app-visually-hidden" id="activity-chart-description">Doughnut chart summarizing the distribution of activity instances by activity type.</p>
+                                <div class="app-chart-frame">
+                                    <div class="app-activity-chart">
+                                        <canvas id="activityTypeChart" aria-label="Activity type distribution" aria-describedby="activity-chart-description"></canvas>
+                                    </div>
+                                </div>
+                        </div>
+                    </div>
+
+                    <div class="app-table-section">
+                        <div class="app-table-section__surface">
+                            <div class="app-table-section__header app-table-toolbar">
+                                <h6 class="app-table-section__title">Activity Instances</h6>
+                            </div>
+                            <div class="app-table-section__body">
+                                <div class="table-responsive app-table-scroll">
+                                    <table class="table js-datatable app-table" id="dataTable" width="100%" cellspacing="0">
+                                <caption class="app-table-caption app-table-caption--sr-only">Activity instances table showing activity name, date, type, captured fields, and available edit or delete actions.</caption>
                                 <thead>
                                 <tr>
-                                    <th>Activity</th>
-                                    <th>Date</th>
-                                    <th>Type</th>
-                                    <th>Fields</th>
-                                    <th>Actions</th>
+                                    <th scope="col">Activity</th>
+                                    <th scope="col">Date</th>
+                                    <th scope="col">Type</th>
+                                    <th scope="col">Fields</th>
+                                    <th scope="col">Actions</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -90,6 +98,8 @@
                                 </tr>
                                 </tbody>
                             </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -111,7 +121,7 @@
 </div>
 
 <!-- Create Activity Instance Modal -->
-<div class="modal fade" id="createActivityInstanceModal" tabindex="-1" role="dialog" aria-labelledby="createActivityInstanceModalLabel" aria-hidden="true">
+<div class="modal fade app-modal" id="createActivityInstanceModal" tabindex="-1" role="dialog" aria-labelledby="createActivityInstanceModalLabel" aria-modal="true" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -215,14 +225,15 @@
                     success: function(activity) {
                         $.each(activity.fields, function(index, field) {
                             let fieldTemplate;
+                            let fieldId = `activity-field-${index}`;
 
                             if (field.allowedValues && field.allowedValues.length > 0) {
                                 // Create a select dropdown if allowedValues are present
                                 let options = field.allowedValues.map(value => `<option value="${value}">${value}</option>`).join('');
                                 fieldTemplate = `
                                 <div class="form-group">
-                                    <label>${field.name}</label>
-                                    <select class="form-control" name="fields[${field.name}]" required>
+                                    <label for="${fieldId}">${field.name}</label>
+                                    <select class="form-control" id="${fieldId}" name="fields[${field.name}]" required>
                                         ${options}
                                     </select>
                                 </div>`;
@@ -230,8 +241,8 @@
                                 // Create a text input if no allowedValues
                                 fieldTemplate = `
                                 <div class="form-group">
-                                    <label>${field.name}</label>
-                                    <input type="text" class="form-control" name="fields[${field.name}]" ${field.number ? 'type="number"' : 'type="text"'} required>
+                                    <label for="${fieldId}">${field.name}</label>
+                                    <input type="text" class="form-control" id="${fieldId}" name="fields[${field.name}]" ${field.number ? 'type="number"' : 'type="text"'} required>
                                 </div>`;
                             }
 
@@ -239,13 +250,14 @@
                         });
                         $.each(activity.referenceFields, function(index, field) {
                             let fieldTemplate;
+                            let fieldId = `activity-ref-field-${index}`;
 
 
                             // Create a text input if no allowedValues
                             fieldTemplate = `
                             <div class="form-group">
-                                <label>${field}</label>
-                                <input type="text" class="form-control" name="referenceFields[${field}]" type="text"} required>
+                                <label for="${fieldId}">${field}</label>
+                                <input type="text" class="form-control" id="${fieldId}" name="referenceFields[${field}]" required>
                             </div>`;
 
 

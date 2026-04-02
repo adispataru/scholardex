@@ -81,6 +81,21 @@
     }
   }
 
+  function renderWosBadge(status) {
+    const label = escapeHtml(labelWosStatus(status));
+    let modifier = 'app-table-badge--warning';
+    if (status === 'indexed') {
+      modifier = 'app-table-badge--success';
+    } else if (status === 'not_applicable') {
+      modifier = '';
+    }
+    const classes = ['app-table-badge'];
+    if (modifier) {
+      classes.push(modifier);
+    }
+    return '<span class="' + classes.join(' ') + '">' + label + '</span>';
+  }
+
   function renderRows(items) {
     if (!items || items.length === 0) {
       els.tableBody.innerHTML = '';
@@ -91,10 +106,10 @@
       const id = encodeURIComponent(item.id || '');
       return '<tr>' +
         '<td><a href="/forums/' + id + '">' + escapeHtml(item.publicationName) + '</a></td>' +
-        '<td>' + escapeHtml(item.issn) + '</td>' +
-        '<td>' + escapeHtml(item.eIssn) + '</td>' +
+        '<td class="app-table__cell--identifier">' + escapeHtml(item.issn || '—') + '</td>' +
+        '<td class="app-table__cell--identifier">' + escapeHtml(item.eIssn || '—') + '</td>' +
         '<td>' + escapeHtml(item.aggregationType) + '</td>' +
-        '<td>' + escapeHtml(labelWosStatus(item.wosStatus)) + '</td>' +
+        '<td>' + renderWosBadge(item.wosStatus) + '</td>' +
         '</tr>';
     }).join('');
   }

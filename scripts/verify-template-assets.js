@@ -41,6 +41,18 @@ const allowlistedInlineScriptFiles = new Set([
   'src/main/resources/templates/user/publications.html'
 ]);
 
+const authenticatedLegacyAssetRoots = [
+  'src/main/resources/templates/admin',
+  'src/main/resources/templates/user',
+  'src/main/resources/templates/events',
+  'src/main/resources/templates/shared'
+];
+
+const authenticatedLegacyAssetFiles = new Set([
+  'src/main/resources/templates/fragments.html',
+  ...authenticatedLegacyAssetRoots.flatMap(listHtmlFiles)
+]);
+
 function listHtmlFiles(dir) {
   if (!fs.existsSync(dir)) return [];
   const out = [];
@@ -90,6 +102,19 @@ for (const file of files) {
   }
   if (inlineScriptMatches.length > 0 && !allowlistedInlineScriptFiles.has(file)) {
     errors.push(`${file}: contains inline behavior script outside H05 allowlist`);
+  }
+
+  if (authenticatedLegacyAssetFiles.has(file)) {
+    const forbiddenAuthenticatedBaselineRefs = [
+      '/css/sb-admin-2.min.css',
+      '/js/sb-admin-2.min.js',
+      '/css/footer-layout.css'
+    ];
+    for (const forbidden of forbiddenAuthenticatedBaselineRefs) {
+      if (content.includes(forbidden)) {
+        errors.push(`${file}: authenticated baseline must not reference legacy asset '${forbidden}'`);
+      }
+    }
   }
 }
 

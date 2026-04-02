@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Publications</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
@@ -21,119 +20,93 @@
 
             <!-- Begin Page Content -->
             <div class="container-fluid app-page-content">
-                <div class="app-page-toolbar">
-                    <a th:if="${showPublicationActions == null || showPublicationActions}" th:href="@{/user/exports/cnfis}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-                        <i class="fa-solid fa-download fa-sm text-white-50"></i> Export CNFIS
-                    </a>
-                    <a th:if="${showPublicationActions == null || showPublicationActions}" th:href="@{/user/publications/add}" class="d-none d-sm-inline-block btn btn-sm btn-outline-success shadow-sm">
-                        <i class="fa-solid fa-download fa-sm text-white-50"></i> Add Publication
-                    </a>
-                    <a th:if="${showPublicationActions == null || showPublicationActions}" th:href="@{/user/publications/scopus-tasks}" class="d-none d-sm-inline-block btn btn-sm btn-outline-success shadow-sm">
-                        <i class="fa-solid fa-download fa-sm text-white-50"></i> Scopus Updates
-                    </a>
+                <div class="app-dashboard">
+                    <div class="app-page-toolbar">
+                        <div class="app-dashboard__actions">
+                                <a th:if="${showPublicationActions == null || showPublicationActions}" th:href="@{/user/exports/cnfis}" class="btn btn-sm btn-primary">
+                                <i class="fa-solid fa-download fa-sm"></i> Export CNFIS
+                            </a>
+                            <a th:if="${showPublicationActions == null || showPublicationActions}" th:href="@{/user/publications/add}" class="btn btn-sm btn-outline-success">
+                                <i class="fa-solid fa-download fa-sm"></i> Add Publication
+                            </a>
+                            <a th:if="${showPublicationActions == null || showPublicationActions}" th:href="@{/user/publications/scopus-tasks}" class="btn btn-sm btn-outline-success">
+                                <i class="fa-solid fa-download fa-sm"></i> Scopus Updates
+                            </a>
+                        </div>
+                    </div>
 
-                </div>
-                <!-- Author Profile Card (only shown on author view) -->
-                <div th:if="${profileAuthor != null}" class="card shadow mb-4">
-                    <div class="card-body">
-                        <div class="row align-items-center">
-                            <div class="col-auto">
-                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center"
-                                     style="width: 64px; height: 64px; font-size: 1.5rem;">
-                                    <i class="fa-solid fa-user-graduate"></i>
+                    <p class="app-dashboard__intro">Review your publication record, citation metrics, and publication metadata from one accessible research output workspace. The summary below provides context for the main publications table.</p>
+
+                    <div th:if="${profileAuthor != null}" class="app-summary-panel">
+                        <div class="app-summary-panel__header">
+                            <h2 class="app-summary-panel__title">Author Summary</h2>
+                        </div>
+                        <div class="app-summary-panel__body">
+                            <div class="app-summary-identity">
+                                <div class="app-summary-identity__avatar">
+                                    <i class="fa-solid fa-user-graduate" aria-hidden="true"></i>
+                                </div>
+                                <div class="app-summary-identity__body">
+                                    <h4 class="app-summary-identity__title" th:text="${profileAuthor.name}">Author Name</h4>
+                                    <p class="app-summary-identity__meta">Publications and citation metrics below are scoped to this researcher profile view.</p>
                                 </div>
                             </div>
-                            <div class="col">
-                                <h4 class="mb-1 font-weight-bold text-gray-800" th:text="${profileAuthor.name}">Author Name</h4>
-                                <div th:if="${affiliations != null and !affiliations.isEmpty()}">
-                                    <div th:each="aff : ${affiliations}" class="text-gray-600 small">
-                                        <i class="fa-solid fa-building-columns mr-1"></i>
+
+                            <div class="app-summary-list mt-4" th:if="${affiliations != null and !affiliations.isEmpty()}">
+                                <div class="app-summary-list__item" th:each="aff : ${affiliations}">
+                                    <span class="app-summary-list__label">
+                                        <i class="fa-solid fa-building-columns"></i>
                                         <span th:text="${aff.name}">Affiliation Name</span>
-                                        <span th:if="${aff.city != null or aff.country != null}" class="text-gray-500">
-                                            &mdash;
-                                            <span th:if="${aff.city != null}" th:text="${aff.city}"></span><span th:if="${aff.city != null and aff.country != null}">, </span><span th:if="${aff.country != null}" th:text="${aff.country}"></span>
-                                        </span>
-                                    </div>
-                                </div>
-                                <div th:if="${affiliations == null or affiliations.isEmpty()}" class="text-gray-500 small">
-                                    No affiliations available
+                                    </span>
+                                    <span class="app-summary-list__value">
+                                        <span th:if="${aff.city != null}" th:text="${aff.city}"></span><span th:if="${aff.city != null and aff.country != null}">, </span><span th:if="${aff.country != null}" th:text="${aff.country}"></span>
+                                    </span>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-left-primary shadow h-100 py-2">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                            Number of publications </div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${publications.size()}"></div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fa-solid fa-layer-group fa-2x text-primary"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-left-primary shadow h-100 py-2">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                            Number of citations </div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${numCitations}"></div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fa-solid fa-link fa-2x text-primary"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Earnings (Monthly) Card Example -->
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-left-primary shadow h-100 py-2">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                            h-Index </div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${hIndex}"></div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fa-solid fa-hashtag fa-2x text-primary"></i>
-                                    </div>
-                                </div>
+                            <div th:if="${affiliations == null or affiliations.isEmpty()}" class="app-dashboard-empty mt-4">
+                                <h3 class="app-dashboard-empty__title">No affiliations available</h3>
+                                <p class="app-dashboard-empty__body">This profile currently does not include any affiliation metadata.</p>
                             </div>
                         </div>
                     </div>
 
-                </div>
-
-
-                <!-- DataTales Example -->
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary" th:text="${publicationTableTitle ?: 'Your Publications'}">Your Publications</h6>
+                    <div class="app-summary-grid">
+                        <div class="app-summary-card">
+                            <p class="app-summary-card__label">Publications</p>
+                            <p class="app-summary-card__value" th:text="${publications.size()}">0</p>
+                            <p class="app-summary-card__meta">Visible records currently included in this publication workspace.</p>
+                        </div>
+                        <div class="app-summary-card app-summary-card--success">
+                            <p class="app-summary-card__label">Citations</p>
+                            <p class="app-summary-card__value" th:text="${numCitations}">0</p>
+                            <p class="app-summary-card__meta">Total citation count reflected by the loaded publication set.</p>
+                        </div>
+                        <div class="app-summary-card app-summary-card--warning">
+                            <p class="app-summary-card__label">H-Index</p>
+                            <p class="app-summary-card__value" th:text="${hIndex}">0</p>
+                            <p class="app-summary-card__meta">Current h-index summary for the active researcher context.</p>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered js-datatable" id="dataTable" width="100%" cellspacing="0">
+
+                    <div class="app-table-section">
+                        <div class="app-table-section__surface">
+                            <div class="app-table-section__header app-table-toolbar">
+                                <h6 class="app-table-section__title" th:text="${publicationTableTitle ?: 'Your Publications'}">Your Publications</h6>
+                            </div>
+                            <div class="app-table-section__body">
+                                <p class="app-table-context">Use the publications table to inspect titles, venues, funding metadata, and citation counts for the current researcher context.</p>
+                                <div class="app-table-scroll">
+                                    <table class="table table-bordered js-datatable app-table" id="dataTable" width="100%" cellspacing="0">
+                                <caption class="app-table-caption app-table-caption--sr-only">Publication workspace table showing publication title, year, authors, type, venue, funding identifier, and citation count for the current researcher context.</caption>
                                 <thead>
                                 <tr>
-                                    <th>Title</th>
-                                    <th>Year</th>
-                                    <th>Authors</th>
-                                    <th>Type</th>
-                                    <th>Venue</th>
-                                    <th>Funding</th>
-                                    <th>Citations</th>
+                                    <th scope="col">Title</th>
+                                    <th scope="col">Year</th>
+                                    <th scope="col">Authors</th>
+                                    <th scope="col">Type</th>
+                                    <th scope="col">Venue</th>
+                                    <th scope="col">Funding</th>
+                                    <th scope="col">Citations</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -150,17 +123,16 @@
                                             </a>
                                             <span th:if="${authorMap[publication.authors[iterStat.index]] == null}" th:text="${author}"></span>
                                         </div>
-<!--                                        <span th:each="author, iterStat : ${publication.authors}" th:text="${authorMap[author].name} + (iterStat.last ? '; ' : '')"></span>-->
                                     </td>
                                     <td th:text="${publication.subtypeDescription}">0</td>
-                                    <div th:if="${forumMap[publication.forum] != null}">
-                                        <td th:text="${forumMap[publication.forum].publicationName}">0</td>
-                                    </div>
+                                    <td th:text="${forumMap[publication.forum] != null ? forumMap[publication.forum].publicationName : publication.forum}">Venue</td>
                                     <td th:text="${publication.fundingId}"></td>
                                     <td th:text="${publication.citedbyCount}">0</td>
                                 </tr>
                                 </tbody>
                             </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -187,7 +159,6 @@
 <!-- Page level plugins -->
 
 <!-- Page level custom scripts -->
-<script src="/js/demo/datatables-demo.js"></script>
 
 <script>
 

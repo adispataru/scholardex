@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Edit Institution</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
@@ -17,51 +16,64 @@
         <div id="content">
             <div th:replace="~{fragments :: navbar('Edit Institution')}"></div>
             <div class="container-fluid app-page-content">
-                <p class="mb-4">Edit the details of the institution.</p>
+                <div class="app-workflow">
+                <p class="app-workflow__intro">Manage institution details and the source affiliations linked to the institution.</p>
 
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Edit Institution</h6>
+                <div class="app-form-surface">
+                    <div class="app-form-surface__panel">
+                    <div class="app-form-surface__header">
+                        <h6 class="app-form-surface__title">Edit Institution</h6>
                     </div>
-                    <div class="card-body">
+                    <div class="app-form-surface__body">
                         <form th:action="@{/admin/institutions/update}" th:object="${institution}" method="post">
-                            <div class="form-group">
-                                <label for="institutionName">Name</label>
-                                <input type="text" class="form-control" id="institutionName" th:field="*{name}" required>
+                            <div class="app-form-section mb-3">
+                                <div class="app-form-section__header">
+                                    <h6 class="app-form-section__title">Institution profile</h6>
+                                </div>
+                                <div class="app-form-grid">
+                                    <div class="form-group app-form-field">
+                                        <label for="institutionName">Name</label>
+                                        <input type="text" class="form-control" id="institutionName" th:field="*{name}" required>
+                                    </div>
+                                    <div class="form-group app-form-field">
+                                        <label for="institutionDescription">Description</label>
+                                        <textarea class="form-control" id="institutionDescription" th:field="*{description}" required></textarea>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label for="institutionDescription">Description</label>
-                                <textarea class="form-control" id="institutionDescription" th:field="*{description}" required></textarea>
-                            </div>
-                            <div class="form-group">
+                            <div class="form-group app-form-field app-form-section">
                                 <label for="scopusAffiliations">Scopus Affiliations</label>
-                                <div id="scopusAffiliationsContainer">
-                                    <div class="input-group mb-2" th:each="affiliation, iterStat : *{scopusAffiliations}">
+                                <div id="scopusAffiliationsContainer" class="app-collection">
+                                    <div class="input-group mb-2 app-collection__item" th:each="affiliation, iterStat : *{scopusAffiliations}">
                                         <select class="form-control" th:field="*{scopusAffiliations[__${iterStat.index}__]}" th:selected="${affiliation}">
                                             <option th:value="${affiliation.afid}" th:text="${affiliation.name + ' (' + affiliation.afid + ')'}"></option>
                                         </select>
-                                        <div class="input-group-append">
-                                            <button class="btn btn-danger remove-scopus-affiliation" type="button">Remove</button>
-                                        </div>
+                                        <button class="btn btn-danger remove-scopus-affiliation" type="button">Remove</button>
                                     </div>
                                 </div>
-                                <button id="addScopusAffiliation" class="btn btn-primary" type="button">Add Scopus Affiliation</button>
+                                <div class="app-form-actions app-form-actions--inline">
+                                    <button id="addScopusAffiliation" class="btn btn-primary" type="button">Add Scopus Affiliation</button>
+                                </div>
                             </div>
-                            <div class="form-group">
+                            <div class="form-group app-form-field app-form-section">
                                 <label for="wosAffiliations">WoS Affiliations</label>
-                                <div id="wosAffiliationsContainer">
-                                    <div class="input-group mb-2" th:each="wosAff, iterStat : *{wosAffiliations}">
+                                <div id="wosAffiliationsContainer" class="app-collection">
+                                    <div class="input-group mb-2 app-collection__item" th:each="wosAff, iterStat : *{wosAffiliations}">
                                         <input type="text" class="form-control" th:field="*{wosAffiliations[__${iterStat.index}__]}" th:value="${wosAff}">
-                                        <div class="input-group-append">
-                                            <button class="btn btn-danger remove-wos-affiliation" type="button">Remove</button>
-                                        </div>
+                                        <button class="btn btn-danger remove-wos-affiliation" type="button">Remove</button>
                                     </div>
                                 </div>
-                                <button id="addWosAffiliation" class="btn btn-primary" type="button" disabled>Add WoS Affiliation</button>
+                                <div class="app-form-actions app-form-actions--inline">
+                                    <button id="addWosAffiliation" class="btn btn-primary" type="button" disabled>Add WoS Affiliation</button>
+                                </div>
                             </div>
-                            <button type="submit" class="btn btn-primary">Update</button>
+                            <div class="app-form-actions">
+                                <button type="submit" class="btn btn-primary">Update</button>
+                            </div>
                         </form>
                     </div>
+                    </div>
+                </div>
                 </div>
             </div>
 
@@ -73,7 +85,6 @@
 <!-- Bootstrap core JavaScript-->
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
 
-<script src="/js/demo/datatables-demo.js"></script>
 
 <script th:inline="javascript">
     $(document).ready(function() {
@@ -84,13 +95,11 @@
         $('#addScopusAffiliation').click(function() {
             let index = scopusAffiliationsContainer.children().length;
             let scopusAffiliationTemplate = `
-                <div class="input-group mb-2">
+                <div class="input-group mb-2 app-collection__item">
                     <select class="form-control" name="scopusAffiliations[${index}]">
                         ${allAffiliations.map(affiliation => `<option value="${affiliation.afid}">${affiliation.name + ' (' + affiliation.afid + ')'}</option>`).join('')}
                     </select>
-                    <div class="input-group-append">
-                        <button class="btn btn-danger remove-scopus-affiliation" type="button">Remove</button>
-                    </div>
+                    <button class="btn btn-danger remove-scopus-affiliation" type="button">Remove</button>
                 </div>`;
             scopusAffiliationsContainer.append(scopusAffiliationTemplate);
         });
@@ -106,11 +115,9 @@
         $('#addWosAffiliation').click(function() {
             let index = wosAffiliationsContainer.children().length;
             let wosAffiliationTemplate = `
-                <div class="input-group mb-2">
+                <div class="input-group mb-2 app-collection__item">
                     <input type="text" class="form-control" name="wosAffiliations[${index}]">
-                    <div class="input-group-append">
-                        <button class="btn btn-danger remove-wos-affiliation" type="button">Remove</button>
-                    </div>
+                    <button class="btn btn-danger remove-wos-affiliation" type="button">Remove</button>
                 </div>`;
             wosAffiliationsContainer.append(wosAffiliationTemplate);
         });

@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Indicators</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
@@ -21,23 +20,26 @@
 
             <!-- Begin Page Content -->
             <div class="container-fluid app-page-content">
-                <p class="mb-4">This is a list of all Indicators currently managed by the system.</p>
+                <div class="app-dashboard">
+                <p class="app-dashboard__intro">Browse the indicators available to you and move directly into the apply flow from the table below. The indicator catalog remains the primary surface on this page.</p>
 
-                <!-- DataTables Example -->
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Detailed View of Indicators</h6>
+                <div class="app-table-section">
+                    <div class="app-table-section__surface">
+                    <div class="app-table-section__header app-table-toolbar">
+                        <h6 class="app-table-section__title">Detailed View of Indicators</h6>
                     </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered js-datatable" id="dataTable" width="100%" cellspacing="0">
+                    <div class="app-table-section__body">
+                        <p class="app-table-context">Each row identifies an indicator, its formula, scoring strategy, associated domain, and the available apply action.</p>
+                        <div class="table-responsive app-table-scroll">
+                            <table class="table table-bordered js-datatable app-table" id="dataTable" width="100%" cellspacing="0">
+                                <caption class="app-table-caption app-table-caption--sr-only">Indicator catalog table showing indicator name, formula, scoring strategy, domain, and the action to apply that indicator.</caption>
                                 <thead>
                                 <tr>
-                                    <th>Name</th>
-                                    <th>Formula</th>
-                                    <th>Scoring Strategy</th>
-                                    <th>Domains</th>
-                                    <th>Actions</th>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Formula</th>
+                                    <th scope="col">Scoring Strategy</th>
+                                    <th scope="col">Domains</th>
+                                    <th scope="col">Actions</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -57,6 +59,8 @@
                             </table>
                         </div>
                     </div>
+                    </div>
+                </div>
                 </div>
             </div>
             <!-- End of Main Content -->
@@ -83,7 +87,6 @@
 <!-- Page level plugins -->
 
 <!-- Page level custom scripts -->
-<script src="/js/demo/datatables-demo.js"></script>
 
 </body>
 </html>

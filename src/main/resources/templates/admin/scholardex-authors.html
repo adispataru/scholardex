@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Scholardex Authors</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
@@ -18,31 +17,28 @@
             <div class="container-fluid app-page-content">
                 <p class="mb-4">This is a list of all authors currently managed by the system.</p>
 
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Filters</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="form-row">
-                            <div class="form-group col-md-4">
+                <div class="app-table-filters">
+                    <h6 class="app-table-filters__title">Filters</h6>
+                        <div class="app-table-filters__grid">
+                            <div class="form-group app-table-filters__field app-table-filters__field--span-4">
                                 <label for="admin-authors-search">Search</label>
                                 <input id="admin-authors-search" type="text" class="form-control" placeholder="Author name or ID">
                             </div>
-                            <div class="form-group col-md-3">
+                            <div class="form-group app-table-filters__field app-table-filters__field--span-4">
                                 <label for="admin-authors-sort">Sort By</label>
                                 <select id="admin-authors-sort" class="form-control">
                                     <option value="name">Name</option>
                                     <option value="id">ID</option>
                                 </select>
                             </div>
-                            <div class="form-group col-md-3">
+                            <div class="form-group app-table-filters__field app-table-filters__field--span-2">
                                 <label for="admin-authors-direction">Direction</label>
                                 <select id="admin-authors-direction" class="form-control">
                                     <option value="asc">Ascending</option>
                                     <option value="desc">Descending</option>
                                 </select>
                             </div>
-                            <div class="form-group col-md-2">
+                            <div class="form-group app-table-filters__field app-table-filters__field--span-2">
                                 <label for="admin-authors-size">Page Size</label>
                                 <select id="admin-authors-size" class="form-control">
                                     <option value="25">25</option>
@@ -51,21 +47,21 @@
                                 </select>
                             </div>
                         </div>
-                    </div>
                 </div>
 
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                        <h6 class="m-0 font-weight-bold text-primary">Detailed View of Authors</h6>
-                        <span id="admin-authors-total-info" class="text-muted small"></span>
+                <div class="app-table-section">
+                    <div class="app-table-section__surface">
+                    <div class="app-table-section__header app-table-toolbar">
+                        <h6 class="app-table-section__title">Detailed View of Authors</h6>
+                        <span id="admin-authors-total-info" class="app-table-toolbar__meta"></span>
                     </div>
-                    <div class="card-body">
-                        <div id="admin-authors-loading" class="alert alert-info" role="status">Loading authors...</div>
-                        <div id="admin-authors-error" class="alert alert-danger d-none" role="alert"></div>
-                        <div id="admin-authors-empty" class="alert alert-warning d-none" role="status">No authors found for the current search.</div>
+                    <div class="app-table-section__body">
+                        <div id="admin-authors-loading" class="app-table-state app-table-state--info" role="status">Loading authors...</div>
+                        <div id="admin-authors-error" class="app-table-state app-table-state--danger d-none" role="alert"></div>
+                        <div id="admin-authors-empty" class="app-table-state app-table-state--warning d-none" role="status">No authors found for the current search.</div>
 
-                        <div class="table-responsive">
-                            <table class="table table-bordered" id="admin-authors-table" width="100%" cellspacing="0">
+                        <div class="app-table-scroll">
+                            <table class="table table-bordered app-table" id="admin-authors-table" width="100%" cellspacing="0">
                                 <thead>
                                 <tr>
                                     <th>Name</th>
@@ -76,11 +72,12 @@
                             </table>
                         </div>
 
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <button id="admin-authors-prev" class="btn btn-outline-primary btn-sm" type="button">Previous</button>
-                            <span id="admin-authors-page-info" class="text-muted small"></span>
-                            <button id="admin-authors-next" class="btn btn-outline-primary btn-sm" type="button">Next</button>
+                        <div class="app-table-pager">
+                            <button id="admin-authors-prev" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button">Previous</button>
+                            <span id="admin-authors-page-info" class="app-table-pager__info"></span>
+                            <button id="admin-authors-next" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button">Next</button>
                         </div>
+                    </div>
                     </div>
                 </div>
             </div>

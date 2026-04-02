@@ -8,6 +8,7 @@ import ro.uvt.pokedex.core.service.application.IncrementalUpdateUploadFacade.Upl
 import ro.uvt.pokedex.core.service.application.IncrementalUpdateUploadFacade.WosIncrementalUploadRequest;
 import ro.uvt.pokedex.core.service.application.IncrementalUpdateUploadFacade.WosUploadRunResult;
 import ro.uvt.pokedex.core.service.application.IncrementalUpdateUploadFacade.WosUploadSourceType;
+import ro.uvt.pokedex.core.model.reporting.wos.WosSourceType;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.wos.WosFactBuilderService;
 import ro.uvt.pokedex.core.service.importing.wos.WosImportEventIngestionService;
@@ -16,7 +17,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -56,7 +56,7 @@ class WosIncrementalUploadServiceTest {
         ImportProcessingResult factResult = new ImportProcessingResult(10);
         factResult.markProcessed();
         factResult.markUpdated();
-        when(wosFactBuilderService.buildFactsFromImportEventsWithCheckpoint(eq(null), eq(false), anyString(), eq("v2024")))
+        when(wosFactBuilderService.buildFactsFromImportEventsForSource(eq(WosSourceType.OFFICIAL_WOS_EXTRACT), eq("journals-SCIE-year-2024.json"), eq("v2024")))
                 .thenReturn(new WosFactBuilderService.FactBuildRunResult(factResult, 0, 0, 1, false, -1));
 
         WosUploadRunResult result = service.run(request);
@@ -65,7 +65,7 @@ class WosIncrementalUploadServiceTest {
         assertEquals(1, result.ingest().getImportedCount());
         assertEquals(1, result.factBuild().result().getUpdatedCount());
         assertFalse(result.factBuild().resumedFromCheckpoint());
-        assertTrue(result.note().contains("intentionally skipped"));
+        assertTrue(result.note().contains("Upload-scoped fact building"));
         verify(wosImportEventIngestionService).resolveEffectiveSourceVersion(null, "journals-SCIE-year-2024.json");
         verify(wosImportEventIngestionService).ingestUploadedFile(
                 eq(WosUploadSourceType.OFFICIAL_JSON),
@@ -73,6 +73,6 @@ class WosIncrementalUploadServiceTest {
                 eq("v2024"),
                 any(byte[].class)
         );
-        verify(wosFactBuilderService).buildFactsFromImportEventsWithCheckpoint(eq(null), eq(false), anyString(), eq("v2024"));
+        verify(wosFactBuilderService).buildFactsFromImportEventsForSource(eq(WosSourceType.OFFICIAL_WOS_EXTRACT), eq("journals-SCIE-year-2024.json"), eq("v2024"));
     }
 }

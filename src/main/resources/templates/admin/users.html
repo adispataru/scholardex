@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Users</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
@@ -21,14 +20,17 @@
 
             <!-- Begin Page Content -->
             <div class="container-fluid app-page-content">
-                <div class="app-page-toolbar">
-                    <button type="button" class="btn btn-primary d-sm-inline-block" data-toggle="modal" data-target="#createUserModal">
-                        New User
-                    </button>
+                <div class="app-page-toolbar app-workflow">
+                    <p class="app-workflow__intro">Manage platform access, create new accounts, and update roles from one place.</p>
+                    <div class="app-workflow__actions">
+                        <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#createUserModal">
+                            New User
+                        </button>
+                    </div>
 
                     <!-- Create User Modal -->
-                    <div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
-                        <div class="modal-dialog">
+                    <div class="modal fade app-modal" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
                             <div class="modal-content">
                                 <div class="modal-header">
                                     <h5 class="modal-title" id="createUserModalLabel">New User</h5>
@@ -38,19 +40,31 @@
                                 </div>
                                 <form th:action="@{/admin/users/create}" method="post">
                                     <div class="modal-body">
+                                        <div class="app-form-section">
+                                            <div class="app-form-section__header">
+                                                <h6 class="app-form-section__title">Identity</h6>
+                                                <p class="app-form-section__description">Set the core credentials for the new account before assigning permissions.</p>
+                                            </div>
+                                            <div class="app-form-grid app-form-grid--two-up">
                                         <!-- Email Input -->
-                                        <div class="form-group">
+                                        <div class="form-group app-form-field">
                                             <label for="user-email">Email</label>
                                             <input type="email" class="form-control" id="user-email" name="email" required>
                                         </div>
                                         <!-- Password Input -->
-                                        <div class="form-group">
+                                        <div class="form-group app-form-field">
                                             <label for="user-password">Password</label>
                                             <input type="password" class="form-control" id="user-password" name="password" required>
                                         </div>
+                                            </div>
+                                        </div>
                                         <!-- Role Selection, adjust based on your Role entity -->
                                         <!-- Role Selection, adjusted for multiple selection -->
-                                        <div class="form-group">
+                                        <div class="form-group app-form-field app-form-section mt-3">
+                                            <div class="app-form-section__header">
+                                            <span class="app-form-label">Roles</span>
+                                            <p class="app-form-help mb-0">Select one or more roles for the new user.</p>
+                                            </div>
                                             <!--                                <label for="user-roles">Roles</label>-->
                                             <!--                                <select class="form-control" id="user-roles" name="roles" multiple>-->
                                             <!--                                    <option value="RESEARCHER">RESEARCHER</option>-->
@@ -58,14 +72,18 @@
                                             <!--                                    <option value="PLATFORM_ADMIN">PLATFORM_ADMIN</option>-->
                                             <!--                                </select>-->
                                             <!--                                <input type="hidden" name="email" th:value="${user.email}" />-->
-                                            <div th:each="role, roleStat : ${allRoles}">
+                                            <div class="app-form-choice-list">
+                                            <label class="app-form-choice" th:each="role, roleStat : ${allRoles}">
                                                 <input type="checkbox" th:name="roles" th:value="${role}" />
-                                                <label th:text="${role}"></label>
+                                                <span class="app-form-choice__body">
+                                                    <span class="app-form-choice__label" th:text="${role}"></span>
+                                                    <span class="app-form-choice__meta">Grant this permission set when the account is created.</span>
+                                                </span>
+                                            </label>
                                             </div>
                                         </div>
-
                                     </div>
-                                    <div class="modal-footer">
+                                    <div class="modal-footer app-form-actions">
                                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                                         <button type="submit" class="btn btn-primary">Create User</button>
                                     </div>
@@ -75,13 +93,14 @@
                     </div>
                 </div>
 
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">User Management</h6>
+                <div class="app-table-section">
+                    <div class="app-table-section__surface">
+                    <div class="app-table-section__header app-table-toolbar">
+                        <h6 class="app-table-section__title">User Management</h6>
                     </div>
-                    <div class="card-body">
+                    <div class="app-table-section__body">
                         <div class="table-responsive">
-                            <table class="table table-bordered js-datatable" id="dataTable" width="100%" cellspacing="0">
+                            <table class="table table-bordered js-datatable app-table" id="dataTable" width="100%" cellspacing="0">
                                 <thead>
                                 <tr>
                                     <th>Email</th>
@@ -117,6 +136,7 @@
                             </table>
                         </div>
                     </div>
+                    </div>
                 </div>
             </div>
             <!-- End of Main Content -->
@@ -141,7 +161,6 @@
 <!-- Page level plugins -->
 
 <!-- Page level custom scripts -->
-<script src="/js/demo/datatables-demo.js"></script>
 
 </body>
 </html>

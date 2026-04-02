@@ -7,7 +7,9 @@ Status: active contributor UX guidance for the ScholarDex-owned UI/UX migration.
 **Purpose:** define the target UX direction for contributors migrating the product toward a ScholarDex-owned design system and interaction model
 **Audience:** contributors improving templates, shared fragments, frontend modules, and UI behavior
 
-This guide is the current-source UX reference for ScholarDex. It is grounded in the repo as it exists today, but it defines the intended steady-state direction rather than the legacy runtime baseline. Contributors should use it to migrate the product away from SB Admin 2, Bootstrap 4-era UI conventions, and jQuery-driven interaction patterns toward a ScholarDex-owned UI/UX system with Bootstrap 5-compatible implementation and support for both light and dark themes.
+This guide is the current-source UX reference for ScholarDex. It is grounded in the repo as it exists today, but it defines the intended steady-state direction rather than the legacy runtime baseline. Contributors should use it to keep the product on a ScholarDex-owned UI/UX system with Bootstrap 5-compatible implementation and support for both light and dark themes, while continuing to retire remaining Bootstrap-era debt only where later tasks explicitly reopen untouched legacy surfaces.
+
+The `H30`-`H35` wave established that steady-state baseline for the authenticated shell, table/list, workflow, summary, footer, and shared runtime families. For those surfaces, accessibility, visible focus treatment, responsive behavior, light/dark parity, and removal of Bootstrap 4 / SB Admin presentation remnants are now part of the expected frontend contract rather than deferred cleanup goals.
 
 ---
 
@@ -18,11 +20,10 @@ Before applying UX changes, work from the repo's actual frontend contract and mi
 - Authored frontend code lives under `frontend/src/**`.
 - Runtime templates consume built assets through `/assets/app.css` and `/assets/app.js`.
 - Shared shell work flows through Thymeleaf fragments and the role-aware sidebar composition path.
-- SB Admin 2 styling/JS, Bootstrap 4-era markup/classes, jQuery-driven UI behavior, and BS4 DataTables coupling are still present in parts of the runtime today.
-- Those dependencies are migration debt, not acceptable steady-state constraints to preserve.
-- Shared-shell modernization under `H30` should retire SB Admin 2 assumptions from the authenticated shell rather than preserve or extend them.
+- The authenticated baseline now resolves through ScholarDex-owned shell, footer, theme, and shared runtime behavior rather than SB Admin 2 or Bootstrap 4 shell assets.
 - New and touched UI work should converge on Bootstrap 5-compatible markup, repo-owned behavior, and ScholarDex-owned design patterns.
 - The target product direction is one ScholarDex UI/UX system that supports both light and dark themes, not continued operation on a Bootstrap 4/SB Admin baseline.
+- Remaining Bootstrap 4 / SB Admin debt is intentionally bounded to untouched non-authenticated or otherwise deferred legacy pages until a later task explicitly reopens those surfaces.
 
 Use this guide together with:
 
@@ -34,7 +35,7 @@ Use this guide together with:
 
 ## 2. Design Principles
 
-These principles should guide UI decisions throughout the migration. Legacy runtime constraints may still exist in untouched areas, but they are not the design target.
+These principles should guide UI decisions throughout ongoing frontend work. Legacy runtime constraints may still exist in untouched areas, but they are not the design target.
 
 ### 2.1 Clarity Over Density
 
@@ -194,6 +195,17 @@ Responsive expectations should be met within the current templates and fragment 
 - primary actions must stay visible and discoverable on small screens
 - the same page structure must remain legible and navigable in both light and dark themes
 
+### 5.5 Current Summary Baseline
+
+The post-`H33` summary baseline is now part of the active ScholarDex UI language:
+
+- shared summary and dashboard styles live under `frontend/src/**`
+- touched summary-heavy pages should use shared summary grids, summary cards, summary panels, chart frames, and empty states
+- touched feedback-heavy pages should use shared inline or surface-level feedback treatment instead of raw `alert alert-*` blocks as the visible contract
+- touched chart-plus-table or summary-plus-table pages should let the H33 summary layer frame the context above the H31 table surface rather than stacking unrelated legacy cards
+
+SB Admin stat cards, placeholder dashboard shells, and Bootstrap 4 alert/card treatment remain migration debt only on untouched pages.
+
 ---
 
 ## 6. Navigation And Shared Shell
@@ -289,8 +301,11 @@ Guidance:
 - clear status treatment using badges or other structured indicators
 - monospace presentation for identifier-heavy columns
 - restrained row hover states
+- on migrated fetch-driven pages, prefer a lighter integrated filter panel plus one primary table surface rather than stacked legacy SB Admin cards
+- on migrated DataTables-backed pages, DataTables may remain as behavior compatibility, but it should not own the visible table presentation
 
 Table UX work should converge on ScholarDex-owned patterns rather than preserving BS4 DataTables styling as the target presentation. Filtering, sorting, pagination, and row states must remain legible in both light and dark themes.
+The current H31 baseline now includes shared table surfaces, shared badge and identifier treatment, shared empty-state and pager styling, and the lighter filter-panel pattern on migrated list pages. Contributors should treat that as the active baseline for touched list/table work rather than reinventing per-page table presentation.
 
 ### 7.4 Buttons
 
@@ -325,7 +340,11 @@ Guidance:
 - visibly distinct readonly fields
 - consistent input sizing across similar contexts
 - multi-step flows should expose current step and progress
-- touched form behavior should migrate away from Bootstrap 4 modal/tooltip assumptions and remain coherent in both light and dark themes
+- grouped sections and action bars should make long workflows easier to scan
+- modal and create/edit flows should use the shared workflow surface, helper text, and footer action hierarchy rather than cramped Bootstrap 4 card or modal scaffolding
+- touched form behavior should migrate away from Bootstrap 4 modal/tooltip/input-group assumptions and remain coherent in both light and dark themes
+
+The current H32 baseline now includes shared workflow surfaces, section grouping, step shells for multi-step flows, lighter workflow control panels, shared helper/readonly treatment, and shared modal/action-bar presentation on migrated admin and user workflows. Contributors should treat that as the active baseline for touched form and workflow work rather than preserving page-local Bootstrap 4 form patterns.
 
 ### 7.7 Empty States
 
@@ -373,6 +392,14 @@ Standard direction:
 3. Filtering/search affordances near the table.
 4. Consistent table structure and pagination.
 5. Explicit empty-state behavior.
+
+For migrated pages under `H31`, the preferred implementation pattern is:
+
+1. H30 page header and page-level toolbar.
+2. Optional intro or summary copy.
+3. Light integrated filter panel when the page uses server-driven filtering.
+4. One primary table surface that owns title, totals, state blocks, table, and pager.
+5. DataTables behavior only as compatibility where the page still needs it.
 
 ### 8.3 Edit And Detail Pages
 
@@ -430,16 +457,16 @@ Motion should be minimal and functional.
 
 These notes are intentionally separate from the durable UX rules above.
 
-- The current shared shell still includes SB Admin 2 styling and JS behavior.
-- Many templates still use Bootstrap 4-era classes and patterns, and some page surfaces still rely on BS4 DataTables or jQuery-driven UI behavior.
+- The authenticated shared shell, footer, and shared runtime now resolve through repo-owned fragments and `frontend/src/**` rather than SB Admin 2 styling or JS behavior.
+- Many untouched or deferred legacy pages still use Bootstrap 4-era classes and patterns, and some non-authenticated surfaces still rely on older DataTables or jQuery-driven behavior.
 - Topbar role switching currently appears as a `Switch Workspace` dropdown in shared fragments.
-- New and touched UX work should treat SB Admin 2, Bootstrap 4-era conventions, BS4 DataTables coupling, and jQuery-driven UI behavior as migration debt to retire rather than a baseline to preserve.
+- New and touched UX work should treat remaining Bootstrap 4-era conventions, older DataTables coupling, and jQuery-driven UI behavior as debt to retire rather than a baseline to preserve.
+- Touched list/table work should use the shared ScholarDex table/list foundation from `frontend/src/**` rather than preserving bordered-grid Bootstrap-era tables or legacy DataTables styling as the visible contract.
 
 When performing migration or shell cleanup work:
 
 - preserve the runtime asset contract: `/assets/app.css` and `/assets/app.js`
 - evolve styles and behavior through `frontend/src/**` and shared fragments
-- replace SB Admin 2-dependent shared-shell behavior with repo-owned shared-shell behavior where the slice touches those areas
 - converge touched UI on Bootstrap 5-compatible markup/data APIs and repo-owned behavior
 - implement light/dark support through shared tokens and theme-aware styles rather than page-by-page special cases
 - remove legacy dependencies only in explicit cleanup slices

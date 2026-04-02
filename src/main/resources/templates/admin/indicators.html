@@ -4,13 +4,6 @@
     <meta charset="UTF-8">
     <title>Indicators</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
-    <style>
-        .custom-tooltip .tooltip-inner {
-            max-width: 300px; /* Adjust the width as needed */
-            width: 300px; /* Ensure the tooltip takes the full width */
-        }
-    </style>
 </head>
 <body id="page-top">
 
@@ -27,21 +20,24 @@
 
             <!-- Begin Page Content -->
             <div class="container-fluid app-page-content">
-                <div class="app-page-toolbar">
-                    <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" data-toggle="modal" data-target="#createCriterionModal">
-                        <i class="fa-solid fa-plus fa-sm text-white-50"></i> Create New Indicator
+                <div class="app-page-toolbar app-workflow">
+                    <p class="app-workflow__intro">Indicator setup should explain year ranges and formulas inline, instead of hiding key rules behind Bootstrap tooltip affordances.</p>
+                    <div class="app-workflow__actions">
+                    <a href="#" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#createCriterionModal">
+                        <i class="fa-solid fa-plus fa-sm"></i> Create New Indicator
                     </a>
+                    </div>
                 </div>
                 <p class="mb-4">This is a list of all Indicators currently managed by the system.</p>
 
-                <!-- DataTables Example -->
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Detailed View of Indicators</h6>
+                <div class="app-table-section">
+                    <div class="app-table-section__surface">
+                    <div class="app-table-section__header">
+                        <h6 class="app-table-section__title">Detailed View of Indicators</h6>
                     </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered js-datatable" id="dataTable" width="100%" cellspacing="0">
+                    <div class="app-table-section__body">
+                        <div class="app-table-scroll">
+                            <table class="table table-bordered js-datatable app-table" id="dataTable" width="100%" cellspacing="0">
                                 <thead>
                                 <tr>
                                     <th>Name</th>
@@ -81,6 +77,7 @@
                             </table>
                         </div>
                     </div>
+                    </div>
                 </div>
             </div>
             <!-- End of Main Content -->
@@ -100,8 +97,8 @@
 </div>
 
 <!-- Create Indicator Modal-->
-<div class="modal fade" id="createCriterionModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+<div class="modal fade app-modal" id="createCriterionModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="exampleModalLabel">Create New Criterion</h5>
@@ -111,90 +108,98 @@
             </div>
             <div class="modal-body">
                 <form th:action="@{/admin/indicators/create}" th:object="${indicator}" method="post">
-                    <div class="form-group">
-                        <label for="criterionName">Name</label>
-                        <input type="text" class="form-control" id="criterionName" th:field="*{name}" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="domain">Domain</label>
-                        <select class="form-control" id="domain" th:field="*{domain}" required>
-                            <option th:each="d : ${domains}" th:value="${d.name}" th:text="${d.name}"></option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="criterionFormula">Indicator Years</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="scoringYearRange" th:field="*{yearRange}" required>
-                            <div class="input-group-append">
-                                <button class="btn btn-info" type="button" data-toggle="tooltip" data-html="true" title="Any Year (*) or Exact years<ul><li>2017</li><li>2017->2019,2021->2023</li></ul>" data-placement="right" data-template='<div class="tooltip custom-tooltip" role="tooltip"><div class="arrow"></div><div class="tooltip-inner"></div></div>'>
-                                    ?
-                                </button>
+                    <div class="app-form-section">
+                        <div class="app-form-section__header">
+                            <h6 class="app-form-section__title">Indicator identity</h6>
+                            <p class="app-form-section__description">Define the indicator, its domain, and the entity type it applies to before configuring scoring details.</p>
+                        </div>
+                        <div class="app-form-grid app-form-grid--two-up">
+                            <div class="form-group app-form-field">
+                                <label for="criterionName">Name</label>
+                                <input type="text" class="form-control" id="criterionName" th:field="*{name}" required>
+                            </div>
+                            <div class="form-group app-form-field">
+                                <label for="domain">Domain</label>
+                                <select class="form-control" id="domain" th:field="*{domain}" required>
+                                    <option th:each="d : ${domains}" th:value="${d.name}" th:text="${d.name}"></option>
+                                </select>
+                            </div>
+                            <div class="form-group app-form-field">
+                                <label for="criterionOutputType">Applies To</label>
+                                <select class="form-control" id="criterionOutputType" th:field="*{outputType}" required>
+                                    <option th:each="ctype : ${types}" th:value="${ctype}" th:text="${ctype}"></option>
+                                </select>
+                            </div>
+                            <div class="form-group app-form-field">
+                                <label for="activity">Activity</label>
+                                <select class="form-control" id="activity"
+                                        data-sync-selected-description-target="#activityDescription"
+                                        th:field="*{activity}">
+                                    <option th:value="${null}"
+                                            th:attr="data-description='No Activity selected'">
+                                        None
+                                    </option>
+                                    <option
+                                            th:each="act : ${activities}"
+                                            th:value="${act.id}"
+                                            th:text="${act.name}"
+                                            th:attr="data-description=${activityDescriptions[act.id]}">
+                                    </option>
+                                </select>
+                                <small id="activityDescription" class="app-form-help-inline"></small>
                             </div>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label for="criterionOutputType">Applies To</label>
-                        <select class="form-control" id="criterionOutputType" th:field="*{outputType}" required>
-                            <option th:each="ctype : ${types}" th:value="${ctype}" th:text="${ctype}"></option>
-                        </select>
+                    <div class="app-form-section">
+                        <div class="app-form-section__header">
+                            <h6 class="app-form-section__title">Scoring rules</h6>
+                            <p class="app-form-section__description">Year ranges may be exact or open ranges. Formula fields support math operators and the scoring-service variables documented below.</p>
+                        </div>
+                        <div class="app-form-grid">
+                    <div class="form-group app-form-field">
+                        <label for="criterionFormula">Indicator Years</label>
+                        <input type="text" class="form-control" id="scoringYearRange" th:field="*{yearRange}" required>
+                        <ul class="app-form-help-list">
+                            <li>Use `*` for any year.</li>
+                            <li>Use ranges like `2017->2019,2021->2023` for explicit periods.</li>
+                        </ul>
                     </div>
-                    <div class="form-group">
-                        <label for="activity">Activity</label>
-                        <select class="form-control" id="activity"
-                                data-sync-selected-description-target="#activityDescription"
-                                th:field="*{activity}">
-                            <option th:value="${null}"
-                                    th:attr="data-description='No Activity selected'">
-                                None
-                            </option>
-                            <option
-                                    th:each="act : ${activities}"
-                                    th:value="${act.id}"
-                                    th:text="${act.name}"
-                                    th:attr="data-description=${activityDescriptions[act.id]}">
-                            </option>
-                        </select>
-                        <small id="activityDescription" class="form-text text-muted mt-1"></small>
-                    </div>
-                    <div class="form-group">
+                    <div class="form-group app-form-field">
                         <label for="scoringStrategy">Scoring Strategy</label>
                         <select class="form-control" id="scoringStrategy" th:field="*{scoringStrategy}" required>
                             <option th:each="strategy : ${scoringStrategies}" th:value="${strategy}" th:text="${strategy}"></option>
                         </select>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group app-form-field">
                         <label for="criterionFormula">Scoring Years</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="yearRange" th:field="*{scoreYearRange}" required>
-                            <div class="input-group-append">
-                                <button class="btn btn-info" type="button" data-toggle="tooltip" data-html="true" title="Any Year (*) or Exact years<ul><li>2017</li><li>2017->2019,2021->2023</li></ul>Years related to item year (IY) <ul><li>IY</li>, <li>IY-1->IY+3,IY+5</li></ul>" data-placement="right" data-template='<div class="tooltip custom-tooltip" role="tooltip"><div class="arrow"></div><div class="tooltip-inner"></div></div>'>
-                                    ?
-                                </button>
-                            </div>
-                        </div>
+                        <input type="text" class="form-control" id="yearRange" th:field="*{scoreYearRange}" required>
+                        <ul class="app-form-help-list">
+                            <li>Use exact years or ranges.</li>
+                            <li>You may reference item year as `IY` and ranges like `IY-1->IY+3,IY+5`.</li>
+                        </ul>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group app-form-field">
                         <label for="criterionFormula">Formula</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="criterionFormula" th:field="*{formula}" required>
-                            <div class="input-group-append">
-                                <button class="btn btn-info" type="button" data-toggle="tooltip" data-html="true" title="Variables returned by a Scoring Service <ul><li>N: number of authors</li><li>S: score for publication</li></ul>Can be used with:<ul><li>math symbols: +, -, *, /, max(x,y), min(x,y)</li><li>conditions: (a > b) ? (3 + a) : (4 + b)</li><li>(S > 1.0) ? (3 + 3 * S) : (3 + S)</li></ul>" data-placement="right" data-template='<div class="tooltip custom-tooltip" role="tooltip"><div class="arrow"></div><div class="tooltip-inner"></div></div>'>
-                                    ?
-                                </button>
-                            </div>
-                        </div>
+                        <input type="text" class="form-control" id="criterionFormula" th:field="*{formula}" required>
+                        <ul class="app-form-help-list">
+                            <li>Available variables include `N` for author count and `S` for publication score.</li>
+                            <li>Supported syntax includes `+`, `-`, `*`, `/`, `max(x,y)`, `min(x,y)`, and ternary conditions.</li>
+                            <li>Example: `(S > 1.0) ? (3 + 3 * S) : (3 + S)`.</li>
+                        </ul>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group app-form-field">
                         <label for="selector">Final Selector</label>
                         <select class="form-control" id="selector" th:field="*{selector}" required>
                             <option th:each="selector : ${selectors}" th:value="${selector}" th:text="${selector}"></option>
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-primary">Create</button>
+                        </div>
+                    </div>
+                    <div class="modal-footer app-form-actions">
+                        <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Create</button>
+                    </div>
                 </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
             </div>
         </div>
     </div>
@@ -207,7 +212,6 @@
 <!-- Page level plugins -->
 
 <!-- Page level custom scripts -->
-<script src="/js/demo/datatables-demo.js"></script>
 <script>
     $(document).ready(function() {
         // Function to handle activity field based on scoring strategy

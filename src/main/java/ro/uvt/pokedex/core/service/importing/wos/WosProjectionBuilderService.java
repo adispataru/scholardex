@@ -207,6 +207,200 @@ public class WosProjectionBuilderService {
         return result;
     }
 
+    public ImportProcessingResult rebuildWosProjectionsForJournals(Set<String> affectedJournalIds) {
+        ImportProcessingResult result = new ImportProcessingResult(20);
+        if (affectedJournalIds == null || affectedJournalIds.isEmpty()) {
+            return result;
+        }
+
+        List<String> journalIds = affectedJournalIds.stream()
+                .filter(journalId -> journalId != null && !journalId.isBlank())
+                .sorted()
+                .toList();
+        if (journalIds.isEmpty()) {
+            return result;
+        }
+
+        Instant buildAt = Instant.now();
+        String buildVersion = buildAt.toString();
+        try {
+            if (optimizationProperties.isPreflightIndexesEnabled()) {
+                wosIndexMaintenanceService.ensureWosIndexesForStage("wos-projection-builder");
+            }
+
+            List<WosMetricFact> scopedMetricFacts = mongoTemplate.find(
+                    new Query(Criteria.where("journalId").in(journalIds))
+                            .with(Sort.by(Sort.Order.asc("journalId"), Sort.Order.asc("year"), Sort.Order.asc("metricType"))),
+                    WosMetricFact.class
+            );
+            List<WosCategoryFact> scopedCategoryFacts = mongoTemplate.find(
+                    new Query(Criteria.where("journalId").in(journalIds))
+                            .with(Sort.by(Sort.Order.asc("journalId"), Sort.Order.asc("year"), Sort.Order.asc("categoryNameCanonical"), Sort.Order.asc("metricType"))),
+                    WosCategoryFact.class
+            );
+
+            Map<String, List<WosMetricFact>> metricByJournal = new HashMap<>();
+            for (WosMetricFact fact : scopedMetricFacts) {
+                if (fact.getJournalId() != null) {
+                    metricByJournal.computeIfAbsent(fact.getJournalId(), ignored -> new ArrayList<>()).add(fact);
+                }
+            }
+            Map<String, List<WosCategoryFact>> categoryByJournal = new HashMap<>();
+            for (WosCategoryFact fact : scopedCategoryFacts) {
+                if (fact.getJournalId() != null) {
+                    categoryByJournal.computeIfAbsent(fact.getJournalId(), ignored -> new ArrayList<>()).add(fact);
+                }
+            }
+            Map<ScoreKey, WosMetricFact> scoreByKey = new HashMap<>();
+            for (WosMetricFact fact : scopedMetricFacts) {
+                if (fact.getJournalId() != null && fact.getYear() != null && fact.getMetricType() != null) {
+                    scoreByKey.put(new ScoreKey(fact.getJournalId(), fact.getYear(), fact.getMetricType()), fact);
+                }
+            }
+
+            List<WosJournalIdentity> identities = new ArrayList<>();
+            identityRepository.findAllById(journalIds).forEach(identities::add);
+            identities.sort(Comparator.comparing(WosJournalIdentity::getId, Comparator.nullsFirst(String::compareTo)));
+
+            List<WosRankingView> rankingViews = new ArrayList<>();
+            for (WosJournalIdentity identity : identities) {
+                result.markProcessed();
+                rankingViews.add(toRankingView(
+                        identity,
+                        metricByJournal.getOrDefault(identity.getId(), List.of()),
+                        categoryByJournal.getOrDefault(identity.getId(), List.of()),
+                        buildVersion,
+                        buildAt
+                ));
+                result.markImported();
+            }
+
+            List<WosScoringView> scoringViews = new ArrayList<>(scopedCategoryFacts.size());
+            for (WosCategoryFact categoryFact : scopedCategoryFacts) {
+                result.markProcessed();
+                WosMetricFact score = scoreByKey.get(
+                        new ScoreKey(categoryFact.getJournalId(), categoryFact.getYear(), categoryFact.getMetricType())
+                );
+                scoringViews.add(toScoringView(categoryFact, score, buildVersion, buildAt));
+                result.markImported();
+            }
+
+            transactionTemplate.executeWithoutResult(status -> {
+                deleteAllProjectionRowsForJournals(journalIds);
+                insertWosRankingRows(rankingViews);
+                insertWosMetricRows(scopedMetricFacts);
+                insertWosCategoryRows(scopedCategoryFacts);
+                insertWosScoringRows(scoringViews);
+            });
+        } catch (Exception e) {
+            result.markError("projection-rebuild-error=" + e.getMessage());
+            log.error("WoS scoped projection rebuild failed: journalCount={}", journalIds.size(), e);
+        }
+        return result;
+    }
+
+    public ImportProcessingResult rebuildWosProjectionsForScope(
+            Set<String> affectedJournalIds,
+            List<WosMetricFact> lineageMetricFacts,
+            List<WosCategoryFact> lineageCategoryFacts
+    ) {
+        ImportProcessingResult result = new ImportProcessingResult(20);
+        List<String> journalIds = normalizeJournalIds(affectedJournalIds);
+        if (journalIds.isEmpty()) {
+            return result;
+        }
+
+        List<MetricSliceKey> metricSliceKeys = lineageMetricFacts == null ? List.of() : lineageMetricFacts.stream()
+                .filter(fact -> fact.getJournalId() != null && fact.getYear() != null && fact.getMetricType() != null)
+                .map(fact -> new MetricSliceKey(fact.getJournalId(), fact.getYear(), fact.getMetricType()))
+                .distinct()
+                .toList();
+        List<CategorySliceKey> categorySliceKeys = lineageCategoryFacts == null ? List.of() : lineageCategoryFacts.stream()
+                .filter(fact -> fact.getJournalId() != null
+                        && fact.getYear() != null
+                        && fact.getCategoryNameCanonical() != null
+                        && fact.getEditionNormalized() != null
+                        && fact.getMetricType() != null)
+                .map(fact -> new CategorySliceKey(
+                        fact.getJournalId(),
+                        fact.getYear(),
+                        fact.getCategoryNameCanonical(),
+                        fact.getEditionNormalized(),
+                        fact.getMetricType()
+                ))
+                .distinct()
+                .toList();
+
+        Instant buildAt = Instant.now();
+        String buildVersion = buildAt.toString();
+        try {
+            if (optimizationProperties.isPreflightIndexesEnabled()) {
+                wosIndexMaintenanceService.ensureWosIndexesForStage("wos-projection-builder");
+            }
+
+            List<WosMetricFact> scopedMetricFacts = loadMetricFactsForSlices(metricSliceKeys);
+            List<WosCategoryFact> scopedCategoryFacts = loadCategoryFactsForSlices(categorySliceKeys);
+
+            Map<ScoreKey, WosMetricFact> scoreByKey = new HashMap<>();
+            for (WosMetricFact fact : scopedMetricFacts) {
+                if (fact.getJournalId() != null && fact.getYear() != null && fact.getMetricType() != null) {
+                    scoreByKey.put(new ScoreKey(fact.getJournalId(), fact.getYear(), fact.getMetricType()), fact);
+                }
+            }
+
+            List<WosJournalIdentity> identities = new ArrayList<>();
+            identityRepository.findAllById(journalIds).forEach(identities::add);
+            identities.sort(Comparator.comparing(WosJournalIdentity::getId, Comparator.nullsFirst(String::compareTo)));
+
+            List<WosRankingView> rankingViews = new ArrayList<>();
+            for (WosJournalIdentity identity : identities) {
+                result.markProcessed();
+                List<WosMetricFact> journalMetricFacts = mongoTemplate.find(
+                        new Query(Criteria.where("journalId").is(identity.getId()))
+                                .with(Sort.by(Sort.Order.asc("journalId"), Sort.Order.asc("year"), Sort.Order.asc("metricType"))),
+                        WosMetricFact.class
+                );
+                List<WosCategoryFact> journalCategoryFacts = mongoTemplate.find(
+                        new Query(Criteria.where("journalId").is(identity.getId()))
+                                .with(Sort.by(Sort.Order.asc("journalId"), Sort.Order.asc("year"), Sort.Order.asc("categoryNameCanonical"), Sort.Order.asc("metricType"))),
+                        WosCategoryFact.class
+                );
+                rankingViews.add(toRankingView(identity, journalMetricFacts, journalCategoryFacts, buildVersion, buildAt));
+                result.markImported();
+            }
+
+            List<WosScoringView> scoringViews = new ArrayList<>(scopedCategoryFacts.size());
+            for (WosCategoryFact categoryFact : scopedCategoryFacts) {
+                result.markProcessed();
+                WosMetricFact score = scoreByKey.get(
+                        new ScoreKey(categoryFact.getJournalId(), categoryFact.getYear(), categoryFact.getMetricType())
+                );
+                scoringViews.add(toScoringView(categoryFact, score, buildVersion, buildAt));
+                result.markImported();
+            }
+
+            transactionTemplate.executeWithoutResult(status -> {
+                deleteMetricFactRows(metricSliceKeys);
+                deleteCategoryFactRows(categorySliceKeys);
+                deleteScoringRows(categorySliceKeys);
+                upsertWosRankingRows(rankingViews);
+                insertWosMetricRows(scopedMetricFacts);
+                insertWosCategoryRows(scopedCategoryFacts);
+                insertWosScoringRows(scoringViews);
+            });
+        } catch (Exception e) {
+            result.markError("projection-rebuild-error=" + e.getMessage());
+            log.error(
+                    "WoS slice-scoped projection rebuild failed: journalCount={}, metricSlices={}, categorySlices={}",
+                    journalIds.size(),
+                    metricSliceKeys.size(),
+                    categorySliceKeys.size(),
+                    e
+            );
+        }
+        return result;
+    }
+
     // -------------------------------------------------------------------------
     // Derivation helpers (unchanged)
     // -------------------------------------------------------------------------
@@ -365,6 +559,18 @@ public class WosProjectionBuilderService {
     private record ScoreKey(String journalId, Integer year, MetricType metricType) {
     }
 
+    private record MetricSliceKey(String journalId, Integer year, MetricType metricType) {
+    }
+
+    private record CategorySliceKey(
+            String journalId,
+            Integer year,
+            String categoryNameCanonical,
+            EditionNormalized editionNormalized,
+            MetricType metricType
+    ) {
+    }
+
     // -------------------------------------------------------------------------
     // PostgreSQL write methods
     // -------------------------------------------------------------------------
@@ -378,6 +584,38 @@ public class WosProjectionBuilderService {
                     build_version, build_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
+        writeRankingRows(rows, sql);
+    }
+
+    private void upsertWosRankingRows(List<WosRankingView> rows) {
+        String sql = """
+                INSERT INTO reporting_read.wos_ranking_view (
+                    journal_id, name, issn, e_issn, alternative_issns, alternative_names,
+                    name_norm, issn_norm, e_issn_norm, alternative_issns_norm,
+                    latest_ais_year, latest_ris_year, latest_edition_normalized,
+                    build_version, build_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (journal_id) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    issn = EXCLUDED.issn,
+                    e_issn = EXCLUDED.e_issn,
+                    alternative_issns = EXCLUDED.alternative_issns,
+                    alternative_names = EXCLUDED.alternative_names,
+                    name_norm = EXCLUDED.name_norm,
+                    issn_norm = EXCLUDED.issn_norm,
+                    e_issn_norm = EXCLUDED.e_issn_norm,
+                    alternative_issns_norm = EXCLUDED.alternative_issns_norm,
+                    latest_ais_year = EXCLUDED.latest_ais_year,
+                    latest_ris_year = EXCLUDED.latest_ris_year,
+                    latest_edition_normalized = EXCLUDED.latest_edition_normalized,
+                    build_version = EXCLUDED.build_version,
+                    build_at = EXCLUDED.build_at,
+                    updated_at = EXCLUDED.updated_at
+                """;
+        writeRankingRows(rows, sql);
+    }
+
+    private void writeRankingRows(List<WosRankingView> rows, String sql) {
         batchInChunks(rows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
             @Override
             public void setValues(PreparedStatement ps, int i) throws SQLException {
@@ -405,6 +643,118 @@ public class WosProjectionBuilderService {
                 return chunk.size();
             }
         }));
+    }
+
+    private void deleteProjectionRowsForJournals(List<String> journalIds) {
+        batchDeleteByJournalId("DELETE FROM reporting_read.wos_ranking_view WHERE journal_id = ?", journalIds);
+    }
+
+    private void deleteAllProjectionRowsForJournals(List<String> journalIds) {
+        batchDeleteByJournalId("DELETE FROM reporting_read.wos_scoring_view WHERE journal_id = ?", journalIds);
+        batchDeleteByJournalId("DELETE FROM reporting_read.wos_category_fact WHERE journal_id = ?", journalIds);
+        batchDeleteByJournalId("DELETE FROM reporting_read.wos_metric_fact WHERE journal_id = ?", journalIds);
+        batchDeleteByJournalId("DELETE FROM reporting_read.wos_ranking_view WHERE journal_id = ?", journalIds);
+    }
+
+    private void batchDeleteByJournalId(String sql, List<String> journalIds) {
+        jdbcTemplate.batchUpdate(
+                sql,
+                journalIds,
+                Math.max(1, optimizationProperties.getProjectionWriteChunkSize()),
+                (ps, journalId) -> ps.setString(1, journalId)
+        );
+    }
+
+    private void deleteMetricFactRows(List<MetricSliceKey> keys) {
+        if (keys == null || keys.isEmpty()) {
+            return;
+        }
+        jdbcTemplate.batchUpdate(
+                "DELETE FROM reporting_read.wos_metric_fact WHERE journal_id = ? AND year = ? AND metric_type = ?",
+                keys,
+                Math.max(1, optimizationProperties.getProjectionWriteChunkSize()),
+                (ps, key) -> {
+                    ps.setString(1, key.journalId());
+                    setInteger(ps, 2, key.year());
+                    setEnum(ps, 3, key.metricType() == null ? null : key.metricType().name());
+                }
+        );
+    }
+
+    private void deleteCategoryFactRows(List<CategorySliceKey> keys) {
+        if (keys == null || keys.isEmpty()) {
+            return;
+        }
+        jdbcTemplate.batchUpdate(
+                "DELETE FROM reporting_read.wos_category_fact WHERE journal_id = ? AND year = ? AND category_name_canonical = ? AND edition_normalized = ? AND metric_type = ?",
+                keys,
+                Math.max(1, optimizationProperties.getProjectionWriteChunkSize()),
+                (ps, key) -> {
+                    ps.setString(1, key.journalId());
+                    setInteger(ps, 2, key.year());
+                    ps.setString(3, key.categoryNameCanonical());
+                    setEnum(ps, 4, key.editionNormalized() == null ? null : key.editionNormalized().name());
+                    setEnum(ps, 5, key.metricType() == null ? null : key.metricType().name());
+                }
+        );
+    }
+
+    private void deleteScoringRows(List<CategorySliceKey> keys) {
+        if (keys == null || keys.isEmpty()) {
+            return;
+        }
+        jdbcTemplate.batchUpdate(
+                "DELETE FROM reporting_read.wos_scoring_view WHERE journal_id = ? AND year = ? AND category_name_canonical = ? AND edition_normalized = ? AND metric_type = ?",
+                keys,
+                Math.max(1, optimizationProperties.getProjectionWriteChunkSize()),
+                (ps, key) -> {
+                    ps.setString(1, key.journalId());
+                    setInteger(ps, 2, key.year());
+                    ps.setString(3, key.categoryNameCanonical());
+                    setEnum(ps, 4, key.editionNormalized() == null ? null : key.editionNormalized().name());
+                    setEnum(ps, 5, key.metricType() == null ? null : key.metricType().name());
+                }
+        );
+    }
+
+    private List<String> normalizeJournalIds(Set<String> affectedJournalIds) {
+        if (affectedJournalIds == null || affectedJournalIds.isEmpty()) {
+            return List.of();
+        }
+        return affectedJournalIds.stream()
+                .filter(journalId -> journalId != null && !journalId.isBlank())
+                .sorted()
+                .toList();
+    }
+
+    private List<WosMetricFact> loadMetricFactsForSlices(List<MetricSliceKey> keys) {
+        List<WosMetricFact> rows = new ArrayList<>();
+        for (MetricSliceKey key : keys) {
+            rows.addAll(mongoTemplate.find(
+                    new Query(Criteria.where("journalId").is(key.journalId())
+                            .and("year").is(key.year())
+                            .and("metricType").is(key.metricType()))
+                            .with(Sort.by(Sort.Order.asc("journalId"), Sort.Order.asc("year"), Sort.Order.asc("metricType"))),
+                    WosMetricFact.class
+            ));
+        }
+        return rows;
+    }
+
+    private List<WosCategoryFact> loadCategoryFactsForSlices(List<CategorySliceKey> keys) {
+        List<WosCategoryFact> rows = new ArrayList<>();
+        for (CategorySliceKey key : keys) {
+            rows.addAll(mongoTemplate.find(
+                    new Query(Criteria.where("journalId").is(key.journalId())
+                            .and("year").is(key.year())
+                            .and("categoryNameCanonical").is(key.categoryNameCanonical())
+                            .and("editionNormalized").is(key.editionNormalized())
+                            .and("metricType").is(key.metricType()))
+                            .with(Sort.by(Sort.Order.asc("journalId"), Sort.Order.asc("year"), Sort.Order.asc("categoryNameCanonical"), Sort.Order.asc("metricType"))),
+                    WosCategoryFact.class
+            ));
+        }
+        return rows;
     }
 
     private void insertWosMetricRows(List<WosMetricFact> rows) {

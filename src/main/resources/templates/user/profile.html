@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Profile</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
@@ -15,68 +14,117 @@
         <div id="content">
             <div th:replace="~{fragments :: navbar('Profile')}"></div>
             <div class="container-fluid app-page-content">
-
-                <div th:if="${researchProfile == null}">
-                    <button class="btn btn-primary" onclick="toggleEditForm()">Create Profile</button>
-                </div>
-
-                <div th:if="${researchProfile != null}">
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Researcher Profile</h6>
-                        </div>
-                        <div class="card-body">
-                            <h3 th:text="${researchProfile.name}">Researcher Name</h3>
-                            <p th:text="'Google Scholar ID: ' + ${researchProfile.scholarId}"></p>
-                            <p>
-                                <span>Scopus IDs:</span>
-                            <ul>
-                                <li th:each="scopusId : ${researchProfile.scopusId}" th:text="${scopusId}"></li>
-                            </ul>
-                            </p>
-                            <p>
-                                <span>WoS IDs:</span>
-                            <ul>
-                                <li th:each="wosId : ${researchProfile.wosId}" th:text="${wosId}"></li>
-                            </ul>
-                            </p>
-                            <button class="btn btn-primary" onclick="toggleEditForm()">Edit Profile</button>
+                <div class="app-dashboard">
+                    <div class="app-page-toolbar">
+                        <div class="app-dashboard__actions">
+                            <button id="profile-edit-toggle" class="btn btn-primary" onclick="toggleEditForm()" aria-controls="edit-form" aria-expanded="false" th:text="${researchProfile == null ? 'Create Profile' : 'Edit Profile'}">Create Profile</button>
                         </div>
                     </div>
-                </div>
 
-                <div id="edit-form" style="display: none;">
-                    <form th:action="@{/user/profile/save}" method="post" th:object="${newProfile}">
-                        <div class="form-group">
-                            <label for="research-name">Name</label>
-                            <input type="text" class="form-control" id="research-name" th:field="*{name}" required>
+                    <p class="app-dashboard__intro">Keep your researcher identity and external identifiers up to date from your profile page.</p>
+
+                    <div th:if="${researchProfile == null}" class="app-dashboard-empty">
+                        <h2 class="app-dashboard-empty__title">No profile created yet</h2>
+                        <p class="app-dashboard-empty__body">Create your profile to store your name, Google Scholar ID, Scopus IDs, and WoS IDs in one place.</p>
+                    </div>
+
+                    <div th:if="${researchProfile != null}">
+                        <div class="app-summary-grid">
+                            <div class="app-summary-card">
+                                <p class="app-summary-card__label">Researcher</p>
+                                <p class="app-summary-card__value" th:text="${researchProfile.name}">Researcher Name</p>
+                                <p class="app-summary-card__meta">Primary identity currently used across your user workspace.</p>
+                            </div>
+                            <div class="app-summary-card app-summary-card--success">
+                                <p class="app-summary-card__label">Scopus IDs</p>
+                                <p class="app-summary-card__value" th:text="${researchProfile.scopusId != null ? #lists.size(researchProfile.scopusId) : 0}">0</p>
+                                <p class="app-summary-card__meta">Linked Scopus author identifiers stored in your profile.</p>
+                            </div>
+                            <div class="app-summary-card app-summary-card--warning">
+                                <p class="app-summary-card__label">WoS IDs</p>
+                                <p class="app-summary-card__value" th:text="${researchProfile.wosId != null ? #lists.size(researchProfile.wosId) : 0}">0</p>
+                                <p class="app-summary-card__meta">Linked Web of Science identifiers currently on record.</p>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="scholar-id">Google Scholar ID</label>
-                            <input type="text" class="form-control" id="scholar-id" th:field="*{scholarId}">
-                        </div>
-                        <div class="form-group">
-                            <label for="scopus-id">Scopus IDs</label>
-                            <div id="scopus-ids">
-                                <div th:each="scopusId, iterStat : *{scopusId}">
-                                    <input type="text" class="form-control mb-2" th:field="*{scopusId[__${iterStat.index}__]}" th:value="${scopusId}">
-                                    <button type="button" class="btn btn-danger btn-sm" onclick="removeElement(this)">Remove</button>
+
+                        <div class="app-summary-panel">
+                            <div class="app-summary-panel__header">
+                                <h2 class="app-summary-panel__title">Researcher Profile</h2>
+                            </div>
+                            <div class="app-summary-panel__body">
+                                <div class="app-summary-identity">
+                                    <div class="app-summary-identity__avatar">
+                                        <i class="fa-solid fa-user-graduate" aria-hidden="true"></i>
+                                    </div>
+                                    <div class="app-summary-identity__body">
+                                        <h3 class="app-summary-identity__title" th:text="${researchProfile.name}">Researcher Name</h3>
+                                        <p class="app-summary-identity__meta" th:text="'Google Scholar ID: ' + ${researchProfile.scholarId}">Google Scholar ID</p>
+                                    </div>
+                                </div>
+
+                                <div class="app-summary-list mt-4">
+                                    <div class="app-summary-list__item">
+                                        <span class="app-summary-list__label">Scopus IDs</span>
+                                        <span class="app-summary-list__value" th:text="${researchProfile.scopusId != null ? #lists.size(researchProfile.scopusId) : 0}">0</span>
+                                    </div>
+                                </div>
+                                <div class="app-summary-tags mt-3" th:if="${researchProfile.scopusId != null and !researchProfile.scopusId.isEmpty()}">
+                                    <span class="app-summary-tag" th:each="scopusId : ${researchProfile.scopusId}" th:text="${scopusId}">123</span>
+                                </div>
+
+                                <div class="app-summary-list mt-4">
+                                    <div class="app-summary-list__item">
+                                        <span class="app-summary-list__label">WoS IDs</span>
+                                        <span class="app-summary-list__value" th:text="${researchProfile.wosId != null ? #lists.size(researchProfile.wosId) : 0}">0</span>
+                                    </div>
+                                </div>
+                                <div class="app-summary-tags mt-3" th:if="${researchProfile.wosId != null and !researchProfile.wosId.isEmpty()}">
+                                    <span class="app-summary-tag" th:each="wosId : ${researchProfile.wosId}" th:text="${wosId}">456</span>
                                 </div>
                             </div>
-                            <button type="button" class="btn btn-success btn-sm" onclick="addElement('scopus-ids', 'scopusId')">Add Scopus ID</button>
                         </div>
-                        <div class="form-group">
-                            <label for="wos-id">WoS IDs</label>
-                            <div id="wos-ids">
-                                <div th:each="wosId, iterStat : *{wosId}">
-                                    <input type="text" class="form-control mb-2" th:field="*{wosId[__${iterStat.index}__]}" th:value="${wosId}">
-                                    <button type="button" class="btn btn-danger btn-sm" onclick="removeElement(this)">Remove</button>
-                                </div>
+                    </div>
+
+                    <div id="edit-form" class="app-form-surface" style="display: none;" role="region" aria-labelledby="profile-edit-title">
+                        <div class="app-form-surface__panel">
+                            <div class="app-form-surface__header">
+                                <h2 class="app-form-surface__title" id="profile-edit-title">Edit Profile</h2>
                             </div>
-                            <button type="button" class="btn btn-success btn-sm" onclick="addElement('wos-ids', 'wosId')">Add WoS ID</button>
+                            <div class="app-form-surface__body">
+                                <form th:action="@{/user/profile/save}" method="post" th:object="${newProfile}">
+                                    <div class="form-group">
+                                        <label for="research-name">Name</label>
+                                        <input type="text" class="form-control" id="research-name" th:field="*{name}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="scholar-id">Google Scholar ID</label>
+                                        <input type="text" class="form-control" id="scholar-id" th:field="*{scholarId}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="scopus-id">Scopus IDs</label>
+                                        <div id="scopus-ids">
+                                            <div th:each="scopusId, iterStat : *{scopusId}">
+                                                <input type="text" class="form-control mb-2" th:field="*{scopusId[__${iterStat.index}__]}" th:value="${scopusId}" aria-label="Scopus ID">
+                                                <button type="button" class="btn btn-danger btn-sm" onclick="removeElement(this)" aria-label="Remove Scopus ID">Remove</button>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-success btn-sm" onclick="addElement('scopus-ids', 'scopusId')">Add Scopus ID</button>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="wos-id">WoS IDs</label>
+                                        <div id="wos-ids">
+                                            <div th:each="wosId, iterStat : *{wosId}">
+                                                <input type="text" class="form-control mb-2" th:field="*{wosId[__${iterStat.index}__]}" th:value="${wosId}" aria-label="Web of Science ID">
+                                                <button type="button" class="btn btn-danger btn-sm" onclick="removeElement(this)" aria-label="Remove Web of Science ID">Remove</button>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-success btn-sm" onclick="addElement('wos-ids', 'wosId')">Add WoS ID</button>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Save</button>
+                                </form>
+                            </div>
                         </div>
-                        <button type="submit" class="btn btn-primary">Save</button>
-                    </form>
+                    </div>
                 </div>
             </div>
 
@@ -93,10 +141,18 @@
 <script>
     function toggleEditForm() {
         var editForm = document.getElementById('edit-form');
+        var toggleButton = document.getElementById('profile-edit-toggle');
         if (editForm.style.display === 'none') {
             editForm.style.display = 'block';
+            toggleButton.setAttribute('aria-expanded', 'true');
+            var firstInput = editForm.querySelector('input, select, textarea, button');
+            if (firstInput) {
+                firstInput.focus();
+            }
         } else {
             editForm.style.display = 'none';
+            toggleButton.setAttribute('aria-expanded', 'false');
+            toggleButton.focus();
         }
     }
 
@@ -108,6 +164,7 @@
         input.type = 'text';
         input.classList.add('form-control');
         input.name = fieldName;
+        input.setAttribute('aria-label', fieldName === 'scopusId' ? 'Scopus ID' : 'Web of Science ID');
         inputDiv.appendChild(input);
 
         var removeButton = document.createElement('button');
@@ -117,6 +174,7 @@
             container.removeChild(inputDiv);
         };
         removeButton.textContent = 'Remove';
+        removeButton.setAttribute('aria-label', fieldName === 'scopusId' ? 'Remove Scopus ID' : 'Remove Web of Science ID');
         inputDiv.appendChild(removeButton);
 
         container.appendChild(inputDiv);

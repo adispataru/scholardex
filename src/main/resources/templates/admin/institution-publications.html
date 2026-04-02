@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title th:text="${institution.name} + ' Publications'">Institution Publications</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
@@ -17,28 +16,33 @@
             <div th:replace="~{fragments :: navbar(${institution.name})}"></div>
 
             <div class="container-fluid app-page-content">
-                <!-- Institution Info -->
                 <div class="app-page-toolbar">
                     <a th:href="@{/admin/institutions/{id}/publications/exportExcel(id=${institution.name})}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
                         <i class="fa-solid fa-download fa-sm text-white-50"></i> Export Excel
                     </a>
                 </div>
-                <div class="mb-4">
+                <div class="app-dashboard">
+                <div class="app-summary-panel">
+                    <div class="app-summary-panel__header">
+                        <h2 class="app-summary-panel__title">Institution Publications</h2>
+                    </div>
+                    <div class="app-summary-panel__body">
                     <p th:text="${institution.description}">Institution description here.</p>
                     <div>
                         <span class="font-weight-bold">Total Publications: </span>
                         <span th:text="${publications.size()}">0</span>
                     </div>
                 </div>
+                </div>
 
-                <!-- Publications Table -->
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Publications</h6>
+                <div class="app-table-section">
+                    <div class="app-table-section__surface">
+                    <div class="app-table-section__header app-table-toolbar">
+                        <h6 class="app-table-section__title">Publications</h6>
                     </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered js-datatable" id="dataTable" width="100%" cellspacing="0">
+                    <div class="app-table-section__body">
+                        <div class="app-table-scroll">
+                            <table class="table table-bordered js-datatable app-table" id="dataTable" width="100%" cellspacing="0">
                                 <thead>
                                 <tr>
                                     <th>Title</th>
@@ -71,6 +75,8 @@
                             </table>
                         </div>
                     </div>
+                    </div>
+                </div>
                 </div>
             </div>
 
@@ -84,6 +90,5 @@
 </div>
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
 
-<script src="/js/demo/datatables-demo.js"></script>
 </body>
 </html>

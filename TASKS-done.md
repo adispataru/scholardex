@@ -2,6 +2,306 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H29 Admin Incremental Source Updates From Uploaded WoS And Scopus Files
+
+Archived from `TASKS.md` on 2026-04-02 after backlog bookkeeping confirmed the remaining `H29.6` Scopus maintenance slices had already landed in code, tests, and durable docs.
+
+- [x] `H29` Admin incremental source updates from uploaded WoS and Scopus files.
+  Goal: add an operator page parallel to `/admin/initialization` for incremental source updates, starting with WoS and Scopus, where each run is driven by a single uploaded file instead of pre-staged data on disk.
+  Deliverable: admin upload/update surface plus source-specific incremental ingest orchestration for WoS and Scopus, accepting one file per operation (`WoS JSON` or government Excel for WoS; `Scopus JSON` for Scopus) and routing the uploaded payload through the existing canonical maintenance pipeline needed for safe incremental updates.
+  Exit criteria: operators can trigger incremental WoS and Scopus updates from the browser without relying on filesystem-resident import inputs; file validation and operator feedback are explicit; incremental runs remain replay-safe, scoped to the uploaded payload, and aligned with existing fact/canonical/projection maintenance contracts.
+  Status: completed on 2026-04-02.
+  Handover:
+  - `/admin/incremental-updates` is now the dedicated operator surface for upload-driven WoS and Scopus maintenance, with explicit post-upload follow-up actions and admin-only guardrails.
+  - WoS incremental maintenance is now fully lineage-scoped end to end: upload ingest, fact build, category enrichment, and projection refresh all stay tied to the stored `sourceType + sourceFile + sourceVersion` context.
+  - Scopus incremental maintenance now follows a batch-scoped contract for upload-driven and scheduler-driven runs, with checkpoint resume disabled for incremental canonicalization and a non-destructive batch projection refresh path distinct from full rebuild semantics.
+  - Durable operator/contributor guidance now treats incremental uploads and scheduler maintenance as first-class, replay-safe maintenance modes separate from `/admin/initialization`.
+  - Archived contract source of truth: `docs/tasks/closed/h29.6a-incremental-vs-full-scopus-maintenance-contract.md`.
+  Subtasks:
+  - [x] `H29.1` Lock the admin incremental-update page and upload contract.
+    Handover:
+    - Implemented as dedicated admin MVC surface under `/admin/incremental-updates`, linked from `/admin/initialization` and the admin operations sidebar.
+    - Contract locked with `POST /admin/incremental-updates/wos` and `POST /admin/incremental-updates/scopus`, multipart validation, explicit WoS `sourceType`, optional WoS `sourceVersion`, and admin-only MVC/security coverage.
+  - [x] `H29.2` Implement incremental WoS upload orchestration.
+    Handover:
+    - `/admin/incremental-updates/wos` now runs synchronous uploaded-file WoS ingest plus fact-building, preserving the uploaded filename as `sourceFile` lineage and inferring/overriding `sourceVersion` with the same WoS rules as the existing pipeline.
+    - Uploaded WoS runs intentionally skip checkpoint resume, category enrichment, projections, and WoS onboarding in this slice; targeted ingest/service/controller tests cover JSON, government Excel, replay/update semantics, and clear operator errors.
+  - [x] `H29.2a` Add upload-scoped WoS post-upload maintenance on the incremental-updates page.
+    Handover:
+    - Successful WoS uploads now store the last upload lineage in session as `sourceType + sourceFile + sourceVersion`, render that context back on `/admin/incremental-updates`, and enable a dedicated WoS post-upload panel with upload-scoped “Enrich Category Rankings” and “Rebuild Projections” actions.
+    - The new WoS follow-up service resolves the exact stored lineage through `WosImportEventRepository`, runs scoped category enrichment only for the uploaded WoS lineage, and rebuilds PostgreSQL WoS reporting rows only for the affected journals instead of truncating and rebuilding the full corpus.
+    - Controller/security/service regression coverage now protects missing-session rejection, admin-only access, scoped enrichment updates, and scoped projection rewrites so the incremental page cannot drift back toward the unsafe global Initialization behavior.
+  - [x] `H29.2b` Complete upload-scoped WoS fact building for incremental uploads.
+    Handover:
+    - The WoS incremental upload path now builds facts only for the uploaded lineage by parsing `sourceType + sourceFile + sourceVersion` through `WosImportEventParserOrchestrator.parseSourceLineage(...)` instead of `parseAllEvents()`.
+    - `WosFactBuilderService` now exposes a scoped fact-build entrypoint for exact uploaded lineage processing, while the existing full-corpus fact-builder path remains unchanged for `/admin/initialization`.
+    - Targeted WoS upload and fact-builder tests now guard the scoped entrypoint, including the invariant that incremental WoS uploads never widen back to full-corpus parser scans.
+  - [x] `H29.2c` Tighten WoS incremental projection maintenance from journal scope to slice scope.
+    Handover:
+    - The WoS incremental projection follow-up now uses mixed scope: `wos_ranking_view` is refreshed per affected journal via upsert, while `wos_metric_fact`, `wos_category_fact`, and `wos_scoring_view` are deleted and reinserted only for slice keys touched by the uploaded lineage.
+    - Incremental follow-up scope is now derived directly from lineage-owned Mongo facts for the stored `sourceType + sourceFile + sourceVersion`, rather than widening every reporting table to all rows on affected journals.
+    - Targeted projection/follow-up tests now protect the mixed-scope contract, including the invariants that unrelated slice rows on the same journal are preserved, ranking rows are not deleted during partial refreshes, and Initialization keeps the existing full-corpus rebuild path.
+  - [x] `H29.3` Implement incremental Scopus upload orchestration.
+    Handover:
+    - `/admin/incremental-updates/scopus` now runs synchronous Scopus upload ingest plus fact/canonical materialization via a dedicated upload service, using `SCOPUS_JSON_UPLOAD` as stable import-event lineage and stopping before projections, source-link reconciliation, edge reconciliation, and index maintenance.
+    - `ScopusDataService` now supports upload-byte ingest for publications and citations, and its indexed-field readers now handle array-backed payload fields correctly so upload-driven parsing matches the existing Scopus JSON shape.
+    - Replay hardening now covers deterministic reuse of existing source links, canonical edges, and open conflicts across repeated Scopus upload/scheduler runs, including authorship, publication-author-affiliation, author-affiliation, citation conflicts, and duplicate-key recovery for canonical author/affiliation writes.
+    - Batch membership for unchanged Scopus facts is now refreshed to the current `sourceBatchId`, and scheduler-triggered Scopus canonical/projection maintenance now stays batch-scoped instead of falling back to full rescans.
+  - [x] `H29.4` Add the shared admin page, operator feedback, and guardrails.
+    Handover:
+    - `/admin/incremental-updates` now distinguishes upload-driven incremental runs from broader initialization maintenance, with explicit source-level scope callouts, downstream-maintenance guidance, and clearer framing around success/error flash summaries.
+    - Durable operator docs now include incremental uploads as a first-class admin surface in `docs/operational-playbook.md` and `docs/failure-triage.md`, pointing operators back to `/admin/initialization` for skipped downstream maintenance.
+  - [x] `H29.5` Add targeted regression coverage for upload-driven incremental updates.
+    Handover:
+    - Focused MVC contract coverage now exists in `AdminIncrementalUpdatesControllerContractTest`, covering page framing, valid WoS/Scopus uploads, empty upload handling, invalid source/file validation, facade validation errors, and the Scopus post-upload follow-up actions.
+    - Security coverage now exists in `AdminIncrementalUpdatesSecurityContractTest`, protecting the page, WoS/Scopus upload actions, and Scopus post-upload maintenance actions against non-admin access.
+  - [x] `H29.5a` Add Scopus post-upload maintenance actions on the incremental-updates page.
+    Handover:
+    - `/admin/incremental-updates` now exposes batch-scoped Scopus projection rebuild, edge reconcile, and source-link repair follow-up actions for the stored upload batch instead of sending operators back to full initialization.
+    - The Scopus incremental page copy distinguishes routine batch follow-up from broader recovery or full-rebuild work that still belongs on `/admin/initialization`.
+  - [x] `H29.6` Extract non-destructive Scopus incremental maintenance flow from full-rebuild logic.
+    Handover:
+    - Scopus incremental upload and scheduler maintenance now run through shared batch-scoped canonical/materialization orchestration with `sourceBatchIdFilter` support and `useCheckpoint=false` for incremental paths.
+    - `ScopusProjectionBuilderService` now separates full replacement rebuilds from batch refresh behavior, using non-destructive batch refresh rules for citations, authorships, and author-affiliation edges instead of leaking `TRUNCATE`-style semantics into incremental flows.
+    - Durable docs and regression tests now lock the incremental-vs-full contract for Scopus so upload/scheduler batches preserve replay safety and cross-batch graph visibility while `/admin/initialization` keeps the explicit full-corpus path.
+    Subtasks:
+    - [x] `H29.6a` Lock the incremental-vs-full maintenance contract.
+      Handover:
+      - Archived contract lock: `docs/tasks/closed/h29.6a-incremental-vs-full-scopus-maintenance-contract.md`.
+      - The repo now has an explicit decision boundary between full-rescan Scopus maintenance and non-destructive batch-scoped incremental maintenance, including the citation-projection rules enforced by later slices.
+    - [x] `H29.6b` Extract batch-scoped canonical/materialization orchestration.
+      Handover:
+      - `ScopusCanonicalMaterializationService` now owns the shared batch-scoped orchestration for upload-driven and scheduler-driven Scopus maintenance, passing `sourceBatchIdFilter` through fact build, canonicalization, edge reconcile, and projection refresh.
+      - Incremental Scopus canonicalization now explicitly disables checkpoint resume by forcing `useCheckpoint=false` whenever a batch-scoped run is active.
+    - [x] `H29.6c` Make batch-scoped Scopus projection maintenance non-destructive.
+      Handover:
+      - `ScopusProjectionBuilderService.rebuildViewsForBatch(...)` now refreshes only the reconstructible batch neighborhood instead of truncating and rebuilding the full reporting corpus.
+      - Citation refresh now preserves previously visible cross-batch citations when only one endpoint is in the affected batch scope, rather than deleting edges the batch cannot fully reconstruct.
+    - [x] `H29.6d` Separate full-rebuild projection semantics from incremental graph refresh semantics.
+      Handover:
+      - Scopus projection code now has explicit full-rebuild replacement and batch-refresh paths (`executeFullReplacementWrite(...)` versus `executeBatchRefreshWrite(...)`) instead of sharing one destructive implementation.
+      - Full rebuilds still use corpus-wide replacement semantics, while incremental maintenance refreshes citations, authorships, and author-affiliation rows only for affected scopes.
+    - [x] `H29.6e` Add regression coverage for non-destructive incremental Scopus maintenance.
+      Handover:
+      - `ScopusCanonicalMaterializationServiceTest`, `ScopusProjectionBuilderServiceTest`, and `ScopusUpdateSchedulerTest` now protect the batch-scoped contract, checkpoint disabling, and non-destructive citation/edge refresh behavior.
+      - Incremental Scopus tests now explicitly guard against `TRUNCATE` leakage and against losing valid citations when only one batch endpoint is affected.
+    - [x] `H29.6f` Document Scopus incremental maintenance invariants for operators and contributors.
+      Handover:
+      - Durable Scopus incremental maintenance guidance now lives in `docs/workflows.md`, `docs/operational-playbook.md`, and `docs/failure-triage.md`.
+      - Those docs now describe batch scope, replay safety, checkpoint disabling, non-destructive projection behavior, and the rule that `/admin/initialization` remains the explicit full-rebuild path.
+
+## H30 Shared Shell And Foundation Migration To ScholarDex-Owned UI/UX
+
+Archived from `TASKS.md` on 2026-04-02 after backlog bookkeeping aligned the established shell baseline with the completed H31-H35 wave history.
+
+- [x] `H30` Shared shell and foundation migration to ScholarDex-owned UI/UX.
+  Goal: migrate the shared shell off SB Admin 2 and Bootstrap 4-era shell conventions toward a ScholarDex-owned UI/UX system based on `docs/ux-design-guide.md`, with Bootstrap 5-compatible shared-shell implementation, repo-owned behavior, and support for both light and dark themes.
+  Deliverable: shared shell cutover for sidebar/topbar/page-shell foundations, Bootstrap 5-compatible shell baseline, repo-owned visual tokens and theme hooks, and aligned shared fragments/templates/docs that preserve the current frontend asset contract and role-aware composition path.
+  Exit criteria: authenticated shell work no longer treats SB Admin 2 or Bootstrap 4 shell patterns as acceptable steady state; touched shell behavior moves away from jQuery-driven Bootstrap 4 conventions; shell changes still route through shared fragments and `/assets/app.css` + `/assets/app.js`; touched docs and verification expectations reflect the new ScholarDex-owned shell baseline with light/dark theme support.
+  Status: completed on 2026-04-02.
+  Handover:
+  - The authenticated shared shell now resolves through `fragments.html` plus repo-owned frontend assets, with shared sidebar, topbar, page-header, theme toggle, and page-shell layout owned by ScholarDex rather than an admin-template baseline.
+  - Shell-level spacing, typography, surface treatment, bounded content layout, and theme-aware behavior are now part of the active authenticated baseline inherited by later frontend work.
+  - Root theme state for migrated shell work is expressed through `data-bs-theme`, and later UI waves inherit that shell/theme contract rather than re-deciding it.
+  - Durable contributor-facing shell guidance now lives in `docs/frontend-conventions.md`, `docs/ux-design-guide.md`, and `docs/quality-gates.md`.
+  - Archived contract source of truth: `docs/tasks/closed/h30.1-shared-shell-visual-foundation-contract.md`.
+  Subtasks:
+  - [x] `H30.1` Lock the shared shell and visual-foundation contract.
+    Handover:
+    - Archived contract lock: `docs/tasks/closed/h30.1-shared-shell-visual-foundation-contract.md`.
+  - [x] `H30.2` Refresh shared sidebar structure and navigation treatment.
+    Handover:
+    - The authenticated sidebar now follows the shared ScholarDex-owned sidebar composition path with clearer grouping, active-state treatment, and repo-owned shell behavior.
+  - [x] `H30.3` Refresh shared topbar and page-header orientation patterns.
+    Handover:
+    - The shared topbar and page-header now provide the active orientation model for authenticated pages, including the unified page title, toolbar rhythm, and workspace/theme controls.
+  - [x] `H30.4` Establish baseline visual primitives for shared shell surfaces.
+    Handover:
+    - Shell-level visual primitives, theme tokens, typography, spacing, and bounded content layout now live in the frontend asset pipeline and act as the inherited shell baseline for later UI work.
+  - [x] `H30.5` Align H30 docs, guardrails, and regression expectations.
+    Handover:
+    - Active frontend docs and targeted verification guidance now treat the shared ScholarDex shell as the baseline for later migrated frontend work.
+
+## H35 Legacy Asset Extraction And Steady-State Shell/Copy Cleanup
+
+Archived from `TASKS.md` on 2026-04-02 after H35.1-H35.6 completion.
+
+- [x] `H35` Legacy asset extraction and steady-state shell/copy cleanup.
+  Goal: remove the remaining SB Admin 2 and Bootstrap 4 dependency from the active ScholarDex frontend baseline, finish the shared shell/footer cleanup that still inherits legacy behavior, and purge migration-era implementation language from page-visible copy so the product surface reads as steady state rather than in-transition.
+  Deliverable: migrated and explicitly targeted legacy pages no longer rely on SB Admin 2 stylesheet/script includes or Bootstrap 4 runtime imports as part of their steady-state contract; the shared footer and dark-mode shell background are corrected under the repo-owned theme system; and page-visible copy no longer references migration history, old Bootstrap patterns, or internal modernization language.
+  Exit criteria: shared fragments and frontend assets no longer load SB Admin 2 or Bootstrap 4 for the modernized baseline; dark-mode page backgrounds and footer styling are governed by ScholarDex-owned theme tokens rather than legacy overrides; visible footer text is correct and encoding-safe; migration-era page copy is removed from touched surfaces; and docs/guardrails describe the post-H35 frontend baseline as the active steady state.
+  Status: completed on 2026-04-02.
+  Handover:
+  - The authenticated ScholarDex baseline now resolves through shared fragments plus `/assets/app.css` and `/assets/app.js` without SB Admin 2 or Bootstrap 4 shell/runtime assets.
+  - Authenticated DataTables-backed list surfaces now use the Bootstrap 5 DataTables integration and the shared app-owned initialization contract.
+  - The shared footer, dark-shell background treatment, and authenticated shell surfaces now resolve through ScholarDex-owned theme tokens and shared footer markup.
+  - Authenticated page-visible copy no longer leaks migration history or internal frontend-contract language.
+  - Active frontend docs and authenticated template guardrails now describe and enforce the post-H35 baseline, while remaining Bootstrap-era debt is explicitly bounded to untouched non-authenticated or deferred legacy pages.
+  - Archived contract source of truth: `docs/tasks/closed/h35.1-legacy-asset-extraction-contract.md`.
+  Subtasks:
+  - [x] `H35.1` Lock the legacy asset extraction and steady-state cleanup contract.
+    Handover:
+    - Archived contract lock: `docs/tasks/closed/h35.1-legacy-asset-extraction-contract.md`.
+  - [x] `H35.2` Extract shared authenticated shell assets off SB Admin 2 and Bootstrap 4.
+    Handover:
+    - Authenticated templates no longer include `/css/sb-admin-2.min.css`, and shared fragments no longer include `/js/sb-admin-2.min.js`.
+    - `frontend/src/app.js` now resolves the authenticated baseline without Bootstrap 4 CSS/JS or `jquery.easing`, while repo-owned shared runtime code handles modal, collapse, tooltip, and scroll-to-top behavior.
+    - Shared compatibility styling for authenticated pages now lives in the repo-owned frontend layer rather than SB Admin / Bootstrap 4 shell assets.
+  - [x] `H35.3` Replace Bootstrap-4-era DataTables coupling on the active list baseline.
+    Handover:
+    - The authenticated bundle now uses `datatables.net-bs5` from `frontend/src/app.js`, and shared DataTables initialization lives in `frontend/src/modules/shared/tableEnhancer.js` instead of `/js/demo/datatables-demo.js`.
+    - Authenticated `admin`, `user`, and `events` templates no longer include the legacy DataTables demo bootstrap script, and the opt-in guardrail now enforces the shared bundle contract instead of page-local script usage.
+    - `admin/group-publications`, `admin/institution-publications`, and `admin/scholardex-citations` now render their DataTables surfaces through the ScholarDex `app-table` framing while preserving existing links and table behavior.
+  - [x] `H35.4` Fix shared shell and footer steady-state behavior after asset extraction.
+    Handover:
+    - Shared fragments now render the footer through ScholarDex-owned `app-shell-footer` markup and no longer include `/css/footer-layout.css` in the authenticated asset contract.
+    - Shell/footer layout and visual treatment now live in `frontend/src/styles/foundation.css`, including the content-wrapper flex column, footer surface tokens, and a theme-aware footer that reads coherently in both light and dark modes.
+    - `app.footer.message` remains the configurable footer source, and authenticated shell backgrounds now use explicit repo-owned content-surface tokens instead of relying on legacy footer/shell CSS.
+  - [x] `H35.5` Purge migration-era implementation copy from page-visible content.
+    Handover:
+    - Authenticated page intros, helper copy, and empty-state text now describe the page purpose directly instead of referencing migration history, old Bootstrap patterns, or internal frontend-contract language.
+    - Admin workflow, dashboard, and operations pages keep their practical guidance while removing phrases such as “shared contract”, “builder contract”, “old Bootstrap 4”, and similar implementation framing.
+    - User workspace/apply pages and the touched list pages now use plain task-oriented copy that remains specific to each page without leaking modernization history.
+  - [x] `H35.6` Align docs, guardrails, and final frontend baseline expectations.
+    Handover:
+    - Active contributor docs now describe the post-H35 authenticated frontend baseline instead of the earlier post-H34 transition state.
+    - Authenticated template guardrails now fail on reintroduction of `/css/sb-admin-2.min.css`, `/js/sb-admin-2.min.js`, and `/css/footer-layout.css`.
+    - `H35` is archived from the active backlog, and its contract doc now lives under `docs/tasks/closed/`.
+
+## H33 Dashboard, Summary, And Feedback Migration To ScholarDex-Owned UI/UX
+
+Archived from `TASKS.md` on 2026-04-02 after final transition closeout.
+
+- [x] `H33` Dashboard, summary, and feedback migration to ScholarDex-owned UI/UX.
+  Goal: migrate dashboard-like and summary-heavy surfaces to ScholarDex-owned patterns that emphasize meaningful metrics, recent activity, empty states, and explicit user feedback while behaving consistently in both light and dark themes.
+  Deliverable: refreshed dashboard/summary surfaces for the main user and admin entry views plus consistent feedback patterns for success/error/status messaging and action outcomes in touched UI flows, aligned with the Bootstrap 5-compatible and repo-owned shell/foundation established by `H30`.
+  Exit criteria: primary dashboard or summary entry surfaces no longer read as placeholder shells; key summary cards, recent activity or attention blocks, and empty-state guidance are present where intended in both themes; touched flows provide clearer post-action feedback without introducing one-off notification patterns or extending Bootstrap 4-era behavior; and touched docs/tests/guardrails reflect the refreshed summary/feedback UX contract.
+  Status: completed on 2026-04-02.
+  Handover:
+  - Migrated shared, admin, and user summary-heavy surfaces now inherit the ScholarDex-owned dashboard, summary, and feedback baseline established by `H33`.
+  - Chart framing, summary-card rhythm, action clustering, empty-state treatment, and explicit feedback/status surfaces are part of the steady state for migrated summary/workspace pages.
+  - Bootstrap 4 / SB Admin summary-card and alert presentation are no longer acceptable on already-migrated H33 families; remaining debt is bounded to untouched legacy pages.
+  - Archived contract source of truth: `docs/tasks/closed/h33.1-shared-dashboard-summary-feedback-migration-contract.md`.
+  Subtasks:
+  - [x] `H33.1` Lock the shared dashboard/summary/feedback migration contract.
+    Handover:
+    - Archived contract lock: `docs/tasks/closed/h33.1-shared-dashboard-summary-feedback-migration-contract.md`.
+  - [x] `H33.2` Establish the repo-owned shared dashboard, summary, and feedback foundation.
+    Handover:
+    - Shared dashboard, summary, and feedback primitives now live under `frontend/src/**` and `/assets/app.css`.
+  - [x] `H33.3` Migrate primary shared and admin dashboard/summary surfaces.
+    Handover:
+    - Primary shared/admin dashboard and summary surfaces now use the shared ScholarDex summary contract instead of SB Admin card stacks and raw alert framing.
+  - [x] `H33.4` Migrate primary user dashboard, workspace-summary, and feedback-heavy surfaces.
+    Handover:
+    - Primary user workspace-summary and feedback-heavy pages now share the same summary and feedback language as the admin dashboard family.
+  - [x] `H33.5` Align `H33` docs, guardrails, and regression expectations.
+    Handover:
+    - Durable frontend docs and quality-gate guidance now treat the H33 summary/feedback baseline as part of the active post-H34 frontend contract.
+
+## H32 Form And Workflow Migration To ScholarDex-Owned UX
+
+Archived from `TASKS.md` on 2026-04-02 after final transition closeout.
+
+- [x] `H32` Form and workflow migration to ScholarDex-owned UX.
+  Goal: migrate form-heavy and multi-step user/admin workflows off Bootstrap 4-era interaction assumptions toward Bootstrap 5-compatible, ScholarDex-owned form and workflow patterns so inputs, validation, readonly states, and action structure become predictable and easier to use in both light and dark themes.
+  Deliverable: updated form conventions across the highest-value create/edit/workflow pages, including label/input/help-text hierarchy, validation/error treatment, readonly presentation, action hierarchy, clearer multi-step workflow orientation, and replacement of touched Bootstrap 4 modal/tooltip/form assumptions with repo-owned or Bootstrap 5-compatible behavior.
+  Exit criteria: touched form/workflow pages follow one consistent input and action pattern in both themes; validation and readonly behavior are clearer and more uniform; touched UI behavior no longer extends jQuery-driven Bootstrap 4 workflow conventions; and touched docs/tests/guardrails capture the updated workflow UX expectations.
+  Status: completed on 2026-04-02.
+  Handover:
+  - Migrated admin and user workflow surfaces now inherit the ScholarDex-owned form, modal, step-flow, and collection-builder baseline established by `H32`.
+  - Labels, helper text, readonly treatment, action hierarchy, multi-step framing, and shared modal/workflow surfaces are part of the expected steady state for migrated workflows.
+  - Bootstrap 4 modal, tooltip, collapse, and input-group presentation are no longer acceptable on already-migrated H32 families; remaining debt is bounded to untouched legacy pages.
+  - Archived contract source of truth: `docs/tasks/closed/h32.1-shared-form-workflow-migration-contract.md`.
+  Subtasks:
+  - [x] `H32.1` Lock the shared form/workflow migration contract.
+    Handover:
+    - Archived contract lock: `docs/tasks/closed/h32.1-shared-form-workflow-migration-contract.md`.
+  - [x] `H32.2` Establish the repo-owned shared form and workflow foundation.
+    Handover:
+    - Shared form and workflow primitives now live under `frontend/src/**` and `/assets/app.css`.
+  - [x] `H32.3` Migrate primary admin create/edit and modal-heavy workflows.
+    Handover:
+    - Primary admin create/edit and modal-driven flows now use the shared ScholarDex workflow contract instead of Bootstrap 4-era modal and input-group presentation.
+  - [x] `H32.4` Migrate primary user multi-step and apply-style workflows.
+    Handover:
+    - Primary user multi-step and apply-style workflows now use the same shared step, help-text, action, and selection contract.
+  - [x] `H32.5` Align H32 docs, guardrails, and regression expectations.
+    Handover:
+    - Durable frontend docs and quality-gate guidance now treat the H32 workflow baseline as part of the active post-H34 frontend contract.
+
+## H31 Data-Heavy List And Table Migration To ScholarDex-Owned Patterns
+
+Archived from `TASKS.md` on 2026-04-02 after final transition closeout.
+
+- [x] `H31` Data-heavy list and table migration to ScholarDex-owned patterns.
+  Goal: migrate ScholarDex’s table and list surfaces off Bootstrap 4-era assumptions toward Bootstrap 5-compatible, ScholarDex-owned list/table patterns that remain consistent, legible, and role-appropriate across shared, admin, and user views in both light and dark themes.
+  Deliverable: standardized table/list treatment for titles, filtering, pagination, row states, status badges, identifier presentation, and empty-state behavior across the primary data-heavy pages, with touched surfaces converging on ScholarDex-owned patterns and retiring BS4 DataTables dependency where those surfaces are modernized.
+  Exit criteria: the main list/table surfaces present consistent filtering, pagination, status, and empty-state behavior in both themes; legacy Bootstrap 4 full-grid/bordered styling is removed from touched views; touched list/table behavior no longer extends BS4 DataTables or Bootstrap 4-only markup assumptions; and touched tests/docs/guardrails reflect the standardized table UX contract.
+  Status: completed on 2026-04-02.
+  Handover:
+  - Migrated shared, admin, and user list/table surfaces now inherit the ScholarDex-owned table/list baseline established by `H31`.
+  - Filter panels, toolbar metadata, responsive overflow, empty states, pager treatment, and table semantics are part of the steady state for migrated list/table pages.
+  - Bootstrap 4 full-grid table presentation and BS4 DataTables styling are no longer acceptable on already-migrated H31 families; remaining debt is bounded to untouched legacy pages.
+  - Archived contract source of truth: `docs/tasks/closed/h31.1-shared-list-table-migration-contract.md`.
+  Subtasks:
+  - [x] `H31.1` Lock the shared list/table migration contract.
+    Handover:
+    - Archived contract lock: `docs/tasks/closed/h31.1-shared-list-table-migration-contract.md`.
+  - [x] `H31.2` Establish the repo-owned shared table/list foundation.
+    Handover:
+    - Shared table and list primitives now live under `frontend/src/**` and `/assets/app.css`.
+  - [x] `H31.3` Migrate primary shared and admin list/table surfaces.
+    Handover:
+    - Primary shared/admin list surfaces now use the shared ScholarDex list-table contract instead of Bootstrap 4-era table presentation.
+  - [x] `H31.4` Migrate primary user list/table surfaces.
+    Handover:
+    - Primary user list surfaces now use the same shared list-table contract with aligned toolbar, state, and overflow behavior.
+  - [x] `H31.5` Align H31 docs, guardrails, and regression expectations.
+    Handover:
+    - Durable frontend docs and quality-gate guidance now treat the H31 list-table baseline as part of the active post-H34 frontend contract.
+
+## H34 Accessibility, Responsive Behavior, And Migration Consistency Closeout
+
+Archived from `TASKS.md` on 2026-04-02 after H34.1-H34.8 completion.
+
+- [x] `H34` Accessibility, responsive behavior, and migration consistency closeout.
+  Goal: close the modernization wave by enforcing accessibility, responsive behavior, and cross-surface consistency expectations across the migrated ScholarDex-owned UI/UX system.
+  Deliverable: targeted accessibility/responsive fixes, cross-theme consistency cleanup, and removal of stale Bootstrap 4/SB Admin remnants across the surfaces modernized by `H30`-`H33`, with aligned docs and verification expectations for the updated frontend baseline.
+  Exit criteria: the modernized shell, table/list, form/workflow, and dashboard surfaces meet the repo’s intended accessibility and responsive expectations in both light and dark themes; keyboard/focus/state/empty-state/responsive regressions are addressed for the touched areas; stale Bootstrap 4/SB Admin remnants are removed from migrated surfaces; and active docs and relevant verification coverage describe the post-migration UX baseline without stale contradictions.
+  Status: completed on 2026-04-02.
+  Handover:
+  - Migrated shell, table/list, workflow, and summary families now inherit one ScholarDex-owned frontend baseline across shared, admin, and user surfaces.
+  - Accessibility semantics, visible focus treatment, responsive behavior, and light/dark parity are part of the expected steady state for migrated surfaces rather than deferred polish work.
+  - Bootstrap 4 and SB Admin presentation remnants were removed from already-migrated families, while remaining Bootstrap-era debt is intentionally bounded to untouched legacy pages.
+  - Durable contributor-facing baseline docs now live in `docs/frontend-conventions.md`, `docs/ux-design-guide.md`, and `docs/quality-gates.md`.
+  - Archived contract source of truth: `docs/tasks/closed/h34.1-accessibility-responsive-closeout-contract.md`.
+  Subtasks:
+  - [x] `H34.1` Lock the accessibility, responsive, and migration-closeout contract.
+    Handover:
+    - Archived contract lock: `docs/tasks/closed/h34.1-accessibility-responsive-closeout-contract.md`.
+  - [x] `H34.2` Close accessibility and focus/state gaps on migrated user table and report families.
+    Handover:
+    - Migrated user table and report families now use the shared table accessibility contract with clearer context, captioning, focus treatment, and corrected semantic markup.
+  - [x] `H34.3` Close accessibility and focus/state gaps on migrated user workflow and workspace families.
+    Handover:
+    - Migrated user workflows and mixed workspaces now use clearer step semantics, live-status treatment, disclosure semantics, and workspace accessibility behavior.
+  - [x] `H34.4` Close responsive and cross-theme consistency gaps on migrated shared and admin list/table families.
+    Handover:
+    - Migrated shared/admin list-table pages now share one responsive toolbar, filter, overflow, pager, and theme-consistent list contract.
+  - [x] `H34.5` Close responsive and cross-theme consistency gaps on migrated admin workflow families.
+    Handover:
+    - Migrated admin workflow pages now share one responsive modal, form-grid, collection-row, builder-card, and helper/feedback contract.
+  - [x] `H34.6` Close responsive and cross-theme consistency gaps on migrated dashboard, summary, and workspace families.
+    Handover:
+    - Migrated dashboard, summary, and mixed workspace pages now share one responsive summary-grid, dashboard-form, action-cluster, and report-detail contract.
+  - [x] `H34.7` Remove remaining Bootstrap 4 and SB Admin presentation remnants from already-migrated families.
+    Handover:
+    - Already-migrated families no longer rely on Bootstrap 4 / SB Admin presentation classes as their visible contract, and remaining legacy debt is bounded to untouched pages.
+  - [x] `H34.8` Align `H34` docs, guardrails, and final frontend baseline expectations.
+    Handover:
+    - Top-level frontend docs and quality-gate guidance now reflect the post-H34 steady state and H34 is archived from the active task flow.
+
 ## H28 Descriptive Runtime Naming Cleanup For Legacy `Hxx` Identifiers
 
 Archived from `TASKS.md` on 2026-03-31 after H28.1-H28.6 completion.

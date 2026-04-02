@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class WosFactBuilderService {
@@ -88,13 +89,32 @@ public class WosFactBuilderService {
             String runId,
             String sourceVersion
     ) {
+        WosParserRunResult parserRun = parserOrchestrator.parseAllEvents();
+        return buildFactsFromParserRun(parserRun, startBatchOverride, useCheckpoint, runId, sourceVersion);
+    }
+
+    public FactBuildRunResult buildFactsFromImportEventsForSource(
+            WosSourceType sourceType,
+            String sourceFile,
+            String sourceVersion
+    ) {
+        WosParserRunResult parserRun = parserOrchestrator.parseSourceLineage(sourceType, sourceFile, sourceVersion);
+        return buildFactsFromParserRun(parserRun, null, false, null, sourceVersion);
+    }
+
+    private FactBuildRunResult buildFactsFromParserRun(
+            WosParserRunResult parserRun,
+            Integer startBatchOverride,
+            boolean useCheckpoint,
+            String runId,
+            String sourceVersion
+    ) {
         ImportProcessingResult result = new ImportProcessingResult(20);
         if (optimizationProperties.isPreflightIndexesEnabled()) {
             wosIndexMaintenanceService.ensureWosIndexesForStage("wos-fact-builder");
         }
         Map<String, String> identityCache = new BoundedLruCache<>(Math.max(1024, optimizationProperties.getIdentityLruMaxSize()));
         Map<String, String> tokenSetResolutionCache = new BoundedLruCache<>(Math.max(1024, optimizationProperties.getIdentityLruMaxSize()));
-        WosParserRunResult parserRun = parserOrchestrator.parseAllEvents();
         List<WosParsedRecord> records = parserRun.records();
         int total = records.size();
         int chunkSize = Math.max(1, optimizationProperties.getFactChunkSize());
@@ -238,6 +258,108 @@ public class WosFactBuilderService {
                 batchesProcessed,
                 totalBatches,
                 nanosToMillis(enrichmentFinishedAtNanos - enrichmentStartedAtNanos));
+        return result;
+    }
+
+    public ImportProcessingResult enrichMissingCategoryRankingFieldsForSource(
+            WosSourceType sourceType,
+            String sourceFile,
+            String sourceVersion
+    ) {
+        long enrichmentStartedAtNanos = System.nanoTime();
+        ImportProcessingResult result = new ImportProcessingResult(20);
+        List<WosCategoryFact> scopedCategoryFacts = categoryFactRepository.findAllBySourceTypeAndSourceFileAndSourceVersion(
+                sourceType,
+                sourceFile,
+                sourceVersion
+        );
+        if (scopedCategoryFacts.isEmpty()) {
+            return result;
+        }
+
+        Set<String> affectedJournalIds = scopedCategoryFacts.stream()
+                .map(WosCategoryFact::getJournalId)
+                .filter(journalId -> journalId != null && !journalId.isBlank())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (affectedJournalIds.isEmpty()) {
+            return result;
+        }
+
+        Map<MetricFactKey, WosMetricFact> metricByKey = new LinkedHashMap<>();
+        for (WosMetricFact metricFact : metricFactRepository.findAllByJournalIdIn(new ArrayList<>(affectedJournalIds))) {
+            MetricFactKey key = new MetricFactKey(metricFact.getJournalId(), metricFact.getYear(), metricFact.getMetricType());
+            metricByKey.put(key, metricFact);
+        }
+
+        Map<CategoryEnrichmentGroupKey, List<WosCategoryFact>> peerGroups = new LinkedHashMap<>();
+        for (WosCategoryFact fact : categoryFactRepository.findAllByJournalIdIn(new ArrayList<>(affectedJournalIds))) {
+            if (fact.getYear() == null
+                    || fact.getMetricType() == null
+                    || fact.getCategoryNameCanonical() == null
+                    || fact.getCategoryNameCanonical().isBlank()
+                    || fact.getEditionNormalized() == null) {
+                continue;
+            }
+            CategoryEnrichmentGroupKey key = new CategoryEnrichmentGroupKey(
+                    fact.getYear(),
+                    fact.getMetricType(),
+                    fact.getCategoryNameCanonical(),
+                    fact.getEditionNormalized()
+            );
+            peerGroups.computeIfAbsent(key, ignored -> new ArrayList<>()).add(fact);
+        }
+
+        Map<CategoryEnrichmentGroupKey, List<WosCategoryFact>> scopedTargets = new LinkedHashMap<>();
+        for (WosCategoryFact fact : scopedCategoryFacts) {
+            result.markProcessed();
+            if (!requiresCategoryRankingEnrichment(fact)) {
+                continue;
+            }
+            if (fact.getYear() == null
+                    || fact.getMetricType() == null
+                    || fact.getCategoryNameCanonical() == null
+                    || fact.getCategoryNameCanonical().isBlank()
+                    || fact.getEditionNormalized() == null) {
+                result.markSkipped("insufficient-grouping-data factId=" + fact.getId());
+                continue;
+            }
+            CategoryEnrichmentGroupKey key = new CategoryEnrichmentGroupKey(
+                    fact.getYear(),
+                    fact.getMetricType(),
+                    fact.getCategoryNameCanonical(),
+                    fact.getEditionNormalized()
+            );
+            scopedTargets.computeIfAbsent(key, ignored -> new ArrayList<>()).add(fact);
+        }
+
+        List<WosCategoryFact> pendingUpdates = new ArrayList<>();
+        for (Map.Entry<CategoryEnrichmentGroupKey, List<WosCategoryFact>> entry : scopedTargets.entrySet()) {
+            enrichCategoryGroup(
+                    entry.getValue(),
+                    peerGroups.getOrDefault(entry.getKey(), List.of()),
+                    metricByKey,
+                    pendingUpdates,
+                    result
+            );
+        }
+
+        if (!pendingUpdates.isEmpty()) {
+            categoryFactRepository.saveAll(pendingUpdates);
+        }
+
+        log.info(
+                "WoS category ranking enrichment complete for upload scope [sourceType={}, sourceFile={}, sourceVersion={}]: processed={}, updated={}, skipped={}, errors={}, targetGroups={}, affectedJournals={}, totalMs={}",
+                sourceType,
+                sourceFile,
+                sourceVersion,
+                result.getProcessedCount(),
+                result.getUpdatedCount(),
+                result.getSkippedCount(),
+                result.getErrorCount(),
+                scopedTargets.size(),
+                affectedJournalIds.size(),
+                nanosToMillis(System.nanoTime() - enrichmentStartedAtNanos)
+        );
         return result;
     }
 
@@ -1166,14 +1288,29 @@ public class WosFactBuilderService {
             List<WosCategoryFact> pendingUpdates,
             ImportProcessingResult result
     ) {
+        enrichCategoryGroup(groupFacts, groupFacts, metricByKey, pendingUpdates, result);
+    }
+
+    private void enrichCategoryGroup(
+            List<WosCategoryFact> targetFacts,
+            List<WosCategoryFact> peerFacts,
+            Map<MetricFactKey, WosMetricFact> metricByKey,
+            List<WosCategoryFact> pendingUpdates,
+            ImportProcessingResult result
+    ) {
         List<RankCandidate> ranked = new ArrayList<>();
+        Set<String> targetFactIds = targetFacts.stream()
+                .map(WosCategoryFact::getId)
+                .collect(Collectors.toSet());
         List<WosCategoryFact> uncomputable = new ArrayList<>();
-        for (WosCategoryFact fact : groupFacts) {
+        for (WosCategoryFact fact : peerFacts) {
             MetricFactKey metricKey = new MetricFactKey(fact.getJournalId(), fact.getYear(), fact.getMetricType());
             WosMetricFact metricFact = metricByKey.get(metricKey);
             Double metricValue = metricFact == null ? null : metricFact.getValue();
             if (metricValue == null) {
-                uncomputable.add(fact);
+                if (targetFactIds.contains(fact.getId())) {
+                    uncomputable.add(fact);
+                }
                 continue;
             }
             ranked.add(new RankCandidate(fact, metricValue));
@@ -1196,6 +1333,9 @@ public class WosFactBuilderService {
 
         for (RankCandidate candidate : ranked) {
             WosCategoryFact fact = candidate.fact();
+            if (!targetFactIds.contains(fact.getId())) {
+                continue;
+            }
             boolean changed = false;
 
             if (fact.getRank() == null) {

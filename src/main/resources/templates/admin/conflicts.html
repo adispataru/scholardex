@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Conflicts</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 <div id="wrapper">
@@ -14,53 +13,54 @@
         <div id="content">
             <div th:replace="~{fragments :: navbar('Canonical Identity Conflicts')}"></div>
             <div class="container-fluid app-page-content">
-                <p class="mb-4">Primary conflict operations for <code>scholardex.identity_conflicts</code>.</p>
+                <div class="app-dashboard">
+                    <p class="app-dashboard__intro">Review the identity conflict queue, filter the active backlog, and run exceptional maintenance actions from one operational summary surface for <code>scholardex.identity_conflicts</code>.</p>
 
-                <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
-                <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+                    <div th:if="${errorMessage}" class="app-feedback app-feedback--danger" th:text="${errorMessage}"></div>
+                    <div th:if="${successMessage}" class="app-feedback app-feedback--success" th:text="${successMessage}"></div>
 
-                <div class="row mb-3">
-                    <div class="col-md-3">
-                        <div class="card border-left-danger shadow h-100 py-2">
-                            <div class="card-body"><div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Open</div><div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${summary.open}">0</div></div>
+                    <div class="app-summary-grid">
+                        <div class="app-summary-card app-summary-card--danger">
+                            <p class="app-summary-card__label">Open</p>
+                            <p class="app-summary-card__value" th:text="${summary.open}">0</p>
+                            <p class="app-summary-card__meta">Conflicts that still require operator action.</p>
+                        </div>
+                        <div class="app-summary-card app-summary-card--success">
+                            <p class="app-summary-card__label">Resolved</p>
+                            <p class="app-summary-card__value" th:text="${summary.resolved}">0</p>
+                            <p class="app-summary-card__meta">Conflicts cleared through explicit operator resolution.</p>
+                        </div>
+                        <div class="app-summary-card">
+                            <p class="app-summary-card__label">Dismissed</p>
+                            <p class="app-summary-card__value" th:text="${summary.dismissed}">0</p>
+                            <p class="app-summary-card__meta">Records intentionally removed from the active queue.</p>
+                        </div>
+                        <div class="app-summary-card app-summary-card--warning">
+                            <p class="app-summary-card__label">Total</p>
+                            <p class="app-summary-card__value" th:text="${summary.total}">0</p>
+                            <p class="app-summary-card__meta">Overall conflict inventory tracked by the page.</p>
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="card border-left-success shadow h-100 py-2">
-                            <div class="card-body"><div class="text-xs font-weight-bold text-success text-uppercase mb-1">Resolved</div><div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${summary.resolved}">0</div></div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card border-left-secondary shadow h-100 py-2">
-                            <div class="card-body"><div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">Dismissed</div><div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${summary.dismissed}">0</div></div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card border-left-primary shadow h-100 py-2">
-                            <div class="card-body"><div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total</div><div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${summary.total}">0</div></div>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Identity Conflict Queue</h6>
-                    </div>
-                    <div class="card-body">
-                        <form method="get" th:action="@{/admin/conflicts}" class="form-row align-items-end mb-3">
-                            <div class="col-md-2"><label class="small mb-1">Entity type</label><input name="entityType" class="form-control form-control-sm" th:value="${entityType}" placeholder="PUBLICATION"></div>
-                            <div class="col-md-2"><label class="small mb-1">Incoming source</label><input name="incomingSource" class="form-control form-control-sm" th:value="${incomingSource}" placeholder="SCOPUS"></div>
-                            <div class="col-md-2"><label class="small mb-1">Reason code</label><input name="reasonCode" class="form-control form-control-sm" th:value="${reasonCode}" placeholder="SOURCE_ID_COLLISION"></div>
-                            <div class="col-md-2"><label class="small mb-1">Status</label><input name="status" class="form-control form-control-sm" th:value="${status}" placeholder="OPEN"></div>
-                            <div class="col-md-2"><label class="small mb-1">Detected from</label><input name="detectedFrom" type="date" class="form-control form-control-sm" th:value="${detectedFrom}"></div>
-                            <div class="col-md-2"><label class="small mb-1">Detected to</label><input name="detectedTo" type="date" class="form-control form-control-sm" th:value="${detectedTo}"></div>
-                            <div class="col-md-1 mt-2"><label class="small mb-1">Size</label><input name="size" type="number" min="1" class="form-control form-control-sm" th:value="${identityPageData.size}"></div>
-                            <div class="col-md-2 mt-2"><button type="submit" class="btn btn-outline-primary btn-sm">Apply</button></div>
+                    <div class="app-summary-panel">
+                        <div class="app-summary-panel__header">
+                            <h2 class="app-summary-panel__title">Identity Conflict Queue</h2>
+                        </div>
+                        <div class="app-summary-panel__body">
+                        <form method="get" th:action="@{/admin/conflicts}" class="app-dashboard-form app-dashboard-form--filters">
+                            <div class="app-dashboard-form__field app-dashboard-form__field--span-2"><label>Entity type</label><input name="entityType" class="form-control" th:value="${entityType}" placeholder="PUBLICATION"></div>
+                            <div class="app-dashboard-form__field app-dashboard-form__field--span-2"><label>Incoming source</label><input name="incomingSource" class="form-control" th:value="${incomingSource}" placeholder="SCOPUS"></div>
+                            <div class="app-dashboard-form__field app-dashboard-form__field--span-2"><label>Reason code</label><input name="reasonCode" class="form-control" th:value="${reasonCode}" placeholder="SOURCE_ID_COLLISION"></div>
+                            <div class="app-dashboard-form__field app-dashboard-form__field--span-2"><label>Status</label><input name="status" class="form-control" th:value="${status}" placeholder="OPEN"></div>
+                            <div class="app-dashboard-form__field app-dashboard-form__field--span-2"><label>Detected from</label><input name="detectedFrom" type="date" class="form-control" th:value="${detectedFrom}"></div>
+                            <div class="app-dashboard-form__field app-dashboard-form__field--span-2"><label>Detected to</label><input name="detectedTo" type="date" class="form-control" th:value="${detectedTo}"></div>
+                            <div class="app-dashboard-form__field app-dashboard-form__field--span-1"><label>Size</label><input name="size" type="number" min="1" class="form-control" th:value="${identityPageData.size}"></div>
+                            <div class="app-dashboard-form__actions"><button type="submit" class="btn btn-outline-primary btn-sm">Apply</button></div>
                         </form>
 
                         <form method="post" th:action="@{/admin/conflicts/bulkStatus}" class="mb-2">
-                            <div class="table-responsive">
-                                <table class="table table-sm table-bordered">
+                            <div class="app-table-scroll">
+                                <table class="table table-sm app-table">
                                     <thead>
                                     <tr>
                                         <th></th>
@@ -95,55 +95,87 @@
                                         </td>
                                     </tr>
                                     <tr th:if="${identityPageData.content.isEmpty()}">
-                                        <td colspan="10" class="text-center text-muted">No conflicts found.</td>
+                                        <td colspan="10" class="app-dashboard-empty-row">No conflicts found.</td>
                                     </tr>
                                     </tbody>
                                 </table>
                             </div>
 
-                            <div class="d-flex justify-content-between align-items-center mt-2">
-                                <div class="small text-muted" th:text="'Page ' + (${identityPageData.number} + 1) + ' / ' + ${identityPageData.totalPages} + ' (' + ${identityPageData.totalElements} + ' records)'"></div>
-                                <div>
-                                    <a class="btn btn-outline-secondary btn-sm mr-2" th:classappend="${identityPageData.hasPrevious()} ? '' : 'disabled'"
+                            <div class="app-dashboard-pager">
+                                <p class="app-dashboard-pager__meta" th:text="'Page ' + (${identityPageData.number} + 1) + ' / ' + ${identityPageData.totalPages} + ' (' + ${identityPageData.totalElements} + ' records)'"></p>
+                                <div class="app-dashboard__actions">
+                                    <a class="btn btn-outline-secondary btn-sm" th:classappend="${identityPageData.hasPrevious()} ? '' : 'disabled'"
                                        th:href="@{/admin/conflicts(page=${identityPageData.number - 1},size=${identityPageData.size},entityType=${entityType},incomingSource=${incomingSource},reasonCode=${reasonCode},status=${status},detectedFrom=${detectedFrom},detectedTo=${detectedTo})}">Prev</a>
                                     <a class="btn btn-outline-secondary btn-sm" th:classappend="${identityPageData.hasNext()} ? '' : 'disabled'"
                                        th:href="@{/admin/conflicts(page=${identityPageData.number + 1},size=${identityPageData.size},entityType=${entityType},incomingSource=${incomingSource},reasonCode=${reasonCode},status=${status},detectedFrom=${detectedFrom},detectedTo=${detectedTo})}">Next</a>
                                 </div>
                             </div>
 
-                            <div class="mt-3">
+                            <div class="app-dashboard__actions">
                                 <button type="submit" name="action" value="resolve" class="btn btn-outline-success btn-sm">Bulk resolve selected OPEN</button>
                                 <button type="submit" name="action" value="dismiss" class="btn btn-outline-secondary btn-sm">Bulk dismiss selected OPEN</button>
                             </div>
                         </form>
+                        </div>
+                    </div>
 
-                        <hr>
-                        <form th:action="@{/admin/conflicts/identity/open/clear}" method="post" class="d-flex align-items-center">
-                            <input type="text" name="confirmation" class="form-control form-control-sm mr-2" style="width: 180px;" placeholder="Type RESET">
-                            <button type="submit" class="btn btn-danger btn-sm">Clear all OPEN identity conflicts</button>
+                    <div class="app-attention-panel">
+                        <h2 class="app-attention-panel__title">High-impact maintenance</h2>
+                        <p class="app-attention-panel__body">Use destructive clear actions only when you intend to reset the active queue. The queue controls above remain the normal day-to-day operational surface.</p>
+                    </div>
+
+                    <div class="app-summary-panel">
+                        <div class="app-summary-panel__header">
+                            <h2 class="app-summary-panel__title">Open Queue Reset</h2>
+                        </div>
+                        <div class="app-summary-panel__body">
+                        <form th:action="@{/admin/conflicts/identity/open/clear}" method="post" class="app-dashboard-form app-dashboard-form--inline">
+                            <div class="app-dashboard-form__field">
+                                <label>Confirmation</label>
+                                <input type="text" name="confirmation" class="form-control" placeholder="Type RESET">
+                            </div>
+                            <div class="app-dashboard-form__actions">
+                                <button type="submit" class="btn btn-danger btn-sm">Clear all OPEN identity conflicts</button>
+                            </div>
                         </form>
+                        </div>
                     </div>
-                </div>
 
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-warning">Legacy Conflict Maintenance (Transition)</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-2 small text-muted">Forward-only policy: no backfill; legacy stores remain clearable here during transition.</div>
-                        <div class="d-flex flex-column">
-                            <form th:action="@{/admin/conflicts/wos/identity/clear}" method="post" class="d-flex align-items-center mb-2">
-                                <input type="text" name="confirmation" class="form-control form-control-sm mr-2" style="width: 180px;" placeholder="Type RESET">
-                                <button type="submit" class="btn btn-outline-danger btn-sm">Clear legacy WoS identity conflicts</button>
+                    <div class="app-summary-panel">
+                        <div class="app-summary-panel__header">
+                            <h2 class="app-summary-panel__title">Legacy Conflict Maintenance</h2>
+                        </div>
+                        <div class="app-summary-panel__body">
+                        <p class="app-dashboard-copy">Forward-only policy: no backfill; legacy stores remain clearable here during transition.</p>
+                        <div class="app-summary-list">
+                            <form th:action="@{/admin/conflicts/wos/identity/clear}" method="post" class="app-dashboard-form app-dashboard-form--inline">
+                                <div class="app-dashboard-form__field">
+                                    <label>Confirmation</label>
+                                    <input type="text" name="confirmation" class="form-control" placeholder="Type RESET">
+                                </div>
+                                <div class="app-dashboard-form__actions">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">Clear legacy WoS identity conflicts</button>
+                                </div>
                             </form>
-                            <form th:action="@{/admin/conflicts/wos/fact/clear}" method="post" class="d-flex align-items-center mb-2">
-                                <input type="text" name="confirmation" class="form-control form-control-sm mr-2" style="width: 180px;" placeholder="Type RESET">
-                                <button type="submit" class="btn btn-outline-danger btn-sm">Clear legacy WoS fact conflicts</button>
+                            <form th:action="@{/admin/conflicts/wos/fact/clear}" method="post" class="app-dashboard-form app-dashboard-form--inline">
+                                <div class="app-dashboard-form__field">
+                                    <label>Confirmation</label>
+                                    <input type="text" name="confirmation" class="form-control" placeholder="Type RESET">
+                                </div>
+                                <div class="app-dashboard-form__actions">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">Clear legacy WoS fact conflicts</button>
+                                </div>
                             </form>
-                            <form th:action="@{/admin/conflicts/scopus/link/clear}" method="post" class="d-flex align-items-center">
-                                <input type="text" name="confirmation" class="form-control form-control-sm mr-2" style="width: 180px;" placeholder="Type RESET">
-                                <button type="submit" class="btn btn-outline-danger btn-sm">Clear legacy Scopus link conflicts</button>
+                            <form th:action="@{/admin/conflicts/scopus/link/clear}" method="post" class="app-dashboard-form app-dashboard-form--inline">
+                                <div class="app-dashboard-form__field">
+                                    <label>Confirmation</label>
+                                    <input type="text" name="confirmation" class="form-control" placeholder="Type RESET">
+                                </div>
+                                <div class="app-dashboard-form__actions">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">Clear legacy Scopus link conflicts</button>
+                                </div>
                             </form>
+                        </div>
                         </div>
                     </div>
                 </div>

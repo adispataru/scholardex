@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Publications</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
@@ -51,13 +50,14 @@
                         </div>
                     </div>
                     <div class="col-xl-3 col-md-12 mb-4">
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">Individual Reports</h6>
+                        <div class="app-table-section">
+                            <div class="app-table-section__surface">
+                            <div class="app-table-section__header app-table-toolbar">
+                                <h6 class="app-table-section__title">Individual Reports</h6>
                             </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered js-datatable" id="dataTable" width="100%" cellspacing="0">
+                            <div class="app-table-section__body">
+                                <div class="app-table-scroll">
+                                    <table class="table table-bordered js-datatable app-table" id="groupReportsTable" width="100%" cellspacing="0">
                                         <thead>
                                         <tr>
                                             <th>Title</th>
@@ -74,6 +74,7 @@
                                         </tbody>
                                     </table>
                                 </div>
+                            </div>
                             </div>
                         </div>
                     </div>
@@ -110,13 +111,14 @@
 
 
                 <!-- DataTales Example -->
-                <div class="card shadow mb-4" th:each="entry : ${publicationsByYear}">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary" th:text="${entry.key}">Year</h6>
+                <div class="app-table-section mb-4" th:each="entry : ${publicationsByYear}">
+                    <div class="app-table-section__surface">
+                    <div class="app-table-section__header app-table-toolbar">
+                        <h6 class="app-table-section__title" th:text="${entry.key}">Year</h6>
                     </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered js-datatable" id="dataTable" width="100%" cellspacing="0">
+                    <div class="app-table-section__body">
+                        <div class="app-table-scroll">
+                            <table class="table table-bordered js-datatable app-table" width="100%" cellspacing="0">
                                 <thead>
                                 <tr>
                                     <th>Title</th>
@@ -156,6 +158,7 @@
                             </table>
                         </div>
                     </div>
+                    </div>
                 </div>
             </div>
             <!-- End of Main Content -->
@@ -180,7 +183,6 @@
 <!-- Page level plugins -->
 
 <!-- Page level custom scripts -->
-<script src="/js/demo/datatables-demo.js"></script>
 <script th:inline="javascript">
     var countData = /*[[${publicationsCountByYear}]]*/ '{}';
     var years = Object.keys(countData)

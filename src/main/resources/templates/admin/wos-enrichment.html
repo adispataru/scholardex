@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>WoS Enrichment</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 <div id="wrapper">
@@ -14,32 +13,52 @@
         <div id="content">
             <div th:replace="~{fragments :: navbar('WoS Enrichment')}"></div>
             <div class="container-fluid app-page-content">
-                <p class="mb-4">Run WoS category enrichment and verify deterministic run metrics.</p>
+                <div class="app-dashboard">
+                    <p class="app-dashboard__intro">Run WoS category enrichment and review the latest deterministic run state from one compact operational summary surface.</p>
 
-                <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
-                <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+                    <div th:if="${errorMessage}" class="app-feedback app-feedback--danger" th:text="${errorMessage}"></div>
+                    <div th:if="${successMessage}" class="app-feedback app-feedback--success" th:text="${successMessage}"></div>
 
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                        <h6 class="m-0 font-weight-bold text-primary">Run Enrichment</h6>
-                        <a th:href="@{/admin/initialization}" class="btn btn-outline-secondary btn-sm">Back to Initialization</a>
+                    <div class="app-summary-grid">
+                        <div class="app-summary-card">
+                            <p class="app-summary-card__label">Executed</p>
+                            <p class="app-summary-card__value" th:text="${summary.executed ? 'Yes' : 'No'}">No</p>
+                            <p class="app-summary-card__meta">Whether the latest enrichment step completed at least once.</p>
+                        </div>
+                        <div class="app-summary-card app-summary-card--success">
+                            <p class="app-summary-card__label">Processed</p>
+                            <p class="app-summary-card__value" th:text="${summary.processed}">0</p>
+                            <p class="app-summary-card__meta">Rows considered during the latest run.</p>
+                        </div>
+                        <div class="app-summary-card app-summary-card--danger">
+                            <p class="app-summary-card__label">Failed</p>
+                            <p class="app-summary-card__value" th:text="${summary.failed}">0</p>
+                            <p class="app-summary-card__meta">Rows that failed during the most recent enrichment pass.</p>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <form th:action="@{/admin/initialization/wos/enrichment/runPage}" method="post" class="mr-2">
+
+                    <div class="app-summary-panel">
+                        <div class="app-summary-panel__header">
+                            <h2 class="app-summary-panel__title">Run Enrichment</h2>
+                            <a th:href="@{/admin/initialization}" class="btn btn-outline-secondary btn-sm">Back to Initialization</a>
+                        </div>
+                        <div class="app-summary-panel__body">
+                        <div class="app-dashboard__actions">
+                            <form th:action="@{/admin/initialization/wos/enrichment/runPage}" method="post">
                                 <button type="submit" class="btn btn-primary btn-sm">Run enrichment</button>
                             </form>
                             <a th:href="@{/admin/initialization/wos/enrichment/summary}" class="btn btn-outline-primary btn-sm">View JSON summary</a>
                         </div>
+                        </div>
                     </div>
-                </div>
 
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Latest Run Summary</h6>
-                    </div>
-                    <div class="card-body">
-                        <table class="table table-bordered table-sm mb-0">
+                    <div class="app-summary-panel">
+                        <div class="app-summary-panel__header">
+                            <h2 class="app-summary-panel__title">Latest Run Summary</h2>
+                        </div>
+                        <div class="app-summary-panel__body">
+                        <div class="app-table-scroll">
+                        <table class="table table-sm app-table mb-0">
                             <tbody>
                             <tr><th scope="row">Step</th><td th:text="${summary.stepName}">enrich-category-rankings</td></tr>
                             <tr><th scope="row">Executed</th><td th:text="${summary.executed}">false</td></tr>
@@ -53,6 +72,8 @@
                             <tr><th scope="row">Note</th><td th:text="${summary.note}">not-run</td></tr>
                             </tbody>
                         </table>
+                        </div>
+                        </div>
                     </div>
                 </div>
             </div>

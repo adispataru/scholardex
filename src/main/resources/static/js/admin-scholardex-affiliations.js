@@ -62,9 +62,9 @@
       const id = encodeURIComponent(item.afid || '');
       return '<tr>' +
         '<td><a href="/admin/scholardex/affiliations/edit/' + id + '">' + escapeHtml(item.name) + '</a></td>' +
-        '<td>' + escapeHtml(item.afid) + '</td>' +
-        '<td>' + escapeHtml(item.city) + '</td>' +
-        '<td>' + escapeHtml(item.country) + '</td>' +
+        '<td class="app-table__cell--identifier">' + escapeHtml(item.afid || '—') + '</td>' +
+        '<td>' + escapeHtml(item.city || '—') + '</td>' +
+        '<td>' + escapeHtml(item.country || '—') + '</td>' +
         '</tr>';
     }).join('');
   }

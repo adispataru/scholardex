@@ -89,8 +89,8 @@
       const id = encodeURIComponent(item.id || '');
       return '<tr>' +
         '<td><a href="' + detailBase + '/' + id + '">' + escapeHtml(item.name) + '</a></td>' +
-        '<td>' + escapeHtml(item.acronym) + '</td>' +
-        '<td>' + escapeHtml(item.category2023) + '</td>' +
+        '<td class="app-table__cell--identifier">' + escapeHtml(item.acronym || '—') + '</td>' +
+        '<td>' + escapeHtml(item.category2023 || '—') + '</td>' +
         '</tr>';
     }).join('');
 

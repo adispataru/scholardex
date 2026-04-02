@@ -4,29 +4,6 @@
     <meta charset="UTF-8">
     <title>Incremental Updates</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
-    <style>
-        .incremental-guidance {
-            border-left: 0.3rem solid #4e73df;
-            background: #f8f9fc;
-        }
-        .incremental-flash-note {
-            color: #5a5c69;
-            font-size: 0.9rem;
-        }
-        .incremental-card-subtitle {
-            margin-bottom: 1rem;
-            color: #6c757d;
-            font-size: 0.9rem;
-        }
-        .incremental-form-label {
-            font-weight: 600;
-        }
-        .incremental-help {
-            color: #6c757d;
-            font-size: 0.85rem;
-        }
-    </style>
 </head>
 <body id="page-top">
 <div id="wrapper">
@@ -36,131 +13,185 @@
         <div id="content">
             <div th:replace="~{fragments :: navbar('Incremental Updates')}"></div>
             <div class="container-fluid app-page-content">
-                <div class="d-flex justify-content-between align-items-start mb-4">
-                    <div>
-                        <p class="mb-2">Upload one file per run for incremental WoS or Scopus maintenance. This page is for upload-driven incremental ingest runs, not for full rebuild, reconcile, or recovery maintenance.</p>
-                        <div class="small text-muted">Accepted inputs: WoS official JSON, WoS government Excel, Scopus JSON.</div>
+                <div class="app-dashboard">
+                    <div class="app-page-toolbar app-dashboard">
+                        <p class="app-dashboard__intro">Upload one file per run for incremental WoS or Scopus maintenance. This page is for upload-driven incremental ingest runs, not for full rebuild, reconcile, or recovery maintenance.</p>
+                        <div class="app-dashboard__actions">
+                            <a th:href="@{/admin/initialization}" class="btn btn-outline-secondary btn-sm">Back to Initialization</a>
+                        </div>
                     </div>
-                    <a th:href="@{/admin/initialization}" class="btn btn-outline-secondary btn-sm">Back to Initialization</a>
-                </div>
 
-                <div class="card shadow mb-4 incremental-guidance">
-                    <div class="card-body">
-                        <h6 class="text-primary font-weight-bold mb-3">When To Use This Page</h6>
-                        <p class="mb-2"><code>/admin/incremental-updates</code> is for one uploaded file at a time when you want to ingest a new WoS or Scopus payload and run only the incremental maintenance steps wired into that source upload.</p>
-                        <p class="mb-0"><code>/admin/initialization</code> remains the place for broader maintenance, rebuild, reconcile, recovery, and downstream follow-up steps after an upload run.</p>
+                    <div class="app-attention-panel app-ops-guidance">
+                        <p class="app-attention-panel__title">Accepted inputs</p>
+                        <p class="app-attention-panel__body">WoS official JSON, WoS government Excel, and Scopus JSON are supported on this page. Use Initialization for broader rebuild, reconcile, or recovery maintenance.</p>
                     </div>
-                </div>
 
-                <div th:if="${errorMessage}" class="alert alert-danger">
-                    <div class="font-weight-bold mb-1">Upload failed</div>
-                    <div th:text="${errorMessage}"></div>
-                    <div class="incremental-flash-note mt-2">The upload contract was enforced before the run completed. Use initialization for broader maintenance, not for retrying the same file contract.</div>
-                </div>
-                <div th:if="${successMessage}" class="alert alert-success">
-                    <div class="font-weight-bold mb-1">Upload completed</div>
-                    <div th:text="${successMessage}"></div>
-                    <div class="incremental-flash-note mt-2">The counts below reflect only the subset of the pipeline executed by this upload action. Use initialization for downstream maintenance that was intentionally skipped.</div>
-                </div>
-
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">WoS Incremental Upload</h6>
+                    <div th:if="${errorMessage}" class="app-feedback app-feedback--danger" role="alert">
+                        <p class="app-feedback__title">Upload failed</p>
+                        <p class="app-feedback__body" th:text="${errorMessage}"></p>
+                        <p class="app-dashboard-copy">The upload was stopped before the run completed. Use Initialization for broader maintenance rather than retrying the same file here.</p>
                     </div>
-                    <div class="card-body">
-                        <p class="incremental-card-subtitle">Choose the WoS source family explicitly, then upload exactly one matching file. Accepted files are official <code>.json</code> exports or government <code>.xls</code>/<code>.xlsx</code> AIS/RIS workbooks.</p>
-                        <div class="alert alert-light border mb-3">
-                            <div class="font-weight-bold mb-2">WoS upload scope</div>
-                            <div class="mb-1">This action runs WoS ingest plus WoS fact building for the uploaded file lineage.</div>
-                            <div class="mb-1">It does not run category enrichment, projection rebuilds, or WoS onboarding.</div>
-                            <div>Use <a th:href="@{/admin/initialization}">Initialization</a> for downstream WoS maintenance after the upload if those steps are needed.</div>
-                        </div>
-                        <form th:action="@{/admin/incremental-updates/wos}" method="post" enctype="multipart/form-data">
-                            <div class="form-group">
-                                <label class="incremental-form-label" for="wos-source-type">WoS source type</label>
-                                <select id="wos-source-type" name="sourceType" class="form-control" required>
-                                    <option value="">Select source type</option>
-                                    <option value="OFFICIAL_JSON">OFFICIAL_JSON</option>
-                                    <option value="GOVERNMENT_EXCEL">GOVERNMENT_EXCEL</option>
-                                </select>
-                                <div class="incremental-help mt-1">Use <code>OFFICIAL_JSON</code> for Web of Science JSON exports and <code>GOVERNMENT_EXCEL</code> for AIS/RIS Excel files.</div>
-                            </div>
-                            <div class="form-group">
-                                <label class="incremental-form-label" for="wos-source-version">Optional sourceVersion</label>
-                                <input id="wos-source-version"
-                                       type="text"
-                                       name="sourceVersion"
-                                       class="form-control"
-                                       placeholder="Optional sourceVersion">
-                                <div class="incremental-help mt-1">Matches the existing WoS initialization convention when the operator wants to override inferred source versioning.</div>
-                            </div>
-                            <div class="form-group">
-                                <label class="incremental-form-label" for="wos-file">Upload file</label>
-                                <input id="wos-file" type="file" name="file" class="form-control-file" accept=".json,.xls,.xlsx" required>
-                                <div class="incremental-help mt-1">One file per run. Supported extensions depend on the selected source type.</div>
-                            </div>
-                            <button type="submit" class="btn btn-primary btn-sm">Submit WoS Upload</button>
-                        </form>
+
+                    <div th:if="${successMessage}" class="app-feedback app-feedback--success" role="status">
+                        <p class="app-feedback__title">Upload completed</p>
+                        <p class="app-feedback__body" th:text="${successMessage}"></p>
+                        <p class="app-dashboard-copy">The counts shown here reflect only the subset of the pipeline executed by the upload action. Use Initialization for downstream maintenance that was intentionally skipped.</p>
                     </div>
-                </div>
 
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Scopus Incremental Upload</h6>
-                    </div>
-                    <div class="card-body">
-                        <p class="incremental-card-subtitle">Upload exactly one Scopus <code>.json</code> file. Source version is intentionally not part of this v1 contract.</p>
-                        <div class="alert alert-light border mb-3">
-                            <div class="font-weight-bold mb-2">Scopus upload scope</div>
-                            <div class="mb-1">This action runs Scopus ingest, fact build, and canonical materialization for the uploaded payload.</div>
-                            <div class="mb-1">It does not run projection rebuild, source-link reconciliation, edge reconciliation, or ensure-indexes.</div>
-                            <div>Use <a th:href="@{/admin/initialization}">Initialization</a> for downstream Scopus maintenance after the upload if those steps are needed.</div>
-                        </div>
-                        <form th:action="@{/admin/incremental-updates/scopus}" method="post" enctype="multipart/form-data">
-                            <div class="form-group">
-                                <label class="incremental-form-label" for="scopus-file">Upload file</label>
-                                <input id="scopus-file" type="file" name="file" class="form-control-file" accept=".json" required>
-                                <div class="incremental-help mt-1">Only <code>.json</code> is accepted for Scopus incremental updates.</div>
+                    <div class="app-ops-stack">
+                        <section class="app-summary-panel">
+                            <div class="app-summary-panel__header">
+                                <h6 class="app-summary-panel__title">When To Use This Page</h6>
                             </div>
-                            <button type="submit" class="btn btn-primary btn-sm">Submit Scopus Upload</button>
-                        </form>
-
-                        <hr class="my-4">
-
-                        <div class="alert alert-light border mb-3">
-                            <div class="font-weight-bold mb-2">Last Scopus upload context</div>
-                            <div th:if="${scopusFollowUpContext != null}">
-                                <div class="mb-1">Last successful file: <code th:text="${scopusFollowUpContext.originalFilename()}"></code></div>
-                                <div class="incremental-help">Post-upload actions below continue the stored upload batch for this session, not the global Scopus initialization flow.</div>
+                            <div class="app-summary-panel__body">
+                                <p class="app-dashboard-copy"><code>/admin/incremental-updates</code> is for one uploaded file at a time when you want to ingest a new WoS or Scopus payload and run only the incremental maintenance steps wired into that source upload.</p>
+                                <p class="app-dashboard-copy"><code>/admin/initialization</code> remains the place for broader maintenance, rebuild, reconcile, recovery, and downstream follow-up steps after an upload run.</p>
                             </div>
-                            <div th:if="${scopusFollowUpContext == null}" class="mb-0 text-muted">
-                                No successful Scopus upload is stored in this session yet. Upload a Scopus JSON file before using post-upload maintenance.
+                        </section>
+
+                        <section class="app-summary-panel">
+                            <div class="app-summary-panel__header">
+                                <h6 class="app-summary-panel__title">WoS Incremental Upload</h6>
                             </div>
-                        </div>
+                            <div class="app-summary-panel__body">
+                                <p class="app-ops-section-note">Choose the WoS source family explicitly, then upload exactly one matching file. Accepted files are official <code>.json</code> exports or government <code>.xls</code>/<code>.xlsx</code> AIS/RIS workbooks.</p>
+                                <div class="app-attention-panel">
+                                    <p class="app-attention-panel__title">WoS upload scope</p>
+                                    <p class="app-attention-panel__body">This action runs WoS ingest plus WoS fact building for the uploaded file lineage. Upload-scoped category enrichment and upload-scoped projection rebuild are available below after a successful WoS upload. Use <a th:href="@{/admin/initialization}">Initialization</a> for full-corpus WoS onboarding, recovery, canonical reset, or broader rebuild maintenance.</p>
+                                </div>
+                                <form th:action="@{/admin/incremental-updates/wos}" method="post" enctype="multipart/form-data" class="app-form-section">
+                                    <div class="app-form-grid">
+                                        <div class="form-group app-form-field">
+                                            <label for="wos-source-type">WoS source type</label>
+                                            <select id="wos-source-type" name="sourceType" class="form-control" required>
+                                                <option value="">Select source type</option>
+                                                <option value="OFFICIAL_JSON">OFFICIAL_JSON</option>
+                                                <option value="GOVERNMENT_EXCEL">GOVERNMENT_EXCEL</option>
+                                            </select>
+                                            <p class="app-form-help-inline">Use <code>OFFICIAL_JSON</code> for Web of Science JSON exports and <code>GOVERNMENT_EXCEL</code> for AIS/RIS Excel files.</p>
+                                        </div>
+                                        <div class="form-group app-form-field">
+                                            <label for="wos-source-version">Optional sourceVersion</label>
+                                            <input id="wos-source-version"
+                                                   type="text"
+                                                   name="sourceVersion"
+                                                   class="form-control"
+                                                   placeholder="Optional sourceVersion">
+                                            <p class="app-form-help-inline">Matches the existing WoS initialization convention when the operator wants to override inferred source versioning.</p>
+                                        </div>
+                                        <div class="form-group app-form-field">
+                                            <label for="wos-file">Upload file</label>
+                                            <input id="wos-file" type="file" name="file" class="form-control-file" accept=".json,.xls,.xlsx" required>
+                                            <p class="app-form-help-inline">One file per run. Supported extensions depend on the selected source type.</p>
+                                        </div>
+                                    </div>
+                                    <div class="app-form-actions">
+                                        <button type="submit" class="btn btn-primary btn-sm">Submit WoS Upload</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </section>
 
-                        <div class="alert alert-light border mb-3">
-                            <div class="font-weight-bold mb-2">Scopus post-upload maintenance</div>
-                            <div class="mb-1">Use these actions after a successful Scopus upload when you want to continue only that uploaded batch.</div>
-                            <div class="mb-1">Routine follow-up: rebuild projections and reconcile edges.</div>
-                            <div>Global rebuild, recovery, or non-batch maintenance still belongs on <a th:href="@{/admin/initialization}">Initialization</a>.</div>
-                        </div>
+                        <section class="app-summary-panel">
+                            <div class="app-summary-panel__header">
+                                <h6 class="app-summary-panel__title">WoS Post-Upload Maintenance</h6>
+                            </div>
+                            <div class="app-summary-panel__body">
+                                <div class="app-feedback app-feedback--info">
+                                    <p class="app-feedback__title">Last WoS upload context</p>
+                                    <div th:if="${wosFollowUpContext != null}">
+                                        <p class="app-feedback__body">
+                                            Last successful file:
+                                            <code th:text="${wosFollowUpContext.originalFilename()}"></code>
+                                            <span th:text="${' [' + wosFollowUpContext.sourceType() + ', sourceVersion=' + wosFollowUpContext.effectiveSourceVersion() + ']'}"></span>
+                                        </p>
+                                        <p class="app-dashboard-copy">Post-upload actions below continue only this stored WoS upload lineage for the current session, not the global WoS initialization flow.</p>
+                                    </div>
+                                    <div th:if="${wosFollowUpContext == null}">
+                                        <p class="app-feedback__body">No successful WoS upload lineage is stored in this session yet. Upload one WoS file before using post-upload maintenance.</p>
+                                    </div>
+                                </div>
 
-                        <div class="d-flex flex-wrap align-items-center mb-3">
-                            <form th:action="@{/admin/incremental-updates/scopus/buildProjections}" method="post" class="mr-2 mb-2">
-                                <button type="submit" class="btn btn-outline-primary btn-sm" th:disabled="${scopusFollowUpContext == null}">Rebuild Projections</button>
-                            </form>
-                            <form th:action="@{/admin/incremental-updates/scopus/reconcileEdges}" method="post" class="mr-2 mb-2">
-                                <button type="submit" class="btn btn-outline-primary btn-sm" th:disabled="${scopusFollowUpContext == null}">Reconcile Edges</button>
-                            </form>
-                        </div>
+                                <div class="app-attention-panel">
+                                    <p class="app-attention-panel__title">Routine follow-up</p>
+                                    <p class="app-attention-panel__body">Use these actions after a successful WoS upload when you want to continue only that uploaded lineage. Category enrichment and projection rebuild below stay scoped to the stored WoS source type, file, and source version. Initialization remains the place for full-corpus WoS maintenance.</p>
+                                </div>
 
-                        <div class="alert alert-warning border mb-0">
-                            <div class="font-weight-bold mb-2">Advanced maintenance</div>
-                            <div class="mb-2">Repair source-link ledger only when you suspect source-link drift or inconsistent historical state. This is not part of the routine post-upload path.</div>
-                            <form th:action="@{/admin/incremental-updates/scopus/reconcileSourceLinks}" method="post">
-                                <button type="submit" class="btn btn-outline-secondary btn-sm" th:disabled="${scopusFollowUpContext == null}">Repair Source-Link Ledger</button>
-                            </form>
-                        </div>
+                                <div class="app-dashboard__actions">
+                                    <form th:action="@{/admin/incremental-updates/wos/enrichCategoryRankings}" method="post">
+                                        <button type="submit" class="btn btn-outline-primary btn-sm" th:disabled="${wosFollowUpContext == null}">Enrich Category Rankings</button>
+                                    </form>
+                                    <form th:action="@{/admin/incremental-updates/wos/rebuildProjections}" method="post">
+                                        <button type="submit" class="btn btn-outline-primary btn-sm" th:disabled="${wosFollowUpContext == null}">Rebuild Projections</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="app-summary-panel">
+                            <div class="app-summary-panel__header">
+                                <h6 class="app-summary-panel__title">Scopus Incremental Upload</h6>
+                            </div>
+                            <div class="app-summary-panel__body">
+                                <p class="app-ops-section-note">Upload exactly one Scopus <code>.json</code> file. Source version is not used for this upload flow.</p>
+                                <div class="app-attention-panel">
+                                    <p class="app-attention-panel__title">Scopus upload scope</p>
+                                    <p class="app-attention-panel__body">This action runs Scopus ingest, fact build, and canonical materialization for the uploaded payload. It does not run projection rebuild, source-link reconciliation, edge reconciliation, or ensure-indexes. Use <a th:href="@{/admin/initialization}">Initialization</a> for downstream Scopus maintenance after the upload if those steps are needed.</p>
+                                </div>
+                                <form th:action="@{/admin/incremental-updates/scopus}" method="post" enctype="multipart/form-data" class="app-form-section">
+                                    <div class="app-form-grid">
+                                        <div class="form-group app-form-field">
+                                            <label for="scopus-file">Upload file</label>
+                                            <input id="scopus-file" type="file" name="file" class="form-control-file" accept=".json" required>
+                                            <p class="app-form-help-inline">Only <code>.json</code> is accepted for Scopus incremental updates.</p>
+                                        </div>
+                                    </div>
+                                    <div class="app-form-actions">
+                                        <button type="submit" class="btn btn-primary btn-sm">Submit Scopus Upload</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </section>
+
+                        <section class="app-summary-panel">
+                            <div class="app-summary-panel__header">
+                                <h6 class="app-summary-panel__title">Scopus Post-Upload Maintenance</h6>
+                            </div>
+                            <div class="app-summary-panel__body">
+                                <div class="app-feedback app-feedback--info">
+                                    <p class="app-feedback__title">Last Scopus upload context</p>
+                                    <div th:if="${scopusFollowUpContext != null}">
+                                        <p class="app-feedback__body">Last successful file: <code th:text="${scopusFollowUpContext.originalFilename()}"></code></p>
+                                        <p class="app-dashboard-copy">Post-upload actions below continue the stored upload batch for this session, not the global Scopus initialization flow.</p>
+                                    </div>
+                                    <div th:if="${scopusFollowUpContext == null}">
+                                        <p class="app-feedback__body">No successful Scopus upload is stored in this session yet. Upload a Scopus JSON file before using post-upload maintenance.</p>
+                                    </div>
+                                </div>
+
+                                <div class="app-attention-panel">
+                                    <p class="app-attention-panel__title">Routine follow-up</p>
+                                    <p class="app-attention-panel__body">Use these actions after a successful Scopus upload when you want to continue only that uploaded batch. Routine follow-up covers projection rebuild and edge reconciliation. Global rebuild, recovery, or non-batch maintenance still belongs on <a th:href="@{/admin/initialization}">Initialization</a>.</p>
+                                </div>
+
+                                <div class="app-dashboard__actions">
+                                    <form th:action="@{/admin/incremental-updates/scopus/buildProjections}" method="post">
+                                        <button type="submit" class="btn btn-outline-primary btn-sm" th:disabled="${scopusFollowUpContext == null}">Rebuild Projections</button>
+                                    </form>
+                                    <form th:action="@{/admin/incremental-updates/scopus/reconcileEdges}" method="post">
+                                        <button type="submit" class="btn btn-outline-primary btn-sm" th:disabled="${scopusFollowUpContext == null}">Reconcile Edges</button>
+                                    </form>
+                                </div>
+
+                                <div class="app-feedback app-feedback--warning">
+                                    <p class="app-feedback__title">Advanced maintenance</p>
+                                    <p class="app-feedback__body">Repair the source-link ledger only when you suspect source-link drift or inconsistent historical state. This is not part of the routine post-upload path.</p>
+                                    <form th:action="@{/admin/incremental-updates/scopus/reconcileSourceLinks}" method="post">
+                                        <button type="submit" class="btn btn-outline-secondary btn-sm" th:disabled="${scopusFollowUpContext == null}">Repair Source-Link Ledger</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </section>
                     </div>
                 </div>
             </div>

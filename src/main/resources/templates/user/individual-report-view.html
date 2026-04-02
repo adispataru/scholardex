@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <title th:text="${report.title}">Individual Report</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
-    <link href="/css/individual-report-dashboard.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
@@ -15,31 +13,49 @@
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
             <div th:replace="~{fragments :: navbar(${report.title})}"></div>
-            <div class="container-fluid app-page-content individual-report-dashboard"
+            <div class="container-fluid app-page-content app-dashboard individual-report-dashboard"
                  th:attr="data-researcher-position=${researcherPosition}">
                 <div class="app-page-toolbar">
-                    <div class="d-flex gap-2">
+                    <div class="app-dashboard__actions">
                         <form th:action="@{/user/individual-reports/view/{id}/refresh(id=${report.id})}" method="post">
-                            <button type="submit" class="btn btn-sm btn-outline-primary shadow-sm">Refresh Report</button>
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Refresh Report</button>
                         </form>
                         <form th:action="@{/user/individual-reports/view/{id}/refresh-all-indicators(id=${report.id})}" method="post">
-                            <button type="submit" class="btn btn-sm btn-primary shadow-sm">Refresh all indicators</button>
+                            <button type="submit" class="btn btn-sm btn-primary">Refresh all indicators</button>
                         </form>
                     </div>
                 </div>
-                <p class="mb-4" th:text="${report.description}"></p>
+                <p class="app-dashboard__intro" th:text="${report.description}"></p>
 
-                <div class="row">
-                    <div th:each="criterion, critIndex : ${report.criteria}" class="criterion-wrapper col-12 col-lg-6 col-xl-4">
-                        <div class="card shadow mb-4 criterion-card">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary"
+                <div class="app-summary-grid">
+                    <div class="app-summary-card">
+                        <p class="app-summary-card__label">Criteria</p>
+                        <p class="app-summary-card__value" th:text="${#lists.size(report.criteria)}">0</p>
+                        <p class="app-summary-card__meta">Scored blocks currently included in this report.</p>
+                    </div>
+                    <div class="app-summary-card app-summary-card--success">
+                        <p class="app-summary-card__label">Indicators</p>
+                        <p class="app-summary-card__value" th:text="${#lists.size(report.indicators)}">0</p>
+                        <p class="app-summary-card__meta">Indicators contributing to the researcher score profile.</p>
+                    </div>
+                    <div class="app-summary-card app-summary-card--warning">
+                        <p class="app-summary-card__label">Position</p>
+                        <p class="app-summary-card__value" th:text="${researcherPosition != null ? researcherPosition : 'Unset'}">Unset</p>
+                        <p class="app-summary-card__meta">Threshold comparison is anchored to the selected researcher position.</p>
+                    </div>
+                </div>
+
+                <div class="app-report-grid">
+                    <div th:each="criterion, critIndex : ${report.criteria}" class="criterion-wrapper">
+                        <div class="app-report-card__surface app-report-card criterion-card">
+                            <div class="app-report-card__header">
+                                <h6 class="app-report-card__title"
                                     th:text="${criterion.name != null && !#strings.isEmpty(#strings.trim(criterion.name)) ? criterion.name : 'Criterion ' + (critIndex.index + 1)}"></h6>
                             </div>
 
-                            <div class="card-body">
+                            <div class="app-report-card__body">
                                 <div class="criterion-main">
-                                    <div class="criterion-total-block mb-3">
+                                    <div class="criterion-total-block">
                                         <div class="criterion-score-row"
                                              th:attr="data-criterion-index=${critIndex.index},data-criterion-score=${#numbers.formatDecimal(criterionScores[critIndex.index], 1, 2)}">
                                             <div class="threshold-inline-wrap"
@@ -61,7 +77,7 @@
                                                 </div>
                                             </div>
                                             <div class="criterion-score-display">
-                                                <div class="text-xs text-primary text-uppercase mb-1 criterion-selected-position">Position</div>
+                                                <div class="app-report-card__eyebrow criterion-selected-position">Position</div>
                                                 <div class="criterion-score-ratio"
                                                      th:text="${#numbers.formatDecimal(criterionScores[critIndex.index], 1, 2)} + ' / 0.00'">0.00 / 0.00</div>
                                             </div>
@@ -72,21 +88,30 @@
                                             class="indicator-toggle collapsed"
                                             th:attr="data-target=${'indicator-list-' + critIndex.index},aria-controls=${'indicator-list-' + critIndex.index}"
                                             aria-expanded="false">
-                                        <span class="text-xs text-primary text-uppercase">Indicators</span>
+                                        <span class="app-report-card__eyebrow">Indicators</span>
                                         <i class="fa-solid fa-chevron-down indicator-toggle-icon" aria-hidden="true"></i>
                                     </button>
                                     <div class="indicator-list is-collapsed"
                                          th:attr="id=${'indicator-list-' + critIndex.index}"
                                          hidden>
-                                        <div th:each="indicatorIndex : ${criterion.indicatorIndices}" class="indicator-row mb-2">
-                                            <a class="indicator-link"
-                                               th:href="@{/user/indicators/apply/{id}(id=${report.indicators[indicatorIndex].id})}"
-                                               th:text="${report.indicators[indicatorIndex].name}"></a>
-                                            <div class="indicator-row-score"
-                                                 th:text="${#numbers.formatDecimal(indicatorScores[report.indicators[indicatorIndex]], 1, 2)}"></div>
-                                        </div>
+                                        <th:block th:each="indicatorIndex : ${criterion.indicatorIndices}">
+                                            <div th:if="${indicatorIndex != null && indicatorIndex >= 0 && indicatorIndex < #lists.size(report.indicators)}"
+                                                 th:with="indicator=${report.indicators[indicatorIndex]}"
+                                                 class="indicator-row">
+                                                <a class="indicator-link"
+                                                   th:href="@{/user/indicators/apply/{id}(id=${indicator.id})}"
+                                                   th:text="${indicator.name}"></a>
+                                                <div class="indicator-row-score"
+                                                     th:text="${#numbers.formatDecimal(indicatorScores[indicator], 1, 2)}"></div>
+                                            </div>
+                                            <div th:if="${indicatorIndex == null || indicatorIndex < 0 || indicatorIndex >= #lists.size(report.indicators)}"
+                                                 class="indicator-row">
+                                                <span class="indicator-link app-report-card__meta">Indicator reference unavailable</span>
+                                                <div class="indicator-row-score">N/A</div>
+                                            </div>
+                                        </th:block>
                                         <div th:if="${criterion.indicatorIndices == null || criterion.indicatorIndices.isEmpty()}">
-                                            <div class="text-muted small">No indicators in this criterion.</div>
+                                            <div class="app-report-card__empty">No indicators in this criterion.</div>
                                         </div>
                                     </div>
                                 </div>

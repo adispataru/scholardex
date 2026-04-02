@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.wos.WosImportEvent;
+import ro.uvt.pokedex.core.model.reporting.wos.WosSourceType;
 import ro.uvt.pokedex.core.repository.reporting.WosImportEventRepository;
 import ro.uvt.pokedex.core.service.importing.wos.model.WosParsedEventResult;
 import ro.uvt.pokedex.core.service.importing.wos.model.WosParsedEventStatus;
@@ -39,6 +40,17 @@ public class WosImportEventParserOrchestrator {
 
     public WosParserRunResult parseAllEvents() {
         List<WosImportEvent> events = new ArrayList<>(importEventRepository.findAll(EVENT_SORT));
+        return parseEvents(events);
+    }
+
+    public WosParserRunResult parseSourceLineage(
+            WosSourceType sourceType,
+            String sourceFile,
+            String sourceVersion
+    ) {
+        List<WosImportEvent> events = new ArrayList<>(
+                importEventRepository.findAllBySourceTypeAndSourceFileAndSourceVersion(sourceType, sourceFile, sourceVersion)
+        );
         return parseEvents(events);
     }
 

@@ -53,10 +53,14 @@ class AdminIncrementalUpdatesControllerContractTest {
                 .andExpect(content().string(containsString("broader maintenance, rebuild, reconcile, recovery, and downstream follow-up steps")))
                 .andExpect(content().string(containsString("OFFICIAL_JSON")))
                 .andExpect(content().string(containsString("GOVERNMENT_EXCEL")))
-                .andExpect(content().string(containsString("It does not run category enrichment, projection rebuilds, or WoS onboarding.")))
+                .andExpect(content().string(containsString("Upload-scoped category enrichment and upload-scoped projection rebuild are available below after a successful WoS upload.")))
                 .andExpect(content().string(containsString("It does not run projection rebuild, source-link reconciliation, edge reconciliation, or ensure-indexes.")))
-                .andExpect(content().string(containsString("downstream WoS maintenance after the upload")))
+                .andExpect(content().string(containsString("full-corpus WoS onboarding, recovery, canonical reset, or broader rebuild maintenance")))
                 .andExpect(content().string(containsString("downstream Scopus maintenance after the upload")))
+                .andExpect(content().string(containsString("/admin/incremental-updates/wos/enrichCategoryRankings")))
+                .andExpect(content().string(containsString("/admin/incremental-updates/wos/rebuildProjections")))
+                .andExpect(content().string(containsString("Last WoS upload context")))
+                .andExpect(content().string(containsString("No successful WoS upload lineage is stored in this session yet")))
                 .andExpect(content().string(containsString("/admin/incremental-updates/scopus/buildProjections")))
                 .andExpect(content().string(containsString("/admin/incremental-updates/scopus/reconcileEdges")))
                 .andExpect(content().string(containsString("/admin/incremental-updates/scopus/reconcileSourceLinks")))
@@ -82,13 +86,66 @@ class AdminIncrementalUpdatesControllerContractTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/incremental-updates"))
                 .andExpect(flash().attribute("successMessage", containsString("WoS incremental upload complete for wos.json [sourceType=OFFICIAL_JSON, sourceVersion=2026-Q1]")))
-                .andExpect(flash().attribute("successMessage", containsString("resumedFromCheckpoint=false")));
+                .andExpect(flash().attribute("successMessage", containsString("resumedFromCheckpoint=false")))
+                .andExpect(flash().attribute("successMessage", containsString("Use the WoS post-upload actions below only to continue this stored upload lineage.")));
 
         verify(incrementalUpdateUploadFacade).acceptWosUpload(argThat(request ->
                 request.sourceType() == WosUploadSourceType.OFFICIAL_JSON
                         && "2026-Q1".equals(request.sourceVersion())
                         && "wos.json".equals(request.file().originalFilename())
         ));
+    }
+
+    @Test
+    void wosPostUploadActionsRejectMissingSessionContext() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/admin/incremental-updates/wos/enrichCategoryRankings"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/incremental-updates"))
+                .andExpect(flash().attribute("errorMessage", containsString("No successful WoS upload lineage is stored in this session yet")));
+
+        verifyNoInteractions(incrementalUpdateUploadFacade);
+    }
+
+    @Test
+    void wosCategoryEnrichmentUsesStoredUploadContext() throws Exception {
+        ImportProcessingResult enrichmentResult = new ImportProcessingResult(10);
+        enrichmentResult.markProcessed();
+        enrichmentResult.markUpdated();
+        enrichmentResult.markSkipped("already-present");
+        when(incrementalUpdateUploadFacade.enrichWosUploadCategoryRankings(WosUploadSourceType.OFFICIAL_JSON, "wos.json", "2026-Q1"))
+                .thenReturn(enrichmentResult);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/admin/incremental-updates/wos/enrichCategoryRankings")
+                        .sessionAttr("h29.wos.lastUploadSourceType", "OFFICIAL_JSON")
+                        .sessionAttr("h29.wos.lastUploadFilename", "wos.json")
+                        .sessionAttr("h29.wos.lastUploadSourceVersion", "2026-Q1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/incremental-updates"))
+                .andExpect(flash().attribute("successMessage", containsString("WoS category enrichment complete for last uploaded lineage [wos.json, sourceType=OFFICIAL_JSON, sourceVersion=2026-Q1].")))
+                .andExpect(flash().attribute("successMessage", containsString("Enrichment[p=1, i=0, u=1, s=1, e=0]")));
+
+        verify(incrementalUpdateUploadFacade).enrichWosUploadCategoryRankings(WosUploadSourceType.OFFICIAL_JSON, "wos.json", "2026-Q1");
+    }
+
+    @Test
+    void wosProjectionRebuildUsesStoredUploadContext() throws Exception {
+        ImportProcessingResult projectionResult = new ImportProcessingResult(10);
+        projectionResult.markProcessed();
+        projectionResult.markImported();
+        projectionResult.markImported();
+        when(incrementalUpdateUploadFacade.rebuildWosUploadProjections(WosUploadSourceType.GOVERNMENT_EXCEL, "AIS_2026.xlsx", "2026-Q1"))
+                .thenReturn(projectionResult);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/admin/incremental-updates/wos/rebuildProjections")
+                        .sessionAttr("h29.wos.lastUploadSourceType", "GOVERNMENT_EXCEL")
+                        .sessionAttr("h29.wos.lastUploadFilename", "AIS_2026.xlsx")
+                        .sessionAttr("h29.wos.lastUploadSourceVersion", "2026-Q1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/incremental-updates"))
+                .andExpect(flash().attribute("successMessage", containsString("WoS projection rebuild complete for last uploaded lineage [AIS_2026.xlsx, sourceType=GOVERNMENT_EXCEL, sourceVersion=2026-Q1].")))
+                .andExpect(flash().attribute("successMessage", containsString("Projections[p=1, i=2, u=0, s=0, e=0]")));
+
+        verify(incrementalUpdateUploadFacade).rebuildWosUploadProjections(WosUploadSourceType.GOVERNMENT_EXCEL, "AIS_2026.xlsx", "2026-Q1");
     }
 
     @Test
@@ -260,7 +317,7 @@ class AdminIncrementalUpdatesControllerContractTest {
                 sourceVersion,
                 ingest,
                 new WosFactBuilderService.FactBuildRunResult(facts, 0, 0, 1, false, -1),
-                "Category enrichment, projections, and WoS onboarding were intentionally skipped in H29.2."
+                "Upload-scoped fact building, upload-scoped category enrichment, and upload-scoped projection rebuild remain tied to the uploaded lineage. WoS onboarding is still excluded from this incremental path."
         );
     }
 

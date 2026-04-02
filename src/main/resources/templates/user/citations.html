@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title th:text="${publication.title}"></title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
@@ -21,69 +20,55 @@
 
             <!-- Begin Page Content -->
             <div class="container-fluid app-page-content">
-                <div class="app-page-toolbar">
-<!--                    <p class="mb-4">List of your publications scraped from different sources.</p>-->
-                    <!--                    <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i-->
-                    <!--                            class="fa-solid fa-download fa-sm text-white-50"></i> Generate Report</a>-->
-<!--                    <button type="button" class="btn btn-primary d-sm-inline-block" data-toggle="modal" data-target="#createUserModal">-->
-<!--                        New User-->
+                <div class="app-dashboard">
+                    <p class="app-dashboard__intro">Review the selected publication and the list of citing works from one accessible citation detail surface. The details panel provides context for the citations table below.</p>
 
-<!--                    <form>-->
-<!--                        <input type="hidden" th:name="researcherId" th:value="${user.researcherId}" />-->
-<!--                        <button type="button" class="btn btn-danger d-sm-inline-block" onclick="triggerScrapeCitations()">Scrape Citations</button>-->
-<!--                        <div id="scrape-cit-result" class="mt-3"></div>-->
-<!--                    </form>-->
-<!--                    </button>-->
-                </div>
+                    <div class="app-summary-panel">
+                        <div class="app-summary-panel__header">
+                            <h2 class="app-summary-panel__title">Publication Details</h2>
+                        </div>
+                        <div class="app-summary-panel__body">
+                            <p class="app-table-context" th:text="${publication.subtypeDescription}"></p>
 
-
-                <!-- Trigger Scrape Button and display scrape result -->
-
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Details</h6>
-                    </div>
-                    <div class="card-body">
-
-                        <p th:text="${publication.subtypeDescription}"></p>
-
-
-                            <div th:each="author, iterStat : ${publication.authors}">
-
-                                <a th:if="${authorMapping[publication.authors[iterStat.index]] != null}" th:text="${authorMapping[publication.authors[iterStat.index]].name} + (iterStat.last ? '; ' : '')" th:href="@{/user/authors/view/{id}(id=${author})}">
-                                    <span>;</span>
-                                </a>
-                                <span th:if="${authorMapping[publication.authors[iterStat.index]] == null}" th:text="${author}"></span>
+                            <div class="app-table-context">
+                                <span class="app-visually-hidden">Publication authors: </span>
+                                <span th:each="author, iterStat : ${publication.authors}">
+                                    <a th:if="${authorMapping[publication.authors[iterStat.index]] != null}" th:text="${authorMapping[publication.authors[iterStat.index]].name} + (iterStat.last ? '; ' : '')" th:href="@{/user/authors/view/{id}(id=${author})}">
+                                        <span>;</span>
+                                    </a>
+                                    <span th:if="${authorMapping[publication.authors[iterStat.index]] == null}" th:text="${author} + (iterStat.last ? '' : '; ')"></span>
+                                </span>
                             </div>
 
-                        <div th:if="${forum != null}">
-                            <p>
+                            <div class="app-table-context" th:if="${forum != null}">
                                 <span th:text="${forum.publicationName}"></span>,
                                 Vol (<span th:text="${publication.volume}"></span>),
                                 Issue (<span th:text="${publication.issueIdentifier}"></span>),
                                 <span th:if="${!forum.issn.equals('null-')}" th:text="${forum.issn}"></span>
                                 <span th:if="${!forum.eIssn.equals('null-')}" th:text="${forum.eIssn}"></span>
-                            </p>
-                        </div>
-                        <div class="row">
-                            <a th:href="@{/user/publications/edit/{id}(id=${publication.id})}" class="btn btn-primary btn-sm">Edit</a>
+                            </div>
 
+                            <div class="app-dashboard__actions">
+                                <a th:href="@{/user/publications/edit/{id}(id=${publication.id})}" class="btn btn-primary btn-sm">Edit Publication</a>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <!-- DataTales Example -->
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Citations</h6>
+
+                    <div class="app-table-section">
+                    <div class="app-table-section__surface">
+                    <div class="app-table-section__header app-table-toolbar">
+                        <h6 class="app-table-section__title">Citations</h6>
                     </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered js-datatable" id="dataTable" width="100%" cellspacing="0">
+                    <div class="app-table-section__body">
+                        <p class="app-table-context">This table lists works that cite the current publication, including publication year and the citing venue when available.</p>
+                        <div class="table-responsive app-table-scroll">
+                            <table class="table table-bordered js-datatable app-table" id="dataTable" width="100%" cellspacing="0">
+                                <caption class="app-table-caption app-table-caption--sr-only" th:text="'Citation table for publication ' + ${publication.title} + ', including title, publication year, and venue for each citing work.'">Citation table for the current publication.</caption>
                                 <thead>
                                 <tr>
-                                    <th>Title</th>
-                                    <th>Year</th>
-                                    <th>Venue</th>
+                                    <th scope="col">Title</th>
+                                    <th scope="col">Year</th>
+                                    <th scope="col">Venue</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -92,13 +77,14 @@
                                         <a th:href="@{/user/publications/citations(id=${citation.id})}" th:text="${citation.title}">Publication Title</a>
                                     </td>
                                     <td th:text="${citation.coverDate}">Year Published</td>
-                                    <td th:if="${forumMap[citation.forum] != null}" th:text="${forumMap[citation.forum].publicationName}">Venue</td>
-                                    </td>
+                                    <td th:text="${forumMap[citation.forum] != null ? forumMap[citation.forum].publicationName : citation.forum}">Venue</td>
                                 </tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
+                    </div>
+                </div>
                 </div>
             </div>
             <!-- End of Main Content -->
@@ -123,7 +109,6 @@
 <!-- Page level plugins -->
 
 <!-- Page level custom scripts -->
-<script src="/js/demo/datatables-demo.js"></script>
 
 
 </body>

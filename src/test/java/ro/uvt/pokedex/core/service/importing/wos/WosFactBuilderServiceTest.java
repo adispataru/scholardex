@@ -93,6 +93,26 @@ class WosFactBuilderServiceTest {
                 .thenAnswer(invocation -> new ArrayList<>(categoryStore));
         lenient().when(metricFactRepository.findAll()).thenAnswer(invocation -> new ArrayList<>(metricStore));
         lenient().when(categoryFactRepository.findAll()).thenAnswer(invocation -> new ArrayList<>(categoryStore));
+        lenient().when(metricFactRepository.findAllByJournalIdIn(any())).thenAnswer(invocation -> {
+            @SuppressWarnings("unchecked")
+            List<String> journalIds = (List<String>) invocation.getArgument(0);
+            return metricStore.stream()
+                    .filter(fact -> journalIds.contains(fact.getJournalId()))
+                    .toList();
+        });
+        lenient().when(categoryFactRepository.findAllByJournalIdIn(any())).thenAnswer(invocation -> {
+            @SuppressWarnings("unchecked")
+            List<String> journalIds = (List<String>) invocation.getArgument(0);
+            return categoryStore.stream()
+                    .filter(fact -> journalIds.contains(fact.getJournalId()))
+                    .toList();
+        });
+        lenient().when(categoryFactRepository.findAllBySourceTypeAndSourceFileAndSourceVersion(any(), anyString(), anyString()))
+                .thenAnswer(invocation -> categoryStore.stream()
+                        .filter(fact -> fact.getSourceType() == invocation.getArgument(0))
+                        .filter(fact -> java.util.Objects.equals(fact.getSourceFile(), invocation.getArgument(1)))
+                        .filter(fact -> java.util.Objects.equals(fact.getSourceVersion(), invocation.getArgument(2)))
+                        .toList());
 
         lenient().when(metricFactRepository.saveAll(any())).thenAnswer(invocation -> {
             @SuppressWarnings("unchecked")
@@ -486,6 +506,65 @@ class WosFactBuilderServiceTest {
         assertEquals(null, c1.getRank());
         assertEquals(null, c1.getQuarter());
         assertEquals(null, c1.getQuartileRank());
+    }
+
+    @Test
+    void scopedEnrichmentUpdatesOnlyFactsFromStoredUploadLineage() {
+        metricStore.add(metric("jid-1", 2024, MetricType.AIS, 9.0));
+        metricStore.add(metric("jid-2", 2024, MetricType.AIS, 7.0));
+
+        WosCategoryFact target = category("c1", "jid-1", 2024, MetricType.AIS, "ECONOMICS", EditionNormalized.SCIE, null, null, null);
+        target.setSourceType(WosSourceType.OFFICIAL_WOS_EXTRACT);
+        target.setSourceFile("wos.json");
+        target.setSourceVersion("2026-Q1");
+
+        WosCategoryFact unrelatedSameJournal = category("c2", "jid-1", 2024, MetricType.AIS, "ECONOMICS", EditionNormalized.SCIE, null, null, null);
+        unrelatedSameJournal.setSourceType(WosSourceType.OFFICIAL_WOS_EXTRACT);
+        unrelatedSameJournal.setSourceFile("older.json");
+        unrelatedSameJournal.setSourceVersion("2025-Q4");
+
+        WosCategoryFact peerInAffectedSlice = category("c3", "jid-2", 2024, MetricType.AIS, "ECONOMICS", EditionNormalized.SCIE, null, null, null);
+        peerInAffectedSlice.setSourceType(WosSourceType.OFFICIAL_WOS_EXTRACT);
+        peerInAffectedSlice.setSourceFile("wos.json");
+        peerInAffectedSlice.setSourceVersion("2026-Q1");
+
+        categoryStore.addAll(List.of(target, unrelatedSameJournal, peerInAffectedSlice));
+
+        ImportProcessingResult result = service.enrichMissingCategoryRankingFieldsForSource(
+                WosSourceType.OFFICIAL_WOS_EXTRACT,
+                "wos.json",
+                "2026-Q1"
+        );
+
+        assertEquals(2, result.getProcessedCount());
+        assertEquals(2, result.getUpdatedCount());
+        assertEquals(1, target.getRank());
+        assertEquals(3, peerInAffectedSlice.getRank());
+        assertEquals(null, unrelatedSameJournal.getRank());
+        verify(categoryFactRepository, times(1)).saveAll(argThat(facts -> {
+            List<String> ids = new ArrayList<>();
+            for (WosCategoryFact fact : facts) {
+                ids.add(fact.getId());
+            }
+            return ids.contains("c1") && ids.contains("c3") && !ids.contains("c2");
+        }));
+    }
+
+    @Test
+    void scopedFactBuildParsesOnlyRequestedLineage() {
+        WosParsedRecord incoming = record(MetricType.AIS, WosSourceType.OFFICIAL_WOS_EXTRACT, 1.2, "2026-Q1", "1", "ACOUSTICS", EditionNormalized.SCIE, "Q1", 2);
+        when(parserOrchestrator.parseSourceLineage(WosSourceType.OFFICIAL_WOS_EXTRACT, "wos.json", "2026-Q1"))
+                .thenReturn(runOf(List.of(incoming)));
+
+        WosFactBuilderService.FactBuildRunResult result = service.buildFactsFromImportEventsForSource(
+                WosSourceType.OFFICIAL_WOS_EXTRACT,
+                "wos.json",
+                "2026-Q1"
+        );
+
+        assertEquals(2, result.result().getImportedCount());
+        verify(parserOrchestrator).parseSourceLineage(WosSourceType.OFFICIAL_WOS_EXTRACT, "wos.json", "2026-Q1");
+        verify(parserOrchestrator, never()).parseAllEvents();
     }
 
     @Test

@@ -1,11 +1,3 @@
-function initTooltips() {
-  if (typeof window.$ !== 'function' || !window.$.fn || typeof window.$.fn.tooltip !== 'function') {
-    return;
-  }
-
-  window.$('[data-toggle="tooltip"]').tooltip();
-}
-
 function initSelectedOptionDescriptionSync() {
   const configurableSelects = document.querySelectorAll('[data-sync-selected-description-target]');
 
@@ -31,6 +23,5 @@ function initSelectedOptionDescriptionSync() {
 }
 
 export function initSharedDomBehaviors() {
-  initTooltips();
   initSelectedOptionDescriptionSync();
 }

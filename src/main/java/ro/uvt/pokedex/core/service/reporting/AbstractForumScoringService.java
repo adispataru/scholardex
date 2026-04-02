@@ -192,10 +192,21 @@ public abstract class AbstractForumScoringService implements ScoringService {
     protected List<Integer> getAllowedYearsForPublication(Publication publication,
                                                         Indicator indicator) {
         List<Integer> allowedYears = new ArrayList<>();
-        PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), logger)
-                .ifPresent(pubYear -> allowedYears.addAll(Indicator.parseYearRange(indicator.getScoreYearRange(), pubYear)));
-        if(allowedYears.isEmpty() || (allowedYears.stream().min(Integer::compareTo).get() > LAST_YEAR))
+        Optional<Integer> publicationYear = PersistenceYearSupport.extractYear(
+                publication.getCoverDate(),
+                publication.getId(),
+                logger
+        );
+        publicationYear.ifPresent(pubYear -> allowedYears.addAll(Indicator.parseYearRange(indicator.getScoreYearRange(), pubYear)));
+        if (allowedYears.isEmpty()) {
+            publicationYear.ifPresentOrElse(
+                    allowedYears::add,
+                    () -> allowedYears.add(LAST_YEAR)
+            );
+        } else if (allowedYears.stream().min(Integer::compareTo).orElse(LAST_YEAR) > LAST_YEAR) {
+            allowedYears.clear();
             allowedYears.add(LAST_YEAR);
+        }
         return allowedYears;
     }
 }

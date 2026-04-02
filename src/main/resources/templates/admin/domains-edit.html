@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Domains</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
@@ -21,42 +20,54 @@
 
             <!-- Begin Page Content -->
             <div class="container-fluid app-page-content">
-                <p class="mb-4" th:text="${domain.name}"></p>
-
-                <!-- DataTales Example -->
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Update</h6>
-                    </div>
-                    <div class="card-body">
-                        <form th:action="@{/admin/domains/update}" th:object="${domain}" method="post">
-                            <div class="form-group">
-                                <label for="domainName">Name</label>
-                                <input type="text" class="form-control" id="domainName" th:field="*{name}" required>
+                <div class="app-workflow">
+                    <p class="app-workflow__intro">Update the domain details and manage the WoS categories assigned to it.</p>
+                    <div class="app-form-surface">
+                        <div class="app-form-surface__panel">
+                            <div class="app-form-surface__header">
+                                <h6 class="app-form-surface__title">Update Domain</h6>
                             </div>
-                            <div class="form-group">
-                                <label for="domainDescription">Description</label>
-                                <input type="text" class="form-control" id="domainDescription" th:field="*{description}" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="wosCategories">WOS Categories</label>
-                                <div id="wosCategoriesContainer">
-                                    <div class="input-group mb-2" th:each="category, iterStat : *{wosCategories}">
-                                        <select class="form-control" th:field="*{wosCategories[__${iterStat.index}__]}" th:selected="${category}">
-<!--                                            <div th:each="category, iterStat : ${allWosCategories}">-->
-<!--                                                <option  th:value="${category}">-->
-<!--                                            </div>-->
-                                            ${allWosCategories.map(category => `<option th:value="${category}" th:text="${category}"></option>`)}
-                                        </select>
-                                        <div class="input-group-append">
-                                            <button class="btn btn-danger remove-category" type="button">Remove</button>
+                            <div class="app-form-surface__body">
+                                <form th:action="@{/admin/domains/update}" th:object="${domain}" method="post">
+                                    <div class="app-form-section mb-3">
+                                        <div class="app-form-section__header">
+                                            <h6 class="app-form-section__title" th:text="${domain.name}"></h6>
+                                            <p class="app-form-section__description">Keep the taxonomy name and description aligned with the categories below.</p>
+                                        </div>
+                                        <div class="app-form-grid">
+                                            <div class="form-group app-form-field">
+                                                <label for="domainName">Name</label>
+                                                <input type="text" class="form-control" id="domainName" th:field="*{name}" required>
+                                            </div>
+                                            <div class="form-group app-form-field">
+                                                <label for="domainDescription">Description</label>
+                                                <input type="text" class="form-control" id="domainDescription" th:field="*{description}" required>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <button id="addCategory" class="btn btn-primary" type="button">Add Category</button>
+                                    <div class="form-group app-form-field app-form-section">
+                                        <div class="app-form-section__header">
+                                            <h6 class="app-form-section__title">WoS Categories</h6>
+                                        </div>
+                                        <label for="wosCategories">WOS Categories</label>
+                                        <div id="wosCategoriesContainer" class="app-collection">
+                                            <div class="input-group mb-2 app-collection__item" th:each="category, iterStat : *{wosCategories}">
+                                                <select class="form-control" th:field="*{wosCategories[__${iterStat.index}__]}" th:selected="${category}">
+                                                    ${allWosCategories.map(category => `<option th:value="${category}" th:text="${category}"></option>`)}
+                                                </select>
+                                                <button class="btn btn-danger remove-category" type="button">Remove</button>
+                                            </div>
+                                        </div>
+                                        <div class="app-form-actions app-form-actions--inline">
+                                            <button id="addCategory" class="btn btn-primary" type="button">Add Category</button>
+                                        </div>
+                                    </div>
+                                    <div class="app-form-actions">
+                                        <button type="submit" class="btn btn-primary">Update</button>
+                                    </div>
+                                </form>
                             </div>
-                            <button type="submit" class="btn btn-primary">Update</button>
-                        </form>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -91,13 +102,11 @@
         $('#addCategory').click(function() {
             let index = wosCategoriesContainer.children().length;
             let categoryTemplate = `
-                <div class="input-group mb-2">
+                <div class="input-group mb-2 app-collection__item">
                     <select class="form-control" name="wosCategories[${index}]">
                         ${allWosCategories.map(category => `<option value="${category}">${category}</option>`).join('')}
                     </select>
-                    <div class="input-group-append">
-                        <button class="btn btn-danger remove-category" type="button">Remove</button>
-                    </div>
+                    <button class="btn btn-danger remove-category" type="button">Remove</button>
                 </div>`;
             wosCategoriesContainer.append(categoryTemplate);
         });

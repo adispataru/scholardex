@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Publications</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
@@ -21,29 +20,12 @@
 
             <!-- Begin Page Content -->
             <div class="container-fluid app-page-content">
-                <div class="app-page-toolbar">
-<!--                    <p class="mb-4">List of your publications scraped from different sources.</p>-->
-                    <!--                    <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm"><i-->
-                    <!--                            class="fa-solid fa-download fa-sm text-white-50"></i> Generate Report</a>-->
-<!--                    <button type="button" class="btn btn-primary d-sm-inline-block" data-toggle="modal" data-target="#createUserModal">-->
-<!--                        New User-->
-<!--                    </button>-->
-                </div>
-
-
-                <!-- Trigger Scrape Button and display scrape result -->
-
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary" th:text="${publication.title}"></h6>
+                <div class="app-dashboard">
+                <div class="app-summary-panel">
+                    <div class="app-summary-panel__header">
+                        <h2 class="app-summary-panel__title" th:text="${publication.title}">Publication details</h2>
                     </div>
-                    <div class="card-body">
-<!--                        <div class="row">-->
-<!--                            <span th:each="author, stat : ${publication.authorList}">-->
-<!--                                <span th:text="${author} + ${!stat.last ? ', ' : ''}"></span>-->
-<!--                                <span th:if="${!stat.last}"></span>-->
-<!--                                -->
-<!--                            </span>-->
+                    <div class="app-summary-panel__body">
                             <p>
                                 <div th:each="author, iterStat : ${publication.authors}">
 
@@ -52,11 +34,7 @@
                                 </a>
                                 </div>
                             </p>
-<!--                        </div>-->
-<!--                        <div class="row">-->
                             <p th:text="${publication.subtypeDescription}"></p>
-<!--                        </div>-->
-<!--                        <div class="row">-->
 
                             <div th:if="${forum != null}">
                             <p>
@@ -66,17 +44,16 @@
                                 <span th:if="${!forum.issn.equals('null-')}" th:text="${forum.issn}"></span>
                             </p>
                             </div>
-<!--                        </div>-->
                     </div>
                 </div>
-                <!-- DataTales Example -->
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Citations</h6>
+                <div class="app-table-section">
+                    <div class="app-table-section__surface">
+                    <div class="app-table-section__header app-table-toolbar">
+                        <h6 class="app-table-section__title">Citations</h6>
                     </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered js-datatable" id="dataTable" width="100%" cellspacing="0">
+                    <div class="app-table-section__body">
+                        <div class="app-table-scroll">
+                            <table class="table table-bordered js-datatable app-table" id="dataTable" width="100%" cellspacing="0">
                                 <thead>
                                 <tr>
                                     <th>Title</th>
@@ -98,6 +75,8 @@
                             </table>
                         </div>
                     </div>
+                    </div>
+                </div>
                 </div>
             </div>
             <!-- End of Main Content -->
@@ -122,7 +101,6 @@
 <!-- Page level plugins -->
 
 <!-- Page level custom scripts -->
-<script src="/js/demo/datatables-demo.js"></script>
 
 
 </body>

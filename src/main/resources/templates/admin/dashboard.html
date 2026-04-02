@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Admin Dashboard</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
@@ -21,7 +20,52 @@
 
             <!-- Begin Page Content -->
             <div class="container-fluid app-page-content">
-                <!-- Content here -->
+                <div class="app-dashboard">
+                    <div class="app-page-toolbar">
+                        <p class="app-dashboard__intro">Use this page as the starting point for operational diagnostics, maintenance follow-up, and quick access to admin tools.</p>
+                    </div>
+
+                    <div class="app-summary-grid">
+                        <div class="app-summary-card">
+                            <p class="app-summary-card__label">Admin Entry</p>
+                            <p class="app-summary-card__value">Ready</p>
+                            <p class="app-summary-card__meta">The admin landing page is ready for daily operational work.</p>
+                        </div>
+                        <div class="app-summary-card app-summary-card--warning">
+                            <p class="app-summary-card__label">Operational Focus</p>
+                            <p class="app-summary-card__value">Diagnostics</p>
+                            <p class="app-summary-card__meta">Conflicts, source-link health, and enrichment tasks remain the primary operational focus here.</p>
+                        </div>
+                        <div class="app-summary-card app-summary-card--success">
+                            <p class="app-summary-card__label">Quick Access</p>
+                            <p class="app-summary-card__value">Live</p>
+                            <p class="app-summary-card__meta">Jump directly into the highest-signal admin operational pages from here.</p>
+                        </div>
+                    </div>
+
+                    <div class="app-attention-panel">
+                        <h2 class="app-attention-panel__title">Use the dashboard for orientation, not bulk maintenance</h2>
+                        <p class="app-attention-panel__body">This page should surface the right operational entry points quickly. Detailed filtering, destructive actions, and queue handling remain inside the destination admin pages linked below.</p>
+                    </div>
+
+                    <div class="app-summary-panel">
+                        <div class="app-summary-panel__header">
+                            <h2 class="app-summary-panel__title">Admin Quick Actions</h2>
+                        </div>
+                        <div class="app-summary-panel__body">
+                            <div class="app-quick-actions">
+                                <a class="btn btn-outline-primary btn-sm" th:href="@{/admin/conflicts}">Open conflicts</a>
+                                <a class="btn btn-outline-primary btn-sm" th:href="@{/admin/source-links}">Review source links</a>
+                                <a class="btn btn-outline-primary btn-sm" th:href="@{/admin/incremental-updates}">Run incremental updates</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="app-dashboard-empty">
+                        <h2 class="app-dashboard-empty__title">Operational metrics will appear here</h2>
+                        <p class="app-dashboard-empty__body">Use the links above to reach detailed admin pages while this overview remains lightweight.</p>
+                    </div>
+                </div>
             </div>
             <!-- End of Main Content -->
 

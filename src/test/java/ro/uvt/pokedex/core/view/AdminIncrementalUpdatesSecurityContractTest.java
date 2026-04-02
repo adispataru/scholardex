@@ -69,6 +69,18 @@ class AdminIncrementalUpdatesSecurityContractTest {
 
     @Test
     void nonAdminCannotRunScopusPostUploadMaintenance() throws Exception {
+        mockMvc.perform(post("/admin/incremental-updates/wos/enrichCategoryRankings")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+
+        mockMvc.perform(post("/admin/incremental-updates/wos/rebuildProjections")
+                        .with(csrf())
+                        .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/custom-error?error=403"));
+
         mockMvc.perform(post("/admin/incremental-updates/scopus/buildProjections")
                         .with(csrf())
                         .with(user("researcher@uvt.ro").authorities(new SimpleGrantedAuthority("RESEARCHER"))))

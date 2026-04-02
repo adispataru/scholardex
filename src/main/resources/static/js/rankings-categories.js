@@ -71,9 +71,9 @@
       const key = encodeURIComponent(item.key || '');
       return '<tr>' +
         '<td><a href="' + detailBase + '/' + key + '">' + escapeHtml(item.categoryName) + '</a></td>' +
-        '<td>' + escapeHtml(item.edition) + '</td>' +
-        '<td>' + escapeHtml(item.journalCount) + '</td>' +
-        '<td>' + escapeHtml(item.latestYear == null ? '—' : item.latestYear) + '</td>' +
+        '<td class="app-table__cell--identifier">' + escapeHtml(item.edition || '—') + '</td>' +
+        '<td class="app-table__cell--numeric">' + escapeHtml(item.journalCount == null ? '—' : item.journalCount) + '</td>' +
+        '<td class="app-table__cell--numeric">' + escapeHtml(item.latestYear == null ? '—' : item.latestYear) + '</td>' +
         '</tr>';
     }).join('');
   }

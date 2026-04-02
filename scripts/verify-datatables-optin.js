@@ -1,8 +1,12 @@
 const fs = require('fs');
 const path = require('path');
 
-const datatablesBootstrapPath = path.join('src', 'main', 'resources', 'static', 'js', 'demo', 'datatables-demo.js');
-const templatesRoot = path.join('src', 'main', 'resources', 'templates');
+const appEntrypointPath = path.join('frontend', 'src', 'app.js');
+const templatesRoots = [
+  path.join('src', 'main', 'resources', 'templates', 'admin'),
+  path.join('src', 'main', 'resources', 'templates', 'user'),
+  path.join('src', 'main', 'resources', 'templates', 'events')
+];
 
 function listHtmlFiles(dir) {
   const files = [];
@@ -18,35 +22,25 @@ function listHtmlFiles(dir) {
 }
 
 const errors = [];
-const bootstrap = fs.readFileSync(datatablesBootstrapPath, 'utf8');
+const appEntrypoint = fs.readFileSync(appEntrypointPath, 'utf8');
 
-if (bootstrap.includes('[id^="dataTable"]') || bootstrap.includes("[id^='dataTable']")) {
-  errors.push(`${datatablesBootstrapPath}: forbidden ID-prefix auto-init selector found`);
+if (!appEntrypoint.includes("datatables.net-bs5")) {
+  errors.push(`${appEntrypointPath}: expected Bootstrap 5 DataTables integration import`);
 }
-if (!bootstrap.includes('table.js-datatable')) {
-  errors.push(`${datatablesBootstrapPath}: expected explicit opt-in selector 'table.js-datatable'`);
+if (!appEntrypoint.includes('initSharedDataTables')) {
+  errors.push(`${appEntrypointPath}: expected shared DataTables initializer`);
 }
 
-const htmlFiles = listHtmlFiles(templatesRoot);
+const htmlFiles = templatesRoots.flatMap(listHtmlFiles);
 const datatablesFreePages = new Set([
-  path.join('src', 'main', 'resources', 'templates', 'rankings', 'wos.html'),
-  path.join('src', 'main', 'resources', 'templates', 'rankings', 'core.html'),
-  path.join('src', 'main', 'resources', 'templates', 'rankings', 'urap.html'),
-  path.join('src', 'main', 'resources', 'templates', 'admin', 'rankings.html'),
-  path.join('src', 'main', 'resources', 'templates', 'admin', 'rankings-core.html'),
-  path.join('src', 'main', 'resources', 'templates', 'admin', 'rankings-urap.html'),
-  path.join('src', 'main', 'resources', 'templates', 'admin', 'scopus-venues.html'),
-  path.join('src', 'main', 'resources', 'templates', 'admin', 'scopus-authors.html'),
-  path.join('src', 'main', 'resources', 'templates', 'admin', 'scopus-affiliations.html'),
-  path.join('src', 'main', 'resources', 'templates', 'admin', 'scopus-editAuthor.html'),
   path.join('src', 'main', 'resources', 'templates', 'user', 'indicators-apply-publications.html'),
   path.join('src', 'main', 'resources', 'templates', 'user', 'indicators-apply-activities.html')
 ]);
 for (const file of htmlFiles) {
   const content = fs.readFileSync(file, 'utf8');
 
-  if (datatablesFreePages.has(file) && content.includes('/js/demo/datatables-demo.js')) {
-    errors.push(`${file}: API-driven large-table pages must not include DataTables bootstrap`);
+  if (content.includes('/js/demo/datatables-demo.js')) {
+    errors.push(`${file}: authenticated templates must not include the legacy DataTables bootstrap script`);
   }
 
   const tableTags = [...content.matchAll(/<table\b[^>]*>/g)];

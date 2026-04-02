@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Researchers</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
@@ -21,15 +20,18 @@
 
             <!-- Begin Page Content -->
             <div class="container-fluid app-page-content">
-                <p class="mb-4">Overview of all researchers and their details.</p>
+                <div class="app-dashboard">
+                    <p class="app-dashboard__intro">Review the current researcher directory and the identifiers stored for each researcher.</p>
+                </div>
 
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Researchers List</h6>
+                <div class="app-table-section">
+                    <div class="app-table-section__surface">
+                    <div class="app-table-section__header">
+                        <h6 class="app-table-section__title">Researchers</h6>
                     </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered js-datatable" id="dataTable" width="100%" cellspacing="0">
+                    <div class="app-table-section__body">
+                        <div class="app-table-scroll">
+                            <table class="table table-bordered js-datatable app-table" id="dataTable" width="100%" cellspacing="0">
                                 <thead>
                                 <tr>
                                     <th>Name</th>
@@ -52,6 +54,7 @@
                                 </tbody>
                             </table>
                         </div>
+                    </div>
                     </div>
                 </div>
             </div>
@@ -77,7 +80,6 @@
 <!-- Page level plugins -->
 
 <!-- Page level custom scripts -->
-<script src="/js/demo/datatables-demo.js"></script>
 
 </body>
 </html>

@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Domains</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
@@ -21,21 +20,25 @@
 
             <!-- Begin Page Content -->
             <div class="container-fluid app-page-content">
-                <div class="app-page-toolbar">
-                    <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" data-toggle="modal" data-target="#createDomainModal">
-                        <i class="fa-solid fa-plus fa-sm text-white-50"></i> Create New Domain
+                <div class="app-page-toolbar app-workflow">
+                    <p class="app-workflow__intro">Manage the domain taxonomy from one lightweight workflow surface. New domains should use the shared modal layout and explicit category selection instead of the old stacked card pattern.</p>
+                    <div class="app-workflow__actions">
+                    <a href="#" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#createDomainModal">
+                        <i class="fa-solid fa-plus fa-sm"></i> Create New Domain
                     </a>
+                    </div>
                 </div>
                 <p class="mb-4">This is a list of all Domains currently managed by the system.</p>
 
                 <!-- DataTables Example -->
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Detailed View of Domains</h6>
+                <div class="app-table-section">
+                    <div class="app-table-section__surface">
+                    <div class="app-table-section__header">
+                        <h6 class="app-table-section__title">Detailed View of Domains</h6>
                     </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered js-datatable" id="dataTable" width="100%" cellspacing="0">
+                    <div class="app-table-section__body">
+                        <div class="app-table-scroll">
+                            <table class="table table-bordered js-datatable app-table" id="dataTable" width="100%" cellspacing="0">
                                 <thead>
                                 <tr>
                                     <th>Name</th>
@@ -64,6 +67,7 @@
                             </table>
                         </div>
                     </div>
+                    </div>
                 </div>
             </div>
             <!-- End of Main Content -->
@@ -83,8 +87,8 @@
 </div>
 
 <!-- Create Domain Modal-->
-<div class="modal fade" id="createDomainModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+<div class="modal fade app-modal" id="createDomainModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="exampleModalLabel">Create New Domain</h5>
@@ -94,31 +98,43 @@
             </div>
             <div class="modal-body">
                 <form th:action="@{/admin/domains/create}" th:object="${domain}" method="post">
-                    <div class="form-group">
-                        <label for="domainName">Name</label>
-                        <input type="text" class="form-control" id="domainName" th:field="*{name}" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="domainDescription">Description</label>
-                        <input type="text" class="form-control" id="domainDescription" th:field="*{description}" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="wosCategories">WOS Categories</label>
-                        <div id="wosCategoriesContainer">
-                            <div class="input-group mb-2" th:each="category, iterStat : *{wosCategories}">
-                                <select class="form-control" th:field="*{wosCategories[__${iterStat.index}__]}" th:each="cat : ${allWosCategories}" th:value="${cat}" th:text="${cat}"></select>
-                                <div class="input-group-append">
-                                    <button class="btn btn-danger remove-category" type="button">Remove</button>
-                                </div>
+                    <div class="app-form-section">
+                        <div class="app-form-section__header">
+                            <h6 class="app-form-section__title">Domain details</h6>
+                            <p class="app-form-section__description">Capture the name and purpose first, then map the relevant WoS categories below.</p>
+                        </div>
+                        <div class="app-form-grid">
+                            <div class="form-group app-form-field">
+                                <label for="domainName">Name</label>
+                                <input type="text" class="form-control" id="domainName" th:field="*{name}" required>
+                            </div>
+                            <div class="form-group app-form-field">
+                                <label for="domainDescription">Description</label>
+                                <input type="text" class="form-control" id="domainDescription" th:field="*{description}" required>
                             </div>
                         </div>
-                        <button id="addCategory" class="btn btn-primary" type="button">Add Category</button>
                     </div>
-                    <button type="submit" class="btn btn-primary">Create</button>
+                    <div class="form-group app-form-field app-form-section">
+                        <div class="app-form-section__header">
+                            <h6 class="app-form-section__title">WoS coverage</h6>
+                            <p class="app-form-section__description">Attach one or more WoS categories so the domain can participate in downstream workflows.</p>
+                        </div>
+                        <label for="wosCategories">WOS Categories</label>
+                        <div id="wosCategoriesContainer" class="app-collection">
+                            <div class="input-group mb-2 app-collection__item" th:each="category, iterStat : *{wosCategories}">
+                                <select class="form-control" th:field="*{wosCategories[__${iterStat.index}__]}" th:each="cat : ${allWosCategories}" th:value="${cat}" th:text="${cat}"></select>
+                                <button class="btn btn-danger remove-category" type="button">Remove</button>
+                            </div>
+                        </div>
+                        <div class="app-form-actions app-form-actions--inline">
+                            <button id="addCategory" class="btn btn-primary" type="button">Add Category</button>
+                        </div>
+                    </div>
+                    <div class="modal-footer app-form-actions">
+                        <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Create</button>
+                    </div>
                 </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
             </div>
         </div>
     </div>
@@ -130,7 +146,6 @@
 <!-- Page level plugins -->
 
 <!-- Page level custom scripts -->
-<script src="/js/demo/datatables-demo.js"></script>
 
 <script th:inline="javascript">
     $(document).ready(function() {
@@ -141,13 +156,11 @@
         $('#addCategory').click(function() {
             let index = wosCategoriesContainer.children().length;
             let categoryTemplate = `
-                <div class="input-group mb-2">
+                <div class="input-group mb-2 app-collection__item">
                     <select class="form-control" name="wosCategories[${index}]">
                         ${allWosCategories.map(category => `<option value="${category}">${category}</option>`).join('')}
                     </select>
-                    <div class="input-group-append">
-                        <button class="btn btn-danger remove-category" type="button">Remove</button>
-                    </div>
+                    <button class="btn btn-danger remove-category" type="button">Remove</button>
                 </div>`;
             wosCategoriesContainer.append(categoryTemplate);
         });

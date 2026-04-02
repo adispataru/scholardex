@@ -9,15 +9,13 @@ import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.wos.WosFactBuilderService;
 import ro.uvt.pokedex.core.service.importing.wos.WosImportEventIngestionService;
 
-import java.time.Instant;
-
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class WosIncrementalUploadService {
 
     private static final String H29_2_NOTE =
-            "Category enrichment, projections, and WoS onboarding were intentionally skipped in H29.2.";
+            "Upload-scoped fact building, upload-scoped category enrichment, and upload-scoped projection rebuild remain tied to the uploaded lineage. WoS onboarding is still excluded from this incremental path.";
 
     private final WosImportEventIngestionService wosImportEventIngestionService;
     private final WosFactBuilderService wosFactBuilderService;
@@ -33,11 +31,9 @@ public class WosIncrementalUploadService {
                 effectiveSourceVersion,
                 request.file().bytes()
         );
-        String runId = "wos-incremental-upload-" + Instant.now().toEpochMilli();
-        WosFactBuilderService.FactBuildRunResult factBuild = wosFactBuilderService.buildFactsFromImportEventsWithCheckpoint(
-                null,
-                false,
-                runId,
+        WosFactBuilderService.FactBuildRunResult factBuild = wosFactBuilderService.buildFactsFromImportEventsForSource(
+                toModelSourceType(request.sourceType()),
+                request.file().originalFilename(),
                 effectiveSourceVersion
         );
         log.info(
@@ -58,5 +54,14 @@ public class WosIncrementalUploadService {
                 factBuild,
                 H29_2_NOTE
         );
+    }
+
+    private ro.uvt.pokedex.core.model.reporting.wos.WosSourceType toModelSourceType(
+            ro.uvt.pokedex.core.service.application.IncrementalUpdateUploadFacade.WosUploadSourceType sourceType
+    ) {
+        return switch (sourceType) {
+            case OFFICIAL_JSON -> ro.uvt.pokedex.core.model.reporting.wos.WosSourceType.OFFICIAL_WOS_EXTRACT;
+            case GOVERNMENT_EXCEL -> ro.uvt.pokedex.core.model.reporting.wos.WosSourceType.GOV_AIS_RIS;
+        };
     }
 }

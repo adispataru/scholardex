@@ -2,10 +2,97 @@
   top: 1rem;
 }
 
+#citations-dashboard-v2 .app-summary-card__chart,
+#publications-dashboard-v2 .app-summary-card__chart,
+#activities-dashboard-v2 .app-summary-card__chart {
+  display: flex;
+  flex-direction: column;
+}
+
+#citations-dashboard-v2 .app-indicator-overview,
+#publications-dashboard-v2 .app-indicator-overview,
+#activities-dashboard-v2 .app-indicator-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(18rem, 0.95fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+#citations-dashboard-v2 .app-indicator-overview__main,
+#publications-dashboard-v2 .app-indicator-overview__main,
+#activities-dashboard-v2 .app-indicator-overview__main {
+  min-width: 0;
+}
+
+#citations-dashboard-v2 .app-indicator-overview__stats,
+#publications-dashboard-v2 .app-indicator-overview__stats,
+#activities-dashboard-v2 .app-indicator-overview__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: stretch;
+}
+
+#citations-dashboard-v2 .app-indicator-overview__stats--single,
+#publications-dashboard-v2 .app-indicator-overview__stats--single,
+#activities-dashboard-v2 .app-indicator-overview__stats--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#citations-dashboard-v2 .app-indicator-overview__chart,
+#publications-dashboard-v2 .app-indicator-overview__chart,
+#activities-dashboard-v2 .app-indicator-overview__chart {
+  box-sizing: border-box;
+  min-height: 0;
+  max-width: 100%;
+  align-self: center;
+  justify-self: stretch;
+  justify-content: flex-start;
+  width: auto;
+  padding: 1.1rem 1.2rem;
+}
+
+#citations-dashboard-v2 .app-indicator-overview__chart.app-summary-card__chart,
+#publications-dashboard-v2 .app-indicator-overview__chart.app-summary-card__chart,
+#activities-dashboard-v2 .app-indicator-overview__chart.app-summary-card__chart {
+  min-height: 0;
+}
+
+#citations-dashboard-v2 .app-indicator-overview__context,
+#publications-dashboard-v2 .app-indicator-overview__context,
+#activities-dashboard-v2 .app-indicator-overview__context {
+  min-width: 0;
+}
+
+#citations-dashboard-v2 .app-indicator-overview__chart .app-summary-card__label,
+#publications-dashboard-v2 .app-indicator-overview__chart .app-summary-card__label,
+#activities-dashboard-v2 .app-indicator-overview__chart .app-summary-card__label {
+  margin-bottom: 0.75rem;
+}
+
 #citations-dashboard-v2 .chart-cell,
 #publications-dashboard-v2 .chart-cell,
 #activities-dashboard-v2 .chart-cell {
-  height: 110px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-height: 9.5rem;
+  height: clamp(9.5rem, 16vw, 11rem);
+  max-height: 11rem;
+  width: min(100%, 13.5rem);
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+#citations-dashboard-v2 .chart-cell canvas,
+#publications-dashboard-v2 .chart-cell canvas,
+#activities-dashboard-v2 .chart-cell canvas {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 #citations-dashboard-v2 .detail-shell {
@@ -30,5 +117,26 @@
 @media (max-width: 767.98px) {
   #citations-dashboard-v2 .dashboard-context {
     position: static !important;
+  }
+
+  #citations-dashboard-v2 .app-indicator-overview,
+  #publications-dashboard-v2 .app-indicator-overview,
+  #activities-dashboard-v2 .app-indicator-overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #citations-dashboard-v2 .app-indicator-overview__stats,
+  #publications-dashboard-v2 .app-indicator-overview__stats,
+  #activities-dashboard-v2 .app-indicator-overview__stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #citations-dashboard-v2 .chart-cell,
+  #publications-dashboard-v2 .chart-cell,
+  #activities-dashboard-v2 .chart-cell {
+    height: 10.5rem;
+    min-height: 10.5rem;
+    max-height: 10.5rem;
+    width: min(100%, 13rem);
   }
 }

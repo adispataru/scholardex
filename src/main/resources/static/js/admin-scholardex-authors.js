@@ -63,7 +63,7 @@
       const id = encodeURIComponent(item.id || '');
       return '<tr>' +
         '<td><a href="/user/authors/view/' + id + '">' + escapeHtml(item.name) + '</a></td>' +
-        '<td>' + affiliations + '</td>' +
+        '<td>' + (affiliations || '<span class="text-muted">No affiliations</span>') + '</td>' +
         '</tr>';
     }).join('');
   }

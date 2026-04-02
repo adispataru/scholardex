@@ -72,6 +72,14 @@
       },
       options: {
         maintainAspectRatio: false,
+        layout: {
+          padding: {
+            top: 4,
+            right: 10,
+            bottom: 4,
+            left: 10
+          }
+        },
         legend: { display: false },
         cutoutPercentage: 70
       }

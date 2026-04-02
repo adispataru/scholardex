@@ -5,7 +5,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
+import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.Publication;
 
 import java.util.List;
@@ -13,6 +15,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -110,6 +113,61 @@ class ScientificProductionServiceTest {
         assertNotNull(cachedAfter);
         assertEquals(0.0, cachedAfter.getAuthorScore(), 0.0001);
         assertEquals(2.0, cachedAfter.getScore(), 0.0001);
+    }
+
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void publicationScoringUsesCoreConferenceMatchWhenMongoYearKeysAreStrings() {
+        ReportingLookupPort lookupPort = org.mockito.Mockito.mock(ReportingLookupPort.class);
+        ComputerScienceJournalScoringService journalScoringService = org.mockito.Mockito.mock(ComputerScienceJournalScoringService.class);
+        ComputerScienceBookService bookScoringService = org.mockito.Mockito.mock(ComputerScienceBookService.class);
+        ComputerScienceConferenceScoringService conferenceScoringService = new ComputerScienceConferenceScoringService(lookupPort);
+        ComputerScienceScoringService computerScienceScoringService = new ComputerScienceScoringService(
+                journalScoringService,
+                conferenceScoringService,
+                bookScoringService,
+                lookupPort
+        );
+
+        Publication publication = publication("pub-1", List.of("a1", "a2", "a3"));
+        publication.setForum("forum-1");
+        publication.setCoverDate("2016-07-18");
+        publication.setScopusSubtype("cp");
+        publication.setTitle("Reusing Resource Coalitions for Efficient Scheduling on the Intercloud");
+
+        Forum forum = new Forum();
+        forum.setPublicationName("Proceedings - 2016 16th IEEE/ACM International Symposium on Cluster, Cloud, and Grid Computing, CCGrid 2016");
+        when(lookupPort.getForum("forum-1")).thenReturn(forum);
+        when(lookupPort.getConferenceRankings(anyString())).thenReturn(List.of());
+
+        CoreConferenceRanking ranking = new CoreConferenceRanking();
+        ranking.setAcronym("CCGRID");
+        ranking.setName("IEEE International Symposium on Cluster, Cloud and Grid Computing");
+        CoreConferenceRanking.YearlyRanking rank2017 = new CoreConferenceRanking.YearlyRanking();
+        rank2017.setRank(CoreConferenceRanking.Rank.A);
+        CoreConferenceRanking.YearlyRanking rank2023 = new CoreConferenceRanking.YearlyRanking();
+        rank2023.setRank(CoreConferenceRanking.Rank.B);
+        ranking.setYearlyRankings((Map) Map.of(
+                "2017", rank2017,
+                "2023", rank2023
+        ));
+        when(lookupPort.getConferenceRankings("CCGRID")).thenReturn(List.of(ranking));
+        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(computerScienceScoringService);
+
+        Indicator indicator = indicator(Indicator.Type.PUBLICATIONS, "S/max(N-2, 1)");
+        indicator.setScoreYearRange("IY");
+
+        Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(publication), indicator);
+
+        assertEquals(8.0, result.get(publication.getTitle()).getScore(), 0.0001);
+        assertEquals(8.0, result.get(publication.getTitle()).getAuthorScore(), 0.0001);
+        assertEquals("A", result.get(publication.getTitle()).getCategory());
+        assertEquals(2016, result.get(publication.getTitle()).getYear());
+        assertEquals(8.0, result.get("total").getAuthorScore(), 0.0001);
+        ComputerScienceConferenceScoringService.ConferenceScoreTrace trace =
+                conferenceScoringService.diagnoseConferenceMatch(forum.getPublicationName(), 2016);
+        assertEquals(ComputerScienceConferenceScoringService.FallbackReason.NONE, trace.fallbackReason());
+        assertEquals("CCGRID", trace.resolvedAcronym());
     }
 
     private Indicator indicator(Indicator.Type type, String formula) {

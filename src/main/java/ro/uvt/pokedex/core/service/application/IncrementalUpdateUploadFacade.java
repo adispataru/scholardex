@@ -8,13 +8,16 @@ import org.springframework.stereotype.Service;
 public class IncrementalUpdateUploadFacade {
 
     private final WosIncrementalUploadService wosIncrementalUploadService;
+    private final WosIncrementalFollowUpService wosIncrementalFollowUpService;
     private final ScopusIncrementalUploadService scopusIncrementalUploadService;
 
     public IncrementalUpdateUploadFacade(
             WosIncrementalUploadService wosIncrementalUploadService,
+            WosIncrementalFollowUpService wosIncrementalFollowUpService,
             ScopusIncrementalUploadService scopusIncrementalUploadService
     ) {
         this.wosIncrementalUploadService = wosIncrementalUploadService;
+        this.wosIncrementalFollowUpService = wosIncrementalFollowUpService;
         this.scopusIncrementalUploadService = scopusIncrementalUploadService;
     }
 
@@ -24,6 +27,22 @@ public class IncrementalUpdateUploadFacade {
 
     public ScopusUploadRunResult acceptScopusUpload(UploadedPayload file) {
         return scopusIncrementalUploadService.run(file);
+    }
+
+    public ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult enrichWosUploadCategoryRankings(
+            WosUploadSourceType sourceType,
+            String sourceFile,
+            String sourceVersion
+    ) {
+        return wosIncrementalFollowUpService.enrichCategoryRankings(sourceType, sourceFile, sourceVersion);
+    }
+
+    public ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult rebuildWosUploadProjections(
+            WosUploadSourceType sourceType,
+            String sourceFile,
+            String sourceVersion
+    ) {
+        return wosIncrementalFollowUpService.rebuildProjections(sourceType, sourceFile, sourceVersion);
     }
 
     public ro.uvt.pokedex.core.service.importing.model.MigrationStepResult rebuildScopusUploadProjections(String uploadBatchId) {

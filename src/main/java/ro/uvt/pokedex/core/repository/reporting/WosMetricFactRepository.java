@@ -10,6 +10,11 @@ import java.util.List;
 public interface WosMetricFactRepository extends MongoRepository<WosMetricFact, String> {
     List<WosMetricFact> findAllByJournalId(String journalId);
     List<WosMetricFact> findAllByJournalIdIn(List<String> journalIds);
+    List<WosMetricFact> findAllBySourceTypeAndSourceFileAndSourceVersion(
+            ro.uvt.pokedex.core.model.reporting.wos.WosSourceType sourceType,
+            String sourceFile,
+            String sourceVersion
+    );
 
     Optional<WosMetricFact> findByJournalIdAndYearAndMetricType(
             String journalId,

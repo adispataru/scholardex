@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>USER_DEFINED Triage</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 <div id="wrapper">
@@ -13,59 +12,61 @@
         <div id="content">
             <div th:replace="~{fragments :: navbar('USER_DEFINED Triage')}"></div>
             <div class="container-fluid app-page-content">
-                <p class="mb-4">Operational diagnostics for wizard-onboarded USER_DEFINED lineage.</p>
+                <div class="app-dashboard">
+                    <p class="app-dashboard__intro">Review USER_DEFINED lineage health with snapshot metrics, recent source-link activity, conflict status, and direct links to the underlying records.</p>
 
-                <div class="row mb-3">
-                    <div class="col-md-3">
-                        <div class="card border-left-primary shadow h-100 py-2">
-                            <div class="card-body"><span th:text="'Source publications: ' + ${snapshot.publicationFactCount}">Source publications: 0</span></div>
+                    <div class="app-summary-grid">
+                        <div class="app-summary-card">
+                            <p class="app-summary-card__label">Source Publications</p>
+                            <p class="app-summary-card__value" th:text="${snapshot.publicationFactCount}">0</p>
+                            <p class="app-summary-card__meta">USER_DEFINED publication facts currently tracked in lineage.</p>
+                        </div>
+                        <div class="app-summary-card">
+                            <p class="app-summary-card__label">Source Forums</p>
+                            <p class="app-summary-card__value" th:text="${snapshot.forumFactCount}">0</p>
+                            <p class="app-summary-card__meta">Forum facts created from USER_DEFINED onboarding flows.</p>
+                        </div>
+                        <div class="app-summary-card app-summary-card--warning">
+                            <p class="app-summary-card__label">Source Links</p>
+                            <p class="app-summary-card__value" th:text="${snapshot.sourceLinks.total}">0</p>
+                            <p class="app-summary-card__meta">Total source-link ledger entries in this lineage slice.</p>
+                        </div>
+                        <div class="app-summary-card app-summary-card--danger">
+                            <p class="app-summary-card__label">Conflicts</p>
+                            <p class="app-summary-card__value" th:text="${snapshot.conflicts.total}">0</p>
+                            <p class="app-summary-card__meta">Conflicts currently visible for USER_DEFINED lineage.</p>
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="card border-left-info shadow h-100 py-2">
-                            <div class="card-body"><span th:text="'Source forums: ' + ${snapshot.forumFactCount}">Source forums: 0</span></div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card border-left-warning shadow h-100 py-2">
-                            <div class="card-body"><span th:text="'Source links total: ' + ${snapshot.sourceLinks.total}">Source links total: 0</span></div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card border-left-danger shadow h-100 py-2">
-                            <div class="card-body"><span th:text="'Conflicts total: ' + ${snapshot.conflicts.total}">Conflicts total: 0</span></div>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <div class="card shadow">
-                            <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">USER_DEFINED Source Link States</h6></div>
-                            <div class="card-body">
-                                <div th:text="'LINKED: ' + ${snapshot.sourceLinks.linked}">LINKED: 0</div>
-                                <div th:text="'UNMATCHED: ' + ${snapshot.sourceLinks.unmatched}">UNMATCHED: 0</div>
-                                <div th:text="'CONFLICT: ' + ${snapshot.sourceLinks.conflict}">CONFLICT: 0</div>
-                                <div th:text="'SKIPPED: ' + ${snapshot.sourceLinks.skipped}">SKIPPED: 0</div>
+                    <div class="app-summary-grid">
+                        <div class="app-summary-panel">
+                            <div class="app-summary-panel__header"><h2 class="app-summary-panel__title">USER_DEFINED Source Link States</h2></div>
+                            <div class="app-summary-panel__body">
+                                <div class="app-summary-list">
+                                    <div class="app-summary-list__item"><span class="app-summary-list__label">Linked</span><span class="app-summary-list__value" th:text="${snapshot.sourceLinks.linked}">0</span></div>
+                                    <div class="app-summary-list__item"><span class="app-summary-list__label">Unmatched</span><span class="app-summary-list__value" th:text="${snapshot.sourceLinks.unmatched}">0</span></div>
+                                    <div class="app-summary-list__item"><span class="app-summary-list__label">Conflict</span><span class="app-summary-list__value" th:text="${snapshot.sourceLinks.conflict}">0</span></div>
+                                    <div class="app-summary-list__item"><span class="app-summary-list__label">Skipped</span><span class="app-summary-list__value" th:text="${snapshot.sourceLinks.skipped}">0</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="app-summary-panel">
+                            <div class="app-summary-panel__header"><h2 class="app-summary-panel__title">USER_DEFINED Conflict States</h2></div>
+                            <div class="app-summary-panel__body">
+                                <div class="app-summary-list">
+                                    <div class="app-summary-list__item"><span class="app-summary-list__label">Open</span><span class="app-summary-list__value" th:text="${snapshot.conflicts.open}">0</span></div>
+                                    <div class="app-summary-list__item"><span class="app-summary-list__label">Resolved</span><span class="app-summary-list__value" th:text="${snapshot.conflicts.resolved}">0</span></div>
+                                    <div class="app-summary-list__item"><span class="app-summary-list__label">Dismissed</span><span class="app-summary-list__value" th:text="${snapshot.conflicts.dismissed}">0</span></div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="card shadow">
-                            <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">USER_DEFINED Conflict States</h6></div>
-                            <div class="card-body">
-                                <div th:text="'OPEN: ' + ${snapshot.conflicts.open}">OPEN: 0</div>
-                                <div th:text="'RESOLVED: ' + ${snapshot.conflicts.resolved}">RESOLVED: 0</div>
-                                <div th:text="'DISMISSED: ' + ${snapshot.conflicts.dismissed}">DISMISSED: 0</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Recent USER_DEFINED Source Links</h6></div>
-                    <div class="card-body table-responsive">
-                        <table class="table table-sm table-bordered">
+                    <div class="app-summary-panel">
+                        <div class="app-summary-panel__header"><h2 class="app-summary-panel__title">Recent USER_DEFINED Source Links</h2></div>
+                        <div class="app-summary-panel__body">
+                        <div class="app-table-scroll">
+                        <table class="table table-sm app-table">
                             <thead>
                             <tr>
                                 <th>Updated</th><th>Entity</th><th>Source Record</th><th>Canonical</th><th>State</th><th>Event</th><th>Batch</th><th>Correlation</th>
@@ -83,17 +84,19 @@
                                 <td th:text="${row.sourceCorrelationId}">-</td>
                             </tr>
                             <tr th:if="${snapshot.recentSourceLinks.isEmpty()}">
-                                <td colspan="8" class="text-center text-muted">No USER_DEFINED source links found.</td>
+                                <td colspan="8" class="app-dashboard-empty-row">No USER_DEFINED source links found.</td>
                             </tr>
                             </tbody>
                         </table>
+                        </div>
+                        </div>
                     </div>
-                </div>
 
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Recent USER_DEFINED Conflicts</h6></div>
-                    <div class="card-body table-responsive">
-                        <table class="table table-sm table-bordered">
+                    <div class="app-summary-panel">
+                        <div class="app-summary-panel__header"><h2 class="app-summary-panel__title">Recent USER_DEFINED Conflicts</h2></div>
+                        <div class="app-summary-panel__body">
+                        <div class="app-table-scroll">
+                        <table class="table table-sm app-table">
                             <thead>
                             <tr>
                                 <th>Detected</th><th>Entity</th><th>Source Record</th><th>Reason</th><th>Status</th><th>Event</th><th>Batch</th><th>Correlation</th>
@@ -111,19 +114,23 @@
                                 <td th:text="${row.sourceCorrelationId}">-</td>
                             </tr>
                             <tr th:if="${snapshot.recentConflicts.isEmpty()}">
-                                <td colspan="8" class="text-center text-muted">No USER_DEFINED conflicts found.</td>
+                                <td colspan="8" class="app-dashboard-empty-row">No USER_DEFINED conflicts found.</td>
                             </tr>
                             </tbody>
                         </table>
+                        </div>
+                        </div>
                     </div>
-                </div>
 
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">Deep Links</h6></div>
-                    <div class="card-body">
-                        <a class="btn btn-outline-primary btn-sm mr-2" th:href="${sourceLinksDeepLink}">Open source links (USER_DEFINED)</a>
-                        <a class="btn btn-outline-primary btn-sm mr-2" th:href="${conflictsDeepLink}">Open conflicts (USER_DEFINED)</a>
+                    <div class="app-summary-panel">
+                        <div class="app-summary-panel__header"><h2 class="app-summary-panel__title">Deep Links</h2></div>
+                        <div class="app-summary-panel__body">
+                        <div class="app-quick-actions">
+                        <a class="btn btn-outline-primary btn-sm" th:href="${sourceLinksDeepLink}">Open source links (USER_DEFINED)</a>
+                        <a class="btn btn-outline-primary btn-sm" th:href="${conflictsDeepLink}">Open conflicts (USER_DEFINED)</a>
                         <a class="btn btn-outline-secondary btn-sm" th:href="${initializationDeepLink}">Open initialization maintenance</a>
+                        </div>
+                        </div>
                     </div>
                 </div>
             </div>

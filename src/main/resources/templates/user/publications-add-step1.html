@@ -5,8 +5,6 @@
     <title>Publications</title>
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css"/>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
@@ -24,43 +22,76 @@
             <!-- Begin Page Content -->
             <div class="container-fluid app-page-content">
 
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Select Forum</h6>
+                <div class="app-workflow">
+                    <p class="app-workflow__intro">Start by linking the publication to an existing forum, then open the create-new path only when the directory does not already contain the source you need.</p>
+                <div class="app-form-surface app-step-shell">
+                    <div class="app-step-shell__header">
+                    <div class="app-step-shell__meta">Publication Workflow</div>
+                    <h2 class="app-step-shell__title">Select Forum</h2>
+                    <ol class="app-step-shell__steps" aria-label="Publication workflow progress">
+                        <li class="app-step-shell__step is-active" aria-current="step">
+                            <span class="app-step-shell__step-index">1</span>
+                            Forum
+                        </li>
+                        <li class="app-step-shell__step">
+                            <span class="app-step-shell__step-index">2</span>
+                            Authors
+                        </li>
+                        <li class="app-step-shell__step">
+                            <span class="app-step-shell__step-index">3</span>
+                            Metadata
+                        </li>
+                    </ol>
                     </div>
-                    <div class="card-body">
+                    <div class="app-form-surface__panel">
+                    <div class="app-form-surface__body">
+                        <div class="app-step-shell__body">
                         <form th:action="@{/user/publications/add/step1}" method="post">
-                            <div class="form-group">
-                                <label for="forum-search">Forum</label>
-                                <input id="forum-search" class="form-control" placeholder="Search forum…"/>
-                                <input type="hidden" name="selectedForumId" id="forum-id"/>
+                            <div class="app-form-section">
+                            <div class="app-form-section__header">
+                                <h3 class="app-form-section__title">Find an existing forum</h3>
+                                <p class="app-form-section__description">Autocomplete keeps the main path fast. The manual creation fields stay tucked away until you need them.</p>
                             </div>
-                            <hr>
+                            <div class="app-form-grid">
+                            <div class="form-group app-form-field">
+                                <label for="forum-search">Forum</label>
+                                <input id="forum-search" class="form-control" placeholder="Search forum…" aria-describedby="forum-search-help"/>
+                                <input type="hidden" name="selectedForumId" id="forum-id"/>
+                                <p class="app-form-help mb-0" id="forum-search-help">Search for an existing forum first, then expand the section below only if you need to create a new one.</p>
+                            </div>
+                            </div>
+                            </div>
+                            <div class="app-disclosure">
                             <p>
-                                <a class="btn btn-link" data-toggle="collapse" href="#createForumSection"
-                                   role="button" aria-expanded="false" aria-controls="createForumSection">
+                                <button type="button" class="btn btn-link app-disclosure__toggle" data-toggle="collapse" data-target="#createForumSection"
+                                   aria-expanded="false" aria-controls="createForumSection" id="create-forum-toggle">
                                     Or create new
-                                </a>
+                                </button>
                             </p>
-                            <div class="collapse" id="createForumSection">
-                                <h5>Create new:</h5>
-                                <div class="form-group">
+                            <div class="collapse app-disclosure__body" id="createForumSection" role="region" aria-labelledby="create-forum-toggle">
+                                <div class="app-form-section">
+                                <div class="app-form-section__header">
+                                <h5 class="app-form-section__title">Create a new forum</h5>
+                                <p class="app-form-section__description">Provide the minimum metadata needed to register a new journal, book series, or proceedings source.</p>
+                                </div>
+                                <div class="app-form-grid app-form-grid--two-up">
+                                <div class="form-group app-form-field">
                                     <label>Name</label>
                                     <input type="text" th:field="*{newForum.publicationName}" class="form-control"/>
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group app-form-field">
                                     <label>ISSN</label>
                                     <input type="text" th:field="*{newForum.issn}" class="form-control"/>
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group app-form-field">
                                     <label>eISSN</label>
                                     <input type="text" th:field="*{newForum.eIssn}" class="form-control"/>
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group app-form-field">
                                     <label>ISBN</label>
                                     <input type="text" th:field="*{newForum.isbn}" class="form-control"/>
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group app-form-field">
                                     <label>Type</label>
                                     <select class="form-control" th:field="*{newForum.aggregationType}">
                                         <option value="Journal">Journal</option>
@@ -70,14 +101,22 @@
                                         <option value="Trade Journal">Trade Journal</option>
                                     </select>
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group app-form-field">
                                     <label>Publisher</label>
                                     <input type="text" th:field="*{newForum.publisher}" class="form-control"/>
                                 </div>
+                                </div>
+                                </div>
                             </div>
+                            </div>
+                            <div class="app-form-actions">
                             <button type="submit" class="btn btn-primary">Next</button>
+                            </div>
                         </form>
+                        </div>
                     </div>
+                    </div>
+                </div>
                 </div>
             </div>
             <!-- End of Main Content -->
@@ -102,7 +141,6 @@
 <!-- Page level plugins -->
 
 <!-- Page level custom scripts -->
-<script src="/js/demo/datatables-demo.js"></script>
 
 <script>
 

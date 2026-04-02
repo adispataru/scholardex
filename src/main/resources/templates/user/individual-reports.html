@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Individual Reports</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
 </head>
 <body id="page-top">
 
@@ -17,22 +16,26 @@
         <div id="content">
             <div th:replace="~{fragments :: navbar('Individual Reports')}"></div>
             <div class="container-fluid app-page-content">
-                <p class="mb-4">This is a list of all Individual Reports currently managed by the system.</p>
+                <div class="app-dashboard">
+                <p class="app-dashboard__intro">Review the individual reports available to you and move directly into each report from the main table. The table below remains the primary report list surface for this page.</p>
 
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Detailed View of Individual Reports</h6>
+                <div class="app-table-section">
+                    <div class="app-table-section__surface">
+                    <div class="app-table-section__header app-table-toolbar">
+                        <h6 class="app-table-section__title">Detailed View of Individual Reports</h6>
                     </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered js-datatable" id="dataTable" width="100%" cellspacing="0">
+                    <div class="app-table-section__body">
+                        <p class="app-table-context">Each report row provides the report title, summary description, included indicators, affiliation context, and the action to open the report.</p>
+                        <div class="table-responsive app-table-scroll">
+                            <table class="table table-bordered js-datatable app-table" id="dataTable" width="100%" cellspacing="0">
+                                <caption class="app-table-caption app-table-caption--sr-only">Individual reports table showing report title, description, included indicators, affiliation, and the action to open the report.</caption>
                                 <thead>
                                 <tr>
-                                    <th>Title</th>
-                                    <th>Description</th>
-                                    <th>Indicators</th>
-                                    <th>Institution</th>
-                                    <th>Actions</th>
+                                    <th scope="col">Title</th>
+                                    <th scope="col">Description</th>
+                                    <th scope="col">Indicators</th>
+                                    <th scope="col">Institution</th>
+                                    <th scope="col">Actions</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -53,6 +56,8 @@
                             </table>
                         </div>
                     </div>
+                    </div>
+                </div>
                 </div>
             </div>
 
@@ -64,7 +69,6 @@
 <!-- Bootstrap core JavaScript-->
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
 
-<script src="/js/demo/datatables-demo.js"></script>
 
 </body>
 </html>

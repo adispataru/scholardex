@@ -45,7 +45,7 @@
     "bootstrap": "^4.6.2",
     "chart.js": "2.9.4",
     "datatables.net": "^1.13.11",
-    "datatables.net-bs4": "^1.13.11",
+    "datatables.net-bs5": "^1.13.11",
     "jquery": "^3.7.1",
     "jquery.easing": "^1.4.1"
   }

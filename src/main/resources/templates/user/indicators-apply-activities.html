@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title th:text="${indicator.name}">Indicator</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <link href="/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="/css/indicator-citations-dashboard.css" rel="stylesheet">
 </head>
 <body id="page-top">
@@ -17,36 +16,40 @@
 
             <div class="container-fluid app-page-content" id="activities-dashboard-v2"
                  th:attr="data-quarter-labels=${#strings.listJoin(allQuarters, '|')},data-quarter-values=${#strings.listJoin(allValues, '|')}">
-                <div class="app-page-toolbar">
-                    <div class="d-flex">
-                        <a th:href="@{/user/indicators/export/{id}(id=${indicator.id})}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm mr-2">
-                            <i class="fa-solid fa-download fa-sm text-white-50"></i> Export Excel
+                <div class="app-page-toolbar app-workflow">
+                    <p class="app-workflow__intro">Apply this indicator to activity records, refresh scores, tune filters, and inspect the resulting rows.</p>
+                    <div class="app-workflow__actions">
+                        <a th:href="@{/user/indicators/export/{id}(id=${indicator.id})}" class="btn btn-sm btn-primary">
+                            <i class="fa-solid fa-download fa-sm"></i> Export Excel
                         </a>
                         <form th:action="@{/user/indicators/apply/{id}/refresh(id=${indicator.id})}" method="post">
-                            <button type="submit" class="btn btn-sm btn-outline-primary shadow-sm">Refresh Scores</button>
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Refresh Scores</button>
                         </form>
                     </div>
                 </div>
 
-                <div class="card shadow mb-3">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Indicator Overview</h6>
+                <div class="app-form-surface mb-3">
+                    <div class="app-form-surface__panel">
+                    <div class="app-form-surface__header">
+                        <h6 class="app-form-surface__title">Indicator Overview</h6>
                     </div>
-                    <div class="card-body">
-                        <div class="row align-items-center">
-                            <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
-                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Score</div>
-                                <div class="h4 mb-0 font-weight-bold text-gray-800" th:text="${total}">0</div>
-                            </div>
-                            <div class="col-lg-6 col-md-12">
+                    <div class="app-form-surface__body">
+                        <p class="app-visually-hidden" id="activities-chart-description">Quarter distribution chart summarizing the currently scored activities for this indicator.</p>
+                        <div class="app-summary-grid">
+                            <article class="app-summary-card">
+                                <p class="app-summary-card__label">Total Score</p>
+                                <p class="app-summary-card__value" th:text="${total}">0</p>
+                            </article>
+                            <article class="app-summary-card app-summary-card__chart">
+                                <p class="app-summary-card__label">Quarter Distribution</p>
                                 <div class="chart-cell">
-                                    <canvas id="activities-quarter-chart" aria-label="Quarter distribution"></canvas>
+                                    <canvas id="activities-quarter-chart" aria-label="Quarter distribution" aria-describedby="activities-chart-description"></canvas>
                                 </div>
-                            </div>
+                            </article>
                         </div>
                         <hr class="my-4">
                         <div>
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-2">Indicator Context</div>
+                            <p class="app-summary-panel__section-title">Indicator Context</p>
                             <dl class="row mb-0 small">
                                 <dt class="col-sm-3">Output Type</dt>
                                 <dd class="col-sm-9" th:text="${indicator.outputType}"></dd>
@@ -59,34 +62,35 @@
                             </dl>
                         </div>
                     </div>
+                    </div>
                 </div>
 
-                <div class="card shadow mb-3">
-                    <div class="card-body">
-                        <div class="form-row align-items-end">
-                            <div class="col-md-4 mb-2">
-                                <label for="activities-search" class="small text-muted">Search</label>
+                <div class="app-table-filters">
+                    <h6 class="app-table-filters__title">Filter Scores</h6>
+                        <div class="app-table-filters__grid">
+                            <div class="app-table-filters__field app-table-filters__field--span-5">
+                                <label for="activities-search">Search</label>
                                 <input id="activities-search" class="form-control" type="search" placeholder="Name, type, details...">
                             </div>
-                            <div class="col-md-2 mb-2">
-                                <label for="activities-min-score" class="small text-muted">Min Author Score</label>
+                            <div class="app-table-filters__field app-table-filters__field--span-2">
+                                <label for="activities-min-score">Min Author Score</label>
                                 <input id="activities-min-score" class="form-control" type="number" min="0" step="0.01" value="0">
                             </div>
-                            <div class="col-md-2 mb-2">
-                                <label for="activities-quarter" class="small text-muted">Quarter</label>
+                            <div class="app-table-filters__field app-table-filters__field--span-2">
+                                <label for="activities-quarter">Quarter</label>
                                 <select id="activities-quarter" class="form-control">
                                     <option value="">All</option>
                                     <option th:each="q : ${allQuarters}" th:value="${q}" th:text="${q}"></option>
                                 </select>
                             </div>
-                            <div class="col-md-2 mb-2">
-                                <label for="activities-type" class="small text-muted">Type</label>
+                            <div class="app-table-filters__field app-table-filters__field--span-2">
+                                <label for="activities-type">Type</label>
                                 <select id="activities-type" class="form-control">
                                     <option value="">All</option>
                                 </select>
                             </div>
-                            <div class="col-md-2 mb-2">
-                                <label for="activities-sort" class="small text-muted">Sort</label>
+                            <div class="app-table-filters__field app-table-filters__field--span-1">
+                                <label for="activities-sort">Sort</label>
                                 <select id="activities-sort" class="form-control">
                                     <option value="score_desc">Score desc</option>
                                     <option value="score_asc">Score asc</option>
@@ -98,27 +102,28 @@
                             </div>
                         </div>
                         <button id="activities-clear" type="button" class="btn btn-link btn-sm px-0">Clear filters</button>
-                    </div>
                 </div>
 
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                        <h6 class="m-0 font-weight-bold text-primary">Individual scores</h6>
-                        <span id="activities-count" class="small text-muted"></span>
+                <div class="app-table-section">
+                    <div class="app-table-section__surface">
+                    <div class="app-table-section__header app-table-toolbar">
+                        <h6 class="app-table-section__title">Individual Scores</h6>
+                        <span id="activities-count" class="app-table-toolbar__meta" role="status" aria-live="polite" aria-atomic="true"></span>
                     </div>
-                    <div class="card-body">
-                        <div id="activities-empty-state" class="alert alert-light d-none mb-3">No activities match current filters.</div>
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-hover" id="activities-main-table" width="100%" cellspacing="0">
+                    <div class="app-table-section__body">
+                        <div id="activities-empty-state" class="app-table-state app-table-state--warning d-none mb-3" role="status" aria-live="polite" aria-atomic="true">No activities match current filters.</div>
+                        <div class="app-table-scroll">
+                            <table class="table table-bordered table-hover app-table" id="activities-main-table" width="100%" cellspacing="0">
+                                <caption class="app-table-caption app-table-caption--sr-only">Scored activities table for the selected indicator, including type, details, year, forum score, author score, and extra score values.</caption>
                                 <thead>
                                 <tr>
-                                    <th>Title</th>
-                                    <th>Type</th>
-                                    <th>Details</th>
-                                    <th>Year</th>
-                                    <th>Forum Score</th>
-                                    <th>Author Score</th>
-                                    <th>Extra Score</th>
+                                    <th scope="col">Title</th>
+                                    <th scope="col">Type</th>
+                                    <th scope="col">Details</th>
+                                    <th scope="col">Year</th>
+                                    <th scope="col">Forum Score</th>
+                                    <th scope="col">Author Score</th>
+                                    <th scope="col">Extra Score</th>
                                 </tr>
                                 </thead>
                                 <tbody id="activities-main-body">
@@ -145,6 +150,7 @@
                                 </tbody>
                             </table>
                         </div>
+                    </div>
                     </div>
                 </div>
             </div>

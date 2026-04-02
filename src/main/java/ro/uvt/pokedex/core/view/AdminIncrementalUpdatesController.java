@@ -32,6 +32,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class AdminIncrementalUpdatesController {
 
+    private static final String SESSION_WOS_UPLOAD_SOURCE_TYPE = "h29.wos.lastUploadSourceType";
+    private static final String SESSION_WOS_UPLOAD_FILENAME = "h29.wos.lastUploadFilename";
+    private static final String SESSION_WOS_UPLOAD_SOURCE_VERSION = "h29.wos.lastUploadSourceVersion";
     private static final String SESSION_SCOPUS_UPLOAD_BATCH_ID = "h29.scopus.lastUploadBatchId";
     private static final String SESSION_SCOPUS_UPLOAD_FILENAME = "h29.scopus.lastUploadFilename";
 
@@ -51,6 +54,7 @@ public class AdminIncrementalUpdatesController {
 
     @GetMapping
     public String showIncrementalUpdatesPage(Model model, HttpSession session) {
+        model.addAttribute("wosFollowUpContext", readWosFollowUpContext(session));
         model.addAttribute("scopusFollowUpContext", readScopusFollowUpContext(session));
         return "admin/incremental-updates";
     }
@@ -60,7 +64,8 @@ public class AdminIncrementalUpdatesController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(name = "sourceType", required = false) String sourceType,
             @RequestParam(name = "sourceVersion", required = false) String sourceVersion,
-            RedirectAttributes redirectAttributes
+            RedirectAttributes redirectAttributes,
+            HttpSession session
     ) {
         WosUploadSourceType parsedSourceType;
         try {
@@ -92,6 +97,7 @@ public class AdminIncrementalUpdatesController {
             WosUploadRunResult result = incrementalUpdateUploadFacade.acceptWosUpload(
                     new WosIncrementalUploadRequest(parsedSourceType, normalizeOptional(sourceVersion), payload)
             );
+            storeWosFollowUpContext(session, result);
             redirectAttributes.addFlashAttribute("successMessage", formatWosSuccessMessage(result));
         } catch (IOException e) {
             log.error("WoS incremental upload read failed: fileName={}, size={}", file.getOriginalFilename(), file.getSize(), e);
@@ -102,6 +108,86 @@ public class AdminIncrementalUpdatesController {
         } catch (RuntimeException e) {
             log.error("WoS incremental upload orchestration failed: fileName={}, sourceType={}", file.getOriginalFilename(), parsedSourceType, e);
             redirectAttributes.addFlashAttribute("errorMessage", "WoS incremental update failed: " + e.getMessage());
+        }
+        return "redirect:/admin/incremental-updates";
+    }
+
+    @PostMapping("/wos/enrichCategoryRankings")
+    public String enrichWosUploadCategoryRankings(
+            RedirectAttributes redirectAttributes,
+            HttpSession session
+    ) {
+        WosFollowUpContext context = requireWosFollowUpContext(session, redirectAttributes);
+        if (context == null) {
+            return "redirect:/admin/incremental-updates";
+        }
+        try {
+            var result = incrementalUpdateUploadFacade.enrichWosUploadCategoryRankings(
+                    context.sourceType(),
+                    context.originalFilename(),
+                    context.effectiveSourceVersion()
+            );
+            redirectAttributes.addFlashAttribute(
+                    "successMessage",
+                    "WoS category enrichment complete for last uploaded lineage [" + context.originalFilename()
+                            + ", sourceType=" + context.sourceType()
+                            + ", sourceVersion=" + context.effectiveSourceVersion()
+                            + "]. Enrichment[p=" + result.getProcessedCount()
+                            + ", i=" + result.getImportedCount()
+                            + ", u=" + result.getUpdatedCount()
+                            + ", s=" + result.getSkippedCount()
+                            + ", e=" + result.getErrorCount()
+                            + "]."
+            );
+        } catch (RuntimeException e) {
+            log.error(
+                    "WoS upload-scoped category enrichment failed: sourceType={}, fileName={}, sourceVersion={}",
+                    context.sourceType(),
+                    context.originalFilename(),
+                    context.effectiveSourceVersion(),
+                    e
+            );
+            redirectAttributes.addFlashAttribute("errorMessage", "WoS category enrichment failed: " + e.getMessage());
+        }
+        return "redirect:/admin/incremental-updates";
+    }
+
+    @PostMapping("/wos/rebuildProjections")
+    public String rebuildWosUploadProjections(
+            RedirectAttributes redirectAttributes,
+            HttpSession session
+    ) {
+        WosFollowUpContext context = requireWosFollowUpContext(session, redirectAttributes);
+        if (context == null) {
+            return "redirect:/admin/incremental-updates";
+        }
+        try {
+            var result = incrementalUpdateUploadFacade.rebuildWosUploadProjections(
+                    context.sourceType(),
+                    context.originalFilename(),
+                    context.effectiveSourceVersion()
+            );
+            redirectAttributes.addFlashAttribute(
+                    "successMessage",
+                    "WoS projection rebuild complete for last uploaded lineage [" + context.originalFilename()
+                            + ", sourceType=" + context.sourceType()
+                            + ", sourceVersion=" + context.effectiveSourceVersion()
+                            + "]. Projections[p=" + result.getProcessedCount()
+                            + ", i=" + result.getImportedCount()
+                            + ", u=" + result.getUpdatedCount()
+                            + ", s=" + result.getSkippedCount()
+                            + ", e=" + result.getErrorCount()
+                            + "]."
+            );
+        } catch (RuntimeException e) {
+            log.error(
+                    "WoS upload-scoped projection rebuild failed: sourceType={}, fileName={}, sourceVersion={}",
+                    context.sourceType(),
+                    context.originalFilename(),
+                    context.effectiveSourceVersion(),
+                    e
+            );
+            redirectAttributes.addFlashAttribute("errorMessage", "WoS projection rebuild failed: " + e.getMessage());
         }
         return "redirect:/admin/incremental-updates";
     }
@@ -324,7 +410,45 @@ public class AdminIncrementalUpdatesController {
                 + ", s=" + result.factBuild().result().getSkippedCount()
                 + ", e=" + result.factBuild().result().getErrorCount()
                 + ", resumedFromCheckpoint=" + result.factBuild().resumedFromCheckpoint()
-                + "]. " + result.note();
+                + "]. " + result.note()
+                + " Use the WoS post-upload actions below only to continue this stored upload lineage.";
+    }
+
+    private void storeWosFollowUpContext(HttpSession session, WosUploadRunResult result) {
+        session.setAttribute(SESSION_WOS_UPLOAD_SOURCE_TYPE, result.sourceType().name());
+        session.setAttribute(SESSION_WOS_UPLOAD_FILENAME, result.originalFilename());
+        session.setAttribute(SESSION_WOS_UPLOAD_SOURCE_VERSION, result.effectiveSourceVersion());
+    }
+
+    private WosFollowUpContext readWosFollowUpContext(HttpSession session) {
+        Object sourceType = session.getAttribute(SESSION_WOS_UPLOAD_SOURCE_TYPE);
+        Object fileName = session.getAttribute(SESSION_WOS_UPLOAD_FILENAME);
+        Object sourceVersion = session.getAttribute(SESSION_WOS_UPLOAD_SOURCE_VERSION);
+        if (!(sourceType instanceof String sourceTypeValue) || sourceTypeValue.isBlank()) {
+            return null;
+        }
+        if (!(fileName instanceof String fileNameValue) || fileNameValue.isBlank()) {
+            return null;
+        }
+        if (!(sourceVersion instanceof String sourceVersionValue) || sourceVersionValue.isBlank()) {
+            return null;
+        }
+        return new WosFollowUpContext(
+                WosUploadSourceType.valueOf(sourceTypeValue),
+                fileNameValue,
+                sourceVersionValue
+        );
+    }
+
+    private WosFollowUpContext requireWosFollowUpContext(HttpSession session, RedirectAttributes redirectAttributes) {
+        WosFollowUpContext context = readWosFollowUpContext(session);
+        if (context == null) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "No successful WoS upload lineage is stored in this session yet. Upload one WoS file first before running upload-scoped follow-up maintenance."
+            );
+        }
+        return context;
     }
 
     private String formatScopusSuccessMessage(ScopusUploadRunResult result) {
@@ -383,6 +507,13 @@ public class AdminIncrementalUpdatesController {
     public record ScopusFollowUpContext(
             String originalFilename,
             String uploadBatchId
+    ) {
+    }
+
+    public record WosFollowUpContext(
+            WosUploadSourceType sourceType,
+            String originalFilename,
+            String effectiveSourceVersion
     ) {
     }
 }
