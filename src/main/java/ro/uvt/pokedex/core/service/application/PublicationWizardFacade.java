@@ -2,11 +2,11 @@ package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Affiliation;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEntityType;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.service.application.model.WizardPublicationCommand;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusImportEventIngestionService;
@@ -35,13 +35,13 @@ public class PublicationWizardFacade {
     private final ScopusImportEventIngestionService importEventIngestionService;
     private final ScopusCanonicalMaterializationService canonicalMaterializationService;
 
-    public List<Forum> listForums() {
+    public List<ScholardexForumView> listForums() {
         return scholardexProjectionReadService.findAllForums();
     }
 
-    public Optional<String> resolveForumId(Forum newForum, String selectedId) {
+    public Optional<String> resolveForumId(ScholardexForumView newForum, String selectedId) {
         if (selectedId != null && !selectedId.isEmpty()) {
-            Forum existingForum = scholardexProjectionReadService.findForumById(selectedId).orElse(null);
+            ScholardexForumView existingForum = scholardexProjectionReadService.findForumById(selectedId).orElse(null);
             if (existingForum != null) {
                 return Optional.of(existingForum.getId());
             }
@@ -51,7 +51,7 @@ public class PublicationWizardFacade {
         return Optional.empty();
     }
 
-    public List<Author> findAuthorsForAffiliation(String affiliationId) {
+    public List<ScholardexAuthorView> findAuthorsForAffiliation(String affiliationId) {
         if (isBlank(affiliationId)) {
             return Collections.emptyList();
         }
@@ -62,7 +62,7 @@ public class PublicationWizardFacade {
             String forumId,
             String authors,
             String creator,
-            Forum wizardForumDraft
+            ScholardexForumView wizardForumDraft
     ) {
         WizardPublicationCommand command = new WizardPublicationCommand();
         command.setForum(forumId);
@@ -132,9 +132,9 @@ public class PublicationWizardFacade {
             String sourceRecordId
     ) {
         List<String> authorIds = command.getAuthorIds() == null ? List.of() : command.getAuthorIds();
-        List<Author> authors = scholardexProjectionReadService.findAuthorsByIdIn(authorIds);
-        Map<String, Author> authorsById = authors.stream()
-                .collect(Collectors.toMap(Author::getId, a -> a, (left, right) -> left, LinkedHashMap::new));
+        List<ScholardexAuthorView> authors = scholardexProjectionReadService.findAuthorsByIdIn(authorIds);
+        Map<String, ScholardexAuthorView> authorsById = authors.stream()
+                .collect(Collectors.toMap(ScholardexAuthorView::getId, a -> a, (left, right) -> left, LinkedHashMap::new));
 
         List<String> orderedAuthorNames = authorIds.stream()
                 .map(authorsById::get)
@@ -146,18 +146,18 @@ public class PublicationWizardFacade {
                 .toList();
 
         Set<String> affiliationIds = new LinkedHashSet<>();
-        for (Author author : authorsById.values()) {
+        for (ScholardexAuthorView author : authorsById.values()) {
             if (author == null || author.getAffiliations() == null) {
                 continue;
             }
-            for (Affiliation affiliation : author.getAffiliations()) {
+            for (ScholardexAffiliationView affiliation : author.getAffiliations()) {
                 if (affiliation != null && !isBlank(affiliation.getAfid())) {
                     affiliationIds.add(trim(affiliation.getAfid()));
                 }
             }
         }
 
-        List<Affiliation> affiliations = affiliationIds.stream()
+        List<ScholardexAffiliationView> affiliations = affiliationIds.stream()
                 .map(scholardexProjectionReadService::findAffiliationById)
                 .flatMap(Optional::stream)
                 .toList();
@@ -191,10 +191,10 @@ public class PublicationWizardFacade {
         payload.put("author_names", joinSemicolon(orderedAuthorNames));
         payload.put("author_afids", joinSemicolon(orderedAuthorAfids));
 
-        payload.put("afid", joinSemicolon(affiliations.stream().map(Affiliation::getAfid).map(this::trim).toList()));
-        payload.put("affilname", joinSemicolon(affiliations.stream().map(Affiliation::getName).map(this::trim).toList()));
-        payload.put("affiliation_city", joinSemicolon(affiliations.stream().map(Affiliation::getCity).map(this::trim).toList()));
-        payload.put("affiliation_country", joinSemicolon(affiliations.stream().map(Affiliation::getCountry).map(this::trim).toList()));
+        payload.put("afid", joinSemicolon(affiliations.stream().map(ScholardexAffiliationView::getAfid).map(this::trim).toList()));
+        payload.put("affilname", joinSemicolon(affiliations.stream().map(ScholardexAffiliationView::getName).map(this::trim).toList()));
+        payload.put("affiliation_city", joinSemicolon(affiliations.stream().map(ScholardexAffiliationView::getCity).map(this::trim).toList()));
+        payload.put("affiliation_country", joinSemicolon(affiliations.stream().map(ScholardexAffiliationView::getCountry).map(this::trim).toList()));
 
         payload.put("source_id", forumSourceId);
         payload.put("publicationName", trim(command.getWizardForumPublicationName()));
@@ -220,7 +220,7 @@ public class PublicationWizardFacade {
         if (!isBlank(forumId) && scholardexProjectionReadService.findForumById(forumId).isPresent()) {
             return forumId;
         }
-        Forum draft = new Forum();
+        ScholardexForumView draft = new ScholardexForumView();
         draft.setPublicationName(command.getWizardForumPublicationName());
         draft.setIssn(command.getWizardForumIssn());
         draft.setEIssn(command.getWizardForumEIssn());
@@ -228,7 +228,7 @@ public class PublicationWizardFacade {
         return generateForumSourceId(draft);
     }
 
-    String generateForumSourceId(Forum forum) {
+    String generateForumSourceId(ScholardexForumView forum) {
         return UserDefinedWizardOnboardingContract.deterministicForumSourceRecordId(
                 forum == null ? null : forum.getPublicationName(),
                 forum == null ? null : forum.getIssn(),
@@ -275,13 +275,13 @@ public class PublicationWizardFacade {
         return "wizard|" + submitterEmail + "|" + sourceRecordId;
     }
 
-    private String authorAfidsDashSeparated(Author author) {
+    private String authorAfidsDashSeparated(ScholardexAuthorView author) {
         if (author == null || author.getAffiliations() == null || author.getAffiliations().isEmpty()) {
             return "";
         }
         return author.getAffiliations().stream()
                 .filter(a -> a != null && !isBlank(a.getAfid()))
-                .map(Affiliation::getAfid)
+                .map(ScholardexAffiliationView::getAfid)
                 .map(this::trim)
                 .collect(Collectors.joining("-"));
     }

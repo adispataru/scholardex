@@ -5,11 +5,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.Researcher;
-import ro.uvt.pokedex.core.model.scopus.Affiliation;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Citation;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.service.application.model.PublicationMetadataPatch;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationCitationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationsViewModel;
@@ -43,18 +44,18 @@ public class UserPublicationFacade {
         long lookupKeysMs = nanosToMillis(System.nanoTime() - lookupKeysStartedAtNanos);
 
         long authorsFetchStartedAtNanos = System.nanoTime();
-        List<Author> byId = scholardexProjectionReadService.findAuthorsByIdIn(
+        List<ScholardexAuthorView> byId = scholardexProjectionReadService.findAuthorsByIdIn(
                 authorLookupKeys
         );
         long authorsFetchMs = nanosToMillis(System.nanoTime() - authorsFetchStartedAtNanos);
 
         long publicationsFetchStartedAtNanos = System.nanoTime();
         List<String> canonicalAuthorIds = byId.stream()
-                .map(Author::getId)
+                .map(ScholardexAuthorView::getId)
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
-        List<Publication> publications = dedupeAndSortPublications(
+        List<ScholardexPublicationView> publications = dedupeAndSortPublications(
                 scholardexProjectionReadService.findAllPublicationsByAuthorsIn(canonicalAuthorIds)
         );
         long publicationsFetchMs = nanosToMillis(System.nanoTime() - publicationsFetchStartedAtNanos);
@@ -82,23 +83,23 @@ public class UserPublicationFacade {
     }
 
     public Optional<UserPublicationsViewModel> buildAuthorPublicationsView(String authorId) {
-        Optional<Author> author = scholardexProjectionReadService.findAuthorById(authorId);
+        Optional<ScholardexAuthorView> author = scholardexProjectionReadService.findAuthorById(authorId);
         if (author.isEmpty()) {
             return Optional.empty();
         }
 
-        Author theAuthor = author.get();
-        List<Publication> publications = dedupeAndSortPublications(
+        ScholardexAuthorView theAuthor = author.get();
+        List<ScholardexPublicationView> publications = dedupeAndSortPublications(
                 scholardexProjectionReadService.findAllPublicationsByAuthorsContaining(theAuthor.getId())
         );
 
         List<String> affiliationIds = theAuthor.getAffiliations() != null
                 ? theAuthor.getAffiliations().stream()
-                    .map(Affiliation::getAfid)
+                    .map(ScholardexAffiliationView::getAfid)
                     .filter(Objects::nonNull)
                     .toList()
                 : List.of();
-        List<Affiliation> affiliations = scholardexProjectionReadService.findAffiliationsByIdIn(affiliationIds);
+        List<ScholardexAffiliationView> affiliations = scholardexProjectionReadService.findAffiliationsByIdIn(affiliationIds);
 
         UserPublicationsViewModel baseVm = buildPublicationsViewModel(publications);
         return Optional.of(new UserPublicationsViewModel(
@@ -108,19 +109,19 @@ public class UserPublicationFacade {
     }
 
     public Optional<UserPublicationCitationsViewModel> buildCitationsView(String publicationId) {
-        Optional<Publication> byId = scholardexProjectionReadService.findPublicationByAnyId(publicationId);
+        Optional<ScholardexPublicationView> byId = scholardexProjectionReadService.findPublicationByAnyId(publicationId);
         if (byId.isEmpty()) {
             return Optional.empty();
         }
 
-        Publication publication = byId.get();
-        List<Citation> allByCited = scholardexProjectionReadService.findAllCitationsByCitedId(publication.getId());
+        ScholardexPublicationView publication = byId.get();
+        List<ScholardexCitationView> allByCited = scholardexProjectionReadService.findAllCitationsByCitedId(publication.getId());
         List<String> citations = new ArrayList<>();
         allByCited.forEach(c -> citations.add(c.getCitingId()));
-        List<Publication> citationsPub = new ArrayList<>(scholardexProjectionReadService.findAllPublicationsByIdIn(citations));
+        List<ScholardexPublicationView> citationsPub = new ArrayList<>(scholardexProjectionReadService.findAllPublicationsByIdIn(citations));
         PublicationOrderingSupport.sortPublicationsInPlace(citationsPub);
 
-        Optional<Forum> forumOpt = scholardexProjectionReadService.findForumById(publication.getForum());
+        Optional<ScholardexForumView> forumOpt = scholardexProjectionReadService.findForumById(publication.getForum());
         if (forumOpt.isEmpty()) {
             return Optional.empty();
         }
@@ -129,13 +130,13 @@ public class UserPublicationFacade {
         Set<String> forumKeys = new HashSet<>();
         citationsPub.forEach(p -> forumKeys.add(p.getForum()));
 
-        List<Author> byIdIn = scholardexProjectionReadService.findAuthorsByIdIn(authorKeys);
-        List<Forum> forums = scholardexProjectionReadService.findForumsByIdIn(forumKeys);
+        List<ScholardexAuthorView> byIdIn = scholardexProjectionReadService.findAuthorsByIdIn(authorKeys);
+        List<ScholardexForumView> forums = scholardexProjectionReadService.findForumsByIdIn(forumKeys);
 
-        Map<String, Author> authorMap = new HashMap<>();
+        Map<String, ScholardexAuthorView> authorMap = new HashMap<>();
         byIdIn.forEach(a -> authorMap.put(a.getId(), a));
 
-        Map<String, Forum> forumMap = new HashMap<>();
+        Map<String, ScholardexForumView> forumMap = new HashMap<>();
         forums.forEach(f -> forumMap.put(f.getId(), f));
 
         return Optional.of(new UserPublicationCitationsViewModel(
@@ -148,12 +149,12 @@ public class UserPublicationFacade {
     }
 
     // Uses canonical Mongo `id`; EID-based lookup belongs to importer/scopus integration paths.
-    public Optional<Publication> findPublicationForEdit(String publicationId) {
+    public Optional<ScholardexPublicationView> findPublicationForEdit(String publicationId) {
         return scholardexProjectionReadService.findPublicationByAnyId(publicationId);
     }
 
     // Uses canonical Mongo `id`; EID-based lookup belongs to importer/scopus integration paths.
-    public void updatePublicationMetadata(String publicationId, Publication patch) {
+    public void updatePublicationMetadata(String publicationId, PublicationMetadataPatch patch) {
         Optional<ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView> byId =
                 scholardexProjectionReadService.findPublicationViewById(publicationId)
                         .or(() -> scholardexProjectionReadService.findPublicationByAnyId(publicationId)
@@ -165,11 +166,11 @@ public class UserPublicationFacade {
         });
     }
 
-    private int computeHIndex(List<Publication> publications) {
+    private int computeHIndex(List<ScholardexPublicationView> publications) {
         int n = publications.size();
         int[] citationCounts = new int[n + 1];
 
-        for (Publication pub : publications) {
+        for (ScholardexPublicationView pub : publications) {
             int citedByCount = pub.getCitedbyCount();
             if (citedByCount > n) {
                 citationCounts[n]++;
@@ -189,20 +190,20 @@ public class UserPublicationFacade {
         return 0;
     }
 
-    private List<Publication> dedupeAndSortPublications(List<Publication> publications) {
-        Map<String, Publication> dedupedPublicationsById = new LinkedHashMap<>();
-        for (Publication publication : publications) {
+    private List<ScholardexPublicationView> dedupeAndSortPublications(List<ScholardexPublicationView> publications) {
+        Map<String, ScholardexPublicationView> dedupedPublicationsById = new LinkedHashMap<>();
+        for (ScholardexPublicationView publication : publications) {
             if (publication.getId() == null || publication.getId().isBlank()) {
                 continue;
             }
             dedupedPublicationsById.putIfAbsent(publication.getId(), publication);
         }
-        List<Publication> deduped = new ArrayList<>(dedupedPublicationsById.values());
+        List<ScholardexPublicationView> deduped = new ArrayList<>(dedupedPublicationsById.values());
         PublicationOrderingSupport.sortPublicationsInPlace(deduped);
         return deduped;
     }
 
-    private UserPublicationsViewModel buildPublicationsViewModel(List<Publication> publications) {
+    private UserPublicationsViewModel buildPublicationsViewModel(List<ScholardexPublicationView> publications) {
         int hIndex = computeHIndex(publications);
 
         Set<String> authorKeys = new HashSet<>();
@@ -214,12 +215,12 @@ public class UserPublicationFacade {
             numCitations.addAndGet(p.getCitedbyCount());
         });
 
-        List<Author> byIdIn = scholardexProjectionReadService.findAuthorsByIdIn(authorKeys);
-        Map<String, Author> authorMap = new HashMap<>();
+        List<ScholardexAuthorView> byIdIn = scholardexProjectionReadService.findAuthorsByIdIn(authorKeys);
+        Map<String, ScholardexAuthorView> authorMap = new HashMap<>();
         byIdIn.forEach(a -> authorMap.put(a.getId(), a));
 
-        Map<String, Forum> forumMap = new HashMap<>();
-        List<Forum> forums = scholardexProjectionReadService.findForumsByIdIn(forumKeys);
+        Map<String, ScholardexForumView> forumMap = new HashMap<>();
+        List<ScholardexForumView> forums = scholardexProjectionReadService.findForumsByIdIn(forumKeys);
         forums.forEach(f -> forumMap.put(f.getId(), f));
 
         return new UserPublicationsViewModel(

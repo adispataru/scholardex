@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.controller.dto.ScholardexForumTableListItemResponse;
 import ro.uvt.pokedex.core.controller.dto.ScholardexForumTablePageResponse;
-import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -46,7 +46,7 @@ public class ScholardexForumMvcService {
         return new ScholardexForumTablePageResponse(items, safePage, size, totalItems, totalPages);
     }
 
-    private ScholardexForumTableListItemResponse toListItem(Forum forum, WosForumResolutionService.ResolutionIndex resolutionIndex) {
+    private ScholardexForumTableListItemResponse toListItem(ScholardexForumView forum, WosForumResolutionService.ResolutionIndex resolutionIndex) {
         String wosJournalId = wosForumResolutionService.resolveJournalId(forum, resolutionIndex);
         return new ScholardexForumTableListItemResponse(
                 forum.getId(),
@@ -59,7 +59,7 @@ public class ScholardexForumMvcService {
         );
     }
 
-    private String resolveWosStatus(Forum forum, String wosJournalId) {
+    private String resolveWosStatus(ScholardexForumView forum, String wosJournalId) {
         String aggregationType = normalize(forum.getAggregationType());
         if (aggregationType.contains("journal")) {
             return wosJournalId == null ? "not_indexed" : "indexed";

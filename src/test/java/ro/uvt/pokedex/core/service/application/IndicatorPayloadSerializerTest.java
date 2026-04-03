@@ -3,13 +3,16 @@ package ro.uvt.pokedex.core.service.application;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.service.reporting.Score;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class IndicatorPayloadSerializerTest {
@@ -46,5 +49,25 @@ class IndicatorPayloadSerializerTest {
         assertInstanceOf(Score.class, restored);
         assertEquals("SCOPUS+CORE", ((Score) restored).getScoringSource());
         assertEquals("SCOPUS", ((Score) restored).getScoringInfo().get("matchSource"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void serializeSanitizesCanonicalPublicationViewsIntoJsonSafeMaps() {
+        IndicatorPayloadSerializer serializer = new IndicatorPayloadSerializer(new ObjectMapper());
+        ScholardexPublicationView publication = new ScholardexPublicationView();
+        publication.setId("pub-1");
+        publication.setTitle("Canonical publication");
+        publication.setBuildAt(Instant.parse("2026-04-03T10:15:30Z"));
+
+        Map<String, Object> payload = serializer.deserialize(
+                serializer.serialize(Map.of("publications", List.of(publication)))
+        );
+
+        Object restored = ((List<Object>) payload.get("publications")).get(0);
+        assertInstanceOf(Map.class, restored);
+        assertEquals("pub-1", ((Map<String, Object>) restored).get("id"));
+        assertEquals("2026-04-03T10:15:30Z", ((Map<String, Object>) restored).get("buildAt"));
+        assertNotNull(((Map<String, Object>) restored).get("title"));
     }
 }

@@ -7,8 +7,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
 import java.util.List;
 import java.util.Map;
@@ -32,11 +32,9 @@ class ComputerScienceJournalScoringServiceTest {
         Indicator indicator = new Indicator();
         indicator.setDomain(domain);
 
-        Publication publication = new Publication();
-        publication.setSubtype("ar");
-        publication.setForum("forum-1");
+        ScoringPublication publication = publication("forum-1", null, "ar", null);
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setIssn("1234-5678");
         when(lookupPort.getForum("forum-1")).thenReturn(forum);
 
@@ -70,14 +68,9 @@ class ComputerScienceJournalScoringServiceTest {
         indicator.setDomain(domain);
         indicator.setScoreYearRange("IY");
 
-        Publication publication = new Publication();
-        publication.setScopusSubtype("cp");
-        publication.setSubtype("cp");
-        publication.setForum("forum-1");
-        publication.setCoverDate("2020-12-01");
-        publication.setEid("2-s2.0-85090497285");
+        ScoringPublication publication = publication("forum-1", "2020-12-01", "cp", "cp");
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setAggregationType("Journal");
         forum.setEIssn("2045-2322");
         when(lookupPort.getForum("forum-1")).thenReturn(forum);
@@ -99,5 +92,23 @@ class ComputerScienceJournalScoringServiceTest {
         assertEquals("B", score.getCategory());
         assertEquals("Q2", score.getQuarter());
         assertEquals("SCOPUS+WOS", score.getScoringSource());
+    }
+
+    private ScoringPublication publication(String forumId, String coverDate, String subtype, String scopusSubtype) {
+        return new ScoringPublication(
+                "pub-1",
+                "2-s2.0-85090497285",
+                forumId,
+                coverDate,
+                subtype,
+                scopusSubtype,
+                java.util.List.of("a1"),
+                1,
+                "10.1000/pub-1",
+                null,
+                "Computer Science Journal",
+                0,
+                java.util.Set.of()
+        );
     }
 }

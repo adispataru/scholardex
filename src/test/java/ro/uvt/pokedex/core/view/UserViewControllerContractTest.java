@@ -11,9 +11,9 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.test.web.servlet.MockMvc;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.Researcher;
@@ -255,16 +255,16 @@ class UserViewControllerContractTest {
 
     @Test
     void publicationsPageRendersExpectedTemplateAndFrontendModelContract() throws Exception {
-        Publication publication = new Publication();
+        ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setId("p1");
         publication.setForum("f1");
         publication.setAuthors(List.of("a1"));
 
-        Author author = new Author();
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
         author.setName("Author A");
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId("f1");
         forum.setPublicationName("Forum A");
         forum.setIssn("1234-5678");
@@ -294,7 +294,7 @@ class UserViewControllerContractTest {
 
     @Test
     void userRouteKeepsUserSidebarForPlatformAdmin() throws Exception {
-        Publication publication = new Publication();
+        ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setId("p1");
         publication.setForum("f1");
         publication.setAuthors(List.of("a1"));
@@ -322,16 +322,16 @@ class UserViewControllerContractTest {
 
     @Test
     void authorPublicationsPageReusesSharedTemplateWithoutActionButtons() throws Exception {
-        Publication publication = new Publication();
+        ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setId("p1");
         publication.setForum("f1");
         publication.setAuthors(List.of("sauth_1"));
 
-        Author author = new Author();
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("sauth_1");
         author.setName("Author A");
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId("f1");
         forum.setPublicationName("Forum A");
 
@@ -374,13 +374,13 @@ class UserViewControllerContractTest {
 
     @Test
     void publicationCitationsPageAcceptsEidQueryParam() throws Exception {
-        Publication publication = new Publication();
+        ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setId("p1");
         publication.setEid("2-s2.0-85137747651");
         publication.setForum("f1");
         publication.setAuthors(List.of("a1"));
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId("f1");
         forum.setPublicationName("Forum A");
         forum.setIssn("1234-5678");
@@ -419,7 +419,7 @@ class UserViewControllerContractTest {
 
     @Test
     void editPublicationFormRendersPublicationEditTemplateWhenPublicationExists() throws Exception {
-        Publication publication = new Publication();
+        ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setEid("eid-1");
         when(userPublicationFacade.findPublicationForEdit(eq("eid-1")))
                 .thenReturn(Optional.of(publication));
@@ -450,7 +450,7 @@ class UserViewControllerContractTest {
         indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
         indicator.setFormula("S");
 
-        Publication publication = new Publication();
+        ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setTitle("Paper 1");
         publication.setSubtypeDescription("Conference Paper");
         publication.setForum("forum-1");
@@ -463,7 +463,7 @@ class UserViewControllerContractTest {
         score.setAuthorScore(8.0);
         score.setScoringSource("SCOPUS+CORE");
         score.setScoringInfo(Map.of("matchSource", "SCOPUS", "matchedAcronym", "ICSE"));
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("ICSE 2023");
 
         when(userIndicatorResultService.getOrCreateLatest(eq("u@uvt.ro"), eq("ind-1")))
@@ -721,7 +721,7 @@ class UserViewControllerContractTest {
         indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
         indicator.setFormula("S");
 
-        Publication publication = new Publication();
+        ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setTitle("Paper 1");
         publication.setForum("forum-1");
         publication.setAuthors(List.of("a1", "a2"));
@@ -735,12 +735,12 @@ class UserViewControllerContractTest {
         citationScore.setAuthorScore(8.0);
         citationScore.setScoringSource("DBLP+CORE");
         citationScore.setScoringInfo(Map.of("matchSource", "DBLP"));
-        Publication citing = new Publication();
+        ScholardexPublicationView citing = new ScholardexPublicationView();
         citing.setTitle("Citing Paper");
         citing.setSubtypeDescription("Conference Paper");
         citing.setForum("forum-1");
         citing.setEid("eid-2");
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("ICSE 2023");
 
         when(userIndicatorResultService.getOrCreateLatest(eq("u@uvt.ro"), eq("ind-cit-1")))

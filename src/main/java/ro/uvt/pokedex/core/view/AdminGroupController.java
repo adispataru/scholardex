@@ -12,9 +12,9 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.beans.factory.annotation.Value;
 import ro.uvt.pokedex.core.model.reporting.Group;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.service.application.GroupCnfisExportFacade;
 import ro.uvt.pokedex.core.service.application.GroupExportFacade;
 import ro.uvt.pokedex.core.service.application.GroupManagementFacade;
@@ -143,20 +143,20 @@ public class AdminGroupController {
         try (PrintWriter writer = response.getWriter()) {
             writer.println("DOI,Title,Authors,Affiliated Authors,Forum,Year,Volume,Page Range");
 
-            for (Publication publication : vm.publications()) {
+            for (ScholardexPublicationView publication : vm.publications()) {
                 String doi = publication.getDoi() != null ? publication.getDoi() : "";
                 String title = publication.getTitle() != null ? publication.getTitle() : "";
                 String authorsNames = publication.getAuthors().stream()
                         .map(vm.authorMap()::get)
                         .filter(Objects::nonNull)
-                        .map(Author::getName)
+                        .map(ScholardexAuthorView::getName)
                         .collect(Collectors.joining(";"));
                 String affiliatedAuthors = publication.getAuthors().stream()
                         .map(vm.authorMap()::get)
                         .filter(a -> vm.affiliatedAuthorIds().contains(a.getId()))
-                        .map(Author::getName)
+                        .map(ScholardexAuthorView::getName)
                         .collect(Collectors.joining(";"));
-                String forumName = vm.forumMap().getOrDefault(publication.getForum(), new Forum()).getPublicationName();
+                String forumName = vm.forumMap().getOrDefault(publication.getForum(), new ScholardexForumView()).getPublicationName();
                 String year = PersistenceYearSupport.extractYearString(publication.getCoverDate(), publication.getId(), log);
                 String volume = publication.getVolume() != null ? publication.getVolume() : "";
                 if (publication.getIssueIdentifier() != null && !publication.getIssueIdentifier().equals("null")) {

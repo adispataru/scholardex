@@ -16,10 +16,10 @@ import ro.uvt.pokedex.core.model.Institution;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Affiliation;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.user.UserRole;
 import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
@@ -77,7 +77,7 @@ public class AdminViewController {
     public String showInstitutionsPage(Model model, @RequestParam(value = "afname", defaultValue = "vest") String afname) {
         List<Institution> institutions = adminCatalogFacade.listInstitutions();
         model.addAttribute("institutions", institutions);
-        List<Affiliation> allByCountry = adminCatalogFacade.listAffiliationsByNameContains(afname);
+        List<ScholardexAffiliationView> allByCountry = adminCatalogFacade.listAffiliationsByNameContains(afname);
         model.addAttribute("allAffiliations", allByCountry);
         model.addAttribute("institution", new Institution());
         return "admin/institutions";
@@ -94,7 +94,7 @@ public class AdminViewController {
     public String editInstitution(@PathVariable String id, Model model) {
         Institution institution = adminCatalogFacade.findInstitutionById(id).orElse(null);
         model.addAttribute("institution", institution);
-        List<Affiliation> allByCountry = adminCatalogFacade.listAffiliationsByCountry(Country);
+        List<ScholardexAffiliationView> allByCountry = adminCatalogFacade.listAffiliationsByCountry(Country);
         model.addAttribute("allAffiliations", allByCountry);
         return "admin/edit-institutions";
     }
@@ -141,7 +141,7 @@ public class AdminViewController {
             pubHeader.createCell(6).setCellValue("Citations");
 
             int pubRowNum = 1;
-            for (Publication pub : vm.publications()) {
+            for (ScholardexPublicationView pub : vm.publications()) {
                 log.debug("Processing publication for institution export: authors={}, forum={}", pub.getAuthors(), pub.getForum());
                 Row row = pubSheet.createRow(pubRowNum++);
                 row.createCell(0).setCellValue(pub.getEid());
@@ -168,8 +168,8 @@ public class AdminViewController {
             citHeader.createCell(9).setCellValue("Citations");
 
             int citRowNum = 1;
-            for (Publication pub : vm.publications()) {
-                for(Publication citing : vm.citationMap().getOrDefault(pub.getId(), Collections.emptyList())) {
+            for (ScholardexPublicationView pub : vm.publications()) {
+                for (ScholardexPublicationView citing : vm.citationMap().getOrDefault(pub.getId(), Collections.emptyList())) {
                     Row row = citSheet.createRow(citRowNum++);
                     row.createCell(0).setCellValue(pub.getEid());
                     row.createCell(1).setCellValue(pub.getDoi());
@@ -365,13 +365,13 @@ public class AdminViewController {
 
     @GetMapping("/scholardex/forums/edit/{id}")
     public String editScholardexForumPage(Model model, @PathVariable String id) {
-        Optional<Forum> venue = adminCatalogFacade.findScopusVenueById(id);
+        Optional<ScholardexForumView> venue = adminCatalogFacade.findScopusVenueById(id);
         venue.ifPresent(v-> model.addAttribute("forum", v));
         return "admin/scholardex-editForum";
     }
 
     @PostMapping("/scholardex/forums/edit/{id}")
-    public String updateScholardexForum(@ModelAttribute("forum") Forum forum, RedirectAttributes redirectAttributes) {
+    public String updateScholardexForum(@ModelAttribute("forum") ScholardexForumView forum, RedirectAttributes redirectAttributes) {
         adminCatalogFacade.saveScopusVenue(forum);
         redirectAttributes.addFlashAttribute("message", "Forum updated successfully!");
         return "redirect:/admin/scholardex/forums/edit/" + forum.getId();
@@ -388,7 +388,7 @@ public class AdminViewController {
     }
 
     @PostMapping("/scholardex/authors/edit/{id}")
-    public String updateScholardexAuthor(@ModelAttribute("author") Author author, RedirectAttributes redirectAttributes) {
+    public String updateScholardexAuthor(@ModelAttribute("author") ScholardexAuthorView author, RedirectAttributes redirectAttributes) {
         return "redirect:/admin/scholardex/authors";
     }
 
@@ -399,13 +399,13 @@ public class AdminViewController {
 
     @GetMapping("/scholardex/affiliations/edit/{id}")
     public String editScholardexAffiliationsPage(Model model, @PathVariable String id) {
-        Optional<Affiliation> byId = adminCatalogFacade.findScopusAffiliationById(id);
+        Optional<ScholardexAffiliationView> byId = adminCatalogFacade.findScopusAffiliationById(id);
         byId.ifPresent(v-> model.addAttribute("affiliation", v));
         return "admin/scholardex-editAffiliation";
     }
 
     @PostMapping("/scholardex/affiliations/edit/{id}")
-    public String updateScholardexAffiliations(@ModelAttribute("affiliation") Affiliation affiliation, RedirectAttributes redirectAttributes, @PathVariable String id) {
+    public String updateScholardexAffiliations(@ModelAttribute("affiliation") ScholardexAffiliationView affiliation, RedirectAttributes redirectAttributes, @PathVariable String id) {
         adminCatalogFacade.saveScopusAffiliation(affiliation);
         redirectAttributes.addFlashAttribute("message", "Affiliation updated successfully!");
         return "redirect:/admin/scholardex/affiliations";

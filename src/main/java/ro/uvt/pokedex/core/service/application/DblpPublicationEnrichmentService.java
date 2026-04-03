@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationDblpEvidence;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationDblpEvidenceRepository;
@@ -189,8 +189,8 @@ public class DblpPublicationEnrichmentService {
             }
         }
 
-        Map<String, Forum> forumById = new HashMap<>();
-        for (Forum forum : scholardexProjectionReadService.findForumsByIdIn(forumIds)) {
+        Map<String, ScholardexForumView> forumById = new HashMap<>();
+        for (ScholardexForumView forum : scholardexProjectionReadService.findForumsByIdIn(forumIds)) {
             forumById.put(forum.getId(), forum);
         }
 
@@ -206,7 +206,7 @@ public class DblpPublicationEnrichmentService {
             }
             eligibleSubtypePublications++;
             String forumId = CanonicalizationSupport.normalizeBlank(publication.getForumId());
-            Forum forum = forumId == null ? null : forumById.get(forumId);
+            ScholardexForumView forum = forumId == null ? null : forumById.get(forumId);
             String forumName = forum == null ? null : forum.getPublicationName();
             if (forumName == null) {
                 missingForum++;

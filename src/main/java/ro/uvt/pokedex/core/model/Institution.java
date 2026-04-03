@@ -3,7 +3,7 @@ package ro.uvt.pokedex.core.model;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-import ro.uvt.pokedex.core.model.scopus.Affiliation;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 
 import java.util.List;
 
@@ -13,6 +13,6 @@ public class Institution {
     @Id
     private String name;
     private String description;
-    private List<Affiliation> scopusAffiliations;
+    private List<ScholardexAffiliationView> scopusAffiliations;
     private List<String> wosAffiliations;
 }

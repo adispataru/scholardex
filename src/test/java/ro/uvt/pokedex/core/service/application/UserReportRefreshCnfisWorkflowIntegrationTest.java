@@ -18,12 +18,13 @@ import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
 import ro.uvt.pokedex.core.model.reporting.UserIndividualReportRun;
 import ro.uvt.pokedex.core.model.reporting.UserIndicatorResult;
 import ro.uvt.pokedex.core.model.reporting.WoSExtractor;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
 import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
@@ -221,7 +222,7 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
         assertEquals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", exportResult.contentType());
         assertEquals("data/templates/AC2025_Anexa5-Fisa_articole_brevete-2025.xlsx", exportResult.fileName());
 
-        ArgumentCaptor<List<Publication>> publicationCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<ScoringPublicationReadModel>> publicationCaptor = ArgumentCaptor.forClass(List.class);
         ArgumentCaptor<List<CNFISReport2025>> reportCaptor = ArgumentCaptor.forClass(List.class);
         ArgumentCaptor<List<String>> authorIdsCaptor = ArgumentCaptor.forClass(List.class);
         verify(exportService).generateCNFISReportWorkbook(
@@ -231,10 +232,10 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
                 authorIdsCaptor.capture(),
                 eq(false)
         );
-        assertEquals(List.of("p1"), publicationCaptor.getValue().stream().map(Publication::getId).toList());
+        assertEquals(List.of("p1"), publicationCaptor.getValue().stream().map(ScoringPublicationReadModel::getId).toList());
         assertEquals(1, reportCaptor.getValue().size());
         assertEquals(List.of("a1"), authorIdsCaptor.getValue());
-        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq(publicationCaptor.getValue().getFirst()), any(), any(), any());
+        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq("p1"), any(), any(), any(), any(), any(), any());
     }
 
     private void seedWorkflowDefinitions() {
@@ -301,15 +302,15 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
         researcher.setId("r1");
         researcher.setScopusId(List.of("a1"));
 
-        Author author = new Author();
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
         author.setName("Author One");
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId("f1");
         forum.setPublicationName("Forum One");
 
-        Publication publication = new Publication();
+        ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setId("p1");
         publication.setTitle("Workflow Publication");
         publication.setAuthors(List.of("a1"));
@@ -326,15 +327,15 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
         when(scholardexProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of(forum));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
-        when(woSExtractor.findPublicationWosId(publication)).thenReturn(publication);
-        when(publicationEnrichmentLinkerService.linkWosEnrichment(any(), any(), any(), any()))
+        when(woSExtractor.resolveWosId(any())).thenReturn(Optional.of("WOS:1"));
+        when(publicationEnrichmentLinkerService.linkWosEnrichment(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PublicationEnrichmentLinkerService.LinkResult(
                         PublicationEnrichmentLinkerService.LinkState.LINKED,
                         "linked",
                         "pub-fact-1",
                         null
                 ));
-        when(cnfisScoringService2025.getReport(eq(publication), eq(allDomain))).thenReturn(new CNFISReport2025());
+        when(cnfisScoringService2025.getReport(any(ScoringPublicationReadModel.class), eq(allDomain))).thenReturn(new CNFISReport2025());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false)))
                 .thenReturn(new byte[]{1, 2, 3});
 

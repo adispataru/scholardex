@@ -8,8 +8,8 @@ import ro.uvt.pokedex.core.model.ArtisticEvent;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
 import ro.uvt.pokedex.core.repository.ArtisticEventRepository;
 
 import java.util.List;
@@ -37,7 +37,7 @@ public class ArtEventScoringService extends AbstractForumScoringService {
     /* ------------------------------------------------------------------ */
 
     @Override
-    public Score getScore(Publication publication, Indicator indicator) {
+    public Score getScore(ScoringPublicationReadModel publication, Indicator indicator) {
 
         ScoreResult scoreResult = initializeScoreResult();
         return createScore(scoreResult);
@@ -50,7 +50,7 @@ public class ArtEventScoringService extends AbstractForumScoringService {
     @Override
     public Score getScore(ActivityInstance activity, Indicator indicator) {
         Domain domain = indicator.getDomain();
-        Forum forum = getForumFromActivity(activity);
+        ScholardexForumView forum = getForumFromActivity(activity);
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = List.of(LAST_ARTS_YEAR);
@@ -68,7 +68,7 @@ public class ArtEventScoringService extends AbstractForumScoringService {
 
 
 
-    private Optional<Score> computeScore(Forum forum, int year) {
+    private Optional<Score> computeScore(ScholardexForumView forum, int year) {
 
 
         List<ArtisticEvent> eventRankings = getArtisticEvents(forum);
@@ -100,7 +100,7 @@ public class ArtEventScoringService extends AbstractForumScoringService {
     }
 
 
-    private List<ArtisticEvent> getArtisticEvents(Forum forum) {
+    private List<ArtisticEvent> getArtisticEvents(ScholardexForumView forum) {
         String publisher = forum.getPublicationName();
         if (publisher == null || publisher.isEmpty()) {
             return List.of();

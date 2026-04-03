@@ -1,20 +1,20 @@
 package ro.uvt.pokedex.core.service.application.model;
 
-import ro.uvt.pokedex.core.model.scopus.Affiliation;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 
 import java.util.List;
 import java.util.Map;
 
 public record UserPublicationsViewModel(
-        List<Publication> publications,
+        List<ScholardexPublicationView> publications,
         int hIndex,
-        Map<String, Author> authorMap,
-        Map<String, Forum> forumMap,
+        Map<String, ScholardexAuthorView> authorMap,
+        Map<String, ScholardexForumView> forumMap,
         int numCitations,
-        Author profileAuthor,
-        List<Affiliation> affiliations
+        ScholardexAuthorView profileAuthor,
+        List<ScholardexAffiliationView> affiliations
 ) {
 }

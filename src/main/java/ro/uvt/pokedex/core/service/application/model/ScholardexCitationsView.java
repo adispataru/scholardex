@@ -1,17 +1,17 @@
 package ro.uvt.pokedex.core.service.application.model;
 
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 
 import java.util.List;
 import java.util.Map;
 
 public record ScholardexCitationsView(
-        Publication publication,
-        Forum publicationForum,
-        List<Publication> citations,
-        Map<String, Author> authorMap,
-        Map<String, Forum> forumMap
+        ScholardexPublicationView publication,
+        ScholardexForumView publicationForum,
+        List<ScholardexPublicationView> citations,
+        Map<String, ScholardexAuthorView> authorMap,
+        Map<String, ScholardexForumView> forumMap
 ) {
 }

@@ -14,7 +14,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.model.ArtisticEvent;
 import ro.uvt.pokedex.core.model.WoSRanking;
-import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.user.UserRole;
 import ro.uvt.pokedex.core.service.application.ScholardexForumDetailService;
@@ -120,7 +120,7 @@ class RankingViewControllerContractTest {
 
     @Test
     void journalForumWithWosDataRendersCanonicalDetailPage() throws Exception {
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId("w1");
         forum.setPublicationName("Test Journal");
         forum.setAggregationType("Journal");
@@ -149,7 +149,7 @@ class RankingViewControllerContractTest {
 
     @Test
     void journalForumWithoutWosDataRendersNotIndexedState() throws Exception {
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId("w2");
         forum.setPublicationName("Unindexed Journal");
         forum.setAggregationType("Journal");
@@ -172,7 +172,7 @@ class RankingViewControllerContractTest {
 
     @Test
     void conferenceForumRendersCorePlaceholder() throws Exception {
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId("c1");
         forum.setPublicationName("Conference One");
         forum.setAggregationType("Conference Proceeding");
@@ -194,7 +194,7 @@ class RankingViewControllerContractTest {
 
     @Test
     void bookForumRendersBookPlaceholder() throws Exception {
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId("b1");
         forum.setPublicationName("Book One");
         forum.setAggregationType("Book Series");

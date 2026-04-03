@@ -5,7 +5,7 @@ import org.mockito.Mockito;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
 import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
 
 import java.util.List;
@@ -58,7 +58,7 @@ class CategoryDomainContractTest {
         }
 
         @Override
-        public Score getScore(Publication publication, Indicator indicator) {
+        public Score getScore(ScoringPublicationReadModel publication, Indicator indicator) {
             return new Score();
         }
 
@@ -83,7 +83,7 @@ class CategoryDomainContractTest {
         }
 
         @Override
-        public Score getScore(Publication publication, Indicator indicator) {
+        public Score getScore(ScoringPublicationReadModel publication, Indicator indicator) {
             return new Score();
         }
 

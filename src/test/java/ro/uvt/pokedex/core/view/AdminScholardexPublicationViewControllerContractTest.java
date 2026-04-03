@@ -8,9 +8,9 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.service.application.PostgresScholardexAdminReadPort;
 import ro.uvt.pokedex.core.service.application.model.ScholardexCitationsView;
 import ro.uvt.pokedex.core.service.application.model.ScholardexPublicationSearchView;
@@ -42,9 +42,9 @@ class AdminScholardexPublicationViewControllerContractTest {
 
     @Test
     void searchRouteBuildsPublicationSearchView() throws Exception {
-        Publication publication = new Publication();
+        ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setId("p1");
-        Author author = new Author();
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
         when(postgresScholardexAdminReadPort.buildPublicationSearchView("Paper"))
                 .thenReturn(new ScholardexPublicationSearchView(List.of(publication), Map.of("a1", author)));
@@ -62,23 +62,23 @@ class AdminScholardexPublicationViewControllerContractTest {
 
     @Test
     void citationsRouteBuildsPublicationCitationsView() throws Exception {
-        Publication publication = new Publication();
+        ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setId("p1");
         publication.setTitle("Publication One");
         publication.setAuthors(List.of("a1"));
         publication.setSubtypeDescription("Journal Article");
         publication.setVolume("10");
         publication.setIssueIdentifier("2");
-        Publication citation = new Publication();
+        ScholardexPublicationView citation = new ScholardexPublicationView();
         citation.setId("c1");
         citation.setTitle("Citation One");
         citation.setCoverDate("2024");
         citation.setForum("f1");
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId("f1");
         forum.setPublicationName("Forum One");
         forum.setIssn("1234-5678");
-        Author author = new Author();
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
         author.setName("Author One");
         when(postgresScholardexAdminReadPort.buildPublicationCitationsView("p1"))

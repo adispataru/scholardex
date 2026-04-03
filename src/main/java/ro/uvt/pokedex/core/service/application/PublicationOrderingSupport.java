@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.service.application;
 
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 
 import java.time.LocalDate;
 import java.time.Year;
@@ -15,18 +16,29 @@ public final class PublicationOrderingSupport {
     private PublicationOrderingSupport() {
     }
 
-    public static Comparator<Publication> publicationComparator() {
+    public static Comparator<ScholardexPublicationView> publicationComparator() {
         return Comparator
-                .comparingLong(PublicationOrderingSupport::dateSortKey).reversed()
+                .comparingLong((ScholardexPublicationView publication) -> dateSortKey(publication)).reversed()
                 .thenComparing(PublicationOrderingSupport::titleSortKey)
                 .thenComparing(PublicationOrderingSupport::idSortKey);
     }
 
-    public static void sortPublicationsInPlace(List<Publication> publications) {
+    public static void sortPublicationsInPlace(List<ScholardexPublicationView> publications) {
         publications.sort(publicationComparator());
     }
 
-    private static long dateSortKey(Publication publication) {
+    public static void sortScoringPublicationsInPlace(List<? extends ScoringPublicationReadModel> publications) {
+        publications.sort(scoringPublicationComparator());
+    }
+
+    public static Comparator<ScoringPublicationReadModel> scoringPublicationComparator() {
+        return Comparator
+                .comparingLong((ScoringPublicationReadModel publication) -> dateSortKey(publication)).reversed()
+                .thenComparing(PublicationOrderingSupport::titleSortKey)
+                .thenComparing(PublicationOrderingSupport::idSortKey);
+    }
+
+    private static long dateSortKey(ScholardexPublicationView publication) {
         if (publication == null) {
             return Long.MIN_VALUE;
         }
@@ -52,12 +64,49 @@ public final class PublicationOrderingSupport {
         }
     }
 
-    private static String titleSortKey(Publication publication) {
+    private static long dateSortKey(ScoringPublicationReadModel publication) {
+        if (publication == null) {
+            return Long.MIN_VALUE;
+        }
+        return dateSortKey(publication.getCoverDate());
+    }
+
+    private static long dateSortKey(String rawCoverDate) {
+        if (rawCoverDate == null) {
+            return Long.MIN_VALUE;
+        }
+
+        String normalized = rawCoverDate.trim();
+        if (normalized.isEmpty()) {
+            return Long.MIN_VALUE;
+        }
+
+        try {
+            if (normalized.length() == 4) {
+                int year = Integer.parseInt(normalized);
+                return Year.of(year).atDay(1).toEpochDay();
+            }
+            return LocalDate.parse(normalized).toEpochDay();
+        } catch (DateTimeParseException | NumberFormatException ex) {
+            return Long.MIN_VALUE;
+        }
+    }
+
+    private static String titleSortKey(ScholardexPublicationView publication) {
         return Objects.toString(publication != null ? publication.getTitle() : null, "")
                 .toLowerCase(Locale.ROOT);
     }
 
-    private static String idSortKey(Publication publication) {
+    private static String titleSortKey(ScoringPublicationReadModel publication) {
+        return Objects.toString(publication != null ? publication.getTitle() : null, "")
+                .toLowerCase(Locale.ROOT);
+    }
+
+    private static String idSortKey(ScholardexPublicationView publication) {
+        return Objects.toString(publication != null ? publication.getId() : null, "");
+    }
+
+    private static String idSortKey(ScoringPublicationReadModel publication) {
         return Objects.toString(publication != null ? publication.getId() : null, "");
     }
 }

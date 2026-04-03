@@ -12,7 +12,7 @@ import ro.uvt.pokedex.core.model.reporting.wos.MetricType;
 import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
-import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
 
@@ -52,7 +52,7 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
     }
 
     @Override
-    public Forum getForum(String forumId) {
+    public ScholardexForumView getForum(String forumId) {
         return cacheService.getCachedForums(forumId);
     }
 

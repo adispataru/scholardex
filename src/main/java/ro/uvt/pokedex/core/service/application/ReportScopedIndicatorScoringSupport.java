@@ -1,8 +1,9 @@
 package ro.uvt.pokedex.core.service.application;
 
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Citation;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.service.reporting.Score;
 import ro.uvt.pokedex.core.service.reporting.ScientificProductionService;
 
@@ -12,7 +13,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.Set;
 
@@ -21,24 +21,24 @@ final class ReportScopedIndicatorScoringSupport {
     private ReportScopedIndicatorScoringSupport() {
     }
 
-    static CitationContext prepareCitationContext(List<Publication> publications,
+    static CitationContext prepareCitationContext(List<ScholardexPublicationView> publications,
                                                   ScholardexProjectionReadService scholardexProjectionReadService) {
-        List<String> pubIds = publications.stream().map(Publication::getId).toList();
-        List<Citation> allCitations = scholardexProjectionReadService.findAllCitationsByCitedIdIn(pubIds);
-        List<String> citationIds = allCitations.stream().map(Citation::getCitingId).toList();
-        List<Publication> citingPublications = scholardexProjectionReadService.findAllPublicationsByIdIn(citationIds);
-        Map<String, Publication> citingPublicationsById = new HashMap<>();
-        for (Publication publication : citingPublications) {
+        List<String> pubIds = publications.stream().map(ScholardexPublicationView::getId).toList();
+        List<ScholardexCitationView> allCitations = scholardexProjectionReadService.findAllCitationsByCitedIdIn(pubIds);
+        List<String> citationIds = allCitations.stream().map(ScholardexCitationView::getCitingId).toList();
+        List<ScholardexPublicationView> citingPublications = scholardexProjectionReadService.findAllPublicationsByIdIn(citationIds);
+        Map<String, ScholardexPublicationView> citingPublicationsById = new HashMap<>();
+        for (ScholardexPublicationView publication : citingPublications) {
             if (publication != null && publication.getId() != null) {
                 citingPublicationsById.putIfAbsent(publication.getId(), publication);
             }
         }
-        Map<String, List<Publication>> citingPublicationsByCitedPublicationId = new HashMap<>();
-        for (Citation citation : allCitations) {
+        Map<String, List<ScholardexPublicationView>> citingPublicationsByCitedPublicationId = new HashMap<>();
+        for (ScholardexCitationView citation : allCitations) {
             if (citation == null) {
                 continue;
             }
-            Publication citing = citingPublicationsById.get(citation.getCitingId());
+            ScholardexPublicationView citing = citingPublicationsById.get(citation.getCitingId());
             if (citing == null || citation.getCitedId() == null) {
                 continue;
             }
@@ -55,7 +55,9 @@ final class ReportScopedIndicatorScoringSupport {
         if (indicators == null || indicators.isEmpty()) {
             return Map.of();
         }
-        List<Publication> uniqueCitingPublications = new ArrayList<>(citationContext.citingPublicationsById().values());
+        List<ScoringPublicationReadModel> uniqueCitingPublications = citationContext.citingPublicationsById().values().stream()
+                .map(ScholardexPublicationView::toScoringPublication)
+                .toList();
         if (uniqueCitingPublications.isEmpty()) {
             return Map.of();
         }
@@ -74,7 +76,7 @@ final class ReportScopedIndicatorScoringSupport {
     }
 
     static CitationScoreResult calculateCitationScore(Indicator indicator,
-                                                      List<Publication> publications,
+                                                      List<ScholardexPublicationView> publications,
                                                       Set<String> researcherAuthorIds,
                                                       CitationContext citationContext,
                                                       Map<String, Score> cachedCitationBaseScoresByCitingPublicationId,
@@ -91,22 +93,22 @@ final class ReportScopedIndicatorScoringSupport {
     }
 
     static CitationViewComputation computeCitationView(Indicator indicator,
-                                                       List<Publication> publications,
+                                                       List<ScholardexPublicationView> publications,
                                                        Set<String> researcherAuthorIds,
                                                        CitationContext citationContext,
                                                        Map<String, Score> cachedCitationBaseScoresByCitingPublicationId,
                                                        ScientificProductionService scientificProductionService) {
         boolean excludeSelf = indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF);
         Map<String, Map<String, Score>> rawScores = new LinkedHashMap<>();
-        Map<String, Publication> citationMap = new LinkedHashMap<>();
+        Map<String, ScholardexPublicationView> citationMap = new LinkedHashMap<>();
         Set<String> forumIds = new java.util.LinkedHashSet<>();
         int totalCitationCount = 0;
 
-        for (Publication pub : publications) {
+        for (ScholardexPublicationView pub : publications) {
             if (pub.getForum() != null) {
                 forumIds.add(pub.getForum());
             }
-            List<Publication> citations = citationContext.citingPublicationsByCitedPublicationId()
+            List<ScholardexPublicationView> citations = citationContext.citingPublicationsByCitedPublicationId()
                     .getOrDefault(pub.getId(), List.of());
             if (excludeSelf) {
                 citations = citations.stream()
@@ -114,7 +116,7 @@ final class ReportScopedIndicatorScoringSupport {
                         .toList();
             }
             totalCitationCount += citations.size();
-            for (Publication citing : citations) {
+            for (ScholardexPublicationView citing : citations) {
                 if (citing.getTitle() != null) {
                     citationMap.putIfAbsent(citing.getTitle(), citing);
                 }
@@ -124,8 +126,8 @@ final class ReportScopedIndicatorScoringSupport {
             }
 
             Map<String, Score> citScores = scientificProductionService.calculateScientificImpactScore(
-                    pub,
-                    citations,
+                    pub.toScoringPublication(),
+                    citations.stream().map(ScholardexPublicationView::toScoringPublication).toList(),
                     indicator,
                     cachedCitationBaseScoresByCitingPublicationId
             );
@@ -162,7 +164,7 @@ final class ReportScopedIndicatorScoringSupport {
         return "user/indicators-apply-publications";
     }
 
-    private static boolean sharesAnyAuthor(Publication publication, Set<String> authorIds) {
+    private static boolean sharesAnyAuthor(ScholardexPublicationView publication, Set<String> authorIds) {
         if (publication == null || publication.getAuthors() == null || publication.getAuthors().isEmpty() || authorIds.isEmpty()) {
             return false;
         }
@@ -221,8 +223,8 @@ final class ReportScopedIndicatorScoringSupport {
     }
 
     record CitationContext(
-            Map<String, Publication> citingPublicationsById,
-            Map<String, List<Publication>> citingPublicationsByCitedPublicationId,
+            Map<String, ScholardexPublicationView> citingPublicationsById,
+            Map<String, List<ScholardexPublicationView>> citingPublicationsByCitedPublicationId,
             int citationFactsCount
     ) {
         static CitationContext empty() {
@@ -240,7 +242,7 @@ final class ReportScopedIndicatorScoringSupport {
             double totalScore,
             int totalCitationCount,
             Map<String, Map<String, Score>> displayScores,
-            Map<String, Publication> citationMap,
+            Map<String, ScholardexPublicationView> citationMap,
             Set<String> forumIds,
             List<String> quarterLabels,
             List<Integer> quarterValues,

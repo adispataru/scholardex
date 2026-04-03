@@ -10,7 +10,11 @@ public class ScholardexForumView {
     private String publicationName;
     private String issn;
     private String eIssn;
+    private String isbn;
     private String aggregationType;
+    private String publisher;
+    private String scopusId;
+    private boolean approved;
     private String buildVersion;
     private Instant buildAt;
     private Instant updatedAt;

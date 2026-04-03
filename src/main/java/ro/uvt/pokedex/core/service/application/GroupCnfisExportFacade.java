@@ -4,12 +4,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.Researcher;
+import ro.uvt.pokedex.core.model.reporting.CanonicalPublicationConstants;
 import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Group;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
 import ro.uvt.pokedex.core.model.reporting.WoSExtractor;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisZipExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupMemberCnfisWorkbook;
@@ -49,18 +52,21 @@ public class GroupCnfisExportFacade {
             lookupKeys.addAll(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
         }
         List<String> authorIds = scholardexProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
-                .map(ro.uvt.pokedex.core.model.scopus.Author::getId)
+                .map(ScholardexAuthorView::getId)
                 .distinct()
                 .toList();
 
-        List<Publication> publications = scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
+        List<ScholardexPublicationView> publications = scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
         publications = filterPublicationsByYear(publications, startYear, endYear);
 
         Domain allDomain = resolveAllDomain();
-        List<CNFISReport2025> cnfisReports = generateReports(publications, allDomain);
-        Map<String, Forum> forumMap = loadForumMap(publications);
+        List<ScoringPublicationReadModel> scoringPublications = publications.stream()
+                .map(this::withResolvedWosId)
+                .toList();
+        List<CNFISReport2025> cnfisReports = generateReports(scoringPublications, allDomain);
+        Map<String, ScholardexForumView> forumMap = loadForumMap(publications);
 
-        return Optional.of(new GroupCnfisExportViewModel(publications, cnfisReports, forumMap, authorIds));
+        return Optional.of(new GroupCnfisExportViewModel(scoringPublications, cnfisReports, forumMap, authorIds));
     }
 
     public Optional<GroupCnfisZipExportViewModel> buildGroupCnfisZipExport(String groupId, int startYear, int endYear) throws IOException {
@@ -75,13 +81,16 @@ public class GroupCnfisExportFacade {
         for (Researcher researcher : group.getResearchers()) {
             List<String> authorIds = scholardexProjectionReadService.findAuthorsByIdIn(
                     researcherAuthorLookupService.resolveAuthorLookupKeys(researcher)
-            ).stream().map(ro.uvt.pokedex.core.model.scopus.Author::getId).toList();
-            List<Publication> publications = scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
+            ).stream().map(ScholardexAuthorView::getId).toList();
+            List<ScholardexPublicationView> publications = scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
             publications = filterPublicationsByYear(publications, startYear, endYear);
 
-            List<CNFISReport2025> cnfisReports = generateReports(publications, allDomain);
-            Map<String, Forum> forumMap = loadForumMap(publications);
-            byte[] reportBytes = exportService.generateCNFISReportWorkbook(publications, cnfisReports, forumMap, authorIds, false);
+            List<ScoringPublicationReadModel> scoringPublications = publications.stream()
+                    .map(this::withResolvedWosId)
+                    .toList();
+            List<CNFISReport2025> cnfisReports = generateReports(scoringPublications, allDomain);
+            Map<String, ScholardexForumView> forumMap = loadForumMap(publications);
+            byte[] reportBytes = exportService.generateCNFISReportWorkbook(scoringPublications, cnfisReports, forumMap, authorIds, false);
             String entryName = researcher.getLastName() + "_" + researcher.getFirstName().charAt(0) + "_AB.xlsx";
             workbooks.add(new GroupMemberCnfisWorkbook(entryName, reportBytes));
         }
@@ -118,7 +127,7 @@ public class GroupCnfisExportFacade {
                 .orElse(null);
     }
 
-    private List<Publication> filterPublicationsByYear(List<Publication> publications, int startYear, int endYear) {
+    private List<ScholardexPublicationView> filterPublicationsByYear(List<ScholardexPublicationView> publications, int startYear, int endYear) {
         return publications.stream().filter(publication -> {
             return PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)
                     .map(pubYear -> pubYear >= startYear && pubYear <= endYear)
@@ -126,25 +135,37 @@ public class GroupCnfisExportFacade {
         }).toList();
     }
 
-    private List<CNFISReport2025> generateReports(List<Publication> publications, Domain domain) {
+    private List<CNFISReport2025> generateReports(List<? extends ScoringPublicationReadModel> publications, Domain domain) {
         List<CNFISReport2025> reports = new ArrayList<>();
-        String linkerRunId = "group-cnfis-" + System.currentTimeMillis();
-        for (Publication publication : publications) {
-            Publication enrichedPublication = woSExtractor.findPublicationWosId(publication);
-            publicationEnrichmentLinkerService.linkWosEnrichment(
-                    enrichedPublication,
-                    WOS_EXTRACTOR_SOURCE,
-                    LINKER_VERSION,
-                    linkerRunId
-            );
-            reports.add(cnfiSScoringService2025.getReport(enrichedPublication, domain));
+        for (ScoringPublicationReadModel publication : publications) {
+            reports.add(cnfiSScoringService2025.getReport(publication, domain));
         }
         return reports;
     }
 
-    private Map<String, Forum> loadForumMap(List<Publication> publications) {
-        Set<String> forumKeys = publications.stream().map(Publication::getForum).collect(Collectors.toSet());
+    private Map<String, ScholardexForumView> loadForumMap(List<ScholardexPublicationView> publications) {
+        Set<String> forumKeys = publications.stream().map(ScholardexPublicationView::getForum).collect(Collectors.toSet());
         return scholardexProjectionReadService.findForumsByIdIn(forumKeys).stream()
-                .collect(Collectors.toMap(Forum::getId, forum -> forum));
+                .collect(Collectors.toMap(ScholardexForumView::getId, forum -> forum));
+    }
+
+    private ScoringPublicationReadModel withResolvedWosId(ScholardexPublicationView publication) {
+        String resolvedWosId = publication.getWosId();
+        if ((resolvedWosId == null || resolvedWosId.isBlank())
+                && publication.getDoi() != null && !publication.getDoi().isBlank()) {
+            resolvedWosId = woSExtractor.resolveWosId(publication.getDoi())
+                    .orElse(CanonicalPublicationConstants.NON_WOS_ID);
+        }
+        publicationEnrichmentLinkerService.linkWosEnrichment(
+                publication.getId(),
+                publication.getEid(),
+                publication.getDoi(),
+                resolvedWosId,
+                WOS_EXTRACTOR_SOURCE,
+                LINKER_VERSION,
+                "group-cnfis-" + System.currentTimeMillis()
+        );
+        publication.setWosId(resolvedWosId);
+        return publication.toScoringPublication();
     }
 }

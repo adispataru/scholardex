@@ -9,8 +9,8 @@ import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,9 +35,9 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
     /* ------------------------------------------------------------------ */
 
     @Override
-    public Score getScore(Publication publication, Indicator indicator) {
+    public Score getScore(ScoringPublicationReadModel publication, Indicator indicator) {
         Domain domain = indicator.getDomain();
-        Forum forum = lookupPort.getForum(publication.getForum());
+        ScholardexForumView forum = lookupPort.getForum(publication.getForumId());
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = getAllowedYearsForPublication(publication, indicator);
@@ -76,7 +76,7 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
         return createScore(scoreResult);
     }
 
-    private boolean isJournalPublicationCandidate(Publication publication, Forum forum) {
+    private boolean isJournalPublicationCandidate(ScoringPublicationReadModel publication, ScholardexForumView forum) {
         if (isArticleOrReview(publication)) {
             return true;
         }
@@ -90,7 +90,7 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
     @Override
     public Score getScore(ActivityInstance activity, Indicator indicator) {
         Domain domain = indicator.getDomain();
-        Forum forum = getForumFromActivity(activity);
+        ScholardexForumView forum = getForumFromActivity(activity);
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = 

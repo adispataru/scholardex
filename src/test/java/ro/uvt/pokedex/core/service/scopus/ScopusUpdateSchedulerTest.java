@@ -21,6 +21,7 @@ import ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializati
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusImportEventIngestionService;
 import ro.uvt.pokedex.core.service.scopus.dto.AuthorWorksResponse;
 import ro.uvt.pokedex.core.service.scopus.dto.CitationsByEidResponse;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -85,7 +86,7 @@ class ScopusUpdateSchedulerTest {
         );
         ReflectionTestUtils.setField(scheduler, "pageSize", 100);
 
-        var publication = new ro.uvt.pokedex.core.model.scopus.Publication();
+        var publication = new ScholardexPublicationView();
         publication.setCoverDate("2024-06-15");
         when(projectionReadService.findAllPublicationsByAuthorsContaining("a1"))
                 .thenReturn(List.of(publication));
@@ -166,7 +167,7 @@ class ScopusUpdateSchedulerTest {
         task.setMaxAttempts(3);
         when(publicationTaskRepo.findByStatusOrderByInitiatedDate(Status.PENDING)).thenReturn(List.of(task));
         when(citationTaskRepo.findByStatusOrderByInitiatedDate(Status.PENDING)).thenReturn(List.of());
-        var publication = new ro.uvt.pokedex.core.model.scopus.Publication();
+        var publication = new ScholardexPublicationView();
         publication.setCoverDate("2024-06-15");
         when(projectionReadService.findAllPublicationsByAuthorsContaining("a1")).thenReturn(List.of(publication));
         when(ingestionService.ingest(
@@ -220,7 +221,7 @@ class ScopusUpdateSchedulerTest {
         when(publicationTaskRepo.findByStatusOrderByInitiatedDate(Status.PENDING)).thenReturn(List.of());
         when(citationTaskRepo.findByStatusOrderByInitiatedDate(Status.PENDING)).thenReturn(List.of(task));
 
-        var citedPublication = new ro.uvt.pokedex.core.model.scopus.Publication();
+        var citedPublication = new ScholardexPublicationView();
         citedPublication.setId("spub_1");
         citedPublication.setEid("2-s2.0-cited");
         citedPublication.setCoverDate("2024-01-10");

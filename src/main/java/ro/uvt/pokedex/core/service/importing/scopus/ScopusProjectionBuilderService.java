@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -391,7 +392,7 @@ public class ScopusProjectionBuilderService {
         view.setAffiliationIds(fact.getAffiliationIds() == null ? List.of() : new ArrayList<>(fact.getAffiliationIds()));
         view.setForumId(fact.getForumId());
         List<String> citingPublicationIds = citingByCited.getOrDefault(fact.getId(), List.of());
-        view.setCitingPublicationIds(new ArrayList<>(citingPublicationIds));
+        view.setCitingPublicationIds(new LinkedHashSet<>(citingPublicationIds));
         view.setCitedByCount(fact.getCitedByCount() == null ? citingPublicationIds.size() : fact.getCitedByCount());
         view.setWosId(fact.getWosId());
         view.setGoogleScholarId(fact.getGoogleScholarId());
@@ -699,7 +700,7 @@ public class ScopusProjectionBuilderService {
                 ps.setArray(25, textArray(ps.getConnection(), row.getAuthorIds()));
                 ps.setArray(26, textArray(ps.getConnection(), row.getAffiliationIds()));
                 ps.setString(27, row.getForumId());
-                ps.setArray(28, textArray(ps.getConnection(), row.getCitingPublicationIds()));
+                ps.setArray(28, textArray(ps.getConnection(), new ArrayList<>(row.getCitingPublicationIds())));
                 setInteger(ps, 29, row.getCitedByCount());
                 ps.setString(30, row.getWosId());
                 ps.setString(31, row.getGoogleScholarId());

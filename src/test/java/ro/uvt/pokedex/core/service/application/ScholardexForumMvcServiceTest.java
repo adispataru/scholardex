@@ -6,7 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.controller.dto.ScholardexForumTablePageResponse;
-import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
 import java.util.List;
 
@@ -31,8 +31,8 @@ class ScholardexForumMvcServiceTest {
 
     @Test
     void searchBuildsWosStatusFromBulkRankingViewIndex() {
-        Forum journal = forum("f1", "Journal One", "1234-5678", null, "Journal");
-        Forum conference = forum("f2", "Conference One", null, null, "Conference Proceeding");
+        ScholardexForumView journal = forum("f1", "Journal One", "1234-5678", null, "Journal");
+        ScholardexForumView conference = forum("f2", "Conference One", null, null, "Conference Proceeding");
         WosForumResolutionService.ResolutionIndex resolutionIndex =
                 new WosForumResolutionService.ResolutionIndex(java.util.Map.of("12345678", "w1"), java.util.Map.of());
 
@@ -49,8 +49,8 @@ class ScholardexForumMvcServiceTest {
         verify(wosForumResolutionService).buildResolutionIndex();
     }
 
-    private Forum forum(String id, String publicationName, String issn, String eIssn, String aggregationType) {
-        Forum forum = new Forum();
+    private ScholardexForumView forum(String id, String publicationName, String issn, String eIssn, String aggregationType) {
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId(id);
         forum.setPublicationName(publicationName);
         forum.setIssn(issn);

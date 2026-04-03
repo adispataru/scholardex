@@ -4,9 +4,9 @@ import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
-import ro.uvt.pokedex.core.model.scopus.Affiliation;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
 import ro.uvt.pokedex.core.service.application.ResearcherAuthorLookupService;
@@ -22,15 +22,15 @@ import java.util.stream.Collectors;
 @Data
 public class CacheService {
     private final ScholardexProjectionReadService scholardexProjectionReadService;
-    private final ConcurrentMap<String, Forum> forumCache;
+    private final ConcurrentMap<String, ScholardexForumView> forumCache;
 
     private final CoreConferenceRankingRepository coreConferenceRankingRepository;
     private final GroupRepository groupRepository;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final ConcurrentMap<String, List<CoreConferenceRanking>> confRankingCache;
     private final ConcurrentMap<String, List<CoreConferenceRanking>> confRankingTitleCache;
-    private final Map<String, Affiliation> affiliationCache = new HashMap<>();
-    private final Map<String, Author> authorCache = new HashMap<>();
+    private final Map<String, ScholardexAffiliationView> affiliationCache = new HashMap<>();
+    private final Map<String, ScholardexAuthorView> authorCache = new HashMap<>();
     private final Set<String> universityAuthorIds = new HashSet<>();
 
     @Autowired
@@ -54,12 +54,12 @@ public class CacheService {
         List<CoreConferenceRanking> allConferenceRankings = coreConferenceRankingRepository.findAll();
         confRankingCache.putAll(allConferenceRankings.stream().collect(Collectors.groupingBy(CoreConferenceRanking::getAcronym)));
         allConferenceRankings.forEach(this::indexConferenceRankingByTitle);
-        List<Author> all = scholardexProjectionReadService.findAllAuthors();
+        List<ScholardexAuthorView> all = scholardexProjectionReadService.findAllAuthors();
         groupRepository.findAll().forEach(group ->
                 group.getResearchers().forEach(researcher -> {
                     List<String> lookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(researcher);
-                    scholardexProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
-                            .map(Author::getId)
+                            scholardexProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
+                            .map(ScholardexAuthorView::getId)
                             .forEach(universityAuthorIds::add);
                 }));
         all.forEach(a -> {
@@ -81,31 +81,31 @@ public class CacheService {
         return confRankingTitleCache.getOrDefault(normalizedTitle, List.of());
     }
 
-    public Forum getCachedForums(String issn) {
+    public ScholardexForumView getCachedForums(String issn) {
         return forumCache.get(issn);
     }
 
-    public Affiliation getAffiliation(String id) {
+    public ScholardexAffiliationView getAffiliation(String id) {
         return affiliationCache.get(id);
     }
 
-    public void putAffiliation(String id, Affiliation affiliation) {
+    public void putAffiliation(String id, ScholardexAffiliationView affiliation) {
         affiliationCache.put(id, affiliation);
     }
 
-    public Author getAuthor(String id) {
+    public ScholardexAuthorView getAuthor(String id) {
         return authorCache.get(id);
     }
 
-    public void putAuthor(String id, Author author) {
+    public void putAuthor(String id, ScholardexAuthorView author) {
         authorCache.put(id, author);
     }
 
-    public Forum getForum(String id) {
+    public ScholardexForumView getForum(String id) {
         return forumCache.get(id);
     }
 
-    public void putForum(String id, Forum forum) {
+    public void putForum(String id, ScholardexForumView forum) {
         forumCache.put(id, forum);
     }
 

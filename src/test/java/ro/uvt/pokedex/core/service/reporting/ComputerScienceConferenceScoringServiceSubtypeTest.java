@@ -7,14 +7,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublication;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationDblpEvidence;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationDblpEvidenceRepository;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -34,13 +35,9 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     void usesScopusSubtypeFallbackForConferenceBranch() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
-        Publication publication = new Publication();
-        publication.setForum("forum-1");
-        publication.setCoverDate("2023-10-10");
-        publication.setScopusSubtype("cp");
-        publication.setSubtype(null);
+        ScoringPublication publication = conferencePublication("forum-1", "2023-10-10");
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Test Conference, TCONF");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -58,8 +55,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     void resolvesConferenceWhenNormalizedNameMatches() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
-        Publication publication = conferencePublication("forum-1", "2023-10-10");
-        Forum forum = new Forum();
+        ScoringPublication publication = conferencePublication("forum-1", "2023-10-10");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Proceedings of the 46th International Conference on Software Engineering, ICSE 2024");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -77,8 +74,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     void ambiguousAcronymMatchFallsBackToScopus() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
-        Publication publication = conferencePublication("forum-1", "2023-10-10");
-        Forum forum = new Forum();
+        ScoringPublication publication = conferencePublication("forum-1", "2023-10-10");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("International Conference on Software Engineering, ICSE 2023");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -100,8 +97,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     void weakSubstringCollisionIsRejected() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
-        Publication publication = conferencePublication("forum-1", "2023-10-10");
-        Forum forum = new Forum();
+        ScoringPublication publication = conferencePublication("forum-1", "2023-10-10");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Conference on Software Tools, ICST");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -122,7 +119,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     void tryResolveCoreScoreCanRecoverConferenceFromLncsStyleVenueWhenAcronymAndNameMatch() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Lecture Notes in Computer Science, International Conference on Software Engineering, ICSE 2024");
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
         when(cacheService.getConferenceRankings("ICSE")).thenReturn(List.of(
@@ -139,8 +136,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     void resolvesConferenceWhenExactAcronymMatchesAndNameDiffersBySingularPluralVariant() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
-        Publication publication = conferencePublication("forum-1", "2022-10-10");
-        Forum forum = new Forum();
+        ScoringPublication publication = conferencePublication("forum-1", "2022-10-10");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Proceedings - 2022 IEEE 46th Annual Computers, Software, and Applications Conference, COMPSAC 2022");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -158,8 +155,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     void resolvesConferenceWhenExactAcronymMatchesAndProceedingsTitleAddsEditionNoise() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
-        Publication publication = conferencePublication("forum-1", "2016-10-10");
-        Forum forum = new Forum();
+        ScoringPublication publication = conferencePublication("forum-1", "2016-10-10");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Proceedings - 2016 16th IEEE/ACM International Symposium on Cluster, Cloud, and Grid Computing, CCGrid 2016");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -194,8 +191,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     void resolvesConferenceWhenTrailingTitleCasedAcronymIsFollowedOnlyByYearNoise() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
-        Publication publication = conferencePublication("forum-1", "2017-01-01");
-        Forum forum = new Forum();
+        ScoringPublication publication = conferencePublication("forum-1", "2017-01-01");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Proceedings 2017 17th IEEE ACM International Symposium on Cluster Cloud and Grid Computing Ccgrid 2017");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -219,8 +216,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     void fallsBackToPublicationYearWhenIndicatorHasNoScoreYearRange() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
-        Publication publication = conferencePublication("forum-1", "2016-10-10");
-        Forum forum = new Forum();
+        ScoringPublication publication = conferencePublication("forum-1", "2016-10-10");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Proceedings - 2016 16th IEEE/ACM International Symposium on Cluster, Cloud, and Grid Computing, CCGrid 2016");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -252,8 +249,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     void resolvesConferenceWhenTrailingTitleCasedTokenMatchesConferenceInitials() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
-        Publication publication = conferencePublication("forum-1", "2023-01-01");
-        Forum forum = new Forum();
+        ScoringPublication publication = conferencePublication("forum-1", "2023-01-01");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Proceedings International Conference on Network Protocols Icnp");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -273,8 +270,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     void resolvesConferenceByNormalizedTitleWhenAcronymCandidatesAreMissing() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
-        Publication publication = conferencePublication("forum-1", "2023-01-01");
-        Forum forum = new Forum();
+        ScoringPublication publication = conferencePublication("forum-1", "2023-01-01");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Proceedings of the International Conference on Parallel Processing Workshops");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankingsByNormalizedTitle("proceedings of the international conference on parallel processing workshops"))
@@ -300,8 +297,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     void workshopOfParentConferenceHalvesResolvedConferenceScore() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
-        Publication publication = conferencePublication("forum-1", "2023-01-01");
-        Forum forum = new Forum();
+        ScoringPublication publication = conferencePublication("forum-1", "2023-01-01");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("2023 IEEE International Conference on Pervasive Computing and Communications Workshops and Other Affiliated Events Percom Workshops 2023");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -323,8 +320,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     void workshopNamedCoreConferenceDoesNotHalveResolvedConferenceScore() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
-        Publication publication = conferencePublication("forum-1", "2023-01-01");
-        Forum forum = new Forum();
+        ScoringPublication publication = conferencePublication("forum-1", "2023-01-01");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Proceedings of the International Conference on Parallel Processing Workshops");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankingsByNormalizedTitle("proceedings of the international conference on parallel processing workshops"))
@@ -345,8 +342,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     void titleFallbackIsNotUsedWhenAcronymMatchAlreadyResolves() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
-        Publication publication = conferencePublication("forum-1", "2024-01-01");
-        Forum forum = new Forum();
+        ScoringPublication publication = conferencePublication("forum-1", "2024-01-01");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Proceedings of the International Conference on Software Engineering, ICSE 2024");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -367,8 +364,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     void titleFallbackStillFallsBackWhenSeveralCoreRowsShareTheNormalizedTitle() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
-        Publication publication = conferencePublication("forum-1", "2023-01-01");
-        Forum forum = new Forum();
+        ScoringPublication publication = conferencePublication("forum-1", "2023-01-01");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Proceedings of the International Conference on Parallel Processing Workshops");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankingsByNormalizedTitle("proceedings of the international conference on parallel processing workshops"))
@@ -391,8 +388,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     void titleFallbackDoesNotResolveNearMatchesWithoutExactNormalizedTitleKey() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
-        Publication publication = conferencePublication("forum-1", "2023-01-01");
-        Forum forum = new Forum();
+        ScoringPublication publication = conferencePublication("forum-1", "2023-01-01");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Proceedings of the International Conference on Parallel Processing Workshops");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
 
@@ -407,8 +404,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     void rejectsTrailingTitleCasedTokenWhenItDoesNotMatchConferenceInitials() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
-        Publication publication = conferencePublication("forum-1", "2023-01-01");
-        Forum forum = new Forum();
+        ScoringPublication publication = conferencePublication("forum-1", "2023-01-01");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Proceedings International Conference on Network Protocols Nope");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
 
@@ -423,8 +420,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     void trailingTitleCasedAcronymStillFallsBackWhenSeveralCoreRowsShareTheAcronym() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
-        Publication publication = conferencePublication("forum-1", "2023-01-01");
-        Forum forum = new Forum();
+        ScoringPublication publication = conferencePublication("forum-1", "2023-01-01");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Proceedings International Conference on Network Protocols Icnp");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -447,8 +444,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     void resolvesConferenceWhenMongoYearlyRankingKeysAreStringified() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
-        Publication publication = conferencePublication("forum-1", "2016-10-10");
-        Forum forum = new Forum();
+        ScoringPublication publication = conferencePublication("forum-1", "2016-10-10");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Proceedings - 2016 16th IEEE/ACM International Symposium on Cluster, Cloud, and Grid Computing, CCGrid 2016");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -482,7 +479,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     void diagnoseConferenceMatchReportsNoClosestYear() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Proceedings - 2016 16th IEEE/ACM International Symposium on Cluster, Cloud, and Grid Computing, CCGrid 2016");
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
         when(cacheService.getConferenceRankings("CCGRID")).thenReturn(List.of(
@@ -513,8 +510,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         ComputerScienceConferenceScoringService service =
                 new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
 
-        Publication publication = lncsChapterPublication("forum-1", "2024-05-10", "pub-1");
-        Forum forum = new Forum();
+        ScoringPublication publication = lncsChapterPublication("forum-1", "2024-05-10", "pub-1");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Lecture Notes in Computer Science");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -547,9 +544,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         ComputerScienceConferenceScoringService service =
                 new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
 
-        Publication publication = conferencePublication("forum-1", "2016-01-01");
-        publication.setId("pub-cp-1");
-        Forum forum = new Forum();
+        ScoringPublication publication = new ScoringPublication("pub-cp-1", null, "forum-1", "2016-01-01", null, "cp", List.of(), 0, null, null, null, 0, Set.of());
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Lecture Notes in Computer Science");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -585,8 +581,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         ComputerScienceConferenceScoringService service =
                 new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
 
-        Publication publication = lncsChapterPublication("forum-1", "2025-01-01", "pub-aina-1");
-        Forum forum = new Forum();
+        ScoringPublication publication = lncsChapterPublication("forum-1", "2025-01-01", "pub-aina-1");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Lecture Notes on Data Engineering and Communications Technologies");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -620,8 +616,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         ComputerScienceConferenceScoringService service =
                 new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
 
-        Publication publication = lncsChapterPublication("forum-1", "2025-01-01", "pub-amb-1");
-        Forum forum = new Forum();
+        ScoringPublication publication = lncsChapterPublication("forum-1", "2025-01-01", "pub-amb-1");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Lecture Notes in Computer Science");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -649,8 +645,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         ComputerScienceConferenceScoringService service =
                 new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
 
-        Publication publication = lncsChapterPublication("forum-1", "2025-01-01", "pub-noisy-1");
-        Forum forum = new Forum();
+        ScoringPublication publication = lncsChapterPublication("forum-1", "2025-01-01", "pub-noisy-1");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Lecture Notes in Computer Science");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
 
@@ -673,8 +669,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         ComputerScienceConferenceScoringService service =
                 new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
 
-        Publication publication = lncsChapterPublication("forum-1", "2024-05-10", "pub-2");
-        Forum forum = new Forum();
+        ScoringPublication publication = lncsChapterPublication("forum-1", "2024-05-10", "pub-2");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Lecture Notes in Computer Science");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(dblpEvidenceRepository.findByPublicationId("pub-2")).thenReturn(Optional.empty());
@@ -698,8 +694,8 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         ComputerScienceConferenceScoringService service =
                 new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
 
-        Publication publication = lncsChapterPublication("forum-1", "2024-05-10", "pub-3");
-        Forum forum = new Forum();
+        ScoringPublication publication = lncsChapterPublication("forum-1", "2024-05-10", "pub-3");
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Lecture Notes in Computer Science, International Conference on Software Engineering, ICSE 2024");
         when(cacheService.getForum("forum-1")).thenReturn(forum);
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -718,23 +714,12 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         verifyNoInteractions(dblpEvidenceRepository);
     }
 
-    private Publication conferencePublication(String forumId, String coverDate) {
-        Publication publication = new Publication();
-        publication.setForum(forumId);
-        publication.setCoverDate(coverDate);
-        publication.setScopusSubtype("cp");
-        publication.setSubtype(null);
-        return publication;
+    private ScoringPublication conferencePublication(String forumId, String coverDate) {
+        return new ScoringPublication(null, null, forumId, coverDate, null, "cp", List.of(), 0, null, null, null, 0, Set.of());
     }
 
-    private Publication lncsChapterPublication(String forumId, String coverDate, String id) {
-        Publication publication = new Publication();
-        publication.setId(id);
-        publication.setForum(forumId);
-        publication.setCoverDate(coverDate);
-        publication.setScopusSubtype("ch");
-        publication.setSubtype("ch");
-        return publication;
+    private ScoringPublication lncsChapterPublication(String forumId, String coverDate, String id) {
+        return new ScoringPublication(id, null, forumId, coverDate, "ch", "ch", List.of(), 0, null, null, null, 0, Set.of());
     }
 
     private Indicator indicator(String scoreYearRange) {

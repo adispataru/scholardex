@@ -8,8 +8,8 @@ import ro.uvt.pokedex.core.model.CNCSISPublisher;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.repository.reporting.CNCSISPublisherRepository;
 
 import java.util.List;
@@ -37,9 +37,9 @@ public class CNCSISPublisherListService extends AbstractForumScoringService {
     /* ------------------------------------------------------------------ */
 
     @Override
-    public Score getScore(Publication publication, Indicator indicator) {
+    public Score getScore(ScoringPublicationReadModel publication, Indicator indicator) {
         Domain domain = indicator.getDomain();
-        Forum forum = lookupPort.getForum(publication.getForum());
+        ScholardexForumView forum = lookupPort.getForum(publication.getForumId());
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = List.of(LAST_SENSE_YEAR);
@@ -68,7 +68,7 @@ public class CNCSISPublisherListService extends AbstractForumScoringService {
     @Override
     public Score getScore(ActivityInstance activity, Indicator indicator) {
         Domain domain = indicator.getDomain();
-        Forum forum = getForumFromActivity(activity);
+        ScholardexForumView forum = getForumFromActivity(activity);
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = List.of(LAST_SENSE_YEAR);
@@ -86,7 +86,7 @@ public class CNCSISPublisherListService extends AbstractForumScoringService {
 
 
 
-    private Optional<Score> computeSENSEScore(Forum forum, int year) {
+    private Optional<Score> computeSENSEScore(ScholardexForumView forum, int year) {
 
 
         List<CNCSISPublisher> bookRankings = getPublisher(forum);
@@ -102,7 +102,7 @@ public class CNCSISPublisherListService extends AbstractForumScoringService {
     }
 
 
-    private List<CNCSISPublisher> getPublisher(Forum forum) {
+    private List<CNCSISPublisher> getPublisher(ScholardexForumView forum) {
         String publisher = forum.getPublisher();
         if (publisher == null || publisher.isEmpty()) {
             return List.of();

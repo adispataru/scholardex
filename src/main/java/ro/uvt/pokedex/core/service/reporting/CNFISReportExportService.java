@@ -8,8 +8,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.CanonicalPublicationConstants;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,9 +24,9 @@ public class CNFISReportExportService {
     private static final Logger log = LoggerFactory.getLogger(CNFISReportExportService.class);
 
 
-    public void exportCNFISReport2025(List<Publication> publications,
+    public void exportCNFISReport2025(List<? extends ScoringPublicationReadModel> publications,
                                       List<CNFISReport2025> cnfisReports,
-                                      Map<String, Forum> forumMap,
+                                      Map<String, ScholardexForumView> forumMap,
                                       List<String> authorIds,
                                       HttpServletResponse response, boolean group) throws IOException {
         String filename;
@@ -52,7 +53,7 @@ public class CNFISReportExportService {
             }
 
             for (int i = 0; i < publications.size(); i++) {
-                Publication publication = publications.get(i);
+                ScoringPublicationReadModel publication = publications.get(i);
                 Row row = copyRow(workbook, sheet, sampleRowNum, rowNum);
                 // If the copied row does not contain enough cells, adjust row numbers and skip row
                 if (row.getLastCellNum() < 25) {
@@ -64,22 +65,22 @@ public class CNFISReportExportService {
                 String year = PersistenceYearSupport.extractYearString(publication.getCoverDate(), publication.getId(), log);
                 String title = publication.getTitle() != null ? publication.getTitle() : "";
                 String doi = publication.getDoi() != null ? publication.getDoi() : "";
-                String wosCode = publication.getWosId() != null && !publication.getWosId().equals(Publication.NON_WOS_ID)
+                String wosCode = publication.getWosId() != null && !publication.getWosId().equals(CanonicalPublicationConstants.NON_WOS_ID)
                         ? publication.getWosId() : "";
                 // Skip publication if both doi and wosCode are empty
                 if ((doi.isEmpty() || doi.equals("null")) && wosCode.isEmpty()){
                     continue;
                 }
                 String brevetCode = "";
-                String forumName = forumMap.getOrDefault(publication.getForum(), new Forum()).getPublicationName();
-                String issnOnline = forumMap.getOrDefault(publication.getForum(), new Forum()).getEIssn();
+                String forumName = forumMap.getOrDefault(publication.getForumId(), new ScholardexForumView()).getPublicationName();
+                String issnOnline = forumMap.getOrDefault(publication.getForumId(), new ScholardexForumView()).getEIssn();
                 if(issnOnline.contains("null"))
                     issnOnline = "";
-                String issnPrint = forumMap.getOrDefault(publication.getForum(), new Forum()).getIssn();
+                String issnPrint = forumMap.getOrDefault(publication.getForumId(), new ScholardexForumView()).getIssn();
                 if(issnPrint.contains("null"))
                     issnPrint = "";
                 String isbn = "";
-                int totalAuthors = publication.getAuthors().size();
+                int totalAuthors = publication.getAuthorCount();
 
                 // Set cell values similar to the original logic
                 row.getCell(1).setCellValue(year);
@@ -186,9 +187,9 @@ public class CNFISReportExportService {
         return newRow;
     }
 
-    public byte[] generateCNFISReportWorkbook(List<Publication> publications,
+    public byte[] generateCNFISReportWorkbook(List<? extends ScoringPublicationReadModel> publications,
                                               List<CNFISReport2025> cnfisReports,
-                                              Map<String, Forum> forumMap,
+                                              Map<String, ScholardexForumView> forumMap,
                                               List<String> authorIds,
                                               boolean group) throws IOException {
         String filename = group ? "data/templates/AC2025_Anexa6-Tabel_institutional_articole_brevete-2025.xlsx"
@@ -201,7 +202,7 @@ public class CNFISReportExportService {
             int sampleRowNum = group ? 8 : 16;
 
             for (int i = 0; i < publications.size(); i++) {
-                Publication publication = publications.get(i);
+                ScoringPublicationReadModel publication = publications.get(i);
                 Row row = copyRow(workbook, sheet, sampleRowNum, rowNum);
                 if (row.getLastCellNum() < 25) {
                     rowNum++;
@@ -212,21 +213,21 @@ public class CNFISReportExportService {
                 String year = PersistenceYearSupport.extractYearString(publication.getCoverDate(), publication.getId(), log);
                 String title = publication.getTitle() != null ? publication.getTitle() : "";
                 String doi = publication.getDoi() != null ? publication.getDoi() : "";
-                String wosCode = publication.getWosId() != null && !publication.getWosId().equals(Publication.NON_WOS_ID)
+                String wosCode = publication.getWosId() != null && !publication.getWosId().equals(CanonicalPublicationConstants.NON_WOS_ID)
                         ? publication.getWosId() : "";
                 if ((doi.isEmpty() || doi.equals("null")) && wosCode.isEmpty()){
                     continue;
                 }
                 String brevetCode = "";
-                String forumName = forumMap.getOrDefault(publication.getForum(), new Forum()).getPublicationName();
-                String issnOnline = forumMap.getOrDefault(publication.getForum(), new Forum()).getEIssn();
+                String forumName = forumMap.getOrDefault(publication.getForumId(), new ScholardexForumView()).getPublicationName();
+                String issnOnline = forumMap.getOrDefault(publication.getForumId(), new ScholardexForumView()).getEIssn();
                 if(issnOnline.contains("null"))
                     issnOnline = "";
-                String issnPrint = forumMap.getOrDefault(publication.getForum(), new Forum()).getIssn();
+                String issnPrint = forumMap.getOrDefault(publication.getForumId(), new ScholardexForumView()).getIssn();
                 if(issnPrint.contains("null"))
                     issnPrint = "";
                 String isbn = "";
-                int totalAuthors = publication.getAuthors().size();
+                int totalAuthors = publication.getAuthorCount();
 
                 row.getCell(1).setCellValue(year);
                 row.getCell(2).setCellValue(title);

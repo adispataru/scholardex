@@ -7,8 +7,8 @@ import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.reporting.Domain;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 
 import java.util.ArrayList;
@@ -22,23 +22,23 @@ public class CNFISScoringService2025 {
     private static final Logger log = LoggerFactory.getLogger(CNFISScoringService2025.class);
     private final ReportingLookupPort lookupPort;
     private static final int LAST_YEAR = 2023;
-    public CNFISReport2025 getReport(Publication publication, Domain domain) {
-        Forum forum = lookupPort.getForum(publication.getForum());
+    public CNFISReport2025 getReport(ScoringPublicationReadModel publication, Domain domain) {
+        ScholardexForumView forum = lookupPort.getForum(publication.getForumId());
         CNFISReport2025 report = new CNFISReport2025();
         report.setTitlu(publication.getTitle());
         report.setDoi(publication.getDoi());
-        List<String> authors = publication.getAuthors() == null ? Collections.emptyList() : publication.getAuthors();
+        List<String> authors = publication.getAuthorIds() == null ? Collections.emptyList() : publication.getAuthorIds();
         report.setNumarAutori(authors.size());
         report.setNumarAutoriUniversitate((int) authors.stream().filter(a -> lookupPort.getUniversityAuthorIds().contains(a)).count());
         if (forum == null) {
-            log.warn("Missing forum for publication {}", publication.getForum());
+            log.warn("Missing forum for publication {}", publication.getForumId());
             return report;
         }
         report.setDenumireJurnal(forum.getPublicationName());
         report.setIssnOnline(forum.getEIssn());
         report.setIssnPrint(forum.getIssn());
 
-        String subtype = resolveSubtype(publication);
+        String subtype = PublicationSubtypeSupport.resolveSubtype(publication);
         if ("ar".equals(subtype) || "re".equals(subtype)) {
             String issn = forum.getIssn();
             String eIssn = forum.getEIssn();
@@ -122,14 +122,6 @@ public class CNFISScoringService2025 {
         return report;
     }
 
-    private String resolveSubtype(Publication publication) {
-        String scopusSubtype = normalize(publication.getScopusSubtype());
-        if (!scopusSubtype.isEmpty()) {
-            return scopusSubtype;
-        }
-        return normalize(publication.getSubtype());
-    }
-
     private String extractCategoryIndex(String category) {
         if (category == null) {
             log.warn("Encountered null WoS category while scoring CNFIS 2025.");
@@ -148,7 +140,4 @@ public class CNFISScoringService2025 {
         return normalized.substring(delimiterPos + 1).trim();
     }
 
-    private String normalize(String value) {
-        return value == null ? "" : value.trim().toLowerCase();
-    }
 }

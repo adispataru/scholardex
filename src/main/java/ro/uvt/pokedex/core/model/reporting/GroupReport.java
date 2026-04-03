@@ -4,7 +4,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
-import ro.uvt.pokedex.core.model.scopus.Affiliation;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,5 +16,5 @@ public class GroupReport extends AbstractReport {
     @DBRef
     private List<Group> groups = new ArrayList<>();
     @DBRef
-    private List<Affiliation> affiliations = new ArrayList<>();
+    private List<ScholardexAffiliationView> affiliations = new ArrayList<>();
 }

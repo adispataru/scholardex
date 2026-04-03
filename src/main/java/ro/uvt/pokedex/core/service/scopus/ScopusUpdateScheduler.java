@@ -18,8 +18,8 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
-import ro.uvt.pokedex.core.model.scopus.Citation;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEntityType;
 import ro.uvt.pokedex.core.model.tasks.ScopusCitationsUpdate;
 import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;
@@ -351,14 +351,14 @@ public class ScopusUpdateScheduler {
 
     private Map<String, String> computeEidLastCitationDatesForAuthor(String authorScopusId) {
         // 1) All publications by this author
-        List<Publication> authorPubs = scholardexProjectionReadService.findAllPublicationsByAuthorsContaining(authorScopusId);
+        List<ScholardexPublicationView> authorPubs = scholardexProjectionReadService.findAllPublicationsByAuthorsContaining(authorScopusId);
         if (authorPubs.isEmpty()) {
             return Collections.emptyMap();
         }
 
         // id -> Publication for author’s publications (for cited side)
-        Map<String, Publication> byId = new HashMap<>();
-        for (Publication p : authorPubs) {
+        Map<String, ScholardexPublicationView> byId = new HashMap<>();
+        for (ScholardexPublicationView p : authorPubs) {
             if (p.getId() != null) {
                 byId.put(p.getId(), p);
             }
@@ -366,24 +366,24 @@ public class ScopusUpdateScheduler {
 
         // 2) All citations where any of these pubs is the **cited** one
         List<String> citedIds = authorPubs.stream()
-                .map(Publication::getId)
+                .map(ScholardexPublicationView::getId)
                 .filter(Objects::nonNull)
                 .toList();
 
-        List<Citation> citations = scholardexProjectionReadService.findAllCitationsByCitedIdIn(citedIds);
+        List<ScholardexCitationView> citations = scholardexProjectionReadService.findAllCitationsByCitedIdIn(citedIds);
 
         // 3) Load all citing publications for those citations (more efficient than findAll())
         Set<String> citingIds = citations.stream()
-                .map(Citation::getCitingId)
+                .map(ScholardexCitationView::getCitingId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
-        List<Publication> citingPubs = citingIds.isEmpty()
+        List<ScholardexPublicationView> citingPubs = citingIds.isEmpty()
                 ? Collections.emptyList()
                 : scholardexProjectionReadService.findAllPublicationsByIdIn(new ArrayList<>(citingIds));
 
-        Map<String, Publication> citingById = new HashMap<>();
-        for (Publication p : citingPubs) {
+        Map<String, ScholardexPublicationView> citingById = new HashMap<>();
+        for (ScholardexPublicationView p : citingPubs) {
             if (p.getId() != null) {
                 citingById.put(p.getId(), p);
             }
@@ -391,16 +391,16 @@ public class ScopusUpdateScheduler {
 
         // 4) Initialize map with all author EIDs, default last-date = null
         Map<String, String> lastDateByEid = new HashMap<>();
-        for (Publication p : authorPubs) {
+        for (ScholardexPublicationView p : authorPubs) {
             if (p.getEid() != null) {
                 lastDateByEid.put(p.getEid(), null);
             }
         }
 
         // 5) For each citation, update the last citing date for the cited EID
-        for (Citation c : citations) {
-            Publication cited = byId.get(c.getCitedId());
-            Publication citing = citingById.get(c.getCitingId());
+        for (ScholardexCitationView c : citations) {
+            ScholardexPublicationView cited = byId.get(c.getCitedId());
+            ScholardexPublicationView citing = citingById.get(c.getCitingId());
             if (cited == null || citing == null) {
                 continue;
             }
@@ -433,9 +433,9 @@ public class ScopusUpdateScheduler {
 
 
     private String computeFromDate(String authorScopusId) {
-        List<Publication> publications = scholardexProjectionReadService.findAllPublicationsByAuthorsContaining(authorScopusId);
+        List<ScholardexPublicationView> publications = scholardexProjectionReadService.findAllPublicationsByAuthorsContaining(authorScopusId);
         LocalDate base = publications.stream()
-                .map(Publication::getCoverDate)
+                .map(ScholardexPublicationView::getCoverDate)
                 .map(this::parseCoverDate)
                 .flatMap(Optional::stream)
                 .max(LocalDate::compareTo)

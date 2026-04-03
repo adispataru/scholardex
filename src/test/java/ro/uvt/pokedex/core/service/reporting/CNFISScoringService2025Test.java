@@ -8,8 +8,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.reporting.Domain;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
 
 import java.util.HashMap;
@@ -39,12 +39,10 @@ class CNFISScoringService2025Test {
 
     @Test
     void fallsBackToSubtypeWhenScopusSubtypeMissingForCp() {
-        Publication publication = basePublication();
-        publication.setScopusSubtype(null);
-        publication.setSubtype("cp");
+        ScoringPublication publication = publication(null, "cp", "2023-01-15", null);
 
-        Forum forum = baseForum("IEEE International Conference on Something");
-        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
+        ScholardexForumView forum = baseForum("IEEE International Conference on Something");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
 
         CNFISReport2025 report = service.getReport(publication, allDomain);
 
@@ -56,12 +54,10 @@ class CNFISScoringService2025Test {
 
     @Test
     void prefersScopusSubtypeOverSubtypeWhenBothPresent() {
-        Publication publication = basePublication();
-        publication.setScopusSubtype(" ar ");
-        publication.setSubtype("cp");
+        ScoringPublication publication = publication(" ar ", "cp", "2023-01-15", null);
 
-        Forum forum = baseForum("IEEE International Conference on Something");
-        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
+        ScholardexForumView forum = baseForum("IEEE International Conference on Something");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
         when(cacheService.getRankingsByIssn("1234-5678")).thenReturn(List.of());
         when(cacheService.getRankingsByIssn("8765-4321")).thenReturn(List.of());
 
@@ -73,11 +69,10 @@ class CNFISScoringService2025Test {
 
     @Test
     void handlesCategoryWithoutDelimiterUsingResilientParsing() {
-        Publication publication = basePublication();
-        publication.setScopusSubtype("ar");
+        ScoringPublication publication = publication("ar", null, "2023-01-15", null);
 
-        Forum forum = baseForum("Journal of Testing");
-        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
+        ScholardexForumView forum = baseForum("Journal of Testing");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
         when(cacheService.getRankingsByIssn("1234-5678")).thenReturn(List.of(ranking("SCIE", WoSRanking.Quarter.Q1)));
 
         CNFISReport2025 report = service.getReport(publication, allDomain);
@@ -87,12 +82,10 @@ class CNFISScoringService2025Test {
 
     @Test
     void cpNonIeeeWithWosIdMarksIsiProceedings() {
-        Publication publication = basePublication();
-        publication.setScopusSubtype("cp");
-        publication.setWosId("WOS:123");
+        ScoringPublication publication = publication("cp", null, "2023-01-15", "WOS:123");
 
-        Forum forum = baseForum("International Computing Conference");
-        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
+        ScholardexForumView forum = baseForum("International Computing Conference");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
 
         CNFISReport2025 report = service.getReport(publication, allDomain);
 
@@ -102,12 +95,10 @@ class CNFISScoringService2025Test {
 
     @Test
     void cpNonIeeeWithoutWosIdKeepsProceedingsFlagsFalse() {
-        Publication publication = basePublication();
-        publication.setScopusSubtype("cp");
-        publication.setWosId("");
+        ScoringPublication publication = publication("cp", null, "2023-01-15", "");
 
-        Forum forum = baseForum("International Computing Conference");
-        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
+        ScholardexForumView forum = baseForum("International Computing Conference");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
 
         CNFISReport2025 report = service.getReport(publication, allDomain);
 
@@ -117,12 +108,10 @@ class CNFISScoringService2025Test {
 
     @Test
     void chLectureNotesWithWosIdMarksIsiProceedings() {
-        Publication publication = basePublication();
-        publication.setScopusSubtype("ch");
-        publication.setWosId("WOS:456");
+        ScoringPublication publication = publication("ch", null, "2023-01-15", "WOS:456");
 
-        Forum forum = baseForum("Lecture Notes in Something");
-        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
+        ScholardexForumView forum = baseForum("Lecture Notes in Something");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
 
         CNFISReport2025 report = service.getReport(publication, allDomain);
 
@@ -132,12 +121,10 @@ class CNFISScoringService2025Test {
 
     @Test
     void chLectureNotesWithoutWosIdDoesNotMarkIsiProceedings() {
-        Publication publication = basePublication();
-        publication.setScopusSubtype("ch");
-        publication.setWosId("");
+        ScoringPublication publication = publication("ch", null, "2023-01-15", "");
 
-        Forum forum = baseForum("Lecture Notes in Something");
-        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
+        ScholardexForumView forum = baseForum("Lecture Notes in Something");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
 
         CNFISReport2025 report = service.getReport(publication, allDomain);
 
@@ -146,12 +133,10 @@ class CNFISScoringService2025Test {
 
     @Test
     void malformedCoverDateFallsBackSafelyToLastYear() {
-        Publication publication = basePublication();
-        publication.setScopusSubtype("ar");
-        publication.setCoverDate("bad-date");
+        ScoringPublication publication = publication("ar", null, "bad-date", null);
 
-        Forum forum = baseForum("Journal of Testing");
-        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
+        ScholardexForumView forum = baseForum("Journal of Testing");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
         when(cacheService.getRankingsByIssn("1234-5678")).thenReturn(List.of(ranking("SCIE", WoSRanking.Quarter.Q1)));
 
         CNFISReport2025 report = assertDoesNotThrow(() -> service.getReport(publication, allDomain));
@@ -161,12 +146,10 @@ class CNFISScoringService2025Test {
 
     @Test
     void missingSubtypeDataDoesNotCrashAndSetsNoProceedingsFlags() {
-        Publication publication = basePublication();
-        publication.setScopusSubtype(" ");
-        publication.setSubtype(null);
+        ScoringPublication publication = publication(" ", null, "2023-01-15", null);
 
-        Forum forum = baseForum("Any forum");
-        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
+        ScholardexForumView forum = baseForum("Any forum");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
 
         CNFISReport2025 report = assertDoesNotThrow(() -> service.getReport(publication, allDomain));
 
@@ -176,11 +159,10 @@ class CNFISScoringService2025Test {
 
     @Test
     void nullCategoryInRankingIsHandledSafely() {
-        Publication publication = basePublication();
-        publication.setScopusSubtype("ar");
+        ScoringPublication publication = publication("ar", null, "2023-01-15", null);
 
-        Forum forum = baseForum("Journal of Testing");
-        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
+        ScholardexForumView forum = baseForum("Journal of Testing");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
         when(cacheService.getRankingsByIssn("1234-5678")).thenReturn(List.of(rankingWithNullableCategory(null, WoSRanking.Quarter.Q1)));
 
         CNFISReport2025 report = assertDoesNotThrow(() -> service.getReport(publication, allDomain));
@@ -190,11 +172,10 @@ class CNFISScoringService2025Test {
 
     @Test
     void blankCategoryInRankingIsHandledSafely() {
-        Publication publication = basePublication();
-        publication.setScopusSubtype("ar");
+        ScoringPublication publication = publication("ar", null, "2023-01-15", null);
 
-        Forum forum = baseForum("Journal of Testing");
-        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
+        ScholardexForumView forum = baseForum("Journal of Testing");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
         when(cacheService.getRankingsByIssn("1234-5678")).thenReturn(List.of(rankingWithNullableCategory(" ", WoSRanking.Quarter.Q1)));
 
         CNFISReport2025 report = assertDoesNotThrow(() -> service.getReport(publication, allDomain));
@@ -204,14 +185,13 @@ class CNFISScoringService2025Test {
 
     @Test
     void specificDomainSkipsNonMemberCategory() {
-        Publication publication = basePublication();
-        publication.setScopusSubtype("ar");
+        ScoringPublication publication = publication("ar", null, "2023-01-15", null);
         Domain specificDomain = new Domain();
         specificDomain.setName("SPECIFIC");
         specificDomain.setWosCategories(List.of("MATHEMATICS-SCIE"));
 
-        Forum forum = baseForum("Journal of Testing");
-        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
+        ScholardexForumView forum = baseForum("Journal of Testing");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
         when(cacheService.getRankingsByIssn("1234-5678")).thenReturn(List.of(ranking("COMPUTER SCIENCE-SCIE", WoSRanking.Quarter.Q1)));
 
         CNFISReport2025 report = service.getReport(publication, specificDomain);
@@ -224,9 +204,8 @@ class CNFISScoringService2025Test {
 
     @Test
     void missingForumReturnsSafeReportWithoutThrowing() {
-        Publication publication = basePublication();
-        publication.setScopusSubtype("ar");
-        when(cacheService.getForum(publication.getForum())).thenReturn(null);
+        ScoringPublication publication = publication("ar", null, "2023-01-15", null);
+        when(cacheService.getForum(publication.getForumId())).thenReturn(null);
 
         CNFISReport2025 report = assertDoesNotThrow(() -> service.getReport(publication, allDomain));
 
@@ -238,11 +217,10 @@ class CNFISScoringService2025Test {
 
     @Test
     void repeatedEvaluationReturnsStableReport() {
-        Publication publication = basePublication();
-        publication.setScopusSubtype("ar");
+        ScoringPublication publication = publication("ar", null, "2023-01-15", null);
 
-        Forum forum = baseForum("Journal of Testing");
-        when(cacheService.getForum(publication.getForum())).thenReturn(forum);
+        ScholardexForumView forum = baseForum("Journal of Testing");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
         when(cacheService.getRankingsByIssn("1234-5678")).thenReturn(List.of(ranking("SCIE", WoSRanking.Quarter.Q1)));
 
         CNFISReport2025 first = service.getReport(publication, allDomain);
@@ -256,18 +234,26 @@ class CNFISScoringService2025Test {
         assertEquals(first.isIsiProceedings(), second.isIsiProceedings());
     }
 
-    private Publication basePublication() {
-        Publication publication = new Publication();
-        publication.setForum("forum-1");
-        publication.setTitle("Test publication");
-        publication.setDoi("10.1000/test");
-        publication.setCoverDate("2023-01-15");
-        publication.setAuthors(List.of("u1", "u2"));
-        return publication;
+    private ScoringPublication publication(String scopusSubtype, String subtype, String coverDate, String wosId) {
+        return new ScoringPublication(
+                "pub-1",
+                "eid-1",
+                "forum-1",
+                coverDate,
+                subtype,
+                scopusSubtype,
+                List.of("u1", "u2"),
+                2,
+                "10.1000/test",
+                wosId,
+                "Test publication",
+                0,
+                java.util.Set.of()
+        );
     }
 
-    private Forum baseForum(String publicationName) {
-        Forum forum = new Forum();
+    private ScholardexForumView baseForum(String publicationName) {
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName(publicationName);
         forum.setIssn("1234-5678");
         forum.setEIssn("8765-4321");

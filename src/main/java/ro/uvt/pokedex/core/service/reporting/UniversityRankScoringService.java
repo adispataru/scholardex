@@ -7,7 +7,7 @@ import ro.uvt.pokedex.core.model.URAPUniversityRanking;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
 import ro.uvt.pokedex.core.service.model.URAPUniversityRankingService;
 
 import java.util.List;
@@ -33,7 +33,7 @@ public class UniversityRankScoringService extends AbstractForumScoringService {
     /* ------------------------------------------------------------------ */
 
     @Override
-    public Score getScore(Publication publication, Indicator indicator) {
+    public Score getScore(ScoringPublicationReadModel publication, Indicator indicator) {
         ScoreResult scoreResult = initializeScoreResult();
         return createScore(scoreResult);
     }

@@ -7,8 +7,8 @@ import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,9 +28,9 @@ public class AISJournalScoringService extends AbstractWoSForumScoringService {
     /* ------------------------------------------------------------------ */
 
     @Override
-    public Score getScore(Publication publication, Indicator indicator) {
+    public Score getScore(ScoringPublicationReadModel publication, Indicator indicator) {
         Domain domain = indicator.getDomain();
-        Forum forum  = lookupPort.getForum(publication.getForum());
+        ScholardexForumView forum = lookupPort.getForum(publication.getForumId());
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = getAllowedYearsForPublication(publication, indicator);
@@ -64,7 +64,7 @@ public class AISJournalScoringService extends AbstractWoSForumScoringService {
     @Override
     public Score getScore(ActivityInstance activity, Indicator indicator) {
         Domain domain = indicator.getDomain();
-        Forum forum   = getForumFromActivity(activity);
+        ScholardexForumView forum = getForumFromActivity(activity);
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears =

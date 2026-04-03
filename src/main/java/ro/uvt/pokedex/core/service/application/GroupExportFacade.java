@@ -4,9 +4,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.reporting.Group;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.service.application.model.GroupPublicationCsvExportViewModel;
 
 import java.util.*;
@@ -32,14 +32,14 @@ public class GroupExportFacade {
             lookupKeys.addAll(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
         }
         List<String> authorIds = scholardexProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
-                .map(Author::getId)
+                .map(ScholardexAuthorView::getId)
                 .distinct()
                 .toList();
 
-        Map<String, Publication> publicationsById = new LinkedHashMap<>();
+        Map<String, ScholardexPublicationView> publicationsById = new LinkedHashMap<>();
         scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds)
                 .forEach(publication -> publicationsById.putIfAbsent(publication.getId(), publication));
-        List<Publication> publications = new ArrayList<>(publicationsById.values());
+        List<ScholardexPublicationView> publications = new ArrayList<>(publicationsById.values());
         PublicationOrderingSupport.sortPublicationsInPlace(publications);
 
         Set<String> authorKeys = new HashSet<>();
@@ -49,10 +49,10 @@ public class GroupExportFacade {
             forumKeys.add(publication.getForum());
         });
 
-        Map<String, Author> authorMap = scholardexProjectionReadService.findAuthorsByIdIn(authorKeys).stream()
-                .collect(Collectors.toMap(Author::getId, author -> author));
-        Map<String, Forum> forumMap = scholardexProjectionReadService.findForumsByIdIn(forumKeys).stream()
-                .collect(Collectors.toMap(Forum::getId, forum -> forum));
+        Map<String, ScholardexAuthorView> authorMap = scholardexProjectionReadService.findAuthorsByIdIn(authorKeys).stream()
+                .collect(Collectors.toMap(ScholardexAuthorView::getId, author -> author));
+        Map<String, ScholardexForumView> forumMap = scholardexProjectionReadService.findForumsByIdIn(forumKeys).stream()
+                .collect(Collectors.toMap(ScholardexForumView::getId, forum -> forum));
 
         return Optional.of(new GroupPublicationCsvExportViewModel(
                 publications,

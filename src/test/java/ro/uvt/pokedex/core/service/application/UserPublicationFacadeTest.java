@@ -7,12 +7,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.Researcher;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Citation;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.service.ResearcherService;
+import ro.uvt.pokedex.core.service.application.model.PublicationMetadataPatch;
 
 import java.util.List;
 import java.util.Optional;
@@ -49,11 +49,11 @@ class UserPublicationFacadeTest {
         Researcher researcher = new Researcher();
         researcher.setScopusId(List.of("a1"));
 
-        Author author = new Author();
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
         author.setName("Alice");
 
-        Publication p = new Publication();
+        ScholardexPublicationView p = new ScholardexPublicationView();
         p.setId("p1");
         p.setTitle("T1");
         p.setForum("f1");
@@ -61,7 +61,7 @@ class UserPublicationFacadeTest {
         p.getAuthors().add("a1");
         p.setCitedbyCount(3);
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId("f1");
 
         when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
@@ -85,12 +85,12 @@ class UserPublicationFacadeTest {
         Researcher researcher = new Researcher();
         researcher.setScopusId(List.of("a1", "a2"));
 
-        Author author1 = new Author();
+        ScholardexAuthorView author1 = new ScholardexAuthorView();
         author1.setId("a1");
-        Author author2 = new Author();
+        ScholardexAuthorView author2 = new ScholardexAuthorView();
         author2.setId("a2");
 
-        Publication shared = new Publication();
+        ScholardexPublicationView shared = new ScholardexPublicationView();
         shared.setId("p-shared");
         shared.setTitle("Shared");
         shared.setForum("f1");
@@ -115,12 +115,12 @@ class UserPublicationFacadeTest {
         Researcher researcher = new Researcher();
         researcher.setScopusId(List.of("a1"));
 
-        Author author = new Author();
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
 
-        Publication malformed = publication("p3", "Zeta", "bad-date", 1, "f1", List.of("a1"));
-        Publication newest = publication("p2", "Alpha", "2024-02-01", 1, "f1", List.of("a1"));
-        Publication sameYearHigherTitle = publication("p1", "Beta", "2024-01-10", 1, "f1", List.of("a1"));
+        ScholardexPublicationView malformed = publication("p3", "Zeta", "bad-date", 1, "f1", List.of("a1"));
+        ScholardexPublicationView newest = publication("p2", "Alpha", "2024-02-01", 1, "f1", List.of("a1"));
+        ScholardexPublicationView sameYearHigherTitle = publication("p1", "Beta", "2024-01-10", 1, "f1", List.of("a1"));
 
         when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
         when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
@@ -131,14 +131,14 @@ class UserPublicationFacadeTest {
         var vmOpt = facade.buildUserPublicationsView("r1");
 
         assertTrue(vmOpt.isPresent());
-        assertEquals(List.of("p2", "p1", "p3"), vmOpt.get().publications().stream().map(Publication::getId).toList());
+        assertEquals(List.of("p2", "p1", "p3"), vmOpt.get().publications().stream().map(ScholardexPublicationView::getId).toList());
     }
 
     @Test
     void buildAuthorPublicationsViewBuildsSharedSummaryForCanonicalAuthorId() {
-        Author selectedAuthor = author("sauth_1");
+        ScholardexAuthorView selectedAuthor = author("sauth_1");
         selectedAuthor.setName("Alice");
-        Publication publication = publication("p1", "T1", "2024-01-01", 4, "f1", List.of("sauth_1", "a2"));
+        ScholardexPublicationView publication = publication("p1", "T1", "2024-01-01", 4, "f1", List.of("sauth_1", "a2"));
 
         when(scholardexProjectionReadService.findAuthorById("sauth_1")).thenReturn(Optional.of(selectedAuthor));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsContaining("sauth_1")).thenReturn(List.of(publication));
@@ -158,13 +158,13 @@ class UserPublicationFacadeTest {
 
     @Test
     void buildCitationsViewSortsCitationsDeterministically() {
-        Publication publication = publication("p1", "Main", "2023-01-01", 0, "f1", List.of("a1"));
-        Publication c1 = publication("c1", "Zulu", "bad-date", 0, "f2", List.of("a2"));
-        Publication c2 = publication("c2", "Alpha", "2024-01-01", 0, "f2", List.of("a3"));
-        Publication c3 = publication("c3", "Beta", "2024-01-01", 0, "f2", List.of("a4"));
-        Citation link1 = citation("p1", "c1");
-        Citation link2 = citation("p1", "c2");
-        Citation link3 = citation("p1", "c3");
+        ScholardexPublicationView publication = publication("p1", "Main", "2023-01-01", 0, "f1", List.of("a1"));
+        ScholardexPublicationView c1 = publication("c1", "Zulu", "bad-date", 0, "f2", List.of("a2"));
+        ScholardexPublicationView c2 = publication("c2", "Alpha", "2024-01-01", 0, "f2", List.of("a3"));
+        ScholardexPublicationView c3 = publication("c3", "Beta", "2024-01-01", 0, "f2", List.of("a4"));
+        ScholardexCitationView link1 = citation("p1", "c1");
+        ScholardexCitationView link2 = citation("p1", "c2");
+        ScholardexCitationView link3 = citation("p1", "c3");
 
         when(scholardexProjectionReadService.findPublicationByAnyId("p1")).thenReturn(Optional.of(publication));
         when(scholardexProjectionReadService.findAllCitationsByCitedId("p1")).thenReturn(List.of(link1, link2, link3));
@@ -176,12 +176,12 @@ class UserPublicationFacadeTest {
         var vmOpt = facade.buildCitationsView("p1");
 
         assertTrue(vmOpt.isPresent());
-        assertEquals(List.of("c2", "c3", "c1"), vmOpt.get().citations().stream().map(Publication::getId).toList());
+        assertEquals(List.of("c2", "c3", "c1"), vmOpt.get().citations().stream().map(ScholardexPublicationView::getId).toList());
     }
 
     @Test
     void findPublicationForEditUsesCanonicalIdLookup() {
-        Publication publication = publication("p1", "P", "2023-01-01", 0, "f1", List.of("a1"));
+        ScholardexPublicationView publication = publication("p1", "P", "2023-01-01", 0, "f1", List.of("a1"));
         when(scholardexProjectionReadService.findPublicationByAnyId("p1")).thenReturn(Optional.of(publication));
 
         var result = facade.findPublicationForEdit("p1");
@@ -196,7 +196,7 @@ class UserPublicationFacadeTest {
         existing.setId("p1");
         existing.setSubtype("old");
         existing.setSubtypeDescription("Old");
-        Publication patch = new Publication();
+        PublicationMetadataPatch patch = new PublicationMetadataPatch();
         patch.setSubtype("cp");
         patch.setSubtypeDescription("Proceedings");
         when(scholardexProjectionReadService.findPublicationViewById("p1")).thenReturn(Optional.of(existing));
@@ -208,8 +208,8 @@ class UserPublicationFacadeTest {
         verify(scholardexProjectionReadService).savePublicationView(existing);
     }
 
-    private static Publication publication(String id, String title, String coverDate, int citedByCount, String forumId, List<String> authors) {
-        Publication publication = new Publication();
+    private static ScholardexPublicationView publication(String id, String title, String coverDate, int citedByCount, String forumId, List<String> authors) {
+        ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setId(id);
         publication.setTitle(title);
         publication.setCoverDate(coverDate);
@@ -219,22 +219,22 @@ class UserPublicationFacadeTest {
         return publication;
     }
 
-    private static Citation citation(String citedId, String citingId) {
-        Citation citation = new Citation();
+    private static ScholardexCitationView citation(String citedId, String citingId) {
+        ScholardexCitationView citation = new ScholardexCitationView();
         citation.setCitedId(citedId);
         citation.setCitingId(citingId);
         return citation;
     }
 
-    private static Forum forum(String id) {
-        Forum forum = new Forum();
+    private static ScholardexForumView forum(String id) {
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId(id);
         forum.setPublicationName(id);
         return forum;
     }
 
-    private static Author author(String id) {
-        Author author = new Author();
+    private static ScholardexAuthorView author(String id) {
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId(id);
         author.setName(id);
         return author;

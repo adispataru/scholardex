@@ -1,8 +1,8 @@
 package ro.uvt.pokedex.core.service.application;
 
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.service.reporting.Score;
 import ro.uvt.pokedex.core.service.reporting.ScientificProductionService;
 
@@ -20,11 +20,11 @@ public final class ReportingComputationSupport {
      */
     public static double calculatePublicationScore(
             Indicator indicator,
-            List<Author> authors,
-            List<Publication> publications,
+            List<ScholardexAuthorView> authors,
+            List<ScholardexPublicationView> publications,
             ScientificProductionService scientificProductionService) {
 
-        List<Publication> filtered = publications;
+        List<ScholardexPublicationView> filtered = publications;
         if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR)) {
             filtered = publications.stream()
                     .filter(p -> authors.stream().anyMatch(a -> a.getId().equals(p.getAuthors().get(0))))
@@ -34,7 +34,10 @@ public final class ReportingComputationSupport {
                     .filter(p -> authors.stream().noneMatch(a -> a.getId().equals(p.getAuthors().get(0))))
                     .collect(Collectors.toList());
         }
-        Map<String, Score> scores = scientificProductionService.calculateScientificProductionScore(filtered, indicator);
+        Map<String, Score> scores = scientificProductionService.calculateScientificProductionScore(
+                filtered.stream().map(ScholardexPublicationView::toScoringPublication).toList(),
+                indicator
+        );
         return scores.get("total").getAuthorScore();
     }
 

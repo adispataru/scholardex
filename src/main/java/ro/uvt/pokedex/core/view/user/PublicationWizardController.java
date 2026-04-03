@@ -6,8 +6,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.service.application.PublicationWizardFacade;
 import ro.uvt.pokedex.core.service.application.model.WizardPublicationCommand;
@@ -26,12 +26,12 @@ public class PublicationWizardController {
     @GetMapping()
     public String showStep1(Model model) {
         model.addAttribute("forums", publicationWizardFacade.listForums());
-        model.addAttribute("newForum", new Forum());
+        model.addAttribute("newForum", new ScholardexForumView());
         return "user/publications-add-step1";
     }
 
     @PostMapping("/step1")
-    public String processStep1(@ModelAttribute("newForum") Forum newForum,
+    public String processStep1(@ModelAttribute("newForum") ScholardexForumView newForum,
                                @RequestParam(value="selectedForumId", required=false) String selectedId,
                                RedirectAttributes ra) {
         java.util.Optional<String> forumId = publicationWizardFacade.resolveForumId(newForum, selectedId);
@@ -68,7 +68,7 @@ public class PublicationWizardController {
         model.addAttribute("wizardForumAggregationType", wizardForumAggregationType);
         model.addAttribute("wizardForumPublisher", wizardForumPublisher);
         String afid = "60000434";
-        List<Author> authors = publicationWizardFacade.findAuthorsForAffiliation(afid);
+        List<ScholardexAuthorView> authors = publicationWizardFacade.findAuthorsForAffiliation(afid);
         model.addAttribute("allAuthors", authors);
 
         return "user/publications-add-step2";
@@ -109,7 +109,7 @@ public class PublicationWizardController {
             return "redirect:/login"; // or your login route
         }
 
-        Forum wizardForumDraft = new Forum();
+        ScholardexForumView wizardForumDraft = new ScholardexForumView();
         wizardForumDraft.setPublicationName(wizardForumPublicationName);
         wizardForumDraft.setIssn(wizardForumIssn);
         wizardForumDraft.setEIssn(wizardForumEIssn);

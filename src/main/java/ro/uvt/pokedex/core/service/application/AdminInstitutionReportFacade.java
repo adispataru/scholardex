@@ -5,11 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.Institution;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
-import ro.uvt.pokedex.core.model.scopus.Affiliation;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Citation;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.repository.InstitutionRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsExportViewModel;
@@ -32,10 +32,10 @@ public class AdminInstitutionReportFacade {
             return Optional.empty();
         }
 
-        List<Publication> publications = loadInstitutionPublications(institution);
-        Map<String, Author> authorMap = loadAuthorMap(publications);
-        Map<String, Forum> forumMap = loadForumMap(publications);
-        Map<Integer, List<Publication>> publicationsByYear = publications.stream()
+        List<ScholardexPublicationView> publications = loadInstitutionPublications(institution);
+        Map<String, ScholardexAuthorView> authorMap = loadAuthorMap(publications);
+        Map<String, ScholardexForumView> forumMap = loadForumMap(publications);
+        Map<Integer, List<ScholardexPublicationView>> publicationsByYear = publications.stream()
                 .map(publication -> new AbstractMap.SimpleEntry<>(
                         publication,
                         PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)))
@@ -70,10 +70,10 @@ public class AdminInstitutionReportFacade {
             return Optional.empty();
         }
 
-        List<Publication> publications = loadInstitutionPublications(institution);
-        Map<String, List<Publication>> citationMap = loadCitationMap(publications);
-        Map<String, Author> authorMap = loadAuthorMap(publications, citationMap);
-        Map<String, Forum> forumMap = loadForumMap(publications, citationMap);
+        List<ScholardexPublicationView> publications = loadInstitutionPublications(institution);
+        Map<String, List<ScholardexPublicationView>> citationMap = loadCitationMap(publications);
+        Map<String, ScholardexAuthorView> authorMap = loadAuthorMap(publications, citationMap);
+        Map<String, ScholardexForumView> forumMap = loadForumMap(publications, citationMap);
 
         return Optional.of(new AdminInstitutionPublicationsExportViewModel(
                 institution,
@@ -84,23 +84,23 @@ public class AdminInstitutionReportFacade {
         ));
     }
 
-    private List<Publication> loadInstitutionPublications(Institution institution) {
-        Map<String, Publication> publicationsById = new LinkedHashMap<>();
-        for (Affiliation affiliation : institution.getScopusAffiliations()) {
+    private List<ScholardexPublicationView> loadInstitutionPublications(Institution institution) {
+        Map<String, ScholardexPublicationView> publicationsById = new LinkedHashMap<>();
+        for (ScholardexAffiliationView affiliation : institution.getScopusAffiliations()) {
             findPublicationsByAffiliation(affiliation.getAfid())
                     .forEach(publication -> publicationsById.putIfAbsent(publication.getId(), publication));
         }
-        List<Publication> publications = new ArrayList<>(publicationsById.values());
+        List<ScholardexPublicationView> publications = new ArrayList<>(publicationsById.values());
         PublicationOrderingSupport.sortPublicationsInPlace(publications);
         return publications;
     }
 
-    private Map<String, List<Publication>> loadCitationMap(List<Publication> publications) {
-        List<String> ids = publications.stream().map(Publication::getId).toList();
-        List<Citation> citations = scholardexProjectionReadService.findAllCitationsByCitedIdIn(ids);
-        Map<String, List<Publication>> citationMap = new HashMap<>();
-        for (Citation citation : citations) {
-            Optional<Publication> citingPublication = scholardexProjectionReadService.findPublicationByAnyId(citation.getCitingId());
+    private Map<String, List<ScholardexPublicationView>> loadCitationMap(List<ScholardexPublicationView> publications) {
+        List<String> ids = publications.stream().map(ScholardexPublicationView::getId).toList();
+        List<ScholardexCitationView> citations = scholardexProjectionReadService.findAllCitationsByCitedIdIn(ids);
+        Map<String, List<ScholardexPublicationView>> citationMap = new HashMap<>();
+        for (ScholardexCitationView citation : citations) {
+            Optional<ScholardexPublicationView> citingPublication = scholardexProjectionReadService.findPublicationByAnyId(citation.getCitingId());
             if (citingPublication.isPresent()) {
                 citationMap.putIfAbsent(citation.getCitedId(), new ArrayList<>());
                 citationMap.get(citation.getCitedId()).add(citingPublication.get());
@@ -110,37 +110,37 @@ public class AdminInstitutionReportFacade {
         return citationMap;
     }
 
-    private Map<String, Author> loadAuthorMap(List<Publication> publications) {
+    private Map<String, ScholardexAuthorView> loadAuthorMap(List<ScholardexPublicationView> publications) {
         Set<String> authorKeys = new HashSet<>();
         publications.forEach(publication -> authorKeys.addAll(publication.getAuthors()));
         return scholardexProjectionReadService.findAuthorsByIdIn(authorKeys).stream()
-                .collect(Collectors.toMap(Author::getId, author -> author));
+                .collect(Collectors.toMap(ScholardexAuthorView::getId, author -> author));
     }
 
-    private Map<String, Author> loadAuthorMap(List<Publication> publications, Map<String, List<Publication>> citationMap) {
+    private Map<String, ScholardexAuthorView> loadAuthorMap(List<ScholardexPublicationView> publications, Map<String, List<ScholardexPublicationView>> citationMap) {
         Set<String> authorKeys = new HashSet<>();
         publications.forEach(publication -> authorKeys.addAll(publication.getAuthors()));
         citationMap.values().forEach(citingPublications ->
                 citingPublications.forEach(citing -> authorKeys.addAll(citing.getAuthors())));
         return scholardexProjectionReadService.findAuthorsByIdIn(authorKeys).stream()
-                .collect(Collectors.toMap(Author::getId, author -> author));
+                .collect(Collectors.toMap(ScholardexAuthorView::getId, author -> author));
     }
 
-    private Map<String, Forum> loadForumMap(List<Publication> publications) {
-        Set<String> forumKeys = publications.stream().map(Publication::getForum).collect(Collectors.toSet());
+    private Map<String, ScholardexForumView> loadForumMap(List<ScholardexPublicationView> publications) {
+        Set<String> forumKeys = publications.stream().map(ScholardexPublicationView::getForum).collect(Collectors.toSet());
         return scholardexProjectionReadService.findForumsByIdIn(forumKeys).stream()
-                .collect(Collectors.toMap(Forum::getId, forum -> forum));
+                .collect(Collectors.toMap(ScholardexForumView::getId, forum -> forum));
     }
 
-    private Map<String, Forum> loadForumMap(List<Publication> publications, Map<String, List<Publication>> citationMap) {
-        Set<String> forumKeys = publications.stream().map(Publication::getForum).collect(Collectors.toSet());
+    private Map<String, ScholardexForumView> loadForumMap(List<ScholardexPublicationView> publications, Map<String, List<ScholardexPublicationView>> citationMap) {
+        Set<String> forumKeys = publications.stream().map(ScholardexPublicationView::getForum).collect(Collectors.toSet());
         citationMap.values().forEach(citingPublications ->
                 citingPublications.forEach(citing -> forumKeys.add(citing.getForum())));
         return scholardexProjectionReadService.findForumsByIdIn(forumKeys).stream()
-                .collect(Collectors.toMap(Forum::getId, forum -> forum));
+                .collect(Collectors.toMap(ScholardexForumView::getId, forum -> forum));
     }
 
-    private List<Publication> findPublicationsByAffiliation(String affiliationId) {
+    private List<ScholardexPublicationView> findPublicationsByAffiliation(String affiliationId) {
         return scholardexProjectionReadService.findAllPublicationsByAffiliationsContaining(affiliationId);
     }
 }

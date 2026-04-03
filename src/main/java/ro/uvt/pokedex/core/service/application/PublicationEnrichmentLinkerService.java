@@ -3,7 +3,7 @@ package ro.uvt.pokedex.core.service.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.observability.CanonicalObservabilityMetrics;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.CanonicalPublicationConstants;
 import ro.uvt.pokedex.core.model.scopus.canonical.PublicationLinkConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
@@ -39,12 +39,19 @@ public class PublicationEnrichmentLinkerService {
     private final ScholardexIdentityConflictRepository identityConflictRepository;
     private final PublicationLinkConflictRepository conflictRepository;
 
-    public LinkResult linkWosEnrichment(Publication publication, String source, String linkerVersion, String linkerRunId) {
-        if (publication == null) {
+    public LinkResult linkWosEnrichment(String publicationId,
+                                        String eid,
+                                        String doi,
+                                        String wosId,
+                                        String source,
+                                        String linkerVersion,
+                                        String linkerRunId) {
+        PublicationRef publication = new PublicationRef(publicationId, eid, doi);
+        if (publication.isEmpty()) {
             return LinkResult.invalid("null-publication");
         }
-        String incomingWosId = normalizeBlank(publication.getWosId());
-        if (incomingWosId == null || Publication.NON_WOS_ID.equals(incomingWosId)) {
+        String incomingWosId = normalizeBlank(wosId);
+        if (incomingWosId == null || CanonicalPublicationConstants.NON_WOS_ID.equals(incomingWosId)) {
             return LinkResult.skipped("non-wos-or-empty");
         }
 
@@ -98,10 +105,7 @@ public class PublicationEnrichmentLinkerService {
             return LinkResult.skipped("empty-google-scholar-id");
         }
 
-        Publication publication = new Publication();
-        publication.setId(publicationId);
-        publication.setEid(eid);
-        publication.setDoi(doi);
+        PublicationRef publication = new PublicationRef(publicationId, eid, doi);
         Resolution resolution = resolveTarget(publication);
         if (resolution.state == LinkState.CONFLICT) {
             saveConflict(KEY_SCHOLAR, incomingScholarId, source, linkerVersion, linkerRunId, publication, null,
@@ -142,8 +146,8 @@ public class PublicationEnrichmentLinkerService {
         return new LinkResult(LinkState.LINKED, "linked", target.getId(), null);
     }
 
-    private Resolution resolveTarget(Publication publication) {
-        String publicationId = normalizeBlank(publication.getId());
+    private Resolution resolveTarget(PublicationRef publication) {
+        String publicationId = normalizeBlank(publication.publicationId());
         if (publicationId != null) {
             Optional<ScholardexPublicationFact> byId = publicationFactRepository.findById(publicationId);
             if (byId.isPresent()) {
@@ -151,7 +155,7 @@ public class PublicationEnrichmentLinkerService {
             }
         }
 
-        String eid = normalizeBlank(publication.getEid());
+        String eid = normalizeBlank(publication.eid());
         if (eid != null) {
             Optional<ScholardexPublicationFact> byEid = publicationFactRepository.findByEid(eid);
             if (byEid.isPresent()) {
@@ -159,7 +163,7 @@ public class PublicationEnrichmentLinkerService {
             }
         }
 
-        String doiNormalized = normalizeDoi(publication.getDoi());
+        String doiNormalized = normalizeDoi(publication.doi());
         if (doiNormalized != null) {
             List<ScholardexPublicationFact> byDoi = publicationFactRepository.findAllByDoiNormalized(doiNormalized);
             if (byDoi.size() == 1) {
@@ -178,7 +182,7 @@ public class PublicationEnrichmentLinkerService {
                               String source,
                               String linkerVersion,
                               String linkerRunId,
-                              Publication publication,
+                              PublicationRef publication,
                               String targetPublicationId,
                               String reason,
                               List<String> candidateIds) {
@@ -190,9 +194,9 @@ public class PublicationEnrichmentLinkerService {
         conflict.setEnrichmentSource(source);
         conflict.setKeyType(keyType);
         conflict.setKeyValue(keyValue);
-        conflict.setRequestedPublicationId(normalizeBlank(publication.getId()));
-        conflict.setRequestedEid(normalizeBlank(publication.getEid()));
-        conflict.setRequestedDoiNormalized(normalizeDoi(publication.getDoi()));
+        conflict.setRequestedPublicationId(normalizeBlank(publication.publicationId()));
+        conflict.setRequestedEid(normalizeBlank(publication.eid()));
+        conflict.setRequestedDoiNormalized(normalizeDoi(publication.doi()));
         conflict.setTargetPublicationId(targetPublicationId);
         conflict.setCandidatePublicationIds(candidateIds == null ? List.of() : new ArrayList<>(candidateIds));
         conflict.setLinkerVersion(linkerVersion);
@@ -201,13 +205,13 @@ public class PublicationEnrichmentLinkerService {
         conflictRepository.save(conflict);
     }
 
-    private void saveGenericConflict(String source, Publication publication, String reason, List<String> candidateIds) {
-        String recordId = normalizeBlank(publication.getId());
+    private void saveGenericConflict(String source, PublicationRef publication, String reason, List<String> candidateIds) {
+        String recordId = normalizeBlank(publication.publicationId());
         if (recordId == null) {
-            recordId = normalizeBlank(publication.getEid());
+            recordId = normalizeBlank(publication.eid());
         }
         if (recordId == null) {
-            recordId = normalizeDoi(publication.getDoi());
+            recordId = normalizeDoi(publication.doi());
         }
         if (recordId == null) {
             recordId = "unknown";
@@ -306,6 +310,12 @@ public class PublicationEnrichmentLinkerService {
 
         static LinkResult invalid(String reason) {
             return new LinkResult(LinkState.INVALID, reason, null, null);
+        }
+    }
+
+    private record PublicationRef(String publicationId, String eid, String doi) {
+        boolean isEmpty() {
+            return publicationId == null && eid == null && doi == null;
         }
     }
 }

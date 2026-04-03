@@ -7,7 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.WoSRanking;
-import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
 import java.util.List;
 import java.util.Set;
@@ -28,10 +28,10 @@ class ReportingLookupFacadeTest {
 
     @Test
     void getForumDelegatesToPostgresFacade() {
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         when(postgresReportingLookupFacade.getForum("f1")).thenReturn(forum);
 
-        Forum result = reportingLookupFacade.getForum("f1");
+        ScholardexForumView result = reportingLookupFacade.getForum("f1");
 
         assertSame(forum, result);
         verify(postgresReportingLookupFacade).getForum("f1");

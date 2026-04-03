@@ -6,9 +6,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
-import ro.uvt.pokedex.core.model.scopus.Affiliation;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
 import ro.uvt.pokedex.core.service.application.ResearcherAuthorLookupService;
@@ -37,15 +37,15 @@ class CacheServiceTest {
 
     @BeforeEach
     void setUp() {
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId("f1");
         CoreConferenceRanking core = new CoreConferenceRanking();
         core.setId("ICSE-International Conference on Software Engineering");
         core.setAcronym("ICSE");
         core.setName("International Conference on Software Engineering");
-        Author author = new Author();
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
-        Affiliation affiliation = new Affiliation();
+        ScholardexAffiliationView affiliation = new ScholardexAffiliationView();
         affiliation.setAfid("af1");
 
         when(scholardexProjectionReadService.findAllForums()).thenReturn(List.of(forum));
@@ -64,7 +64,7 @@ class CacheServiceTest {
 
     @Test
     void cachedForumLookupWorks() {
-        Forum forum = cacheService.getCachedForums("f1");
+        ScholardexForumView forum = cacheService.getCachedForums("f1");
         assertEquals("f1", forum.getId());
     }
 
@@ -92,7 +92,7 @@ class CacheServiceTest {
         assertEquals("a1", cacheService.getAuthor("a1").getId());
         assertEquals("af1", cacheService.getAffiliation("af1").getAfid());
 
-        Author replacementAuthor = new Author();
+        ScholardexAuthorView replacementAuthor = new ScholardexAuthorView();
         replacementAuthor.setId("a2");
         cacheService.putAuthor("a2", replacementAuthor);
         assertSame(replacementAuthor, cacheService.getAuthor("a2"));

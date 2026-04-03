@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.namedparam.EmptySqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
 import java.sql.Array;
 import java.sql.SQLException;
@@ -28,7 +28,7 @@ public class WosForumResolutionService {
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
-    public String resolveJournalId(Forum forum) {
+    public String resolveJournalId(ScholardexForumView forum) {
         ResolutionIndex index = buildResolutionIndex();
         return resolveJournalId(forum, index);
     }
@@ -61,7 +61,7 @@ public class WosForumResolutionService {
         return new ResolutionIndex(journalIdsByIssn, journalIdsByName);
     }
 
-    String resolveJournalId(Forum forum, ResolutionIndex index) {
+    String resolveJournalId(ScholardexForumView forum, ResolutionIndex index) {
         for (String issn : extractIssnCandidates(forum.getIssn(), forum.getEIssn())) {
             String wosJournalId = index.journalIdsByIssn().get(issn);
             if (!isBlank(wosJournalId)) {

@@ -3,7 +3,7 @@ package ro.uvt.pokedex.core.service.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.observability.CanonicalObservabilityMetrics;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.CanonicalPublicationConstants;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
@@ -350,7 +350,7 @@ public class WosScholardexOnboardingService {
         publications.sort(Comparator.comparing(ScholardexPublicationFact::getId, Comparator.nullsLast(String::compareTo)));
         for (ScholardexPublicationFact publication : publications) {
             String wosId = normalizeBlank(publication.getWosId());
-            if (wosId == null || Publication.NON_WOS_ID.equalsIgnoreCase(wosId)) {
+            if (wosId == null || CanonicalPublicationConstants.NON_WOS_ID.equalsIgnoreCase(wosId)) {
                 continue;
             }
             List<ScholardexSourceLink> existing = sourceLinkService

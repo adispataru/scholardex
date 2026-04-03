@@ -7,8 +7,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
 import java.util.List;
 import java.util.Map;
@@ -26,8 +26,8 @@ class RISJournalScoringServiceTest {
     void returnsDeterministicRisScoreFromWosRanking() {
         RISJournalScoringService service = new RISJournalScoringService(lookupPort);
         Indicator indicator = indicatorForAllDomain();
-        Publication publication = publication("forum-1", "2023-01-01");
-        Forum forum = forum("1234-5678");
+        ScoringPublication publication = publication("forum-1", "2023-01-01");
+        ScholardexForumView forum = forum("1234-5678");
         WoSRanking ranking = rankingWithRis("ECONOMICS - SCIE", 2023, 0.72, WoSRanking.Quarter.Q2);
 
         when(lookupPort.getForum("forum-1")).thenReturn(forum);
@@ -49,17 +49,28 @@ class RISJournalScoringServiceTest {
         return indicator;
     }
 
-    private Publication publication(String forumId, String coverDate) {
-        Publication publication = new Publication();
-        publication.setForum(forumId);
-        publication.setSubtype("ar");
-        publication.setCoverDate(coverDate);
-        return publication;
+    private ScoringPublication publication(String forumId, String coverDate) {
+        return new ScoringPublication(
+                "pub-1",
+                "eid-1",
+                forumId,
+                coverDate,
+                "ar",
+                null,
+                List.of("a1"),
+                1,
+                "10.1000/pub-1",
+                null,
+                "RIS Journal",
+                0,
+                java.util.Set.of()
+        );
     }
 
-    private Forum forum(String issn) {
-        Forum forum = new Forum();
+    private ScholardexForumView forum(String issn) {
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setIssn(issn);
+        forum.setAggregationType("Journal");
         return forum;
     }
 

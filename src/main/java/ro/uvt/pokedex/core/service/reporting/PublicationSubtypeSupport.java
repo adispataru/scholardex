@@ -1,13 +1,13 @@
 package ro.uvt.pokedex.core.service.reporting;
 
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
 
 public final class PublicationSubtypeSupport {
 
     private PublicationSubtypeSupport() {
     }
 
-    public static String resolveSubtype(Publication publication) {
+    public static String resolveSubtype(ScoringPublicationReadModel publication) {
         if (publication == null) {
             return "";
         }
@@ -18,7 +18,7 @@ public final class PublicationSubtypeSupport {
         return normalize(publication.getSubtype());
     }
 
-    public static boolean isSubtype(Publication publication, String... expected) {
+    public static boolean isSubtype(ScoringPublicationReadModel publication, String... expected) {
         String subtype = resolveSubtype(publication);
         if (subtype.isEmpty() || expected == null) {
             return false;

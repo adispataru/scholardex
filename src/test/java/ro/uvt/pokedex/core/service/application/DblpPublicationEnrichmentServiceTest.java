@@ -7,9 +7,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationDblpEvidence;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationDblpEvidenceRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 
@@ -382,8 +382,8 @@ class DblpPublicationEnrichmentServiceTest {
         return publication;
     }
 
-    private Forum lectureNotesForum(String id, String name) {
-        Forum forum = new Forum();
+    private ScholardexForumView lectureNotesForum(String id, String name) {
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId(id);
         forum.setPublicationName(name);
         return forum;

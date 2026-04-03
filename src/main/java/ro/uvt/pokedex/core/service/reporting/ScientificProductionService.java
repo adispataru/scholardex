@@ -6,7 +6,7 @@ import org.slf4j.LoggerFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
 
 import java.util.HashMap;
 import java.util.List;
@@ -20,7 +20,7 @@ public class ScientificProductionService {
     private final ScoringFactoryService scoringFactoryService;
 
 
-    public Map<String, Score> calculateScientificProductionScore(List<Publication> publications, Indicator indicator) {
+    public Map<String, Score> calculateScientificProductionScore(List<? extends ScoringPublicationReadModel> publications, Indicator indicator) {
 
         if(indicator.getScoringStrategy().equals(Indicator.Strategy.GENERIC_COUNT)) {
             Map<String, Score> result = new HashMap<>();
@@ -40,7 +40,7 @@ public class ScientificProductionService {
         double totalScore = 0;
         Map<String, Score> interResult = new HashMap<>();
         if(scoringService != null) {
-            for (Publication publication : publications) {
+            for (ScoringPublicationReadModel publication : publications) {
                 Score score = calculatePublicationScore(publication, indicator, scoringService);
                 if(score.getScore() + score.getAuthorScore() > 0.0) {
                     interResult.put(publication.getTitle(), score);
@@ -59,7 +59,7 @@ public class ScientificProductionService {
                 }
                 int limit = Math.min(10, publications.size());
                 for (int i = 0; i < limit; i++) {
-                    Publication pub = publications.get(i);
+                    ScoringPublicationReadModel pub = publications.get(i);
                     Score score = interResult.get(pub.getTitle());
                     if(score != null) {
                         result.put(pub.getTitle(), score);
@@ -77,13 +77,17 @@ public class ScientificProductionService {
         return result;
     }
 
-    public Map<String, Score> calculateScientificImpactScore(Publication cited, List<Publication> publications, Indicator indicator) {
+    public Map<String, Score> calculateScientificImpactScore(
+            ScoringPublicationReadModel cited,
+            List<? extends ScoringPublicationReadModel> publications,
+            Indicator indicator
+    ) {
         return calculateScientificImpactScore(cited, publications, indicator, null);
     }
 
     public Map<String, Score> calculateScientificImpactScore(
-            Publication cited,
-            List<Publication> publications,
+            ScoringPublicationReadModel cited,
+            List<? extends ScoringPublicationReadModel> publications,
             Indicator indicator,
             Map<String, Score> cachedBaseScoresByCitingPublicationId
     ) {
@@ -109,7 +113,7 @@ public class ScientificProductionService {
         long aggregationNanos = 0L;
         int positiveScores = 0;
         if(scoringService != null) {
-            for (Publication publication : publications) {
+            for (ScoringPublicationReadModel publication : publications) {
                 ScoreComputationTiming scoreTiming = new ScoreComputationTiming();
                 Score score = calculateCitationScore(
                         cited,
@@ -155,17 +159,17 @@ public class ScientificProductionService {
         return result;
     }
 
-    private Score calculatePublicationScore(Publication publication, Indicator indicator, ScoringService scoringService) {
+    private Score calculatePublicationScore(ScoringPublicationReadModel publication, Indicator indicator, ScoringService scoringService) {
         return getScore(publication, publication, indicator, scoringService, null, null);
     }
 
-    private Score calculateCitationScore(Publication cited, Publication citing, Indicator indicator, ScoringService scoringService) {
+    private Score calculateCitationScore(ScoringPublicationReadModel cited, ScoringPublicationReadModel citing, Indicator indicator, ScoringService scoringService) {
         return getScore(cited, citing, indicator, scoringService, null, null);
     }
 
     private Score calculateCitationScore(
-            Publication cited,
-            Publication citing,
+            ScoringPublicationReadModel cited,
+            ScoringPublicationReadModel citing,
             Indicator indicator,
             ScoringService scoringService,
             Map<String, Score> cachedBaseScoresByCitingPublicationId,
@@ -175,8 +179,8 @@ public class ScientificProductionService {
     }
 
     private Score getScore(
-            Publication cited,
-            Publication citing,
+            ScoringPublicationReadModel cited,
+            ScoringPublicationReadModel citing,
             Indicator indicator,
             ScoringService scoringService,
             Map<String, Score> cachedBaseScoresByCitingPublicationId,
@@ -197,7 +201,7 @@ public class ScientificProductionService {
         }
         Score result = copyScore(baseScore);
         if(result.getScore() > 0) {
-            int numberOfAuthors = cited.getAuthors().size();
+            int numberOfAuthors = cited.getAuthorCount();
 
             Map<String, Object> variables = new HashMap<>();
             variables.put("S", result.getScore());
@@ -224,7 +228,7 @@ public class ScientificProductionService {
         return result;
     }
 
-    public Map<String, Score> precomputeCitationBaseScores(List<Publication> citingPublications, Indicator indicator) {
+    public Map<String, Score> precomputeCitationBaseScores(List<? extends ScoringPublicationReadModel> citingPublications, Indicator indicator) {
         if (citingPublications == null || citingPublications.isEmpty()) {
             return Map.of();
         }
@@ -236,7 +240,7 @@ public class ScientificProductionService {
             return Map.of();
         }
         Map<String, Score> cached = new HashMap<>();
-        for (Publication citingPublication : citingPublications) {
+        for (ScoringPublicationReadModel citingPublication : citingPublications) {
             if (citingPublication == null || citingPublication.getId() == null || cached.containsKey(citingPublication.getId())) {
                 continue;
             }

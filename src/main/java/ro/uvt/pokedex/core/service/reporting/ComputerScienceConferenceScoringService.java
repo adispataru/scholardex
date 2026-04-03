@@ -9,8 +9,8 @@ import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationDblpEvidence;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationDblpEvidenceRepository;
 
@@ -66,9 +66,9 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     /* ------------------------------------------------------------------ */
 
     @Override
-    public Score getScore(Publication publication, Indicator indicator) {
+    public Score getScore(ScoringPublicationReadModel publication, Indicator indicator) {
         Domain domain = indicator.getDomain();
-        Forum forum = lookupPort.getForum(publication.getForum());
+        ScholardexForumView forum = lookupPort.getForum(publication.getForumId());
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = getAllowedYearsForPublication(publication, indicator);
@@ -133,7 +133,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     @Override
     public Score getScore(ActivityInstance activity, Indicator indicator) {
         Domain domain = indicator.getDomain();
-        Forum forum = getForumFromActivity(activity);
+        ScholardexForumView forum = getForumFromActivity(activity);
 
         ScoreResult scoreResult = initializeScoreResult();
         if(forum.getPublicationName() == null) {
@@ -193,15 +193,15 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     /*  Conference-specific scoring logic                                 */
     /* ------------------------------------------------------------------ */
 
-    private Optional<Score> computeCOREScore(Forum forum, int year) {
+    private Optional<Score> computeCOREScore(ScholardexForumView forum, int year) {
         return tryResolveCoreScore(forum, year);
     }
 
-    public Optional<Score> tryResolveCoreScore(Forum forum, int year) {
+    public Optional<Score> tryResolveCoreScore(ScholardexForumView forum, int year) {
         return tryResolveCoreScore(null, forum, year);
     }
 
-    public Optional<Score> tryResolveCoreScore(Publication publication, Forum forum, int year) {
+    public Optional<Score> tryResolveCoreScore(ScoringPublicationReadModel publication, ScholardexForumView forum, int year) {
         ConferenceScoreTrace trace = ConferenceScoreTrace.forPublication(null, null, null,
                 forum == null ? null : forum.getPublicationName(), List.of(year));
         return resolveConferenceScore(publication, forum, year, trace).score();
@@ -216,13 +216,13 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         return lastTraceForTests;
     }
 
-    private ConferenceScoreResolution resolveConferenceScore(Forum forum, int year, ConferenceScoreTrace trace) {
+    private ConferenceScoreResolution resolveConferenceScore(ScholardexForumView forum, int year, ConferenceScoreTrace trace) {
         ConferenceMatch match = resolveConferenceMatch(forum == null ? null : forum.getPublicationName(), trace);
         trace = match.trace();
         return scoreResolvedConference(match, year, trace, ResolutionSource.SCOPUS);
     }
 
-    private ConferenceScoreResolution resolveConferenceScore(Publication publication, Forum forum, int year, ConferenceScoreTrace trace) {
+    private ConferenceScoreResolution resolveConferenceScore(ScoringPublicationReadModel publication, ScholardexForumView forum, int year, ConferenceScoreTrace trace) {
         ConferenceMatch match = resolveConferenceMatch(forum == null ? null : forum.getPublicationName(), trace);
         trace = match.trace();
         ConferenceScoreResolution scopusResolution = scoreResolvedConference(match, year, trace, ResolutionSource.SCOPUS);
@@ -367,11 +367,11 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         return value != null && WORKSHOP_TOKEN.matcher(value).find();
     }
 
-    private boolean shouldConsultDblp(Publication publication, Forum forum) {
+    private boolean shouldConsultDblp(ScoringPublicationReadModel publication, ScholardexForumView forum) {
         return isLncsBookSeriesCandidate(publication, forum);
     }
 
-    private boolean isLncsBookSeriesCandidate(Publication publication, Forum forum) {
+    private boolean isLncsBookSeriesCandidate(ScoringPublicationReadModel publication, ScholardexForumView forum) {
         String publicationName = forum == null ? null : forum.getPublicationName();
         if (publicationName == null || !(publicationName.contains("Lecture Notes in ") || publicationName.contains("Lecture Notes on "))) {
             return false;
@@ -380,7 +380,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
                 || PublicationSubtypeSupport.isSubtype(publication, "cp");
     }
 
-    private Optional<ScholardexPublicationDblpEvidence> findDblpEvidence(Publication publication) {
+    private Optional<ScholardexPublicationDblpEvidence> findDblpEvidence(ScoringPublicationReadModel publication) {
         if (publication == null || publication.getId() == null || dblpEvidenceRepository == null) {
             return Optional.empty();
         }
@@ -967,8 +967,8 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
                 quarter);
     }
 
-    private Forum forum(String publicationName) {
-        Forum forum = new Forum();
+    private ScholardexForumView forum(String publicationName) {
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName(publicationName);
         return forum;
     }

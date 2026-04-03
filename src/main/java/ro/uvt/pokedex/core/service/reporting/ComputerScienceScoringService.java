@@ -8,8 +8,8 @@ import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
 /**
  * Combined scoring service that delegates to appropriate specialized services based on publication type.
@@ -40,13 +40,13 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
     /* ------------------------------------------------------------------ */
 
     @Override
-    public Score getScore(Publication publication, Indicator indicator) {
+    public Score getScore(ScoringPublicationReadModel publication, Indicator indicator) {
         if (publication == null) {
             logger.warn("Received null publication");
             return createEmptyScore();
         }
 
-        Forum forum = publication.getForum() == null ? null : lookupPort.getForum(publication.getForum());
+        ScholardexForumView forum = publication.getForumId() == null ? null : lookupPort.getForum(publication.getForumId());
         if (forum != null && forum.getAggregationType() != null) {
             return switch (forum.getAggregationType()) {
                 case "Journal" -> journalScoringService.getScore(publication, indicator);
@@ -61,7 +61,7 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
         return scoreBySubtype(publication, indicator);
     }
 
-    private Score scoreBySubtype(Publication publication, Indicator indicator) {
+    private Score scoreBySubtype(ScoringPublicationReadModel publication, Indicator indicator) {
         if (publication == null) {
             return createEmptyScore();
         }
@@ -94,7 +94,7 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
         }
 
         // For activities, we need to determine the type from the forum
-        Forum forum = getForumFromActivity(activity);
+        ScholardexForumView forum = getForumFromActivity(activity);
         if (forum == null) {
             logger.warn("Could not find forum for activity: {}", activity.getId());
             return createEmptyScore();

@@ -6,7 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.WoSRanking;
-import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.service.application.model.ScholardexForumDetailViewModel;
 
 import java.util.Optional;
@@ -44,7 +44,7 @@ class ScholardexForumDetailServiceTest {
 
     @Test
     void journalLoadsWosDetails() {
-        Forum forum = forum("j1", "Journal");
+        ScholardexForumView forum = forum("j1", "Journal");
         WoSRanking ranking = new WoSRanking();
         ranking.setId("j1");
         when(scholardexProjectionReadService.findForumById("j1")).thenReturn(Optional.of(forum));
@@ -60,7 +60,7 @@ class ScholardexForumDetailServiceTest {
 
     @Test
     void conferenceUsesCorePlaceholderAndSkipsWosLookup() {
-        Forum forum = forum("c1", "Conference Proceeding");
+        ScholardexForumView forum = forum("c1", "Conference Proceeding");
         when(scholardexProjectionReadService.findForumById("c1")).thenReturn(Optional.of(forum));
 
         ScholardexForumDetailViewModel detail = service.findDetail("c1").orElseThrow();
@@ -73,7 +73,7 @@ class ScholardexForumDetailServiceTest {
 
     @Test
     void bookSeriesUsesBookPlaceholderAndSkipsWosLookup() {
-        Forum forum = forum("b1", "Book Series");
+        ScholardexForumView forum = forum("b1", "Book Series");
         when(scholardexProjectionReadService.findForumById("b1")).thenReturn(Optional.of(forum));
 
         ScholardexForumDetailViewModel detail = service.findDetail("b1").orElseThrow();
@@ -86,7 +86,7 @@ class ScholardexForumDetailServiceTest {
 
     @Test
     void unknownAggregationTypeUsesGenericPlaceholder() {
-        Forum forum = forum("o1", "Series");
+        ScholardexForumView forum = forum("o1", "Series");
         when(scholardexProjectionReadService.findForumById("o1")).thenReturn(Optional.of(forum));
 
         ScholardexForumDetailViewModel detail = service.findDetail("o1").orElseThrow();
@@ -96,8 +96,8 @@ class ScholardexForumDetailServiceTest {
         verify(wosRankingDetailsReadService, never()).findByJournalId("o1");
     }
 
-    private Forum forum(String id, String aggregationType) {
-        Forum forum = new Forum();
+    private ScholardexForumView forum(String id, String aggregationType) {
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId(id);
         forum.setPublicationName("Forum " + id);
         forum.setAggregationType(aggregationType);

@@ -11,8 +11,8 @@ import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import ro.uvt.pokedex.core.model.Institution;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Affiliation;
-import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.repository.ActivityRepository;
 import ro.uvt.pokedex.core.repository.ArtisticEventRepository;
 import ro.uvt.pokedex.core.repository.InstitutionRepository;
@@ -79,9 +79,9 @@ class AdminCatalogFacadeTest {
 
     @Test
     void affiliationsAndVenuesDelegationWorks() {
-        Affiliation affiliation = new Affiliation();
+        ScholardexAffiliationView affiliation = new ScholardexAffiliationView();
         affiliation.setName("Aff");
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         when(scholardexProjectionReadService.findAffiliationsByNameContains("uvt")).thenReturn(List.of(affiliation));
         when(scholardexProjectionReadService.findAllForums()).thenReturn(List.of(forum));
 

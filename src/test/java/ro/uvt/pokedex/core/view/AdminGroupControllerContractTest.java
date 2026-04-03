@@ -11,9 +11,9 @@ import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.reporting.Group;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.reporting.Position;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.service.application.GroupCnfisExportFacade;
 import ro.uvt.pokedex.core.service.application.GroupExportFacade;
 import ro.uvt.pokedex.core.service.application.GroupManagementFacade;
@@ -70,18 +70,18 @@ class AdminGroupControllerContractTest {
         group.setId("g1");
         group.setName("Group One");
 
-        Publication publication = new Publication();
+        ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setId("p1");
         publication.setTitle("Paper One");
         publication.setAuthors(List.of("a1"));
         publication.setForum("f1");
         publication.setCoverDate("2023-01-01");
 
-        Author author = new Author();
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
         author.setName("Author One");
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId("f1");
         forum.setPublicationName("Forum One");
 
@@ -215,7 +215,7 @@ class AdminGroupControllerContractTest {
 
     @Test
     void exportIndicatorResultsReturnsExpectedCsvHeaderAndRowContract() throws Exception {
-        Publication publication = new Publication();
+        ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setDoi("10.1000/test");
         publication.setTitle("CSV Paper");
         publication.setAuthors(List.of("a1"));
@@ -225,11 +225,11 @@ class AdminGroupControllerContractTest {
         publication.setIssueIdentifier("3");
         publication.setPageRange("10-20");
 
-        Author author = new Author();
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
         author.setName("Author One");
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId("f1");
         forum.setPublicationName("Forum One");
 

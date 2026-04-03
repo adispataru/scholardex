@@ -8,8 +8,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
 import java.util.List;
 import java.util.Map;
@@ -29,8 +29,8 @@ class ImpactFactorJournalScoringServiceTest {
         ImpactFactorJournalScoringService service = new ImpactFactorJournalScoringService(lookupPort, meterRegistry);
 
         Indicator indicator = indicatorForAllDomain();
-        Publication publication = publication("forum-1", "ar", "2023-01-01");
-        Forum forum = forum("1234-5678", null);
+        ScoringPublication publication = publication("forum-1", "ar", "2023-01-01");
+        ScholardexForumView forum = forum("1234-5678", null);
 
         when(lookupPort.getForum("forum-1")).thenReturn(forum);
         when(lookupPort.getRankingsByIssn("1234-5678")).thenReturn(List.of());
@@ -51,8 +51,8 @@ class ImpactFactorJournalScoringServiceTest {
         ImpactFactorJournalScoringService service = new ImpactFactorJournalScoringService(lookupPort, meterRegistry);
 
         Indicator indicator = indicatorForAllDomain();
-        Publication publication = publication("forum-1", "ar", "2023-01-01");
-        Forum forum = forum("1234-5678", null);
+        ScoringPublication publication = publication("forum-1", "ar", "2023-01-01");
+        ScholardexForumView forum = forum("1234-5678", null);
         WoSRanking ranking = rankingWithIf("ECONOMICS - SCIE", 2023, 2.5, WoSRanking.Quarter.Q1);
 
         when(lookupPort.getForum("forum-1")).thenReturn(forum);
@@ -77,20 +77,30 @@ class ImpactFactorJournalScoringServiceTest {
         return indicator;
     }
 
-    private Publication publication(String forumId, String subtype, String coverDate) {
-        Publication publication = new Publication();
-        publication.setId("pub-1");
-        publication.setForum(forumId);
-        publication.setSubtype(subtype);
-        publication.setCoverDate(coverDate);
-        return publication;
+    private ScoringPublication publication(String forumId, String subtype, String coverDate) {
+        return new ScoringPublication(
+                "pub-1",
+                "eid-1",
+                forumId,
+                coverDate,
+                subtype,
+                null,
+                List.of("a1"),
+                1,
+                "10.1000/pub-1",
+                null,
+                "Test Journal Article",
+                0,
+                java.util.Set.of()
+        );
     }
 
-    private Forum forum(String issn, String eIssn) {
-        Forum forum = new Forum();
+    private ScholardexForumView forum(String issn, String eIssn) {
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Test Journal");
         forum.setIssn(issn);
         forum.setEIssn(eIssn);
+        forum.setAggregationType("Journal");
         return forum;
     }
 

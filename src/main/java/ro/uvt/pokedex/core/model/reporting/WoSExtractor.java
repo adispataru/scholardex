@@ -3,8 +3,6 @@ package ro.uvt.pokedex.core.model.reporting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import ro.uvt.pokedex.core.model.scopus.Publication;
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Optional;
@@ -49,19 +47,10 @@ public class WoSExtractor {
         return Optional.empty();
     }
 
-    public Publication findPublicationWosId(Publication publication) {
-        if(publication.getWosId() != null && !publication.getWosId().isEmpty()) {
-            return publication;
+    public Optional<String> resolveWosId(String doi) {
+        if (doi == null || doi.isBlank()) {
+            return Optional.empty();
         }
-        String doi = publication.getDoi();
-        if (doi != null && !doi.isEmpty() && (publication.getWosId() == null)) {
-            Optional<String> wosId = extractData(doi);
-            if (wosId.isPresent()) {
-                publication.setWosId(wosId.get());
-            }else{
-                publication.setWosId(Publication.NON_WOS_ID);
-            }
-        }
-        return publication;
+        return extractData(doi);
     }
 }

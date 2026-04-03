@@ -9,10 +9,10 @@ import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Affiliation;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import ro.uvt.pokedex.core.repository.ActivityRepository;
 import ro.uvt.pokedex.core.repository.ArtisticEventRepository;
@@ -43,15 +43,15 @@ public class AdminCatalogFacade {
         return institutionRepository.findAll();
     }
 
-    public List<Affiliation> listAffiliationsByNameContains(String afname) {
-        List<Affiliation> affiliations = new ArrayList<>(scholardexProjectionReadService.findAffiliationsByNameContains(afname));
-        affiliations.sort(java.util.Comparator.comparing(Affiliation::getName));
+    public List<ScholardexAffiliationView> listAffiliationsByNameContains(String afname) {
+        List<ScholardexAffiliationView> affiliations = new ArrayList<>(scholardexProjectionReadService.findAffiliationsByNameContains(afname));
+        affiliations.sort(java.util.Comparator.comparing(ScholardexAffiliationView::getName));
         return affiliations;
     }
 
-    public List<Affiliation> listAffiliationsByCountry(String country) {
-        List<Affiliation> affiliations = new ArrayList<>(scholardexProjectionReadService.findAffiliationsByCountry(country));
-        affiliations.sort(java.util.Comparator.comparing(Affiliation::getName));
+    public List<ScholardexAffiliationView> listAffiliationsByCountry(String country) {
+        List<ScholardexAffiliationView> affiliations = new ArrayList<>(scholardexProjectionReadService.findAffiliationsByCountry(country));
+        affiliations.sort(java.util.Comparator.comparing(ScholardexAffiliationView::getName));
         return affiliations;
     }
 
@@ -126,43 +126,43 @@ public class AdminCatalogFacade {
         );
     }
 
-    public List<Forum> listScopusVenues() {
+    public List<ScholardexForumView> listScopusVenues() {
         return scholardexProjectionReadService.findAllForums();
     }
 
-    public Optional<Forum> findScopusVenueById(String id) {
+    public Optional<ScholardexForumView> findScopusVenueById(String id) {
         return scholardexProjectionReadService.findForumById(id);
     }
 
-    public Forum saveScopusVenue(Forum forum) {
+    public ScholardexForumView saveScopusVenue(ScholardexForumView forum) {
         return scholardexProjectionReadService.saveForum(forum);
     }
 
-    public List<Author> listScopusAuthorsByAffiliation(String affiliationId) {
+    public List<ScholardexAuthorView> listScopusAuthorsByAffiliation(String affiliationId) {
         return scholardexProjectionReadService.findAuthorsByAffiliationId(affiliationId);
     }
 
-    public Optional<Author> findScopusAuthorById(String id) {
+    public Optional<ScholardexAuthorView> findScopusAuthorById(String id) {
         return scholardexProjectionReadService.findAuthorById(id);
     }
 
-    public List<Publication> listPublicationsByAuthorId(String authorId) {
+    public List<ScholardexPublicationView> listPublicationsByAuthorId(String authorId) {
         return scholardexProjectionReadService.findAllPublicationsByAuthorsContaining(authorId);
     }
 
-    public Author saveScopusAuthor(Author author) {
+    public ScholardexAuthorView saveScopusAuthor(ScholardexAuthorView author) {
         return scholardexProjectionReadService.saveAuthor(author);
     }
 
-    public List<Affiliation> listScopusAffiliations() {
+    public List<ScholardexAffiliationView> listScopusAffiliations() {
         return scholardexProjectionReadService.findAllAffiliations();
     }
 
-    public Optional<Affiliation> findScopusAffiliationById(String id) {
+    public Optional<ScholardexAffiliationView> findScopusAffiliationById(String id) {
         return scholardexProjectionReadService.findAffiliationById(id);
     }
 
-    public Affiliation saveScopusAffiliation(Affiliation affiliation) {
+    public ScholardexAffiliationView saveScopusAffiliation(ScholardexAffiliationView affiliation) {
         return scholardexProjectionReadService.saveAffiliation(affiliation);
     }
 

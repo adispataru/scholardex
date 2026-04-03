@@ -5,8 +5,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
-import ro.uvt.pokedex.core.model.scopus.Citation;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
@@ -43,13 +43,13 @@ class ScholardexProjectionReadServiceEdgeTraversalTest {
         when(postgresProjectionReadPort.findPublicationIdsByAuthorIdIn(anyCollection()))
                 .thenReturn(Set.of("spub_1"));
 
-        Publication pub = new Publication();
+        ScholardexPublicationView pub = new ScholardexPublicationView();
         pub.setId("spub_1");
         pub.setTitle("Paper");
         when(postgresProjectionReadPort.findPublicationsByIdIn(anyCollection()))
                 .thenReturn(List.of(pub));
 
-        List<Publication> publications = service.findAllPublicationsByAuthorsIn(List.of("legacy-author"));
+        List<ScholardexPublicationView> publications = service.findAllPublicationsByAuthorsIn(List.of("legacy-author"));
 
         assertEquals(1, publications.size());
         assertEquals("spub_1", publications.getFirst().getId());
@@ -72,13 +72,13 @@ class ScholardexProjectionReadServiceEdgeTraversalTest {
         when(postgresProjectionReadPort.findPublicationIdsByAuthorIdIn(anyCollection()))
                 .thenReturn(Set.of("spub_2"));
 
-        Publication pub = new Publication();
+        ScholardexPublicationView pub = new ScholardexPublicationView();
         pub.setId("spub_2");
         pub.setTitle("From affiliation");
         when(postgresProjectionReadPort.findPublicationsByIdIn(anyCollection()))
                 .thenReturn(List.of(pub));
 
-        List<Publication> publications = service.findAllPublicationsByAffiliationsContaining("legacy-aff");
+        List<ScholardexPublicationView> publications = service.findAllPublicationsByAffiliationsContaining("legacy-aff");
 
         assertEquals(1, publications.size());
         assertEquals("spub_2", publications.getFirst().getId());
@@ -89,7 +89,7 @@ class ScholardexProjectionReadServiceEdgeTraversalTest {
         ScholardexProjectionReadService service = buildService();
 
         // Direct canonical IDs (start with "spub_") fast-path: no lookup needed
-        Citation citation = new Citation();
+        ScholardexCitationView citation = new ScholardexCitationView();
         citation.setId("c1");
         citation.setCitedId("spub_1");
         citation.setCitingId("spub_citing");
@@ -99,7 +99,7 @@ class ScholardexProjectionReadServiceEdgeTraversalTest {
         when(postgresProjectionReadPort.findExistingPublicationIdsByIdIn(anyCollection()))
                 .thenReturn(Set.of("spub_1", "spub_citing"));
 
-        var citations = service.findAllCitationsByCitedIdIn(List.of("spub_1", "spub_2"));
+        List<ScholardexCitationView> citations = service.findAllCitationsByCitedIdIn(List.of("spub_1", "spub_2"));
 
         assertEquals(1, citations.size());
     }

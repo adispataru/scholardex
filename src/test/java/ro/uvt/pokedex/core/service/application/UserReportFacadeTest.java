@@ -13,11 +13,13 @@ import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
 import ro.uvt.pokedex.core.model.reporting.WoSExtractor;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Citation;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
 import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
@@ -104,7 +106,7 @@ class UserReportFacadeTest {
                     @SuppressWarnings("unchecked")
                     var ids = (java.util.Collection<String>) invocation.getArgument(0);
                     return ids.stream().map(id -> {
-                        var author = new Author();
+                        var author = new ScholardexAuthorView();
                         author.setId(id);
                         return author;
                     }).toList();
@@ -187,7 +189,7 @@ class UserReportFacadeTest {
         researcher.setId("r1");
         researcher.setScopusId(List.of("a1"));
 
-        Publication publication = new Publication();
+        ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setId("p1");
         publication.setCoverDate("2022-01-01");
         publication.setForum("f1");
@@ -199,7 +201,6 @@ class UserReportFacadeTest {
         when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
-        when(woSExtractor.findPublicationWosId(publication)).thenReturn(publication);
         when(scholardexProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false)))
                 .thenReturn(new byte[]{1, 2});
@@ -220,22 +221,22 @@ class UserReportFacadeTest {
         researcher.setId("r1");
         researcher.setScopusId(List.of("a1"));
 
-        Publication pStart = new Publication();
+        ScholardexPublicationView pStart = new ScholardexPublicationView();
         pStart.setId("pStart");
         pStart.setCoverDate("2021-01-01");
         pStart.setForum("f1");
 
-        Publication pIn = new Publication();
+        ScholardexPublicationView pIn = new ScholardexPublicationView();
         pIn.setId("pIn");
         pIn.setCoverDate("2022-06-01");
         pIn.setForum("f1");
 
-        Publication pEnd = new Publication();
+        ScholardexPublicationView pEnd = new ScholardexPublicationView();
         pEnd.setId("pEnd");
         pEnd.setCoverDate("2024-12-01");
         pEnd.setForum("f1");
 
-        Publication pOut = new Publication();
+        ScholardexPublicationView pOut = new ScholardexPublicationView();
         pOut.setId("pOut");
         pOut.setCoverDate("2025-01-01");
         pOut.setForum("f1");
@@ -247,7 +248,6 @@ class UserReportFacadeTest {
         when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(pStart, pIn, pEnd, pOut));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
-        when(woSExtractor.findPublicationWosId(any(Publication.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(scholardexProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false)))
                 .thenReturn(new byte[]{1});
@@ -256,9 +256,9 @@ class UserReportFacadeTest {
 
         assertEquals(UserWorkbookExportStatus.OK, result.status());
         // only in-range publications should be enriched/saved (2021..2024 inclusive)
-        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq(pStart), any(), any(), any());
-        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq(pIn), any(), any(), any());
-        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq(pEnd), any(), any(), any());
+        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq("pStart"), any(), any(), any(), any(), any(), any());
+        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq("pIn"), any(), any(), any(), any(), any(), any());
+        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq("pEnd"), any(), any(), any(), any(), any(), any());
         verify(scholardexProjectionReadService, never()).savePublicationView(any());
     }
 
@@ -303,15 +303,15 @@ class UserReportFacadeTest {
         Indicator indicator = new Indicator();
         indicator.setOutputType(Indicator.Type.PUBLICATIONS);
 
-        Author author = new Author();
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
         author.setName("Author One");
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId("f1");
         forum.setPublicationName("Forum One");
 
-        Publication publication = new Publication();
+        ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setId("p1");
         publication.setTitle("Paper One");
         publication.setAuthors(List.of("a1"));
@@ -361,15 +361,15 @@ class UserReportFacadeTest {
         Indicator indicator = new Indicator();
         indicator.setOutputType(Indicator.Type.PUBLICATIONS);
 
-        Author author = new Author();
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
         author.setName("Author One");
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId("f1");
         forum.setPublicationName("Forum One");
 
-        Publication publication = new Publication();
+        ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setId("p1");
         publication.setTitle("Paper One");
         publication.setAuthors(List.of("a1"));
@@ -411,13 +411,13 @@ class UserReportFacadeTest {
         researcher.setId("r1");
         researcher.setScopusId(List.of("a1"));
 
-        Publication pIn = new Publication();
+        ScholardexPublicationView pIn = new ScholardexPublicationView();
         pIn.setId("p-in");
         pIn.setCoverDate("2022-03-01");
         pIn.setForum("f1");
         pIn.setAuthors(List.of("a1"));
 
-        Publication pOut = new Publication();
+        ScholardexPublicationView pOut = new ScholardexPublicationView();
         pOut.setId("p-out");
         pOut.setCoverDate("2025-03-01");
         pOut.setForum("f1");
@@ -431,8 +431,7 @@ class UserReportFacadeTest {
         when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(pIn, pOut));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
-        when(woSExtractor.findPublicationWosId(any(Publication.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(cnfiSScoringService2025.getReport(any(Publication.class), eq(allDomain))).thenReturn(report);
+        when(cnfiSScoringService2025.getReport(any(ScoringPublicationReadModel.class), eq(allDomain))).thenReturn(report);
         when(scholardexProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false)))
                 .thenReturn(new byte[]{7});
@@ -440,7 +439,7 @@ class UserReportFacadeTest {
         var result = facade.buildUserCnfisWorkbookExport("user@uvt.ro", 2021, 2024);
 
         assertEquals(UserWorkbookExportStatus.OK, result.status());
-        ArgumentCaptor<List<Publication>> publicationCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<ScoringPublicationReadModel>> publicationCaptor = ArgumentCaptor.forClass(List.class);
         ArgumentCaptor<List<CNFISReport2025>> reportCaptor = ArgumentCaptor.forClass(List.class);
         verify(exportService).generateCNFISReportWorkbook(publicationCaptor.capture(), reportCaptor.capture(), anyMap(), eq(List.of("a1")), eq(false));
         assertEquals(1, publicationCaptor.getValue().size());
@@ -458,13 +457,13 @@ class UserReportFacadeTest {
         researcher.setId("r1");
         researcher.setScopusId(List.of("a1"));
 
-        Publication valid = new Publication();
+        ScholardexPublicationView valid = new ScholardexPublicationView();
         valid.setId("p-valid");
         valid.setCoverDate("2022-01-01");
         valid.setForum("f1");
         valid.setAuthors(List.of("a1"));
 
-        Publication invalid = new Publication();
+        ScholardexPublicationView invalid = new ScholardexPublicationView();
         invalid.setId("p-invalid");
         invalid.setCoverDate("20AB-99-99");
         invalid.setForum("f1");
@@ -478,8 +477,7 @@ class UserReportFacadeTest {
         when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(valid, invalid));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
-        when(woSExtractor.findPublicationWosId(any(Publication.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(cnfiSScoringService2025.getReport(any(Publication.class), eq(allDomain))).thenReturn(report);
+        when(cnfiSScoringService2025.getReport(any(ScoringPublicationReadModel.class), eq(allDomain))).thenReturn(report);
         when(scholardexProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false)))
                 .thenReturn(new byte[]{7});
@@ -487,10 +485,10 @@ class UserReportFacadeTest {
         var result = facade.buildUserCnfisWorkbookExport("user@uvt.ro", 2021, 2024);
 
         assertEquals(UserWorkbookExportStatus.OK, result.status());
-        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq(valid), any(), any(), any());
+        verify(publicationEnrichmentLinkerService).linkWosEnrichment(eq("p-valid"), any(), any(), any(), any(), any(), any());
         verify(scholardexProjectionReadService, never()).savePublicationView(any());
 
-        ArgumentCaptor<List<Publication>> publicationCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<ScoringPublicationReadModel>> publicationCaptor = ArgumentCaptor.forClass(List.class);
         verify(exportService).generateCNFISReportWorkbook(publicationCaptor.capture(), anyList(), anyMap(), eq(List.of("a1")), eq(false));
         assertEquals(1, publicationCaptor.getValue().size());
         assertEquals("p-valid", publicationCaptor.getValue().getFirst().getId());
@@ -520,27 +518,27 @@ class UserReportFacadeTest {
         anyInstitution.setName("ANY");
         report.setIndividualAffiliation(anyInstitution);
 
-        Author author = new Author();
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
         author.setName("Author One");
 
-        Publication cited = new Publication();
+        ScholardexPublicationView cited = new ScholardexPublicationView();
         cited.setId("p1");
         cited.setTitle("Root Publication");
         cited.setAuthors(List.of("a1"));
         cited.setForum("f-root");
 
-        List<Citation> citations = new java.util.ArrayList<>();
-        List<Publication> citingPublications = new java.util.ArrayList<>();
+        List<ScholardexCitationView> citations = new java.util.ArrayList<>();
+        List<ScholardexPublicationView> citingPublications = new java.util.ArrayList<>();
         List<String> citingIds = new java.util.ArrayList<>();
         for (int i = 1; i <= 12; i++) {
             String citingId = "cp-" + i;
-            Citation citation = new Citation();
+            ScholardexCitationView citation = new ScholardexCitationView();
             citation.setCitedId("p1");
             citation.setCitingId(citingId);
             citations.add(citation);
 
-            Publication citing = new Publication();
+            ScholardexPublicationView citing = new ScholardexPublicationView();
             citing.setId(citingId);
             citing.setTitle("Citing " + i);
             citing.setAuthors(List.of("a" + (i + 1)));
@@ -560,13 +558,13 @@ class UserReportFacadeTest {
         when(scholardexProjectionReadService.findAllPublicationsByIdIn(citingIds)).thenReturn(citingPublications);
         when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of());
         when(scientificProductionService.precomputeCitationBaseScores(anyList(), eq(indicator))).thenReturn(Map.of());
-        when(scientificProductionService.calculateScientificImpactScore(any(Publication.class), anyList(), eq(indicator), anyMap()))
+        when(scientificProductionService.calculateScientificImpactScore(any(ScoringPublicationReadModel.class), anyList(), eq(indicator), anyMap()))
                 .thenAnswer(invocation -> {
                     @SuppressWarnings("unchecked")
-                    List<Publication> currentCiting = invocation.getArgument(1);
+                    List<ScoringPublicationReadModel> currentCiting = invocation.getArgument(1);
                     Map<String, Score> scores = new java.util.LinkedHashMap<>();
                     int value = 1;
-                    for (Publication publication : currentCiting) {
+                    for (ScoringPublicationReadModel publication : currentCiting) {
                         Score score = new Score();
                         score.setAuthorScore((double) value++);
                         score.setScore(1.0);
@@ -591,7 +589,7 @@ class UserReportFacadeTest {
         assertNotNull(scores.get("Root Publication").get("total"));
         assertEquals(75.0, scores.get("Root Publication").get("total").getAuthorScore());
         @SuppressWarnings("unchecked")
-        List<Publication> visiblePublications = (List<Publication>) applyView.attributes().get("publications");
+        List<ScholardexPublicationView> visiblePublications = (List<ScholardexPublicationView>) applyView.attributes().get("publications");
         assertEquals(List.of(cited), visiblePublications);
         assertEquals(75.0, reportComputationOpt.orElseThrow().indicatorScoresByIndicatorId().get("ind-cit"));
     }

@@ -5,11 +5,11 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Affiliation;
-import ro.uvt.pokedex.core.model.scopus.Citation;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.service.application.model.ScholardexCitationsView;
 import ro.uvt.pokedex.core.service.application.model.ScholardexPublicationSearchView;
 
@@ -36,7 +36,7 @@ public class PostgresScholardexAdminReadPort {
 
     public ScholardexPublicationSearchView buildPublicationSearchView(String paperTitle) {
         String normalizedTitle = paperTitle == null ? "" : paperTitle.trim();
-        List<Publication> publications;
+        List<ScholardexPublicationView> publications;
         if (normalizedTitle.isBlank()) {
             publications = namedParameterJdbcTemplate.query(
                     "SELECT * FROM reporting_read.scholardex_publication_view",
@@ -54,8 +54,8 @@ public class PostgresScholardexAdminReadPort {
 
         Set<String> authorKeys = new HashSet<>();
         publications.forEach(publication -> authorKeys.addAll(publication.getAuthors()));
-        Map<String, Author> authorMap = findAuthorsByIdIn(authorKeys).stream()
-                .collect(Collectors.toMap(Author::getId, author -> author));
+        Map<String, ScholardexAuthorView> authorMap = findAuthorsByIdIn(authorKeys).stream()
+                .collect(Collectors.toMap(ScholardexAuthorView::getId, author -> author));
 
         return new ScholardexPublicationSearchView(publications, authorMap);
     }
@@ -65,24 +65,24 @@ public class PostgresScholardexAdminReadPort {
             return Optional.empty();
         }
 
-        Optional<Publication> publicationOpt = findPublicationByAnyId(publicationId.trim());
+        Optional<ScholardexPublicationView> publicationOpt = findPublicationByAnyId(publicationId.trim());
         if (publicationOpt.isEmpty()) {
             return Optional.empty();
         }
-        Publication publication = publicationOpt.get();
+        ScholardexPublicationView publication = publicationOpt.get();
 
-        List<Citation> allByCited = namedParameterJdbcTemplate.query(
+        List<ScholardexCitationView> allByCited = namedParameterJdbcTemplate.query(
                 "SELECT cited_publication_id, citing_publication_id FROM reporting_read.mv_scholardex_citation_context WHERE cited_publication_id = :citedId",
                 new MapSqlParameterSource("citedId", publication.getId()),
                 (rs, rowNum) -> {
-                    Citation citation = new Citation();
+                    ScholardexCitationView citation = new ScholardexCitationView();
                     citation.setCitedId(rs.getString("cited_publication_id"));
                     citation.setCitingId(rs.getString("citing_publication_id"));
                     return citation;
                 }
         );
 
-        List<Publication> citations = namedParameterJdbcTemplate.query(
+        List<ScholardexPublicationView> citations = namedParameterJdbcTemplate.query(
                 """
                         SELECT citing_publication_id, citing_title, citing_cover_date, citing_forum_id,
                                citing_author_ids, citing_eid, citing_wos_id, citing_google_scholar_id
@@ -91,7 +91,7 @@ public class PostgresScholardexAdminReadPort {
                         """,
                 new MapSqlParameterSource("citedId", publication.getId()),
                 (rs, rowNum) -> {
-                    Publication citing = new Publication();
+                    ScholardexPublicationView citing = new ScholardexPublicationView();
                     citing.setId(rs.getString("citing_publication_id"));
                     citing.setTitle(rs.getString("citing_title"));
                     citing.setCoverDate(rs.getString("citing_cover_date"));
@@ -113,12 +113,12 @@ public class PostgresScholardexAdminReadPort {
             }
         });
 
-        Map<String, Author> authorMap = findAuthorsByIdIn(authorKeys).stream()
-                .collect(Collectors.toMap(Author::getId, author -> author, (left, right) -> left, HashMap::new));
-        Map<String, Forum> forumMap = findForumsByIdIn(forumKeys).stream()
-                .collect(Collectors.toMap(Forum::getId, forum -> forum, (left, right) -> left, HashMap::new));
+        Map<String, ScholardexAuthorView> authorMap = findAuthorsByIdIn(authorKeys).stream()
+                .collect(Collectors.toMap(ScholardexAuthorView::getId, author -> author, (left, right) -> left, HashMap::new));
+        Map<String, ScholardexForumView> forumMap = findForumsByIdIn(forumKeys).stream()
+                .collect(Collectors.toMap(ScholardexForumView::getId, forum -> forum, (left, right) -> left, HashMap::new));
 
-        Forum publicationForum = findForumById(publication.getForum()).orElse(null);
+        ScholardexForumView publicationForum = findForumById(publication.getForum()).orElse(null);
 
         return Optional.of(new ScholardexCitationsView(
                 publication,
@@ -129,8 +129,8 @@ public class PostgresScholardexAdminReadPort {
         ));
     }
 
-    private Optional<Publication> findPublicationByAnyId(String key) {
-        List<Publication> publications = namedParameterJdbcTemplate.query(
+    private Optional<ScholardexPublicationView> findPublicationByAnyId(String key) {
+        List<ScholardexPublicationView> publications = namedParameterJdbcTemplate.query(
                 """
                         SELECT *
                         FROM reporting_read.scholardex_publication_view
@@ -144,11 +144,11 @@ public class PostgresScholardexAdminReadPort {
         return publications.stream().findFirst();
     }
 
-    private List<Publication> findPublicationsByIdIn(Collection<String> ids) {
+    private List<ScholardexPublicationView> findPublicationsByIdIn(Collection<String> ids) {
         if (ids.isEmpty()) {
             return List.of();
         }
-        List<Publication> publications = namedParameterJdbcTemplate.query(
+        List<ScholardexPublicationView> publications = namedParameterJdbcTemplate.query(
                 "SELECT * FROM reporting_read.scholardex_publication_view WHERE id IN (:ids)",
                 new MapSqlParameterSource("ids", ids),
                 this::mapPublication
@@ -157,7 +157,7 @@ public class PostgresScholardexAdminReadPort {
         return publications;
     }
 
-    private List<Author> findAuthorsByIdIn(Collection<String> authorIds) {
+    private List<ScholardexAuthorView> findAuthorsByIdIn(Collection<String> authorIds) {
         if (authorIds.isEmpty()) {
             return List.of();
         }
@@ -165,23 +165,24 @@ public class PostgresScholardexAdminReadPort {
                 "SELECT id, name, affiliation_ids FROM reporting_read.scholardex_author_view WHERE id IN (:ids)",
                 new MapSqlParameterSource("ids", authorIds),
                 (rs, rowNum) -> {
-                    Author author = new Author();
+                    ScholardexAuthorView author = new ScholardexAuthorView();
                     author.setId(rs.getString("id"));
                     author.setName(rs.getString("name"));
-                    List<Affiliation> affiliations = toStringList(rs.getArray("affiliation_ids")).stream()
+                    List<ScholardexAffiliationView> affiliations = toStringList(rs.getArray("affiliation_ids")).stream()
                             .map(affiliationId -> {
-                                Affiliation affiliation = new Affiliation();
+                                ScholardexAffiliationView affiliation = new ScholardexAffiliationView();
                                 affiliation.setAfid(affiliationId);
                                 return affiliation;
                             })
                             .toList();
+                    author.setAffiliationIds(affiliations.stream().map(ScholardexAffiliationView::getAfid).toList());
                     author.setAffiliations(affiliations);
                     return author;
                 }
         );
     }
 
-    private List<Forum> findForumsByIdIn(Collection<String> forumIds) {
+    private List<ScholardexForumView> findForumsByIdIn(Collection<String> forumIds) {
         if (forumIds.isEmpty()) {
             return List.of();
         }
@@ -192,11 +193,11 @@ public class PostgresScholardexAdminReadPort {
         );
     }
 
-    private Optional<Forum> findForumById(String forumId) {
+    private Optional<ScholardexForumView> findForumById(String forumId) {
         if (forumId == null || forumId.isBlank()) {
             return Optional.empty();
         }
-        List<Forum> forums = namedParameterJdbcTemplate.query(
+        List<ScholardexForumView> forums = namedParameterJdbcTemplate.query(
                 "SELECT id, publication_name, issn, e_issn, aggregation_type FROM reporting_read.scholardex_forum_view WHERE id = :id",
                 new MapSqlParameterSource("id", forumId),
                 this::mapForum
@@ -204,8 +205,8 @@ public class PostgresScholardexAdminReadPort {
         return forums.stream().findFirst();
     }
 
-    private Publication mapPublication(ResultSet rs, int ignored) throws SQLException {
-        Publication publication = new Publication();
+    private ScholardexPublicationView mapPublication(ResultSet rs, int ignored) throws SQLException {
+        ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setId(rs.getString("id"));
         publication.setDoi(rs.getString("doi"));
         publication.setEid(rs.getString("eid"));
@@ -233,14 +234,14 @@ public class PostgresScholardexAdminReadPort {
         publication.setAuthors(toStringList(rs.getArray("author_ids")));
         publication.setAffiliations(toStringList(rs.getArray("affiliation_ids")));
         publication.setForum(rs.getString("forum_id"));
-        publication.setCitedBy(new LinkedHashSet<>(toStringList(rs.getArray("citing_publication_ids"))));
+        publication.setCitingPublicationIds(new LinkedHashSet<>(toStringList(rs.getArray("citing_publication_ids"))));
         Integer citedByCount = rs.getObject("cited_by_count", Integer.class);
         publication.setCitedbyCount(citedByCount == null ? 0 : citedByCount);
         return publication;
     }
 
-    private Forum mapForum(ResultSet rs, int ignored) throws SQLException {
-        Forum forum = new Forum();
+    private ScholardexForumView mapForum(ResultSet rs, int ignored) throws SQLException {
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId(rs.getString("id"));
         forum.setPublicationName(rs.getString("publication_name"));
         forum.setIssn(rs.getString("issn"));

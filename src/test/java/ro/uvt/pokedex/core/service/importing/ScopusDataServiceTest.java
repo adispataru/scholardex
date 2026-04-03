@@ -1,18 +1,14 @@
 package ro.uvt.pokedex.core.service.importing;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DuplicateKeyException;
 import org.mockito.ArgumentCaptor;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEvent;
-import ro.uvt.pokedex.core.repository.scopus.*;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusImportEventRepository;
-import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusImportEventIngestionService;
-import ro.uvt.pokedex.core.service.integration.IntegrationException;
 
 import java.util.List;
 
@@ -20,10 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -33,37 +25,10 @@ class ScopusDataServiceTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ScopusImportEventIngestionService importEventIngestionService = mock(ScopusImportEventIngestionService.class);
     private final ScopusDataService service = new ScopusDataService(
-            mock(ScopusPublicationRepository.class),
-            mock(ScopusCitationRepository.class),
-            mock(ScopusAffiliationRepository.class),
-            mock(ScopusAuthorRepository.class),
-            mock(ScopusForumRepository.class),
-            mock(ScopusFundingRepository.class),
-            mock(CacheService.class),
             mock(ScopusImportEventRepository.class),
             importEventIngestionService,
             mock(ScopusCanonicalMaterializationService.class)
     );
-
-    @Test
-    void createPublicationFromJsonThrowsOnMissingRequiredEid() {
-        ObjectNode node = objectMapper.createObjectNode();
-        node.put("title", "Test");
-
-        assertThrows(IntegrationException.class, () -> service.createPublicationFromJson(node));
-    }
-
-    @Test
-    void createPublicationFromJsonParsesRequiredFields() {
-        ObjectNode node = objectMapper.createObjectNode();
-        node.put("eid", "2-s2.0-123");
-        node.put("title", "Test title");
-        node.put("author_count", 1);
-        node.put("citedby_count", 0);
-        node.put("openaccess", 0);
-
-        assertEquals("2-s2.0-123", service.createPublicationFromJson(node).getEid());
-    }
 
     @Test
     void importUploadedScopusDataSyncUsesUploadSourceLabel() {
@@ -202,13 +167,6 @@ class ScopusDataServiceTest {
 
     private ScopusDataService serviceWithRealIngestion(ScopusImportEventRepository repository) {
         return new ScopusDataService(
-                mock(ScopusPublicationRepository.class),
-                mock(ScopusCitationRepository.class),
-                mock(ScopusAffiliationRepository.class),
-                mock(ScopusAuthorRepository.class),
-                mock(ScopusForumRepository.class),
-                mock(ScopusFundingRepository.class),
-                mock(CacheService.class),
                 repository,
                 new ScopusImportEventIngestionService(repository, objectMapper, null),
                 mock(ScopusCanonicalMaterializationService.class)

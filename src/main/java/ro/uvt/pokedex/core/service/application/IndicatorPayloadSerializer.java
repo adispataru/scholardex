@@ -7,6 +7,16 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import org.springframework.stereotype.Component;
 import ro.uvt.pokedex.core.service.reporting.Score;
 
+import java.beans.IntrospectionException;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
+import java.lang.reflect.Array;
+import java.lang.reflect.Method;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -14,7 +24,6 @@ import java.util.Map;
 
 @Component
 public class IndicatorPayloadSerializer {
-
     private final ObjectMapper objectMapper;
 
     public IndicatorPayloadSerializer(ObjectMapper objectMapper) {
@@ -26,7 +35,7 @@ public class IndicatorPayloadSerializer {
 
     public String serialize(Map<String, Object> payload) {
         try {
-            return objectMapper.writeValueAsString(payload);
+            return objectMapper.writeValueAsString(sanitizePayload(payload));
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException("Failed to serialize indicator payload.", ex);
         }
@@ -44,6 +53,67 @@ public class IndicatorPayloadSerializer {
     @SuppressWarnings("unchecked")
     private Map<String, Object> normalizePayload(Map<String, Object> payload) {
         return (Map<String, Object>) normalizeNode(payload);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> sanitizePayload(Map<String, Object> payload) {
+        return (Map<String, Object>) sanitizeNode(payload);
+    }
+
+    private Object sanitizeNode(Object node) {
+        if (node == null
+                || node instanceof String
+                || node instanceof Number
+                || node instanceof Boolean) {
+            return node;
+        }
+        if (node instanceof Enum<?> enumValue) {
+            return enumValue.name();
+        }
+        if (node instanceof Instant
+                || node instanceof LocalDate
+                || node instanceof LocalDateTime
+                || node instanceof OffsetDateTime
+                || node instanceof ZonedDateTime) {
+            return String.valueOf(node);
+        }
+        if (node instanceof Map<?, ?> rawMap) {
+            Map<String, Object> sanitized = new LinkedHashMap<>();
+            rawMap.forEach((key, value) -> sanitized.put(String.valueOf(key), sanitizeNode(value)));
+            return sanitized;
+        }
+        if (node instanceof Iterable<?> iterable) {
+            List<Object> sanitized = new ArrayList<>();
+            iterable.forEach(item -> sanitized.add(sanitizeNode(item)));
+            return sanitized;
+        }
+        if (node.getClass().isArray()) {
+            int length = Array.getLength(node);
+            List<Object> sanitized = new ArrayList<>(length);
+            for (int index = 0; index < length; index++) {
+                sanitized.add(sanitizeNode(Array.get(node, index)));
+            }
+            return sanitized;
+        }
+        return sanitizeBean(node);
+    }
+
+    private Object sanitizeBean(Object node) {
+        try {
+            Map<String, Object> sanitized = new LinkedHashMap<>();
+            for (PropertyDescriptor property : Introspector.getBeanInfo(node.getClass(), Object.class).getPropertyDescriptors()) {
+                Method reader = property.getReadMethod();
+                if (reader == null) {
+                    continue;
+                }
+                sanitized.put(property.getName(), sanitizeNode(reader.invoke(node)));
+            }
+            return sanitized;
+        } catch (IntrospectionException ex) {
+            return String.valueOf(node);
+        } catch (ReflectiveOperationException ex) {
+            throw new IllegalStateException("Failed to sanitize indicator payload bean.", ex);
+        }
     }
 
     @SuppressWarnings("unchecked")

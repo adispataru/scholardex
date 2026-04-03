@@ -3,7 +3,7 @@ package ro.uvt.pokedex.core.service.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.WoSRanking;
-import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.service.application.model.ScholardexForumDetailViewModel;
 
 import java.util.Locale;
@@ -22,7 +22,7 @@ public class ScholardexForumDetailService {
                 .map(this::toViewModel);
     }
 
-    private ScholardexForumDetailViewModel toViewModel(Forum forum) {
+    private ScholardexForumDetailViewModel toViewModel(ScholardexForumView forum) {
         ScholardexForumDetailViewModel.ForumType forumType = classifyForumType(forum.getAggregationType());
         WoSRanking wosRanking = null;
         if (forumType == ScholardexForumDetailViewModel.ForumType.JOURNAL) {

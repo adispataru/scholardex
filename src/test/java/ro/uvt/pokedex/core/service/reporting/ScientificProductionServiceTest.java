@@ -7,14 +7,16 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationDblpEvidence;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationDblpEvidenceRepository;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -39,10 +41,10 @@ class ScientificProductionServiceTest {
     void cachedBasePathMatchesLegacyPathForCitationsAndExcludeSelf() {
         Indicator citations = indicator(Indicator.Type.CITATIONS, "S");
         Indicator citationsExcludeSelf = indicator(Indicator.Type.CITATIONS_EXCLUDE_SELF, "S");
-        Publication cited = publication("cited-1", List.of("a1", "a2"));
-        Publication citingA = publication("cp-1", List.of("b1"));
-        Publication citingB = publication("cp-2", List.of("b2"));
-        List<Publication> citingPublications = List.of(citingA, citingB);
+        ScoringPublication cited = publication("cited-1", null, null, null, null, "cited-1", List.of("a1", "a2"));
+        ScoringPublication citingA = publication("cp-1", null, null, null, null, "cp-1", List.of("b1"));
+        ScoringPublication citingB = publication("cp-2", null, null, null, null, "cp-2", List.of("b2"));
+        List<ScoringPublicationReadModel> citingPublications = List.of(citingA, citingB);
 
         when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
         when(scoringService.getScore(citingA, citations)).thenReturn(score(2.0));
@@ -78,8 +80,8 @@ class ScientificProductionServiceTest {
     @Test
     void cachedBasePathRespectsFormulaUsingAuthorCountN() {
         Indicator indicator = indicator(Indicator.Type.CITATIONS, "S * N");
-        Publication cited = publication("cited-1", List.of("a1", "a2", "a3"));
-        Publication citing = publication("cp-1", List.of("b1"));
+        ScoringPublication cited = publication("cited-1", null, null, null, null, "cited-1", List.of("a1", "a2", "a3"));
+        ScoringPublication citing = publication("cp-1", null, null, null, null, "cp-1", List.of("b1"));
 
         when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
         when(scoringService.getScore(citing, indicator)).thenReturn(score(2.0));
@@ -99,9 +101,9 @@ class ScientificProductionServiceTest {
     @Test
     void cachedBaseScoresAreNotMutatedAcrossCalls() {
         Indicator indicator = indicator(Indicator.Type.CITATIONS, "S * N");
-        Publication citedWithTwoAuthors = publication("cited-1", List.of("a1", "a2"));
-        Publication citedWithFourAuthors = publication("cited-2", List.of("a1", "a2", "a3", "a4"));
-        Publication citing = publication("cp-1", List.of("b1"));
+        ScoringPublication citedWithTwoAuthors = publication("cited-1", null, null, null, null, "cited-1", List.of("a1", "a2"));
+        ScoringPublication citedWithFourAuthors = publication("cited-2", null, null, null, null, "cited-2", List.of("a1", "a2", "a3", "a4"));
+        ScoringPublication citing = publication("cp-1", null, null, null, null, "cp-1", List.of("b1"));
 
         when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
         when(scoringService.getScore(citing, indicator)).thenReturn(score(2.0));
@@ -134,13 +136,11 @@ class ScientificProductionServiceTest {
                 lookupPort
         );
 
-        Publication publication = publication("pub-1", List.of("a1", "a2", "a3"));
-        publication.setForum("forum-1");
-        publication.setCoverDate("2016-07-18");
-        publication.setScopusSubtype("cp");
-        publication.setTitle("Reusing Resource Coalitions for Efficient Scheduling on the Intercloud");
+        ScoringPublication publication = publication(
+                "pub-1", "forum-1", "2016-07-18", null, "cp",
+                "Reusing Resource Coalitions for Efficient Scheduling on the Intercloud", List.of("a1", "a2", "a3"));
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Proceedings - 2016 16th IEEE/ACM International Symposium on Cluster, Cloud, and Grid Computing, CCGrid 2016");
         when(lookupPort.getForum("forum-1")).thenReturn(forum);
         when(lookupPort.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -188,13 +188,11 @@ class ScientificProductionServiceTest {
                 lookupPort
         );
 
-        Publication publication = publication("pub-icnp-1", List.of("a1"));
-        publication.setForum("forum-1");
-        publication.setCoverDate("2023-01-01");
-        publication.setScopusSubtype("cp");
-        publication.setTitle("Architecture for Confidential Digital Asset Transfer on Blockchain Through Obfuscation");
+        ScoringPublication publication = publication(
+                "pub-icnp-1", "forum-1", "2023-01-01", null, "cp",
+                "Architecture for Confidential Digital Asset Transfer on Blockchain Through Obfuscation", List.of("a1"));
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Proceedings International Conference on Network Protocols Icnp");
         when(lookupPort.getForum("forum-1")).thenReturn(forum);
         when(lookupPort.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -235,13 +233,11 @@ class ScientificProductionServiceTest {
                 lookupPort
         );
 
-        Publication publication = publication("pub-wopp-1", List.of("a1"));
-        publication.setForum("forum-1");
-        publication.setCoverDate("2023-01-01");
-        publication.setScopusSubtype("cp");
-        publication.setTitle("Parallel Workloads in Workshop Proceedings");
+        ScoringPublication publication = publication(
+                "pub-wopp-1", "forum-1", "2023-01-01", null, "cp",
+                "Parallel Workloads in Workshop Proceedings", List.of("a1"));
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Proceedings of the International Conference on Parallel Processing Workshops");
         when(lookupPort.getForum("forum-1")).thenReturn(forum);
         when(lookupPort.getConferenceRankingsByNormalizedTitle("proceedings of the international conference on parallel processing workshops"))
@@ -284,13 +280,11 @@ class ScientificProductionServiceTest {
                 lookupPort
         );
 
-        Publication publication = publication("pub-percom-ws-1", List.of("a1"));
-        publication.setForum("forum-1");
-        publication.setCoverDate("2023-01-01");
-        publication.setScopusSubtype("cp");
-        publication.setTitle("On the Use of Deep Neural Networks for Security Vulnerabilities Detection in Smart Contracts");
+        ScoringPublication publication = publication(
+                "pub-percom-ws-1", "forum-1", "2023-01-01", null, "cp",
+                "On the Use of Deep Neural Networks for Security Vulnerabilities Detection in Smart Contracts", List.of("a1"));
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("2023 IEEE International Conference on Pervasive Computing and Communications Workshops and Other Affiliated Events Percom Workshops 2023");
         when(lookupPort.getForum("forum-1")).thenReturn(forum);
         when(lookupPort.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -323,14 +317,11 @@ class ScientificProductionServiceTest {
         ComputerScienceConferenceScoringService conferenceScoringService =
                 new ComputerScienceConferenceScoringService(lookupPort, dblpEvidenceRepository);
 
-        Publication publication = publication("pub-lncs-1", List.of("a1", "a2", "a3"));
-        publication.setForum("forum-1");
-        publication.setCoverDate("2024-07-18");
-        publication.setScopusSubtype("ch");
-        publication.setSubtype("ch");
-        publication.setTitle("A Chapter Hidden In LNCS");
+        ScoringPublication publication = publication(
+                "pub-lncs-1", "forum-1", "2024-07-18", "ch", "ch",
+                "A Chapter Hidden In LNCS", List.of("a1", "a2", "a3"));
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Lecture Notes in Computer Science");
         when(lookupPort.getForum("forum-1")).thenReturn(forum);
         when(lookupPort.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -375,14 +366,11 @@ class ScientificProductionServiceTest {
         ComputerScienceConferenceScoringService conferenceScoringService =
                 new ComputerScienceConferenceScoringService(lookupPort, dblpEvidenceRepository);
 
-        Publication publication = publication("pub-aina-1", List.of("a1"));
-        publication.setForum("forum-1");
-        publication.setCoverDate("2025-01-01");
-        publication.setScopusSubtype("ch");
-        publication.setSubtype("ch");
-        publication.setTitle("AINA LNDECT Chapter");
+        ScoringPublication publication = publication(
+                "pub-aina-1", "forum-1", "2025-01-01", "ch", "ch",
+                "AINA LNDECT Chapter", List.of("a1"));
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setPublicationName("Lecture Notes on Data Engineering and Communications Technologies");
         when(lookupPort.getForum("forum-1")).thenReturn(forum);
         when(lookupPort.getConferenceRankings(anyString())).thenReturn(List.of());
@@ -424,12 +412,28 @@ class ScientificProductionServiceTest {
         return indicator;
     }
 
-    private Publication publication(String id, List<String> authors) {
-        Publication publication = new Publication();
-        publication.setId(id);
-        publication.setTitle(id);
-        publication.setAuthors(authors);
-        return publication;
+    private ScoringPublication publication(String id,
+                                           String forumId,
+                                           String coverDate,
+                                           String subtype,
+                                           String scopusSubtype,
+                                           String title,
+                                           List<String> authors) {
+        return new ScoringPublication(
+                id,
+                "eid-" + id,
+                forumId,
+                coverDate,
+                subtype,
+                scopusSubtype,
+                authors,
+                authors.size(),
+                "10.1000/" + id,
+                null,
+                title,
+                0,
+                Set.of()
+        );
     }
 
     private Score score(double value) {

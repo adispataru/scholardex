@@ -6,9 +6,9 @@ import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.*;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupIndividualReportRunRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
@@ -59,13 +59,13 @@ public class GroupReportFacade {
             lookupKeys.addAll(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
         }
         List<String> authorIds = scholardexProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
-                .map(Author::getId)
+                .map(ScholardexAuthorView::getId)
                 .distinct()
                 .toList();
-        Map<String, Publication> publicationsById = new LinkedHashMap<>();
+        Map<String, ScholardexPublicationView> publicationsById = new LinkedHashMap<>();
         scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds)
                 .forEach(publication -> publicationsById.putIfAbsent(publication.getId(), publication));
-        List<Publication> publications = new ArrayList<>(publicationsById.values());
+        List<ScholardexPublicationView> publications = new ArrayList<>(publicationsById.values());
         PublicationOrderingSupport.sortPublicationsInPlace(publications);
 
         Set<String> authorKeys = new HashSet<>();
@@ -75,15 +75,15 @@ public class GroupReportFacade {
             forumKeys.add(p.getForum());
         });
 
-        List<Author> byIdIn = scholardexProjectionReadService.findAuthorsByIdIn(authorKeys);
-        Map<String, Author> authorMap = new HashMap<>();
+        List<ScholardexAuthorView> byIdIn = scholardexProjectionReadService.findAuthorsByIdIn(authorKeys);
+        Map<String, ScholardexAuthorView> authorMap = new HashMap<>();
         byIdIn.forEach(a -> authorMap.put(a.getId(), a));
 
-        Map<String, Forum> forumMap = new HashMap<>();
-        List<Forum> forums = scholardexProjectionReadService.findForumsByIdIn(forumKeys);
+        Map<String, ScholardexForumView> forumMap = new HashMap<>();
+        List<ScholardexForumView> forums = scholardexProjectionReadService.findForumsByIdIn(forumKeys);
         forums.forEach(f -> forumMap.put(f.getId(), f));
 
-        Map<Integer, List<Publication>> publicationsByYear = publications.stream()
+        Map<Integer, List<ScholardexPublicationView>> publicationsByYear = publications.stream()
                 .map(publication -> new AbstractMap.SimpleEntry<>(
                         publication,
                         PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)))
@@ -131,21 +131,21 @@ public class GroupReportFacade {
         return buckets;
     }
 
-    private String classifyVenueBucket(Publication publication, Forum forum) {
-        if (PublicationSubtypeSupport.isSubtype(publication, "ar", "re")) {
+    private String classifyVenueBucket(ScholardexPublicationView publication, ScholardexForumView forum) {
+        if (PublicationSubtypeSupport.isSubtype(publication.toScoringPublication(), "ar", "re")) {
             return classifyJournalBucket(publication);
         }
         if (isLncsBookChapter(publication, forum)) {
             return classifyLncsBookChapterBucket(publication, forum);
         }
-        if (PublicationSubtypeSupport.isSubtype(publication, "cp")) {
+        if (PublicationSubtypeSupport.isSubtype(publication.toScoringPublication(), "cp")) {
             return classifyConferenceBucket(publication);
         }
         return "Unranked";
     }
 
-    private boolean isLncsBookChapter(Publication publication, Forum forum) {
-        if (!PublicationSubtypeSupport.isSubtype(publication, "ch")) {
+    private boolean isLncsBookChapter(ScholardexPublicationView publication, ScholardexForumView forum) {
+        if (!PublicationSubtypeSupport.isSubtype(publication.toScoringPublication(), "ch")) {
             return false;
         }
         String publicationName = forum == null || forum.getPublicationName() == null
@@ -155,10 +155,14 @@ public class GroupReportFacade {
                 || publicationName.contains("Lecture Notes on ");
     }
 
-    private String classifyLncsBookChapterBucket(Publication publication, Forum forum) {
+    private String classifyLncsBookChapterBucket(ScholardexPublicationView publication, ScholardexForumView forum) {
         int year = PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)
                 .orElse(2023);
-        Optional<Score> conferenceScore = computerScienceConferenceScoringService.tryResolveCoreScore(publication, forum, year);
+        Optional<Score> conferenceScore = computerScienceConferenceScoringService.tryResolveCoreScore(
+                publication.toScoringPublication(),
+                forum,
+                year
+        );
         if (conferenceScore.isPresent()) {
             Score score = conferenceScore.get();
             if (score.getCategory() != null && !score.getCategory().isBlank()) {
@@ -168,10 +172,10 @@ public class GroupReportFacade {
         return "BOOK_LNCS";
     }
 
-    private String classifyJournalBucket(Publication publication) {
+    private String classifyJournalBucket(ScholardexPublicationView publication) {
         Domain domain = new Domain();
         domain.setName("ALL");
-        CNFISReport2025 report = cnfisScoringService2025.getReport(publication, domain);
+        CNFISReport2025 report = cnfisScoringService2025.getReport(publication.toScoringPublication(), domain);
         if (report.isIsiQ1()) {
             return "Q1";
         }
@@ -187,8 +191,8 @@ public class GroupReportFacade {
         return "Unranked";
     }
 
-    private String classifyConferenceBucket(Publication publication) {
-        Score score = computerScienceConferenceScoringService.getScore(publication, venueClassificationIndicator());
+    private String classifyConferenceBucket(ScholardexPublicationView publication) {
+        Score score = computerScienceConferenceScoringService.getScore(publication.toScoringPublication(), venueClassificationIndicator());
         if ("LNCS".equalsIgnoreCase(score.getQuarter())) {
             return "LNCS";
         }
@@ -309,7 +313,7 @@ public class GroupReportFacade {
 
         for (Researcher researcher : researchers) {
             long authorLookupStartNanos = System.nanoTime();
-            List<Author> authors = scholardexProjectionReadService.findAuthorsByIdIn(
+            List<ScholardexAuthorView> authors = scholardexProjectionReadService.findAuthorsByIdIn(
                     researcherAuthorLookupService.resolveAuthorLookupKeys(researcher)
             );
             timings.authorLookupNanos += (System.nanoTime() - authorLookupStartNanos);
@@ -341,8 +345,8 @@ public class GroupReportFacade {
             timings.citationIndicators += citationIndicatorCount;
 
             long publicationLoadStartNanos = System.nanoTime();
-            List<String> authorIds = authors.stream().map(Author::getId).toList();
-            List<Publication> publications = scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
+            List<String> authorIds = authors.stream().map(ScholardexAuthorView::getId).toList();
+            List<ScholardexPublicationView> publications = scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
             if (report.getIndividualAffiliation() != null
                     && !"ANY".equals(report.getIndividualAffiliation().getName())) {
                 publications = publications.stream()
@@ -353,7 +357,7 @@ public class GroupReportFacade {
             timings.publicationLoadNanos += (System.nanoTime() - publicationLoadStartNanos);
             timings.publicationsProcessed += publications.size();
             Set<String> researcherAuthorIds = authors.stream()
-                    .map(Author::getId)
+                    .map(ScholardexAuthorView::getId)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toSet());
 
@@ -485,7 +489,7 @@ public class GroupReportFacade {
         return new GroupIndividualReportViewModel(null, attrs);
     }
 
-    private double calculatePublicationScore(Indicator indicator, List<Author> authors, List<Publication> publications) {
+    private double calculatePublicationScore(Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications) {
         return ReportingComputationSupport.calculatePublicationScore(indicator, authors, publications, scientificProductionService);
     }
 

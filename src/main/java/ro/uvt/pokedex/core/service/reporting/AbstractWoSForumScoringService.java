@@ -3,7 +3,7 @@ package ro.uvt.pokedex.core.service.reporting;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.reporting.Domain;
-import ro.uvt.pokedex.core.model.scopus.Forum;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,7 +22,7 @@ public abstract class AbstractWoSForumScoringService extends AbstractForumScorin
      */
     protected void computeScores(
             Domain domain,
-            Forum forum,
+            ScholardexForumView forum,
             List<Integer> allowedYears,
             ScoreResult result,
             Func4Arity<WoSRanking, Integer, String, WoSRanking.Rank, Optional<Score>> scoreExtractor,

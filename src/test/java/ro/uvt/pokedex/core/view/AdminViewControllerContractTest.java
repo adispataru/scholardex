@@ -13,15 +13,15 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import ro.uvt.pokedex.core.model.Institution;
-import ro.uvt.pokedex.core.model.scopus.Affiliation;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
@@ -294,7 +294,7 @@ class AdminViewControllerContractTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/scholardex/authors"));
 
-        verify(adminCatalogFacade, never()).saveScopusAuthor(any(Author.class));
+        verify(adminCatalogFacade, never()).saveScopusAuthor(any(ScholardexAuthorView.class));
     }
 
     @Test
@@ -323,7 +323,7 @@ class AdminViewControllerContractTest {
 
     @Test
     void editScholardexAffiliationPageStillRenders() throws Exception {
-        Affiliation affiliation = new Affiliation();
+        ScholardexAffiliationView affiliation = new ScholardexAffiliationView();
         affiliation.setAfid("af1");
         affiliation.setName("Aff One");
 
@@ -407,11 +407,11 @@ class AdminViewControllerContractTest {
     @Test
     void institutionPublicationsViewRendersExpectedTemplateAndModel() throws Exception {
         Institution institution = new Institution();
-        Publication publication = publication("p1", "f1", "2023-01-01");
-        Author author = new Author();
+        ScholardexPublicationView publication = publication("p1", "f1", "2023-01-01");
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
         author.setName("Author A");
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId("f1");
         forum.setPublicationName("Forum A");
         IndividualReport report = new IndividualReport();
@@ -457,19 +457,19 @@ class AdminViewControllerContractTest {
 
     @Test
     void institutionExportExcelReturnsWorkbookHeaders() throws Exception {
-        Publication publication = publication("p1", "f1", "2023-01-01");
+        ScholardexPublicationView publication = publication("p1", "f1", "2023-01-01");
         publication.setEid("2-s2.0-123");
         publication.setDoi("10.1000/x");
         publication.setTitle("Paper");
         publication.setCitedbyCount(5);
-        Author author = new Author();
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
         author.setName("Author A");
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId("f1");
         forum.setPublicationName("Forum A");
 
-        Publication citing = publication("p2", "f1", "2024-01-01");
+        ScholardexPublicationView citing = publication("p2", "f1", "2024-01-01");
         citing.setEid("2-s2.0-999");
         citing.setDoi("10.1000/y");
         citing.setTitle("Citing Paper");
@@ -585,8 +585,8 @@ class AdminViewControllerContractTest {
                 ));
     }
 
-    private static Publication publication(String id, String forumId, String coverDate) {
-        Publication publication = new Publication();
+    private static ScholardexPublicationView publication(String id, String forumId, String coverDate) {
+        ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setId(id);
         publication.setForum(forumId);
         publication.setCoverDate(coverDate);

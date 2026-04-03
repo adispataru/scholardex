@@ -9,8 +9,8 @@ import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 
 import java.util.*;
@@ -30,8 +30,8 @@ public abstract class AbstractForumScoringService implements ScoringService {
     /*  Common helpers                                                    */
     /* ------------------------------------------------------------------ */
 
-    protected Forum getForumFromActivity(ActivityInstance activity) {
-        Forum forum = new Forum();
+    protected ScholardexForumView getForumFromActivity(ActivityInstance activity) {
+        ScholardexForumView forum = new ScholardexForumView();
         if (activity.getReferenceFields().containsKey(Activity.ReferenceField.FORUM_NAME)) {
             forum.setPublicationName(activity.getReferenceFields().get(Activity.ReferenceField.FORUM_NAME));
         }
@@ -104,7 +104,7 @@ public abstract class AbstractForumScoringService implements ScoringService {
 
     /* ----------  Generic ranking helpers  ---------- */
 
-    protected List<WoSRanking> getRankingsForForum(Forum forum) {
+    protected List<WoSRanking> getRankingsForForum(ScholardexForumView forum) {
         List<WoSRanking> rankings = new ArrayList<>();
         if (forum.getIssn() != null) {
             rankings = lookupPort.getRankingsByIssn(forum.getIssn());
@@ -138,10 +138,10 @@ public abstract class AbstractForumScoringService implements ScoringService {
 
     protected void computeScoresWithForum(
             Domain domain,
-            Forum forum,
+            ScholardexForumView forum,
             List<Integer> allowedYears,
             ScoreResult result,
-            BiFunction<Forum, Integer, Optional<Score>> scoreExtractor) {
+            BiFunction<ScholardexForumView, Integer, Optional<Score>> scoreExtractor) {
 
         if (forum == null) {
             return;
@@ -209,12 +209,12 @@ public abstract class AbstractForumScoringService implements ScoringService {
 
     }
 
-    protected boolean isArticleOrReview(Publication publication) {
+    protected boolean isArticleOrReview(ScoringPublicationReadModel publication) {
         return PublicationSubtypeSupport.isSubtype(publication, "ar", "re");
     }
 
-    protected List<Integer> getAllowedYearsForPublication(Publication publication,
-                                                        Indicator indicator) {
+    protected List<Integer> getAllowedYearsForPublication(ScoringPublicationReadModel publication,
+                                                         Indicator indicator) {
         List<Integer> allowedYears = new ArrayList<>();
         Optional<Integer> publicationYear = PersistenceYearSupport.extractYear(
                 publication.getCoverDate(),

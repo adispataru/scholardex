@@ -13,10 +13,12 @@ import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.AbstractReport;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Citation;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.reporting.CanonicalPublicationConstants;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
 import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
@@ -109,16 +111,16 @@ public class UserReportFacade {
 
         Researcher researcher = researcherOpt.get();
         Indicator indicator = indicatorOpt.get();
-        List<Author> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
+        List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
         if (authors.isEmpty()) {
             return Optional.empty();
         }
 
-        List<String> authorIds = authors.stream().map(Author::getId).toList();
-        List<Publication> publications = findPublicationsByAuthorIds(authorIds);
-        Set<String> forumKeys = publications.stream().map(Publication::getForum).collect(Collectors.toSet());
-        Map<String, Forum> forumMap = findForumsByIds(forumKeys).stream()
-                .collect(Collectors.toMap(Forum::getId, forum -> forum));
+        List<String> authorIds = authors.stream().map(ScholardexAuthorView::getId).toList();
+        List<ScholardexPublicationView> publications = findPublicationsByAuthorIds(authorIds);
+        Set<String> forumKeys = publications.stream().map(ScholardexPublicationView::getForum).collect(Collectors.toSet());
+        Map<String, ScholardexForumView> forumMap = findForumsByIds(forumKeys).stream()
+                .collect(Collectors.toMap(ScholardexForumView::getId, forum -> forum));
 
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             if (indicator.getOutputType().toString().contains("PUBLICATIONS")) {
@@ -148,8 +150,8 @@ public class UserReportFacade {
         }
 
         List<String> lookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(researcherOpt.get());
-        List<String> authorIds = findAuthorsByIds(lookupKeys).stream().map(Author::getId).toList();
-        List<Publication> publications = findPublicationsByAuthorIds(authorIds);
+        List<String> authorIds = findAuthorsByIds(lookupKeys).stream().map(ScholardexAuthorView::getId).toList();
+        List<ScholardexPublicationView> publications = findPublicationsByAuthorIds(authorIds);
         publications = publications.stream().filter(publication -> {
             return PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)
                     .map(pubYear -> pubYear >= startYear && pubYear <= endYear)
@@ -159,22 +161,34 @@ public class UserReportFacade {
         Domain domain = domainRepository.findByName("ALL").orElse(null);
         List<CNFISReport2025> cnfisReports = new ArrayList<>();
         String linkerRunId = "user-cnfis-" + System.currentTimeMillis();
-        for (Publication publication : publications) {
-            Publication enrichedPublication = woSExtractor.findPublicationWosId(publication);
+        List<ScoringPublicationReadModel> scoringPublications = new ArrayList<>();
+        for (ScholardexPublicationView publication : publications) {
+            String resolvedWosId = publication.getWosId();
+            if ((resolvedWosId == null || resolvedWosId.isBlank())
+                    && publication.getDoi() != null && !publication.getDoi().isBlank()) {
+                resolvedWosId = woSExtractor.resolveWosId(publication.getDoi())
+                        .orElse(CanonicalPublicationConstants.NON_WOS_ID);
+            }
             publicationEnrichmentLinkerService.linkWosEnrichment(
-                    enrichedPublication,
+                    publication.getId(),
+                    publication.getEid(),
+                    publication.getDoi(),
+                    resolvedWosId,
                     WOS_EXTRACTOR_SOURCE,
                     LINKER_VERSION,
                     linkerRunId
             );
-            cnfisReports.add(cnfiSScoringService2025.getReport(enrichedPublication, domain));
+            publication.setWosId(resolvedWosId);
+            ScoringPublicationReadModel scoringPublication = publication.toScoringPublication();
+            scoringPublications.add(scoringPublication);
+            cnfisReports.add(cnfiSScoringService2025.getReport(scoringPublication, domain));
         }
 
-        Set<String> forumKeys = publications.stream().map(Publication::getForum).collect(Collectors.toSet());
-        Map<String, Forum> forumMap = findForumsByIds(forumKeys).stream()
-                .collect(Collectors.toMap(Forum::getId, forum -> forum));
+        Set<String> forumKeys = publications.stream().map(ScholardexPublicationView::getForum).collect(Collectors.toSet());
+        Map<String, ScholardexForumView> forumMap = findForumsByIds(forumKeys).stream()
+                .collect(Collectors.toMap(ScholardexForumView::getId, forum -> forum));
 
-        byte[] workbookBytes = exportService.generateCNFISReportWorkbook(publications, cnfisReports, forumMap, authorIds, false);
+        byte[] workbookBytes = exportService.generateCNFISReportWorkbook(scoringPublications, cnfisReports, forumMap, authorIds, false);
         return UserWorkbookExportResult.ok(
                 workbookBytes,
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -194,30 +208,30 @@ public class UserReportFacade {
         }
 
         Researcher researcher = researcherOpt.get();
-        List<Author> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
+        List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
         if (authors.isEmpty()) {
             return UserWorkbookExportResult.notFound();
         }
 
-        List<String> authorIds = authors.stream().map(Author::getId).toList();
-        List<Publication> publications = findPublicationsByAuthorIds(authorIds);
-        Set<String> forumKeys = publications.stream().map(Publication::getForum).collect(Collectors.toSet());
-        Map<String, Forum> forumMap = findForumsByIds(forumKeys).stream()
-                .collect(Collectors.toMap(Forum::getId, forum -> forum));
+        List<String> authorIds = authors.stream().map(ScholardexAuthorView::getId).toList();
+        List<ScholardexPublicationView> publications = findPublicationsByAuthorIds(authorIds);
+        Set<String> forumKeys = publications.stream().map(ScholardexPublicationView::getForum).collect(Collectors.toSet());
+        Map<String, ScholardexForumView> forumMap = findForumsByIds(forumKeys).stream()
+                .collect(Collectors.toMap(ScholardexForumView::getId, forum -> forum));
 
         ClassPathResource resource = new ClassPathResource("/data/templates/Anexa5-Fisa_articole_brevete.xlsx");
         try (Workbook workbook = new XSSFWorkbook(resource.getInputStream()); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.getSheetAt(0);
             int rowNum = 15;
-            for (Publication publication : publications) {
+            for (ScholardexPublicationView publication : publications) {
                 Row row = sheet.createRow(rowNum++);
 
                 String year = PersistenceYearSupport.extractYearString(publication.getCoverDate(), publication.getId(), log);
                 String title = publication.getTitle() != null ? publication.getTitle() : "";
                 String doi = publication.getDoi() != null ? publication.getDoi() : "";
-                String forumName = forumMap.getOrDefault(publication.getForum(), new Forum()).getPublicationName();
-                String issnOnline = forumMap.getOrDefault(publication.getForum(), new Forum()).getEIssn();
-                String issnPrint = forumMap.getOrDefault(publication.getForum(), new Forum()).getIssn();
+                String forumName = forumMap.getOrDefault(publication.getForum(), new ScholardexForumView()).getPublicationName();
+                String issnOnline = forumMap.getOrDefault(publication.getForum(), new ScholardexForumView()).getEIssn();
+                String issnPrint = forumMap.getOrDefault(publication.getForum(), new ScholardexForumView()).getIssn();
                 int totalAuthors = publication.getAuthors().size();
                 long universityAuthors = publication.getAuthors().stream().filter(authorIds::contains).count();
 
@@ -270,13 +284,13 @@ public class UserReportFacade {
             return handleActivities(indicator, activities, attrs);
         }
 
-        List<Author> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
-        List<String> authorIds = authors.stream().map(Author::getId).toList();
+        List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
+        List<String> authorIds = authors.stream().map(ScholardexAuthorView::getId).toList();
         if (authors.isEmpty()) {
             return new UserIndicatorApplyViewModel("user/indicators", attrs);
         }
 
-        List<Publication> publications = findPublicationsByAuthorIds(authorIds);
+        List<ScholardexPublicationView> publications = findPublicationsByAuthorIds(authorIds);
         if (indicator.getOutputType().toString().contains("PUBLICATIONS")) {
             return handlePublications(indicator, authors, publications, attrs);
         }
@@ -323,13 +337,13 @@ public class UserReportFacade {
             return Optional.empty();
         }
 
-        List<Author> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
+        List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
         if (authors.isEmpty()) {
             return Optional.empty();
         }
 
-        List<String> authorIds = authors.stream().map(Author::getId).toList();
-        List<Publication> publications = findPublicationsByAuthorIds(authorIds);
+        List<String> authorIds = authors.stream().map(ScholardexAuthorView::getId).toList();
+        List<ScholardexPublicationView> publications = findPublicationsByAuthorIds(authorIds);
         if (report.getIndividualAffiliation() != null
                 && !"ANY".equals(report.getIndividualAffiliation().getName())) {
             publications = publications.stream()
@@ -349,7 +363,7 @@ public class UserReportFacade {
                         || Indicator.Type.CITATIONS_EXCLUDE_SELF.equals(indicator.getOutputType()));
         List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(researcher.getId());
         Set<String> researcherAuthorIds = authors.stream()
-                .map(Author::getId)
+                .map(ScholardexAuthorView::getId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         ReportScopedIndicatorScoringSupport.CitationContext citationContext = hasCitationIndicators
@@ -432,14 +446,17 @@ public class UserReportFacade {
         ));
     }
 
-    private UserIndicatorApplyViewModel handlePublications(Indicator indicator, List<Author> authors, List<Publication> publications, Map<String, Object> attrs) {
-        List<Publication> filteredPublications = publications;
+    private UserIndicatorApplyViewModel handlePublications(Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications, Map<String, Object> attrs) {
+        List<ScholardexPublicationView> filteredPublications = publications;
         if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR)) {
             filteredPublications = publications.stream().filter(p -> authors.stream().anyMatch(a -> a.getId().equals(p.getAuthors().getFirst()))).collect(Collectors.toList());
         } else if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_COAUTHOR)) {
             filteredPublications = publications.stream().filter(p -> authors.stream().noneMatch(a -> a.getId().equals(p.getAuthors().getFirst()))).collect(Collectors.toList());
         }
-        Map<String, Score> scores = scientificProductionService.calculateScientificProductionScore(filteredPublications, indicator);
+        Map<String, Score> scores = scientificProductionService.calculateScientificProductionScore(
+                filteredPublications.stream().map(ScholardexPublicationView::toScoringPublication).toList(),
+                indicator
+        );
         attrs.put("total", String.format("%.2f", scores.get("total").getAuthorScore()));
         scores.remove("total");
         attrs.put("scores", scores);
@@ -448,8 +465,8 @@ public class UserReportFacade {
 
         Set<String> forumKeys = new HashSet<>();
         filteredPublications.forEach(p -> forumKeys.add(p.getForum()));
-        List<Forum> forums = findForumsByIds(forumKeys);
-        Map<String, Forum> forumMap = new HashMap<>();
+        List<ScholardexForumView> forums = findForumsByIds(forumKeys);
+        Map<String, ScholardexForumView> forumMap = new HashMap<>();
         forums.forEach(f -> forumMap.put(f.getId(), f));
 
         Map<String, Integer> quarterHistogram = new HashMap<>();
@@ -484,9 +501,9 @@ public class UserReportFacade {
         return new UserIndicatorApplyViewModel("user/indicators-apply-activities", attrs);
     }
 
-    private UserIndicatorApplyViewModel handleCitations(Indicator indicator, List<Author> authors, List<Publication> publications, Map<String, Object> attrs) {
+    private UserIndicatorApplyViewModel handleCitations(Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications, Map<String, Object> attrs) {
         Set<String> researcherAuthorIds = authors.stream()
-                .map(Author::getId)
+                .map(ScholardexAuthorView::getId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         ReportScopedIndicatorScoringSupport.CitationContext citationContext =
@@ -507,8 +524,8 @@ public class UserReportFacade {
                         scientificProductionService
                 );
 
-        List<Forum> forums = findForumsByIds(citationView.forumIds());
-        Map<String, Forum> forumMap = new HashMap<>();
+        List<ScholardexForumView> forums = findForumsByIds(citationView.forumIds());
+        Map<String, ScholardexForumView> forumMap = new HashMap<>();
         forums.forEach(f -> forumMap.put(f.getId(), f));
         attrs.put("forumMap", forumMap);
         attrs.put("forumWosLinkMap", buildForumWosLinkMap(forums));
@@ -536,9 +553,9 @@ public class UserReportFacade {
         return new UserIndicatorApplyViewModel("user/indicators-apply-citations", attrs);
     }
 
-    private Map<String, String> buildForumWosLinkMap(List<Forum> forums) {
+    private Map<String, String> buildForumWosLinkMap(List<ScholardexForumView> forums) {
         Map<String, String> forumWosLinkMap = new HashMap<>();
-        for (Forum forum : forums) {
+        for (ScholardexForumView forum : forums) {
             if (forum == null || forum.getId() == null) {
                 continue;
             }
@@ -550,7 +567,7 @@ public class UserReportFacade {
         return forumWosLinkMap;
     }
 
-    private String resolveWosJournalId(Forum forum) {
+    private String resolveWosJournalId(ScholardexForumView forum) {
         LinkedHashSet<String> issns = extractIssnCandidates(forum.getIssn(), forum.getEIssn());
         for (String issn : issns) {
             List<WoSRanking> rankings = reportingLookupPort.getRankingsByIssn(issn);
@@ -599,13 +616,13 @@ public class UserReportFacade {
         return normalized;
     }
 
-    private double calculatePublicationScore(Indicator indicator, List<Author> authors, List<Publication> publications) {
+    private double calculatePublicationScore(Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications) {
         return ReportingComputationSupport.calculatePublicationScore(indicator, authors, publications, scientificProductionService);
     }
 
-    private double calculateCitationScore(Indicator indicator, List<Author> authors, List<Publication> publications) {
+    private double calculateCitationScore(Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications) {
         Set<String> researcherAuthorIds = authors.stream()
-                .map(Author::getId)
+                .map(ScholardexAuthorView::getId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         ReportScopedIndicatorScoringSupport.CitationContext citationContext =
@@ -627,8 +644,11 @@ public class UserReportFacade {
                 .score();
     }
 
-    private void handlePublicationsWorkbook(Workbook workbook, Indicator indicator, List<Publication> publications, Map<String, Forum> forumMap) {
-        Map<String, Score> scores = scientificProductionService.calculateScientificProductionScore(publications, indicator);
+    private void handlePublicationsWorkbook(Workbook workbook, Indicator indicator, List<ScholardexPublicationView> publications, Map<String, ScholardexForumView> forumMap) {
+        Map<String, Score> scores = scientificProductionService.calculateScientificProductionScore(
+                publications.stream().map(ScholardexPublicationView::toScoringPublication).toList(),
+                indicator
+        );
         Sheet sheet = workbook.getSheet("Publications");
         if (sheet == null) {
             sheet = workbook.createSheet("Publications");
@@ -645,7 +665,7 @@ public class UserReportFacade {
         }
 
         int rowNum = sheet.getLastRowNum();
-        for (Publication publication : publications) {
+        for (ScholardexPublicationView publication : publications) {
             if (scores.get(publication.getTitle()) == null) {
                 continue;
             }
@@ -663,7 +683,7 @@ public class UserReportFacade {
         }
     }
 
-    private void handleCitationsWorkbook(Workbook workbook, Indicator indicator, List<Author> authors, List<Publication> publications, Map<String, Forum> forumMap) {
+    private void handleCitationsWorkbook(Workbook workbook, Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications, Map<String, ScholardexForumView> forumMap) {
         boolean excludeSelf = indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF);
         Sheet sheet = workbook.getSheet("Citations");
         if (sheet == null) {
@@ -682,20 +702,20 @@ public class UserReportFacade {
         }
 
         int rowIdx = sheet.getLastRowNum();
-        for (Publication publication : publications) {
+        for (ScholardexPublicationView publication : publications) {
             sheet.createRow(++rowIdx);
-            List<Citation> citations = findCitationsByCitedId(publication.getId());
-            List<String> citingIds = citations.stream().map(Citation::getCitingId).collect(Collectors.toList());
-            List<Publication> citingPublications = findPublicationsByIds(citingIds);
+            List<ScholardexCitationView> citations = findCitationsByCitedId(publication.getId());
+            List<String> citingIds = citations.stream().map(ScholardexCitationView::getCitingId).collect(Collectors.toList());
+            List<ScholardexPublicationView> citingPublications = findPublicationsByIds(citingIds);
 
-            Set<String> forumKeys = citingPublications.stream().map(Publication::getForum).collect(Collectors.toSet());
-            Set<String> authorIds = citingPublications.stream().map(Publication::getAuthors).flatMap(Collection::stream).collect(Collectors.toSet());
-            List<Forum> forums = findForumsByIds(forumKeys);
+            Set<String> forumKeys = citingPublications.stream().map(ScholardexPublicationView::getForum).collect(Collectors.toSet());
+            Set<String> authorIds = citingPublications.stream().map(ScholardexPublicationView::getAuthors).flatMap(Collection::stream).collect(Collectors.toSet());
+            List<ScholardexForumView> forums = findForumsByIds(forumKeys);
             findAuthorsByIds(authorIds);
-            Map<String, Forum> forumMap2 = forums.stream().collect(Collectors.toMap(Forum::getId, forum -> forum));
+            Map<String, ScholardexForumView> forumMap2 = forums.stream().collect(Collectors.toMap(ScholardexForumView::getId, forum -> forum));
             forumMap.putAll(forumMap2);
 
-            for (Publication citingPublication : citingPublications) {
+            for (ScholardexPublicationView citingPublication : citingPublications) {
                 if (excludeSelf && authors.stream().anyMatch(author -> citingPublication.getAuthors().contains(author.getId()))) {
                     continue;
                 }
@@ -703,7 +723,11 @@ public class UserReportFacade {
                     continue;
                 }
 
-                Map<String, Score> citScores = scientificProductionService.calculateScientificImpactScore(publication, Collections.singletonList(citingPublication), indicator);
+                Map<String, Score> citScores = scientificProductionService.calculateScientificImpactScore(
+                        publication.toScoringPublication(),
+                        Collections.singletonList(citingPublication.toScoringPublication()),
+                        indicator
+                );
                 Score citationScore = citScores.get(citingPublication.getTitle());
                 if (citationScore == null) {
                     continue;
@@ -726,7 +750,7 @@ public class UserReportFacade {
         }
     }
 
-    private String[] getAuthorNames(List<String> authorIds, Map<String, Author> authorMap) {
+    private String[] getAuthorNames(List<String> authorIds, Map<String, ScholardexAuthorView> authorMap) {
         String[] result = new String[authorIds.size()];
         for (int i = 0; i < authorIds.size(); i++) {
             if (authorMap.containsKey(authorIds.get(i))) {
@@ -740,27 +764,27 @@ public class UserReportFacade {
         ReportingComputationSupport.applyFinalSelector(indicator, scores);
     }
 
-    private List<Author> findAuthorsByIds(Collection<String> authorIds) {
+    private List<ScholardexAuthorView> findAuthorsByIds(Collection<String> authorIds) {
         return scholardexProjectionReadService.findAuthorsByIdIn(authorIds);
     }
 
-    private List<Publication> findPublicationsByAuthorIds(Collection<String> authorIds) {
+    private List<ScholardexPublicationView> findPublicationsByAuthorIds(Collection<String> authorIds) {
         return scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
     }
 
-    private List<Publication> findPublicationsByIds(Collection<String> publicationIds) {
+    private List<ScholardexPublicationView> findPublicationsByIds(Collection<String> publicationIds) {
         return scholardexProjectionReadService.findAllPublicationsByIdIn(publicationIds);
     }
 
-    private List<Citation> findCitationsByCitedIds(Collection<String> publicationIds) {
+    private List<ScholardexCitationView> findCitationsByCitedIds(Collection<String> publicationIds) {
         return scholardexProjectionReadService.findAllCitationsByCitedIdIn(publicationIds);
     }
 
-    private List<Citation> findCitationsByCitedId(String publicationId) {
+    private List<ScholardexCitationView> findCitationsByCitedId(String publicationId) {
         return scholardexProjectionReadService.findAllCitationsByCitedId(publicationId);
     }
 
-    private List<Forum> findForumsByIds(Collection<String> forumIds) {
+    private List<ScholardexForumView> findForumsByIds(Collection<String> forumIds) {
         return scholardexProjectionReadService.findForumsByIdIn(forumIds);
     }
 

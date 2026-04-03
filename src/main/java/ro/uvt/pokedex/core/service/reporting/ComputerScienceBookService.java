@@ -8,8 +8,8 @@ import ro.uvt.pokedex.core.model.SenseBookRanking;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.repository.reporting.SenseRankingRepository;
 
 import java.util.LinkedHashMap;
@@ -39,9 +39,9 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
     /* ------------------------------------------------------------------ */
 
     @Override
-    public Score getScore(Publication publication, Indicator indicator) {
+    public Score getScore(ScoringPublicationReadModel publication, Indicator indicator) {
         Domain domain = indicator.getDomain();
-        Forum forum = lookupPort.getForum(publication.getForum());
+        ScholardexForumView forum = lookupPort.getForum(publication.getForumId());
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = List.of(LAST_SENSE_YEAR);
@@ -76,7 +76,7 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
     @Override
     public Score getScore(ActivityInstance activity, Indicator indicator) {
         Domain domain = indicator.getDomain();
-        Forum forum = getForumFromActivity(activity);
+        ScholardexForumView forum = getForumFromActivity(activity);
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = List.of(LAST_SENSE_YEAR);
@@ -94,7 +94,7 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
 
 
 
-    private Optional<Score> computeSENSEScore(Forum forum, int year) {
+    private Optional<Score> computeSENSEScore(ScholardexForumView forum, int year) {
 
 
         List<SenseBookRanking> bookRankings = getBookRankings(forum);
@@ -134,7 +134,7 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
     }
 
 
-    private List<SenseBookRanking> getBookRankings(Forum forum) {
+    private List<SenseBookRanking> getBookRankings(ScholardexForumView forum) {
         String publisher = forum.getPublisher();
         if (publisher == null || publisher.isEmpty()) {
             return List.of();

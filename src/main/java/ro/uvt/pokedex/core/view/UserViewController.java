@@ -10,8 +10,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ro.uvt.pokedex.core.model.Researcher;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.model.tasks.ScopusCitationsUpdate;
 import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;
 import ro.uvt.pokedex.core.model.user.User;
@@ -23,6 +22,7 @@ import ro.uvt.pokedex.core.service.application.UserScopusTaskFacade;
 import ro.uvt.pokedex.core.service.application.RequestYearRangeSupport;
 import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
 import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
+import ro.uvt.pokedex.core.service.application.model.PublicationMetadataPatch;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorsViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorWorkbookExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationCitationsViewModel;
@@ -199,7 +199,7 @@ public class UserViewController {
 
     @GetMapping("/publications/edit/{eid}")
     public String showEditPublicationForm(@PathVariable("eid") String publicationId, Model model) {
-        Optional<Publication> publicationOpt = userPublicationFacade.findPublicationForEdit(publicationId);
+        Optional<ScholardexPublicationView> publicationOpt = userPublicationFacade.findPublicationForEdit(publicationId);
         if (publicationOpt.isPresent()) {
             model.addAttribute("publication", publicationOpt.get());
             return "user/publications-edit";
@@ -209,7 +209,7 @@ public class UserViewController {
     }
 
     @PostMapping("/publications/save/{eid}")
-    public String savePublication(@ModelAttribute Publication publication, RedirectAttributes redirectAttributes, @PathVariable("eid") String publicationId) {
+    public String savePublication(@ModelAttribute PublicationMetadataPatch publication, RedirectAttributes redirectAttributes, @PathVariable("eid") String publicationId) {
         userPublicationFacade.updatePublicationMetadata(publicationId, publication);
         redirectAttributes.addFlashAttribute("successMessage", "Publication updated successfully.");
         return "redirect:/user/publications";
@@ -361,12 +361,12 @@ public class UserViewController {
         return "redirect:/user/profile";
     }
 
-    private int computeHIndex(List<Publication> publications) {
+    private int computeHIndex(List<ScholardexPublicationView> publications) {
         int n = publications.size();
         int[] citationCounts = new int[n + 1];
 
         // Count citations for each publication
-        for (Publication pub : publications) {
+        for (ScholardexPublicationView pub : publications) {
             int citedByCount = pub.getCitedbyCount();
             if (citedByCount > n) {
                 citationCounts[n]++;

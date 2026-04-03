@@ -15,12 +15,13 @@ import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.reporting.AbstractReport;
 import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Citation;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupIndividualReportRunRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
@@ -51,6 +52,11 @@ import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class GroupReportFacadeTest {
+
+    private static final class Author extends ScholardexAuthorView { }
+    private static final class Forum extends ScholardexForumView { }
+    private static final class Publication extends ScholardexPublicationView { }
+    private static final class Citation extends ScholardexCitationView { }
 
     @Mock
     private GroupRepository groupRepository;
@@ -85,8 +91,8 @@ class GroupReportFacadeTest {
                     Researcher researcher = invocation.getArgument(0);
                     return researcher.getScopusId() == null ? List.of() : researcher.getScopusId();
                 });
-        lenient().when(reportingLookupMemoization.withRefreshScope(any(Supplier.class)))
-                .thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(0)).get());
+        lenient().doAnswer(invocation -> ((Supplier<?>) invocation.getArgument(0)).get())
+                .when(reportingLookupMemoization).withRefreshScope(any(Supplier.class));
         lenient().doAnswer(invocation -> {
             ((Runnable) invocation.getArgument(0)).run();
             return null;
@@ -192,8 +198,8 @@ class GroupReportFacadeTest {
         var result = facade.buildGroupPublicationsView("g1");
 
         assertTrue(result.isPresent());
-        assertEquals(List.of("p2", "p1", "p3"), result.get().publications().stream().map(Publication::getId).toList());
-        assertEquals(List.of("p2", "p1"), result.get().publicationsByYear().get(2024).stream().map(Publication::getId).toList());
+        assertEquals(List.of("p2", "p1", "p3"), result.get().publications().stream().map(p -> p.getId()).toList());
+        assertEquals(List.of("p2", "p1"), result.get().publicationsByYear().get(2024).stream().map(p -> p.getId()).toList());
     }
 
     @Test
@@ -351,15 +357,15 @@ class GroupReportFacadeTest {
         when(scholardexProjectionReadService.findForumsByIdIn(anyCollection()))
                 .thenReturn(List.of(journalForum1, journalForum2, conferenceForum1, conferenceForum2, unrankedForum, lncsBookForum, lncsBookConferenceForum));
         when(individualReportRepository.findAll()).thenReturn(List.of());
-        when(cnfisScoringService2025.getReport(org.mockito.ArgumentMatchers.eq(q1Journal), org.mockito.ArgumentMatchers.any())).thenReturn(q1Report);
-        when(cnfisScoringService2025.getReport(org.mockito.ArgumentMatchers.eq(q3Journal), org.mockito.ArgumentMatchers.any())).thenReturn(q3Report);
-        when(computerScienceConferenceScoringService.getScore(org.mockito.ArgumentMatchers.eq(aConference), org.mockito.ArgumentMatchers.any(Indicator.class)))
+        when(cnfisScoringService2025.getReport(org.mockito.ArgumentMatchers.argThat(pub -> pub != null && "p1".equals(pub.getId())), org.mockito.ArgumentMatchers.any())).thenReturn(q1Report);
+        when(cnfisScoringService2025.getReport(org.mockito.ArgumentMatchers.argThat(pub -> pub != null && "p2".equals(pub.getId())), org.mockito.ArgumentMatchers.any())).thenReturn(q3Report);
+        when(computerScienceConferenceScoringService.getScore(org.mockito.ArgumentMatchers.<ScoringPublicationReadModel>argThat(pub -> pub != null && "p3".equals(pub.getId())), org.mockito.ArgumentMatchers.any(Indicator.class)))
                 .thenReturn(aScore);
-        when(computerScienceConferenceScoringService.getScore(org.mockito.ArgumentMatchers.eq(bConference), org.mockito.ArgumentMatchers.any(Indicator.class)))
+        when(computerScienceConferenceScoringService.getScore(org.mockito.ArgumentMatchers.<ScoringPublicationReadModel>argThat(pub -> pub != null && "p4".equals(pub.getId())), org.mockito.ArgumentMatchers.any(Indicator.class)))
                 .thenReturn(bScore);
-        when(computerScienceConferenceScoringService.tryResolveCoreScore(org.mockito.ArgumentMatchers.eq(bookLncs), org.mockito.ArgumentMatchers.eq(lncsBookForum), org.mockito.ArgumentMatchers.anyInt()))
+        when(computerScienceConferenceScoringService.tryResolveCoreScore(org.mockito.ArgumentMatchers.argThat(pub -> pub != null && "p6".equals(pub.getId())), org.mockito.ArgumentMatchers.eq(lncsBookForum), org.mockito.ArgumentMatchers.anyInt()))
                 .thenReturn(Optional.empty());
-        when(computerScienceConferenceScoringService.tryResolveCoreScore(org.mockito.ArgumentMatchers.eq(bookLncsConference), org.mockito.ArgumentMatchers.eq(lncsBookConferenceForum), org.mockito.ArgumentMatchers.anyInt()))
+        when(computerScienceConferenceScoringService.tryResolveCoreScore(org.mockito.ArgumentMatchers.argThat(pub -> pub != null && "p7".equals(pub.getId())), org.mockito.ArgumentMatchers.eq(lncsBookConferenceForum), org.mockito.ArgumentMatchers.anyInt()))
                 .thenReturn(Optional.of(chapterConferenceScore));
 
         var result = facade.buildGroupPublicationsView("g1");
@@ -521,7 +527,7 @@ class GroupReportFacadeTest {
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
         when(scholardexProjectionReadService.findAllCitationsByCitedIdIn(List.of("p1"))).thenReturn(List.of(citation));
         when(scholardexProjectionReadService.findAllPublicationsByIdIn(List.of("cp1"))).thenReturn(List.of(citingPublication));
-        when(scientificProductionService.calculateScientificImpactScore(any(Publication.class), any(List.class), any(Indicator.class), anyMap()))
+        when(scientificProductionService.calculateScientificImpactScore(any(ScoringPublicationReadModel.class), any(List.class), any(Indicator.class), anyMap()))
                 .thenAnswer(invocation -> {
                     Map<String, Score> scores = new java.util.HashMap<>();
                     scores.put("total", new Score());
@@ -654,12 +660,12 @@ class GroupReportFacadeTest {
                 .thenReturn(List.of(citationSelf, citationExternal));
         when(scholardexProjectionReadService.findAllPublicationsByIdIn(List.of("cp-self", "cp-external")))
                 .thenReturn(List.of(citingSelf, citingExternal));
-        when(scientificProductionService.calculateScientificImpactScore(any(Publication.class), any(List.class), any(Indicator.class), anyMap()))
+        when(scientificProductionService.calculateScientificImpactScore(any(ScoringPublicationReadModel.class), any(List.class), any(Indicator.class), anyMap()))
                 .thenAnswer(invocation -> {
                     @SuppressWarnings("unchecked")
-                    List<Publication> citingPublications = invocation.getArgument(1);
+                    List<ScoringPublicationReadModel> citingPublications = invocation.getArgument(1);
                     Map<String, Score> result = new HashMap<>();
-                    for (Publication citingPublication : citingPublications) {
+                    for (ScoringPublicationReadModel citingPublication : citingPublications) {
                         Score score = new Score();
                         score.setAuthorScore(1.0);
                         score.setScore(1.0);
@@ -717,8 +723,8 @@ class GroupReportFacadeTest {
         publication.setAuthors(List.of("a1"));
         publication.setTitle("Root Publication");
 
-        List<Citation> citations = new ArrayList<>();
-        List<Publication> citingPublications = new ArrayList<>();
+        List<ScholardexCitationView> citations = new ArrayList<>();
+        List<ScholardexPublicationView> citingPublications = new ArrayList<>();
         List<String> citingIds = new ArrayList<>();
         for (int i = 1; i <= 12; i++) {
             String citingId = "cp-" + i;
@@ -740,13 +746,13 @@ class GroupReportFacadeTest {
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
         when(scholardexProjectionReadService.findAllCitationsByCitedIdIn(List.of("p1"))).thenReturn(citations);
         when(scholardexProjectionReadService.findAllPublicationsByIdIn(citingIds)).thenReturn(citingPublications);
-        when(scientificProductionService.calculateScientificImpactScore(any(Publication.class), any(List.class), any(Indicator.class), anyMap()))
+        when(scientificProductionService.calculateScientificImpactScore(any(ScoringPublicationReadModel.class), any(List.class), any(Indicator.class), anyMap()))
                 .thenAnswer(invocation -> {
                     @SuppressWarnings("unchecked")
-                    List<Publication> currentCitingPublications = invocation.getArgument(1);
+                    List<ScoringPublicationReadModel> currentCitingPublications = invocation.getArgument(1);
                     Map<String, Score> result = new HashMap<>();
                     int scoreSeed = 1;
-                    for (Publication citingPublication : currentCitingPublications) {
+                    for (ScoringPublicationReadModel citingPublication : currentCitingPublications) {
                         Score score = new Score();
                         score.setAuthorScore((double) scoreSeed++);
                         score.setScore(1.0);

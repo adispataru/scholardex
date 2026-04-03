@@ -6,10 +6,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ro.uvt.pokedex.core.model.scopus.Affiliation;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Forum;
 import ro.uvt.pokedex.core.model.user.User;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusImportEntityType;
 import ro.uvt.pokedex.core.service.application.model.WizardPublicationCommand;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService;
@@ -43,16 +43,16 @@ class PublicationWizardFacadeTest {
 
     @Test
     void resolveForumIdUsesSelectedExistingForum() {
-        Forum existing = new Forum();
+        ScholardexForumView existing = new ScholardexForumView();
         existing.setId("f1");
         when(scholardexProjectionReadService.findForumById("f1")).thenReturn(Optional.of(existing));
 
-        assertEquals(Optional.of("f1"), facade.resolveForumId(new Forum(), "f1"));
+        assertEquals(Optional.of("f1"), facade.resolveForumId(new ScholardexForumView(), "f1"));
     }
 
     @Test
     void resolveForumIdUsesDeterministicIdForNewForumDraft() {
-        Forum draft = new Forum();
+        ScholardexForumView draft = new ScholardexForumView();
         draft.setPublicationName("Journal of Testing");
         draft.setIssn("1234-5678");
         draft.setAggregationType("Journal");
@@ -68,10 +68,10 @@ class PublicationWizardFacadeTest {
     @Test
     void submitPublicationIngestsCanonicalEventAndBuildsViews() {
         WizardPublicationCommand command = buildCommand();
-        Author author = new Author();
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
         author.setName("Author One");
-        Affiliation affiliation = new Affiliation();
+        ScholardexAffiliationView affiliation = new ScholardexAffiliationView();
         affiliation.setAfid("af1");
         affiliation.setName("West University");
         affiliation.setCity("Timisoara");
@@ -133,7 +133,7 @@ class PublicationWizardFacadeTest {
         WizardPublicationCommand command = buildCommand();
         command.setForum("f-existing");
 
-        Forum existing = new Forum();
+        ScholardexForumView existing = new ScholardexForumView();
         existing.setId("f-existing");
         when(scholardexProjectionReadService.findForumById("f-existing")).thenReturn(Optional.of(existing));
         when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of());

@@ -7,11 +7,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.Institution;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
-import ro.uvt.pokedex.core.model.scopus.Affiliation;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Citation;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.repository.InstitutionRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 
@@ -47,9 +47,9 @@ class AdminInstitutionReportFacadeTest {
     @Test
     void buildInstitutionPublicationsViewBuildsMapsAndCounts() {
         Institution institution = institution("inst", "af1");
-        Publication publication = publication("p1", "e1", "f1", "2023-02-01", List.of("a1"), "Paper");
-        Author author = author("a1", "Author One");
-        Forum forum = forum("f1", "Forum One");
+        ScholardexPublicationView publication = publication("p1", "e1", "f1", "2023-02-01", List.of("a1"), "Paper");
+        ScholardexAuthorView author = author("a1", "Author One");
+        ScholardexForumView forum = forum("f1", "Forum One");
         IndividualReport report = new IndividualReport();
         report.setTitle("R1");
 
@@ -73,10 +73,10 @@ class AdminInstitutionReportFacadeTest {
     @Test
     void buildInstitutionPublicationsViewSkipsMalformedPublicationDatesInYearMaps() {
         Institution institution = institution("inst", "af1");
-        Publication validPublication = publication("p1", "e1", "f1", "2023-02-01", List.of("a1"), "Valid");
-        Publication invalidPublication = publication("p2", "e2", "f1", "bad-date", List.of("a1"), "Invalid");
-        Author author = author("a1", "Author One");
-        Forum forum = forum("f1", "Forum One");
+        ScholardexPublicationView validPublication = publication("p1", "e1", "f1", "2023-02-01", List.of("a1"), "Valid");
+        ScholardexPublicationView invalidPublication = publication("p2", "e2", "f1", "bad-date", List.of("a1"), "Invalid");
+        ScholardexAuthorView author = author("a1", "Author One");
+        ScholardexForumView forum = forum("f1", "Forum One");
 
         when(institutionRepository.findById("inst")).thenReturn(Optional.of(institution));
         when(scholardexProjectionReadService.findAllPublicationsByAffiliationsContaining("af1")).thenReturn(List.of(validPublication, invalidPublication));
@@ -96,9 +96,9 @@ class AdminInstitutionReportFacadeTest {
     @Test
     void buildInstitutionPublicationsExportBuildsCitationAuthorAndForumMaps() {
         Institution institution = institution("inst", "af1");
-        Publication cited = publication("p1", "e1", "f1", "2023-02-01", List.of("a1"), "Cited");
-        Publication citing = publication("p2", "e2", "f2", "2024-03-01", List.of("a2"), "Citing");
-        Citation citation = new Citation();
+        ScholardexPublicationView cited = publication("p1", "e1", "f1", "2023-02-01", List.of("a1"), "Cited");
+        ScholardexPublicationView citing = publication("p2", "e2", "f2", "2024-03-01", List.of("a2"), "Citing");
+        ScholardexCitationView citation = new ScholardexCitationView();
         citation.setCitedId("p1");
         citation.setCitingId("p2");
 
@@ -122,11 +122,11 @@ class AdminInstitutionReportFacadeTest {
     @Test
     void buildInstitutionPublicationsViewReturnsDeterministicPublicationOrderAndYearBucketOrder() {
         Institution institution = institution("inst", "af1");
-        Publication p1 = publication("p1", "e1", "f1", "2024-01-10", List.of("a1"), "Beta");
-        Publication p2 = publication("p2", "e2", "f1", "2024-01-10", List.of("a1"), "Alpha");
-        Publication p3 = publication("p3", "e3", "f1", "bad-date", List.of("a1"), "Zeta");
-        Author author = author("a1", "Author One");
-        Forum forum = forum("f1", "Forum One");
+        ScholardexPublicationView p1 = publication("p1", "e1", "f1", "2024-01-10", List.of("a1"), "Beta");
+        ScholardexPublicationView p2 = publication("p2", "e2", "f1", "2024-01-10", List.of("a1"), "Alpha");
+        ScholardexPublicationView p3 = publication("p3", "e3", "f1", "bad-date", List.of("a1"), "Zeta");
+        ScholardexAuthorView author = author("a1", "Author One");
+        ScholardexForumView forum = forum("f1", "Forum One");
 
         when(institutionRepository.findById("inst")).thenReturn(Optional.of(institution));
         when(scholardexProjectionReadService.findAllPublicationsByAffiliationsContaining("af1")).thenReturn(List.of(p1, p3, p2));
@@ -137,20 +137,20 @@ class AdminInstitutionReportFacadeTest {
         var result = facade.buildInstitutionPublicationsView("inst");
 
         assertTrue(result.isPresent());
-        assertEquals(List.of("p2", "p1", "p3"), result.get().publications().stream().map(Publication::getId).toList());
-        assertEquals(List.of("p2", "p1"), result.get().publicationsByYear().get(2024).stream().map(Publication::getId).toList());
+        assertEquals(List.of("p2", "p1", "p3"), result.get().publications().stream().map(p -> p.getId()).toList());
+        assertEquals(List.of("p2", "p1"), result.get().publicationsByYear().get(2024).stream().map(p -> p.getId()).toList());
     }
 
     @Test
     void buildInstitutionPublicationsViewDedupesPublicationsAcrossAffiliations() {
         Institution institution = new Institution();
-        Affiliation af1 = new Affiliation();
+        ScholardexAffiliationView af1 = new ScholardexAffiliationView();
         af1.setAfid("af1");
-        Affiliation af2 = new Affiliation();
+        ScholardexAffiliationView af2 = new ScholardexAffiliationView();
         af2.setAfid("af2");
         institution.setScopusAffiliations(List.of(af1, af2));
 
-        Publication shared = publication("p-shared", "e1", "f1", "2023-01-01", List.of("a1"), "Shared");
+        ScholardexPublicationView shared = publication("p-shared", "e1", "f1", "2023-01-01", List.of("a1"), "Shared");
         when(institutionRepository.findById("inst")).thenReturn(Optional.of(institution));
         when(scholardexProjectionReadService.findAllPublicationsByAffiliationsContaining("af1")).thenReturn(List.of(shared));
         when(scholardexProjectionReadService.findAllPublicationsByAffiliationsContaining("af2")).thenReturn(List.of(shared));
@@ -167,14 +167,14 @@ class AdminInstitutionReportFacadeTest {
     private static Institution institution(String id, String afid) {
         Institution institution = new Institution();
         institution.setName(id);
-        Affiliation affiliation = new Affiliation();
+        ScholardexAffiliationView affiliation = new ScholardexAffiliationView();
         affiliation.setAfid(afid);
         institution.setScopusAffiliations(List.of(affiliation));
         return institution;
     }
 
-    private static Publication publication(String id, String eid, String forumId, String coverDate, List<String> authors, String title) {
-        Publication publication = new Publication();
+    private static ScholardexPublicationView publication(String id, String eid, String forumId, String coverDate, List<String> authors, String title) {
+        ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setId(id);
         publication.setEid(eid);
         publication.setForum(forumId);
@@ -184,15 +184,15 @@ class AdminInstitutionReportFacadeTest {
         return publication;
     }
 
-    private static Author author(String id, String name) {
-        Author author = new Author();
+    private static ScholardexAuthorView author(String id, String name) {
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId(id);
         author.setName(name);
         return author;
     }
 
-    private static Forum forum(String id, String name) {
-        Forum forum = new Forum();
+    private static ScholardexForumView forum(String id, String name) {
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId(id);
         forum.setPublicationName(name);
         return forum;

@@ -8,9 +8,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.reporting.Group;
-import ro.uvt.pokedex.core.model.scopus.Author;
-import ro.uvt.pokedex.core.model.scopus.Forum;
-import ro.uvt.pokedex.core.model.scopus.Publication;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.service.application.model.GroupEditViewModel;
 
 import java.util.List;
@@ -64,15 +64,15 @@ class GroupExportFacadeTest {
         Group group = new Group();
         group.setResearchers(List.of(researcher));
 
-        Publication publication = new Publication();
+        ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setAuthors(List.of("a1"));
         publication.setForum("f1");
 
-        Author author = new Author();
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
         author.setName("Jane Doe");
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId("f1");
         forum.setPublicationName("Forum One");
 
@@ -104,32 +104,32 @@ class GroupExportFacadeTest {
         Group group = new Group();
         group.setResearchers(List.of(researcher));
 
-        Publication p1 = new Publication();
+        ScholardexPublicationView p1 = new ScholardexPublicationView();
         p1.setId("p1");
         p1.setTitle("Beta");
         p1.setCoverDate("2024-01-01");
         p1.setAuthors(List.of("a1"));
         p1.setForum("f1");
 
-        Publication p2 = new Publication();
+        ScholardexPublicationView p2 = new ScholardexPublicationView();
         p2.setId("p2");
         p2.setTitle("Alpha");
         p2.setCoverDate("2024-01-01");
         p2.setAuthors(List.of("a1"));
         p2.setForum("f1");
 
-        Publication malformed = new Publication();
+        ScholardexPublicationView malformed = new ScholardexPublicationView();
         malformed.setId("p3");
         malformed.setTitle("Zeta");
         malformed.setCoverDate("bad-date");
         malformed.setAuthors(List.of("a1"));
         malformed.setForum("f1");
 
-        Author author = new Author();
+        ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
         author.setName("Jane Doe");
 
-        Forum forum = new Forum();
+        ScholardexForumView forum = new ScholardexForumView();
         forum.setId("f1");
         forum.setPublicationName("Forum One");
 
@@ -146,6 +146,6 @@ class GroupExportFacadeTest {
 
         assertTrue(result.isPresent());
         assertEquals(List.of("p2", "p1", "p3"),
-                result.get().publications().stream().map(Publication::getId).toList());
+                result.get().publications().stream().map(p -> p.getId()).toList());
     }
 }
