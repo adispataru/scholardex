@@ -17,10 +17,11 @@
 
 // ── Module state ─────────────────────────────────────────────────────────────
 
-let _panel    = null;
-let _mount    = null;
-let _data     = null;
-let _editOpen = false;
+let _panel              = null;
+let _mount              = null;
+let _data               = null;
+let _editOpen           = false;
+let _delegateController = null;   // AbortController for delegated listeners on _mount
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
@@ -85,6 +86,12 @@ function _renderAll() {
     _mount.innerHTML = '';
     _mount.appendChild(container);
     _wireEvents();
+
+    // For brand-new users (completeness 0) jump straight into edit mode so
+    // they don't have to discover the Edit button themselves.
+    if (researcher && (_data.completeness ?? 0) === 0) {
+        _openEdit();
+    }
 }
 
 // ── Completeness card ─────────────────────────────────────────────────────────
@@ -321,37 +328,18 @@ function _buildNoProfile() {
 function _wireEvents() {
     const root = _mount;
 
-    // Retry on error
+    // ── Per-element listeners (elements are replaced on each render, so these
+    //    never accumulate — no abort needed) ──────────────────────────────────
+
     root.querySelector('#ws-prof-retry-btn')?.addEventListener('click', () => _init(_panel));
-
-    // Checklist anchors — open edit form and focus field
-    root.addEventListener('click', e => {
-        const anchor = e.target.closest('[data-prof-checklist-anchor]');
-        if (!anchor) return;
-        e.preventDefault();
-        const fieldId = anchor.dataset.profChecklistAnchor;
-        _openEdit();
-        setTimeout(() => {
-            const el = root.querySelector(`#${fieldId}`);
-            if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
-        }, 50);
-    });
-
-    // Edit button
     root.querySelector('#ws-prof-edit-btn')?.addEventListener('click', _openEdit);
-
-    // Cancel button
     root.querySelector('#ws-prof-cancel-btn')?.addEventListener('click', _closeEdit);
-
-    // Save button
     root.querySelector('#ws-prof-save-btn')?.addEventListener('click', _saveProfile);
 
-    // Add ID buttons
     root.querySelector('#ws-prof-add-scopus-btn')?.addEventListener('click', () => {
         const entries = root.querySelector('#ws-prof-scopus-entries');
         if (entries) {
-            const idx = entries.children.length;
-            entries.insertAdjacentHTML('beforeend', _buildIdEntryRow('scopusId', '', idx));
+            entries.insertAdjacentHTML('beforeend', _buildIdEntryRow('scopusId', '', entries.children.length));
             entries.lastElementChild?.querySelector('input')?.focus();
         }
     });
@@ -359,27 +347,47 @@ function _wireEvents() {
     root.querySelector('#ws-prof-add-wos-btn')?.addEventListener('click', () => {
         const entries = root.querySelector('#ws-prof-wos-entries');
         if (entries) {
-            const idx = entries.children.length;
-            entries.insertAdjacentHTML('beforeend', _buildIdEntryRow('wosId', '', idx));
+            entries.insertAdjacentHTML('beforeend', _buildIdEntryRow('wosId', '', entries.children.length));
             entries.lastElementChild?.querySelector('input')?.focus();
         }
     });
 
-    // Remove ID rows (event delegation)
-    root.addEventListener('click', e => {
-        const btn = e.target.closest('[data-remove-id-row]');
-        if (!btn) return;
-        btn.closest('.app-ws-prof__id-entry-row')?.remove();
-    });
+    // ── Delegated listeners are added to the stable _mount node and therefore
+    //    accumulate across renders unless explicitly torn down.  Use an
+    //    AbortController so re-renders cancel the previous set first. ─────────
 
-    // Sync buttons (event delegation)
+    if (_delegateController) _delegateController.abort();
+    _delegateController = new AbortController();
+    const { signal } = _delegateController;
+
     root.addEventListener('click', e => {
-        const btn = e.target.closest('[data-sync-type]');
-        if (!btn) return;
-        const type     = btn.dataset.syncType;
-        const scopusId = btn.dataset.syncId;
-        _triggerSync(type, scopusId, btn);
-    });
+        // Checklist anchor → open edit form and scroll to field
+        const anchor = e.target.closest('[data-prof-checklist-anchor]');
+        if (anchor) {
+            e.preventDefault();
+            const fieldId = anchor.dataset.profChecklistAnchor;
+            _openEdit();
+            setTimeout(() => {
+                const el = root.querySelector(`#${fieldId}`);
+                if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
+            }, 50);
+            return;
+        }
+
+        // Remove ID row button
+        const removeBtn = e.target.closest('[data-remove-id-row]');
+        if (removeBtn) {
+            removeBtn.closest('.app-ws-prof__id-entry-row')?.remove();
+            return;
+        }
+
+        // Sync action buttons
+        const syncBtn = e.target.closest('[data-sync-type]');
+        if (syncBtn) {
+            _triggerSync(syncBtn.dataset.syncType, syncBtn.dataset.syncId, syncBtn);
+            return;
+        }
+    }, { signal });
 }
 
 // ── Edit form open/close ──────────────────────────────────────────────────────

@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public record AdminResearcherUpsertRequest(
+        /** User email — required for create; must match the User's email (which is their id). */
+        String email,
         @NotBlank String firstName,
         @NotBlank String lastName,
         String scholarId,

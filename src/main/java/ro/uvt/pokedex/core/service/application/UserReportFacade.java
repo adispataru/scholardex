@@ -25,7 +25,6 @@ import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndicatorRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 import ro.uvt.pokedex.core.service.CacheService;
-import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorApplyViewModel;
 import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
@@ -63,7 +62,6 @@ public class UserReportFacade {
     private static final Pattern ISSN_PATTERN = Pattern.compile("(?i)\\b[0-9]{4}-?[0-9]{3}[0-9x]\\b");
 
     private final UserService userService;
-    private final ResearcherService researcherService;
     private final IndicatorRepository indicatorRepository;
     private final IndividualReportRepository individualReportRepository;
     private final ActivityInstanceRepository activityInstanceRepository;
@@ -103,13 +101,12 @@ public class UserReportFacade {
             return Optional.empty();
         }
 
-        Optional<Researcher> researcherOpt = researcherService.findResearcherById(userOpt.get().getResearcherId());
+        Researcher researcher = Researcher.fromUser(userOpt.get());
         Optional<Indicator> indicatorOpt = indicatorRepository.findById(indicatorId);
-        if (researcherOpt.isEmpty() || indicatorOpt.isEmpty()) {
+        if (researcher == null || indicatorOpt.isEmpty()) {
             return Optional.empty();
         }
 
-        Researcher researcher = researcherOpt.get();
         Indicator indicator = indicatorOpt.get();
         List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
         if (authors.isEmpty()) {
@@ -144,12 +141,12 @@ public class UserReportFacade {
             return UserWorkbookExportResult.unauthorized();
         }
 
-        Optional<Researcher> researcherOpt = researcherService.findResearcherById(userOpt.get().getResearcherId());
-        if (researcherOpt.isEmpty()) {
+        Researcher researcher0 = Researcher.fromUser(userOpt.get());
+        if (researcher0 == null) {
             return UserWorkbookExportResult.notFound();
         }
 
-        List<String> lookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(researcherOpt.get());
+        List<String> lookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(researcher0);
         List<String> authorIds = findAuthorsByIds(lookupKeys).stream().map(ScholardexAuthorView::getId).toList();
         List<ScholardexPublicationView> publications = findPublicationsByAuthorIds(authorIds);
         publications = publications.stream().filter(publication -> {
@@ -202,12 +199,11 @@ public class UserReportFacade {
             return UserWorkbookExportResult.unauthorized();
         }
 
-        Optional<Researcher> researcherOpt = researcherService.findResearcherById(userOpt.get().getResearcherId());
-        if (researcherOpt.isEmpty()) {
+        Researcher researcher = Researcher.fromUser(userOpt.get());
+        if (researcher == null) {
             return UserWorkbookExportResult.notFound();
         }
 
-        Researcher researcher = researcherOpt.get();
         List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
         if (authors.isEmpty()) {
             return UserWorkbookExportResult.notFound();
@@ -264,22 +260,20 @@ public class UserReportFacade {
         }
 
         User user = userOpt.get();
-        String researcherId = user.getResearcherId();
-        Optional<Researcher> researcherOpt = researcherService.findResearcherById(researcherId);
+        Researcher researcher = Researcher.fromUser(user);
         Optional<Indicator> indicatorOpt = indicatorRepository.findById(indicatorId);
 
-        if (indicatorOpt.isEmpty() || researcherOpt.isEmpty()) {
+        if (indicatorOpt.isEmpty() || researcher == null) {
             return new UserIndicatorApplyViewModel("user/indicators", Map.of());
         }
 
         Indicator indicator = indicatorOpt.get();
-        Researcher researcher = researcherOpt.get();
 
         Map<String, Object> attrs = new HashMap<>();
         attrs.put("indicator", indicator);
 
         if (indicator.getOutputType().toString().contains("ACTIVIT")) {
-            List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(researcherId);
+            List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(user.getEmail());
             activities = activities.stream().filter(act -> act.getActivity().getName().equals(indicator.getActivity().getName())).toList();
             return handleActivities(indicator, activities, attrs);
         }
@@ -332,7 +326,7 @@ public class UserReportFacade {
         }
 
         IndividualReport report = reportOpt.get();
-        Researcher researcher = researcherService.findResearcherById(userOpt.get().getResearcherId()).orElse(null);
+        Researcher researcher = Researcher.fromUser(userOpt.get());
         if (researcher == null) {
             return Optional.empty();
         }
@@ -444,6 +438,143 @@ public class UserReportFacade {
                 criterionScores,
                 reportScopedIndicatorResultsByIndicatorId
         ));
+    }
+
+    /**
+     * Computes the full indicator detail (raw graph with per-item scores) in the context of a
+     * specific report, applying the report's affiliation filter to the publication set.
+     * Used by the detail and citation-drilldown endpoints so that expanded indicator rows show
+     * exactly the same publications/citations that contributed to the report-level score.
+     */
+    public Optional<IndicatorApplyResultDto> buildReportScopedIndicatorDetail(
+            String userEmail, String reportId, String indicatorId) {
+        Optional<User> userOpt = userService.getUserByEmail(userEmail);
+        if (userOpt.isEmpty()) return Optional.empty();
+
+        Optional<IndividualReport> reportOpt = individualReportRepository.findById(reportId);
+        if (reportOpt.isEmpty()) return Optional.empty();
+        IndividualReport report = reportOpt.get();
+
+        // Find the indicator in the report's indicator list
+        Indicator foundIndicator = null;
+        if (report.getIndicators() != null) {
+            for (Indicator ind : report.getIndicators()) {
+                if (ind != null && indicatorId.equals(ind.getId())) {
+                    foundIndicator = ind;
+                    break;
+                }
+            }
+        }
+        if (foundIndicator == null) return Optional.empty();
+        final Indicator indicator = foundIndicator;
+
+        Researcher researcher = Researcher.fromUser(userOpt.get());
+        if (researcher == null) return Optional.empty();
+
+        List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
+        if (authors.isEmpty()) return Optional.empty();
+
+        List<String> authorIds = authors.stream().map(ScholardexAuthorView::getId).toList();
+        List<ScholardexPublicationView> publications = findPublicationsByAuthorIds(authorIds);
+
+        // Apply the same affiliation filter as computeReportScopedIndividualReport
+        if (report.getIndividualAffiliation() != null
+                && !"ANY".equals(report.getIndividualAffiliation().getName())) {
+            publications = publications.stream()
+                    .filter(p -> report.getIndividualAffiliation().getScopusAffiliations().stream()
+                            .anyMatch(aff -> p.getAffiliations().contains(aff.getAfid())))
+                    .collect(Collectors.toList());
+        }
+
+        Map<String, Object> rawGraph = new HashMap<>();
+        rawGraph.put("indicator", indicator);
+        String outputType = indicator.getOutputType().toString();
+
+        if (outputType.contains("ACTIVIT")) {
+            List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(researcher.getId());
+            final String activityName = indicator.getActivity().getName();
+            List<ActivityInstance> filteredActivities = activities.stream()
+                    .filter(act -> act.getActivity().getName().equals(activityName))
+                    .toList();
+            Map<String, Score> scores = new HashMap<>(activityReportingService.calculateActivityScores(filteredActivities, indicator));
+            Score totalScore = scores.remove("total");
+            double total = totalScore != null ? totalScore.getAuthorScore() : 0.0;
+            rawGraph.put("total", String.format(Locale.ROOT, "%.2f", total));
+            rawGraph.put("scores", scores);
+            rawGraph.put("activities", filteredActivities);
+            rawGraph.put("outputMode", "activities");
+            return Optional.of(new IndicatorApplyResultDto(
+                    null, indicatorId,
+                    ReportScopedIndicatorScoringSupport.viewNameFor(indicator),
+                    rawGraph,
+                    new IndicatorApplyResultDto.Summary(total, null, List.of(), List.of()),
+                    IndicatorApplyResultDto.Source.COMPUTED, null, null, 0));
+        }
+
+        if (outputType.contains("PUBLICATIONS")) {
+            List<ScholardexPublicationView> filteredPublications = publications;
+            if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR)) {
+                filteredPublications = publications.stream()
+                        .filter(p -> authors.stream().anyMatch(a -> a.getId().equals(p.getAuthors().getFirst())))
+                        .collect(Collectors.toList());
+            } else if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_COAUTHOR)) {
+                filteredPublications = publications.stream()
+                        .filter(p -> authors.stream().noneMatch(a -> a.getId().equals(p.getAuthors().getFirst())))
+                        .collect(Collectors.toList());
+            }
+            Map<String, Score> scores = new HashMap<>(scientificProductionService.calculateScientificProductionScore(
+                    filteredPublications.stream().map(ScholardexPublicationView::toScoringPublication).toList(),
+                    indicator));
+            Score totalScore = scores.remove("total");
+            double total = totalScore != null ? totalScore.getAuthorScore() : 0.0;
+            rawGraph.put("total", String.format(Locale.ROOT, "%.2f", total));
+            rawGraph.put("scores", scores);
+            rawGraph.put("publications", filteredPublications);
+            rawGraph.put("outputMode", "publications");
+            Map<String, Integer> qHist = new HashMap<>();
+            scores.forEach((k, v) -> {
+                if (v.getQuarter() != null) qHist.merge(v.getQuarter(), 1, Integer::sum);
+            });
+            rawGraph.put("allQuarters", new ArrayList<>(qHist.keySet()));
+            rawGraph.put("allValues", new ArrayList<>(qHist.values()));
+            return Optional.of(new IndicatorApplyResultDto(
+                    null, indicatorId,
+                    ReportScopedIndicatorScoringSupport.viewNameFor(indicator),
+                    rawGraph,
+                    new IndicatorApplyResultDto.Summary(total, null,
+                            new ArrayList<>(qHist.keySet()), new ArrayList<>(qHist.values())),
+                    IndicatorApplyResultDto.Source.COMPUTED, null, null, 0));
+        }
+
+        // Citations (CITATIONS or CITATIONS_EXCLUDE_SELF)
+        Set<String> researcherAuthorIds = authors.stream()
+                .map(ScholardexAuthorView::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        ReportScopedIndicatorScoringSupport.CitationContext citationContext =
+                ReportScopedIndicatorScoringSupport.prepareCitationContext(publications, scholardexProjectionReadService);
+        Map<Indicator, Map<String, Score>> citationBaseScores =
+                ReportScopedIndicatorScoringSupport.precomputeCitationBaseScoresByIndicator(
+                        List.of(indicator), citationContext, scientificProductionService);
+        ReportScopedIndicatorScoringSupport.CitationViewComputation citationView =
+                ReportScopedIndicatorScoringSupport.computeCitationView(
+                        indicator, publications, researcherAuthorIds, citationContext,
+                        citationBaseScores.getOrDefault(indicator, Map.of()),
+                        scientificProductionService);
+        rawGraph.put("total", String.format(Locale.ROOT, "%.2f", citationView.totalScore()));
+        rawGraph.put("scores", citationView.displayScores());
+        rawGraph.put("totalCit", citationView.totalCitationCount());
+        rawGraph.put("outputMode", "citations");
+        rawGraph.put("allQuarters", citationView.quarterLabels());
+        rawGraph.put("allValues", citationView.quarterValues());
+        return Optional.of(new IndicatorApplyResultDto(
+                null, indicatorId,
+                ReportScopedIndicatorScoringSupport.viewNameFor(indicator),
+                rawGraph,
+                new IndicatorApplyResultDto.Summary(citationView.totalScore(),
+                        citationView.totalCitationCount(),
+                        citationView.quarterLabels(), citationView.quarterValues()),
+                IndicatorApplyResultDto.Source.COMPUTED, null, null, 0));
     }
 
     private UserIndicatorApplyViewModel handlePublications(Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications, Map<String, Object> attrs) {

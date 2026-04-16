@@ -17,7 +17,7 @@ import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.workspace.WorkspacePreferences;
 import ro.uvt.pokedex.core.repository.WorkspacePreferencesRepository;
-import ro.uvt.pokedex.core.service.ResearcherService;
+import ro.uvt.pokedex.core.repository.UserRepository;
 import ro.uvt.pokedex.core.service.application.PublicationWizardFacade;
 import ro.uvt.pokedex.core.service.application.UserActivityInstanceFacade;
 import ro.uvt.pokedex.core.service.application.UserPublicationFacade;
@@ -52,7 +52,7 @@ import java.util.TreeMap;
 @RequiredArgsConstructor
 public class ResearcherWorkspaceController {
 
-    private final ResearcherService researcherService;
+    private final UserRepository userRepository;
     private final UserPublicationFacade userPublicationFacade;
     private final UserActivityInstanceFacade userActivityInstanceFacade;
     private final UserScopusTaskFacade userScopusTaskFacade;
@@ -75,7 +75,7 @@ public class ResearcherWorkspaceController {
     @ResponseBody
     public ResponseEntity<UserPublicationsViewModel> getPublications(Authentication authentication) {
         return currentUser(authentication).map(u ->
-                userPublicationFacade.buildUserPublicationsView(u.getResearcherId())
+                userPublicationFacade.buildUserPublicationsView(u.getEmail())
                         .map(ResponseEntity::ok)
                         .orElseGet(() -> ResponseEntity.ok(emptyPublicationsViewModel()))
         ).orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
@@ -86,7 +86,7 @@ public class ResearcherWorkspaceController {
     @ResponseBody
     public ResponseEntity<UserActivityInstancesViewModel> getActivities(Authentication authentication) {
         return currentUser(authentication).map(u ->
-                ResponseEntity.ok(userActivityInstanceFacade.buildActivityInstancesView(u.getResearcherId()))
+                ResponseEntity.ok(userActivityInstanceFacade.buildActivityInstancesView(u.getEmail()))
         ).orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
 
@@ -100,7 +100,7 @@ public class ResearcherWorkspaceController {
             if (q == null || q.isBlank() || q.strip().length() < 2) {
                 return ResponseEntity.ok(List.<WorkspaceSearchResult>of());
             }
-            return ResponseEntity.ok(performSearch(q.strip(), u.getResearcherId()));
+            return ResponseEntity.ok(performSearch(q.strip(), u.getEmail()));
         }).orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
 
@@ -181,7 +181,7 @@ public class ResearcherWorkspaceController {
         Optional<Activity> activityOpt = userActivityInstanceFacade.findActivity(request.activityId());
         if (activityOpt.isEmpty()) return ResponseEntity.badRequest().build();
         ActivityInstance instance = new ActivityInstance();
-        instance.setResearcherId(userOpt.get().getResearcherId());
+        instance.setResearcherId(userOpt.get().getEmail());
         instance.setActivity(activityOpt.get());
         instance.setName(request.name() != null && !request.name().isBlank()
                 ? request.name() : activityOpt.get().getName());
@@ -267,11 +267,16 @@ public class ResearcherWorkspaceController {
     @ResponseBody
     public ResponseEntity<WorkspaceProfileViewModel> getProfile(Authentication authentication) {
         return currentUser(authentication).map(u -> {
-            Researcher researcher = u.getResearcherId() != null
-                    ? researcherService.findResearcherById(u.getResearcherId()).orElse(null)
-                    : null;
+            // Re-load from DB — the session principal is stale after a profile save.
+            User freshUser = userRepository.findById(u.getEmail()).orElse(u);
+            // Always return a Researcher object — even an empty stub — so the JS
+            // form renders for new users who haven't saved their profile yet.
+            Researcher researcher = Researcher.fromUser(freshUser);
+            if (researcher == null) {
+                researcher = new Researcher();   // empty stub; id is not set
+            }
             int completeness = computeProfileCompleteness(researcher);
-            var tasksVm = userScopusTaskFacade.buildTasksView(u.getEmail(), u.getResearcherId());
+            var tasksVm = userScopusTaskFacade.buildTasksView(freshUser.getEmail(), freshUser.getEmail());
             return ResponseEntity.ok(new WorkspaceProfileViewModel(
                     researcher, completeness,
                     tasksVm.tasks(), tasksVm.citationsTasks()
@@ -287,18 +292,26 @@ public class ResearcherWorkspaceController {
             Authentication authentication) {
         Optional<User> userOpt = currentUser(authentication);
         if (userOpt.isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        String researcherId = userOpt.get().getResearcherId();
-        if (researcherId == null || researcherId.isBlank()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "No researcher profile linked to this account."));
+        User user = userOpt.get();
+        // Re-load from DB so we don't operate on a stale auth principal
+        user = userRepository.findById(user.getEmail()).orElse(user);
+        // Auto-create the profile on first save — this is the path for brand-new users.
+        boolean isNewProfile = user.getResearcherProfile() == null;
+        User.ResearcherProfile profile = isNewProfile ? new User.ResearcherProfile() : user.getResearcherProfile();
+        profile.setFirstName(request.firstName() != null ? request.firstName().trim() : "");
+        profile.setLastName(request.lastName() != null ? request.lastName().trim() : "");
+        profile.setScholarId(request.scholarId() != null ? request.scholarId().trim() : null);
+        profile.setScopusId(request.scopusId() != null
+                ? new ArrayList<>(request.scopusId()) : new ArrayList<>());
+        profile.setWosId(request.wosId() != null
+                ? new ArrayList<>(request.wosId()) : new ArrayList<>());
+        user.setResearcherProfile(profile);
+        if (isNewProfile) {
+            // Grant RESEARCHER role on first profile creation so the user gains
+            // researcher-level access without needing an admin to intervene.
+            user.getRoles().add(ro.uvt.pokedex.core.model.user.UserRole.RESEARCHER);
         }
-        Researcher patch = new Researcher();
-        patch.setFirstName(request.firstName() != null ? request.firstName().trim() : "");
-        patch.setLastName(request.lastName() != null ? request.lastName().trim() : "");
-        patch.setScholarId(request.scholarId() != null ? request.scholarId().trim() : null);
-        patch.setScopusId(request.scopusId() != null ? request.scopusId() : List.of());
-        patch.setWosId(request.wosId() != null ? request.wosId() : List.of());
-        researcherService.updateResearcher(researcherId, patch);
+        userRepository.save(user);
         return ResponseEntity.ok().build();
     }
 
@@ -332,6 +345,20 @@ public class ResearcherWorkspaceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
+    // ── JSON: publication citations ───────────────────────────────────────
+    @GetMapping("/publications/{id}/citations")
+    @ResponseBody
+    public ResponseEntity<ro.uvt.pokedex.core.service.application.model.UserPublicationCitationsViewModel> getPublicationCitations(
+            @PathVariable String id,
+            Authentication authentication) {
+        if (currentUser(authentication).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return userPublicationFacade.buildCitationsView(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     // ── JSON: wizard — co-author list for affiliation ─────────────────────
     @GetMapping("/publications/wizard-authors")
     @ResponseBody
@@ -359,9 +386,7 @@ public class ResearcherWorkspaceController {
         }
         User user = userOpt.get();
         // Creator is set server-side so the frontend never needs the researcher id
-        String creator = user.getResearcherId() != null && !user.getResearcherId().isBlank()
-                ? user.getResearcherId()
-                : user.getEmail();
+        String creator = user.getEmail();
         command.setCreator(creator);
         try {
             var result = publicationWizardFacade.submitPublication(command, user);
@@ -384,23 +409,19 @@ public class ResearcherWorkspaceController {
     }
 
     private ResearcherWorkspaceViewModel buildWorkspaceViewModel(User currentUser) {
-        String researcherId = currentUser.getResearcherId();
         String email = currentUser.getEmail();
-
-        Optional<Researcher> researcherOpt = researcherId != null
-                ? researcherService.findResearcherById(researcherId)
-                : Optional.empty();
+        Optional<Researcher> researcherOpt = Optional.ofNullable(Researcher.fromUser(currentUser));
 
         Optional<UserPublicationsViewModel> pubsOpt =
-                userPublicationFacade.buildUserPublicationsView(researcherId);
+                userPublicationFacade.buildUserPublicationsView(email);
 
         UserActivityInstancesViewModel activitiesVm =
-                userActivityInstanceFacade.buildActivityInstancesView(researcherId);
+                userActivityInstanceFacade.buildActivityInstancesView(email);
 
         int availableReportCount = userReportFacade.buildIndividualReportsListView(email)
                 .individualReports().size();
 
-        var tasksVm = userScopusTaskFacade.buildTasksView(email, researcherId);
+        var tasksVm = userScopusTaskFacade.buildTasksView(email, email);
         int pendingScopusTaskCount = (int) tasksVm.tasks().stream()
                 .filter(t -> t.getStatus() == Status.PENDING)
                 .count();
@@ -431,7 +452,7 @@ public class ResearcherWorkspaceController {
                 .toList();
 
         WorkspaceState state = determineWorkspaceState(
-                researcherOpt.orElse(null), researcherId, availableReportCount);
+                researcherOpt.orElse(null), email, availableReportCount);
 
         // ── Chart data: publications and citations per year ──────────────
         List<String> chartYears = new ArrayList<>();
@@ -516,14 +537,14 @@ public class ResearcherWorkspaceController {
         return score;
     }
 
-    private List<WorkspaceSearchResult> performSearch(String q, String researcherId) {
+    private List<WorkspaceSearchResult> performSearch(String q, String userEmail) {
         List<WorkspaceSearchResult> results = new ArrayList<>();
-        if (researcherId == null) return results;
+        if (userEmail == null) return results;
 
         final String qLower = q.toLowerCase();
 
         // Load the researcher's own publications once; reuse for pubs + citations
-        var pubsOpt = userPublicationFacade.buildUserPublicationsView(researcherId);
+        var pubsOpt = userPublicationFacade.buildUserPublicationsView(userEmail);
 
         // Publications — researcher-scoped, title match, not yet cited, cap at 10
         pubsOpt.ifPresent(vm -> vm.publications().stream()
@@ -540,7 +561,7 @@ public class ResearcherWorkspaceController {
                 .forEach(results::add));
 
         // Activities — researcher-scoped, name match, cap at 10
-        userActivityInstanceFacade.buildActivityInstancesView(researcherId)
+        userActivityInstanceFacade.buildActivityInstancesView(userEmail)
                 .activityInstances().stream()
                 .filter(ai -> ai.getActivity() != null
                         && ai.getActivity().getName().toLowerCase().contains(qLower))
@@ -577,15 +598,11 @@ public class ResearcherWorkspaceController {
 
     private List<WorkspaceNotification> buildNotifications(User user, Instant since, Set<String> dismissed) {
         List<WorkspaceNotification> notifications = new ArrayList<>();
-        String researcherId = user.getResearcherId();
         String email = user.getEmail();
 
         // Profile completeness
-        Optional<Researcher> researcherOpt = researcherId != null
-                ? researcherService.findResearcherById(researcherId)
-                : Optional.empty();
-        WorkspaceState state = determineWorkspaceState(
-                researcherOpt.orElse(null), researcherId, 0);
+        Researcher researcher = Researcher.fromUser(user);
+        WorkspaceState state = determineWorkspaceState(researcher, researcher != null ? email : null, 0);
         if (state == WorkspaceState.NEW_USER || state == WorkspaceState.INCOMPLETE_PROFILE) {
             notifications.add(new WorkspaceNotification(
                     "profile-incomplete",
@@ -598,7 +615,7 @@ public class ResearcherWorkspaceController {
         }
 
         // Completed Scopus tasks
-        var tasksVm = userScopusTaskFacade.buildTasksView(email, researcherId);
+        var tasksVm = userScopusTaskFacade.buildTasksView(email, email);
         tasksVm.tasks().stream()
                 .filter(t -> t.getStatus() == Status.COMPLETED
                         && t.getExecutionDate() != null)
@@ -623,8 +640,8 @@ public class ResearcherWorkspaceController {
                 )));
 
         // New citations since last visit
-        if (since != null && researcherId != null) {
-            userPublicationFacade.buildUserPublicationsView(researcherId)
+        if (since != null && researcher != null) {
+            userPublicationFacade.buildUserPublicationsView(email)
                     .ifPresent(vm -> vm.publications().stream()
                             .filter(p -> p.getUpdatedAt() != null && p.getUpdatedAt().isAfter(since)
                                     && p.getCitedbyCount() > 0)

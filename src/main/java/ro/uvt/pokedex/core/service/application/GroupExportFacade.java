@@ -7,6 +7,7 @@ import ro.uvt.pokedex.core.model.reporting.Group;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.repository.UserRepository;
 import ro.uvt.pokedex.core.service.application.model.GroupPublicationCsvExportViewModel;
 
 import java.util.*;
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class GroupExportFacade {
     private final GroupManagementFacade groupManagementFacade;
+    private final UserRepository userRepository;
     private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
 
@@ -25,7 +27,7 @@ public class GroupExportFacade {
             return Optional.empty();
         }
 
-        List<Researcher> researchers = new ArrayList<>(group.getResearchers());
+        List<Researcher> researchers = loadResearchers(group);
         researchers.sort(Comparator.comparing(Researcher::getName));
         List<String> lookupKeys = new ArrayList<>();
         for (Researcher researcher : researchers) {
@@ -60,5 +62,18 @@ public class GroupExportFacade {
                 forumMap,
                 new HashSet<>(authorIds)
         ));
+    }
+
+    private List<Researcher> loadResearchers(Group group) {
+        List<String> memberIds = group.getMemberIds();
+        if (memberIds != null && !memberIds.isEmpty()) {
+            return userRepository.findAllById(memberIds).stream()
+                    .map(Researcher::fromUser)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+        }
+        return group.getResearchers() != null
+                ? new ArrayList<>(group.getResearchers())
+                : new ArrayList<>();
     }
 }

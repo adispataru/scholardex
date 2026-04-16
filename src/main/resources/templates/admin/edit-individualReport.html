@@ -73,6 +73,12 @@
                                                 <label>Name</label>
                                                 <input type="text" class="form-control" th:field="*{criteria[__${critIndex.index}__].name}">
                                             </div>
+                                            <div class="form-group form-check">
+                                                <input type="checkbox" class="form-check-input"
+                                                       th:field="*{criteria[__${critIndex.index}__].contributesToTotal}">
+                                                <label class="form-check-label"
+                                                       th:for="${'criteria' + critIndex.index + '.contributesToTotal'}">Contributes to total score</label>
+                                            </div>
                                             <div class="form-group">
                                                 <label>Indicators</label>
                                                 <div class="input-group mb-2 app-collection__item" th:each="indicatorIndex, idx : ${criterion.indicatorIndices}">
@@ -160,6 +166,11 @@
                             <label>Name</label>
                             <input type="text" class="form-control" name="criteria[${criterionIndex}].name">
                         </div>
+                        <div class="form-group form-check">
+                            <input type="checkbox" class="form-check-input" id="criteria${criterionIndex}-contributesToTotal"
+                                   name="criteria[${criterionIndex}].contributesToTotal" value="true">
+                            <label class="form-check-label" for="criteria${criterionIndex}-contributesToTotal">Contributes to total score</label>
+                        </div>
                         <div class="form-group">
                             <label>Indicators</label>
                             <div class="input-group mb-2 app-collection__item">
@@ -189,16 +200,21 @@
 
         criteriaContainer.on('click', '.remove-criterion', function() {
             $(this).closest('.card').remove();
-            // Optionally, update the indices of the remaining elements
+            // Re-index all remaining criteria
             criteriaContainer.children().each(function(index, element) {
                 $(element).find('.card-title').text(`Criterion ${index + 1}`);
                 $(element).find('select[name^="criteria"]').each(function() {
-                    let name = $(this).attr('name').replace(/\d+/, index);
-                    $(this).attr('name', name);
+                    $(this).attr('name', $(this).attr('name').replace(/\[\d+\]/, `[${index}]`));
                 });
                 $(element).find('input[name^="criteria"]').each(function() {
-                    let name = $(this).attr('name').replace(/\d+/, index);
-                    $(this).attr('name', name);
+                    $(this).attr('name', $(this).attr('name').replace(/\[\d+\]/, `[${index}]`));
+                });
+                // Re-index checkbox id/for so labels stay linked
+                $(element).find('input[type="checkbox"][id^="criteria"]').each(function() {
+                    let oldId = $(this).attr('id');
+                    let newId = oldId.replace(/^criteria\d+/, `criteria${index}`);
+                    $(this).attr('id', newId);
+                    $(element).find(`label[for="${oldId}"]`).attr('for', newId);
                 });
                 $(element).find('.add-indicator, .add-threshold').attr('data-criterion-index', index);
             });

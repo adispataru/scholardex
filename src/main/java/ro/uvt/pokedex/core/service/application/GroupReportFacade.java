@@ -10,6 +10,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
+import ro.uvt.pokedex.core.repository.UserRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupIndividualReportRunRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
@@ -35,6 +36,7 @@ public class GroupReportFacade {
     );
 
     private final GroupRepository groupRepository;
+    private final UserRepository userRepository;
     private final IndividualReportRepository individualReportRepository;
     private final ActivityInstanceRepository activityInstanceRepository;
     private final ActivityReportingService activityReportingService;
@@ -52,7 +54,7 @@ public class GroupReportFacade {
             return Optional.empty();
         }
 
-        List<Researcher> researchers = new ArrayList<>(group.getResearchers());
+        List<Researcher> researchers = loadResearchers(group);
         researchers.sort(Comparator.comparing(Researcher::getName));
         List<String> lookupKeys = new ArrayList<>();
         for (Researcher researcher : researchers) {
@@ -264,7 +266,7 @@ public class GroupReportFacade {
                 groupId,
                 reportId,
                 activeReadStore,
-                group.getResearchers() == null ? 0 : group.getResearchers().size(),
+                group.getMemberIds() == null ? 0 : group.getMemberIds().size(),
                 run.getStatus(),
                 run.getBuildErrors() == null ? 0 : run.getBuildErrors().size(),
                 computeResult.timings().publicationsProcessed(),
@@ -304,7 +306,7 @@ public class GroupReportFacade {
     }
 
     private ComputeGroupRunResult computeGroupRun(Group group, IndividualReport report) {
-        List<Researcher> researchers = new ArrayList<>(group.getResearchers());
+        List<Researcher> researchers = loadResearchers(group);
         researchers.sort(Comparator.comparing(Researcher::getName));
 
         Map<String, Map<Integer, Double>> researcherScores = new HashMap<>();
@@ -474,7 +476,7 @@ public class GroupReportFacade {
     }
 
     private GroupIndividualReportViewModel toViewModel(Group group, IndividualReport report, GroupIndividualReportRun run) {
-        List<Researcher> researchers = new ArrayList<>(group.getResearchers());
+        List<Researcher> researchers = loadResearchers(group);
         researchers.sort(Comparator.comparing(Researcher::getName));
 
         Map<String, Object> attrs = new HashMap<>();
@@ -498,6 +500,25 @@ public class GroupReportFacade {
         String last = researcher.getLastName() == null ? "" : researcher.getLastName().trim();
         String full = (first + " " + last).trim();
         return full.isBlank() ? researcher.getId() : full;
+    }
+
+    /**
+     * Loads the group's member users by their email ids and converts each to a
+     * {@link Researcher} value-object. Falls back to the legacy {@code @DBRef}
+     * list when {@code memberIds} is empty (e.g. before migration).
+     */
+    private List<Researcher> loadResearchers(Group group) {
+        List<String> memberIds = group.getMemberIds();
+        if (memberIds != null && !memberIds.isEmpty()) {
+            return userRepository.findAllById(memberIds).stream()
+                    .map(Researcher::fromUser)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+        }
+        // Legacy fallback — resolved via DBRef while migration is in progress
+        return group.getResearchers() != null
+                ? new ArrayList<>(group.getResearchers())
+                : new ArrayList<>();
     }
 
     private long nanosToMs(long nanos) {

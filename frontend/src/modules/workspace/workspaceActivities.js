@@ -41,14 +41,21 @@ let _panel      = null;
 let _mount      = null;
 let _data       = null;
 let _instances  = [];
-let _page       = 1;
-let _activeId   = null;
-let _createOpen = false;
+let _page          = 1;
+let _activeId      = null;
+let _createOpen    = false;
+let _pendingCreate = false;  // open create form as soon as the tab finishes loading
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
 export function initWorkspaceActivities() {
-    window.appWorkspaceActivities = { init: _init };
+    window.appWorkspaceActivities = {
+        init: _init,
+        openCreate() {
+            if (_mount && _data) { _toggleCreate(); }
+            else                 { _pendingCreate = true; }
+        },
+    };
 }
 
 // ── Init / fetch ─────────────────────────────────────────────────────────────
@@ -140,6 +147,8 @@ function _renderAll() {
     _mount.addEventListener('click', e => {
         if (e.target.closest('[data-retry-panel]')) _init(_panel);
     });
+
+    if (_pendingCreate) { _pendingCreate = false; _toggleCreate(); }
 }
 
 function _renderPage() {

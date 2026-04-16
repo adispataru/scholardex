@@ -195,6 +195,195 @@
   border-radius: 0.3rem;
 }
 
+/* ── Scored-item two-line compact list ─────────────────────────────────── */
+
+.eval-scored-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+}
+
+.eval-scored-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.35rem;
+  background: var(--app-color-card-bg, #fff);
+  border: 1px solid var(--app-color-border, #e3e9f5);
+}
+
+.eval-scored-item__body {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.eval-scored-item__title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--app-color-text-strong, #2d3748);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eval-scored-item__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.2rem;
+}
+
+.eval-scored-item__meta-text {
+  font-size: 0.72rem;
+  color: var(--app-color-text-muted, #8898aa);
+}
+
+.eval-scored-item__score {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--app-color-text-strong, #2d3748);
+  white-space: nowrap;
+  flex: 0 0 auto;
+  align-self: center;
+}
+
+/* ── Rank / quarter badges ─────────────────────────────────────────────── */
+
+.eval-rank-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 0.1em 0.45em;
+  border-radius: 0.25rem;
+  line-height: 1.5;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+/* A* — dark red */
+.eval-rank-badge--a-star {
+  background: #8b1a1a;
+  color: #fff;
+  border-color: #6d1212;
+}
+
+/* A / Q1 — red */
+.eval-rank-badge--a {
+  background: #dc3545;
+  color: #fff;
+  border-color: #b02a37;
+}
+
+/* B / Q2 — amber */
+.eval-rank-badge--b {
+  background: #ffc107;
+  color: #3d2800;
+  border-color: #c98700;
+}
+
+/* C / Q3 — white with border */
+.eval-rank-badge--c {
+  background: #fff;
+  color: #495057;
+  border-color: #adb5bd;
+}
+
+/* D / Q4 / NON_RANK — light grey */
+.eval-rank-badge--d {
+  background: #e9ecef;
+  color: #6c757d;
+  border-color: #ced4da;
+}
+
+/* Unknown / SCOPUS / unlisted */
+.eval-rank-badge--unknown {
+  background: var(--app-color-card-bg-muted, #f8fafc);
+  color: var(--app-color-text-muted, #8898aa);
+  border-color: var(--app-color-border, #dee2e6);
+}
+
+/* Dark-mode adjustments for badges that use literal whites/greys */
+[data-theme="dark"] .eval-rank-badge--c {
+  background: #2c3349;
+  color: #c5cce0;
+  border-color: #3d4a6a;
+}
+
+[data-theme="dark"] .eval-rank-badge--d {
+  background: #1e2130;
+  color: #8898aa;
+  border-color: #2c3349;
+}
+
+[data-theme="dark"] .eval-scored-item {
+  background: var(--app-color-card-bg-muted, #111c30);
+  border-color: var(--app-color-border, #2c3349);
+}
+
+/* ── Citation drilldown modal ──────────────────────────────────────────── */
+
+/* Make cited-publication rows in the list look clickable */
+.eval-scored-item--clickable {
+  cursor: pointer;
+  transition: background 0.1s ease, border-color 0.1s ease;
+}
+
+.eval-scored-item--clickable:hover {
+  background: color-mix(in srgb, var(--app-color-primary, #4e73df) 5%, var(--app-color-card-bg, #fff));
+  border-color: color-mix(in srgb, var(--app-color-primary, #4e73df) 25%, var(--app-color-border, #e3e9f5));
+}
+
+.eval-scored-item--clickable .eval-scored-item__title {
+  color: var(--app-color-primary, #4e73df);
+}
+
+.eval-scored-item--clickable:hover .eval-scored-item__title {
+  text-decoration: underline;
+}
+
+/* Modal header: title stacked above pub name */
+.citation-modal-header-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.citation-modal-header-body .modal-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--app-color-text-muted, #8898aa);
+  margin-bottom: 0.1rem;
+}
+
+.citation-modal-pub-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--app-color-text-strong, #2d3748);
+  margin: 0;
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.citation-modal-total {
+  font-size: 0.82rem;
+  color: var(--app-color-text-muted, #8898aa);
+  margin-right: auto;
+}
+
+/* Modal body skeleton while loading */
+.citation-modal-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.25rem 0;
+}
+
 /* ── Responsive ────────────────────────────────────────────────────────── */
 
 @media (max-width: 991.98px) {

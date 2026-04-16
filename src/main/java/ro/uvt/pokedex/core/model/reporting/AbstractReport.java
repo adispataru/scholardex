@@ -21,6 +21,8 @@ public abstract class AbstractReport {
         private String name;
         private List<Integer> indicatorIndices = new ArrayList<>();
         private List<Threshold> thresholds = new ArrayList<>();
+        /** When true this criterion's score is included in the report-level total. */
+        private boolean contributesToTotal = false;
     }
 
     @Data

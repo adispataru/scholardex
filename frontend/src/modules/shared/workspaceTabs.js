@@ -215,6 +215,14 @@ function initSingleTabBar(container) {
     }
   });
 
+  // Delegate clicks on [data-tab-goto] anywhere inside the container
+  container.addEventListener('click', e => {
+    const trigger = e.target.closest('[data-tab-goto]');
+    if (!trigger) return;
+    e.preventDefault();
+    activateTab(trigger.dataset.tabGoto, true);
+  });
+
   // Expose public API on the container element for other modules to use
   container._appTabBar = { activateTab };
 }

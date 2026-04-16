@@ -9,7 +9,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.model.tasks.ScopusCitationsUpdate;
 import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;

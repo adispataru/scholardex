@@ -23,7 +23,11 @@ public class AdminResearcherController {
 
     @PostMapping
     public ResponseEntity<Researcher> addResearcher(@Valid @RequestBody AdminResearcherUpsertRequest request) {
+        if (request.email() == null || request.email().isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
         Researcher researcher = mapRequestToResearcher(request);
+        researcher.setId(request.email());
         Researcher savedResearcher = researcherService.saveResearcher(researcher);
         return ResponseEntity.ok(savedResearcher);
     }

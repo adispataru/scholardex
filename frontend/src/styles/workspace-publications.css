@@ -138,14 +138,13 @@
   line-height: 1.35;
 }
 
-/* Venue cell */
+/* Venue cell — wraps like the title column; max-width keeps it from blowing out */
 .app-ws-pubs__venue {
   font-size: 0.8rem;
   color: var(--app-color-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
   max-width: 14rem;
+  word-break: break-word;
 }
 
 /* Citation count badge */

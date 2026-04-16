@@ -130,7 +130,7 @@
                                                 </span>
                                                 <span class="app-onboarding-list__label">Create your researcher profile</span>
                                                 <a class="btn btn-sm btn-outline-primary app-onboarding-list__action"
-                                                   th:href="@{/user/profile}">Start</a>
+                                                   href="#" data-tab-goto="profile">Start</a>
                                             </li>
                                             <li class="app-onboarding-list__item">
                                                 <span class="app-onboarding-list__icon app-onboarding-list__icon--pending" aria-hidden="true">
@@ -146,7 +146,7 @@
                                                 </span>
                                                 <span class="app-onboarding-list__label">Link your Scopus ID for automatic citation tracking</span>
                                                 <a class="btn btn-sm btn-outline-secondary app-onboarding-list__action"
-                                                   th:href="@{/user/profile}">Link</a>
+                                                   href="#" data-tab-goto="profile">Link</a>
                                             </li>
                                         </ul>
                                     </div>
@@ -285,18 +285,21 @@
                                                 </div>
                                                 <div class="app-summary-panel__body">
                                                     <div class="app-quick-actions">
-                                                        <a th:href="@{/user/publications/add-step-1}" class="btn btn-sm btn-outline-primary">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary"
+                                                                onclick="window.appWorkspaceTabs?.activateTab('publications'); window.appWorkspacePublications?.openWizard();">
                                                             <i class="fa-solid fa-plus" aria-hidden="true"></i> Add Publication
-                                                        </a>
-                                                        <a th:href="@{/user/activities}" class="btn btn-sm btn-outline-primary">
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-primary"
+                                                                onclick="window.appWorkspaceTabs?.activateTab('activities'); window.appWorkspaceActivities?.openCreate();">
                                                             <i class="fa-solid fa-pen-fancy" aria-hidden="true"></i> Add Activity
-                                                        </a>
+                                                        </button>
                                                         <a th:href="@{/user/individual-reports}" class="btn btn-sm btn-outline-secondary">
                                                             <i class="fa-solid fa-file-lines" aria-hidden="true"></i> View Reports
                                                         </a>
-                                                        <a th:href="@{/user/tasks}" class="btn btn-sm btn-outline-secondary">
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                                onclick="window.appWorkspaceTabs?.activateTab('profile');">
                                                             <i class="fa-solid fa-rotate" aria-hidden="true"></i> Sync Scopus
-                                                        </a>
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -400,6 +403,36 @@
     <a class="scroll-to-top rounded" href="#page-top">
         <i class="fa-solid fa-angle-up"></i>
     </a>
+</div>
+
+<!-- ── Citations modal (workspace publications tab) ───────────────────── -->
+<div id="ws-citations-modal"
+     class="modal app-modal"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="ws-citations-modal-title"
+     hidden
+     aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div style="min-width:0;flex:1">
+                    <h5 class="modal-title" id="ws-citations-modal-title">Citations</h5>
+                    <p id="ws-citations-modal-pub"
+                       style="margin:0;font-size:0.83rem;color:var(--app-color-text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></p>
+                </div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="ws-citations-modal-body" style="padding:0"></div>
+            <div class="modal-footer" style="justify-content:space-between">
+                <span id="ws-citations-modal-total"
+                      style="font-size:0.83rem;color:var(--app-color-text-muted)"></span>
+                <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>

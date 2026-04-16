@@ -121,54 +121,186 @@
 
   // ── Indicator inline detail ───────────────────────────────────────────────
 
-  function renderDetailTable(items, outputMode) {
+  var RANK_BADGE_CLASS = {
+    'A_STAR': 'eval-rank-badge--a-star',
+    'A':      'eval-rank-badge--a',
+    'Q1':     'eval-rank-badge--a',
+    'B':      'eval-rank-badge--b',
+    'Q2':     'eval-rank-badge--b',
+    'C':      'eval-rank-badge--c',
+    'Q3':     'eval-rank-badge--c',
+    'D':      'eval-rank-badge--d',
+    'Q4':     'eval-rank-badge--d',
+    'NON_RANK': 'eval-rank-badge--d'
+  };
+
+  function rankBadge(value) {
+    if (!value || value === 'NON_RANK') return '';
+    var cls = RANK_BADGE_CLASS[value] || 'eval-rank-badge--unknown';
+    var label = value === 'A_STAR' ? 'A*' : value.replace('_', ' ');
+    return '<span class="eval-rank-badge ' + cls + '">' + esc(label) + '</span>';
+  }
+
+  function renderDetailList(items, outputMode, indicatorId) {
     if (!items || items.length === 0) {
       return '<p class="app-report-card__meta mt-2">No scored items found.</p>';
     }
     var isActivities = outputMode === 'activities';
+    var isCitations  = outputMode === 'citations';
 
-    var html = '<div class="app-table-scroll"><table class="table table-sm table-bordered app-table mb-0">';
-    html += '<thead><tr>';
-    if (isActivities) {
-      html += '<th scope="col">Name</th>' +
-              '<th scope="col">Type</th>' +
-              '<th scope="col">Year</th>' +
-              '<th scope="col">Source</th>' +
-              '<th scope="col">Author Score</th>';
-    } else {
-      html += '<th scope="col">Title</th>' +
-              '<th scope="col">Type</th>' +
-              '<th scope="col">Year</th>' +
-              '<th scope="col">Quarter</th>' +
-              '<th scope="col">Rank</th>' +
-              '<th scope="col">Forum Score</th>' +
-              '<th scope="col">Source</th>' +
-              '<th scope="col">Author Score</th>';
-    }
-    html += '</tr></thead><tbody>';
+    var html = '<div class="eval-scored-list">';
 
     items.forEach(function (item) {
-      html += '<tr>';
-      if (isActivities) {
-        html += '<td>' + esc(item.key) + '</td>';
-        html += '<td>' + esc(item.type) + '</td>';
-        html += '<td>' + (item.year || '—') + '</td>';
-        html += '<td>' + esc(item.scoringSource || '—') + '</td>';
-      } else {
-        html += '<td>' + esc(item.key) + '</td>';
-        html += '<td>' + esc(item.type) + '</td>';
-        html += '<td>' + (item.year || '—') + '</td>';
-        html += '<td>' + esc(item.quarter || '—') + '</td>';
-        html += '<td>' + esc(item.coreRankingEquivalent || '—') + '</td>';
-        html += '<td>' + (item.forumScore != null ? toNumber(item.forumScore).toFixed(4) : '—') + '</td>';
-        html += '<td>' + esc(item.scoringSource || '—') + '</td>';
+      var clickable = isCitations && indicatorId ? ' eval-scored-item--clickable' : '';
+      var dataAttrs = isCitations && indicatorId
+        ? ' data-citation-pub="' + esc(item.key) + '" data-indicator-id="' + esc(indicatorId) + '"'
+        : '';
+      html += '<div class="eval-scored-item' + clickable + '"' + dataAttrs + '>';
+      html += '<div class="eval-scored-item__body">';
+
+      // Line 1: title
+      html += '<div class="eval-scored-item__title" title="' + esc(item.key) + '">' + esc(item.key) + '</div>';
+
+      // Line 2: meta badges + text
+      html += '<div class="eval-scored-item__meta">';
+
+      if (item.year) {
+        html += '<span class="eval-scored-item__meta-text">' + item.year + '</span>';
       }
-      html += '<td>' + toNumber(item.authorScore).toFixed(2) + '</td>';
-      html += '</tr>';
+      if (item.scoringSource) {
+        html += '<span class="eval-scored-item__meta-text">· ' + esc(item.scoringSource) + '</span>';
+      }
+      if (!isActivities) {
+        if (item.quarter) html += rankBadge(item.quarter);
+        if (item.coreRankingEquivalent && item.coreRankingEquivalent !== item.quarter) {
+          html += rankBadge(item.coreRankingEquivalent);
+        }
+        if (item.forumScore) {
+          html += '<span class="eval-scored-item__meta-text">· ' + toNumber(item.forumScore).toFixed(4) + '</span>';
+        }
+      }
+      if (item.type && item.type !== 'publication') {
+        html += '<span class="eval-scored-item__meta-text">· ' + esc(item.type) + '</span>';
+      }
+      if (isCitations) {
+        html += '<span class="eval-scored-item__meta-text">· click to see citations</span>';
+      }
+
+      html += '</div>'; // meta
+      html += '</div>'; // body
+
+      // Score on the right
+      html += '<span class="eval-scored-item__score">' + toNumber(item.authorScore).toFixed(2) + '</span>';
+      html += '</div>'; // item
     });
 
-    html += '</tbody></table></div>';
+    html += '</div>';
     return html;
+  }
+
+  // ── Bootstrap modal helpers (no Bootstrap JS required) ───────────────────
+
+  var _citationBackdrop = null;
+
+  function showBsModal(modal) {
+    modal.removeAttribute('aria-hidden');
+    modal.setAttribute('aria-modal', 'true');
+    modal.style.display = 'block';
+    // Force reflow before adding 'show' so the CSS transition plays
+    modal.offsetHeight; // eslint-disable-line no-unused-expressions
+    modal.classList.add('show');
+    document.body.classList.add('modal-open');
+
+    if (!_citationBackdrop) {
+      _citationBackdrop = document.createElement('div');
+      _citationBackdrop.className = 'modal-backdrop fade';
+      document.body.appendChild(_citationBackdrop);
+      _citationBackdrop.offsetHeight; // reflow
+      _citationBackdrop.classList.add('show');
+    }
+  }
+
+  function hideBsModal(modal) {
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+    modal.removeAttribute('aria-modal');
+    modal.style.display = '';
+    document.body.classList.remove('modal-open');
+
+    if (_citationBackdrop) {
+      _citationBackdrop.remove();
+      _citationBackdrop = null;
+    }
+  }
+
+  // ── Citation detail modal ─────────────────────────────────────────────────
+
+  function openCitationModal(indicatorId, pubTitle, reportId) {
+    var modal      = document.getElementById('citationDetailModal');
+    var titleEl    = document.getElementById('citationModalPubTitle');
+    var bodyEl     = document.getElementById('citationModalBody');
+    var totalEl    = document.getElementById('citationModalTotal');
+    if (!modal || !bodyEl) return;
+
+    // Reset
+    if (titleEl) titleEl.textContent = pubTitle;
+    if (totalEl) totalEl.textContent = '';
+    bodyEl.innerHTML =
+      '<div class="citation-modal-skeleton">' +
+        '<div class="app-skeleton-block" style="height:2.5rem;border-radius:0.35rem;"></div>' +
+        '<div class="app-skeleton-block" style="height:2.5rem;border-radius:0.35rem;"></div>' +
+        '<div class="app-skeleton-block" style="height:2.5rem;border-radius:0.35rem;"></div>' +
+      '</div>';
+
+    // Show modal — no Bootstrap JS required
+    showBsModal(modal);
+
+    var citUrl = '/user/evaluation/indicator/' + encodeURIComponent(indicatorId) +
+      '/citations?pub=' + encodeURIComponent(pubTitle);
+    if (reportId) citUrl += '&report=' + encodeURIComponent(reportId);
+
+    fetch(citUrl, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        bodyEl.innerHTML = renderDetailList(data.citations, 'publications', null);
+        if (totalEl) {
+          totalEl.textContent = data.citations.length + ' citing paper' +
+            (data.citations.length !== 1 ? 's' : '') +
+            ' · total score ' + toNumber(data.totalScore).toFixed(2);
+        }
+      })
+      .catch(function (err) {
+        bodyEl.innerHTML =
+          '<p class="app-report-card__meta text-danger">Failed to load citations. ' + esc(err.message) + '</p>';
+      });
+  }
+
+  function initCitationModal(root, reportId) {
+    // Wire close buttons (data-dismiss="modal") on the citation modal
+    var modal = document.getElementById('citationDetailModal');
+    if (modal) {
+      modal.querySelectorAll('[data-dismiss="modal"]').forEach(function (btn) {
+        btn.addEventListener('click', function () { hideBsModal(modal); });
+      });
+      // Close on backdrop click (clicking outside the dialog)
+      modal.addEventListener('click', function (e) {
+        if (e.target === modal) hideBsModal(modal);
+      });
+    }
+
+    // Delegate click on citation rows — content is rendered dynamically
+    root.addEventListener('click', function (e) {
+      var row = e.target.closest('[data-citation-pub]');
+      if (!row) return;
+      var pubTitle    = row.getAttribute('data-citation-pub');
+      var indicatorId = row.getAttribute('data-indicator-id');
+      if (pubTitle && indicatorId) {
+        openCitationModal(indicatorId, pubTitle, reportId);
+      }
+    });
   }
 
   function esc(str) {
@@ -180,7 +312,7 @@
       .replace(/"/g, '&quot;');
   }
 
-  function loadIndicatorDetail(panel, indicatorId) {
+  function loadIndicatorDetail(panel, indicatorId, reportId) {
     var skeleton = panel.querySelector('.indicator-detail-skeleton');
     var content = panel.querySelector('.indicator-detail-content');
 
@@ -188,7 +320,10 @@
     if (skeleton) skeleton.hidden = false;
     if (content) content.innerHTML = '';
 
-    fetch('/user/evaluation/indicator/' + encodeURIComponent(indicatorId) + '/detail', {
+    var url = '/user/evaluation/indicator/' + encodeURIComponent(indicatorId) + '/detail';
+    if (reportId) url += '?report=' + encodeURIComponent(reportId);
+
+    fetch(url, {
       credentials: 'same-origin',
       headers: { 'Accept': 'application/json' }
     })
@@ -203,7 +338,7 @@
             '<span class="indicator-detail-total">Total score: <strong>' + toNumber(data.totalScore).toFixed(2) + '</strong></span>' +
             '<span class="indicator-detail-updated">Updated: ' + esc(data.updatedAt ? data.updatedAt.substring(0, 10) : '—') + '</span>' +
             '</div>';
-          content.innerHTML = headerHtml + renderDetailTable(data.items, data.outputMode);
+          content.innerHTML = headerHtml + renderDetailList(data.items, data.outputMode, data.indicatorId);
         }
         // Update hash to indicator
         history.replaceState(null, '', '#indicator-' + indicatorId);
@@ -228,7 +363,7 @@
     if (skeleton) skeleton.hidden = true;
   }
 
-  function initIndicatorExpand(root) {
+  function initIndicatorExpand(root, reportId) {
     root.querySelectorAll('.indicator-expand-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var indicatorId = btn.getAttribute('data-indicator-id');
@@ -260,7 +395,7 @@
           }
           btn.setAttribute('aria-expanded', 'true');
           openIndicatorPanel(panel);
-          loadIndicatorDetail(panel, indicatorId);
+          loadIndicatorDetail(panel, indicatorId, reportId);
         }
       });
     });
@@ -425,11 +560,13 @@
     if (!root) return;
 
     var researcherPosition = root.getAttribute('data-researcher-position') || '';
+    var reportId = root.getAttribute('data-report-id') || '';
 
     initPositionSelector(root, researcherPosition);
     initThresholdRows(root, researcherPosition);
     initCriterionToggles(root);
-    initIndicatorExpand(root);
+    initIndicatorExpand(root, reportId);
+    initCitationModal(root, reportId);
     initReportSwitcher();
 
     // Apply hash state after a tick so the DOM is stable

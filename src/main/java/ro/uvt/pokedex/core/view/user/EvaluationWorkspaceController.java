@@ -16,7 +16,6 @@ import ro.uvt.pokedex.core.model.reporting.UserIndividualReportRun;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.repository.EvaluationSnapshotRepository;
 import ro.uvt.pokedex.core.repository.reporting.UserIndividualReportRunRepository;
-import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.UserIndividualReportRunService;
 import ro.uvt.pokedex.core.service.application.UserIndicatorResultService;
@@ -36,7 +35,6 @@ public class EvaluationWorkspaceController {
     private static final int SNAPSHOT_CAP = 50;
 
     private final UserService userService;
-    private final ResearcherService researcherService;
     private final UserReportFacade userReportFacade;
     private final UserIndividualReportRunService userIndividualReportRunService;
     private final UserIndicatorResultService userIndicatorResultService;
@@ -89,8 +87,7 @@ public class EvaluationWorkspaceController {
             }
         }
 
-        String researcherPosition = Optional.ofNullable(currentUser.getResearcherId())
-                .flatMap(researcherService::findResearcherById)
+        String researcherPosition = Optional.ofNullable(Researcher.fromUser(currentUser))
                 .map(Researcher::getPosition)
                 .map(Enum::name)
                 .orElse("");
@@ -127,12 +124,26 @@ public class EvaluationWorkspaceController {
             }
         }
 
+        // Total score: sum of criterion scores for criteria flagged as contributesToTotal
+        double totalScore = 0.0;
+        boolean anyContributesToTotal = false;
+        if (report.getCriteria() != null) {
+            for (int i = 0; i < report.getCriteria().size(); i++) {
+                AbstractReport.Criterion crit = report.getCriteria().get(i);
+                if (crit.isContributesToTotal()) {
+                    anyContributesToTotal = true;
+                    totalScore += criterionScores.getOrDefault(i, 0.0);
+                }
+            }
+        }
+
         model.addAttribute("report", report);
         model.addAttribute("allReports", reports);
         model.addAttribute("indicatorScores", indicatorScores);
         model.addAttribute("criterionScores", criterionScores);
         model.addAttribute("criteriaMet", criteriaMet);
         model.addAttribute("criteriaTotal", criteriaTotal);
+        model.addAttribute("totalScore", anyContributesToTotal ? totalScore : null);
         model.addAttribute("researcherPosition", researcherPosition);
         model.addAttribute("runMetaId", run.runId());
         model.addAttribute("runMetaCreatedAt", run.createdAt());
@@ -173,9 +184,13 @@ public class EvaluationWorkspaceController {
     @ResponseBody
     public ResponseEntity<IndicatorDetailResponse> getIndicatorDetail(
             @PathVariable("id") String indicatorId,
+            @RequestParam(value = "report", required = false) String reportId,
             Authentication authentication) {
         return currentUser(authentication).map(user -> {
-            IndicatorApplyResultDto result = userIndicatorResultService.getOrCreateLatest(user.getEmail(), indicatorId);
+            IndicatorApplyResultDto result = (reportId != null && !reportId.isBlank())
+                    ? userReportFacade.buildReportScopedIndicatorDetail(user.getEmail(), reportId, indicatorId)
+                            .orElseGet(() -> userIndicatorResultService.getOrCreateLatest(user.getEmail(), indicatorId))
+                    : userIndicatorResultService.getOrCreateLatest(user.getEmail(), indicatorId);
             Map<String, Object> graph = result.rawGraph();
 
             String outputMode = graph.getOrDefault("outputMode", "publications").toString();
@@ -194,6 +209,52 @@ public class EvaluationWorkspaceController {
                     result.updatedAt(),
                     result.refreshVersion()
             ));
+        }).orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+    }
+
+    // ── JSON: citation drilldown for a single cited publication ──────────────
+
+    @GetMapping("/indicator/{id}/citations")
+    @ResponseBody
+    public ResponseEntity<CitationDetailResponse> getCitationDetail(
+            @PathVariable("id") String indicatorId,
+            @RequestParam("pub") String pubTitle,
+            @RequestParam(value = "report", required = false) String reportId,
+            Authentication authentication) {
+        return currentUser(authentication).map(user -> {
+            IndicatorApplyResultDto result = (reportId != null && !reportId.isBlank())
+                    ? userReportFacade.buildReportScopedIndicatorDetail(user.getEmail(), reportId, indicatorId)
+                            .orElseGet(() -> userIndicatorResultService.getOrCreateLatest(user.getEmail(), indicatorId))
+                    : userIndicatorResultService.getOrCreateLatest(user.getEmail(), indicatorId);
+            Map<String, Object> graph = result.rawGraph();
+
+            List<ScoredItem> citations = new ArrayList<>();
+            double total = 0.0;
+
+            Object scoresObj = graph.get("scores");
+            if (scoresObj instanceof Map<?, ?> pubScores) {
+                Object citMapObj = pubScores.get(pubTitle);
+                if (citMapObj instanceof Map<?, ?> citScores) {
+                    for (Map.Entry<?, ?> entry : citScores.entrySet()) {
+                        if ("total".equals(entry.getKey().toString())) continue;
+                        double authorScore = extractAuthorScore(entry.getValue());
+                        double forumScore  = extractForumScore(entry.getValue());
+                        if (authorScore > 0) {
+                            citations.add(new ScoredItem(
+                                    entry.getKey().toString(),
+                                    extractYear(entry.getValue()),
+                                    authorScore, forumScore,
+                                    extractQuarter(entry.getValue()),
+                                    extractCoreRankingEquivalent(entry.getValue()),
+                                    extractScoringSource(entry.getValue()),
+                                    "publication", null));
+                            total += authorScore;
+                        }
+                    }
+                }
+            }
+            citations.sort(Comparator.comparingDouble(ScoredItem::authorScore).reversed());
+            return ResponseEntity.ok(new CitationDetailResponse(pubTitle, total, citations));
         }).orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
 
@@ -331,7 +392,7 @@ public class EvaluationWorkspaceController {
 
         EvaluationSnapshot snapshot = new EvaluationSnapshot();
         snapshot.setUserEmail(user.getEmail());
-        snapshot.setResearcherId(user.getResearcherId());
+        snapshot.setResearcherId(user.getEmail());
         snapshot.setReportId(request.reportId());
         snapshot.setName(request.name() != null && !request.name().isBlank()
                 ? request.name().trim()
@@ -637,6 +698,8 @@ public class EvaluationWorkspaceController {
     record ScoredItem(String key, int year, double authorScore, double forumScore,
                       String quarter, String coreRankingEquivalent, String scoringSource,
                       String type, String details) {}
+
+    record CitationDetailResponse(String pubTitle, double totalScore, List<ScoredItem> citations) {}
 
     record RunSummary(String runId, Instant createdAt, String status) {}
 

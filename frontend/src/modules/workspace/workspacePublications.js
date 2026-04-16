@@ -54,12 +54,13 @@ const AGGREGATION_TYPES = ['Journal', 'Conference Proceeding', 'Book Series', 'B
 
 // ── Module state ─────────────────────────────────────────────────────────────
 
-let _panel     = null;
-let _mount     = null;
-let _allPubs   = [];
-let _data      = null;
-let _page      = 1;
-let _activeId  = null;   // id of the row whose detail is currently open
+let _panel          = null;
+let _mount          = null;
+let _allPubs        = [];
+let _data           = null;
+let _page           = 1;
+let _activeId       = null;   // id of the row whose detail is currently open
+let _pendingWizard  = false;  // open wizard as soon as the tab finishes loading
 
 // Wizard state
 let _wizardOpen     = false;
@@ -81,7 +82,14 @@ let _wIssueIdentifier = '';
 // ── Public API ───────────────────────────────────────────────────────────────
 
 export function initWorkspacePublications() {
-    window.appWorkspacePublications = { init: _init };
+    window.appWorkspacePublications = {
+        init: _init,
+        // Called by Quick Actions before the tab has loaded — deferred until _renderAll finishes.
+        openWizard() {
+            if (_mount && _data) { _openWizard(); }
+            else                 { _pendingWizard = true; }
+        },
+    };
 }
 
 // ── Init / fetch ─────────────────────────────────────────────────────────────
@@ -157,6 +165,7 @@ function _renderAll() {
         _mount.innerHTML = '';
         _mount.appendChild(container);
         _wireStaticEvents();
+        if (_pendingWizard) { _pendingWizard = false; _openWizard(); }
         return;
     }
 
@@ -172,6 +181,7 @@ function _renderAll() {
 
     _renderPage();
     _wireStaticEvents();
+    if (_pendingWizard) { _pendingWizard = false; _openWizard(); }
 
     // Escape key
     document.addEventListener('keydown', _handleEscape);
@@ -180,6 +190,12 @@ function _renderAll() {
     _mount.addEventListener('click', e => {
         const btn = e.target.closest('[data-retry-panel]');
         if (btn) _init(_panel);
+    });
+
+    // Citations modal trigger (delegated — button is inside the detail panel)
+    _mount.addEventListener('click', e => {
+        const btn = e.target.closest('[data-citations-modal]');
+        if (btn) _openCitationsModal(btn.dataset.citationsModal);
     });
 }
 
@@ -396,9 +412,9 @@ function _buildDetailPanel(pub) {
             (moreCount > 0
                 ? `<span style="font-size:0.8rem;color:var(--app-color-text-muted)">&hellip; and ${moreCount} more</span>`
                 : '') +
-            `<a href="/user/publications/citations?id=${_esc(pub.id)}" class="app-ws-pubs__citations-link">` +
+            `<button type="button" class="app-ws-pubs__citations-link" data-citations-modal="${_esc(pub.id)}">` +
                 `View all citations →` +
-            `</a>`;
+            `</button>`;
     }
 
     const currentSubtype = pub.subtype ?? '';
@@ -510,6 +526,13 @@ function _handleEscape(e) {
         _closeWizard(false);
         return;
     }
+    // Citations modal next
+    const citModal = document.getElementById('ws-citations-modal');
+    if (citModal && !citModal.hidden) {
+        e.stopPropagation();
+        _closeCitationsModal();
+        return;
+    }
     if (!_activeId) return;
     const detailRow = document.getElementById('ws-pubs-detail-row');
     if (!detailRow) return;
@@ -518,6 +541,127 @@ function _handleEscape(e) {
     _closeDetail();
     const tr = document.querySelector(`[data-pub-id="${CSS.escape(savedId ?? '')}"]`);
     tr?.querySelector('[data-detail-btn]')?.focus();
+}
+
+// ── Citations modal ───────────────────────────────────────────────────────────
+
+function _openCitationsModal(pubId) {
+    const modal   = document.getElementById('ws-citations-modal');
+    const body    = document.getElementById('ws-citations-modal-body');
+    const pubEl   = document.getElementById('ws-citations-modal-pub');
+    const totalEl = document.getElementById('ws-citations-modal-total');
+    if (!modal || !body) return;
+
+    // Show immediately with skeleton, then fetch
+    body.innerHTML = `<div style="padding:1.5rem">
+        <div class="app-skeleton-block" style="height:2rem;margin-bottom:.75rem;border-radius:.4rem"></div>
+        <div class="app-skeleton-block" style="height:2rem;margin-bottom:.75rem;border-radius:.4rem"></div>
+        <div class="app-skeleton-block" style="height:2rem;border-radius:.4rem"></div>
+    </div>`;
+    if (pubEl)   pubEl.textContent   = '';
+    if (totalEl) totalEl.textContent = '';
+
+    _setModalState(modal, true);
+
+    fetch(`/user/workspace/publications/${encodeURIComponent(pubId)}/citations`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+        .then(data => _renderCitationsModal(data, pubEl, body, totalEl))
+        .catch(err => {
+            body.innerHTML = `<p style="padding:1.5rem;color:var(--app-color-danger);font-size:.88rem">
+                Failed to load citations: ${_esc(err.message)}</p>`;
+        });
+}
+
+function _renderCitationsModal(data, pubEl, body, totalEl) {
+    const citations = Array.isArray(data.citations) ? data.citations : [];
+    const forumMap  = data.forumMap  ?? {};
+
+    if (pubEl)   pubEl.textContent   = data.publication?.title ?? '';
+    if (totalEl) totalEl.textContent = `${citations.length} citing publication${citations.length !== 1 ? 's' : ''}`;
+
+    if (citations.length === 0) {
+        body.innerHTML = `<p style="padding:1.5rem;font-size:.88rem;color:var(--app-color-text-muted)">No citations found.</p>`;
+        return;
+    }
+
+    const rows = citations.map(c => {
+        const year  = (c.coverDate ?? '').slice(0, 4) || '—';
+        const venue = forumMap[c.forum]?.publicationName ?? c.forum ?? '—';
+        const cites = c.citedbyCount ?? c.citedByCount ?? 0;
+        return `<tr>
+          <td style="max-width:22rem">
+            <span style="font-size:.85rem;font-weight:600;color:var(--app-color-text-strong)">${_esc(c.title ?? '—')}</span>
+          </td>
+          <td style="white-space:nowrap;font-size:.82rem;color:var(--app-color-text-muted)">${_esc(year)}</td>
+          <td style="font-size:.82rem;color:var(--app-color-text-muted);max-width:14rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(venue)}</td>
+          <td style="white-space:nowrap;font-size:.82rem;text-align:right">${cites > 0 ? cites : '—'}</td>
+        </tr>`;
+    }).join('');
+
+    body.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:.83rem">
+        <thead>
+          <tr style="background:color-mix(in srgb,var(--app-color-card-bg-muted) 80%,transparent)">
+            <th style="padding:.5rem .75rem;text-align:left;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--app-color-text-muted);border-bottom:1px solid var(--app-color-border)">Title</th>
+            <th style="padding:.5rem .75rem;text-align:left;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--app-color-text-muted);border-bottom:1px solid var(--app-color-border);white-space:nowrap">Year</th>
+            <th style="padding:.5rem .75rem;text-align:left;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--app-color-text-muted);border-bottom:1px solid var(--app-color-border)">Venue</th>
+            <th style="padding:.5rem .75rem;text-align:right;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--app-color-text-muted);border-bottom:1px solid var(--app-color-border);white-space:nowrap">Cited&nbsp;by</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+    </table>`;
+
+    // Stripe rows
+    body.querySelectorAll('tbody tr').forEach((tr, i) => {
+        tr.style.background = i % 2 === 0
+            ? 'transparent'
+            : 'color-mix(in srgb,var(--app-color-card-bg-muted) 55%,transparent)';
+    });
+    body.querySelectorAll('tbody td').forEach(td => {
+        td.style.padding = '.45rem .75rem';
+        td.style.borderBottom = '1px solid var(--app-color-border)';
+        td.style.verticalAlign = 'middle';
+    });
+    body.querySelectorAll('tbody tr:last-child td').forEach(td => {
+        td.style.borderBottom = '0';
+    });
+}
+
+function _closeCitationsModal() {
+    const modal = document.getElementById('ws-citations-modal');
+    if (modal) _setModalState(modal, false);
+}
+
+function _setModalState(modal, open) {
+    // Reuse or create the shared backdrop (same pattern as legacyInteractions.js)
+    let backdrop = document.querySelector('[data-app-modal-backdrop]');
+    if (!backdrop) {
+        backdrop = document.createElement('div');
+        backdrop.className = 'app-modal-backdrop';
+        backdrop.setAttribute('data-app-modal-backdrop', '');
+        backdrop.hidden = true;
+        document.body.appendChild(backdrop);
+    }
+
+    modal.classList.toggle('show', open);
+    modal.hidden           = !open;
+    modal.setAttribute('aria-hidden', open ? 'false' : 'true');
+    backdrop.hidden        = !open;
+    backdrop.classList.toggle('show', open);
+    document.body.classList.toggle('app-modal-open', open);
+
+    if (open) {
+        // Close on backdrop click
+        backdrop.onclick = () => _closeCitationsModal();
+        // Wire dismiss buttons
+        modal.querySelectorAll('[data-dismiss="modal"]').forEach(btn => {
+            btn.onclick = () => _closeCitationsModal();
+        });
+        modal.querySelector('.close')?.focus();
+    } else {
+        backdrop.onclick = null;
+    }
 }
 
 // ── Wizard ────────────────────────────────────────────────────────────────────

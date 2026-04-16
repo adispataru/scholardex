@@ -13,6 +13,7 @@ import ro.uvt.pokedex.core.model.reporting.WoSExtractor;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.repository.UserRepository;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisZipExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupMemberCnfisWorkbook;
@@ -32,6 +33,7 @@ public class GroupCnfisExportFacade {
     private static final String LINKER_VERSION = "h17.10";
 
     private final GroupManagementFacade groupManagementFacade;
+    private final UserRepository userRepository;
     private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final PublicationEnrichmentLinkerService publicationEnrichmentLinkerService;
@@ -45,7 +47,7 @@ public class GroupCnfisExportFacade {
             return Optional.empty();
         }
 
-        List<Researcher> researchers = new ArrayList<>(group.getResearchers());
+        List<Researcher> researchers = loadResearchers(group);
         researchers.sort(Comparator.comparing(Researcher::getName));
         List<String> lookupKeys = new ArrayList<>();
         for (Researcher researcher : researchers) {
@@ -78,7 +80,7 @@ public class GroupCnfisExportFacade {
         Domain allDomain = resolveAllDomain();
         List<GroupMemberCnfisWorkbook> workbooks = new ArrayList<>();
 
-        for (Researcher researcher : group.getResearchers()) {
+        for (Researcher researcher : loadResearchers(group)) {
             List<String> authorIds = scholardexProjectionReadService.findAuthorsByIdIn(
                     researcherAuthorLookupService.resolveAuthorLookupKeys(researcher)
             ).stream().map(ScholardexAuthorView::getId).toList();
@@ -118,6 +120,19 @@ public class GroupCnfisExportFacade {
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "data/templates/AC2025_Anexa6-Tabel_institutional_articole_brevete-2025.xlsx"
         ));
+    }
+
+    private List<Researcher> loadResearchers(Group group) {
+        List<String> memberIds = group.getMemberIds();
+        if (memberIds != null && !memberIds.isEmpty()) {
+            return userRepository.findAllById(memberIds).stream()
+                    .map(Researcher::fromUser)
+                    .filter(java.util.Objects::nonNull)
+                    .collect(Collectors.toList());
+        }
+        return group.getResearchers() != null
+                ? new ArrayList<>(group.getResearchers())
+                : new ArrayList<>();
     }
 
     private Domain resolveAllDomain() {

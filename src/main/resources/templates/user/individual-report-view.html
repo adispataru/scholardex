@@ -65,6 +65,12 @@
 
                 <!-- ── Aggregate score panel ────────────────────────────────── -->
                 <div class="app-eval-aggregate mb-3">
+                    <!-- Total score (only shown when at least one criterion is flagged contributesToTotal) -->
+                    <div class="app-eval-aggregate__cell" th:if="${totalScore != null}">
+                        <span class="app-eval-aggregate__label">Total Score</span>
+                        <span class="app-eval-aggregate__value"
+                              th:text="${#numbers.formatDecimal(totalScore, 1, 2)}">0.00</span>
+                    </div>
                     <!-- Criteria Met — values updated by JS when position changes -->
                     <div class="app-eval-aggregate__cell" id="eval-criteria-met-cell">
                         <span class="app-eval-aggregate__label">Criteria Met</span>
@@ -199,6 +205,31 @@
             </div>
 
             <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Citation drilldown modal ──────────────────────────────────────────── -->
+<div class="modal fade app-modal" id="citationDetailModal" tabindex="-1" role="dialog"
+     aria-labelledby="citationDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="citation-modal-header-body">
+                    <h5 class="modal-title" id="citationDetailModalLabel">Citations</h5>
+                    <p class="citation-modal-pub-title" id="citationModalPubTitle"></p>
+                </div>
+                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="citationModalBody">
+                <!-- populated by JS -->
+            </div>
+            <div class="modal-footer">
+                <span class="citation-modal-total" id="citationModalTotal"></span>
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+            </div>
         </div>
     </div>
 </div>

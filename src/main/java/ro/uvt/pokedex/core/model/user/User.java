@@ -8,7 +8,9 @@ import org.springframework.lang.NonNull;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import ro.uvt.pokedex.core.model.reporting.Position;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -23,7 +25,20 @@ public class User implements UserDetails {
 
     private String password;
     private Set<UserRole> roles = new HashSet<>();
+
+    /**
+     * Legacy field kept during migration. After migration completes all
+     * profile data lives in {@link #researcherProfile} and this field will
+     * be removed.
+     */
     private String researcherId;
+
+    /**
+     * Embedded researcher profile. Non-null for users who have a researcher
+     * identity; null for admin / system accounts.
+     */
+    private ResearcherProfile researcherProfile;
+
     @Transient
     private List<SimpleGrantedAuthority> authority;
     private boolean locked = false;
@@ -70,4 +85,23 @@ public class User implements UserDetails {
     }
 
     // Constructors, getters, and setters
+
+    /**
+     * Embedded document holding the researcher profile data.
+     * Stored inline in the {@code scholardex.users} collection.
+     */
+    @Data
+    public static class ResearcherProfile {
+        private String firstName;
+        private String lastName;
+        private String scholarId;
+        private List<String> scopusId = new ArrayList<>();
+        private List<String> wosId = new ArrayList<>();
+        private String primaryScholardexAuthorId;
+        private Position position;
+
+        public String getName() {
+            return firstName + " " + lastName;
+        }
+    }
 }

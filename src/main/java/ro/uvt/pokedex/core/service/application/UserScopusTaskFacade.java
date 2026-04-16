@@ -22,7 +22,10 @@ public class UserScopusTaskFacade {
     private final ScopusCitationUpdateRepository scopusCitationUpdateRepository;
 
     public UserScopusTasksViewModel buildTasksView(String userEmail, String researcherId) {
-        Researcher researcher = researcherService.findResearcherById(researcherId).orElse(null);
+        // researcherId is kept for API compatibility; after migration the researcher
+        // is resolved via userEmail (which is now the canonical researcher id).
+        String lookupId = (userEmail != null && !userEmail.isBlank()) ? userEmail : researcherId;
+        Researcher researcher = researcherService.findResearcherById(lookupId).orElse(null);
         List<ScopusPublicationUpdate> tasks = scopusPublicationUpdateRepository.findByInitiator(userEmail);
         List<ScopusCitationsUpdate> citationsTasks = scopusCitationUpdateRepository.findByInitiator(userEmail);
         return new UserScopusTasksViewModel(researcher, tasks, citationsTasks);

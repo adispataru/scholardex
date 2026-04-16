@@ -23,4 +23,11 @@ public class Group {
     private Institution institution;
     @DBRef
     private List<Researcher> researchers = new ArrayList<>();
+
+    /**
+     * User emails of group members. Replaces {@link #researchers} after
+     * migration; kept alongside during the transition so both old and new
+     * code paths can coexist.
+     */
+    private List<String> memberIds = new ArrayList<>();
 }
