@@ -263,9 +263,9 @@
                                                             </div>
                                                         </div>
                                                         <div>
-                                                            <p class="app-mini-chart__label">Activity type distribution</p>
+                                                            <p class="app-mini-chart__label">Citations per year</p>
                                                             <div class="app-mini-chart">
-                                                                <canvas id="ws-chart-acts" aria-label="Activity type distribution doughnut chart"></canvas>
+                                                                <canvas id="ws-chart-cites" aria-label="Citations per year bar chart"></canvas>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -435,9 +435,10 @@
     </div>
 </div>
 
-<th:block th:replace="~{fragments :: core-scripts}"></th:block>
-
 <script th:inline="javascript">
+    // Seed global data BEFORE app.js runs so modules that read these at
+    // initialisation time (workspaceOverview.js chart init) find the values ready.
+
     // Initial unread notification count for workspaceNotifications.js (H36.6).
     window.wsNotifCount = /*[[${workspace.unreadNotificationCount}]]*/ 0;
 
@@ -452,6 +453,8 @@
     };
 
     // Lazy-load callbacks consumed by workspaceTabs.js (H36.1/H36.3).
+    // Defined here (before bundle) so the references resolve lazily at call time,
+    // not at definition time — window.appWorkspace* are set by app.js below.
     window.workspaceTabCallbacks = {
         publications: function(panel) {
             window.appWorkspacePublications?.init(panel);
@@ -464,5 +467,7 @@
         }
     };
 </script>
+
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
 </body>
 </html>

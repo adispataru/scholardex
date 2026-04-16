@@ -1,7 +1,6 @@
 package ro.uvt.pokedex.core.service.application;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -30,7 +29,6 @@ import java.util.Set;
 
 @Service
 @Slf4j
-@ConditionalOnProperty(name = "spring.datasource.url")
 public class PostgresReportingLookupFacade implements ReportingLookupPort {
 
     private static final Set<EditionNormalized> OPERATIONAL_EDITIONS = EnumSet.of(

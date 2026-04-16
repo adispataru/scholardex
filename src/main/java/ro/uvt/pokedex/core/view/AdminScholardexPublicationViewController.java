@@ -1,7 +1,6 @@
 package ro.uvt.pokedex.core.view;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,7 +15,6 @@ import java.util.Optional;
 @Controller
 @RequestMapping("/admin/scholardex/publications")
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "spring.datasource.url")
 public class AdminScholardexPublicationViewController {
 
     private final PostgresScholardexAdminReadPort postgresScholardexAdminReadPort;

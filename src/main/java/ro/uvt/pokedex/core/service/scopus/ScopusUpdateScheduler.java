@@ -156,7 +156,7 @@ public class ScopusUpdateScheduler {
         taskRepo.save(task);
 
         final String authorScopusId = task.getScopusId();
-        String fromDate = computeFromDate(authorScopusId);
+        String fromDate = resolveFromDate(task, authorScopusId);
 
         String cursor = null;
         int imported = 0;
@@ -171,6 +171,16 @@ public class ScopusUpdateScheduler {
                     String sourceRecordId = text(item, "eid");
                     if (sourceRecordId == null || sourceRecordId.isBlank()) {
                         continue;
+                    }
+                    // PERIOD mode: skip items whose coverDate year is beyond the requested end year
+                    if ("PERIOD".equals(task.getSyncMode()) && task.getEndYear() != null) {
+                        String coverDate = text(item, "coverDate");
+                        if (coverDate != null && coverDate.length() >= 4) {
+                            try {
+                                int itemYear = Integer.parseInt(coverDate.substring(0, 4));
+                                if (itemYear > task.getEndYear()) continue;
+                            } catch (NumberFormatException ignored) { /* keep the item */ }
+                        }
                     }
                     ScopusImportEventIngestionService.EventIngestionOutcome outcome = importEventIngestionService.ingest(
                             ScopusImportEntityType.PUBLICATION,
@@ -194,7 +204,7 @@ public class ScopusUpdateScheduler {
 
         MDC.put("phase", "complete");
         task.setStatus(Status.COMPLETED);
-        task.setMessage("Imported " + imported + " items since " + fromDate);
+        task.setMessage("Imported " + imported + " items" + (fromDate != null ? " since " + fromDate : " (full update)"));
         task.setExecutionDate(LocalDate.now(Z).toString());
         task.setLastErrorCode(null);
         task.setLastErrorMessage(null);
@@ -254,7 +264,25 @@ public class ScopusUpdateScheduler {
         final String authorScopusId = task.getScopusId();
 
         // 1) compute last citation date per EID **for this author only**
-        Map<String, String> eidLastDate = computeEidLastCitationDatesForAuthor(authorScopusId);
+        String citMode = task.getSyncMode();
+        Map<String, String> eidLastDate;
+        if ("FULL".equals(citMode)) {
+            // Force full re-fetch: pass all known EIDs with no date filter (empty string = no lower bound)
+            eidLastDate = computeEidLastCitationDatesForAuthor(authorScopusId)
+                    .keySet().stream()
+                    .collect(java.util.stream.Collectors.toMap(k -> k, k -> ""));
+        } else if ("PERIOD".equals(citMode) && task.getStartYear() != null) {
+            // Cap each EID's last-date to the requested start year so we never look earlier
+            String periodStart = task.getStartYear() + "-01-01";
+            eidLastDate = computeEidLastCitationDatesForAuthor(authorScopusId)
+                    .entrySet().stream()
+                    .collect(java.util.stream.Collectors.toMap(
+                            Map.Entry::getKey,
+                            e -> e.getValue().compareTo(periodStart) > 0 ? e.getValue() : periodStart
+                    ));
+        } else {
+            eidLastDate = computeEidLastCitationDatesForAuthor(authorScopusId);
+        }
         if (eidLastDate.isEmpty()) {
             task.setStatus(Status.COMPLETED);
             task.setMessage("No publications found for author " + authorScopusId + ", nothing to update.");
@@ -431,6 +459,26 @@ public class ScopusUpdateScheduler {
 
 
 
+
+    /**
+     * Resolves the {@code fromDate} for a publication-sync task based on the task's
+     * {@code syncMode} field:
+     * <ul>
+     *   <li>{@code FULL} → {@code null} (no date filter; fetch everything)</li>
+     *   <li>{@code PERIOD} → {@code startYear}-01-01</li>
+     *   <li>{@code SINCE_LAST_UPDATE} (default) → result of {@link #computeFromDate}</li>
+     * </ul>
+     */
+    private String resolveFromDate(ScopusPublicationUpdate task, String authorScopusId) {
+        String mode = task.getSyncMode();
+        if ("FULL".equals(mode)) {
+            return null;
+        }
+        if ("PERIOD".equals(mode) && task.getStartYear() != null) {
+            return task.getStartYear() + "-01-01";
+        }
+        return computeFromDate(authorScopusId);
+    }
 
     private String computeFromDate(String authorScopusId) {
         List<ScholardexPublicationView> publications = scholardexProjectionReadService.findAllPublicationsByAuthorsContaining(authorScopusId);

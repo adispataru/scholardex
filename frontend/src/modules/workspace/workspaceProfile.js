@@ -240,14 +240,33 @@ function _buildIdEntryRow(field, value, index) {
 function _buildSyncSection(data) {
     const researcher = data?.researcher;
     const scopusIds  = researcher?.scopusId ?? [];
+    const currentYear = new Date().getFullYear();
 
     let syncRows;
     if (scopusIds.length === 0) {
         syncRows = `<p class="app-ws-prof__task-empty">Add a Scopus ID to enable sync.</p>`;
     } else {
-        syncRows = `<ul class="app-ws-prof__sync-list">${scopusIds.map(id => `
-          <li class="app-ws-prof__sync-id-row">
+        syncRows = `<ul class="app-ws-prof__sync-list">${scopusIds.map((id, idx) => `
+          <li class="app-ws-prof__sync-id-row" data-sync-row>
             <span class="app-ws-prof__sync-id-label">${_esc(id)}</span>
+            <div class="app-ws-prof__sync-mode-group" role="radiogroup" aria-label="Sync mode">
+              <label class="app-ws-prof__sync-mode-opt">
+                <input type="radio" name="sync-mode-${idx}" value="SINCE_LAST_UPDATE" checked> Since last update
+              </label>
+              <label class="app-ws-prof__sync-mode-opt">
+                <input type="radio" name="sync-mode-${idx}" value="PERIOD"> Period
+              </label>
+              <label class="app-ws-prof__sync-mode-opt">
+                <input type="radio" name="sync-mode-${idx}" value="FULL"> Full update
+              </label>
+            </div>
+            <div class="app-ws-prof__sync-period" hidden>
+              <label>From <input type="number" class="app-ws-prof__input app-ws-prof__sync-year"
+                                  placeholder="e.g. 2017" min="1990" max="${currentYear}"></label>
+              <span>–</span>
+              <label>To &nbsp;<input type="number" class="app-ws-prof__input app-ws-prof__sync-year"
+                                  placeholder="e.g. ${currentYear}" min="1990" max="${currentYear}"></label>
+            </div>
             <div class="app-ws-prof__sync-actions">
               <button class="app-btn app-btn--sm app-btn--secondary" data-sync-type="publications" data-sync-id="${_esc(id)}">
                 <i class="fa-solid fa-book-open"></i> Update Publications
@@ -259,8 +278,8 @@ function _buildSyncSection(data) {
           </li>`).join('')}</ul>`;
     }
 
-    const pubTable  = _buildTaskTable('publication-tasks', data?.pubTasks  ?? [], ['Scopus ID', 'Status', 'Initiated', 'Executed', 'Message']);
-    const citeTable = _buildTaskTable('citation-tasks',    data?.citeTasks ?? [], ['Scopus ID', 'Status', 'Initiated', 'Executed', 'Message']);
+    const pubTable  = _buildTaskTable('publication-tasks', data?.pubTasks  ?? [], ['Scopus ID', 'Mode', 'Status', 'Initiated', 'Executed', 'Message']);
+    const citeTable = _buildTaskTable('citation-tasks',    data?.citeTasks ?? [], ['Scopus ID', 'Mode', 'Status', 'Initiated', 'Executed', 'Message']);
 
     return `<div class="app-ws-prof__section">
       <div class="app-ws-prof__section-header">
@@ -292,6 +311,7 @@ function _buildTaskTable(tableId, tasks, cols) {
 
     const rows = sorted.map(t => `<tr>
       <td><span class="app-ws-prof__id-pill">${_esc(t.scopusId ?? '—')}</span></td>
+      <td style="font-size:.78rem;white-space:nowrap">${_esc(_modeLabel(t.syncMode))}</td>
       <td>${_statusBadge(t.status)}</td>
       <td style="white-space:nowrap;font-size:.78rem">${_esc(_fmtDate(t.initiatedDate))}</td>
       <td style="white-space:nowrap;font-size:.78rem">${_esc(_fmtDate(t.executionDate))}</td>
@@ -381,6 +401,15 @@ function _wireEvents() {
             return;
         }
 
+        // Sync mode radio → show/hide period year inputs
+        const radio = e.target.closest('input[type="radio"][name^="sync-mode-"]');
+        if (radio) {
+            const row   = radio.closest('[data-sync-row]');
+            const panel = row?.querySelector('.app-ws-prof__sync-period');
+            if (panel) panel.hidden = (radio.value !== 'PERIOD');
+            return;
+        }
+
         // Sync action buttons
         const syncBtn = e.target.closest('[data-sync-type]');
         if (syncBtn) {
@@ -466,17 +495,24 @@ function _setFeedback(el, type, msg) {
 // ── Trigger sync ──────────────────────────────────────────────────────────────
 
 function _triggerSync(type, scopusId, btn) {
+    const row        = btn?.closest('[data-sync-row]');
+    const modeRadio  = row?.querySelector('input[type="radio"]:checked');
+    const syncMode   = modeRadio?.value ?? 'SINCE_LAST_UPDATE';
+    const yearInputs = row?.querySelectorAll('.app-ws-prof__sync-year');
+    const startYear  = yearInputs?.[0]?.value ? parseInt(yearInputs[0].value, 10) : null;
+    const endYear    = yearInputs?.[1]?.value ? parseInt(yearInputs[1].value, 10) : null;
+
     if (btn) btn.disabled = true;
 
     fetch(`/user/workspace/profile/sync/${type}`, {
         method:  'POST',
         headers: _postHeaders(),
-        body:    JSON.stringify({ scopusId })
+        body:    JSON.stringify({ scopusId, syncMode, startYear, endYear })
     })
         .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
         .then(task => {
             if (btn) btn.disabled = false;
-            _prependTaskRow(type, task, scopusId);
+            _prependTaskRow(type, task, scopusId, syncMode);
         })
         .catch(err => {
             if (btn) btn.disabled = false;
@@ -497,7 +533,7 @@ function _showSyncError(btn, msg) {
     setTimeout(() => el.remove(), 4000);
 }
 
-function _prependTaskRow(type, task, scopusId) {
+function _prependTaskRow(type, task, scopusId, syncMode) {
     const tableId = type === 'publications' ? 'publication-tasks' : 'citation-tasks';
     const table   = _mount.querySelector(`#${tableId}`);
 
@@ -514,6 +550,7 @@ function _prependTaskRow(type, task, scopusId) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><span class="app-ws-prof__id-pill">${_esc(task.scopusId ?? scopusId ?? '—')}</span></td>
+      <td style="font-size:.78rem;white-space:nowrap">${_esc(_modeLabel(task.syncMode ?? syncMode))}</td>
       <td>${_statusBadge(task.status)}</td>
       <td style="white-space:nowrap;font-size:.78rem">${_esc(_fmtDate(task.initiatedDate))}</td>
       <td style="white-space:nowrap;font-size:.78rem">—</td>
@@ -536,6 +573,12 @@ function _esc(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+function _modeLabel(mode) {
+    if (mode === 'FULL')   return 'Full';
+    if (mode === 'PERIOD') return 'Period';
+    return 'Since last';
 }
 
 function _fmtDate(iso) {

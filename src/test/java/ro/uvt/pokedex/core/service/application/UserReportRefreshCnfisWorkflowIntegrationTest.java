@@ -33,7 +33,6 @@ import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 import ro.uvt.pokedex.core.repository.reporting.UserIndividualReportRunRepository;
 import ro.uvt.pokedex.core.repository.reporting.UserIndicatorResultRepository;
 import ro.uvt.pokedex.core.service.CacheService;
-import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
 import ro.uvt.pokedex.core.service.application.model.UserWorkbookExportResult;
@@ -82,7 +81,6 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
     private UserIndividualReportRunService userIndividualReportRunService;
 
     private UserService userService;
-    private ResearcherService researcherService;
     private ScholardexProjectionReadService scholardexProjectionReadService;
     private ResearcherAuthorLookupService researcherAuthorLookupService;
     private ScientificProductionService scientificProductionService;
@@ -105,7 +103,6 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
         userIndividualReportRunRepository = repositoryFactory.getRepository(UserIndividualReportRunRepository.class);
 
         userService = mock(UserService.class);
-        researcherService = mock(ResearcherService.class);
         ActivityInstanceRepository activityInstanceRepository = mock(ActivityInstanceRepository.class);
         scholardexProjectionReadService = mock(ScholardexProjectionReadService.class);
         domainRepository = mock(DomainRepository.class);
@@ -121,7 +118,6 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
 
         userReportFacade = new UserReportFacade(
                 userService,
-                researcherService,
                 indicatorRepository,
                 individualReportRepository,
                 activityInstanceRepository,
@@ -297,9 +293,16 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
         User user = new User();
         user.setEmail("user@uvt.ro");
         user.setResearcherId("r1");
+        User.ResearcherProfile researcherProfile = new User.ResearcherProfile();
+        researcherProfile.setFirstName("Author");
+        researcherProfile.setLastName("One");
+        researcherProfile.setScopusId(new ArrayList<>(List.of("a1")));
+        user.setResearcherProfile(researcherProfile);
 
         Researcher researcher = new Researcher();
-        researcher.setId("r1");
+        researcher.setId("user@uvt.ro");
+        researcher.setFirstName("Author");
+        researcher.setLastName("One");
         researcher.setScopusId(List.of("a1"));
 
         ScholardexAuthorView author = new ScholardexAuthorView();
@@ -321,7 +324,6 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
         allDomain.setName("ALL");
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
         when(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher)).thenReturn(List.of("a1"));
         when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));

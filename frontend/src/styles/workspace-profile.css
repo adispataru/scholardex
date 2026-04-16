@@ -329,10 +329,10 @@
 
 .app-ws-prof__sync-id-row {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  padding: 0.6rem 1rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--app-color-border);
 }
 
@@ -341,11 +341,46 @@
 }
 
 .app-ws-prof__sync-id-label {
-  flex: 1;
   font-family: monospace;
   font-size: 0.9rem;
   color: var(--app-color-text-strong);
   font-weight: 600;
+}
+
+/* Sync mode radio group */
+.app-ws-prof__sync-mode-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.1rem;
+}
+
+.app-ws-prof__sync-mode-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.83rem;
+  color: var(--app-color-text);
+  cursor: pointer;
+}
+
+.app-ws-prof__sync-mode-opt input[type="radio"] {
+  cursor: pointer;
+}
+
+/* Period year inputs */
+.app-ws-prof__sync-period {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.83rem;
+  color: var(--app-color-text-muted);
+  flex-wrap: wrap;
+}
+
+.app-ws-prof__sync-year {
+  width: 5.5rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.83rem;
 }
 
 .app-ws-prof__sync-actions {

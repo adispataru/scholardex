@@ -325,6 +325,9 @@ public class ResearcherWorkspaceController {
         if (userOpt.isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         ScopusPublicationUpdate draft = new ScopusPublicationUpdate();
         draft.setScopusId(request.scopusId());
+        draft.setSyncMode(request.syncMode() != null ? request.syncMode() : "SINCE_LAST_UPDATE");
+        draft.setStartYear(request.startYear());
+        draft.setEndYear(request.endYear());
         ScopusPublicationUpdate saved =
                 userScopusTaskFacade.createPublicationTask(userOpt.get().getEmail(), draft);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
@@ -340,6 +343,9 @@ public class ResearcherWorkspaceController {
         if (userOpt.isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         ScopusCitationsUpdate draft = new ScopusCitationsUpdate();
         draft.setScopusId(request.scopusId());
+        draft.setSyncMode(request.syncMode() != null ? request.syncMode() : "SINCE_LAST_UPDATE");
+        draft.setStartYear(request.startYear());
+        draft.setEndYear(request.endYear());
         ScopusCitationsUpdate saved =
                 userScopusTaskFacade.createCitationTask(userOpt.get().getEmail(), draft);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
@@ -724,5 +730,11 @@ public class ResearcherWorkspaceController {
             List<String> scopusId,
             List<String> wosId) {}
 
-    record SyncRequest(String scopusId) {}
+    record SyncRequest(
+        String scopusId,
+        /** "SINCE_LAST_UPDATE" | "PERIOD" | "FULL"; null → SINCE_LAST_UPDATE */
+        String syncMode,
+        Integer startYear,
+        Integer endYear
+    ) {}
 }

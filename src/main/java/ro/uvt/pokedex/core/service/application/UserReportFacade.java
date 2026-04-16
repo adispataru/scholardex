@@ -47,6 +47,7 @@ import ro.uvt.pokedex.core.model.WoSRanking;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
@@ -508,7 +509,7 @@ public class UserReportFacade {
                     ReportScopedIndicatorScoringSupport.viewNameFor(indicator),
                     rawGraph,
                     new IndicatorApplyResultDto.Summary(total, null, List.of(), List.of()),
-                    IndicatorApplyResultDto.Source.COMPUTED, null, null, 0));
+                    IndicatorApplyResultDto.Source.COMPUTED, null, Instant.now(), 0));
         }
 
         if (outputType.contains("PUBLICATIONS")) {
@@ -543,7 +544,7 @@ public class UserReportFacade {
                     rawGraph,
                     new IndicatorApplyResultDto.Summary(total, null,
                             new ArrayList<>(qHist.keySet()), new ArrayList<>(qHist.values())),
-                    IndicatorApplyResultDto.Source.COMPUTED, null, null, 0));
+                    IndicatorApplyResultDto.Source.COMPUTED, null, Instant.now(), 0));
         }
 
         // Citations (CITATIONS or CITATIONS_EXCLUDE_SELF)
@@ -574,7 +575,7 @@ public class UserReportFacade {
                 new IndicatorApplyResultDto.Summary(citationView.totalScore(),
                         citationView.totalCitationCount(),
                         citationView.quarterLabels(), citationView.quarterValues()),
-                IndicatorApplyResultDto.Source.COMPUTED, null, null, 0));
+                IndicatorApplyResultDto.Source.COMPUTED, null, Instant.now(), 0));
     }
 
     private UserIndicatorApplyViewModel handlePublications(Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications, Map<String, Object> attrs) {

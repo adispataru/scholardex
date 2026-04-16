@@ -9,12 +9,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import ro.uvt.pokedex.core.model.Institution;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.reporting.Group;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.repository.InstitutionRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
-import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
 
 import java.nio.charset.StandardCharsets;
@@ -36,8 +34,6 @@ class GroupServiceTest {
     @Mock
     private InstitutionRepository institutionRepository;
     @Mock
-    private ResearcherService researcherService;
-    @Mock
     private PasswordEncoder passwordEncoder;
     @Mock
     private UserService userService;
@@ -47,8 +43,7 @@ class GroupServiceTest {
     @BeforeEach
     void setUp() {
         groupService = new GroupService(
-                groupRepository, institutionRepository, researcherService,
-                passwordEncoder, userService, "2025", 5
+                groupRepository, institutionRepository, passwordEncoder, userService, "2025", 5
         );
 
         Institution uvt = new Institution();
@@ -85,10 +80,7 @@ class GroupServiceTest {
                         "G1,john@uvt.ro,Doe,John,Prof.,12345\n"
         );
 
-        Researcher savedResearcher = new Researcher();
-        savedResearcher.setId("r1");
         when(passwordEncoder.encode(any())).thenReturn("encoded");
-        when(researcherService.saveResearcher(any())).thenReturn(savedResearcher);
         when(userService.getUserByEmail("john@uvt.ro")).thenReturn(Optional.empty());
         when(userService.createUser(any(User.class))).thenReturn(Optional.of(new User()));
 

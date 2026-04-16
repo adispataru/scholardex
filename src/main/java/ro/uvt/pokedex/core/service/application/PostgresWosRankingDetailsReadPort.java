@@ -1,7 +1,6 @@
 package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -22,7 +21,6 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "spring.datasource.url")
 public class PostgresWosRankingDetailsReadPort {
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;

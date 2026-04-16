@@ -68,7 +68,7 @@ class PageRequest(BaseModel):
 class AuthorWorksReq(BaseModel):
     request_id: Optional[str] = None
     author_id: DigitId
-    from_date: IsoDate
+    from_date: Optional[IsoDate] = None  # None / null → no date filter (full update)
     paging: PageRequest = PageRequest()
     include_enrichment: bool = False  # authors, affiliations, subtypeDescription, funding, etc.
     format: Annotated[str, StringConstraints(pattern=r"^(legacy|normalized)$")] = "legacy"
@@ -118,22 +118,31 @@ def _int01(val) -> int:
 # -------------------------
 def fetch_author_rows(
     author_id: str,
-    from_date: str,
+    from_date: Optional[str],
     page_size: int,
     cursor: Optional[str]
-) -> tuple[list[Any], Optional[str], int, str, date]:
-    """Fetch a page of ScopusSearch rows; return (rows, next_cursor, total, upstream_query, from_date_obj)."""
+) -> tuple[list[Any], Optional[str], int, str, Optional[date]]:
+    """Fetch a page of ScopusSearch rows; return (rows, next_cursor, total, upstream_query, from_date_obj).
+
+    from_date=None means no date filter (full update — fetch all publications).
+    """
     if not (author_id.isdigit() and 5 <= len(author_id) <= 20):
         raise ValueError("invalid_author_id")
-    try:
-        fd = datetime.strptime(from_date, "%Y-%m-%d").date()
-    except ValueError:
-        raise ValueError("invalid_from_date")
     if not (1 <= page_size <= 100):
         raise ValueError("invalid_paging")
 
-    year_floor = fd.year - 1
-    upstream_query = f"AU-ID({author_id}) AND PUBYEAR > {year_floor}"
+    fd: Optional[date] = None
+    if from_date:
+        try:
+            fd = datetime.strptime(from_date, "%Y-%m-%d").date()
+        except ValueError:
+            raise ValueError("invalid_from_date")
+
+    if fd is not None:
+        year_floor = fd.year - 1
+        upstream_query = f"AU-ID({author_id}) AND PUBYEAR > {year_floor}"
+    else:
+        upstream_query = f"AU-ID({author_id})"
 
     # Try cursor pagination; fall back to offset if this pybliometrics lacks cursor
     try:
@@ -156,12 +165,15 @@ def fetch_author_rows(
         total = getattr(s, "get_results_size", lambda: None)() or getattr(s, "results_size", None) or 0
         next_cursor = f"offset:{start + page_size}" if len(rows) == page_size else None
 
-    # Filter by exact date >= from_date and sort newest first
+    # Filter by exact date >= from_date (skip when doing full update with no date filter)
     filtered = []
     for r in rows:
-        cd = getattr(r, "coverDate", None)
-        if _parse_date(cd) is None or _parse_date(cd) >= fd:
+        if fd is None:
             filtered.append(r)
+        else:
+            cd = getattr(r, "coverDate", None)
+            if _parse_date(cd) is None or _parse_date(cd) >= fd:
+                filtered.append(r)
 
     def sort_key(r):
         cd = getattr(r, "coverDate", None)

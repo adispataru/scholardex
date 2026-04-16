@@ -45,24 +45,10 @@ public class UserIndividualReportRunService {
     }
 
     public Optional<IndividualReportRunDto> refreshRunWithAllIndicators(String userEmail, String reportDefinitionId) {
-        Optional<IndividualReport> reportOpt = individualReportRepository.findById(reportDefinitionId);
-        if (reportOpt.isEmpty()) {
-            return Optional.empty();
-        }
-
-        IndividualReport report = reportOpt.get();
-        Map<String, Integer> latestRefreshVersionsByIndicatorId = new HashMap<>();
-        if (report.getIndicators() != null) {
-            for (Indicator indicator : report.getIndicators()) {
-                if (indicator == null || indicator.getId() == null) {
-                    continue;
-                }
-                IndicatorApplyResultDto refreshed = userIndicatorResultService.refreshLatest(userEmail, indicator.getId());
-                latestRefreshVersionsByIndicatorId.put(indicator.getId(), refreshed.refreshVersion());
-            }
-        }
-
-        return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT, latestRefreshVersionsByIndicatorId);
+        // Delegate directly to buildAndSaveRun which recomputes all indicator and criterion scores
+        // from source data via computeReportScopedIndividualReport. No pre-pass over LATEST
+        // UserIndicatorResult records is needed — those records are not used by the evaluation page.
+        return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT, Map.of());
     }
 
     private Optional<IndividualReportRunDto> buildAndSaveRun(String userEmail,

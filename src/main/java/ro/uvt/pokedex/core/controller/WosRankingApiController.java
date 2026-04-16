@@ -3,7 +3,6 @@ package ro.uvt.pokedex.core.controller;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,7 +16,6 @@ import ro.uvt.pokedex.core.service.application.PostgresWosRankingReadPort;
 @Validated
 @RequestMapping("/api/rankings")
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "spring.datasource.url")
 public class WosRankingApiController {
 
     private final PostgresWosRankingReadPort postgresWosRankingReadPort;

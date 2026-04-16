@@ -34,7 +34,6 @@ import static com.mongodb.client.model.Filters.ne;
 import static com.mongodb.client.model.Sorts.descending;
 
 @Service
-@ConditionalOnProperty(name = "spring.datasource.url")
 @ConditionalOnProperty(prefix = "core.h22.projection", name = "enabled", havingValue = "true")
 public class JdbcPostgresReportingProjectionService implements PostgresReportingProjectionService {
 

@@ -81,10 +81,11 @@ function _initCharts() {
         colors
     );
 
-    _renderDoughnutChart(
-        document.getElementById('ws-chart-acts'),
-        data.activityLabels,
-        data.activityCounts,
+    _renderBarChart(
+        document.getElementById('ws-chart-cites'),
+        data.years,
+        data.citesPerYear,
+        'Citations',
         colors
     );
 }
@@ -139,7 +140,7 @@ function _renderBarChart(canvas, labels, values, label, colors) {
 function _renderDoughnutChart(canvas, labels, values, colors) {
     if (!canvas) return;
     if (!labels || !labels.length) {
-        _showChartEmpty(canvas, 'No activity data yet.');
+        _showChartEmpty(canvas, 'No citation data yet.');
         return;
     }
     const palette = [

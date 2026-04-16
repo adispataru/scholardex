@@ -612,6 +612,46 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     }
 
     @Test
+    void lncsConferencePaperUsesHyphenatedDblpWorkshopTitleToResolveParentConference() {
+        ComputerScienceConferenceScoringService service =
+                new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);
+
+        ScoringPublication publication = new ScoringPublication("pub-europar-1", null, "forum-1", "2020-01-01", null, "cp", List.of(), 0, null, null, null, 0, Set.of());
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("Lecture Notes in Computer Science");
+        when(cacheService.getForum("forum-1")).thenReturn(forum);
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+
+        CoreConferenceRanking ranking = new CoreConferenceRanking();
+        ranking.setId("EuroPar-International European Conference on Parallel and Distributed Computing");
+        ranking.setAcronym("EuroPar");
+        ranking.setName("International European Conference on Parallel and Distributed Computing");
+        CoreConferenceRanking.YearlyRanking rank2020 = new CoreConferenceRanking.YearlyRanking();
+        rank2020.setRank(CoreConferenceRanking.Rank.A);
+        ranking.setYearlyRankings(Map.of(2020, rank2020));
+        when(cacheService.getConferenceRankings("EUROPAR")).thenReturn(List.of(ranking));
+
+        ScholardexPublicationDblpEvidence evidence = new ScholardexPublicationDblpEvidence();
+        evidence.setPublicationId("pub-europar-1");
+        evidence.setConferenceName("Euro-Par Workshops");
+        when(dblpEvidenceRepository.findByPublicationId("pub-europar-1")).thenReturn(Optional.of(evidence));
+
+        Score score = service.getScore(publication, indicator("IY"));
+
+        assertEquals(4.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent());
+        assertEquals("DBLP+CORE", score.getScoringSource());
+        assertEquals("DBLP", score.getScoringInfo().get("matchSource"));
+        assertEquals(true, score.getScoringInfo().get("workshopAdjusted"));
+        ComputerScienceConferenceScoringService.ConferenceScoreTrace trace = service.getLastTraceForTests();
+        assertTrue(trace.acronymCandidates().contains("EUROPAR"));
+        assertEquals("EuroPar", trace.resolvedAcronym());
+        assertEquals("Euro-Par Workshops", trace.dblpConferenceTitle());
+        assertEquals(true, trace.workshopAdjusted());
+        assertEquals(ComputerScienceConferenceScoringService.ResolutionSource.DBLP, trace.resolvedSource());
+    }
+
+    @Test
     void decoratedDblpAcronymFallsBackWhenSeveralCoreRowsShareTheAcronym() {
         ComputerScienceConferenceScoringService service =
                 new ComputerScienceConferenceScoringService(cacheService, dblpEvidenceRepository);

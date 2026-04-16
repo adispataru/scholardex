@@ -659,6 +659,9 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         if (stripped.isBlank()) {
             return false;
         }
+        if (stripped.contains("-")) {
+            return isHyphenatedTitleCasedToken(stripped);
+        }
         boolean hasLowercase = stripped.chars().anyMatch(Character::isLowerCase);
         boolean hasUppercase = stripped.chars().anyMatch(Character::isUpperCase);
         if (!hasUppercase || !hasLowercase) {
@@ -671,6 +674,28 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
             char ch = stripped.charAt(i);
             if (Character.isLetter(ch) && !Character.isLowerCase(ch)) {
                 return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isHyphenatedTitleCasedToken(String stripped) {
+        String[] parts = stripped.split("-");
+        if (parts.length < 2) {
+            return false;
+        }
+        for (String part : parts) {
+            if (part.isBlank()) {
+                return false;
+            }
+            if (!Character.isUpperCase(part.charAt(0))) {
+                return false;
+            }
+            for (int i = 1; i < part.length(); i++) {
+                char ch = part.charAt(i);
+                if (Character.isLetter(ch) && !Character.isLowerCase(ch)) {
+                    return false;
+                }
             }
         }
         return true;
@@ -714,6 +739,14 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     }
 
     private void registerCandidate(Map<String, AcronymCandidate> candidates, String normalized, AcronymSource source) {
+        registerExactCandidate(candidates, normalized, source);
+        String collapsed = normalized == null ? "" : normalized.replace("-", "");
+        if (!collapsed.isBlank() && !collapsed.equals(normalized)) {
+            registerExactCandidate(candidates, collapsed, source);
+        }
+    }
+
+    private void registerExactCandidate(Map<String, AcronymCandidate> candidates, String normalized, AcronymSource source) {
         AcronymCandidate existing = candidates.get(normalized);
         AcronymCandidate proposed = new AcronymCandidate(normalized, source);
         if (existing == null || proposed.source().priority > existing.source().priority) {
@@ -773,6 +806,10 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         }
         if (isExactAcronymMatch(acronymCandidate, ranking)
                 && isDecoratedAcronymOnlyTitle(normalizedPublicationName, acronymCandidate)) {
+            return MatchConfidence.EXACT_ACRONYM_DECORATED;
+        }
+        if (isExactAcronymMatch(acronymCandidate, ranking)
+                && isSplitDecoratedAcronymOnlyTitle(normalizedPublicationName, acronymCandidate)) {
             return MatchConfidence.EXACT_ACRONYM_DECORATED;
         }
         if (normalizedPublicationName.equals(rankingName)) {
@@ -839,6 +876,42 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         return true;
     }
 
+    private boolean isSplitDecoratedAcronymOnlyTitle(String normalizedPublicationName, String acronymCandidate) {
+        if (normalizedPublicationName == null || acronymCandidate == null) {
+            return false;
+        }
+        String[] tokens = normalizedPublicationName.trim().split("\\s+");
+        if (tokens.length < 2) {
+            return false;
+        }
+        String normalizedAcronym = acronymCandidate.toLowerCase(Locale.ROOT);
+        StringBuilder joined = new StringBuilder();
+        int splitEnd = -1;
+        for (int i = 0; i < tokens.length; i++) {
+            String token = tokens[i];
+            if (isIgnorableAcronymSuffixToken(token)) {
+                break;
+            }
+            joined.append(token);
+            if (normalizedAcronym.equals(joined.toString())) {
+                splitEnd = i;
+                break;
+            }
+            if (!normalizedAcronym.startsWith(joined.toString())) {
+                return false;
+            }
+        }
+        if (splitEnd < 0) {
+            return false;
+        }
+        for (int i = splitEnd + 1; i < tokens.length; i++) {
+            if (!isIgnorableAcronymSuffixToken(tokens[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private boolean isIgnorableAcronymSuffixToken(String token) {
         if (token == null || token.isBlank()) {
             return false;
@@ -858,6 +931,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
                 || normalized.equals("part")
                 || normalized.equals("track")
                 || normalized.equals("workshop")
+                || normalized.equals("workshops")
                 || normalized.equals("proceedings");
     }
 
