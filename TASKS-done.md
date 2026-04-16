@@ -1634,3 +1634,22 @@ Archived from `TASKS.md` on 2026-03-11 after top-level closure and backlog clean
     Exit criteria: CI gates catch identity/linking regressions and operational dashboards expose source-level ingest/link health for implemented sources.
     Handover:
     - Validation/operability contract: `docs/tasks/closed/h19.8-validation-operability-gates.md`.
+
+## H37.5 Period Comparison
+
+Archived from `TASKS.md` on 2026-04-16.
+
+- [x] `H37.5` **Period comparison.**
+  Completed: 2026-04-16.
+  Handover:
+  - "Compare with…" button in the evaluation toolbar opens a run-picker dropdown (hidden by default). Picker lists prior runs with formatted timestamp and source label seeded from `window.evalPriorRuns` (Thymeleaf inline JS).
+  - `GET /user/evaluation/compare?runA={prior}&runB={current}` returns per-indicator and per-criterion score maps; client JS computes deltas as `current − prior`.
+  - Aggregate panel gains a hidden "Score Δ" cell (`#eval-compare-delta-cell`) that appears when a comparison is active.
+  - Each criterion card has a `.eval-criterion-delta` block span; each indicator row has a `data-indicator-id` `.eval-indicator-delta` inline span; the indicator detail panel also injects a delta badge next to the total.
+  - Colour coding via `.eval-delta--positive` (green), `.eval-delta--negative` (red), `.eval-delta--neutral` (muted).
+  - Comparison state persisted in URL via `history.replaceState(?compare={runId})`; page reload restores it automatically.
+  - "Clear comparison" button hides the picker, removes all delta spans, strips the URL param, and hides the compare banner.
+  - A compare banner (`#eval-compare-banner`, `aria-live="polite"`) is shown between the toolbar and aggregate panel while a comparison is active.
+  - `RunSummary.createdAt` changed from `Instant` to `String` to fix a Thymeleaf/Jackson JSR310 serialisation error in inline JS.
+  - CSS `.app-eval-compare-picker[hidden] { display: none }` explicit rule prevents `display: flex` overriding the `hidden` attribute on the picker.
+  - All evaluation-page select elements given `padding-top/bottom: 0.2rem; height: auto` to correct disproportionate height at the 0.82rem context font-size.

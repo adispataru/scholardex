@@ -12,6 +12,22 @@
     return toNumber(value).toFixed(2);
   }
 
+  function deltaSign(delta) {
+    return delta > 0.005 ? '+' : '';
+  }
+
+  function deltaClass(delta) {
+    if (delta > 0.005)  return 'eval-delta--positive';
+    if (delta < -0.005) return 'eval-delta--negative';
+    return 'eval-delta--neutral';
+  }
+
+  function deltaText(delta) {
+    return deltaSign(delta) + toNumber(delta).toFixed(2);
+  }
+
+  var _compareData = null;
+
   // ── Threshold icon rail ───────────────────────────────────────────────────
 
   function applySelection(row, button) {
@@ -334,8 +350,15 @@
       .then(function (data) {
         if (skeleton) skeleton.hidden = true;
         if (content) {
+          var indicatorDeltaHtml = '';
+          if (_compareData && _compareData.indicatorDeltas) {
+            var dp = _compareData.indicatorDeltas[indicatorId];
+            if (dp) {
+              indicatorDeltaHtml = ' <span class="eval-delta ' + deltaClass(dp.delta) + '">' + deltaText(dp.delta) + '</span>';
+            }
+          }
           var headerHtml = '<div class="indicator-detail-header">' +
-            '<span class="indicator-detail-total">Total score: <strong>' + toNumber(data.totalScore).toFixed(2) + '</strong></span>' +
+            '<span class="indicator-detail-total">Total score: <strong>' + toNumber(data.totalScore).toFixed(2) + '</strong>' + indicatorDeltaHtml + '</span>' +
             '<span class="indicator-detail-updated">Updated: ' + esc(data.updatedAt ? data.updatedAt.substring(0, 10) : '—') + '</span>' +
             '</div>';
           content.innerHTML = headerHtml + renderDetailList(data.items, data.outputMode, data.indicatorId);
@@ -553,6 +576,166 @@
     }
   }
 
+  // ── Comparison mode ───────────────────────────────────────────────────────
+
+  function applyComparisonDeltas(root, data) {
+    _compareData = data;
+
+    // 1. Criterion delta spans
+    root.querySelectorAll('.criterion-score-row').forEach(function (row) {
+      var idx = parseInt(row.getAttribute('data-criterion-index'), 10);
+      var dp = data.criterionDeltas ? data.criterionDeltas[idx] : null;
+      var span = row.querySelector('.eval-criterion-delta');
+      if (!span || !dp) return;
+      span.className = 'eval-criterion-delta eval-delta ' + deltaClass(dp.delta);
+      span.textContent = deltaText(dp.delta);
+    });
+
+    // 2. Indicator delta spans
+    root.querySelectorAll('.eval-indicator-delta').forEach(function (span) {
+      var indicatorId = span.getAttribute('data-indicator-id');
+      var dp = data.indicatorDeltas ? data.indicatorDeltas[indicatorId] : null;
+      if (!dp) return;
+      span.className = 'eval-indicator-delta eval-delta ' + deltaClass(dp.delta);
+      span.textContent = deltaText(dp.delta);
+    });
+
+    // 3. Aggregate delta cell
+    var aggEl = document.getElementById('eval-aggregate-delta');
+    var aggCell = document.getElementById('eval-compare-delta-cell');
+    if (aggEl && data.aggregateDelta) {
+      var d = data.aggregateDelta;
+      aggEl.className = 'app-eval-aggregate__value app-eval-aggregate__value--sm eval-delta ' + deltaClass(d.delta);
+      aggEl.textContent = toNumber(d.before).toFixed(2) + ' → ' + toNumber(d.after).toFixed(2) +
+        ' (' + deltaText(d.delta) + ')';
+    }
+    if (aggCell) aggCell.hidden = false;
+
+    // 4. Banner
+    var banner = document.getElementById('eval-compare-banner');
+    var bannerDate = document.getElementById('eval-compare-banner-date');
+    if (bannerDate && data.runA && data.runA.createdAt) {
+      try {
+        bannerDate.textContent = new Date(data.runA.createdAt).toLocaleString(undefined, {
+          year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+      } catch (e) { bannerDate.textContent = data.runA.createdAt; }
+    }
+    if (banner) banner.hidden = false;
+
+    // 5. Toggle toolbar controls
+    var compareBtn = document.getElementById('eval-compare-btn');
+    var clearBtn   = document.getElementById('eval-clear-compare-btn');
+    var picker     = document.getElementById('eval-compare-picker');
+    if (compareBtn) compareBtn.hidden = true;
+    if (clearBtn)   clearBtn.hidden   = false;
+    if (picker)     picker.hidden     = true;
+  }
+
+  function clearComparisonDeltas(root) {
+    _compareData = null;
+
+    root.querySelectorAll('.eval-criterion-delta').forEach(function (s) {
+      s.textContent = ''; s.className = 'eval-criterion-delta';
+    });
+    root.querySelectorAll('.eval-indicator-delta').forEach(function (s) {
+      s.textContent = ''; s.className = 'eval-indicator-delta';
+    });
+
+    var aggEl   = document.getElementById('eval-aggregate-delta');
+    var aggCell = document.getElementById('eval-compare-delta-cell');
+    if (aggEl)   { aggEl.textContent = '—'; aggEl.className = 'app-eval-aggregate__value app-eval-aggregate__value--sm'; }
+    if (aggCell) aggCell.hidden = true;
+
+    var banner     = document.getElementById('eval-compare-banner');
+    var compareBtn = document.getElementById('eval-compare-btn');
+    var clearBtn   = document.getElementById('eval-clear-compare-btn');
+    var picker     = document.getElementById('eval-compare-picker');
+    if (banner)     banner.hidden     = true;
+    if (compareBtn) compareBtn.hidden = false;
+    if (clearBtn)   clearBtn.hidden   = true;
+    if (picker)     picker.hidden     = true;
+  }
+
+  function fetchAndApplyComparison(root, compareRunId, currentRunId, reportId) {
+    // runA = past run, runB = current run → delta = current − past (positive = improvement)
+    var url = '/user/evaluation/compare?runA=' + encodeURIComponent(compareRunId) +
+              '&runB=' + encodeURIComponent(currentRunId);
+    fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        applyComparisonDeltas(root, data);
+        var params = new URLSearchParams(window.location.search);
+        params.set('compare', compareRunId);
+        if (reportId) params.set('report', reportId);
+        history.replaceState(null, '', window.location.pathname + '?' + params.toString());
+      })
+      .catch(function (err) {
+        console.warn('[comparison] fetch failed:', err.message);
+      });
+  }
+
+  function initComparisonControls(root, reportId, currentRunId) {
+    if (!currentRunId) return;
+
+    // Populate run picker
+    var select = document.getElementById('eval-compare-select');
+    if (select && Array.isArray(window.evalPriorRuns)) {
+      window.evalPriorRuns.forEach(function (run) {
+        if (run.runId === currentRunId) return; // exclude current run
+        var opt = document.createElement('option');
+        opt.value = run.runId;
+        var label = '—';
+        try {
+          label = run.createdAt
+            ? new Date(run.createdAt).toLocaleString(undefined, {
+                year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+              })
+            : run.runId;
+        } catch (e) { label = run.runId; }
+        opt.textContent = label + (run.status && run.status !== 'READY' ? ' (' + run.status + ')' : '');
+        select.appendChild(opt);
+      });
+      select.addEventListener('change', function () {
+        if (!select.value) return;
+        fetchAndApplyComparison(root, select.value, currentRunId, reportId);
+        var picker = document.getElementById('eval-compare-picker');
+        if (picker) picker.hidden = true;
+      });
+    }
+
+    // "Compare with…" button
+    var compareBtn = document.getElementById('eval-compare-btn');
+    if (compareBtn) {
+      compareBtn.addEventListener('click', function () {
+        var picker = document.getElementById('eval-compare-picker');
+        if (picker) picker.hidden = !picker.hidden;
+      });
+    }
+
+    // "Clear comparison" button
+    var clearBtn = document.getElementById('eval-clear-compare-btn');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', function () {
+        clearComparisonDeltas(root);
+        var params = new URLSearchParams(window.location.search);
+        params.delete('compare');
+        history.replaceState(null, '', window.location.pathname +
+          (params.toString() ? '?' + params.toString() : ''));
+      });
+    }
+
+    // Restore from URL ?compare=
+    var params = new URLSearchParams(window.location.search);
+    var compareRunId = params.get('compare');
+    if (compareRunId) {
+      fetchAndApplyComparison(root, compareRunId, currentRunId, reportId);
+    }
+  }
+
   // ── Boot ──────────────────────────────────────────────────────────────────
 
   function boot() {
@@ -568,6 +751,8 @@
     initIndicatorExpand(root, reportId);
     initCitationModal(root, reportId);
     initReportSwitcher();
+    var currentRunId = root.getAttribute('data-run-id') || (window.evalCurrentRunId || null);
+    initComparisonControls(root, reportId, currentRunId);
 
     // Apply hash state after a tick so the DOM is stable
     setTimeout(function () { applyHashState(root); }, 0);

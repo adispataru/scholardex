@@ -39,7 +39,7 @@
             <!-- ── Main evaluation view ──────────────────────────────────────── -->
             <div th:if="${noReports != true and noRun != true}"
                  class="container-fluid app-page-content app-dashboard individual-report-dashboard"
-                 th:attr="data-researcher-position=${researcherPosition},data-report-id=${report.id}">
+                 th:attr="data-researcher-position=${researcherPosition},data-report-id=${report.id},data-run-id=${runMetaId}">
 
                 <!-- ── Toolbar ──────────────────────────────────────────────── -->
                 <div class="app-page-toolbar">
@@ -55,12 +55,31 @@
                         </select>
                     </div>
                     <div class="app-dashboard__actions">
+                        <!-- Compare run picker (hidden until toggled) -->
+                        <div class="app-eval-compare-picker" id="eval-compare-picker" hidden>
+                            <select id="eval-compare-select" class="form-control form-control-sm">
+                                <option value="">— select a run —</option>
+                            </select>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="eval-compare-btn"
+                                th:if="${priorRuns != null and #lists.size(priorRuns) > 1}">
+                            <i class="fa-solid fa-code-compare fa-sm" aria-hidden="true"></i> Compare with&hellip;
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" id="eval-clear-compare-btn" hidden>
+                            <i class="fa-solid fa-xmark fa-sm" aria-hidden="true"></i> Clear comparison
+                        </button>
                         <form th:action="@{/user/evaluation/refresh(report=${report.id})}" method="post">
                             <button type="submit" class="btn btn-sm btn-outline-primary">
                                 <i class="fa-solid fa-rotate fa-sm" aria-hidden="true"></i> Refresh All
                             </button>
                         </form>
                     </div>
+                </div>
+
+                <!-- Comparison active banner -->
+                <div class="app-eval-compare-banner" id="eval-compare-banner" hidden aria-live="polite">
+                    <i class="fa-solid fa-code-compare" aria-hidden="true"></i>
+                    Comparing current run against run from <strong id="eval-compare-banner-date">—</strong>
                 </div>
 
                 <!-- ── Aggregate score panel ────────────────────────────────── -->
@@ -94,6 +113,10 @@
                         <span class="app-eval-aggregate__label">Last Run</span>
                         <span class="app-eval-aggregate__value app-eval-aggregate__value--sm"
                               th:text="${runMetaCreatedAt != null ? #temporals.format(runMetaCreatedAt, 'yyyy-MM-dd HH:mm') : '—'}">—</span>
+                    </div>
+                    <div class="app-eval-aggregate__cell" id="eval-compare-delta-cell" hidden>
+                        <span class="app-eval-aggregate__label">Score Δ</span>
+                        <span class="app-eval-aggregate__value app-eval-aggregate__value--sm" id="eval-aggregate-delta">—</span>
                     </div>
                 </div>
 
@@ -134,6 +157,7 @@
                                                 <div class="app-report-card__eyebrow criterion-selected-position">Position</div>
                                                 <div class="criterion-score-ratio"
                                                      th:text="${#numbers.formatDecimal(criterionScores[critIndex.index] ?: 0, 1, 2)} + ' / 0.00'">0.00 / 0.00</div>
+                                                <span class="eval-criterion-delta"></span>
                                             </div>
                                         </div>
                                     </div>
@@ -164,6 +188,7 @@
                                                     <div class="indicator-row-right">
                                                         <span class="indicator-row-score"
                                                               th:text="${indicatorScores[indicator.id] != null ? #numbers.formatDecimal(indicatorScores[indicator.id], 1, 2) : '0.00'}">0.00</span>
+                                                        <span class="eval-indicator-delta" th:attr="data-indicator-id=${indicator.id}"></span>
                                                         <a class="indicator-row-export"
                                                            th:href="@{/user/indicators/export/{id}(id=${indicator.id})}"
                                                            title="Export Excel"
@@ -235,6 +260,12 @@
 </div>
 
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
+<script th:inline="javascript">
+/*<![CDATA[*/
+window.evalPriorRuns    = /*[[${priorRuns}]]*/ [];
+window.evalCurrentRunId = /*[[${runMetaId}]]*/ null;
+/*]]>*/
+</script>
 <script src="/js/individual-report-dashboard.js"></script>
 
 </body>

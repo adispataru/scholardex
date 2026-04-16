@@ -96,7 +96,7 @@ public class EvaluationWorkspaceController {
         List<RunSummary> priorRuns = userIndividualReportRunRepository
                 .findByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc(currentUser.getEmail(), resolvedReportId)
                 .stream()
-                .map(r -> new RunSummary(r.getId(), r.getCreatedAt(), r.getStatus().name()))
+                .map(r -> new RunSummary(r.getId(), r.getCreatedAt() != null ? r.getCreatedAt().toString() : null, r.getStatus().name()))
                 .toList();
 
         Map<Integer, Double> criterionScores = run.criteriaScores() != null ? run.criteriaScores() : Map.of();
@@ -288,8 +288,8 @@ public class EvaluationWorkspaceController {
         double totalB = sumScores(runB.getIndicatorScoresByIndicatorId());
 
         return ResponseEntity.ok(new ComparisonResponse(
-                new RunSummary(runA.getId(), runA.getCreatedAt(), runA.getStatus().name()),
-                new RunSummary(runB.getId(), runB.getCreatedAt(), runB.getStatus().name()),
+                new RunSummary(runA.getId(), runA.getCreatedAt() != null ? runA.getCreatedAt().toString() : null, runA.getStatus().name()),
+                new RunSummary(runB.getId(), runB.getCreatedAt() != null ? runB.getCreatedAt().toString() : null, runB.getStatus().name()),
                 indicatorDeltas,
                 criterionDeltas,
                 new ScoreDelta(totalA, totalB, totalB - totalA)
@@ -701,7 +701,7 @@ public class EvaluationWorkspaceController {
 
     record CitationDetailResponse(String pubTitle, double totalScore, List<ScoredItem> citations) {}
 
-    record RunSummary(String runId, Instant createdAt, String status) {}
+    record RunSummary(String runId, String createdAt, String status) {}
 
     record ScoreDelta(double before, double after, double delta) {}
 

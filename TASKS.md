@@ -223,17 +223,21 @@ Done history moved to `TASKS-done.md`.
     - Tests updated: all `UserViewControllerContractTest` tests for catalog routes now assert 3xx redirects to canonical evaluation URLs; template-rendering tests dropped in favour of simpler redirect checks.
     - 763 tests pass; 10 pre-existing failures unchanged.
 
-  - [ ] `H37.5` **Period comparison.**
-    Add UI for comparing two report runs:
-    — "Compare with…" action in the report view header opens a run-picker (dropdown listing prior runs with timestamp and source metadata from `runMetaCreatedAt`/`runMetaSource`).
-    — When a comparison is active, each criterion card shows its current score alongside a delta (e.g. `12.4 → 14.2  +1.8` with semantic color: green for improvement, red for regression, neutral for unchanged) per §2.3 and §6.5.
-    — Aggregate panel shows overall delta and criteria-count delta.
-    — Inline criterion expansion in comparison mode shows per-indicator deltas within the embedded detail.
-    — Comparison state preserved in URL (e.g. `?compare={runId}`) so deep links work.
-    — "Clear comparison" action returns to the single-run view.
-    — Uses `GET /user/evaluation/compare` from `H37.2`.
-    Dependency: `H37.2`, `H37.3`.
-    Exit criteria: comparison UI activates without page reload; deltas render with correct colors and values; aggregate delta matches per-criterion sum; deep links restore comparison state; both themes.
+  - [x] `H37.5` **Period comparison.**
+    Completed: 2026-04-16.
+    Handover:
+    - "Compare with…" button in toolbar opens a run-picker select (hidden by default; shown on button click). Picker lists prior runs with formatted timestamp and source label from `window.evalPriorRuns`.
+    - `GET /user/evaluation/compare?runA={prior}&runB={current}` returns per-indicator and per-criterion score maps; JS computes deltas as `current − prior`.
+    - Aggregate panel gains a hidden "Score Δ" cell (`#eval-compare-delta-cell`) revealed when comparison is active, showing overall delta with `eval-delta--positive/negative/neutral` colour coding.
+    - Each criterion card has a `.eval-criterion-delta` span (block, reserves vertical space) that shows `+N.N / −N.N / =` during comparison.
+    - Indicator rows carry a `data-indicator-id` `eval-indicator-delta` span updated inline.
+    - Indicator detail panel also injects a delta badge next to the total when `_compareData` is active.
+    - Comparison state persisted in URL via `history.replaceState(?compare={runId})`; page reload restores state automatically.
+    - "Clear comparison" button hides the picker, clears all delta spans, removes URL param, and hides the compare banner.
+    - Compare banner (`#eval-compare-banner`) shown between toolbar and aggregate panel while comparison is active; hidden otherwise.
+    - `window.evalPriorRuns` / `window.evalCurrentRunId` seeded from Thymeleaf inline JS; `RunSummary.createdAt` changed from `Instant` to `String` to avoid Thymeleaf/Jackson JSR310 serialisation error.
+    - CSS: `.app-eval-compare-picker[hidden] { display: none }` explicit rule prevents `display: flex` overriding the `hidden` attribute.
+    - All select elements on the evaluation page given `padding-top/bottom: 0.2rem; height: auto` to fix disproportionate height at 0.82rem context font-size.
 
   - [ ] `H37.6` **What-if analysis.**
     Add a what-if panel accessible from each expanded criterion (or from a global "Scenario" action in the report header):
@@ -287,6 +291,48 @@ Done history moved to `TASKS-done.md`.
     Exit criteria: no dead templates for replaced pages; all verification scripts pass; no 404s or broken links in evaluation flows; all Option C features (period comparison, what-if, breakdown charts, snapshots) verified end-to-end.
 
 ## Backlog
+
+- [ ] `H38` User-Reviewed Publication Authorship Overlay.
+  Goal: let researchers confirm or reject authorship for imported publications so noisy Scopus links stop polluting reports, indicators, citations, and workspace views without deleting source data.
+  Deliverable: a local authorship-decision layer on top of canonical imported publication links, with review UI, suspicious-publication triage, and reporting/read-model filtering that prefers user decisions over raw source linkage.
+  Exit criteria: researchers can mark a publication as `CONFIRMED` or `REJECTED`; rejected publications no longer count toward user-facing reporting, indicators, citations, exports, and workspace lists; confirmed publications remain included even if later imports stay noisy; imported Scopus/DBLP lineage remains preserved and auditable; the system can surface a "needs review" queue for suspicious authorship links instead of requiring users to inspect all publications manually.
+
+  Subtasks:
+
+  - [ ] `H38.1` **Authorship decision persistence model.**
+    Add a dedicated persistence model for user-level publication authorship decisions keyed by user + publication, separate from imported Scopus/Scholardex facts.
+    Deliverable: document/entity + repository storing `status` (`CONFIRMED` / `REJECTED`), timestamps, decision source, optional reason, and enough immutable context to audit later.
+    Exit criteria: imported source facts remain untouched; user decisions can be created, updated, queried, and deleted independently; duplicate decisions per user/publication are prevented.
+
+  - [ ] `H38.2` **Effective-authorship read filtering.**
+    Introduce a publication-authorship overlay in the read/reporting path so user decisions are applied consistently before data reaches indicators, citations, exports, and workspace tabs.
+    Deliverable: shared filtering support or projection/read-model layer that excludes locally rejected publications and preserves locally confirmed ones.
+    Exit criteria: all user-facing publication/citation/report queries can consume an "effective publications for user" view; no scoring service needs ad-hoc reject logic embedded directly in its scoring rules.
+
+  - [ ] `H38.3` **Inline confirm/reject actions in researcher publication surfaces.**
+    Add authorship confirmation/rejection controls to the main user-facing publication views, starting with the workspace publications tab and any remaining publication detail/apply flows where authorship confusion is visible.
+    Deliverable: UI actions `Confirm mine` / `Reject authorship`, optimistic feedback, and visible authorship state on affected rows/details.
+    Exit criteria: a researcher can review and decide authorship from the normal publication workflow without admin intervention; state persists and reflects immediately in the same surface.
+
+  - [ ] `H38.4` **Suspicious-authorship triage queue.**
+    Create a targeted "needs review" queue so users are asked only about likely false positives instead of every imported paper.
+    Deliverable: heuristics and/or rule-based flags for suspicious authorship links (name mismatch, affiliation mismatch, topic jump, low evidence overlap, etc.) plus a dedicated queue/list in the user workspace.
+    Exit criteria: the queue is populated deterministically from explicit heuristics; each flagged publication explains why it was flagged; researchers can confirm/reject directly from the queue.
+
+  - [ ] `H38.5` **Bulk review workflow.**
+    Support efficient cleanup of polluted Scopus identities by allowing multi-select or repeated queue decisions without opening each publication individually.
+    Deliverable: bulk confirm/reject actions with safeguards, summary counts, and undo/rollback-friendly handling where practical.
+    Exit criteria: researchers can clear multiple false-positive publications in one operation; accidental mass rejection is guarded by confirmation UX and auditable persisted decisions.
+
+  - [ ] `H38.6` **Indicator/report/export integration.**
+    Apply effective-authorship filtering to all user-facing reporting outputs that currently assume imported authorship is correct.
+    Deliverable: indicator apply views, report computation, citation lists, workbook exports, and workspace summary counts all use the same effective-authorship layer.
+    Exit criteria: rejecting a publication removes it from scores, totals, charts, and exports consistently; confirming a publication preserves inclusion consistently.
+
+  - [ ] `H38.7` **Operational diagnostics and auditability.**
+    Make authorship overrides explainable for both users and maintainers.
+    Deliverable: concise provenance on publication rows/details ("Imported from Scopus, locally rejected by user on {date}") and admin/debug visibility into decision state without losing raw source lineage.
+    Exit criteria: support/debug flows can distinguish imported linkage from local override decisions; users can see the current authorship status and when it changed.
 
 - [ ] `H20` Google Scholar (PoP) user-onboarding into Scholardex.
   Goal: support user-triggered Google Scholar imports from Publish-or-Perish exports as first-class canonical ingestion into Scholardex identity/link models.
