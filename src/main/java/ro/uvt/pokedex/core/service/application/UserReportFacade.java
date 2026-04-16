@@ -478,8 +478,9 @@ public class UserReportFacade {
         attrs.put("forumMap", forumMap);
         attrs.put("allQuarters", quarterHistogram.keySet());
         attrs.put("allValues", quarterHistogram.values());
+        attrs.put("outputMode", "publications");
 
-        return new UserIndicatorApplyViewModel("user/indicators-apply-publications", attrs);
+        return new UserIndicatorApplyViewModel("user/indicators-apply", attrs);
     }
 
     private UserIndicatorApplyViewModel handleActivities(Indicator indicator, List<ActivityInstance> activities, Map<String, Object> attrs) {
@@ -497,8 +498,9 @@ public class UserReportFacade {
 
         attrs.put("allQuarters", quarterHistogram.keySet());
         attrs.put("allValues", quarterHistogram.values());
+        attrs.put("outputMode", "activities");
 
-        return new UserIndicatorApplyViewModel("user/indicators-apply-activities", attrs);
+        return new UserIndicatorApplyViewModel("user/indicators-apply", attrs);
     }
 
     private UserIndicatorApplyViewModel handleCitations(Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications, Map<String, Object> attrs) {
@@ -549,8 +551,9 @@ public class UserReportFacade {
                 })
                 .toList());
         attrs.put("citationMap", citationView.citationMap());
+        attrs.put("outputMode", "citations");
 
-        return new UserIndicatorApplyViewModel("user/indicators-apply-citations", attrs);
+        return new UserIndicatorApplyViewModel("user/indicators-apply", attrs);
     }
 
     private Map<String, String> buildForumWosLinkMap(List<ScholardexForumView> forums) {
@@ -677,7 +680,7 @@ public class UserReportFacade {
             dataRow.createCell(3).setCellValue(publication.getVolume());
             dataRow.createCell(4).setCellValue(PersistenceYearSupport.extractYearString(publication.getCoverDate(), publication.getId(), log));
             dataRow.createCell(5).setCellValue("No");
-            dataRow.createCell(6).setCellValue(scores.get(publication.getTitle()).getCategory());
+            dataRow.createCell(6).setCellValue(scores.get(publication.getTitle()).getCoreRankingEquivalent());
             dataRow.createCell(7).setCellValue(scores.get(publication.getTitle()).getScore());
             dataRow.createCell(8).setCellValue(scores.get(publication.getTitle()).getAuthorScore());
         }
@@ -743,7 +746,7 @@ public class UserReportFacade {
                 row.createCell(4).setCellValue(citingPublication.getVolume());
                 row.createCell(5).setCellValue(PersistenceYearSupport.extractYearString(citingPublication.getCoverDate(), citingPublication.getId(), log));
                 row.createCell(6).setCellValue("No");
-                row.createCell(7).setCellValue(citationScore.getCategory());
+                row.createCell(7).setCellValue(citationScore.getCoreRankingEquivalent());
                 row.createCell(8).setCellValue(citationScore.getScore());
                 row.createCell(9).setCellValue(citationScore.getAuthorScore());
             }

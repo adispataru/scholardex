@@ -7,6 +7,14 @@ import './styles/shared-sidebar.css';
 import './styles/shared-table.css';
 import './styles/shared-form.css';
 import './styles/shared-dashboard.css';
+import './styles/shared-tabs.css';
+import './styles/shared-skeleton.css';
+import './styles/shared-search.css';
+import './styles/shared-notifications.css';
+import './styles/workspace-publications.css';
+import './styles/workspace-activities.css';
+import './styles/workspace-profile.css';
+import './styles/shared-shortcuts.css';
 
 window.$ = $;
 window.jQuery = $;
@@ -20,6 +28,15 @@ import { initPublicationSubtypeSync } from './modules/shared/publicationSubtypeS
 import { initSharedSidebarShell } from './modules/shared/sidebarShell';
 import { initSharedDataTables } from './modules/shared/tableEnhancer';
 import { initThemeShell } from './modules/shared/themeShell';
+import { initWorkspaceTabs } from './modules/shared/workspaceTabs';
+import { initWorkspaceShortcuts } from './modules/shared/workspaceShortcuts';
+import { initWorkspacePanelLoader } from './modules/shared/workspacePanelLoader';
+import { initWorkspaceOverview } from './modules/workspace/workspaceOverview';
+import { initWorkspaceSearch } from './modules/workspace/workspaceSearch';
+import { initWorkspaceNotifications } from './modules/workspace/workspaceNotifications';
+import { initWorkspacePublications } from './modules/workspace/workspacePublications';
+import { initWorkspaceActivities } from './modules/workspace/workspaceActivities';
+import { initWorkspaceProfile } from './modules/workspace/workspaceProfile';
 
 window.Chart = Chart;
 
@@ -30,3 +47,12 @@ initSharedSidebarShell();
 initLegacyInteractions();
 initSharedDataTables();
 initPublicationSubtypeSync();
+initWorkspaceTabs();
+initWorkspaceShortcuts();
+initWorkspacePanelLoader();
+initWorkspaceOverview();
+initWorkspaceSearch();
+initWorkspaceNotifications();
+initWorkspacePublications();
+initWorkspaceActivities();
+initWorkspaceProfile();

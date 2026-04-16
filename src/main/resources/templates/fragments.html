@@ -69,7 +69,7 @@
                             <i class="fa-solid fa-user-tie" aria-hidden="true"></i>
                             <span>Supervisor Panel</span>
                         </a>
-                        <a class="app-shell-workspace-switcher__item" href="/user/dashboard" role="menuitem">
+                        <a class="app-shell-workspace-switcher__item" href="/user/workspace" role="menuitem">
                             <i class="fa-solid fa-user" aria-hidden="true"></i>
                             <span>User Panel</span>
                         </a>
@@ -294,22 +294,10 @@
         <section class="app-shell-sidebar__section">
             <p class="app-shell-sidebar__section-label">Workspace</p>
             <ul class="app-shell-sidebar__section-list">
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'profile' ? ' active' : ''">
-                    <a th:href="@{/user/profile}" class="app-shell-sidebar__link">
-                        <i class="fa-solid fa-fw fa-user-graduate"></i>
-                        <span>Profile</span>
-                    </a>
-                </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'publications' ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/user/publications}">
-                        <i class="fa-solid fa-fw fa-chart-area"></i>
-                        <span>Publications</span>
-                    </a>
-                </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'activities' ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/user/activities}">
-                        <i class="fa-solid fa-fw fa-pen-fancy"></i>
-                        <span>Activities</span>
+                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'workspace' ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/user/workspace}">
+                        <i class="fa-solid fa-fw fa-house-user"></i>
+                        <span>My Workspace</span>
                     </a>
                 </li>
             </ul>
@@ -354,21 +342,55 @@
         <section class="app-shell-sidebar__section">
             <p class="app-shell-sidebar__section-label">Reporting</p>
             <ul class="app-shell-sidebar__section-list">
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'indicators' ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/user/indicators}">
-                        <i class="fa-solid fa-fw fa-info"></i>
-                        <span>Indicators</span>
-                    </a>
-                </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'individual-reports' ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/user/individual-reports}">
-                        <i class="fa-solid fa-fw fa-clipboard-list"></i>
-                        <span>Reports</span>
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'indicators' or activeSection == 'individual-reports' or activeSection == 'evaluation'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/user/evaluation}">
+                        <i class="fa-solid fa-fw fa-chart-bar"></i>
+                        <span>Evaluation</span>
                     </a>
                 </li>
             </ul>
         </section>
     </nav>
 </div>
+
+<!-- Tab-Bar Fragment -->
+<th:block th:fragment="tab-bar(tabs, callbacksRef)">
+    <div class="app-tab-bar"
+         data-app-tab-bar
+         th:attr="data-app-tab-bar-callbacks=${callbacksRef}">
+
+        <div class="app-tab-bar__list"
+             role="tablist"
+             aria-label="Page sections">
+            <button
+                th:each="tab, iterStat : ${tabs}"
+                type="button"
+                role="tab"
+                class="app-tab-bar__tab"
+                th:id="'tab-trigger-' + ${tab.id}"
+                th:attr="data-tab-id=${tab.id},
+                         aria-controls='tab-panel-' + ${tab.id},
+                         aria-selected='false',
+                         tabindex=${iterStat.first ? '0' : '-1'}">
+                <i th:if="${tab.icon != null}"
+                   th:class="${tab.icon} + ' app-tab-bar__tab-icon'"
+                   aria-hidden="true"></i>
+                <span th:text="${tab.label}">Tab Label</span>
+            </button>
+        </div>
+
+        <div class="app-tab-bar__panels">
+            <div th:each="tab : ${tabs}"
+                 role="tabpanel"
+                 class="app-tab-bar__panel"
+                 th:id="'tab-panel-' + ${tab.id}"
+                 th:attr="aria-labelledby='tab-trigger-' + ${tab.id}"
+                 hidden="hidden">
+            </div>
+        </div>
+
+    </div>
+</th:block>
 </body>
 </html>

@@ -53,6 +53,21 @@ Noise-reduction rules:
 - When current code and top-level docs disagree with a closed task doc, prefer code plus current top-level docs unless the user is explicitly asking for history or handoff evidence.
 - When creating task-specific docs, place them under `docs/tasks/active/` while the task is open and move them to `docs/tasks/closed/` when the task is archived.
 
+## Running The App For Inspection
+
+When you need to start the application to inspect it at runtime (verify UI, test endpoints, etc.), use the `agent-dev` Spring profile. This profile:
+- Bypasses all Spring Security authentication checks
+- Injects a synthetic `RESEARCHER` principal (`agent@dev.local`, no linked researcher profile) so workspace controllers receive a valid user object
+- Runs on port **8181** to avoid colliding with any other running instance on the default port
+
+```bash
+./gradlew bootRun --args='--spring.profiles.active=agent-dev --server.port=8181'
+```
+
+The app is ready when you see `Started ... in ... seconds` in the log output. The workspace is at `http://localhost:8181/user/workspace`.
+
+**Never activate `agent-dev` in production.** The profile logs a loud warning block at startup as a reminder.
+
 ## Branching And Commits
 
 - Branch naming convention for agent work: `codex/*`

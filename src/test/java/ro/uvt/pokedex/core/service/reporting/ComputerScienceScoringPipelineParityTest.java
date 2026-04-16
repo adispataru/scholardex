@@ -82,15 +82,15 @@ class ComputerScienceScoringPipelineParityTest {
         );
 
         assertEquals(12.0, result.get("Q1 Journal").getScore(), 0.0001);
-        assertEquals("A_STAR", result.get("Q1 Journal").getCategory());
+        assertEquals("A_STAR", result.get("Q1 Journal").getCoreRankingEquivalent());
         assertEquals("Q1", result.get("Q1 Journal").getQuarter());
 
         assertEquals(12.0, result.get("A* Conference").getScore(), 0.0001);
-        assertEquals("A_STAR", result.get("A* Conference").getCategory());
+        assertEquals("A_STAR", result.get("A* Conference").getCoreRankingEquivalent());
         assertEquals("NOT_FOUND", result.get("A* Conference").getQuarter());
 
         assertEquals(2.0, result.get("Scopus Journal").getScore(), 0.0001);
-        assertEquals("C", result.get("Scopus Journal").getCategory());
+        assertEquals("C", result.get("Scopus Journal").getCoreRankingEquivalent());
         assertEquals("SCOPUS", result.get("Scopus Journal").getQuarter());
 
         assertEquals(26.0, result.get("total").getAuthorScore(), 0.0001);

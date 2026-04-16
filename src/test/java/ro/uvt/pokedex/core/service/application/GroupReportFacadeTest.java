@@ -343,12 +343,12 @@ class GroupReportFacadeTest {
         q3Report.setIsiQ3(true);
 
         Score aScore = new Score();
-        aScore.setCategory(CoreConferenceRanking.Rank.A_STAR.toString());
+        aScore.setCoreRankingEquivalent(CoreConferenceRanking.Rank.A_STAR.toString());
         Score bScore = new Score();
-        bScore.setCategory(CoreConferenceRanking.Rank.B.toString());
+        bScore.setCoreRankingEquivalent(CoreConferenceRanking.Rank.B.toString());
         bScore.setQuarter("LNCS");
         Score chapterConferenceScore = new Score();
-        chapterConferenceScore.setCategory(CoreConferenceRanking.Rank.B.toString());
+        chapterConferenceScore.setCoreRankingEquivalent(CoreConferenceRanking.Rank.B.toString());
 
         when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))

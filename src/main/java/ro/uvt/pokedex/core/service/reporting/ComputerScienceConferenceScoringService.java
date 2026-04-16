@@ -95,7 +95,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
             }
             if (resolvedScore != null) {
                 scoreResult.bestPoints.set(resolvedScore.getScore());
-                scoreResult.bestCategory.set(CoreConferenceRanking.Rank.valueOf(resolvedScore.getCategory()));
+                scoreResult.bestCategory.set(CoreConferenceRanking.Rank.valueOf(resolvedScore.getCoreRankingEquivalent()));
                 scoreResult.bestYear.set(resolvedScore.getYear());
                 copyProvenance(resolvedScore, scoreResult);
             }
@@ -160,7 +160,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         }
         if (resolvedScore != null) {
             scoreResult.bestPoints.set(resolvedScore.getScore());
-            scoreResult.bestCategory.set(CoreConferenceRanking.Rank.valueOf(resolvedScore.getCategory()));
+            scoreResult.bestCategory.set(CoreConferenceRanking.Rank.valueOf(resolvedScore.getCoreRankingEquivalent()));
             scoreResult.bestYear.set(resolvedScore.getYear());
             copyProvenance(resolvedScore, scoreResult);
         }
@@ -274,7 +274,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         boolean workshopAdjusted = isWorkshopVariant(match.sourceTitle(), match.ranking());
         double score = workshopAdjusted ? Math.max(MIN_CONFERENCE_SCORE, baseScore / 2.0) : baseScore;
         scoreResult.setScore(score);
-        scoreResult.setCategory(yearlyRank.getRank().toString());
+        scoreResult.setCoreRankingEquivalent(yearlyRank.getRank().toString());
         scoreResult.setYear(year);
         setProvenance(scoreResult, scoringSourceLabel(resolutionSource),
                 buildScoringInfo(trace, resolutionSource, year, yearlyRank.getRank(), workshopAdjusted));

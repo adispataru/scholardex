@@ -42,11 +42,12 @@ public abstract class AbstractWoSForumScoringService extends AbstractForumScorin
                         Optional<Score> points = scoreExtractor.apply(ranking, year, category, rank);
                         if (points.isPresent() && compareFunction.apply(points.get(), result)) {
                             result.bestPoints.set(points.get().getScore());
-                            if (points.get().getCategory() != null) {
-                                result.bestCategory.set(CoreConferenceRanking.Rank.valueOf(points.get().getCategory()));
+                            if (points.get().getCoreRankingEquivalent() != null) {
+                                result.bestCategory.set(CoreConferenceRanking.Rank.valueOf(points.get().getCoreRankingEquivalent()));
                             }
-//                            result.bestQuarter.set(getBestQuarter(ranking));
-                            result.bestQuarter.set(WoSRanking.Quarter.valueOf(points.get().getQuarter()));
+                            if (points.get().getQuarter() != null) {
+                                result.bestQuarter.set(WoSRanking.Quarter.valueOf(points.get().getQuarter()));
+                            }
                             result.bestYear.set(year);
                             copyProvenance(points.get(), result);
                             result.extra.putAll(points.get().getExtra());
@@ -59,6 +60,10 @@ public abstract class AbstractWoSForumScoringService extends AbstractForumScorin
 
     protected boolean compareScoresByPoints(Score score, ScoreResult result) {
         if (Math.abs(score.getScore() - result.bestPoints.get()) < 0.00000001) {
+            // If either quarter is unknown, don't displace an existing best
+            if (score.getQuarter() == null || result.bestQuarter.get() == null) {
+                return false;
+            }
             return score.getQuarter().compareTo(result.bestQuarter.toString()) < 0;
         }
         return score.getScore() > result.bestPoints.get();

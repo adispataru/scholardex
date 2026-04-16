@@ -2,6 +2,7 @@ package ro.uvt.pokedex.core.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -36,6 +37,7 @@ public class WebSecurityConfig {
     }
 
     @Bean
+    @Order(2)
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.ignoringRequestMatchers(PathPatternRequestMatcher.pathPattern("/api/**")))
                 .authenticationProvider(authenticationProvider())
@@ -53,7 +55,8 @@ public class WebSecurityConfig {
                             "/images/**",
                             "/webjars/**",
                             "/assets/**",
-                            "/favicon.ico"
+                            "/favicon.ico",
+                            "/.well-known/**"
                     ).permitAll();
                     ahr.requestMatchers("/actuator/**").hasAuthority("PLATFORM_ADMIN");
                     ahr.requestMatchers("/forums/**", "/wos/**", "/core/**", "/universities/**", "/events/**").authenticated();

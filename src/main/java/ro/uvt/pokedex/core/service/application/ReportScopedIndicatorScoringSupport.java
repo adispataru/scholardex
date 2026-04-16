@@ -154,14 +154,7 @@ final class ReportScopedIndicatorScoringSupport {
     }
 
     static String viewNameFor(Indicator indicator) {
-        if (indicator.getOutputType().toString().contains("ACTIVIT")) {
-            return "user/indicators-apply-activities";
-        }
-        if (indicator.getOutputType().equals(Indicator.Type.CITATIONS)
-                || indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF)) {
-            return "user/indicators-apply-citations";
-        }
-        return "user/indicators-apply-publications";
+        return "user/indicators-apply";
     }
 
     private static boolean sharesAnyAuthor(ScholardexPublicationView publication, Set<String> authorIds) {

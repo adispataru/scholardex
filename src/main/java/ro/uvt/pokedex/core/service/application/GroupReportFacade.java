@@ -165,8 +165,8 @@ public class GroupReportFacade {
         );
         if (conferenceScore.isPresent()) {
             Score score = conferenceScore.get();
-            if (score.getCategory() != null && !score.getCategory().isBlank()) {
-                return score.getCategory().trim();
+            if (score.getCoreRankingEquivalent() != null && !score.getCoreRankingEquivalent().isBlank()) {
+                return score.getCoreRankingEquivalent().trim();
             }
         }
         return "BOOK_LNCS";
@@ -199,10 +199,10 @@ public class GroupReportFacade {
         if ("SCOPUS".equalsIgnoreCase(score.getQuarter())) {
             return "SCOPUS";
         }
-        if (score.getCategory() == null || score.getCategory().isBlank()) {
+        if (score.getCoreRankingEquivalent() == null || score.getCoreRankingEquivalent().isBlank()) {
             return "Unranked";
         }
-        return score.getCategory().trim();
+        return score.getCoreRankingEquivalent().trim();
     }
 
     private Indicator venueClassificationIndicator() {

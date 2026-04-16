@@ -16,7 +16,7 @@ const checks = [
   {
     file: 'src/main/resources/templates/fragments.html',
     required: [
-      'href="/user/dashboard"'
+      'href="/user/workspace"'
     ],
     forbidden: [
       '/scholardex/forums"',
@@ -67,7 +67,7 @@ const checks = [
     forbidden: ['/rankings/categories/']
   },
   {
-    file: 'src/main/resources/templates/user/indicators-apply-citations.html',
+    file: 'src/main/resources/templates/user/indicators-apply.html',
     forbidden: ['/scholardex/forums/']
   },
   {
@@ -91,32 +91,10 @@ const checks = [
     forbidden: ["/rankings/urap'"]
   },
   {
-    file: 'src/main/resources/templates/user/activities-edit.html',
-    forbidden: [
-      "user-sidebar('activityInstances')",
-      '/user/activityInstances/update'
-    ]
-  },
-  {
     file: 'src/main/resources/templates/user/publications.html',
     forbidden: [
       '/user/publications/exportCNFIS2025',
       '/user/publications/scopus_tasks'
-    ]
-  },
-  {
-    file: 'src/main/resources/templates/user/tasks.html',
-    forbidden: [
-      "user-sidebar('scopus_tasks')",
-      '/user/tasks/scopus/updateCitations',
-      '/user/tasks/scopus/update}'
-    ]
-  },
-  {
-    file: 'src/main/resources/templates/user/individual-reports.html',
-    forbidden: [
-      "user-sidebar('individualReports')",
-      '/user/individualReports/view/'
     ]
   },
   {

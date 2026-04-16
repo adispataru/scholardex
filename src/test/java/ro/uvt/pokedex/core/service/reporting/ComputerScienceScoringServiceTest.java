@@ -43,7 +43,7 @@ class ComputerScienceScoringServiceTest {
 
         assertEquals(0.0, score.getScore());
         assertEquals(0, score.getYear());
-        assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCoreRankingEquivalent());
         assertEquals(WoSRanking.Quarter.NOT_FOUND.toString(), score.getQuarter());
         verifyNoInteractions(journalScoringService, conferenceScoringService);
         verifyNoInteractions(bookScoringService);
@@ -64,7 +64,7 @@ class ComputerScienceScoringServiceTest {
 
         assertEquals(0.0, score.getScore());
         assertEquals(0, score.getYear());
-        assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCoreRankingEquivalent());
         assertEquals(WoSRanking.Quarter.NOT_FOUND.toString(), score.getQuarter());
         verifyNoInteractions(journalScoringService, conferenceScoringService);
         verifyNoInteractions(bookScoringService);
@@ -111,7 +111,7 @@ class ComputerScienceScoringServiceTest {
 
         assertEquals(0.0, score.getScore());
         assertEquals(0, score.getYear());
-        assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCoreRankingEquivalent());
         assertEquals(WoSRanking.Quarter.NOT_FOUND.toString(), score.getQuarter());
         verifyNoInteractions(journalScoringService, conferenceScoringService, bookScoringService);
     }
@@ -225,7 +225,7 @@ class ComputerScienceScoringServiceTest {
 
         assertEquals(0.0, score.getScore());
         assertEquals(0, score.getYear());
-        assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCoreRankingEquivalent());
         assertEquals(WoSRanking.Quarter.NOT_FOUND.toString(), score.getQuarter());
         verifyNoInteractions(journalScoringService, conferenceScoringService, bookScoringService);
     }
@@ -238,7 +238,7 @@ class ComputerScienceScoringServiceTest {
 
         assertEquals(0.0, score.getScore());
         assertEquals(0, score.getYear());
-        assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCoreRankingEquivalent());
         assertEquals(WoSRanking.Quarter.NOT_FOUND.toString(), score.getQuarter());
         verifyNoInteractions(journalScoringService, conferenceScoringService, bookScoringService);
     }
@@ -281,7 +281,7 @@ class ComputerScienceScoringServiceTest {
         Score score = new Score();
         score.setScore(value);
         score.setYear(year);
-        score.setCategory(category);
+        score.setCoreRankingEquivalent(category);
         score.setQuarter(quarter);
         return score;
     }

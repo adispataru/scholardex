@@ -4,13 +4,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
-import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.service.application.UserActivityInstanceFacade;
-import ro.uvt.pokedex.core.service.application.model.UserActivityInstancesViewModel;
 
 import java.util.Optional;
 
@@ -22,22 +19,8 @@ public class ActivityInstanceController {
     private final UserActivityInstanceFacade userActivityInstanceFacade;
 
     @GetMapping
-    public String getActivityInstances(Model model, Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
-            return "redirect:/login"; // or your login route
-        }
-
-        String researcherId = currentUser.getResearcherId();
-
-        UserActivityInstancesViewModel viewModel = userActivityInstanceFacade.buildActivityInstancesView(researcherId);
-        model.addAttribute("activities", viewModel.activities());
-        model.addAttribute("referenceTypes", viewModel.referenceTypes());
-        model.addAttribute("activityInstances", viewModel.activityInstances());
-        model.addAttribute("activityLabels", viewModel.activityLabels());
-        model.addAttribute("activityData", viewModel.activityData());
-        model.addAttribute("newActivityInstance", viewModel.newActivityInstance());
-        return "user/activities";
-
+    public String getActivityInstances() {
+        return "redirect:/user/workspace#activities";
     }
 
     @PostMapping("/create")
@@ -54,14 +37,8 @@ public class ActivityInstanceController {
     }
 
     @GetMapping("/edit/{id}")
-    public String editActivityInstance(@PathVariable String id, Model model) {
-        Optional<ActivityInstance> byId = userActivityInstanceFacade.findActivityInstance(id);
-        if (byId.isPresent()) {
-            model.addAttribute("activityInstance", byId.get());
-            return "user/activities-edit";
-        } else {
-            return "redirect:/user/activities";
-        }
+    public String editActivityInstance() {
+        return "redirect:/user/workspace#activities";
     }
 
     @PostMapping("/delete/{id}")

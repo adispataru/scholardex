@@ -1,0 +1,103 @@
+/* ============================================================
+   app-tab-bar — shared tab-bar component
+   ============================================================ */
+
+.app-tab-bar {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- List (tablist strip) --------------------------------- */
+
+.app-tab-bar__list {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-bottom: 1px solid var(--app-color-border);
+  gap: 0;
+  /* hide scrollbar while still allowing scroll */
+  scrollbar-width: none;
+}
+
+.app-tab-bar__list::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---- Tab button ------------------------------------------ */
+
+.app-tab-bar__tab {
+  position: relative;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0.75rem 1.1rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--app-color-text-muted);
+  cursor: pointer;
+  transition: color 140ms ease;
+  outline: none;
+}
+
+.app-tab-bar__tab:hover {
+  color: var(--app-color-text-strong);
+}
+
+.app-tab-bar__tab:focus-visible {
+  outline: 2px solid var(--app-color-focus);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.app-tab-bar__tab--active {
+  color: var(--app-color-primary);
+  font-weight: 700;
+}
+
+/* Bottom indicator line for active tab */
+.app-tab-bar__tab--active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--app-color-primary);
+  border-radius: 999px 999px 0 0;
+}
+
+/* ---- Tab icon -------------------------------------------- */
+
+.app-tab-bar__tab-icon {
+  margin-right: 0.4rem;
+  font-size: 0.8125rem;
+}
+
+/* ---- Panels container ------------------------------------ */
+
+.app-tab-bar__panels {
+  position: relative;
+}
+
+/* ---- Individual panel ------------------------------------ */
+
+.app-tab-bar__panel {
+  /* hidden attribute handles display:none by default */
+}
+
+.app-tab-bar__panel--active {
+  display: block;
+  opacity: 1;
+  transition: opacity 200ms ease;
+}
+
+.app-tab-bar__panel--leaving {
+  display: block;
+  opacity: 0;
+  transition: opacity 150ms ease;
+  pointer-events: none;
+}

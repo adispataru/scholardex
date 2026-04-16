@@ -9,7 +9,7 @@ import java.util.Map;
 public class Score {
     private double score;
     private int year;
-    private String category;
+    private String coreRankingEquivalent;
     private String quarter;
     private String scoringSource;
     private Map<String, Object> scoringInfo = new HashMap<>();

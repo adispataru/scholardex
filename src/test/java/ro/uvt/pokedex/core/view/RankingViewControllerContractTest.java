@@ -93,7 +93,7 @@ class RankingViewControllerContractTest {
     void sharedForumsRouteUsesUserSidebarForNonAdmin() throws Exception {
         mockMvc.perform(get("/forums").with(authenticatedUser(userWithRoles("u@uvt.ro", Set.of(UserRole.RESEARCHER)))))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/user/profile\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/user/workspace\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("href=\"/admin/users\""))));
     }
 

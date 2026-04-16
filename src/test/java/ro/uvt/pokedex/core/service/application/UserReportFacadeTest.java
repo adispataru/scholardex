@@ -320,7 +320,7 @@ class UserReportFacadeTest {
         publication.setCoverDate("2023-01-01");
 
         Score publicationScore = new Score();
-        publicationScore.setCategory("Q1");
+        publicationScore.setCoreRankingEquivalent("Q1");
         publicationScore.setScore(10.0);
         publicationScore.setAuthorScore(5.0);
 
@@ -378,7 +378,7 @@ class UserReportFacadeTest {
         publication.setCoverDate("bad-date");
 
         Score publicationScore = new Score();
-        publicationScore.setCategory("Q1");
+        publicationScore.setCoreRankingEquivalent("Q1");
         publicationScore.setScore(10.0);
         publicationScore.setAuthorScore(5.0);
 
@@ -580,7 +580,7 @@ class UserReportFacadeTest {
         UserIndicatorApplyViewModel applyView = facade.buildIndicatorApplyView("user@uvt.ro", "ind-cit");
         var reportComputationOpt = facade.computeReportScopedIndividualReport("user@uvt.ro", "rep-cit");
 
-        assertEquals("user/indicators-apply-citations", applyView.viewName());
+        assertEquals("user/indicators-apply", applyView.viewName());
         assertNotNull(reportComputationOpt.orElse(null));
         double applyTotal = Double.parseDouble(applyView.attributes().get("total").toString().replace(',', '.'));
         assertEquals(75.0, applyTotal);

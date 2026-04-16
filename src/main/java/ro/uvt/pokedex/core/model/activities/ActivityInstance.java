@@ -30,6 +30,7 @@ public class ActivityInstance {
     }
 
     public int getYear(){
+        if (date == null || date.length() < 4) return 0;
         return Integer.parseInt(date.substring(0, 4));
     }
 }

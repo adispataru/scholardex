@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +54,7 @@ public class ScientificProductionService {
             if(indicator.getSelector().equals(Indicator.Selector.TOP_10)) {
                 totalScore = 0.0;
                 if(publications.size() > 10) {
+                    publications = new ArrayList<>(publications);
                     publications.sort((p1, p2) -> Double.compare(
                             interResult.get(p2.getTitle()) != null ? interResult.get(p2.getTitle()).getAuthorScore(): 0,
                             interResult.get(p1.getTitle()) != null ? interResult.get(p1.getTitle()).getAuthorScore() : 0));
@@ -257,7 +259,7 @@ public class ScientificProductionService {
         Score target = new Score();
         target.setScore(source.getScore());
         target.setYear(source.getYear());
-        target.setCategory(source.getCategory());
+        target.setCoreRankingEquivalent(source.getCoreRankingEquivalent());
         target.setQuarter(source.getQuarter());
         target.setScoringSource(source.getScoringSource());
         target.setScoringInfo(new HashMap<>(source.getScoringInfo() == null ? Map.of() : source.getScoringInfo()));

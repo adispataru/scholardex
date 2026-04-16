@@ -52,7 +52,7 @@ class ComputerScienceJournalScoringServiceTest {
         Score score = service.getScore(publication, indicator);
 
         assertEquals(2.0, score.getScore());
-        assertEquals("C", score.getCategory());
+        assertEquals("C", score.getCoreRankingEquivalent());
         assertEquals("Q3", score.getQuarter());
         assertEquals(ScoringService.LAST_YEAR, score.getYear());
     }
@@ -89,7 +89,7 @@ class ComputerScienceJournalScoringServiceTest {
         Score score = service.getScore(publication, indicator);
 
         assertEquals(4.0, score.getScore());
-        assertEquals("B", score.getCategory());
+        assertEquals("B", score.getCoreRankingEquivalent());
         assertEquals("Q2", score.getQuarter());
         assertEquals("SCOPUS+WOS", score.getScoringSource());
     }

@@ -139,7 +139,7 @@ public class IndicatorPayloadSerializer {
     private boolean looksLikeScoreMap(Map<String, Object> value) {
         return value.containsKey("score")
                 || value.containsKey("authorScore")
-                || value.containsKey("category")
+                || value.containsKey("coreRankingEquivalent") || value.containsKey("category")
                 || value.containsKey("quarter")
                 || value.containsKey("details")
                 || value.containsKey("extra");
@@ -153,7 +153,7 @@ public class IndicatorPayloadSerializer {
         Score score = new Score();
         score.setScore(asDouble(value.get("score")));
         score.setYear(asInt(value.get("year")));
-        score.setCategory(asString(value.get("category")));
+        score.setCoreRankingEquivalent(asString(value.containsKey("coreRankingEquivalent") ? value.get("coreRankingEquivalent") : value.get("category")));
         score.setQuarter(asString(value.get("quarter")));
         score.setScoringSource(asString(value.get("scoringSource")));
         score.setScoringInfo(asMap(value.get("scoringInfo")));

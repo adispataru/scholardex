@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
@@ -52,7 +53,8 @@ public class RISJournalScoringService extends AbstractWoSForumScoringService {
                         }
                         Score score = new Score();
                         score.setScore(ranking.getScore().getRis().get(year));
-                        score.setQuarter(rank.getQAis().get(year).toString());
+                        WoSRanking.Quarter qAis = rank.getQAis() != null ? rank.getQAis().get(year) : null;
+                        score.setQuarter(qAis != null ? qAis.toString() : null);
                         return Optional.of(score);
                     },
                     this::compareScoresByPoints
@@ -81,12 +83,13 @@ public class RISJournalScoringService extends AbstractWoSForumScoringService {
                 scoreResult,
                 // RIS specific extractor
                 (ranking, year, category, rank) -> {
-                    if( ranking.getScore() == null || ranking.getScore().getRis() == null) {
+                    if( ranking.getScore() == null || ranking.getScore().getRis() == null || ranking.getScore().getRis().get(year) == null) {
                         return Optional.empty();
                     }
                     Score score = new Score();
                     score.setScore(ranking.getScore().getRis().get(year));
-                    score.setQuarter(rank.getQAis().get(year).toString());
+                    WoSRanking.Quarter qAis = rank.getQAis() != null ? rank.getQAis().get(year) : null;
+                    score.setQuarter(qAis != null ? qAis.toString() : null);
                     return Optional.of(score);
                 },
                 this::compareScoresByPoints

@@ -61,7 +61,7 @@ public class ActivityReportingService {
             if(!indicator.getScoringStrategy().equals(Indicator.Strategy.GENERIC_COUNT)) {
                 ScoringService scoringService = scoringFactoryService.getScoringService(indicator.getScoringStrategy());
                 Score score = scoringService.getScore(activity, indicator);
-                result.setCategory(score.getCategory());
+                result.setCoreRankingEquivalent(score.getCoreRankingEquivalent());
                 result.setQuarter(score.getQuarter());
                 result.setYear(score.getYear());
                 result.setScore(score.getScore());
@@ -73,7 +73,7 @@ public class ActivityReportingService {
                     variables.put(key, result.getExtra().get(key));
                 }
             }else{
-                result.setCategory("Generic Count");
+                result.setCoreRankingEquivalent("Generic Count");
                 result.setYear(activity.getYear());
                 result.setScore(1.0);
                 variables.put("S", 1.0);

@@ -36,7 +36,7 @@ class IndicatorPayloadSerializerTest {
     void deserializeRestoresScoreObjectsWithProvenance() {
         IndicatorPayloadSerializer serializer = new IndicatorPayloadSerializer(new ObjectMapper());
         Score score = new Score();
-        score.setCategory("A");
+        score.setCoreRankingEquivalent("A");
         score.setQuarter("Q1");
         score.setScoringSource("SCOPUS+CORE");
         score.setScoringInfo(Map.of("matchSource", "SCOPUS"));

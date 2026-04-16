@@ -1,0 +1,204 @@
+/* ── Workspace unified search combobox (H36.5) ─────────────────────────── */
+
+.app-ws-search {
+  position: relative;
+  max-width: 38rem;
+  margin-bottom: 1rem;
+}
+
+/* Input wrapper */
+.app-ws-search__field {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-card);
+  background: var(--app-color-card-bg);
+  box-shadow: var(--app-shadow-card);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.app-ws-search__field:focus-within {
+  border-color: color-mix(in srgb, var(--app-color-primary) 42%, var(--app-color-border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-color-primary) 16%, transparent),
+              var(--app-shadow-card);
+}
+
+.app-ws-search__icon {
+  flex: 0 0 auto;
+  color: var(--app-color-text-muted);
+  font-size: 0.88rem;
+  line-height: 1;
+}
+
+.app-ws-search__input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-size: 0.9rem;
+  color: var(--app-color-text);
+  min-width: 0;
+}
+
+.app-ws-search__input::placeholder {
+  color: var(--app-color-text-muted);
+  font-size: 0.87rem;
+}
+
+/* Remove browser-default clear button in webkit */
+.app-ws-search__input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+.app-ws-search__hint {
+  flex: 0 0 auto;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid var(--app-color-border);
+  border-radius: 0.3rem;
+  background: var(--app-color-card-bg-muted);
+  font-size: 0.72rem;
+  color: var(--app-color-text-muted);
+  font-family: monospace;
+  opacity: 0.65;
+  white-space: nowrap;
+}
+
+/* Hide hint while focused */
+.app-ws-search__field:focus-within .app-ws-search__hint {
+  display: none;
+}
+
+/* ── Results dropdown ──────────────────────────────────────────────────── */
+
+.app-ws-search__results {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  right: 0;
+  z-index: 1050;
+  max-height: 22rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.3rem 0;
+  list-style: none;
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-card);
+  background: var(--app-color-card-bg);
+  box-shadow: var(--app-shadow-float);
+  scrollbar-width: thin;
+}
+
+/* Group section header */
+.app-ws-search__group-header {
+  padding: 0.55rem 1rem 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--app-color-text-muted);
+  user-select: none;
+}
+
+.app-ws-search__group-header + .app-ws-search__group-header {
+  border-top: 1px solid var(--app-color-border);
+  margin-top: 0.25rem;
+  padding-top: 0.65rem;
+}
+
+/* Result row */
+.app-ws-search__result {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+  transition: background 0.07s;
+  outline: none;
+}
+
+.app-ws-search__result:hover,
+.app-ws-search__result--active {
+  background: color-mix(in srgb, var(--app-color-primary) 7%, var(--app-color-card-bg-muted));
+}
+
+/* Entity type badge */
+.app-ws-search__badge {
+  flex: 0 0 auto;
+  padding: 0.15rem 0.48rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  margin-top: 0.15rem;
+}
+
+.app-ws-search__badge--pub {
+  background: color-mix(in srgb, var(--app-color-primary) 12%, transparent);
+  color: var(--app-color-primary);
+}
+
+.app-ws-search__badge--act {
+  background: color-mix(in srgb, var(--app-color-success) 12%, transparent);
+  color: var(--app-color-success);
+}
+
+.app-ws-search__badge--cite {
+  background: color-mix(in srgb, var(--app-color-warning) 15%, transparent);
+  color: var(--app-color-warning);
+}
+
+/* Result title + date */
+.app-ws-search__result-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.app-ws-search__result-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--app-color-text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-ws-search__result--active .app-ws-search__result-title {
+  color: var(--app-color-primary);
+}
+
+.app-ws-search__result-date {
+  font-size: 0.79rem;
+  color: var(--app-color-text-muted);
+}
+
+/* Empty / error state */
+.app-ws-search__no-results {
+  padding: 0.9rem 1rem;
+  font-size: 0.9rem;
+  color: var(--app-color-text-muted);
+  user-select: none;
+}
+
+/* Full-width search on small screens */
+@media (max-width: 576px) {
+  .app-ws-search {
+    max-width: none;
+  }
+}
+
+/* Screen-reader live region */
+.app-ws-search__live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

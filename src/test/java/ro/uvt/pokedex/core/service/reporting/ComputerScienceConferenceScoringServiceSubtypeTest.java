@@ -45,7 +45,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, new Indicator());
 
         assertEquals(1.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCoreRankingEquivalent());
         assertEquals(WoSRanking.Quarter.SCOPUS.toString(), score.getQuarter());
         assertEquals("SCOPUS", score.getScoringSource());
         assertEquals("SCOPUS", score.getScoringInfo().get("matchSource"));
@@ -65,7 +65,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, new Indicator());
 
         assertEquals(12.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.A_STAR.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.A_STAR.toString(), score.getCoreRankingEquivalent());
         assertEquals("SCOPUS+CORE", score.getScoringSource());
         assertEquals("ICSE", score.getScoringInfo().get("matchedAcronym"));
     }
@@ -87,7 +87,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, new Indicator());
 
         assertEquals(1.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCoreRankingEquivalent());
         assertEquals(WoSRanking.Quarter.SCOPUS.toString(), score.getQuarter());
         assertEquals(ComputerScienceConferenceScoringService.FallbackReason.AMBIGUOUS_WINNERS,
                 service.diagnoseConferenceMatch(forum.getPublicationName(), 2023).fallbackReason());
@@ -109,7 +109,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, new Indicator());
 
         assertEquals(1.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCoreRankingEquivalent());
         assertEquals(WoSRanking.Quarter.SCOPUS.toString(), score.getQuarter());
         assertEquals(ComputerScienceConferenceScoringService.FallbackReason.NO_CORE_CANDIDATES,
                 service.diagnoseConferenceMatch(forum.getPublicationName(), 2023).fallbackReason());
@@ -129,7 +129,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Optional<Score> score = service.tryResolveCoreScore(forum, 2024);
 
         assertEquals(true, score.isPresent());
-        assertEquals(CoreConferenceRanking.Rank.A_STAR.toString(), score.get().getCategory());
+        assertEquals(CoreConferenceRanking.Rank.A_STAR.toString(), score.get().getCoreRankingEquivalent());
     }
 
     @Test
@@ -148,7 +148,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, new Indicator());
 
         assertEquals(4.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.B.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.B.toString(), score.getCoreRankingEquivalent());
     }
 
     @Test
@@ -179,7 +179,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, new Indicator());
 
         assertEquals(8.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent());
         assertEquals(2016, score.getYear());
         ComputerScienceConferenceScoringService.ConferenceScoreTrace trace =
                 service.diagnoseConferenceMatch(forum.getPublicationName(), 2016);
@@ -208,7 +208,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator("IY"));
 
         assertEquals(8.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent());
         assertEquals("CCGRID", service.getLastTraceForTests().resolvedAcronym());
     }
 
@@ -241,7 +241,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator);
 
         assertEquals(8.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent());
         assertEquals(2016, score.getYear());
     }
 
@@ -261,7 +261,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator("IY"));
 
         assertEquals(4.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.B.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.B.toString(), score.getCoreRankingEquivalent());
         assertEquals("SCOPUS+CORE", score.getScoringSource());
         assertEquals("ICNP", score.getScoringInfo().get("matchedAcronym"));
     }
@@ -283,7 +283,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator("IY"));
 
         assertEquals(4.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.B.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.B.toString(), score.getCoreRankingEquivalent());
         assertEquals("SCOPUS+CORE", score.getScoringSource());
         assertEquals("SCOPUS", score.getScoringInfo().get("matchSource"));
         assertEquals("TITLE", score.getScoringInfo().get("coreLookupStrategy"));
@@ -309,7 +309,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator("IY"));
 
         assertEquals(4.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent());
         assertEquals("SCOPUS+CORE", score.getScoringSource());
         assertEquals(true, score.getScoringInfo().get("workshopAdjusted"));
         ComputerScienceConferenceScoringService.ConferenceScoreTrace trace = service.getLastTraceForTests();
@@ -333,7 +333,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator("IY"));
 
         assertEquals(4.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.B.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.B.toString(), score.getCoreRankingEquivalent());
         assertEquals(null, score.getScoringInfo().get("workshopAdjusted"));
         assertEquals(false, service.getLastTraceForTests().workshopAdjusted());
     }
@@ -378,7 +378,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator("IY"));
 
         assertEquals(1.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCoreRankingEquivalent());
         assertEquals(WoSRanking.Quarter.SCOPUS.toString(), score.getQuarter());
         assertEquals(ComputerScienceConferenceScoringService.FallbackReason.AMBIGUOUS_WINNERS,
                 service.getLastTraceForTests().fallbackReason());
@@ -396,7 +396,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator("IY"));
 
         assertEquals(1.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCoreRankingEquivalent());
         assertEquals(WoSRanking.Quarter.SCOPUS.toString(), score.getQuarter());
     }
 
@@ -412,7 +412,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator("IY"));
 
         assertEquals(1.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCoreRankingEquivalent());
         assertEquals(WoSRanking.Quarter.SCOPUS.toString(), score.getQuarter());
     }
 
@@ -433,7 +433,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator("IY"));
 
         assertEquals(1.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCoreRankingEquivalent());
         assertEquals(WoSRanking.Quarter.SCOPUS.toString(), score.getQuarter());
         assertEquals(ComputerScienceConferenceScoringService.FallbackReason.AMBIGUOUS_WINNERS,
                 service.getLastTraceForTests().fallbackReason());
@@ -469,7 +469,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator);
 
         assertEquals(8.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent());
         assertEquals(2016, score.getYear());
         assertEquals(ComputerScienceConferenceScoringService.FallbackReason.NONE,
                 service.diagnoseConferenceMatch(forum.getPublicationName(), 2016).fallbackReason());
@@ -526,7 +526,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator("IY"));
 
         assertEquals(12.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.A_STAR.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.A_STAR.toString(), score.getCoreRankingEquivalent());
         assertEquals(2023, score.getYear());
         assertEquals("DBLP+CORE", score.getScoringSource());
         assertEquals("DBLP", score.getScoringInfo().get("matchSource"));
@@ -565,7 +565,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator("IY"));
 
         assertEquals(4.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.B.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.B.toString(), score.getCoreRankingEquivalent());
         assertEquals("DBLP+CORE", score.getScoringSource());
         assertEquals("DBLP", score.getScoringInfo().get("matchSource"));
         ComputerScienceConferenceScoringService.ConferenceScoreTrace trace =
@@ -603,7 +603,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator("IY"));
 
         assertEquals(4.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.B.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.B.toString(), score.getCoreRankingEquivalent());
         assertEquals("DBLP+CORE", score.getScoringSource());
         assertEquals("DBLP", score.getScoringInfo().get("matchSource"));
         ComputerScienceConferenceScoringService.ConferenceScoreTrace trace = service.getLastTraceForTests();
@@ -634,7 +634,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator("IY"));
 
         assertEquals(2.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent());
         assertEquals(WoSRanking.Quarter.LNCS.toString(), score.getQuarter());
         assertEquals("SCOPUS", score.getScoringSource());
         assertEquals(ComputerScienceConferenceScoringService.FallbackReason.LNCS_SPECIAL_CASE, service.getLastTraceForTests().fallbackReason());
@@ -658,7 +658,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator("IY"));
 
         assertEquals(2.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent());
         assertEquals(WoSRanking.Quarter.LNCS.toString(), score.getQuarter());
         assertEquals("SCOPUS", score.getScoringSource());
         assertEquals(ComputerScienceConferenceScoringService.FallbackReason.LNCS_SPECIAL_CASE, service.getLastTraceForTests().fallbackReason());
@@ -678,7 +678,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator("IY"));
 
         assertEquals(2.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.C.toString(), score.getCoreRankingEquivalent());
         assertEquals(WoSRanking.Quarter.LNCS.toString(), score.getQuarter());
         assertEquals("SCOPUS", score.getScoringSource());
         assertEquals("LNCS_SPECIAL_CASE", score.getScoringInfo().get("fallbackReason"));
@@ -705,7 +705,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         Score score = service.getScore(publication, indicator("IY"));
 
         assertEquals(12.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.A_STAR.toString(), score.getCategory());
+        assertEquals(CoreConferenceRanking.Rank.A_STAR.toString(), score.getCoreRankingEquivalent());
         assertEquals("SCOPUS+CORE", score.getScoringSource());
         ComputerScienceConferenceScoringService.ConferenceScoreTrace trace =
                 service.getLastTraceForTests();

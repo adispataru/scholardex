@@ -1,0 +1,318 @@
+/* ── Workspace notification center (H36.6) ─────────────────────────────── */
+
+/* Header row: search bar + notification bell */
+.app-ws-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+/* Override search bar's standalone margin when it's inside the header row */
+.app-ws-header .app-ws-search {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+/* ── Bell button ───────────────────────────────────────────────────────── */
+
+.app-ws-notif {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.app-ws-notif__bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-card);
+  background: var(--app-color-card-bg);
+  box-shadow: var(--app-shadow-card);
+  color: var(--app-color-text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.app-ws-notif__bell:hover {
+  color: var(--app-color-primary);
+  border-color: color-mix(in srgb, var(--app-color-primary) 35%, var(--app-color-border));
+}
+
+.app-ws-notif__bell:focus-visible {
+  outline: 2px solid var(--app-color-focus);
+  outline-offset: 2px;
+}
+
+.app-ws-notif__bell[aria-expanded='true'] {
+  color: var(--app-color-primary);
+  border-color: color-mix(in srgb, var(--app-color-primary) 42%, var(--app-color-border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-color-primary) 16%, transparent),
+              var(--app-shadow-card);
+}
+
+/* Unread count badge */
+.app-ws-notif__badge {
+  position: absolute;
+  top: -0.3rem;
+  right: -0.3rem;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.22rem;
+  border-radius: 999px;
+  background: var(--app-color-danger);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.1rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* ── Dropdown panel ────────────────────────────────────────────────────── */
+
+.app-ws-notif__panel {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  width: 22rem;
+  max-width: calc(100vw - 1.5rem);
+  z-index: 1060;
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-card);
+  background: var(--app-color-card-bg);
+  box-shadow: var(--app-shadow-float);
+  overflow: hidden;
+}
+
+.app-ws-notif__panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem 0.75rem;
+  border-bottom: 1px solid var(--app-color-border);
+}
+
+.app-ws-notif__panel-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--app-color-text-strong);
+}
+
+.app-ws-notif__mark-all {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 0.8rem;
+  color: var(--app-color-primary);
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.1s;
+}
+
+.app-ws-notif__mark-all:hover {
+  color: var(--app-color-primary-strong);
+  text-decoration: underline;
+}
+
+.app-ws-notif__mark-all:focus-visible {
+  outline: 2px solid var(--app-color-focus);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
+/* Scrollable list */
+.app-ws-notif__list {
+  list-style: none;
+  margin: 0;
+  padding: 0.3rem 0;
+  max-height: 20rem;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+/* ── Notification item ─────────────────────────────────────────────────── */
+
+.app-ws-notif__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--app-color-border);
+  transition: background 0.08s;
+}
+
+.app-ws-notif__item:last-child {
+  border-bottom: 0;
+}
+
+.app-ws-notif__item:hover {
+  background: color-mix(in srgb, var(--app-color-card-bg-muted) 90%, transparent);
+}
+
+/* Dismiss animation */
+@keyframes notif-dismiss {
+  to {
+    opacity: 0;
+    transform: translateX(8px);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+}
+
+.app-ws-notif__item--dismissed {
+  animation: notif-dismiss 0.22s ease forwards;
+}
+
+/* Type icon */
+.app-ws-notif__item-icon {
+  flex: 0 0 auto;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  margin-top: 0.05rem;
+  background: color-mix(in srgb, var(--app-color-primary) 10%, transparent);
+  color: var(--app-color-primary);
+}
+
+.app-ws-notif__item-icon--citation {
+  background: color-mix(in srgb, var(--app-color-success) 10%, transparent);
+  color: var(--app-color-success);
+}
+
+.app-ws-notif__item-icon--sync {
+  background: color-mix(in srgb, var(--app-color-primary) 10%, transparent);
+  color: var(--app-color-primary);
+}
+
+.app-ws-notif__item-icon--report {
+  background: color-mix(in srgb, var(--app-color-warning) 12%, transparent);
+  color: var(--app-color-warning);
+}
+
+.app-ws-notif__item-icon--profile {
+  background: color-mix(in srgb, var(--app-color-danger) 10%, transparent);
+  color: var(--app-color-danger);
+}
+
+/* Body */
+.app-ws-notif__item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.app-ws-notif__item-title {
+  margin: 0 0 0.15rem;
+  font-size: 0.87rem;
+  font-weight: 600;
+  color: var(--app-color-text-strong);
+}
+
+.app-ws-notif__item-text {
+  margin: 0 0 0.2rem;
+  font-size: 0.82rem;
+  color: var(--app-color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.app-ws-notif__item-time {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--app-color-text-muted);
+  opacity: 0.7;
+}
+
+.app-ws-notif__item-action {
+  display: inline-block;
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--app-color-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.app-ws-notif__item-action:hover {
+  text-decoration: underline;
+  color: var(--app-color-primary-strong);
+}
+
+/* Dismiss X button */
+.app-ws-notif__dismiss {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 0;
+  background: transparent;
+  color: var(--app-color-text-muted);
+  opacity: 0;
+  font-size: 0.75rem;
+  cursor: pointer;
+  border-radius: 0.3rem;
+  transition: opacity 0.1s, background 0.1s;
+  margin-top: 0.05rem;
+}
+
+.app-ws-notif__item:hover .app-ws-notif__dismiss,
+.app-ws-notif__dismiss:focus-visible {
+  opacity: 1;
+}
+
+.app-ws-notif__dismiss:hover {
+  background: color-mix(in srgb, var(--app-color-danger) 10%, transparent);
+  color: var(--app-color-danger);
+}
+
+.app-ws-notif__dismiss:focus-visible {
+  outline: 2px solid var(--app-color-focus);
+  outline-offset: 1px;
+}
+
+/* ── Special states ────────────────────────────────────────────────────── */
+
+.app-ws-notif__empty {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 1.25rem 1rem;
+  font-size: 0.88rem;
+  color: var(--app-color-text-muted);
+  font-style: italic;
+}
+
+.app-ws-notif__empty i {
+  color: var(--app-color-success);
+  font-size: 1rem;
+  flex: 0 0 auto;
+}
+
+.app-ws-notif__loading,
+.app-ws-notif__error {
+  padding: 1rem;
+  font-size: 0.88rem;
+  color: var(--app-color-text-muted);
+  text-align: center;
+}
+
+/* Screen-reader live region */
+.app-ws-notif__live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

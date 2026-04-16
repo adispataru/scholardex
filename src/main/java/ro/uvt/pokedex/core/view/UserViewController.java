@@ -53,49 +53,22 @@ public class UserViewController {
 
     @GetMapping()
     public String showDashboardCompatibilityRedirect() {
-        return "redirect:/user/dashboard";
+        return "redirect:/user/workspace";
     }
 
     @GetMapping("/dashboard")
-    public String showDashboard(Model model) {
-        return "user/dashboard"; // Returns the users.html template
+    public String showDashboard() {
+        return "redirect:/user/workspace";
     }
 
     @GetMapping("/profile")
-    public String showProfilePage(Model model, Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
-            return "redirect:/login"; // or your login route
-        }
-
-        String researcherId = currentUser.getResearcherId();
-        if (researcherId == null){
-            model.addAttribute("researchProfile", null);
-        }else{
-            Optional<Researcher> researcherById = researcherService.findResearcherById(researcherId);
-            researcherById.ifPresent(researcher -> model.addAttribute("researchProfile", researcher));
-        }
-        model.addAttribute("newProfile", new Researcher());
-        return "user/profile";
+    public String showProfilePage() {
+        return "redirect:/user/workspace#profile";
     }
 
     @GetMapping("/publications")
-    public String showPublicationsPage(Model model, Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
-            return "redirect:/login"; // or your login route
-        }
-
-        String researcherId = currentUser.getResearcherId();
-        Optional<UserPublicationsViewModel> viewModel = userPublicationFacade.buildUserPublicationsView(researcherId);
-        viewModel.ifPresent(vm -> {
-            model.addAttribute("publications", vm.publications());
-            model.addAttribute("hIndex", vm.hIndex());
-            model.addAttribute("authorMap", vm.authorMap());
-            model.addAttribute("forumMap", vm.forumMap());
-            model.addAttribute("numCitations", vm.numCitations());
-        });
-
-        model.addAttribute("user", currentUser);
-        return "user/publications";
+    public String showPublicationsPage() {
+        return "redirect:/user/workspace#publications";
     }
 
     @GetMapping("/authors/view/{id}")
@@ -128,17 +101,8 @@ public class UserViewController {
     }
 
     @GetMapping("/publications/scopus-tasks")
-    public String showScopusTasksPage(Model model, Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
-            return "redirect:/login";
-        }
-
-        UserScopusTasksViewModel viewModel = userScopusTaskFacade.buildTasksView(currentUser.getEmail(), currentUser.getResearcherId());
-        model.addAttribute("researcher", viewModel.researcher());
-        model.addAttribute("tasks", viewModel.tasks());
-        model.addAttribute("citationsTasks", viewModel.citationsTasks());
-        model.addAttribute("user", currentUser);
-        return "user/tasks";
+    public String showScopusTasksPage() {
+        return "redirect:/user/workspace#profile";
     }
 
     @PostMapping("/tasks/scopus/update-publications")
@@ -168,80 +132,29 @@ public class UserViewController {
     }
 
     @GetMapping("/publications/citations")
-    public String showPublicationCitationsPage(Model model,
-                                               Authentication authentication,
-                                               @RequestParam(value = "id", required = false) String publicationId,
-                                               @RequestParam(value = "eid", required = false) String publicationEid) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
-            return "redirect:/login"; // or your login route
-        }
-
-        String publicationLookup = publicationId;
-        if (publicationLookup == null || publicationLookup.isBlank()) {
-            publicationLookup = publicationEid;
-        }
-        if (publicationLookup == null || publicationLookup.isBlank()) {
-            return "redirect:/user/publications";
-        }
-
-        Optional<UserPublicationCitationsViewModel> viewModel = userPublicationFacade.buildCitationsView(publicationLookup);
-        viewModel.ifPresent(vm -> {
-            model.addAttribute("publication", vm.publication());
-            model.addAttribute("citations", vm.citations());
-            model.addAttribute("forum", vm.forum());
-            model.addAttribute("authorMapping", vm.authorMapping());
-            model.addAttribute("forumMap", vm.forumMap());
-        });
-
-        model.addAttribute("user", currentUser);
-        return "user/citations";
+    public String showPublicationCitationsPage() {
+        return "redirect:/user/workspace#publications";
     }
 
     @GetMapping("/publications/edit/{eid}")
-    public String showEditPublicationForm(@PathVariable("eid") String publicationId, Model model) {
-        Optional<ScholardexPublicationView> publicationOpt = userPublicationFacade.findPublicationForEdit(publicationId);
-        if (publicationOpt.isPresent()) {
-            model.addAttribute("publication", publicationOpt.get());
-            return "user/publications-edit";
-        } else {
-            return "redirect:/user/publications"; // or an error page
-        }
-    }
-
-    @PostMapping("/publications/save/{eid}")
-    public String savePublication(@ModelAttribute PublicationMetadataPatch publication, RedirectAttributes redirectAttributes, @PathVariable("eid") String publicationId) {
-        userPublicationFacade.updatePublicationMetadata(publicationId, publication);
-        redirectAttributes.addFlashAttribute("successMessage", "Publication updated successfully.");
-        return "redirect:/user/publications";
+    public String showEditPublicationForm() {
+        return "redirect:/user/workspace#publications";
     }
 
     @GetMapping("/indicators")
-    public String showPubCriteriaPage(Model model, Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
-            return "redirect:/login"; // or your login route
+    public String showPubCriteriaPage(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
+            return "redirect:/login";
         }
-
-        UserIndicatorsViewModel viewModel = userReportFacade.buildIndicatorsView(currentUser.getEmail());
-        model.addAttribute("indicators", viewModel.indicators());
-        //adjust number of authors shown on page.
-
-        model.addAttribute("user", currentUser);
-        return "user/indicators";
+        return "redirect:/user/evaluation";
     }
 
     @GetMapping("/indicators/apply/{id}")
-    public String showCriteriaResultsPage(Model model, Authentication authentication, @PathVariable String id) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
-            return "redirect:/login"; // or your login route
+    public String showCriteriaResultsPage(Authentication authentication, @PathVariable String id) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
+            return "redirect:/login";
         }
-
-        IndicatorApplyResultDto result = userIndicatorResultService.getOrCreateLatest(currentUser.getEmail(), id);
-        result.rawGraph().forEach(model::addAttribute);
-        model.addAttribute("resultMetaSource", result.source());
-        model.addAttribute("resultMetaUpdatedAt", result.updatedAt());
-        model.addAttribute("resultMetaRefreshVersion", result.refreshVersion());
-        model.addAttribute("user", currentUser);
-        return result.viewName();
+        return "redirect:/user/evaluation#indicator-" + id;
     }
 
     @PostMapping("/indicators/apply/{id}/refresh")
@@ -250,7 +163,7 @@ public class UserViewController {
             return "redirect:/login";
         }
         userIndicatorResultService.refreshLatest(currentUser.getEmail(), id);
-        return "redirect:/user/indicators/apply/" + id;
+        return "redirect:/user/evaluation#indicator-" + id;
     }
 
     @GetMapping("indicators/export/{id}")
@@ -274,60 +187,28 @@ public class UserViewController {
     }
 
     @GetMapping("/individual-reports")
-    public String viewReports(Model model, Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
+    public String viewReports(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
             return "redirect:/login";
         }
-
-        UserReportsListViewModel viewModel = userReportFacade.buildIndividualReportsListView(currentUser.getEmail());
-        model.addAttribute("individualReports", viewModel.individualReports());
-        model.addAttribute("user", currentUser);
-        return "user/individual-reports";
+        return "redirect:/user/evaluation";
     }
 
     @GetMapping("/individual-reports/view/{id}")
-    public String viewIndividualReport(Model model, Authentication authentication, @PathVariable String id) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
+    public String viewIndividualReport(Authentication authentication, @PathVariable String id) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
             return "redirect:/login";
         }
-
-        Optional<IndividualReportRunDto> runOpt = userIndividualReportRunService.getOrCreateLatestRun(currentUser.getEmail(), id);
-        Optional<ro.uvt.pokedex.core.model.reporting.IndividualReport> reportOpt = userReportFacade.findIndividualReportById(id);
-        if (runOpt.isEmpty() || reportOpt.isEmpty()) {
-            return "redirect:/error";
-        }
-
-        IndividualReportRunDto run = runOpt.get();
-        ro.uvt.pokedex.core.model.reporting.IndividualReport report = reportOpt.get();
-        Map<ro.uvt.pokedex.core.model.reporting.Indicator, Double> indicatorScores = new HashMap<>();
-        for (ro.uvt.pokedex.core.model.reporting.Indicator indicator : report.getIndicators()) {
-            indicatorScores.put(indicator, run.indicatorScoresByIndicatorId().getOrDefault(indicator.getId(), 0.0));
-        }
-
-        model.addAttribute("report", report);
-        model.addAttribute("indicatorScores", indicatorScores);
-        model.addAttribute("criterionScores", run.criteriaScores());
-        String researcherPosition = Optional.ofNullable(currentUser.getResearcherId())
-                .flatMap(researcherService::findResearcherById)
-                .map(Researcher::getPosition)
-                .map(Enum::name)
-                .orElse("");
-        model.addAttribute("researcherPosition", researcherPosition);
-        model.addAttribute("runMetaId", run.runId());
-        model.addAttribute("runMetaCreatedAt", run.createdAt());
-        model.addAttribute("runMetaSource", run.source());
-
-        model.addAttribute("user", currentUser);
-        return "user/individual-report-view";
+        return "redirect:/user/evaluation?report=" + id;
     }
 
     @PostMapping("/individual-reports/view/{id}/refresh")
-    public String refreshIndividualReport(Model model, Authentication authentication, @PathVariable String id) {
+    public String refreshIndividualReport(Authentication authentication, @PathVariable String id) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
             return "redirect:/login";
         }
         userIndividualReportRunService.refreshRun(currentUser.getEmail(), id);
-        return "redirect:/user/individual-reports/view/" + id;
+        return "redirect:/user/evaluation?report=" + id;
     }
 
     @PostMapping("/individual-reports/view/{id}/refresh-all-indicators")
@@ -336,30 +217,9 @@ public class UserViewController {
             return "redirect:/login";
         }
         userIndividualReportRunService.refreshRunWithAllIndicators(currentUser.getEmail(), id);
-        return "redirect:/user/individual-reports/view/" + id;
+        return "redirect:/user/evaluation?report=" + id;
     }
 
-    @PostMapping("/profile/save")
-    public String saveResearchProfile(@ModelAttribute Researcher researcher,
-                                      Authentication authentication,
-                                      RedirectAttributes redirectAttributes) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
-            return "redirect:/login"; // Redirect to login if user is not authenticated
-        }
-
-        // Save the Researcher in the database
-        Researcher savedResearcher = researcherService.saveResearcher(researcher);
-
-        // Link the Researcher with the User account
-        currentUser.setResearcherId(savedResearcher.getId());
-        userService.updateUser(currentUser.getEmail(), currentUser);
-
-        // Add a success message to RedirectAttributes
-        redirectAttributes.addFlashAttribute("successMessage", "Research profile updated successfully.");
-
-        // Redirect back to the profile page
-        return "redirect:/user/profile";
-    }
 
     private int computeHIndex(List<ScholardexPublicationView> publications) {
         int n = publications.size();

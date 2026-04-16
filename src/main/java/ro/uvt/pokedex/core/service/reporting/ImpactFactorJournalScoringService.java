@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
@@ -65,7 +66,8 @@ public class ImpactFactorJournalScoringService extends AbstractWoSForumScoringSe
                         }
                         Score score = new Score();
                         score.setScore(ranking.getScore().getIF().get(year));
-                        score.setQuarter(rank.getQIF().get(year).toString());
+                        WoSRanking.Quarter qIF = rank.getQIF() != null ? rank.getQIF().get(year) : null;
+                        score.setQuarter(qIF != null ? qIF.toString() : null);
                         return Optional.of(score);
                     },
                     this::compareScoresByPoints

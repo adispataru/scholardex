@@ -120,7 +120,7 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
         Score score = new Score();
         score.setScore(0.0);
         score.setYear(0);
-        score.setCategory(CoreConferenceRanking.Rank.NON_RANK.toString());
+        score.setCoreRankingEquivalent(CoreConferenceRanking.Rank.NON_RANK.toString());
         score.setQuarter(WoSRanking.Quarter.NOT_FOUND.toString());
         return score;
     }

@@ -89,12 +89,12 @@ class UserViewControllerContractTest {
     @Test
     void dashboardUsesCanonicalRouteAndLegacyRootRedirects() throws Exception {
         mockMvc.perform(get("/user/dashboard").with(authenticatedUser("u@uvt.ro")))
-                .andExpect(status().isOk())
-                .andExpect(view().name("user/dashboard"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/user/workspace"));
 
         mockMvc.perform(get("/user").with(authenticatedUser("u@uvt.ro")))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/user/dashboard"));
+                .andExpect(redirectedUrl("/user/workspace"));
     }
 
     @Test
@@ -140,10 +140,10 @@ class UserViewControllerContractTest {
     }
 
     @Test
-    void publicationsPageRedirectsToLoginWhenAuthenticationMissing() throws Exception {
-        mockMvc.perform(get("/user/publications"))
+    void publicationsPageRedirectsToWorkspace() throws Exception {
+        mockMvc.perform(get("/user/publications").with(authenticatedUser("u@uvt.ro")))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/login"));
+                .andExpect(redirectedUrl("/user/workspace#publications"));
     }
 
     @Test
@@ -211,18 +211,9 @@ class UserViewControllerContractTest {
 
     @Test
     void scopusTasksPageUsesCanonicalKebabCaseRoute() throws Exception {
-        Researcher researcher = new Researcher();
-        researcher.setScopusId(List.of("123"));
-        when(userScopusTaskFacade.buildTasksView(eq("u@uvt.ro"), eq("r1")))
-                .thenReturn(new UserScopusTasksViewModel(researcher, List.of(), List.of()));
-
-        User user = userPrincipal("u@uvt.ro");
-        user.setResearcherId("r1");
-
-        mockMvc.perform(get("/user/publications/scopus-tasks").with(authenticatedUser(user)))
-                .andExpect(status().isOk())
-                .andExpect(view().name("user/tasks"))
-                .andExpect(model().attributeExists("researcher", "tasks", "citationsTasks", "user"));
+        mockMvc.perform(get("/user/publications/scopus-tasks").with(authenticatedUser("u@uvt.ro")))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/user/workspace#profile"));
     }
 
     @Test
@@ -254,7 +245,7 @@ class UserViewControllerContractTest {
     }
 
     @Test
-    void publicationsPageRendersExpectedTemplateAndFrontendModelContract() throws Exception {
+    void authorPublicationsPageRendersExpectedTemplateAndFrontendModelContract() throws Exception {
         ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setId("p1");
         publication.setForum("f1");
@@ -270,7 +261,7 @@ class UserViewControllerContractTest {
         forum.setIssn("1234-5678");
         forum.setEIssn("8765-4321");
 
-        when(userPublicationFacade.buildUserPublicationsView(eq("r1")))
+        when(userPublicationFacade.buildAuthorPublicationsView(eq("a1")))
                 .thenReturn(Optional.of(new UserPublicationsViewModel(
                         List.of(publication),
                         3,
@@ -281,43 +272,23 @@ class UserViewControllerContractTest {
                         List.of()
                 )));
 
-        User user = userPrincipal("u@uvt.ro");
-        user.setResearcherId("r1");
-
-        mockMvc.perform(get("/user/publications").with(authenticatedUser(user)))
+        mockMvc.perform(get("/user/authors/view/{id}", "a1").with(authenticatedUser("u@uvt.ro")))
                 .andExpect(status().isOk())
                 .andExpect(view().name("user/publications"))
                 .andExpect(model().attributeExists("publications", "hIndex", "authorMap", "forumMap", "numCitations", "user"))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/user/dashboard\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/user/workspace\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("href=\"/user\""))));
     }
 
     @Test
     void userRouteKeepsUserSidebarForPlatformAdmin() throws Exception {
-        ScholardexPublicationView publication = new ScholardexPublicationView();
-        publication.setId("p1");
-        publication.setForum("f1");
-        publication.setAuthors(List.of("a1"));
-
-        when(userPublicationFacade.buildUserPublicationsView(eq("r1")))
-                .thenReturn(Optional.of(new UserPublicationsViewModel(
-                        List.of(publication),
-                        1,
-                        Map.of(),
-                        Map.of(),
-                        0,
-                        null,
-                        List.of()
-                )));
-
         User user = userPrincipal("admin@uvt.ro");
         user.setResearcherId("r1");
         user.setRoles(Set.of(UserRole.PLATFORM_ADMIN));
 
         mockMvc.perform(get("/user/publications").with(authenticatedUser(user)))
-                .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/user/profile\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("href=\"/admin/users\""))));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/user/workspace#publications"));
     }
 
     @Test
@@ -373,62 +344,28 @@ class UserViewControllerContractTest {
     }
 
     @Test
-    void publicationCitationsPageAcceptsEidQueryParam() throws Exception {
-        ScholardexPublicationView publication = new ScholardexPublicationView();
-        publication.setId("p1");
-        publication.setEid("2-s2.0-85137747651");
-        publication.setForum("f1");
-        publication.setAuthors(List.of("a1"));
-
-        ScholardexForumView forum = new ScholardexForumView();
-        forum.setId("f1");
-        forum.setPublicationName("Forum A");
-        forum.setIssn("1234-5678");
-        forum.setEIssn("8765-4321");
-
-        when(userPublicationFacade.buildCitationsView(eq("2-s2.0-85137747651")))
-                .thenReturn(Optional.of(new UserPublicationCitationsViewModel(
-                        publication,
-                        List.of(),
-                        forum,
-                        Map.of(),
-                        Map.of()
-                )));
-
+    void publicationCitationsPageRedirectsToWorkspace() throws Exception {
         mockMvc.perform(get("/user/publications/citations")
                         .param("eid", "2-s2.0-85137747651")
                         .with(authenticatedUser("u@uvt.ro")))
-                .andExpect(status().isOk())
-                .andExpect(view().name("user/citations"))
-                .andExpect(model().attributeExists("publication", "citations", "forum", "authorMapping", "forumMap", "user"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/user/workspace#publications"));
     }
 
     @Test
-    void individualReportsListUsesCanonicalKebabCaseRoute() throws Exception {
-        when(userReportFacade.buildIndividualReportsListView(eq("u@uvt.ro")))
-                .thenReturn(new UserReportsListViewModel(List.of()));
-
+    void individualReportsListRedirectsToEvaluation() throws Exception {
         mockMvc.perform(get("/user/individual-reports")
                         .with(authenticatedUser("u@uvt.ro")))
-                .andExpect(status().isOk())
-                .andExpect(view().name("user/individual-reports"))
-                .andExpect(model().attributeExists("individualReports", "user"))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/user/dashboard\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("href=\"/user\""))));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/user/evaluation"));
     }
 
     @Test
-    void editPublicationFormRendersPublicationEditTemplateWhenPublicationExists() throws Exception {
-        ScholardexPublicationView publication = new ScholardexPublicationView();
-        publication.setEid("eid-1");
-        when(userPublicationFacade.findPublicationForEdit(eq("eid-1")))
-                .thenReturn(Optional.of(publication));
-
+    void editPublicationFormRedirectsToWorkspace() throws Exception {
         mockMvc.perform(get("/user/publications/edit/{eid}", "eid-1")
                         .with(authenticatedUser("u@uvt.ro")))
-                .andExpect(status().isOk())
-                .andExpect(view().name("user/publications-edit"))
-                .andExpect(model().attributeExists("publication"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/user/workspace#publications"));
     }
 
     @Test
@@ -439,182 +376,35 @@ class UserViewControllerContractTest {
     }
 
     @Test
-    void indicatorApplyUsesPersistedResultPayload() throws Exception {
-        Domain domain = new Domain();
-        domain.setName("ALL");
-        Indicator indicator = new Indicator();
-        indicator.setId("ind-1");
-        indicator.setName("Indicator 1");
-        indicator.setDomain(domain);
-        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
-        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
-        indicator.setFormula("S");
-
-        ScholardexPublicationView publication = new ScholardexPublicationView();
-        publication.setTitle("Paper 1");
-        publication.setSubtypeDescription("Conference Paper");
-        publication.setForum("forum-1");
-        publication.setEid("eid-1");
-        Score score = new Score();
-        score.setCategory("A");
-        score.setQuarter("NOT_FOUND");
-        score.setYear(2023);
-        score.setScore(8.0);
-        score.setAuthorScore(8.0);
-        score.setScoringSource("SCOPUS+CORE");
-        score.setScoringInfo(Map.of("matchSource", "SCOPUS", "matchedAcronym", "ICSE"));
-        ScholardexForumView forum = new ScholardexForumView();
-        forum.setPublicationName("ICSE 2023");
-
-        when(userIndicatorResultService.getOrCreateLatest(eq("u@uvt.ro"), eq("ind-1")))
-                .thenReturn(new IndicatorApplyResultDto(
-                        "r1",
-                        "ind-1",
-                        "user/indicators-apply-publications",
-                        Map.of("indicator", indicator, "total", "1.00", "publications", List.of(publication), "scores", Map.of("Paper 1", score), "forumMap", Map.of("forum-1", forum), "allQuarters", List.of(), "allValues", List.of()),
-                        new IndicatorApplyResultDto.Summary(1.0, null, List.of(), List.of()),
-                        IndicatorApplyResultDto.Source.PERSISTED,
-                        null,
-                        null,
-                        0
-                ));
-
-        String html = mockMvc.perform(get("/user/indicators/apply/{id}", "ind-1")
+    void indicatorApplyRedirectsToEvaluationWithHash() throws Exception {
+        mockMvc.perform(get("/user/indicators/apply/{id}", "ind-1")
                         .with(authenticatedUser("u@uvt.ro")))
-                .andExpect(status().isOk())
-                .andExpect(view().name("user/indicators-apply-publications"))
-                .andExpect(model().attributeExists("indicator", "total", "resultMetaSource", "resultMetaRefreshVersion"))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("id=\"publications-dashboard-v2\""));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("/js/indicator-publications-dashboard.js"));
-        org.junit.jupiter.api.Assertions.assertFalse(html.contains("/js/demo/datatables-demo.js"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("id=\"publications-search\""));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("Scoring Source"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("SCOPUS+CORE"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("matchedAcronym: ICSE"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/user/evaluation#indicator-ind-1"));
     }
 
     @Test
-    void activitiesApplyRendersDashboardV2Contract() throws Exception {
-        Domain domain = new Domain();
-        domain.setName("ALL");
-        Indicator indicator = new Indicator();
-        indicator.setId("ind-act-1");
-        indicator.setName("Activities Indicator");
-        indicator.setDomain(domain);
-        indicator.setOutputType(Indicator.Type.GENERIC_ACTIVITIES);
-        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
-        indicator.setFormula("S");
-
-        Activity activity = new Activity();
-        activity.setName("Keynote");
-        ActivityInstance activityInstance = new ActivityInstance();
-        activityInstance.setId("act-1");
-        activityInstance.setName("Talk 1");
-        activityInstance.setActivity(activity);
-        Score score = new Score();
-        score.setDetails("Venue talk");
-        score.setYear(2024);
-        score.setScore(4.0);
-        score.setAuthorScore(4.0);
-        score.setScoringSource("WOS");
-        score.setScoringInfo(Map.of("matchSource", "WOS"));
-
-        when(userIndicatorResultService.getOrCreateLatest(eq("u@uvt.ro"), eq("ind-act-1")))
-                .thenReturn(new IndicatorApplyResultDto(
-                        "r-act-1",
-                        "ind-act-1",
-                        "user/indicators-apply-activities",
-                        Map.of(
-                                "indicator", indicator,
-                                "total", "1.00",
-                                "activities", List.of(activityInstance),
-                                "scores", Map.of("act-1", score),
-                                "allQuarters", List.of("Q1"),
-                                "allValues", List.of(1)
-                        ),
-                        new IndicatorApplyResultDto.Summary(1.0, null, List.of("Q1"), List.of(1)),
-                        IndicatorApplyResultDto.Source.PERSISTED,
-                        null,
-                        null,
-                        0
-                ));
-
-        String html = mockMvc.perform(get("/user/indicators/apply/{id}", "ind-act-1")
+    void activitiesApplyRedirectsToEvaluationWithHash() throws Exception {
+        mockMvc.perform(get("/user/indicators/apply/{id}", "ind-act-1")
                         .with(authenticatedUser("u@uvt.ro")))
-                .andExpect(status().isOk())
-                .andExpect(view().name("user/indicators-apply-activities"))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("id=\"activities-dashboard-v2\""));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("/js/indicator-activities-dashboard.js"));
-        org.junit.jupiter.api.Assertions.assertFalse(html.contains("/js/demo/datatables-demo.js"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("id=\"activities-search\""));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("Scoring Source"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("matchSource: WOS"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/user/evaluation#indicator-ind-act-1"));
     }
 
     @Test
-    void indicatorApplyRefreshRedirectsToApplyPage() throws Exception {
+    void indicatorApplyRefreshRedirectsToEvaluation() throws Exception {
         mockMvc.perform(post("/user/indicators/apply/{id}/refresh", "ind-1")
                         .with(authenticatedUser("u@uvt.ro")))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/user/indicators/apply/ind-1"));
+                .andExpect(redirectedUrl("/user/evaluation#indicator-ind-1"));
     }
 
     @Test
-    void individualReportViewDisplaysCriterionNameOrFallback() throws Exception {
-        IndividualReport report = new IndividualReport();
-        report.setId("rep-1");
-        report.setTitle("My Report");
-        report.setDescription("Desc");
-        report.setIndicators(List.of());
-
-        ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion named = new ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion();
-        named.setName("Research Impact");
-        named.setIndicatorIndices(new ArrayList<>());
-        named.setThresholds(new ArrayList<>());
-
-        ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion unnamed = new ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion();
-        unnamed.setName("  ");
-        unnamed.setIndicatorIndices(new ArrayList<>());
-        unnamed.setThresholds(new ArrayList<>());
-
-        report.setCriteria(List.of(named, unnamed));
-
-        when(userReportFacade.findIndividualReportById("rep-1")).thenReturn(Optional.of(report));
-        when(userIndividualReportRunService.getOrCreateLatestRun("u@uvt.ro", "rep-1"))
-                .thenReturn(Optional.of(new IndividualReportRunDto(
-                        "run-1",
-                        "rep-1",
-                        List.of(),
-                        Map.of(),
-                        Map.of(0, 1.0, 1, 2.0),
-                        Instant.parse("2026-03-05T10:00:00Z"),
-                        IndividualReportRunDto.Source.PERSISTED
-                )));
-
-        String html = mockMvc.perform(get("/user/individual-reports/view/{id}", "rep-1")
+    void individualReportViewRedirectsToEvaluation() throws Exception {
+        mockMvc.perform(get("/user/individual-reports/view/{id}", "rep-1")
                         .with(authenticatedUser("u@uvt.ro")))
-                .andExpect(status().isOk())
-                .andExpect(view().name("user/individual-report-view"))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("Research Impact"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("Criterion 2"));
-        org.junit.jupiter.api.Assertions.assertFalse(html.contains("Total Score for All Indicators"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("criterion-main"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("/js/individual-report-dashboard.js"));
-        org.junit.jupiter.api.Assertions.assertFalse(html.contains("/js/demo/datatables-demo.js"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("Refresh all indicators"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("/user/individual-reports/view/rep-1/refresh-all-indicators"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/user/evaluation?report=rep-1"));
     }
 
     @Test
@@ -625,78 +415,21 @@ class UserViewControllerContractTest {
     }
 
     @Test
-    void individualReportRefreshAllIndicatorsRedirectsToViewRoute() throws Exception {
+    void individualReportRefreshAllIndicatorsRedirectsToEvaluation() throws Exception {
         mockMvc.perform(post("/user/individual-reports/view/{id}/refresh-all-indicators", "rep-1")
                         .with(authenticatedUser("u@uvt.ro")))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/user/individual-reports/view/rep-1"));
+                .andExpect(redirectedUrl("/user/evaluation?report=rep-1"));
 
         verify(userIndividualReportRunService).refreshRunWithAllIndicators("u@uvt.ro", "rep-1");
     }
 
     @Test
-    void individualReportViewRendersThresholdBadgesAndCompactIndicatorLinks() throws Exception {
-        IndividualReport report = new IndividualReport();
-        report.setId("rep-2");
-        report.setTitle("Compact Report");
-        report.setDescription("Desc");
-
-        Indicator indicator = new Indicator();
-        indicator.setId("ind-compact-1");
-        indicator.setName("Info_B");
-        report.setIndicators(List.of(indicator));
-
-        ro.uvt.pokedex.core.model.reporting.AbstractReport.Threshold t1 = new ro.uvt.pokedex.core.model.reporting.AbstractReport.Threshold();
-        t1.setPosition(Position.ASIST_UNIV);
-        t1.setValue(10.0);
-
-        ro.uvt.pokedex.core.model.reporting.AbstractReport.Threshold t2 = new ro.uvt.pokedex.core.model.reporting.AbstractReport.Threshold();
-        t2.setPosition(Position.PROF_UNIV);
-        t2.setValue(56.0);
-
-        ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion criterion = new ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion();
-        criterion.setName("Perspectiva B");
-        criterion.setIndicatorIndices(List.of(0));
-        criterion.setThresholds(List.of(t1, t2));
-        report.setCriteria(List.of(criterion));
-
-        when(userReportFacade.findIndividualReportById("rep-2")).thenReturn(Optional.of(report));
-        when(userIndividualReportRunService.getOrCreateLatestRun("u@uvt.ro", "rep-2"))
-                .thenReturn(Optional.of(new IndividualReportRunDto(
-                        "run-2",
-                        "rep-2",
-                        List.of(),
-                        Map.of("ind-compact-1", 39.39),
-                        Map.of(0, 39.39),
-                        Instant.parse("2026-03-05T10:00:00Z"),
-                        IndividualReportRunDto.Source.PERSISTED
-                )));
-
-        String html = mockMvc.perform(get("/user/individual-reports/view/{id}", "rep-2")
+    void individualReportViewRedirectsToEvaluationWithReportParam() throws Exception {
+        mockMvc.perform(get("/user/individual-reports/view/{id}", "rep-2")
                         .with(authenticatedUser("u@uvt.ro")))
-                .andExpect(status().isOk())
-                .andExpect(view().name("user/individual-report-view"))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("threshold-icon-rail"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("threshold-icon"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("fa-leaf"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("fa-clover"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("ASIST_UNIV"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("PROF_UNIV"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("data-position=\"ASIST_UNIV\""));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("data-position=\"PROF_UNIV\""));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("data-threshold-value=\"10.00\""));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("data-threshold-value=\"56.00\""));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("criterion-selected-position"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("criterion-score-ratio"));
-        org.junit.jupiter.api.Assertions.assertFalse(html.contains("data-toggle=\"tooltip\""));
-        org.junit.jupiter.api.Assertions.assertFalse(html.contains("View details"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("indicator-link"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("Info_B"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("/user/indicators/apply/ind-compact-1"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/user/evaluation?report=rep-2"));
     }
 
     @Test
@@ -710,78 +443,11 @@ class UserViewControllerContractTest {
     }
 
     @Test
-    void citationsApplyRendersDashboardV2Contract() throws Exception {
-        Domain domain = new Domain();
-        domain.setName("ALL");
-        Indicator indicator = new Indicator();
-        indicator.setId("ind-cit-1");
-        indicator.setName("Citation Indicator");
-        indicator.setDomain(domain);
-        indicator.setOutputType(Indicator.Type.CITATIONS);
-        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
-        indicator.setFormula("S");
-
-        ScholardexPublicationView publication = new ScholardexPublicationView();
-        publication.setTitle("Paper 1");
-        publication.setForum("forum-1");
-        publication.setAuthors(List.of("a1", "a2"));
-        Score totalScore = new Score();
-        totalScore.setAuthorScore(1.0);
-        totalScore.setQuarter("Q1");
-        Score citationScore = new Score();
-        citationScore.setCategory("A");
-        citationScore.setQuarter("NOT_FOUND");
-        citationScore.setScore(8.0);
-        citationScore.setAuthorScore(8.0);
-        citationScore.setScoringSource("DBLP+CORE");
-        citationScore.setScoringInfo(Map.of("matchSource", "DBLP"));
-        ScholardexPublicationView citing = new ScholardexPublicationView();
-        citing.setTitle("Citing Paper");
-        citing.setSubtypeDescription("Conference Paper");
-        citing.setForum("forum-1");
-        citing.setEid("eid-2");
-        ScholardexForumView forum = new ScholardexForumView();
-        forum.setPublicationName("ICSE 2023");
-
-        when(userIndicatorResultService.getOrCreateLatest(eq("u@uvt.ro"), eq("ind-cit-1")))
-                .thenReturn(new IndicatorApplyResultDto(
-                        "r-cit-1",
-                        "ind-cit-1",
-                        "user/indicators-apply-citations",
-                        Map.of(
-                                "indicator", indicator,
-                                "total", "1.00",
-                                "totalCit", 1,
-                                "publications", List.of(publication),
-                                "scores", Map.of("Paper 1", Map.of("total", totalScore, "Citing Paper", citationScore)),
-                                "citationMap", Map.of("Citing Paper", citing),
-                                "forumMap", Map.of("forum-1", forum),
-                                "forumWosLinkMap", Map.of(),
-                                "allQuarters", List.of("Q1"),
-                                "allValues", List.of(1)
-                        ),
-                        new IndicatorApplyResultDto.Summary(1.0, 1, List.of("Q1"), List.of(1)),
-                        IndicatorApplyResultDto.Source.PERSISTED,
-                        null,
-                        null,
-                        0
-                ));
-
-        String html = mockMvc.perform(get("/user/indicators/apply/{id}", "ind-cit-1")
+    void citationsApplyRedirectsToEvaluationWithHash() throws Exception {
+        mockMvc.perform(get("/user/indicators/apply/{id}", "ind-cit-1")
                         .with(authenticatedUser("u@uvt.ro")))
-                .andExpect(status().isOk())
-                .andExpect(view().name("user/indicators-apply-citations"))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("id=\"citations-dashboard-v2\""));
-        org.junit.jupiter.api.Assertions.assertFalse(html.contains("id=\"citations-legacy\""));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("/js/indicator-citations-dashboard.js"));
-        org.junit.jupiter.api.Assertions.assertFalse(html.contains("/js/demo/datatables-demo.js"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("Scoring Source"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("DBLP+CORE"));
-        org.junit.jupiter.api.Assertions.assertTrue(html.contains("matchSource: DBLP"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/user/evaluation#indicator-ind-cit-1"));
     }
 
     private User userPrincipal(String email) {

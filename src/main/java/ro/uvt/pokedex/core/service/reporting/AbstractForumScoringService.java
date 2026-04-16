@@ -75,7 +75,7 @@ public abstract class AbstractForumScoringService implements ScoringService {
         Score s = new Score();
         s.setScore(r.bestPoints.get());
         s.setYear(r.bestYear.get());
-        s.setCategory(r.bestCategory.get().toString());
+        s.setCoreRankingEquivalent(r.bestCategory.get().toString());
         s.setQuarter(r.bestQuarter.get().toString());
         s.setScoringSource(r.scoringSource.get());
         s.setScoringInfo(new HashMap<>(r.scoringInfo));
@@ -152,8 +152,8 @@ public abstract class AbstractForumScoringService implements ScoringService {
             if (points.isPresent() && points.get().getScore() > result.bestPoints.get()) {
                 result.bestPoints.set(points.get().getScore());
 
-                if(points.get().getCategory() != null) {
-                    result.bestCategory.set(CoreConferenceRanking.Rank.valueOf(points.get().getCategory()));
+                if(points.get().getCoreRankingEquivalent() != null) {
+                    result.bestCategory.set(CoreConferenceRanking.Rank.valueOf(points.get().getCoreRankingEquivalent()));
                 }
                 result.bestYear.set(year);
                 copyProvenance(points.get(), result);

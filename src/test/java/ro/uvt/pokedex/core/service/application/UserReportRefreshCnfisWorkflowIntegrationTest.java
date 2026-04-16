@@ -356,7 +356,7 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
         Score score = new Score();
         score.setAuthorScore(authorScore);
         score.setQuarter(quarter);
-        score.setCategory("CATEGORY");
+        score.setCoreRankingEquivalent("CATEGORY");
         return score;
     }
 

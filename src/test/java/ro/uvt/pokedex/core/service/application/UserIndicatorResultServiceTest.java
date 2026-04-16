@@ -218,7 +218,7 @@ class UserIndicatorResultServiceTest {
         indicator.setFormula("S");
 
         Score score = new Score();
-        score.setCategory("A");
+        score.setCoreRankingEquivalent("A");
         score.setQuarter("NOT_FOUND");
         score.setScoringSource("DBLP+CORE");
         score.setScoringInfo(Map.of("matchSource", "DBLP", "resolvedRank", "A"));

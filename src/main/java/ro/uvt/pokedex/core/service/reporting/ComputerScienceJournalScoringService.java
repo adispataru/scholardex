@@ -150,11 +150,11 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
 
         score.setScore(points);
         score.setQuarter(quarter.toString());
-        score.setCategory(getCategory(points).toString());
+        score.setCoreRankingEquivalent(getCategory(points).toString());
         Map<String, Object> scoringInfo = new LinkedHashMap<>();
         scoringInfo.put("matchSource", "WOS");
         scoringInfo.put("resolvedYear", year);
-        scoringInfo.put("resolvedRank", score.getCategory());
+        scoringInfo.put("resolvedRank", score.getCoreRankingEquivalent());
         scoringInfo.put("quarter", quarter.toString());
         scoringInfo.put("wosCategory", category);
         scoringInfo.put("sourcesConsulted", List.of("WOS"));

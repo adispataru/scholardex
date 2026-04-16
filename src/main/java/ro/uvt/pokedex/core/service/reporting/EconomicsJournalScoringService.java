@@ -129,15 +129,17 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
 
         String cat = ScoringCategorySupport.extractCategoryName(category);
         String index = ScoringCategorySupport.extractCategoryIndex(category);
+        WoSRanking.Quarter qAis = rank.getQAis() != null ? rank.getQAis().get(year) : null;
+        String quarterStr = qAis != null ? qAis.toString() : null;
         if(CORE_ECONOMICS.contains(cat)) {
             multiplier.getAndSet(CORE_ECONOMICS_MULTIPLIER);
-            returnScore.setQuarter(rank.getQAis().get(year).toString());
+            returnScore.setQuarter(quarterStr);
         } else if (INFOECONOMICS.contains(cat) && multiplier.get() < INFOECONOMICS_MULTIPLIER) {
             multiplier.getAndSet(INFOECONOMICS_MULTIPLIER);
-            returnScore.setQuarter(rank.getQAis().get(year).toString());
+            returnScore.setQuarter(quarterStr);
         } else if (othersIndices.contains(index) && multiplier.get() < OTHER_ECONOMICS_MULTIPLIER) {
             multiplier.getAndSet(OTHER_ECONOMICS_MULTIPLIER);
-            returnScore.setQuarter(rank.getQAis().get(year).toString());
+            returnScore.setQuarter(quarterStr);
         }
 
         returnScore.getExtra().put("M", multiplier.get());

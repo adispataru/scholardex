@@ -33,8 +33,7 @@ if (!appEntrypoint.includes('initSharedDataTables')) {
 
 const htmlFiles = templatesRoots.flatMap(listHtmlFiles);
 const datatablesFreePages = new Set([
-  path.join('src', 'main', 'resources', 'templates', 'user', 'indicators-apply-publications.html'),
-  path.join('src', 'main', 'resources', 'templates', 'user', 'indicators-apply-activities.html')
+  path.join('src', 'main', 'resources', 'templates', 'user', 'indicators-apply.html')
 ]);
 for (const file of htmlFiles) {
   const content = fs.readFileSync(file, 'utf8');

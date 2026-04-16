@@ -166,7 +166,7 @@ class ScientificProductionServiceTest {
 
         assertEquals(8.0, result.get(publication.getTitle()).getScore(), 0.0001);
         assertEquals(8.0, result.get(publication.getTitle()).getAuthorScore(), 0.0001);
-        assertEquals("A", result.get(publication.getTitle()).getCategory());
+        assertEquals("A", result.get(publication.getTitle()).getCoreRankingEquivalent());
         assertEquals(2016, result.get(publication.getTitle()).getYear());
         assertEquals(8.0, result.get("total").getAuthorScore(), 0.0001);
         ComputerScienceConferenceScoringService.ConferenceScoreTrace trace =
@@ -212,7 +212,7 @@ class ScientificProductionServiceTest {
         Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(publication), indicator);
 
         assertEquals(4.0, result.get(publication.getTitle()).getScore(), 0.0001);
-        assertEquals("B", result.get(publication.getTitle()).getCategory());
+        assertEquals("B", result.get(publication.getTitle()).getCoreRankingEquivalent());
         assertEquals("SCOPUS+CORE", result.get(publication.getTitle()).getScoringSource());
         ComputerScienceConferenceScoringService.ConferenceScoreTrace trace =
                 conferenceScoringService.diagnoseConferenceMatch(forum.getPublicationName(), 2023);
@@ -259,7 +259,7 @@ class ScientificProductionServiceTest {
         Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(publication), indicator);
 
         assertEquals(4.0, result.get(publication.getTitle()).getScore(), 0.0001);
-        assertEquals("B", result.get(publication.getTitle()).getCategory());
+        assertEquals("B", result.get(publication.getTitle()).getCoreRankingEquivalent());
         assertEquals("SCOPUS+CORE", result.get(publication.getTitle()).getScoringSource());
         assertEquals("TITLE", result.get(publication.getTitle()).getScoringInfo().get("coreLookupStrategy"));
         ComputerScienceConferenceScoringService.ConferenceScoreTrace trace = conferenceScoringService.getLastTraceForTests();
@@ -305,7 +305,7 @@ class ScientificProductionServiceTest {
         Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(publication), indicator);
 
         assertEquals(4.0, result.get(publication.getTitle()).getScore(), 0.0001);
-        assertEquals("A", result.get(publication.getTitle()).getCategory());
+        assertEquals("A", result.get(publication.getTitle()).getCoreRankingEquivalent());
         assertEquals(true, result.get(publication.getTitle()).getScoringInfo().get("workshopAdjusted"));
     }
 
@@ -348,7 +348,7 @@ class ScientificProductionServiceTest {
 
         assertEquals(12.0, result.get(publication.getTitle()).getScore(), 0.0001);
         assertEquals(12.0, result.get(publication.getTitle()).getAuthorScore(), 0.0001);
-        assertEquals("A_STAR", result.get(publication.getTitle()).getCategory());
+        assertEquals("A_STAR", result.get(publication.getTitle()).getCoreRankingEquivalent());
         assertEquals(2023, result.get(publication.getTitle()).getYear());
         assertEquals("DBLP+CORE", result.get(publication.getTitle()).getScoringSource());
         assertEquals("DBLP", result.get(publication.getTitle()).getScoringInfo().get("matchSource"));
@@ -396,7 +396,7 @@ class ScientificProductionServiceTest {
         Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(publication), indicator);
 
         assertEquals(4.0, result.get(publication.getTitle()).getScore(), 0.0001);
-        assertEquals("B", result.get(publication.getTitle()).getCategory());
+        assertEquals("B", result.get(publication.getTitle()).getCoreRankingEquivalent());
         assertEquals("DBLP+CORE", result.get(publication.getTitle()).getScoringSource());
         assertEquals("DBLP", result.get(publication.getTitle()).getScoringInfo().get("matchSource"));
         ComputerScienceConferenceScoringService.ConferenceScoreTrace trace = conferenceScoringService.getLastTraceForTests();

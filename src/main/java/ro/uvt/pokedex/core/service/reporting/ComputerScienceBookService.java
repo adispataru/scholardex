@@ -108,19 +108,19 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
         switch (conf.getRanking()) {
             case A -> {
                 score.setScore(16.0);
-                score.setCategory("A");
+                score.setCoreRankingEquivalent("A");
             }
             case B -> {
                 score.setScore(8.0);
-                score.setCategory("B");
+                score.setCoreRankingEquivalent("B");
             }
             case C -> {
                 score.setScore(4.0);
-                score.setCategory("C");
+                score.setCoreRankingEquivalent("C");
             }
             default -> {
                 score.setScore(1.0);
-                score.setCategory("Unlisted");
+                score.setCoreRankingEquivalent("Unlisted");
             }
         }
         Map<String, Object> scoringInfo = new LinkedHashMap<>();
