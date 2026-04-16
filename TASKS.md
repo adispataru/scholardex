@@ -299,15 +299,41 @@ Done history moved to `TASKS-done.md`.
 
   Subtasks:
 
-  - [ ] `H38.1` **Authorship decision persistence model.**
+  - [x] `H38.1` **Authorship decision persistence model.** *(completed 2026-04-16)*
     Add a dedicated persistence model for user-level publication authorship decisions keyed by user + publication, separate from imported Scopus/Scholardex facts.
     Deliverable: document/entity + repository storing `status` (`CONFIRMED` / `REJECTED`), timestamps, decision source, optional reason, and enough immutable context to audit later.
     Exit criteria: imported source facts remain untouched; user decisions can be created, updated, queried, and deleted independently; duplicate decisions per user/publication are prevented.
+    Handover:
+    - `PublicationAuthorshipDecision` now lives in `scholardex.publication_authorship_decisions` with a unique `userEmail + publicationId` compound index, `CONFIRMED` / `REJECTED` status, `USER_REVIEW` source, timestamps, optional reason, and a compact immutable audit snapshot.
+    - `PublicationAuthorshipDecisionRepository` supports single-row lookup, per-user listing, subset lookup by publication ids, and delete-to-clear semantics so implicit pending remains represented by row absence.
+    - `PublicationAuthorshipDecisionService` owns upsert/clear/query behavior, validates that the user and publication exist, captures publication/user/authorship snapshot data on write, and leaves imported `ScholardexPublicationFact` / `ScholardexAuthorshipFact` records untouched.
+    - Targeted regression coverage now exists in `PublicationAuthorshipDecisionServiceTest` and `PublicationAuthorshipDecisionRepositoryTest`.
 
-  - [ ] `H38.2` **Effective-authorship read filtering.**
+  - [x] `H38.2` **Effective-authorship read filtering.** *(completed 2026-04-16)*
     Introduce a publication-authorship overlay in the read/reporting path so user decisions are applied consistently before data reaches indicators, citations, exports, and workspace tabs.
     Deliverable: shared filtering support or projection/read-model layer that excludes locally rejected publications and preserves locally confirmed ones.
     Exit criteria: all user-facing publication/citation/report queries can consume an "effective publications for user" view; no scoring service needs ad-hoc reject logic embedded directly in its scoring rules.
+    Handover:
+    - `EffectiveAuthorshipReadService` now sits above `ScholardexProjectionReadService`, resolves the user’s raw publication set from canonical author ids, subtracts `REJECTED` publication ids, and re-includes `CONFIRMED` publication ids by direct canonical publication lookup.
+    - `UserPublicationFacade` now uses the effective publication set for the main user publication view, and workspace citation drilldown now rejects access when the base publication is not effectively owned by the user.
+    - `UserReportFacade` now uses the effective publication set for indicator apply, report-scoped individual report computation, and report-scoped indicator detail, so user-facing report/citation calculations no longer derive owned publications directly from author ids.
+    - PostgreSQL reporting views, canonical publication/authorship facts, admin/group/export paths, and scoring rules remain unchanged in this slice; the overlay is applied only in the shared user-scoped read/report assembly layer.
+    - Targeted regression coverage now exists in `EffectiveAuthorshipReadServiceTest`, `UserPublicationFacadeTest`, and `UserReportFacadeTest`.
+
+  - [ ] `H38.2a` **Confirmed-only scoring inputs.**
+    Make user-scoped scoring and evaluation authoritative by counting only explicitly confirmed publications, while keeping publication discovery broad enough for authorship review.
+    Deliverable: a scoring-specific authorship read path and rewired user scoring surfaces that consume only `CONFIRMED` publications, plus a contextual warning when a user has zero confirmed publications.
+    Scope:
+    - add a scoring-specific read path above `ScholardexProjectionReadService` that returns only confirmed publications for a user
+    - rewire user-scoped scoring/evaluation surfaces to use confirmed-only publications:
+      - indicator apply
+      - evaluation page / report-scoped computation
+      - report refresh flows
+      - user-scoped scoring exports
+    - keep workspace/publication discovery on the broader imported/effective set so pending publications remain reviewable
+    - show a warning on scoring/evaluation surfaces only when the user has zero confirmed publications, explaining that only confirmed publications are counted in scoring
+    - keep this rule out of the scoring services themselves; filtering stays in the read/assembly layer
+    Exit criteria: pending and rejected publications do not contribute to user-scoped scores, totals, charts, or scoring exports; workspace discovery still shows candidate publications for review; users with zero confirmed publications see a clear warning rather than silently misleading results.
 
   - [ ] `H38.3` **Inline confirm/reject actions in researcher publication surfaces.**
     Add authorship confirmation/rejection controls to the main user-facing publication views, starting with the workspace publications tab and any remaining publication detail/apply flows where authorship confusion is visible.

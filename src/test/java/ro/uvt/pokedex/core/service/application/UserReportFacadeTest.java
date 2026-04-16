@@ -90,6 +90,8 @@ class UserReportFacadeTest {
     private ReportingLookupPort reportingLookupPort;
     @Mock
     private ResearcherAuthorLookupService researcherAuthorLookupService;
+    @Mock
+    private EffectiveAuthorshipReadService effectiveAuthorshipReadService;
 
     @InjectMocks
     private UserReportFacade facade;
@@ -139,16 +141,9 @@ class UserReportFacadeTest {
 
     @Test
     void buildIndicatorWorkbookExportReturnsEmptyWhenIndicatorMissing() throws Exception {
-        User user = new User();
-        user.setEmail("user@uvt.ro");
-        user.setResearcherId("r1");
-
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setScopusId(List.of("a1"));
+        User user = userWithProfile("user@uvt.ro", List.of("a1"));
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
         when(indicatorRepository.findById("i1")).thenReturn(Optional.empty());
 
         var result = facade.buildIndicatorWorkbookExport("user@uvt.ro", "i1");
@@ -160,10 +155,8 @@ class UserReportFacadeTest {
     void buildUserCnfisWorkbookExportReturnsNotFoundWhenResearcherMissing() throws Exception {
         User user = new User();
         user.setEmail("user@uvt.ro");
-        user.setResearcherId("r-missing");
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(researcherService.findResearcherById("r-missing")).thenReturn(Optional.empty());
 
         var result = facade.buildUserCnfisWorkbookExport("user@uvt.ro", 2021, 2024);
 
@@ -181,13 +174,7 @@ class UserReportFacadeTest {
 
     @Test
     void buildUserCnfisWorkbookExportReturnsOkWhenDataAvailable() throws Exception {
-        User user = new User();
-        user.setEmail("user@uvt.ro");
-        user.setResearcherId("r1");
-
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setScopusId(List.of("a1"));
+        User user = userWithProfile("user@uvt.ro", List.of("a1"));
 
         ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setId("p1");
@@ -198,7 +185,6 @@ class UserReportFacadeTest {
         allDomain.setName("ALL");
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
         when(scholardexProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of());
@@ -213,13 +199,7 @@ class UserReportFacadeTest {
 
     @Test
     void buildUserCnfisWorkbookExportAppliesInclusiveYearBoundaries() throws Exception {
-        User user = new User();
-        user.setEmail("user@uvt.ro");
-        user.setResearcherId("r1");
-
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setScopusId(List.of("a1"));
+        User user = userWithProfile("user@uvt.ro", List.of("a1"));
 
         ScholardexPublicationView pStart = new ScholardexPublicationView();
         pStart.setId("pStart");
@@ -245,7 +225,6 @@ class UserReportFacadeTest {
         allDomain.setName("ALL");
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(pStart, pIn, pEnd, pOut));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
         when(scholardexProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of());
@@ -264,16 +243,9 @@ class UserReportFacadeTest {
 
     @Test
     void buildLegacyUserCnfisWorkbookExportReturnsNotFoundWhenNoAuthors() throws Exception {
-        User user = new User();
-        user.setEmail("user@uvt.ro");
-        user.setResearcherId("r1");
-
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setScopusId(List.of("a1"));
+        User user = userWithProfile("user@uvt.ro", List.of("a1"));
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
         when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of());
 
         var result = facade.buildLegacyUserCnfisWorkbookExport("user@uvt.ro");
@@ -292,13 +264,7 @@ class UserReportFacadeTest {
 
     @Test
     void buildIndicatorWorkbookExportPublicationsContainsExpectedHeadersAndRow() throws Exception {
-        User user = new User();
-        user.setEmail("user@uvt.ro");
-        user.setResearcherId("r1");
-
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setScopusId(List.of("a1"));
+        User user = userWithProfile("user@uvt.ro", List.of("a1"));
 
         Indicator indicator = new Indicator();
         indicator.setOutputType(Indicator.Type.PUBLICATIONS);
@@ -325,7 +291,6 @@ class UserReportFacadeTest {
         publicationScore.setAuthorScore(5.0);
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
         when(indicatorRepository.findById("i1")).thenReturn(Optional.of(indicator));
         when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
@@ -350,13 +315,7 @@ class UserReportFacadeTest {
 
     @Test
     void buildIndicatorWorkbookExportPublicationsUsesBlankYearForMalformedCoverDate() throws Exception {
-        User user = new User();
-        user.setEmail("user@uvt.ro");
-        user.setResearcherId("r1");
-
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setScopusId(List.of("a1"));
+        User user = userWithProfile("user@uvt.ro", List.of("a1"));
 
         Indicator indicator = new Indicator();
         indicator.setOutputType(Indicator.Type.PUBLICATIONS);
@@ -383,7 +342,6 @@ class UserReportFacadeTest {
         publicationScore.setAuthorScore(5.0);
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
         when(indicatorRepository.findById("i1")).thenReturn(Optional.of(indicator));
         when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
@@ -403,13 +361,7 @@ class UserReportFacadeTest {
 
     @Test
     void buildUserCnfisWorkbookExportPassesFilteredDataToWorkbookGenerator() throws Exception {
-        User user = new User();
-        user.setEmail("user@uvt.ro");
-        user.setResearcherId("r1");
-
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setScopusId(List.of("a1"));
+        User user = userWithProfile("user@uvt.ro", List.of("a1"));
 
         ScholardexPublicationView pIn = new ScholardexPublicationView();
         pIn.setId("p-in");
@@ -428,7 +380,6 @@ class UserReportFacadeTest {
         CNFISReport2025 report = new CNFISReport2025();
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(pIn, pOut));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
         when(cnfiSScoringService2025.getReport(any(ScoringPublicationReadModel.class), eq(allDomain))).thenReturn(report);
@@ -449,13 +400,7 @@ class UserReportFacadeTest {
 
     @Test
     void buildUserCnfisWorkbookExportSkipsMalformedCoverDateWithoutCrash() throws Exception {
-        User user = new User();
-        user.setEmail("user@uvt.ro");
-        user.setResearcherId("r1");
-
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setScopusId(List.of("a1"));
+        User user = userWithProfile("user@uvt.ro", List.of("a1"));
 
         ScholardexPublicationView valid = new ScholardexPublicationView();
         valid.setId("p-valid");
@@ -474,7 +419,6 @@ class UserReportFacadeTest {
         CNFISReport2025 report = new CNFISReport2025();
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(valid, invalid));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
         when(cnfiSScoringService2025.getReport(any(ScoringPublicationReadModel.class), eq(allDomain))).thenReturn(report);
@@ -496,13 +440,7 @@ class UserReportFacadeTest {
 
     @Test
     void buildIndicatorApplyViewCitationsMatchesReportScopedTotalForEquivalentScope() {
-        User user = new User();
-        user.setEmail("user@uvt.ro");
-        user.setResearcherId("r1");
-
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setScopusId(List.of("a1"));
+        User user = userWithProfile("user@uvt.ro", List.of("a1"));
 
         Indicator indicator = new Indicator();
         indicator.setId("ind-cit");
@@ -548,12 +486,10 @@ class UserReportFacadeTest {
         }
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
         when(indicatorRepository.findById("ind-cit")).thenReturn(Optional.of(indicator));
         when(individualReportRepository.findById("rep-cit")).thenReturn(Optional.of(report));
-        when(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher)).thenReturn(List.of("a1"));
         when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
-        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(cited));
+        when(effectiveAuthorshipReadService.findEffectivePublicationsForUser("user@uvt.ro")).thenReturn(List.of(cited));
         when(scholardexProjectionReadService.findAllCitationsByCitedIdIn(List.of("p1"))).thenReturn(citations);
         when(scholardexProjectionReadService.findAllPublicationsByIdIn(citingIds)).thenReturn(citingPublications);
         when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of());
@@ -592,5 +528,72 @@ class UserReportFacadeTest {
         List<ScholardexPublicationView> visiblePublications = (List<ScholardexPublicationView>) applyView.attributes().get("publications");
         assertEquals(List.of(cited), visiblePublications);
         assertEquals(75.0, reportComputationOpt.orElseThrow().indicatorScoresByIndicatorId().get("ind-cit"));
+    }
+
+    @Test
+    void buildIndicatorApplyViewUsesEffectivePublicationsWhenAuthorLookupIsEmpty() {
+        User user = new User();
+        user.setEmail("user@uvt.ro");
+        User.ResearcherProfile profile = new User.ResearcherProfile();
+        profile.setScopusId(List.of("a1"));
+        user.setResearcherProfile(profile);
+
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-pub");
+        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
+        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+
+        ScholardexPublicationView confirmed = new ScholardexPublicationView();
+        confirmed.setId("p-confirmed");
+        confirmed.setTitle("Confirmed Publication");
+        confirmed.setAuthors(List.of("a1"));
+        confirmed.setForum("f1");
+
+        Score publicationScore = new Score();
+        publicationScore.setAuthorScore(2.0);
+        publicationScore.setScore(2.0);
+        publicationScore.setQuarter("Q1");
+
+        when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
+        when(indicatorRepository.findById("ind-pub")).thenReturn(Optional.of(indicator));
+        when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(Researcher.class))).thenReturn(List.of("a1"));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of());
+        when(effectiveAuthorshipReadService.findEffectivePublicationsForUser("user@uvt.ro")).thenReturn(List.of(confirmed));
+        when(scientificProductionService.calculateScientificProductionScore(anyList(), eq(indicator)))
+                .thenReturn(new java.util.LinkedHashMap<>(Map.of(
+                        "Confirmed Publication", publicationScore,
+                        "total", totalScore(2.0)
+                )));
+        when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum("f1")));
+
+        UserIndicatorApplyViewModel applyView = facade.buildIndicatorApplyView("user@uvt.ro", "ind-pub");
+
+        double total = Double.parseDouble(applyView.attributes().get("total").toString().replace(',', '.'));
+        assertEquals(2.0, total);
+        @SuppressWarnings("unchecked")
+        List<ScholardexPublicationView> visiblePublications = (List<ScholardexPublicationView>) applyView.attributes().get("publications");
+        assertEquals(List.of(confirmed), visiblePublications);
+    }
+
+    private static User userWithProfile(String email, List<String> scopusIds) {
+        User user = new User();
+        user.setEmail(email);
+        User.ResearcherProfile profile = new User.ResearcherProfile();
+        profile.setScopusId(scopusIds);
+        user.setResearcherProfile(profile);
+        return user;
+    }
+
+    private static Score totalScore(double authorScore) {
+        Score total = new Score();
+        total.setAuthorScore(authorScore);
+        return total;
+    }
+
+    private static ScholardexForumView forum(String id) {
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId(id);
+        forum.setPublicationName(id);
+        return forum;
     }
 }

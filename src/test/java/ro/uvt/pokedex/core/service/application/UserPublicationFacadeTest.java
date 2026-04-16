@@ -1,17 +1,14 @@
 package ro.uvt.pokedex.core.service.application;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
-import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.application.model.PublicationMetadataPatch;
 
 import java.util.List;
@@ -19,40 +16,21 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyCollection;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class UserPublicationFacadeTest {
 
     @Mock
-    private ResearcherService researcherService;
-    @Mock
     private ScholardexProjectionReadService scholardexProjectionReadService;
     @Mock
-    private ResearcherAuthorLookupService researcherAuthorLookupService;
+    private EffectiveAuthorshipReadService effectiveAuthorshipReadService;
 
     @InjectMocks
     private UserPublicationFacade facade;
 
-    @BeforeEach
-    void setUpLookupService() {
-        lenient().when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(Researcher.class)))
-                .thenAnswer(invocation -> {
-                    Researcher researcher = invocation.getArgument(0);
-                    return researcher.getScopusId() == null ? List.of() : researcher.getScopusId();
-                });
-    }
-
     @Test
     void buildUserPublicationsViewBuildsMapsAndHIndex() {
-        Researcher researcher = new Researcher();
-        researcher.setScopusId(List.of("a1"));
-
-        ScholardexAuthorView author = new ScholardexAuthorView();
-        author.setId("a1");
-        author.setName("Alice");
-
         ScholardexPublicationView p = new ScholardexPublicationView();
         p.setId("p1");
         p.setTitle("T1");
@@ -64,9 +42,8 @@ class UserPublicationFacadeTest {
         ScholardexForumView forum = new ScholardexForumView();
         forum.setId("f1");
 
-        when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
-        when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
-        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(anyCollection())).thenReturn(List.of(p));
+        when(effectiveAuthorshipReadService.findEffectivePublicationsForUser("r1")).thenReturn(List.of(p));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author("a1")));
         when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum));
 
         var vmOpt = facade.buildUserPublicationsView("r1");
@@ -82,14 +59,6 @@ class UserPublicationFacadeTest {
 
     @Test
     void buildUserPublicationsViewDedupesByPublicationIdAcrossMultipleAuthors() {
-        Researcher researcher = new Researcher();
-        researcher.setScopusId(List.of("a1", "a2"));
-
-        ScholardexAuthorView author1 = new ScholardexAuthorView();
-        author1.setId("a1");
-        ScholardexAuthorView author2 = new ScholardexAuthorView();
-        author2.setId("a2");
-
         ScholardexPublicationView shared = new ScholardexPublicationView();
         shared.setId("p-shared");
         shared.setTitle("Shared");
@@ -98,9 +67,8 @@ class UserPublicationFacadeTest {
         shared.setCitedbyCount(2);
         shared.setCoverDate("2022-01-01");
 
-        when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
-        when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author1, author2));
-        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(anyCollection())).thenReturn(List.of(shared));
+        when(effectiveAuthorshipReadService.findEffectivePublicationsForUser("r1")).thenReturn(List.of(shared));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author("a1"), author("a2")));
         when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum("f1")));
 
         var vmOpt = facade.buildUserPublicationsView("r1");
@@ -112,20 +80,13 @@ class UserPublicationFacadeTest {
 
     @Test
     void buildUserPublicationsViewUsesDeterministicOrderingContract() {
-        Researcher researcher = new Researcher();
-        researcher.setScopusId(List.of("a1"));
-
-        ScholardexAuthorView author = new ScholardexAuthorView();
-        author.setId("a1");
-
         ScholardexPublicationView malformed = publication("p3", "Zeta", "bad-date", 1, "f1", List.of("a1"));
         ScholardexPublicationView newest = publication("p2", "Alpha", "2024-02-01", 1, "f1", List.of("a1"));
         ScholardexPublicationView sameYearHigherTitle = publication("p1", "Beta", "2024-01-10", 1, "f1", List.of("a1"));
 
-        when(researcherService.findResearcherById("r1")).thenReturn(Optional.of(researcher));
-        when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author));
-        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(anyCollection()))
+        when(effectiveAuthorshipReadService.findEffectivePublicationsForUser("r1"))
                 .thenReturn(List.of(malformed, sameYearHigherTitle, newest));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author("a1")));
         when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum("f1")));
 
         var vmOpt = facade.buildUserPublicationsView("r1");
@@ -167,16 +128,29 @@ class UserPublicationFacadeTest {
         ScholardexCitationView link3 = citation("p1", "c3");
 
         when(scholardexProjectionReadService.findPublicationByAnyId("p1")).thenReturn(Optional.of(publication));
+        when(effectiveAuthorshipReadService.userEffectivelyOwnsPublication("user@uvt.ro", "p1")).thenReturn(true);
         when(scholardexProjectionReadService.findAllCitationsByCitedId("p1")).thenReturn(List.of(link1, link2, link3));
         when(scholardexProjectionReadService.findAllPublicationsByIdIn(List.of("c1", "c2", "c3"))).thenReturn(List.of(c1, c3, c2));
         when(scholardexProjectionReadService.findForumById("f1")).thenReturn(Optional.of(forum("f1")));
         when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author("a1")));
         when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum("f2")));
 
-        var vmOpt = facade.buildCitationsView("p1");
+        var vmOpt = facade.buildCitationsView("user@uvt.ro", "p1");
 
         assertTrue(vmOpt.isPresent());
         assertEquals(List.of("c2", "c3", "c1"), vmOpt.get().citations().stream().map(ScholardexPublicationView::getId).toList());
+    }
+
+    @Test
+    void buildCitationsViewRejectsPublicationNotOwnedEffectively() {
+        ScholardexPublicationView publication = publication("p1", "Main", "2023-01-01", 0, "f1", List.of("a1"));
+
+        when(scholardexProjectionReadService.findPublicationByAnyId("p1")).thenReturn(Optional.of(publication));
+        when(effectiveAuthorshipReadService.userEffectivelyOwnsPublication("user@uvt.ro", "p1")).thenReturn(false);
+
+        var vmOpt = facade.buildCitationsView("user@uvt.ro", "p1");
+
+        assertTrue(vmOpt.isEmpty());
     }
 
     @Test

@@ -360,7 +360,7 @@ public class ResearcherWorkspaceController {
         if (currentUser(authentication).isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return userPublicationFacade.buildCitationsView(id)
+        return userPublicationFacade.buildCitationsView(authentication.getName(), id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

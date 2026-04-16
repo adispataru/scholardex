@@ -77,6 +77,7 @@ public class UserReportFacade {
     private final CacheService cacheService;
     private final PublicationEnrichmentLinkerService publicationEnrichmentLinkerService;
     private final ReportingLookupPort reportingLookupPort;
+    private final EffectiveAuthorshipReadService effectiveAuthorshipReadService;
 
     public UserIndicatorsViewModel buildIndicatorsView(String userEmail) {
         // userEmail kept in signature to lock facade contract for later permission-aware extensions.
@@ -280,12 +281,7 @@ public class UserReportFacade {
         }
 
         List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
-        List<String> authorIds = authors.stream().map(ScholardexAuthorView::getId).toList();
-        if (authors.isEmpty()) {
-            return new UserIndicatorApplyViewModel("user/indicators", attrs);
-        }
-
-        List<ScholardexPublicationView> publications = findPublicationsByAuthorIds(authorIds);
+        List<ScholardexPublicationView> publications = findEffectivePublicationsForUser(userEmail);
         if (indicator.getOutputType().toString().contains("PUBLICATIONS")) {
             return handlePublications(indicator, authors, publications, attrs);
         }
@@ -333,12 +329,7 @@ public class UserReportFacade {
         }
 
         List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
-        if (authors.isEmpty()) {
-            return Optional.empty();
-        }
-
-        List<String> authorIds = authors.stream().map(ScholardexAuthorView::getId).toList();
-        List<ScholardexPublicationView> publications = findPublicationsByAuthorIds(authorIds);
+        List<ScholardexPublicationView> publications = findEffectivePublicationsForUser(userEmail);
         if (report.getIndividualAffiliation() != null
                 && !"ANY".equals(report.getIndividualAffiliation().getName())) {
             publications = publications.stream()
@@ -473,10 +464,7 @@ public class UserReportFacade {
         if (researcher == null) return Optional.empty();
 
         List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
-        if (authors.isEmpty()) return Optional.empty();
-
-        List<String> authorIds = authors.stream().map(ScholardexAuthorView::getId).toList();
-        List<ScholardexPublicationView> publications = findPublicationsByAuthorIds(authorIds);
+        List<ScholardexPublicationView> publications = findEffectivePublicationsForUser(userEmail);
 
         // Apply the same affiliation filter as computeReportScopedIndividualReport
         if (report.getIndividualAffiliation() != null
@@ -905,6 +893,10 @@ public class UserReportFacade {
 
     private List<ScholardexPublicationView> findPublicationsByAuthorIds(Collection<String> authorIds) {
         return scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
+    }
+
+    private List<ScholardexPublicationView> findEffectivePublicationsForUser(String userEmail) {
+        return effectiveAuthorshipReadService.findEffectivePublicationsForUser(userEmail);
     }
 
     private List<ScholardexPublicationView> findPublicationsByIds(Collection<String> publicationIds) {

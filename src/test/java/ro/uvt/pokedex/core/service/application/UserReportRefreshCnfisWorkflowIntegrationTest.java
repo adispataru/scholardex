@@ -115,6 +115,7 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
         CacheService cacheService = mock(CacheService.class);
         publicationEnrichmentLinkerService = mock(PublicationEnrichmentLinkerService.class);
         ReportingLookupPort reportingLookupPort = mock(ReportingLookupPort.class);
+        EffectiveAuthorshipReadService effectiveAuthorshipReadService = mock(EffectiveAuthorshipReadService.class);
 
         userReportFacade = new UserReportFacade(
                 userService,
@@ -131,7 +132,8 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
                 exportService,
                 cacheService,
                 publicationEnrichmentLinkerService,
-                reportingLookupPort
+                reportingLookupPort,
+                effectiveAuthorshipReadService
         );
 
         IndicatorPayloadSerializer payloadSerializer = new IndicatorPayloadSerializer(new ObjectMapper());

@@ -4,14 +4,12 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.service.application.model.PublicationMetadataPatch;
-import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationCitationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationsViewModel;
 
@@ -23,40 +21,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class UserPublicationFacade {
     private static final Logger log = LoggerFactory.getLogger(UserPublicationFacade.class);
 
-    private final ResearcherService researcherService;
     private final ScholardexProjectionReadService scholardexProjectionReadService;
-    private final ResearcherAuthorLookupService researcherAuthorLookupService;
+    private final EffectiveAuthorshipReadService effectiveAuthorshipReadService;
 
-    public Optional<UserPublicationsViewModel> buildUserPublicationsView(String researcherId) {
+    public Optional<UserPublicationsViewModel> buildUserPublicationsView(String userEmail) {
         long startedAtNanos = System.nanoTime();
-        log.info("User publications load started: researcherId={}", researcherId);
-
-        Optional<Researcher> researcherById = researcherService.findResearcherById(researcherId);
-        if (researcherById.isEmpty()) {
-            log.info("User publications load finished: researcherId={} status=not-found totalMs={}",
-                    researcherId, nanosToMillis(System.nanoTime() - startedAtNanos));
-            return Optional.empty();
-        }
-
-        Researcher researcher = researcherById.get();
-        long lookupKeysStartedAtNanos = System.nanoTime();
-        List<String> authorLookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(researcher);
-        long lookupKeysMs = nanosToMillis(System.nanoTime() - lookupKeysStartedAtNanos);
-
-        long authorsFetchStartedAtNanos = System.nanoTime();
-        List<ScholardexAuthorView> byId = scholardexProjectionReadService.findAuthorsByIdIn(
-                authorLookupKeys
-        );
-        long authorsFetchMs = nanosToMillis(System.nanoTime() - authorsFetchStartedAtNanos);
+        log.info("User publications load started: userEmail={}", userEmail);
 
         long publicationsFetchStartedAtNanos = System.nanoTime();
-        List<String> canonicalAuthorIds = byId.stream()
-                .map(ScholardexAuthorView::getId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList();
         List<ScholardexPublicationView> publications = dedupeAndSortPublications(
-                scholardexProjectionReadService.findAllPublicationsByAuthorsIn(canonicalAuthorIds)
+                effectiveAuthorshipReadService.findEffectivePublicationsForUser(userEmail)
         );
         long publicationsFetchMs = nanosToMillis(System.nanoTime() - publicationsFetchStartedAtNanos);
 
@@ -65,16 +39,11 @@ public class UserPublicationFacade {
         long relatedLookupMs = nanosToMillis(System.nanoTime() - relatedLookupStartedAtNanos);
 
         long totalMs = nanosToMillis(System.nanoTime() - startedAtNanos);
-        log.info("User publications load finished: researcherId={} lookupKeys={} resolvedAuthors={} canonicalAuthors={} publications={} forums={} citations={} timingsMs[lookupKeys={}, authorsFetch={}, publicationsFetch={}, relatedLookup={}, total={}]",
-                researcherId,
-                authorLookupKeys.size(),
-                byId.size(),
-                canonicalAuthorIds.size(),
+        log.info("User publications load finished: userEmail={} publications={} forums={} citations={} timingsMs[publicationsFetch={}, relatedLookup={}, total={}]",
+                userEmail,
                 publications.size(),
                 viewModel.forumMap().size(),
                 viewModel.numCitations(),
-                lookupKeysMs,
-                authorsFetchMs,
                 publicationsFetchMs,
                 relatedLookupMs,
                 totalMs);
@@ -108,13 +77,16 @@ public class UserPublicationFacade {
         ));
     }
 
-    public Optional<UserPublicationCitationsViewModel> buildCitationsView(String publicationId) {
+    public Optional<UserPublicationCitationsViewModel> buildCitationsView(String userEmail, String publicationId) {
         Optional<ScholardexPublicationView> byId = scholardexProjectionReadService.findPublicationByAnyId(publicationId);
         if (byId.isEmpty()) {
             return Optional.empty();
         }
 
         ScholardexPublicationView publication = byId.get();
+        if (!effectiveAuthorshipReadService.userEffectivelyOwnsPublication(userEmail, publication.getId())) {
+            return Optional.empty();
+        }
         List<ScholardexCitationView> allByCited = scholardexProjectionReadService.findAllCitationsByCitedId(publication.getId());
         List<String> citations = new ArrayList<>();
         allByCited.forEach(c -> citations.add(c.getCitingId()));
