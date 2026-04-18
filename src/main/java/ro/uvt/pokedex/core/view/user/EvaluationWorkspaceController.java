@@ -361,77 +361,6 @@ public class EvaluationWorkspaceController {
         ));
     }
 
-    // ── JSON: what-if analysis ────────────────────────────────────────────────
-
-    @PostMapping("/what-if")
-    @ResponseBody
-    public ResponseEntity<WhatIfResponse> whatIf(
-            @RequestBody WhatIfRequest request,
-            Authentication authentication) {
-        return currentUser(authentication).map(user -> {
-            IndicatorApplyResultDto result = userIndicatorResultService.getOrCreateLatest(user.getEmail(), request.indicatorId());
-            double baseScore = result.summary().totalScore() != null ? result.summary().totalScore() : 0.0;
-
-            // Compute per-item hypothetical score: forum score divided by sqrt of author count
-            double perItemScore = computeHypotheticalItemScore(request);
-            double delta = perItemScore * request.count();
-
-            List<WhatIfItem> items = new ArrayList<>();
-            for (int i = 1; i <= request.count(); i++) {
-                items.add(new WhatIfItem("Hypothetical item " + i, request.indicatorId(), perItemScore));
-            }
-
-            return ResponseEntity.ok(new WhatIfResponse(
-                    request.indicatorId(),
-                    baseScore,
-                    baseScore + delta,
-                    delta,
-                    items
-            ));
-        }).orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
-    }
-
-    // ── JSON: per-item breakdown ──────────────────────────────────────────────
-
-    @GetMapping("/breakdown/{indicatorId}")
-    @ResponseBody
-    public ResponseEntity<BreakdownResponse> getBreakdown(
-            @PathVariable String indicatorId,
-            Authentication authentication) {
-        return currentUser(authentication).map(user -> {
-            IndicatorApplyResultDto result = userIndicatorResultService.getOrCreateLatest(user.getEmail(), indicatorId);
-            Map<String, Object> graph = result.rawGraph();
-            String outputMode = graph.getOrDefault("outputMode", "publications").toString();
-
-            List<ScoredItem> allItems = extractScoredItems(graph, outputMode);
-            double total = result.summary().totalScore() != null ? result.summary().totalScore() : 0.0;
-
-            // Sort descending, keep top 20, aggregate the rest into "Other"
-            List<ScoredItem> sorted = allItems.stream()
-                    .sorted(Comparator.comparingDouble(ScoredItem::authorScore).reversed())
-                    .toList();
-
-            int topN = 20;
-            List<BreakdownItem> breakdown = new ArrayList<>();
-            double othersTotal = 0.0;
-            for (int i = 0; i < sorted.size(); i++) {
-                ScoredItem item = sorted.get(i);
-                if (i < topN) {
-                    double pct = total > 0 ? (item.authorScore() / total) * 100.0 : 0.0;
-                    breakdown.add(new BreakdownItem(item.key(), item.authorScore(), pct, i + 1));
-                } else {
-                    othersTotal += item.authorScore();
-                }
-            }
-            if (othersTotal > 0) {
-                double pct = total > 0 ? (othersTotal / total) * 100.0 : 0.0;
-                breakdown.add(new BreakdownItem("Other (" + (sorted.size() - topN) + " items)", othersTotal, pct, topN + 1));
-            }
-
-            return ResponseEntity.ok(new BreakdownResponse(indicatorId, total, breakdown));
-        }).orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
-    }
-
     // ── JSON: snapshot CRUD ───────────────────────────────────────────────────
 
     @PostMapping("/snapshots")
@@ -696,12 +625,6 @@ public class EvaluationWorkspaceController {
         return tc instanceof Number n ? n.doubleValue() : null;
     }
 
-    private double computeHypotheticalItemScore(WhatIfRequest request) {
-        // Basic scoring approximation: forum score / sqrt(authorCount)
-        int authors = Math.max(1, request.hypotheticalAuthorCount());
-        return request.hypotheticalForumScore() / Math.sqrt(authors);
-    }
-
     private Map<String, ScoreDelta> buildIndicatorDeltas(UserIndividualReportRun runA, UserIndividualReportRun runB) {
         Set<String> keys = new HashSet<>();
         if (runA.getIndicatorScoresByIndicatorId() != null) keys.addAll(runA.getIndicatorScoresByIndicatorId().keySet());
@@ -777,29 +700,6 @@ public class EvaluationWorkspaceController {
             Map<Integer, ScoreDelta> criterionDeltas,
             ScoreDelta aggregateDelta
     ) {}
-
-    record WhatIfRequest(
-            String indicatorId,
-            String reportId,
-            String type,
-            int count,
-            double hypotheticalForumScore,
-            int hypotheticalAuthorCount
-    ) {}
-
-    record WhatIfItem(String label, String indicatorId, double score) {}
-
-    record WhatIfResponse(
-            String indicatorId,
-            double baseScore,
-            double adjustedScore,
-            double delta,
-            List<WhatIfItem> hypotheticalItems
-    ) {}
-
-    record BreakdownItem(String key, double score, double percentage, int rank) {}
-
-    record BreakdownResponse(String indicatorId, double totalScore, List<BreakdownItem> items) {}
 
     record SnapshotRequest(String reportId, String name) {}
 

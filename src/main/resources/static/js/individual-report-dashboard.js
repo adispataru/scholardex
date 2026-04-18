@@ -26,7 +26,15 @@
     return deltaSign(delta) + toNumber(delta).toFixed(2);
   }
 
-  var _compareData = null;
+  function deltaAriaLabel(delta) {
+    var abs = toNumber(Math.abs(delta)).toFixed(2);
+    if (delta > 0.005)  return 'improved by ' + abs;
+    if (delta < -0.005) return 'declined by '  + abs;
+    return 'no change';
+  }
+
+  var _compareData  = null;
+  var _modalTrigger = null; // element to restore focus to when citation modal closes
 
   // ── Threshold icon rail ───────────────────────────────────────────────────
 
@@ -167,9 +175,13 @@
     var html = '<div class="eval-scored-list">';
 
     items.forEach(function (item) {
-      var clickable = isCitations && indicatorId ? ' eval-scored-item--clickable' : '';
-      var dataAttrs = isCitations && indicatorId
-        ? ' data-citation-pub="' + esc(item.key) + '" data-indicator-id="' + esc(indicatorId) + '"'
+      var isClickable = isCitations && indicatorId;
+      var clickable = isClickable ? ' eval-scored-item--clickable' : '';
+      var dataAttrs = isClickable
+        ? ' role="button" tabindex="0"' +
+          ' data-citation-pub="' + esc(item.key) + '"' +
+          ' data-indicator-id="' + esc(indicatorId) + '"' +
+          ' aria-label="View citations for ' + esc(item.key) + '"'
         : '';
       html += '<div class="eval-scored-item' + clickable + '"' + dataAttrs + '>';
       html += '<div class="eval-scored-item__body">';
@@ -234,6 +246,10 @@
       _citationBackdrop.offsetHeight; // reflow
       _citationBackdrop.classList.add('show');
     }
+
+    // Move focus into the modal (close button is first reachable control)
+    var closeBtn = modal.querySelector('[data-dismiss="modal"]');
+    if (closeBtn) { setTimeout(function () { closeBtn.focus(); }, 50); }
   }
 
   function hideBsModal(modal) {
@@ -247,11 +263,18 @@
       _citationBackdrop.remove();
       _citationBackdrop = null;
     }
+
+    // Return focus to whichever element opened the modal
+    if (_modalTrigger) {
+      _modalTrigger.focus();
+      _modalTrigger = null;
+    }
   }
 
   // ── Citation detail modal ─────────────────────────────────────────────────
 
   function openCitationModal(indicatorId, pubTitle, reportId) {
+    _modalTrigger = document.activeElement || null;
     var modal      = document.getElementById('citationDetailModal');
     var titleEl    = document.getElementById('citationModalPubTitle');
     var bodyEl     = document.getElementById('citationModalBody');
@@ -317,6 +340,19 @@
         openCitationModal(indicatorId, pubTitle, reportId);
       }
     });
+
+    // Keyboard activation for citation rows (Enter / Space)
+    root.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      var row = e.target.closest('[data-citation-pub]');
+      if (!row) return;
+      e.preventDefault();
+      var pubTitle    = row.getAttribute('data-citation-pub');
+      var indicatorId = row.getAttribute('data-indicator-id');
+      if (pubTitle && indicatorId) {
+        openCitationModal(indicatorId, pubTitle, reportId);
+      }
+    });
   }
 
   function esc(str) {
@@ -354,7 +390,9 @@
           if (_compareData && _compareData.indicatorDeltas) {
             var dp = _compareData.indicatorDeltas[indicatorId];
             if (dp) {
-              indicatorDeltaHtml = ' <span class="eval-delta ' + deltaClass(dp.delta) + '">' + deltaText(dp.delta) + '</span>';
+              indicatorDeltaHtml = ' <span class="eval-delta ' + deltaClass(dp.delta) + '"' +
+                ' aria-label="' + esc(deltaAriaLabel(dp.delta)) + '">' +
+                deltaText(dp.delta) + '</span>';
             }
           }
           var headerHtml = '<div class="indicator-detail-header">' +
@@ -589,6 +627,7 @@
       if (!span || !dp) return;
       span.className = 'eval-criterion-delta eval-delta ' + deltaClass(dp.delta);
       span.textContent = deltaText(dp.delta);
+      span.setAttribute('aria-label', deltaAriaLabel(dp.delta));
     });
 
     // 2. Indicator delta spans
@@ -598,6 +637,7 @@
       if (!dp) return;
       span.className = 'eval-indicator-delta eval-delta ' + deltaClass(dp.delta);
       span.textContent = deltaText(dp.delta);
+      span.setAttribute('aria-label', deltaAriaLabel(dp.delta));
     });
 
     // 3. Aggregate delta cell
@@ -608,6 +648,9 @@
       aggEl.className = 'app-eval-aggregate__value app-eval-aggregate__value--sm eval-delta ' + deltaClass(d.delta);
       aggEl.textContent = toNumber(d.before).toFixed(2) + ' → ' + toNumber(d.after).toFixed(2) +
         ' (' + deltaText(d.delta) + ')';
+      aggEl.setAttribute('aria-label',
+        'Score ' + deltaAriaLabel(d.delta) + ': from ' + toNumber(d.before).toFixed(2) +
+        ' to ' + toNumber(d.after).toFixed(2));
     }
     if (aggCell) aggCell.hidden = false;
 
@@ -645,15 +688,15 @@
     _compareData = null;
 
     root.querySelectorAll('.eval-criterion-delta').forEach(function (s) {
-      s.textContent = ''; s.className = 'eval-criterion-delta';
+      s.textContent = ''; s.className = 'eval-criterion-delta'; s.removeAttribute('aria-label');
     });
     root.querySelectorAll('.eval-indicator-delta').forEach(function (s) {
-      s.textContent = ''; s.className = 'eval-indicator-delta';
+      s.textContent = ''; s.className = 'eval-indicator-delta'; s.removeAttribute('aria-label');
     });
 
     var aggEl   = document.getElementById('eval-aggregate-delta');
     var aggCell = document.getElementById('eval-compare-delta-cell');
-    if (aggEl)   { aggEl.textContent = '—'; aggEl.className = 'app-eval-aggregate__value app-eval-aggregate__value--sm'; }
+    if (aggEl)   { aggEl.textContent = '—'; aggEl.removeAttribute('aria-label'); aggEl.className = 'app-eval-aggregate__value app-eval-aggregate__value--sm'; }
     if (aggCell) aggCell.hidden = true;
 
     var banner     = document.getElementById('eval-compare-banner');
@@ -698,6 +741,14 @@
   function initComparisonControls(root, reportId, currentRunId) {
     if (!currentRunId) return;
 
+    // Enforce correct initial state — clear button hidden until comparison is applied.
+    // Do this explicitly in JS so that bfcache restoration or any other mechanism that
+    // may have left the button visible on a previous visit cannot carry state forward.
+    var clearBtnInit   = document.getElementById('eval-clear-compare-btn');
+    var compareBtnInit = document.getElementById('eval-compare-btn');
+    if (clearBtnInit)   clearBtnInit.hidden   = true;
+    if (compareBtnInit) compareBtnInit.hidden = false;
+
     // Populate run picker
     var select = document.getElementById('eval-compare-select');
     if (select && Array.isArray(window.evalPriorRuns)) {
@@ -729,7 +780,12 @@
     if (compareBtn) {
       compareBtn.addEventListener('click', function () {
         var picker = document.getElementById('eval-compare-picker');
-        if (picker) picker.hidden = !picker.hidden;
+        if (!picker) return;
+        picker.hidden = !picker.hidden;
+        if (!picker.hidden) {
+          var sel = document.getElementById('eval-compare-select');
+          if (sel) sel.focus();
+        }
       });
     }
 
@@ -795,17 +851,28 @@
       snapshotsBtn.addEventListener('click', function () {
         if (snapshotsPanel.hidden) {
           snapshotsPanel.hidden = false;
+          snapshotsBtn.setAttribute('aria-expanded', 'true');
           _loadSnapshotList(root, reportId, currentRunId);
+          // Move focus to the close button once the panel is visible
+          var closeEl = document.getElementById('eval-snapshots-close');
+          if (closeEl) { setTimeout(function () { closeEl.focus(); }, 0); }
         } else {
           snapshotsPanel.hidden = true;
+          snapshotsBtn.setAttribute('aria-expanded', 'false');
         }
       });
     }
 
-    // Close button inside panel
+    // Close button inside panel — return focus to the trigger
     var closeBtn = document.getElementById('eval-snapshots-close');
     if (closeBtn && snapshotsPanel) {
-      closeBtn.addEventListener('click', function () { snapshotsPanel.hidden = true; });
+      closeBtn.addEventListener('click', function () {
+        snapshotsPanel.hidden = true;
+        if (snapshotsBtn) {
+          snapshotsBtn.setAttribute('aria-expanded', 'false');
+          snapshotsBtn.focus();
+        }
+      });
     }
 
     // Load snapshots into compare picker on page init (async, non-blocking)
@@ -1011,4 +1078,23 @@
   } else {
     boot();
   }
+
+  // When the page is restored from the bfcache (browser Back/Forward), reset the
+  // comparison toolbar state to match the current URL.  If ?compare= is absent the
+  // deltas are cleared; if it is present the comparison is re-fetched so the UI is
+  // consistent with what the URL says.
+  window.addEventListener('pageshow', function (e) {
+    if (!e.persisted) return; // normal load already handled by boot()
+    var root = document.querySelector('.individual-report-dashboard');
+    if (!root) return;
+    var params      = new URLSearchParams(window.location.search);
+    var compareId   = params.get('compare');
+    var currentRunId = root.getAttribute('data-run-id') || null;
+    var reportId     = root.getAttribute('data-report-id') || '';
+    if (compareId && currentRunId) {
+      fetchAndApplyComparison(root, compareId, currentRunId, reportId);
+    } else {
+      clearComparisonDeltas(root);
+    }
+  });
 })();

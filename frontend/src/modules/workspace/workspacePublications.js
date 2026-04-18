@@ -80,6 +80,7 @@ let _wVolume        = '';
 let _wIssueIdentifier = '';
 let _pendingRejectId = null;
 let _publicationFilter = 'all';
+let _searchQuery = '';
 let _queueFeedback = null;
 let _selectedPendingIds = new Set();
 
@@ -92,6 +93,13 @@ export function initWorkspacePublications() {
         openWizard() {
             if (_mount && _data) { _openWizard(); }
             else                 { _pendingWizard = true; }
+        },
+        // Called by workspaceSearch to pre-populate the filter after tab switch.
+        filterBy(q) {
+            _searchQuery = (q ?? '').trim().toLowerCase();
+            _page = 1;
+            _activeId = null;
+            if (_mount && _data) _renderPage();
         },
     };
 }
@@ -226,6 +234,7 @@ function _wireStaticEvents() {
     document.getElementById('ws-pubs-scopus-btn')?.addEventListener('click', () => {
         window.appWorkspaceTabs?.activateTab('profile');
     });
+
 }
 
 function _renderPage() {
@@ -936,10 +945,14 @@ function _formatFlagCode(code) {
 }
 
 function _filteredPublications() {
+    let pubs = _allPubs;
     if (_publicationFilter === 'pending-review') {
-        return _allPubs.filter(pub => _isPending(pub.id));
+        pubs = pubs.filter(pub => _isPending(pub.id));
     }
-    return _allPubs;
+    if (_searchQuery) {
+        pubs = pubs.filter(pub => pub.title?.toLowerCase().includes(_searchQuery));
+    }
+    return pubs;
 }
 
 function _isPending(pubId) {

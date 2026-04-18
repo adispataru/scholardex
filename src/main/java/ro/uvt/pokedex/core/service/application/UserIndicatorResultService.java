@@ -81,6 +81,10 @@ public class UserIndicatorResultService {
                 .orElse(0);
     }
 
+    public long invalidateLatestResults(String userEmail) {
+        return userIndicatorResultRepository.deleteByUserEmailAndMode(userEmail, UserIndicatorResult.Mode.LATEST);
+    }
+
     public Optional<IndicatorApplyResultDto> getById(String id) {
         return userIndicatorResultRepository.findById(id).map(value -> toDto(value, IndicatorApplyResultDto.Source.PERSISTED));
     }

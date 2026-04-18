@@ -239,26 +239,6 @@ Done history moved to `TASKS-done.md`.
     - CSS: `.app-eval-compare-picker[hidden] { display: none }` explicit rule prevents `display: flex` overriding the `hidden` attribute.
     - All select elements on the evaluation page given `padding-top/bottom: 0.2rem; height: auto` to fix disproportionate height at 0.82rem context font-size.
 
-  - [ ] `H37.6` **What-if analysis.**
-    Add a what-if panel accessible from each expanded criterion (or from a global "Scenario" action in the report header):
-    — User can add hypothetical inputs scoped to a specific indicator: e.g. "add N Q1 publications", "add N activities of type X", "add N citations on publication Y". Input form adapts to the indicator's output type (reusing the output-type conditional logic from `H37.1`).
-    — "Calculate" button submits the scenario to `POST /user/evaluation/what-if` and displays the recalculated score alongside the actual score, with a clear visual distinction (dashed border, "scenario" badge per §6.5) so users never confuse hypothetical with actual.
-    — Aggregate impact shown at the top: how the scenario changes the overall score and whether any criteria now meet their threshold.
-    — "Reset" clears the scenario; scenario state not persisted (one-off analysis).
-    — Clear messaging: "This is a hypothetical calculation. No data has been saved."
-    Dependency: `H37.2`, `H37.3`.
-    Exit criteria: what-if panel opens and accepts inputs appropriate to the indicator's output type; recalculation matches the scoring strategy's actual behavior; hypothetical scores are visually distinct from actual; reset clears cleanly; no side effects on persisted data.
-
-  - [ ] `H37.7` **Per-criterion score breakdown charts.**
-    For each expanded criterion, render a visual breakdown of which items contribute how much to the score:
-    — Bar or horizontal-bar chart (Chart.js, theme-aware per §6.9) showing each contributing publication/activity/citation by name (truncated with tooltip for full title) on one axis and its contribution score on the other.
-    — Ordered by contribution descending. Items below a small threshold grouped into an "Other" bar.
-    — Hovering a bar highlights the corresponding row in the detail table below (or vice versa) for cross-reference.
-    — Legible in both themes; accessible (chart has a text summary alternative for screen readers listing the top contributors).
-    — Data sourced from `GET /user/evaluation/breakdown/{indicatorId}` in `H37.2`.
-    Dependency: `H37.2`, `H37.3`.
-    Exit criteria: breakdown chart renders for each criterion type (publication/activity/citation); ordering is correct; cross-reference highlight works; text alternative exists; both themes.
-
   - [x] `H37.8` **Saved report snapshots.**
     Completed: 2026-04-17.
     Handover:
@@ -275,18 +255,11 @@ Done history moved to `TASKS-done.md`.
     - Deleting the active comparison snapshot automatically clears the comparison deltas and the URL `?compare=` param.
     - `compileJava` clean; `UserViewControllerContractTest` passes; both verify scripts pass.
 
-  - [ ] `H37.9` **Responsive behavior and accessibility audit.**
-    Verify the evaluation workspace meets responsive and accessibility requirements:
-    — Criterion grid: reflows from multi-column to single-column per §4.4.
-    — Inline expansion: detail content stacks gracefully on small screens; filter panel and chart remain usable.
-    — Comparison mode: deltas stay readable (not squeezed) on mobile.
-    — What-if panel: full-width on mobile.
-    — Breakdown chart: resizes correctly and stays legible.
-    — Snapshot list: scrollable on mobile.
-    — Accessibility: criterion expansion uses `aria-expanded`; comparison deltas pair color with text and direction icons per §2.3; charts have text alternatives; all interactive controls keyboard-reachable; focus management on expand/collapse and panel open/close; WCAG AA contrast in both themes.
-    Exit criteria: workspace usable on 320px-wide viewport; keyboard-only navigation works end-to-end; screen readers announce expansion state, comparison deltas, and chart summaries; contrast passes WCAG AA in both themes.
+  - [x] `H37.9` **Responsive behavior and accessibility audit.**
+    Completed: 2026-04-18.
 
-  - [ ] `H37.10` **Legacy template cleanup and verification.**
+  - [x] `H37.10` **Legacy template cleanup and verification.**
+    Completed: 2026-04-18.
     After the evaluation workspace is stable:
     — Remove or mark deprecated: `user/indicators-apply-publications.html`, `user/indicators-apply-activities.html`, `user/indicators-apply-citations.html` (replaced by consolidated template from `H37.1`), `user/indicators.html`, `user/individual-reports.html` (reduced or redirected per `H37.4`). `user/individual-report-view.html` either replaced or substantially rewritten per `H37.3`.
     — Remove or redirect old controller methods fully replaced by `EvaluationWorkspaceController`.
@@ -369,15 +342,27 @@ Done history moved to `TASKS-done.md`.
     - The workspace UI now shows a review summary bar, `All` / `Needs review` filters, row-level `Needs review` badges, and a detail-panel explanation block listing the exact heuristic reasons. Confirming or rejecting an item while filtered removes it from the queue immediately and advances context to the next flagged row when possible.
     - Targeted regression coverage now exists in `SuspiciousAuthorshipTriageServiceTest`, `UserPublicationFacadeTest`, `ResearcherWorkspaceControllerContractTest`, and the updated `UserViewControllerContractTest`.
 
-  - [ ] `H38.5` **Bulk review workflow.**
+  - [x] `H38.5` **Bulk review workflow.** *(completed 2026-04-18)*
     Support efficient cleanup of polluted Scopus identities by allowing multi-select or repeated queue decisions without opening each publication individually.
     Deliverable: bulk confirm/reject actions with safeguards, summary counts, and undo/rollback-friendly handling where practical.
     Exit criteria: researchers can clear multiple false-positive publications in one operation; accidental mass rejection is guarded by confirmation UX and auditable persisted decisions.
+    Handover:
+    - The workspace publications experience now treats `Pending Review` as a first-class filter with dedicated pending, suspicious-pending, and recommended-pending summary counts on `UserPublicationsViewModel`, rather than limiting review acceleration to the suspicious queue only.
+    - `PublicationAuthorshipDecisionService` now exposes best-effort bulk confirm/reject handling for pending publications only, reusing the existing per-publication decision path, preserving the affiliation-scope eligibility gate, and returning per-item success/failure results instead of one aggregate success state.
+    - `ResearcherWorkspaceController` now exposes `POST /user/workspace/publications/authorship/bulk`, with request payload `{ publicationIds, action, reason? }` and response payloads that distinguish succeeded ids, failed ids with messages, and updated review states for successful rows.
+    - The workspace publications frontend now supports pending-row selection, current-view select-all, bulk confirm/reject actions, mixed-result feedback, and explicit `Recommended accept` labeling for non-suspicious pending publications while preserving the existing single-item review flow and suspicious reason details.
+    - Targeted regression coverage now exists in `PublicationAuthorshipDecisionServiceTest`, `UserPublicationFacadeTest`, `ResearcherWorkspaceControllerContractTest`, and `UserViewControllerContractTest`.
 
-  - [ ] `H38.6` **Indicator/report/export integration.**
+  - [x] `H38.6` **Indicator/report/export integration.** *(completed 2026-04-18)*
     Apply effective-authorship filtering to all user-facing reporting outputs that currently assume imported authorship is correct.
     Deliverable: indicator apply views, report computation, citation lists, workbook exports, and workspace summary counts all use the same effective-authorship layer.
     Exit criteria: rejecting a publication removes it from scores, totals, charts, and exports consistently; confirming a publication preserves inclusion consistently.
+    Handover:
+    - User-scoped reporting and export computation in `UserReportFacade` now consistently uses the confirmed-only/effective-authorship layer for indicator apply, report-scoped computation, citation detail assembly, indicator workbook export, and both CNFIS workbook export variants.
+    - The remaining freshness gap is now closed: `PublicationAuthorshipDecisionService` invalidates user-scoped reporting caches after successful confirm, reject, clear, and successful bulk review mutations, so the next evaluation/detail read recomputes from the latest confirmed publication set instead of reusing stale persisted output.
+    - `UserIndicatorResult.Mode.LATEST` rows and transient `UserIndividualReportRun` rows are now treated as disposable caches; durable `SNAPSHOT` indicator results and `EvaluationSnapshot` history remain untouched by authorship-decision invalidation.
+    - No user-facing controller or export contract changed in this slice; existing endpoints continue to work, but their next read after an authorship decision is now fresh by construction.
+    - Targeted regression coverage now exists in `PublicationAuthorshipDecisionServiceTest`, `UserIndicatorResultServiceTest`, `UserIndividualReportRunServiceTest`, and the existing `UserReportFacadeTest` confirmed-only scoring/export coverage remains in place.
 
   - [ ] `H38.7` **Operational diagnostics and auditability.**
     Make authorship overrides explainable for both users and maintainers.

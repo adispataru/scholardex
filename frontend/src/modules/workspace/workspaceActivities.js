@@ -45,6 +45,7 @@ let _page          = 1;
 let _activeId      = null;
 let _createOpen    = false;
 let _pendingCreate = false;  // open create form as soon as the tab finishes loading
+let _searchQuery   = '';     // inline text filter
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
@@ -54,6 +55,13 @@ export function initWorkspaceActivities() {
         openCreate() {
             if (_mount && _data) { _toggleCreate(); }
             else                 { _pendingCreate = true; }
+        },
+        // Called by workspaceSearch to pre-populate the filter after tab switch.
+        filterBy(q) {
+            _searchQuery = (q ?? '').trim().toLowerCase();
+            _page = 1;
+            _activeId = null;
+            if (_mount && _data) _renderPage();
         },
     };
 }
@@ -68,8 +76,8 @@ function _init(panel) {
     const src = _mount.dataset.src;
     if (!src) return;
 
-    _page      = 1;
-    _activeId  = null;
+    _page       = 1;
+    _activeId   = null;
     _createOpen = false;
 
     _showSkeleton();
@@ -135,6 +143,7 @@ function _renderAll() {
     // Wire toolbar
     document.getElementById('ws-acts-add-btn')?.addEventListener('click', () => _toggleCreate());
 
+
     // Render table
     if (_instances.length > 0) {
         _renderPage();
@@ -156,9 +165,18 @@ function _renderPage() {
     if (!wrap) return;
     wrap.innerHTML = '';
 
+    const filtered = _searchQuery
+        ? _instances.filter(inst => {
+              const q    = _searchQuery;
+              const name = (inst.name ?? inst.activity?.name ?? '').toLowerCase();
+              const type = (inst.activity?.name ?? '').toLowerCase();
+              return name.includes(q) || type.includes(q);
+          })
+        : _instances;
+
     const start     = (_page - 1) * PAGE_SIZE;
-    const pageItems = _instances.slice(start, start + PAGE_SIZE);
-    const total     = _instances.length;
+    const pageItems = filtered.slice(start, start + PAGE_SIZE);
+    const total     = filtered.length;
     const pages     = Math.ceil(total / PAGE_SIZE);
 
     const table = document.createElement('table');

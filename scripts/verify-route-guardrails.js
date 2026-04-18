@@ -67,10 +67,6 @@ const checks = [
     forbidden: ['/rankings/categories/']
   },
   {
-    file: 'src/main/resources/templates/user/indicators-apply.html',
-    forbidden: ['/scholardex/forums/']
-  },
-  {
     file: 'src/main/resources/static/js/scholardex-forums.js',
     forbidden: ['/scholardex/forums/data?', '/rankings/wos/']
   },

@@ -51,6 +51,10 @@ public class UserIndividualReportRunService {
         return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT, Map.of());
     }
 
+    public long invalidateLatestRuns(String userEmail) {
+        return userIndividualReportRunRepository.deleteByUserEmail(userEmail);
+    }
+
     private Optional<IndividualReportRunDto> buildAndSaveRun(String userEmail,
                                                              String reportDefinitionId,
                                                              IndividualReportRunDto.Source source,

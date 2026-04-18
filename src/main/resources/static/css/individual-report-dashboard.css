@@ -149,11 +149,22 @@
   line-height: 1.3;
 }
 
-.individual-report-dashboard .indicator-expand-btn:hover,
-.individual-report-dashboard .indicator-expand-btn:focus {
+.individual-report-dashboard .indicator-expand-btn:hover {
   color: var(--app-color-primary-strong, #2e59d9);
   text-decoration: underline;
+}
+
+/* Suppress browser default outline; :focus-visible provides the visible ring */
+.individual-report-dashboard .indicator-expand-btn:focus {
   outline: none;
+}
+
+.individual-report-dashboard .indicator-expand-btn:focus-visible {
+  outline: 2px solid var(--app-color-primary, #4e73df);
+  outline-offset: 2px;
+  border-radius: 0.2rem;
+  color: var(--app-color-primary-strong, #2e59d9);
+  text-decoration: underline;
 }
 
 .individual-report-dashboard .indicator-expand-btn[aria-expanded="true"] {
@@ -400,6 +411,31 @@
 
   .individual-report-dashboard .app-eval-aggregate__cell--meta {
     margin-left: 0;
+  }
+}
+
+@media (max-width: 767.98px) {
+  /* Eval toolbar: prevent the global shared-dashboard rule from stretching
+     every action button to full width. Buttons here wrap but keep natural size. */
+  .individual-report-dashboard .app-dashboard__actions > * {
+    flex: 0 1 auto;
+  }
+
+  .individual-report-dashboard .app-dashboard__actions .btn {
+    width: auto;
+  }
+
+  /* Compare picker: drop fixed min-width so it fits inside the viewport */
+  .app-eval-compare-picker select {
+    min-width: 0;
+    width: min(26rem, calc(100vw - 2rem));
+  }
+
+  /* Snapshot panel body: scrollable when list is long */
+  .app-eval-snapshots-panel__body {
+    max-height: 55vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }
 

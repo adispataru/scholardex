@@ -2,6 +2,24 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H37.10 Legacy template cleanup and verification — DONE 2026-04-18
+
+Completed cleanup of dead routes and templates:
+- Deleted orphaned `user/indicators-apply.html` (no controller ever returned it post-H37.1).
+- Removed redirect shims from `UserViewController`: `GET /indicators`, `GET /indicators/apply/{id}`, `POST /indicators/apply/{id}/refresh`, `GET /individual-reports`, `GET /individual-reports/view/{id}`, `POST /individual-reports/view/{id}/refresh`, `POST /individual-reports/view/{id}/refresh-all-indicators`. The live Excel export (`GET /indicators/export/{id}`) was retained.
+- Removed now-unused `UserIndicatorResultService` and `UserIndividualReportRunService` fields/imports from `UserViewController`.
+- Fixed stale notification link in `ResearcherWorkspaceController`: `/user/individual-reports` → `/user/evaluation`.
+- Removed `indicators-apply.html` entry from `verify-route-guardrails.js`.
+- All verification scripts pass: `compileJava`, `npm run build`, `verify-assets`, `verify-template-assets`, `verify-route-guardrails`, `verify-ui-guardrails`.
+
+## H37.6 What-if analysis — DROPPED 2026-04-18
+
+Removed from backlog. The stub backend endpoints (`POST /what-if`, `GET /breakdown/{indicatorId}`) and associated records (`WhatIfRequest`, `WhatIfItem`, `WhatIfResponse`, `BreakdownItem`, `BreakdownResponse`) and the `computeHypotheticalItemScore` helper have been deleted from `EvaluationWorkspaceController`. No frontend code was written. `extractScoredItems` was kept — it is still used by the indicator detail endpoint.
+
+## H37.7 Per-criterion score breakdown charts — DROPPED 2026-04-18
+
+Removed from backlog together with H37.6. No code was written for this feature.
+
 ## H29 Admin Incremental Source Updates From Uploaded WoS And Scopus Files
 
 Archived from `TASKS.md` on 2026-04-02 after backlog bookkeeping confirmed the remaining `H29.6` Scopus maintenance slices had already landed in code, tests, and durable docs.

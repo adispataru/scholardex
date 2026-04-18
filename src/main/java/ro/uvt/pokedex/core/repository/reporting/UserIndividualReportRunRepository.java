@@ -13,4 +13,6 @@ public interface UserIndividualReportRunRepository extends MongoRepository<UserI
     Optional<UserIndividualReportRun> findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc(String userEmail, String reportDefinitionId);
 
     List<UserIndividualReportRun> findByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc(String userEmail, String reportDefinitionId);
+
+    long deleteByUserEmail(String userEmail);
 }

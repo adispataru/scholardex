@@ -19,30 +19,18 @@
                     <!-- Workspace header: search + notifications (H36.5, H36.6) -->
                     <div class="app-ws-header">
 
-                        <!-- Unified search bar (H36.5) -->
+                        <!-- Workspace filter (H36.5) -->
                         <div class="app-ws-search" id="ws-search-root">
                             <div class="app-ws-search__field">
                                 <i class="fa-solid fa-magnifying-glass app-ws-search__icon" aria-hidden="true"></i>
                                 <input id="ws-search-input"
                                        type="search"
                                        class="app-ws-search__input"
-                                       role="combobox"
-                                       aria-expanded="false"
-                                       aria-haspopup="listbox"
-                                       aria-autocomplete="list"
-                                       aria-controls="ws-search-results"
-                                       aria-label="Search workspace"
+                                       aria-label="Filter current tab"
                                        autocomplete="off"
-                                       placeholder="Search publications, activities, citations…"/>
+                                       placeholder="Filter…"/>
                                 <kbd class="app-ws-search__hint" aria-hidden="true">/ or Ctrl+K</kbd>
                             </div>
-                            <ul id="ws-search-results"
-                                role="listbox"
-                                aria-label="Search results"
-                                class="app-ws-search__results"
-                                hidden>
-                            </ul>
-                            <div class="app-ws-search__live" aria-live="polite" aria-atomic="true"></div>
                         </div>
 
                         <!-- Notification bell (H36.6) -->

@@ -14,19 +14,13 @@ import ro.uvt.pokedex.core.model.tasks.ScopusCitationsUpdate;
 import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.service.application.UserPublicationFacade;
-import ro.uvt.pokedex.core.service.application.UserIndividualReportRunService;
-import ro.uvt.pokedex.core.service.application.UserIndicatorResultService;
 import ro.uvt.pokedex.core.service.application.UserReportFacade;
 import ro.uvt.pokedex.core.service.application.UserScopusTaskFacade;
 import ro.uvt.pokedex.core.service.application.RequestYearRangeSupport;
-import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
-import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
 import ro.uvt.pokedex.core.service.application.model.PublicationMetadataPatch;
-import ro.uvt.pokedex.core.service.application.model.UserIndicatorsViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorWorkbookExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationCitationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationsViewModel;
-import ro.uvt.pokedex.core.service.application.model.UserReportsListViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserScopusTasksViewModel;
 import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
@@ -47,8 +41,6 @@ public class UserViewController {
     private final UserPublicationFacade userPublicationFacade;
     private final UserScopusTaskFacade userScopusTaskFacade;
     private final UserReportFacade userReportFacade;
-    private final UserIndicatorResultService userIndicatorResultService;
-    private final UserIndividualReportRunService userIndividualReportRunService;
 
     @GetMapping()
     public String showDashboardCompatibilityRedirect() {
@@ -140,31 +132,6 @@ public class UserViewController {
         return "redirect:/user/workspace#publications";
     }
 
-    @GetMapping("/indicators")
-    public String showPubCriteriaPage(Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
-            return "redirect:/login";
-        }
-        return "redirect:/user/evaluation";
-    }
-
-    @GetMapping("/indicators/apply/{id}")
-    public String showCriteriaResultsPage(Authentication authentication, @PathVariable String id) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
-            return "redirect:/login";
-        }
-        return "redirect:/user/evaluation#indicator-" + id;
-    }
-
-    @PostMapping("/indicators/apply/{id}/refresh")
-    public String refreshCriteriaResultsPage(Authentication authentication, @PathVariable String id) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
-            return "redirect:/login";
-        }
-        userIndicatorResultService.refreshLatest(currentUser.getEmail(), id);
-        return "redirect:/user/evaluation#indicator-" + id;
-    }
-
     @GetMapping("indicators/export/{id}")
     @ResponseBody
     public void exportIndicatorResults(@PathVariable String id, Authentication authentication, HttpServletResponse response) throws IOException {
@@ -184,41 +151,6 @@ public class UserViewController {
         response.setHeader("Content-Disposition", "attachment; filename=\"" + vm.fileName() + "\"");
         response.getOutputStream().write(vm.workbookBytes());
     }
-
-    @GetMapping("/individual-reports")
-    public String viewReports(Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
-            return "redirect:/login";
-        }
-        return "redirect:/user/evaluation";
-    }
-
-    @GetMapping("/individual-reports/view/{id}")
-    public String viewIndividualReport(Authentication authentication, @PathVariable String id) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
-            return "redirect:/login";
-        }
-        return "redirect:/user/evaluation?report=" + id;
-    }
-
-    @PostMapping("/individual-reports/view/{id}/refresh")
-    public String refreshIndividualReport(Authentication authentication, @PathVariable String id) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
-            return "redirect:/login";
-        }
-        userIndividualReportRunService.refreshRun(currentUser.getEmail(), id);
-        return "redirect:/user/evaluation?report=" + id;
-    }
-
-    @PostMapping("/individual-reports/view/{id}/refresh-all-indicators")
-    public String refreshIndividualReportWithAllIndicators(Authentication authentication, @PathVariable String id) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
-            return "redirect:/login";
-        }
-        userIndividualReportRunService.refreshRunWithAllIndicators(currentUser.getEmail(), id);
-        return "redirect:/user/evaluation?report=" + id;
-    }
-
 
     private int computeHIndex(List<ScholardexPublicationView> publications) {
         int n = publications.size();

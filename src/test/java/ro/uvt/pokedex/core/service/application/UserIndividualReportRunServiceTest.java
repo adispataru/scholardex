@@ -149,30 +149,8 @@ class UserIndividualReportRunServiceTest {
         user.setResearcherId("r-1");
         when(userService.getUserByEmail("u@uvt.ro")).thenReturn(Optional.of(user));
 
-        when(indicatorResultService.refreshLatest("u@uvt.ro", "ind-1"))
-                .thenReturn(new IndicatorApplyResultDto(
-                        "latest-1",
-                        "ind-1",
-                        "user/indicators-apply-publications",
-                        Map.of(),
-                        new IndicatorApplyResultDto.Summary(7.0, null, List.of(), List.of()),
-                        IndicatorApplyResultDto.Source.COMPUTED,
-                        Instant.now(),
-                        Instant.now(),
-                        1
-                ));
-        when(indicatorResultService.refreshLatest("u@uvt.ro", "ind-2"))
-                .thenReturn(new IndicatorApplyResultDto(
-                        "latest-2",
-                        "ind-2",
-                        "user/indicators-apply-publications",
-                        Map.of(),
-                        new IndicatorApplyResultDto.Summary(3.0, null, List.of(), List.of()),
-                        IndicatorApplyResultDto.Source.COMPUTED,
-                        Instant.now(),
-                        Instant.now(),
-                        1
-                ));
+        when(indicatorResultService.getLatestRefreshVersion("u@uvt.ro", "ind-1")).thenReturn(1);
+        when(indicatorResultService.getLatestRefreshVersion("u@uvt.ro", "ind-2")).thenReturn(1);
 
         when(userReportFacade.computeReportScopedIndividualReport("u@uvt.ro", "rep-1"))
                 .thenReturn(Optional.of(new ReportScopedIndividualReportComputation(
@@ -225,8 +203,8 @@ class UserIndividualReportRunServiceTest {
         assertEquals(11.0, dto.get().criteriaScores().get(0));
         assertEquals(10.0, dto.get().indicatorScoresByIndicatorId().get("ind-1"));
         assertEquals(1.0, dto.get().indicatorScoresByIndicatorId().get("ind-2"));
-        verify(indicatorResultService).refreshLatest("u@uvt.ro", "ind-1");
-        verify(indicatorResultService).refreshLatest("u@uvt.ro", "ind-2");
+        verify(indicatorResultService).getLatestRefreshVersion("u@uvt.ro", "ind-1");
+        verify(indicatorResultService).getLatestRefreshVersion("u@uvt.ro", "ind-2");
         verify(indicatorResultService, never()).getOrCreateLatest(any(), any());
     }
 
@@ -239,5 +217,16 @@ class UserIndividualReportRunServiceTest {
         assertTrue(dto.isEmpty());
         verify(indicatorResultService, never()).refreshLatest(any(), any());
         verify(runRepository, never()).save(any(UserIndividualReportRun.class));
+    }
+
+    @Test
+    void invalidateLatestRunsDeletesTransientRunsForUser() {
+        when(runRepository.deleteByUserEmail("u@uvt.ro")).thenReturn(2L);
+
+        long deleted = service.invalidateLatestRuns("u@uvt.ro");
+
+        assertEquals(2L, deleted);
+        verify(runRepository).deleteByUserEmail("u@uvt.ro");
+        verify(userReportFacade, never()).computeReportScopedIndividualReport(any(), any());
     }
 }

@@ -816,14 +816,13 @@ public class ResearcherWorkspaceController {
 
         final String qLower = q.toLowerCase();
 
-        // Load the researcher's own publications once; reuse for pubs + citations
+        // Load the researcher's own publications once
         var pubsOpt = userPublicationFacade.buildUserPublicationsView(userEmail);
 
-        // Publications — researcher-scoped, title match, not yet cited, cap at 10
+        // Publications — researcher-scoped, title match, cap at 10
         pubsOpt.ifPresent(vm -> vm.publications().stream()
                 .filter(p -> p.getTitle() != null
-                        && p.getTitle().toLowerCase().contains(qLower)
-                        && p.getCitedbyCount() == 0)
+                        && p.getTitle().toLowerCase().contains(qLower))
                 .limit(10)
                 .map(p -> new WorkspaceSearchResult(
                         p.getId(),
@@ -846,20 +845,6 @@ public class ResearcherWorkspaceController {
                         ai.getDate(),
                         "/user/workspace#activities"))
                 .forEach(results::add);
-
-        // Citations — researcher's publications that have been cited, title match, cap at 10
-        pubsOpt.ifPresent(vm -> vm.publications().stream()
-                .filter(p -> p.getTitle() != null
-                        && p.getTitle().toLowerCase().contains(qLower)
-                        && p.getCitedbyCount() > 0)
-                .limit(10)
-                .map(p -> new WorkspaceSearchResult(
-                        p.getId(),
-                        EntityType.CITATION,
-                        p.getTitle(),
-                        p.getCoverDate(),
-                        "/user/publications/citations?id=" + p.getId()))
-                .forEach(results::add));
 
         return results;
     }
@@ -938,7 +923,7 @@ public class ResearcherWorkspaceController {
                     "Individual reports available",
                     reportCount + " individual report(s) are available for your review.",
                     null,
-                    "/user/individual-reports"
+                    "/user/evaluation"
             ));
         }
 

@@ -38,6 +38,10 @@ class PublicationAuthorshipDecisionServiceTest {
     private ScholardexPublicationFactRepository publicationFactRepository;
     @Mock
     private ScholardexAuthorshipFactRepository authorshipFactRepository;
+    @Mock
+    private UserIndicatorResultService userIndicatorResultService;
+    @Mock
+    private UserIndividualReportRunService userIndividualReportRunService;
 
     private PublicationAuthorshipDecisionService service;
 
@@ -47,7 +51,9 @@ class PublicationAuthorshipDecisionServiceTest {
                 decisionRepository,
                 userRepository,
                 publicationFactRepository,
-                authorshipFactRepository
+                authorshipFactRepository,
+                userIndicatorResultService,
+                userIndividualReportRunService
         );
     }
 
@@ -77,6 +83,8 @@ class PublicationAuthorshipDecisionServiceTest {
         assertThat(saved.getSnapshot().getLinkedAuthorIds()).containsExactly("sauth_primary", "sauth_secondary");
         verify(publicationFactRepository, never()).save(any());
         verify(authorshipFactRepository, never()).save(any());
+        verify(userIndicatorResultService).invalidateLatestResults("user@example.com");
+        verify(userIndividualReportRunService).invalidateLatestRuns("user@example.com");
     }
 
     @Test
@@ -112,6 +120,8 @@ class PublicationAuthorshipDecisionServiceTest {
         assertThat(saved.getCreatedAt()).isEqualTo(Instant.parse("2026-04-16T09:00:00Z"));
         assertThat(saved.getStatus()).isEqualTo(PublicationAuthorshipDecision.Status.REJECTED);
         assertThat(saved.getSnapshot().getPublication().getTitle()).isEqualTo("Original title");
+        verify(userIndicatorResultService).invalidateLatestResults("user@example.com");
+        verify(userIndividualReportRunService).invalidateLatestRuns("user@example.com");
     }
 
     @Test
@@ -121,6 +131,19 @@ class PublicationAuthorshipDecisionServiceTest {
         boolean cleared = service.clearDecision("user@example.com", "spub_1");
 
         assertThat(cleared).isTrue();
+        verify(userIndicatorResultService).invalidateLatestResults("user@example.com");
+        verify(userIndividualReportRunService).invalidateLatestRuns("user@example.com");
+    }
+
+    @Test
+    void clearDecisionDoesNotInvalidateWhenNothingWasDeleted() {
+        when(decisionRepository.deleteByUserEmailAndPublicationId("user@example.com", "spub_1")).thenReturn(0L);
+
+        boolean cleared = service.clearDecision("user@example.com", "spub_1");
+
+        assertThat(cleared).isFalse();
+        verify(userIndicatorResultService, never()).invalidateLatestResults(any());
+        verify(userIndividualReportRunService, never()).invalidateLatestRuns(any());
     }
 
     @Test
@@ -195,6 +218,8 @@ class PublicationAuthorshipDecisionServiceTest {
 
         assertThat(saved.getSnapshot()).isNotNull();
         assertThat(saved.getSnapshot().getPublication().getTitle()).isEqualTo("Paper title");
+        verify(userIndicatorResultService).invalidateLatestResults("user@example.com");
+        verify(userIndividualReportRunService).invalidateLatestRuns("user@example.com");
     }
 
     @Test
@@ -220,6 +245,8 @@ class PublicationAuthorshipDecisionServiceTest {
         assertThat(result.succeededByPublicationId()).containsOnlyKeys("spub_1");
         assertThat(result.succeededByPublicationId().get("spub_1").getStatus()).isEqualTo(PublicationAuthorshipDecision.Status.CONFIRMED);
         assertThat(result.failures()).containsExactly(new PublicationAuthorshipDecisionService.DecisionFailure("spub_2", "Only pending publications can be reviewed in bulk."));
+        verify(userIndicatorResultService).invalidateLatestResults("user@example.com");
+        verify(userIndividualReportRunService).invalidateLatestRuns("user@example.com");
     }
 
     @Test

@@ -10,4 +10,6 @@ import java.util.Optional;
 public interface UserIndicatorResultRepository extends MongoRepository<UserIndicatorResult, String> {
 
     Optional<UserIndicatorResult> findByUserEmailAndIndicatorIdAndMode(String userEmail, String indicatorId, UserIndicatorResult.Mode mode);
+
+    long deleteByUserEmailAndMode(String userEmail, UserIndicatorResult.Mode mode);
 }

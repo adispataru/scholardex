@@ -27,15 +27,21 @@ public class PublicationAuthorshipDecisionService {
     private final UserRepository userRepository;
     private final ScholardexPublicationFactRepository publicationFactRepository;
     private final ScholardexAuthorshipFactRepository authorshipFactRepository;
+    private final UserIndicatorResultService userIndicatorResultService;
+    private final UserIndividualReportRunService userIndividualReportRunService;
 
     public PublicationAuthorshipDecisionService(PublicationAuthorshipDecisionRepository decisionRepository,
                                                 UserRepository userRepository,
                                                 ScholardexPublicationFactRepository publicationFactRepository,
-                                                ScholardexAuthorshipFactRepository authorshipFactRepository) {
+                                                ScholardexAuthorshipFactRepository authorshipFactRepository,
+                                                UserIndicatorResultService userIndicatorResultService,
+                                                UserIndividualReportRunService userIndividualReportRunService) {
         this.decisionRepository = decisionRepository;
         this.userRepository = userRepository;
         this.publicationFactRepository = publicationFactRepository;
         this.authorshipFactRepository = authorshipFactRepository;
+        this.userIndicatorResultService = userIndicatorResultService;
+        this.userIndividualReportRunService = userIndividualReportRunService;
     }
 
     public Optional<PublicationAuthorshipDecision> findDecision(String userEmail, String publicationId) {
@@ -58,6 +64,15 @@ public class PublicationAuthorshipDecisionService {
                                                         String publicationId,
                                                         PublicationAuthorshipDecision.Status status,
                                                         String reason) {
+        PublicationAuthorshipDecision saved = upsertDecisionInternal(userEmail, publicationId, status, reason);
+        invalidateUserReportingCaches(userEmail);
+        return saved;
+    }
+
+    private PublicationAuthorshipDecision upsertDecisionInternal(String userEmail,
+                                                                 String publicationId,
+                                                                 PublicationAuthorshipDecision.Status status,
+                                                                 String reason) {
         if (status == null) {
             throw new IllegalArgumentException("status is required");
         }
@@ -133,17 +148,24 @@ public class PublicationAuthorshipDecisionService {
                 continue;
             }
             try {
-                PublicationAuthorshipDecision saved = upsertDecision(userEmail, publicationId, status, reason);
+                PublicationAuthorshipDecision saved = upsertDecisionInternal(userEmail, publicationId, status, reason);
                 succeeded.put(publicationId, saved);
             } catch (IllegalArgumentException | IllegalStateException ex) {
                 failed.add(new DecisionFailure(publicationId, ex.getMessage()));
             }
         }
+        if (!succeeded.isEmpty()) {
+            invalidateUserReportingCaches(userEmail);
+        }
         return new BulkDecisionResult(succeeded, failed);
     }
 
     public boolean clearDecision(String userEmail, String publicationId) {
-        return decisionRepository.deleteByUserEmailAndPublicationId(userEmail, publicationId) > 0;
+        boolean deleted = decisionRepository.deleteByUserEmailAndPublicationId(userEmail, publicationId) > 0;
+        if (deleted) {
+            invalidateUserReportingCaches(userEmail);
+        }
+        return deleted;
     }
 
     private PublicationAuthorshipDecision.Snapshot buildSnapshot(User user, ScholardexPublicationFact publication) {
@@ -216,6 +238,11 @@ public class PublicationAuthorshipDecisionService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private void invalidateUserReportingCaches(String userEmail) {
+        userIndicatorResultService.invalidateLatestResults(userEmail);
+        userIndividualReportRunService.invalidateLatestRuns(userEmail);
     }
 
     public record BulkDecisionResult(

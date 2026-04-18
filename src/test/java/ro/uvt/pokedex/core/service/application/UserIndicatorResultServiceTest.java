@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -169,6 +170,18 @@ class UserIndicatorResultServiceTest {
         IndicatorApplyResultDto dto = service.refreshLatest("u@uvt.ro", "ind-1");
 
         assertEquals(4, dto.refreshVersion());
+    }
+
+    @Test
+    void invalidateLatestResultsDeletesLatestOnly() {
+        when(userIndicatorResultRepository.deleteByUserEmailAndMode("u@uvt.ro", UserIndicatorResult.Mode.LATEST))
+                .thenReturn(3L);
+
+        long deleted = service.invalidateLatestResults("u@uvt.ro");
+
+        assertEquals(3L, deleted);
+        verify(userIndicatorResultRepository).deleteByUserEmailAndMode("u@uvt.ro", UserIndicatorResult.Mode.LATEST);
+        verify(userReportFacade, never()).buildIndicatorApplyView(any(), any());
     }
 
     @Test
