@@ -275,6 +275,14 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
                     }
                 }
             }
+            if (publication.getAffiliations() != null) {
+                for (String affiliationId : publication.getAffiliations()) {
+                    String normalized = normalizeBlank(affiliationId, context);
+                    if (normalized != null) {
+                        sourceAffiliationIds.add(normalized);
+                    }
+                }
+            }
             List<String> authorAffiliations = publication.getAuthorAffiliationSourceIds();
             if (authorAffiliations != null) {
                 for (String authorAffiliation : authorAffiliations) {
@@ -424,7 +432,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         if (sourceAuthorIds == null || sourceAuthorIds.isEmpty()) {
             return new AuthorBridgeResult(List.of(), List.of(), List.of());
         }
-        String sourceToken = normalizeToken(source, context);
+        String sourceToken = sourceLinkService.normalizeSource(source);
         Map<String, AuthorBridgeEntry> byCanonicalId = new LinkedHashMap<>();
         LinkedHashSet<String> pendingSourceIds = new LinkedHashSet<>();
         for (String rawAuthorId : sourceAuthorIds) {
@@ -497,7 +505,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         fact.setAuthorIds(authorBridgeResult.canonicalAuthorIds());
         fact.setPendingAuthorSourceIds(authorBridgeResult.pendingSourceIds());
         fact.setCorrespondingAuthors(scopusFact.getCorrespondingAuthors() == null ? List.of() : new ArrayList<>(scopusFact.getCorrespondingAuthors()));
-        fact.setAffiliationIds(scopusFact.getAffiliations() == null ? List.of() : new ArrayList<>(scopusFact.getAffiliations()));
+        fact.setAffiliationIds(resolveCanonicalPublicationAffiliationIds(scopusFact, context));
         fact.setForumId(scopusFact.getForumId());
         fact.setVolume(scopusFact.getVolume());
         fact.setIssueIdentifier(scopusFact.getIssueIdentifier());
@@ -591,12 +599,12 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
                 if (normalizedSourceAffiliationId == null) {
                     continue;
                 }
-                Optional<ScholardexSourceLink> resolvedAffiliation = resolveAffiliationSourceLink(
+                String canonicalAffiliationId = resolveCanonicalAffiliationId(
                         fact.getSource(),
                         normalizedSourceAffiliationId,
                         context
                 );
-                if (resolvedAffiliation.isEmpty() || isBlank(resolvedAffiliation.get().getCanonicalEntityId())) {
+                if (isBlank(canonicalAffiliationId)) {
                     openPublicationAuthorAffiliationConflict(
                             fact,
                             sourceAuthorId,
@@ -606,7 +614,6 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
                     );
                     continue;
                 }
-                String canonicalAffiliationId = resolvedAffiliation.get().getCanonicalEntityId();
                 String dedupKey = normalizeToken(fact.getId(), context)
                         + "|" + normalizeToken(authorEntry.canonicalAuthorId(), context)
                         + "|" + normalizeToken(canonicalAffiliationId, context)
@@ -666,6 +673,52 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
             }
         }
         return findSourceLink(ScholardexEntityType.AFFILIATION, SOURCE_SCOPUS, sourceAffiliationId, context);
+    }
+
+    private String resolveCanonicalAffiliationId(String source, String sourceAffiliationId, ChunkContext context) {
+        String normalizedSourceAffiliationId = normalizeBlank(sourceAffiliationId, context);
+        if (normalizedSourceAffiliationId == null) {
+            return null;
+        }
+        if (normalizedSourceAffiliationId.startsWith("saff_")) {
+            return normalizedSourceAffiliationId;
+        }
+        Optional<ScholardexSourceLink> resolved = resolveAffiliationSourceLink(source, normalizedSourceAffiliationId, context);
+        if (resolved.isEmpty() || isBlank(resolved.get().getCanonicalEntityId())) {
+            return null;
+        }
+        return resolved.get().getCanonicalEntityId();
+    }
+
+    private List<String> resolveCanonicalPublicationAffiliationIds(ScopusPublicationFact sourceFact, ChunkContext context) {
+        if (sourceFact == null) {
+            return List.of();
+        }
+        LinkedHashSet<String> canonicalAffiliationIds = new LinkedHashSet<>();
+        addResolvedCanonicalAffiliationIds(canonicalAffiliationIds, sourceFact.getAffiliations(), sourceFact.getSource(), context);
+        if (sourceFact.getAuthorAffiliationSourceIds() != null) {
+            for (String authorAffiliationSourceId : sourceFact.getAuthorAffiliationSourceIds()) {
+                addResolvedCanonicalAffiliationIds(canonicalAffiliationIds, splitDash(authorAffiliationSourceId, context), sourceFact.getSource(), context);
+            }
+        }
+        return new ArrayList<>(canonicalAffiliationIds);
+    }
+
+    private void addResolvedCanonicalAffiliationIds(
+            LinkedHashSet<String> canonicalAffiliationIds,
+            List<String> sourceAffiliationIds,
+            String source,
+            ChunkContext context
+    ) {
+        if (sourceAffiliationIds == null || sourceAffiliationIds.isEmpty()) {
+            return;
+        }
+        for (String sourceAffiliationId : sourceAffiliationIds) {
+            String canonicalAffiliationId = resolveCanonicalAffiliationId(source, sourceAffiliationId, context);
+            if (!isBlank(canonicalAffiliationId)) {
+                canonicalAffiliationIds.add(canonicalAffiliationId);
+            }
+        }
     }
 
     private Optional<ScholardexSourceLink> findSourceLink(
@@ -1096,7 +1149,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
     }
 
     private String buildCanonicalAuthorFallbackId(String sourceToken, String sourceAuthorId, ChunkContext context) {
-        String normalizedSource = isBlank(sourceToken) ? "unknown" : sourceToken;
+        String normalizedSource = isBlank(sourceToken) ? "unknown" : normalizeToken(sourceToken, context);
         return "sauth_" + shortHash("source|" + normalizedSource + "|author|" + normalizeToken(sourceAuthorId, context));
     }
 

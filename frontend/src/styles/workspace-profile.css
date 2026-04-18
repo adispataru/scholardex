@@ -288,7 +288,7 @@
 
 .app-ws-prof__add-id-btn {
   align-self: flex-start;
-  font-size: 0.8rem;
+  padding-left: 0;   /* btn-link has no side padding by default — align with inputs */
 }
 
 .app-ws-prof__form-row {
@@ -359,7 +359,7 @@
   align-items: center;
   gap: 0.35rem;
   font-size: 0.83rem;
-  color: var(--app-color-text);
+  color: var(--app-color-text-strong);
   cursor: pointer;
 }
 

@@ -613,13 +613,22 @@
 
     // 4. Banner
     var banner = document.getElementById('eval-compare-banner');
-    var bannerDate = document.getElementById('eval-compare-banner-date');
-    if (bannerDate && data.runA && data.runA.createdAt) {
+    var bannerLabel = document.getElementById('eval-compare-banner-label');
+    if (bannerLabel && data.runA) {
+      var isSnapshot = data.runA.status === 'SNAPSHOT';
+      var dateStr = '—';
       try {
-        bannerDate.textContent = new Date(data.runA.createdAt).toLocaleString(undefined, {
-          year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-        });
-      } catch (e) { bannerDate.textContent = data.runA.createdAt; }
+        if (data.runA.createdAt) {
+          dateStr = new Date(data.runA.createdAt).toLocaleString(undefined, {
+            year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+          });
+        }
+      } catch (e) { dateStr = data.runA.createdAt || '—'; }
+      if (isSnapshot && data.runA.name) {
+        bannerLabel.textContent = 'snapshot "' + data.runA.name + '" (' + dateStr + ')';
+      } else {
+        bannerLabel.textContent = 'run from ' + dateStr;
+      }
     }
     if (banner) banner.hidden = false;
 
@@ -657,10 +666,18 @@
     if (picker)     picker.hidden     = true;
   }
 
-  function fetchAndApplyComparison(root, compareRunId, currentRunId, reportId) {
-    // runA = past run, runB = current run → delta = current − past (positive = improvement)
-    var url = '/user/evaluation/compare?runA=' + encodeURIComponent(compareRunId) +
-              '&runB=' + encodeURIComponent(currentRunId);
+  function fetchAndApplyComparison(root, compareId, currentRunId, reportId) {
+    // compareId is either a plain runId or 'snap:{snapshotId}'
+    var url;
+    if (compareId && compareId.indexOf('snap:') === 0) {
+      var snapshotId = compareId.slice(5);
+      url = '/user/evaluation/compare-snapshot?snapshotId=' + encodeURIComponent(snapshotId) +
+            '&runId=' + encodeURIComponent(currentRunId);
+    } else {
+      // runA = past run, runB = current run → delta = current − past (positive = improvement)
+      url = '/user/evaluation/compare?runA=' + encodeURIComponent(compareId) +
+            '&runB=' + encodeURIComponent(currentRunId);
+    }
     fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
       .then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -669,7 +686,7 @@
       .then(function (data) {
         applyComparisonDeltas(root, data);
         var params = new URLSearchParams(window.location.search);
-        params.set('compare', compareRunId);
+        params.set('compare', compareId);
         if (reportId) params.set('report', reportId);
         history.replaceState(null, '', window.location.pathname + '?' + params.toString());
       })
@@ -736,6 +753,236 @@
     }
   }
 
+  // ── Snapshot utilities ────────────────────────────────────────────────────
+
+  function _escHtml(str) {
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function _csrfHeaders() {
+    var hMeta = document.querySelector('meta[name="_csrf_header"]');
+    var tMeta = document.querySelector('meta[name="_csrf"]');
+    var h = { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
+    if (hMeta && tMeta) h[hMeta.content] = tMeta.content;
+    return h;
+  }
+
+  function _fmtSnapDate(iso) {
+    try {
+      return iso ? new Date(iso).toLocaleString(undefined, {
+        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      }) : '—';
+    } catch (e) { return iso || '—'; }
+  }
+
+  // ── Snapshot panel ────────────────────────────────────────────────────────
+
+  function initSnapshotPanel(root, reportId, currentRunId) {
+    // "Save Snapshot" button
+    var saveBtn = document.getElementById('eval-save-snapshot-btn');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', function () {
+        _saveSnapshot(root, reportId, currentRunId);
+      });
+    }
+
+    // "My Snapshots" toggle
+    var snapshotsBtn = document.getElementById('eval-snapshots-btn');
+    var snapshotsPanel = document.getElementById('eval-snapshots-panel');
+    if (snapshotsBtn && snapshotsPanel) {
+      snapshotsBtn.addEventListener('click', function () {
+        if (snapshotsPanel.hidden) {
+          snapshotsPanel.hidden = false;
+          _loadSnapshotList(root, reportId, currentRunId);
+        } else {
+          snapshotsPanel.hidden = true;
+        }
+      });
+    }
+
+    // Close button inside panel
+    var closeBtn = document.getElementById('eval-snapshots-close');
+    if (closeBtn && snapshotsPanel) {
+      closeBtn.addEventListener('click', function () { snapshotsPanel.hidden = true; });
+    }
+
+    // Load snapshots into compare picker on page init (async, non-blocking)
+    _loadSnapshotsForPicker(reportId);
+  }
+
+  function _saveSnapshot(root, reportId, currentRunId) {
+    var defaultName = 'Snapshot ' + new Date().toLocaleString(undefined, {
+      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+    var name = window.prompt('Name for this snapshot:', defaultName);
+    if (name === null) return; // cancelled
+    if (!name.trim()) name = defaultName;
+
+    var saveBtn = document.getElementById('eval-save-snapshot-btn');
+    if (saveBtn) saveBtn.disabled = true;
+
+    fetch('/user/evaluation/snapshots', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: _csrfHeaders(),
+      body: JSON.stringify({ reportId: reportId, name: name.trim() })
+    })
+    .then(function (res) {
+      if (res.status === 422) throw new Error('limit');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    })
+    .then(function (snapshot) {
+      if (saveBtn) saveBtn.disabled = false;
+      _showSnapshotFeedback('Snapshot saved: "' + snapshot.name + '"', false);
+      var panel = document.getElementById('eval-snapshots-panel');
+      if (panel && !panel.hidden) _loadSnapshotList(root, reportId, currentRunId);
+      _loadSnapshotsForPicker(reportId);
+    })
+    .catch(function (err) {
+      if (saveBtn) saveBtn.disabled = false;
+      if (err.message === 'limit') {
+        _showSnapshotFeedback('Snapshot limit reached (max 50 per report).', true);
+      } else {
+        _showSnapshotFeedback('Failed to save snapshot.', true);
+      }
+    });
+  }
+
+  function _showSnapshotFeedback(msg, isError) {
+    var el = document.getElementById('eval-snapshot-feedback');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'app-eval-snapshot-feedback' + (isError ? ' app-eval-snapshot-feedback--error' : ' app-eval-snapshot-feedback--ok');
+    el.hidden = false;
+    setTimeout(function () { el.hidden = true; el.textContent = ''; }, 4000);
+  }
+
+  function _loadSnapshotList(root, reportId, currentRunId) {
+    var body = document.getElementById('eval-snapshots-body');
+    if (!body) return;
+    body.innerHTML = '<p class="app-eval-snapshots-panel__loading">Loading\u2026</p>';
+
+    fetch('/user/evaluation/snapshots?report=' + encodeURIComponent(reportId), {
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json' }
+    })
+    .then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+    .then(function (snapshots) { _renderSnapshotList(body, snapshots, root, reportId, currentRunId); })
+    .catch(function () {
+      body.innerHTML = '<p class="app-eval-snapshots-panel__empty">Failed to load snapshots.</p>';
+    });
+  }
+
+  function _renderSnapshotList(body, snapshots, root, reportId, currentRunId) {
+    if (!snapshots || snapshots.length === 0) {
+      body.innerHTML = '<p class="app-eval-snapshots-panel__empty">No snapshots yet. Click \u201cSave Snapshot\u201d to create one.</p>';
+      return;
+    }
+    var html = '<ul class="app-eval-snapshots-list">';
+    snapshots.forEach(function (snap) {
+      var scoreStr = snap.totalScore != null ? snap.totalScore.toFixed(2) : null;
+      html +=
+        '<li class="app-eval-snapshots-item">' +
+          '<div class="app-eval-snapshots-item__body">' +
+            '<span class="app-eval-snapshots-item__name">' + _escHtml(snap.name) + '</span>' +
+            '<span class="app-eval-snapshots-item__meta">' + _escHtml(_fmtSnapDate(snap.createdAt)) +
+              (scoreStr ? ' &bull; ' + scoreStr : '') +
+            '</span>' +
+          '</div>' +
+          '<div class="app-eval-snapshots-item__actions">' +
+            '<button type="button" class="btn btn-sm btn-outline-primary app-eval-snapshots-item__compare-btn"' +
+              ' data-snap-id="' + _escHtml(snap.id) + '" data-snap-name="' + _escHtml(snap.name) + '">' +
+              '<i class="fa-solid fa-code-compare fa-xs" aria-hidden="true"></i> Compare' +
+            '</button>' +
+            '<button type="button" class="btn btn-sm btn-outline-danger app-eval-snapshots-item__delete-btn"' +
+              ' data-snap-id="' + _escHtml(snap.id) + '" data-snap-name="' + _escHtml(snap.name) + '"' +
+              ' aria-label="Delete snapshot">' +
+              '<i class="fa-solid fa-trash fa-xs" aria-hidden="true"></i>' +
+            '</button>' +
+          '</div>' +
+        '</li>';
+    });
+    html += '</ul>';
+    html += '<p class="app-eval-snapshots-panel__cap">' + snapshots.length + ' / 50 snapshots used</p>';
+    body.innerHTML = html;
+
+    body.querySelectorAll('.app-eval-snapshots-item__compare-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var snapId = btn.getAttribute('data-snap-id');
+        fetchAndApplyComparison(root, 'snap:' + snapId, currentRunId, reportId);
+        var panel = document.getElementById('eval-snapshots-panel');
+        if (panel) panel.hidden = true;
+      });
+    });
+
+    body.querySelectorAll('.app-eval-snapshots-item__delete-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var snapId   = btn.getAttribute('data-snap-id');
+        var snapName = btn.getAttribute('data-snap-name');
+        if (!confirm('Delete snapshot \u201c' + snapName + '\u201d? This cannot be undone.')) return;
+        _deleteSnapshot(body, snapId, root, reportId, currentRunId);
+      });
+    });
+  }
+
+  function _deleteSnapshot(body, snapshotId, root, reportId, currentRunId) {
+    var hMeta = document.querySelector('meta[name="_csrf_header"]');
+    var tMeta = document.querySelector('meta[name="_csrf"]');
+    var deleteHeaders = { 'X-Requested-With': 'XMLHttpRequest' };
+    if (hMeta && tMeta) deleteHeaders[hMeta.content] = tMeta.content;
+
+    fetch('/user/evaluation/snapshots/' + encodeURIComponent(snapshotId), {
+      method: 'DELETE',
+      credentials: 'same-origin',
+      headers: deleteHeaders
+    })
+    .then(function (res) {
+      if (!res.ok && res.status !== 204) throw new Error('HTTP ' + res.status);
+      // If this snapshot was the active comparison, clear it
+      if (_compareData && _compareData.runA && _compareData.runA.runId === 'snap:' + snapshotId) {
+        clearComparisonDeltas(root);
+        var params = new URLSearchParams(window.location.search);
+        params.delete('compare');
+        history.replaceState(null, '', window.location.pathname + (params.toString() ? '?' + params.toString() : ''));
+      }
+      _loadSnapshotList(root, reportId, currentRunId);
+      _loadSnapshotsForPicker(reportId);
+    })
+    .catch(function () { _showSnapshotFeedback('Failed to delete snapshot.', true); });
+  }
+
+  function _loadSnapshotsForPicker(reportId) {
+    fetch('/user/evaluation/snapshots?report=' + encodeURIComponent(reportId), {
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json' }
+    })
+    .then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+    .then(function (snapshots) { _updateSnapshotsInCompareSelect(snapshots); })
+    .catch(function () { /* picker snapshot load failure is non-fatal */ });
+  }
+
+  function _updateSnapshotsInCompareSelect(snapshots) {
+    var select = document.getElementById('eval-compare-select');
+    if (!select) return;
+    // Remove existing snapshot group if present
+    var existing = select.querySelector('optgroup[data-snapshots]');
+    if (existing) existing.remove();
+    if (!snapshots || snapshots.length === 0) return;
+    var group = document.createElement('optgroup');
+    group.label = 'Saved Snapshots';
+    group.setAttribute('data-snapshots', '');
+    snapshots.forEach(function (snap) {
+      var opt = document.createElement('option');
+      opt.value = 'snap:' + snap.id;
+      opt.textContent = snap.name + ' (' + _fmtSnapDate(snap.createdAt) + ')';
+      group.appendChild(opt);
+    });
+    select.appendChild(group);
+  }
+
   // ── Boot ──────────────────────────────────────────────────────────────────
 
   function boot() {
@@ -753,6 +1000,7 @@
     initReportSwitcher();
     var currentRunId = root.getAttribute('data-run-id') || (window.evalCurrentRunId || null);
     initComparisonControls(root, reportId, currentRunId);
+    initSnapshotPanel(root, reportId, currentRunId);
 
     // Apply hash state after a tick so the DOM is stable
     setTimeout(function () { applyHashState(root); }, 0);

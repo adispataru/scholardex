@@ -259,15 +259,21 @@ Done history moved to `TASKS-done.md`.
     Dependency: `H37.2`, `H37.3`.
     Exit criteria: breakdown chart renders for each criterion type (publication/activity/citation); ordering is correct; cross-reference highlight works; text alternative exists; both themes.
 
-  - [ ] `H37.8` **Saved report snapshots.**
-    Let researchers save a named snapshot of the current report state for later comparison:
-    — "Save snapshot" action in the report header prompts for a name (default: "Snapshot {timestamp}") and stores the current aggregate scores, per-indicator scores, and run metadata via `POST /user/evaluation/snapshots`.
-    — Snapshot storage: new entity/table (e.g. `EvaluationSnapshot`) with fields for `researcherId`, `reportId`, `name`, `createdAt`, `scoresJson`. Migration scripts included.
-    — "My Snapshots" panel lists saved snapshots with name, timestamp, and actions (load into comparison, delete with confirmation per §6.7).
-    — Snapshots appear as first-class options in the `H37.5` comparison run-picker, so a researcher can compare the current state against a saved snapshot, not just against prior runs.
-    — Limit: reasonable cap (e.g. 50 snapshots per researcher per report) with empty/full states per §6.6.
-    Dependency: `H37.2`, `H37.5`.
-    Exit criteria: snapshots save, list, delete, and compare correctly; migration runs cleanly on an existing database; empty state and cap handling work; no stale data after deletion.
+  - [x] `H37.8` **Saved report snapshots.**
+    Completed: 2026-04-17.
+    Handover:
+    - `EvaluationSnapshot` MongoDB document (`evaluationSnapshots` collection) stores `userEmail`, `researcherId`, `reportId`, `name`, `createdAt`, `indicatorScores` (Map<String,Double>), `criteriaScores` (Map<Integer,Double>). Compound index on `(userEmail, reportId, createdAt DESC)`.
+    - `EvaluationSnapshotRepository` provides `findByUserEmailAndReportIdOrderByCreatedAtDesc`, `countByUserEmailAndReportId`, `findByIdAndUserEmail`.
+    - Four REST endpoints in `EvaluationWorkspaceController`: `POST /user/evaluation/snapshots` (create, 50-cap enforced via 422), `GET /user/evaluation/snapshots?report=` (list), `GET /user/evaluation/snapshots/{id}` (detail), `DELETE /user/evaluation/snapshots/{id}`.
+    - New `GET /user/evaluation/compare-snapshot?snapshotId={id}&runId={id}` endpoint computes `ComparisonResponse` by diffing a snapshot's score maps against the current run; returns `runA.status = "SNAPSHOT"` and `runA.name = snap.getName()` so the banner can identify it.
+    - `RunSummary` record gained a nullable `name` field; all existing instantiation sites pass `null`.
+    - Toolbar: "Save Snapshot" button (browser prompt for name, default "Snapshot {timestamp}") and "My Snapshots" toggle button added. Inline feedback span (`#eval-snapshot-feedback`) shows save/delete results for 4 s.
+    - "My Snapshots" collapsible panel renders between the compare banner and the aggregate panel. Shows snapshot name, date, total score, "Compare" and delete (with `confirm()`) actions.
+    - Compare picker (`#eval-compare-select`) gains a `<optgroup label="Saved Snapshots">` populated asynchronously on init and after any save/delete.
+    - `fetchAndApplyComparison` detects `snap:{id}` prefix and routes to `/compare-snapshot` instead of `/compare`.
+    - Compare banner updated to `eval-compare-banner-label` ID; shows `snapshot "{name}" ({date})` for snapshot comparisons and `run from {date}` for run comparisons.
+    - Deleting the active comparison snapshot automatically clears the comparison deltas and the URL `?compare=` param.
+    - `compileJava` clean; `UserViewControllerContractTest` passes; both verify scripts pass.
 
   - [ ] `H37.9` **Responsive behavior and accessibility audit.**
     Verify the evaluation workspace meets responsive and accessibility requirements:
@@ -320,7 +326,7 @@ Done history moved to `TASKS-done.md`.
     - PostgreSQL reporting views, canonical publication/authorship facts, admin/group/export paths, and scoring rules remain unchanged in this slice; the overlay is applied only in the shared user-scoped read/report assembly layer.
     - Targeted regression coverage now exists in `EffectiveAuthorshipReadServiceTest`, `UserPublicationFacadeTest`, and `UserReportFacadeTest`.
 
-  - [ ] `H38.2a` **Confirmed-only scoring inputs.**
+  - [x] `H38.2a` **Confirmed-only scoring inputs.** *(completed 2026-04-16)*
     Make user-scoped scoring and evaluation authoritative by counting only explicitly confirmed publications, while keeping publication discovery broad enough for authorship review.
     Deliverable: a scoring-specific authorship read path and rewired user scoring surfaces that consume only `CONFIRMED` publications, plus a contextual warning when a user has zero confirmed publications.
     Scope:
@@ -334,16 +340,34 @@ Done history moved to `TASKS-done.md`.
     - show a warning on scoring/evaluation surfaces only when the user has zero confirmed publications, explaining that only confirmed publications are counted in scoring
     - keep this rule out of the scoring services themselves; filtering stays in the read/assembly layer
     Exit criteria: pending and rejected publications do not contribute to user-scoped scores, totals, charts, or scoring exports; workspace discovery still shows candidate publications for review; users with zero confirmed publications see a clear warning rather than silently misleading results.
+    Handover:
+    - `EffectiveAuthorshipReadService` now exposes a scoring-specific confirmed-only path via `findConfirmedPublicationsForScoring(...)` and `hasConfirmedPublicationsForScoring(...)`; pending publications no longer enter scoring inputs, while confirmed publications are still reloaded directly by `publicationId`.
+    - `UserReportFacade` now uses confirmed-only publications for user-scoped scoring assembly: indicator apply, report-scoped computation, report-scoped detail, and the user scoring export methods; workspace discovery still uses the broader effective-authorship view.
+    - Publication-based apply/evaluation surfaces now receive `confirmedPublicationScoringWarning` when the user has zero confirmed publications; activity-only scoring surfaces do not receive that warning.
+    - `EvaluationWorkspaceController` now sets the report-level warning based on whether the selected report actually uses publication/citation scoring and whether the user has any confirmed publications for scoring.
+    - Targeted regression coverage now exists in `EffectiveAuthorshipReadServiceTest`, `UserReportFacadeTest`, and `EvaluationWorkspaceControllerContractTest`.
 
-  - [ ] `H38.3` **Inline confirm/reject actions in researcher publication surfaces.**
+  - [x] `H38.3` **Inline confirm/reject actions in researcher publication surfaces.** *(completed 2026-04-16)*
     Add authorship confirmation/rejection controls to the main user-facing publication views, starting with the workspace publications tab and any remaining publication detail/apply flows where authorship confusion is visible.
     Deliverable: UI actions `Confirm mine` / `Reject authorship`, optimistic feedback, and visible authorship state on affected rows/details.
     Exit criteria: a researcher can review and decide authorship from the normal publication workflow without admin intervention; state persists and reflects immediately in the same surface.
+    Handover:
+    - The workspace publications tab now uses a review-oriented publication list instead of the filtered effective-authorship set, so pending, confirmed, and rejected publications all remain visible for inline review.
+    - `UserPublicationsViewModel` now carries `authorshipReviewStateByPublicationId`, and the workspace publications endpoint returns per-publication review state with `PENDING`, `CONFIRMED`, or `REJECTED`, plus optional reason and `updatedAt`.
+    - `ResearcherWorkspaceController` now exposes workspace-only authorship decision endpoints: confirm, reject, and clear. All are authenticated and return a compact decision-state JSON response for in-place UI updates.
+    - The workspace publications detail panel now includes an “Authorship” section with row-level status badges, one-click confirm, inline two-step reject confirmation, clear decision, and inline success/error feedback. Rejected rows stay visible in place.
+    - Targeted regression coverage now exists in `UserPublicationFacadeTest`, `PublicationAuthorshipDecisionServiceTest`, and `ResearcherWorkspaceControllerContractTest`.
 
-  - [ ] `H38.4` **Suspicious-authorship triage queue.**
+  - [x] `H38.4` **Suspicious-authorship triage queue.** *(completed 2026-04-16)*
     Create a targeted "needs review" queue so users are asked only about likely false positives instead of every imported paper.
     Deliverable: heuristics and/or rule-based flags for suspicious authorship links (name mismatch, affiliation mismatch, topic jump, low evidence overlap, etc.) plus a dedicated queue/list in the user workspace.
     Exit criteria: the queue is populated deterministically from explicit heuristics; each flagged publication explains why it was flagged; researchers can confirm/reject directly from the queue.
+    Handover:
+    - The workspace Publications tab now includes a built-in `Needs review` filter mode rather than a separate page. It is driven by `suspiciousAuthorshipByPublicationId` plus `suspiciousPendingCount` on `UserPublicationsViewModel`, so the queue stays inside the existing master-detail review flow.
+    - `SuspiciousAuthorshipTriageService` computes deterministic pending-only suspicion flags from current canonical data using three explicit rules: `NAME_MISMATCH`, `NO_AFFILIATION_OVERLAP`, and `SECONDARY_ID_ONLY`. No suspicion state is persisted.
+    - `UserPublicationFacade.buildWorkspacePublicationsView(...)` now enriches the workspace publication payload with suspicious-authorship metadata while leaving scoring and legacy publication surfaces unchanged.
+    - The workspace UI now shows a review summary bar, `All` / `Needs review` filters, row-level `Needs review` badges, and a detail-panel explanation block listing the exact heuristic reasons. Confirming or rejecting an item while filtered removes it from the queue immediately and advances context to the next flagged row when possible.
+    - Targeted regression coverage now exists in `SuspiciousAuthorshipTriageServiceTest`, `UserPublicationFacadeTest`, `ResearcherWorkspaceControllerContractTest`, and the updated `UserViewControllerContractTest`.
 
   - [ ] `H38.5` **Bulk review workflow.**
     Support efficient cleanup of polluted Scopus identities by allowing multi-select or repeated queue decisions without opening each publication individually.

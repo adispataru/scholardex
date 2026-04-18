@@ -191,7 +191,7 @@ public class PostgresScholardexProjectionReadPort {
     public List<ScholardexAuthorView> findAuthorsByIdIn(Collection<String> ids) {
         if (ids == null || ids.isEmpty()) return List.of();
         return namedParameterJdbcTemplate.query(
-                "SELECT id, name, affiliation_ids FROM reporting_read.scholardex_author_view WHERE id IN (:ids)",
+                "SELECT id, name, alternative_names, affiliation_ids FROM reporting_read.scholardex_author_view WHERE id IN (:ids)",
                 new MapSqlParameterSource("ids", ids),
                 this::mapAuthor
         );
@@ -199,14 +199,14 @@ public class PostgresScholardexProjectionReadPort {
 
     public List<ScholardexAuthorView> findAllAuthors() {
         return namedParameterJdbcTemplate.query(
-                "SELECT id, name, affiliation_ids FROM reporting_read.scholardex_author_view",
+                "SELECT id, name, alternative_names, affiliation_ids FROM reporting_read.scholardex_author_view",
                 this::mapAuthor
         );
     }
 
     public List<ScholardexAuthorView> findAuthorsByNameContainsIgnoreCase(String name) {
         return namedParameterJdbcTemplate.query(
-                "SELECT id, name, affiliation_ids FROM reporting_read.scholardex_author_view WHERE name ILIKE :pattern",
+                "SELECT id, name, alternative_names, affiliation_ids FROM reporting_read.scholardex_author_view WHERE name ILIKE :pattern OR EXISTS (SELECT 1 FROM unnest(alternative_names) alt WHERE alt ILIKE :pattern)",
                 new MapSqlParameterSource("pattern", "%" + name + "%"),
                 this::mapAuthor
         );
@@ -327,6 +327,7 @@ public class PostgresScholardexProjectionReadPort {
         ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId(rs.getString("id"));
         author.setName(rs.getString("name"));
+        author.setAlternativeNames(toStringList(rs.getArray("alternative_names")));
         List<ScholardexAffiliationView> affiliations = toStringList(rs.getArray("affiliation_ids")).stream()
                 .map(affiliationId -> {
                     ScholardexAffiliationView affiliation = new ScholardexAffiliationView();

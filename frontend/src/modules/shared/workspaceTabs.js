@@ -117,6 +117,23 @@ function initSingleTabBar(container) {
     const hash = window.location.hash.slice(1);
     const matchingTab = tabs.find(t => t.dataset.tabId === hash);
     if (matchingTab) {
+      // Deactivate all server-rendered defaults before activating the hash tab.
+      // Without this, the server-rendered default tab (overview) keeps its
+      // active classes alongside the hash-matched tab, causing dual highlight.
+      tabs.forEach(t => {
+        if (t !== matchingTab) {
+          t.setAttribute('aria-selected', 'false');
+          t.classList.remove('app-tab-bar__tab--active');
+          t.tabIndex = -1;
+        }
+      });
+      panels.forEach(p => {
+        if (p !== getPanel(matchingTab)) {
+          p.hidden = true;
+          p.classList.remove('app-tab-bar__panel--active', 'app-tab-bar__panel--leaving');
+        }
+      });
+
       // Activate without transition (first render)
       const panel = getPanel(matchingTab);
       if (panel) {

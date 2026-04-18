@@ -2,6 +2,7 @@ package ro.uvt.pokedex.core.service.application;
 
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.Researcher;
+import ro.uvt.pokedex.core.model.user.User;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -19,6 +20,18 @@ public class ResearcherAuthorLookupService {
         addAll(keys, researcher.getScopusId());
         addAll(keys, researcher.getWosId());
         add(keys, researcher.getScholarId());
+        return new ArrayList<>(keys);
+    }
+
+    public List<String> resolveAuthorLookupKeysFromProfile(User.ResearcherProfile profile) {
+        if (profile == null) {
+            return List.of();
+        }
+        LinkedHashSet<String> keys = new LinkedHashSet<>();
+        add(keys, profile.getPrimaryScholardexAuthorId());
+        addAll(keys, profile.getScopusId());
+        addAll(keys, profile.getWosId());
+        add(keys, profile.getScholarId());
         return new ArrayList<>(keys);
     }
 

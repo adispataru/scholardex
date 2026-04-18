@@ -5,13 +5,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.service.application.model.PublicationAuthorshipReviewState;
 import ro.uvt.pokedex.core.service.application.model.PublicationMetadataPatch;
+import ro.uvt.pokedex.core.service.application.model.SuspiciousAuthorshipState;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -25,6 +29,10 @@ class UserPublicationFacadeTest {
     private ScholardexProjectionReadService scholardexProjectionReadService;
     @Mock
     private EffectiveAuthorshipReadService effectiveAuthorshipReadService;
+    @Mock
+    private PublicationAuthorshipDecisionService publicationAuthorshipDecisionService;
+    @Mock
+    private SuspiciousAuthorshipTriageService suspiciousAuthorshipTriageService;
 
     @InjectMocks
     private UserPublicationFacade facade;
@@ -55,6 +63,100 @@ class UserPublicationFacadeTest {
         assertEquals(3, vm.numCitations());
         assertEquals("a1", vm.authorMap().get("a1").getId());
         assertEquals("f1", vm.forumMap().get("f1").getId());
+        assertTrue(vm.authorshipReviewStateByPublicationId().isEmpty());
+    }
+
+    @Test
+    void buildWorkspacePublicationsViewIncludesPendingConfirmedAndRejectedReviewStates() {
+        ScholardexPublicationView pending = publication("p1", "Pending", "2024-01-01", 1, "f1", List.of("a1"));
+        ScholardexPublicationView confirmed = publication("p2", "Confirmed", "2024-01-01", 2, "f1", List.of("a1"));
+        ScholardexPublicationView rejected = publication("p3", "Rejected", "2024-01-01", 3, "f1", List.of("a1"));
+
+        when(effectiveAuthorshipReadService.findWorkspaceReviewPublicationsForUser("r1"))
+                .thenReturn(List.of(pending, confirmed, rejected));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author("a1")));
+        when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum("f1")));
+        when(publicationAuthorshipDecisionService.findDecisionsForUserAndPublications(eq("r1"), anyCollection()))
+                .thenReturn(List.of(
+                        decision("p2", PublicationAuthorshipDecision.Status.CONFIRMED, "confirmed"),
+                        decision("p3", PublicationAuthorshipDecision.Status.REJECTED, "not mine")
+                ));
+        when(suspiciousAuthorshipTriageService.evaluatePendingSuspiciousAuthorship(eq("r1"), anyList(), anyMap(), anyMap()))
+                .thenReturn(Map.of(
+                        "p1",
+                        new SuspiciousAuthorshipState(List.of(
+                                new SuspiciousAuthorshipState.Flag(
+                                        SuspiciousAuthorshipState.Code.NAME_MISMATCH,
+                                        "name mismatch"
+                                )
+                        ))
+                ));
+
+        var vmOpt = facade.buildWorkspacePublicationsView("r1");
+
+        assertTrue(vmOpt.isPresent());
+        var states = vmOpt.get().authorshipReviewStateByPublicationId();
+        assertEquals(PublicationAuthorshipReviewState.Status.PENDING, states.get("p1").status());
+        assertEquals(PublicationAuthorshipReviewState.Status.CONFIRMED, states.get("p2").status());
+        assertEquals(PublicationAuthorshipReviewState.Status.REJECTED, states.get("p3").status());
+        assertEquals("not mine", states.get("p3").reason());
+        assertEquals(1, vmOpt.get().pendingReviewCount());
+        assertEquals(1, vmOpt.get().suspiciousPendingCount());
+        assertEquals(0, vmOpt.get().recommendedPendingCount());
+        assertEquals(SuspiciousAuthorshipState.Code.NAME_MISMATCH,
+                vmOpt.get().suspiciousAuthorshipByPublicationId().get("p1").flags().get(0).code());
+    }
+
+    @Test
+    void buildWorkspacePublicationsViewCountsRecommendedPendingSeparately() {
+        ScholardexPublicationView safePending = publication("p1", "Pending", "2024-01-01", 1, "f1", List.of("a1"));
+        ScholardexPublicationView suspiciousPending = publication("p2", "Suspicious", "2024-01-01", 1, "f1", List.of("a1"));
+
+        when(effectiveAuthorshipReadService.findWorkspaceReviewPublicationsForUser("r1"))
+                .thenReturn(List.of(safePending, suspiciousPending));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author("a1")));
+        when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum("f1")));
+        when(publicationAuthorshipDecisionService.findDecisionsForUserAndPublications(eq("r1"), anyCollection()))
+                .thenReturn(List.of());
+        when(suspiciousAuthorshipTriageService.evaluatePendingSuspiciousAuthorship(eq("r1"), anyList(), anyMap(), anyMap()))
+                .thenReturn(Map.of(
+                        "p2",
+                        new SuspiciousAuthorshipState(List.of(
+                                new SuspiciousAuthorshipState.Flag(
+                                        SuspiciousAuthorshipState.Code.NAME_MISMATCH,
+                                        "name mismatch"
+                                )
+                        ))
+                ));
+
+        var vmOpt = facade.buildWorkspacePublicationsView("r1");
+
+        assertTrue(vmOpt.isPresent());
+        assertEquals(2, vmOpt.get().pendingReviewCount());
+        assertEquals(1, vmOpt.get().suspiciousPendingCount());
+        assertEquals(1, vmOpt.get().recommendedPendingCount());
+    }
+
+    @Test
+    void buildWorkspacePublicationsViewReincludesConfirmedPublicationWithoutRawAuthorLink() {
+        ScholardexPublicationView confirmed = publication("p2", "Confirmed", "2024-01-01", 2, "f1", List.of("a1"));
+
+        when(effectiveAuthorshipReadService.findWorkspaceReviewPublicationsForUser("r1"))
+                .thenReturn(List.of(confirmed));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection())).thenReturn(List.of(author("a1")));
+        when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of(forum("f1")));
+        when(publicationAuthorshipDecisionService.findDecisionsForUserAndPublications(eq("r1"), anyCollection()))
+                .thenReturn(List.of(decision("p2", PublicationAuthorshipDecision.Status.CONFIRMED, null)));
+        when(suspiciousAuthorshipTriageService.evaluatePendingSuspiciousAuthorship(eq("r1"), anyList(), anyMap(), anyMap()))
+                .thenReturn(Map.of());
+
+        var vmOpt = facade.buildWorkspacePublicationsView("r1");
+
+        assertTrue(vmOpt.isPresent());
+        assertEquals(List.of("p2"), vmOpt.get().publications().stream().map(ScholardexPublicationView::getId).toList());
+        assertEquals(PublicationAuthorshipReviewState.Status.CONFIRMED,
+                vmOpt.get().authorshipReviewStateByPublicationId().get("p2").status());
+        assertTrue(vmOpt.get().suspiciousAuthorshipByPublicationId().isEmpty());
     }
 
     @Test
@@ -212,5 +314,15 @@ class UserPublicationFacadeTest {
         author.setId(id);
         author.setName(id);
         return author;
+    }
+
+    private static PublicationAuthorshipDecision decision(String publicationId,
+                                                          PublicationAuthorshipDecision.Status status,
+                                                          String reason) {
+        PublicationAuthorshipDecision decision = new PublicationAuthorshipDecision();
+        decision.setPublicationId(publicationId);
+        decision.setStatus(status);
+        decision.setReason(reason);
+        return decision;
     }
 }

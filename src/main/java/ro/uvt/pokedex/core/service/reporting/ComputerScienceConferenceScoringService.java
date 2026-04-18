@@ -276,7 +276,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         scoreResult.setScore(score);
         scoreResult.setCoreRankingEquivalent(yearlyRank.getRank().toString());
         scoreResult.setYear(year);
-        setProvenance(scoreResult, scoringSourceLabel(resolutionSource),
+        setProvenance(scoreResult, scoringSourceLabel(resolutionSource, workshopAdjusted),
                 buildScoringInfo(trace, resolutionSource, year, yearlyRank.getRank(), workshopAdjusted));
         return new ConferenceScoreResolution(Optional.of(scoreResult),
                 trace.withResolvedYear(year, yearlyRank.getRank())
@@ -291,10 +291,10 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         scoreResult.scoringInfo.putAll(buildScoringInfo(trace, ResolutionSource.NONE, scoreResult.bestYear.get(), null, trace.workshopAdjusted()));
     }
 
-    private String scoringSourceLabel(ResolutionSource resolutionSource) {
+    private String scoringSourceLabel(ResolutionSource resolutionSource, boolean workshopAdjusted) {
         return switch (resolutionSource) {
-            case SCOPUS -> "SCOPUS+CORE";
-            case DBLP -> "DBLP+CORE";
+            case SCOPUS -> workshopAdjusted ? "SCOPUS+CORE(WS)" : "SCOPUS+CORE";
+            case DBLP -> workshopAdjusted ? "DBLP+CORE(WS)" : "DBLP+CORE";
             case NONE -> null;
         };
     }

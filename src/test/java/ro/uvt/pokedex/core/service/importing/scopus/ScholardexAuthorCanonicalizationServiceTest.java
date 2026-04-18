@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -105,4 +106,98 @@ class ScholardexAuthorCanonicalizationServiceTest {
         assertEquals("sauth_existing", command.canonicalEntityId());
         assertEquals(1, result.getImportedCount());
     }
+
+    @Test
+    void upsertFromScopusFactUsesStableAffiliationFallbackIdsAcrossScopusVariants() {
+        ScholardexAuthorCanonicalizationService service = new ScholardexAuthorCanonicalizationService(
+                scopusAuthorFactRepository,
+                scholardexAuthorFactRepository,
+                scholardexAuthorAffiliationFactRepository,
+                edgeWriterService,
+                sourceLinkService,
+                identityConflictRepository,
+                checkpointService
+        );
+
+        ScopusAuthorFact bootstrap = new ScopusAuthorFact();
+        bootstrap.setAuthorId("111");
+        bootstrap.setName("Ada Lovelace");
+        bootstrap.setAffiliationIds(List.of("60000434"));
+        bootstrap.setSource("SCOPUS_JSON_BOOTSTRAP");
+
+        ScopusAuthorFact python = new ScopusAuthorFact();
+        python.setAuthorId("222");
+        python.setName("Grace Hopper");
+        python.setAffiliationIds(List.of("60000434"));
+        python.setSource("SCOPUS_PYTHON_AUTHOR_WORKS");
+
+        when(sourceLinkService.findByKey(eq(ScholardexEntityType.AUTHOR), any(), any())).thenReturn(Optional.empty());
+        when(sourceLinkService.findByEntityTypeAndSourceRecordIds(eq(ScholardexEntityType.AFFILIATION), anyCollection()))
+                .thenReturn(List.of());
+        when(scholardexAuthorFactRepository.findByScopusAuthorIdsContains(any())).thenReturn(Optional.empty());
+        when(scholardexAuthorFactRepository.findById(any())).thenReturn(Optional.empty());
+        when(scholardexAuthorFactRepository.save(any(ScholardexAuthorFact.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(sourceLinkService.normalizeSource("SCOPUS_JSON_BOOTSTRAP")).thenReturn("SCOPUS");
+        when(sourceLinkService.normalizeSource("SCOPUS_PYTHON_AUTHOR_WORKS")).thenReturn("SCOPUS");
+        when(sourceLinkService.batchUpsertWithState(anyCollection(), any()))
+                .thenReturn(new ScholardexSourceLinkService.BatchWriteResult(List.of()));
+
+        service.upsertFromScopusFact(bootstrap, new ImportProcessingResult(10));
+        service.upsertFromScopusFact(python, new ImportProcessingResult(10));
+
+        ArgumentCaptor<ScholardexAuthorFact> authorCaptor = ArgumentCaptor.forClass(ScholardexAuthorFact.class);
+        verify(scholardexAuthorFactRepository, atLeastOnce()).save(authorCaptor.capture());
+
+        List<ScholardexAuthorFact> savedFacts = authorCaptor.getAllValues();
+        String bootstrapFallback = savedFacts.get(savedFacts.size() - 2).getAffiliationIds().getFirst();
+        String pythonFallback = savedFacts.getLast().getAffiliationIds().getFirst();
+        assertEquals(bootstrapFallback, pythonFallback);
+    }
+
+    @Test
+    void upsertFromScopusFactMergesAlternativeNamesIntoCanonicalAuthor() {
+        ScholardexAuthorCanonicalizationService service = new ScholardexAuthorCanonicalizationService(
+                scopusAuthorFactRepository,
+                scholardexAuthorFactRepository,
+                scholardexAuthorAffiliationFactRepository,
+                edgeWriterService,
+                sourceLinkService,
+                identityConflictRepository,
+                checkpointService
+        );
+
+        ScopusAuthorFact sourceFact = new ScopusAuthorFact();
+        sourceFact.setAuthorId("111");
+        sourceFact.setName("Spataru A.");
+        sourceFact.setAlternativeNames(List.of("Spataru, Adrian", "Adrian Spataru"));
+        sourceFact.setAffiliationIds(List.of());
+        sourceFact.setSource("SCOPUS_JSON_BOOTSTRAP");
+
+        ScholardexAuthorFact existing = new ScholardexAuthorFact();
+        existing.setId("sauth_existing");
+        existing.getScopusAuthorIds().add("111");
+        existing.setDisplayName("Spataru, Adrian");
+        existing.setAlternativeNames(List.of("A. Spataru"));
+
+        when(sourceLinkService.findByKey(eq(ScholardexEntityType.AUTHOR), any(), eq("111"))).thenReturn(Optional.empty());
+        when(scholardexAuthorFactRepository.findByScopusAuthorIdsContains("111")).thenReturn(Optional.of(existing));
+        when(scholardexAuthorFactRepository.findById("sauth_existing")).thenReturn(Optional.of(existing));
+        when(sourceLinkService.findByEntityTypeAndSourceRecordIds(eq(ScholardexEntityType.AFFILIATION), anyCollection()))
+                .thenReturn(List.of());
+        when(scholardexAuthorFactRepository.save(any(ScholardexAuthorFact.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(sourceLinkService.normalizeSource("SCOPUS_JSON_BOOTSTRAP")).thenReturn("SCOPUS");
+        when(sourceLinkService.batchUpsertWithState(anyCollection(), any()))
+                .thenReturn(new ScholardexSourceLinkService.BatchWriteResult(List.of()));
+
+        service.upsertFromScopusFact(sourceFact, new ImportProcessingResult(10));
+
+        ArgumentCaptor<ScholardexAuthorFact> authorCaptor = ArgumentCaptor.forClass(ScholardexAuthorFact.class);
+        verify(scholardexAuthorFactRepository).save(authorCaptor.capture());
+        ScholardexAuthorFact saved = authorCaptor.getValue();
+        assertEquals("Spataru A.", saved.getDisplayName());
+        assertIterableEquals(List.of("Spataru, Adrian", "A. Spataru", "Adrian Spataru"), saved.getAlternativeNames());
+    }
+
 }

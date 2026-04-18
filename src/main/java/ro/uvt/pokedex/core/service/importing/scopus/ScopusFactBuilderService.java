@@ -3,6 +3,7 @@ package ro.uvt.pokedex.core.service.importing.scopus;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.jsoup.parser.Parser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ import java.time.Instant;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -520,13 +522,30 @@ public class ScopusFactBuilderService {
         List<String> authorIds = splitSemicolon(text(payload, "author_ids"));
         List<String> authorNames = splitSemicolon(text(payload, "author_names"));
         List<String> authorAfids = splitSemicolon(text(payload, "author_afids"));
-        int n = Math.min(authorIds.size(), Math.min(authorNames.size(), authorAfids.size()));
+        if (authorIds.size() == authorNames.size() && authorAfids.isEmpty()) {
+            authorAfids = new ArrayList<>(java.util.Collections.nCopies(authorIds.size(), ""));
+        }
+        if (!isAuthorCatalogAligned(authorIds, authorNames, authorAfids)) {
+            log.warn("Scopus fact-builder skipped ambiguous author update: source={}, sourceRecordId={}, eid={}, authorIdsCount={}, authorNamesCount={}, authorAfidsCount={}",
+                    event.getSource(),
+                    event.getSourceRecordId(),
+                    text(payload, "eid"),
+                    authorIds.size(),
+                    authorNames.size(),
+                    authorAfids.size());
+            result.markSkipped(sample(event, "author catalog length mismatch"));
+            return;
+        }
+
+        int n = authorIds.size();
 
         for (int i = 0; i < n; i++) {
             String authorId = trim(authorIds.get(i));
             if (isBlank(authorId)) {
                 continue;
             }
+
+            List<String> incomingAffiliationIds = distinctNonBlank(splitDash(authorAfids.get(i)));
 
             ScopusAuthorFact fact = state.authorById.get(authorId);
             boolean created = fact == null;
@@ -537,7 +556,7 @@ public class ScopusFactBuilderService {
             String payloadHash = hashKey("author",
                     authorId,
                     trim(authorNames.get(i)),
-                    String.join(",", distinctNonBlank(splitDash(authorAfids.get(i)))));
+                    String.join(",", incomingAffiliationIds));
             if (!created && samePayloadHash(fact.getLastPayloadHash(), payloadHash)) {
                 refreshLineageForReplay(fact, event);
                 state.pendingAuthorSaves.put(authorId, fact);
@@ -549,8 +568,13 @@ public class ScopusFactBuilderService {
                 fact.setCreatedAt(now);
             }
             fact.setAuthorId(authorId);
-            fact.setName(trim(authorNames.get(i)));
-            fact.setAffiliationIds(distinctNonBlank(splitDash(authorAfids.get(i))));
+            String incomingName = trim(authorNames.get(i));
+            mergeAuthorNames(fact, incomingName);
+            if (created) {
+                fact.setAffiliationIds(incomingAffiliationIds);
+            } else if (!incomingAffiliationIds.isEmpty()) {
+                fact.setAffiliationIds(mergeDistinctStable(fact.getAffiliationIds(), incomingAffiliationIds));
+            }
             applyLineage(fact, event);
             fact.setLastPayloadHash(payloadHash);
             fact.setLastMaterializedAt(now);
@@ -567,9 +591,21 @@ public class ScopusFactBuilderService {
             PublicationChunkState state
     ) {
         List<String> afids = splitSemicolon(text(payload, "afid"));
-        List<String> names = splitSemicolon(text(payload, "affilname"));
+        List<String> names = splitSemicolonDecoded(text(payload, "affilname"));
         List<String> cities = splitSemicolon(text(payload, "affiliation_city"));
         List<String> countries = splitSemicolon(text(payload, "affiliation_country"));
+        if (!isAffiliationCatalogAligned(afids, names, cities, countries)) {
+            log.warn("Scopus fact-builder skipped ambiguous affiliation update: source={}, sourceRecordId={}, eid={}, afidCount={}, affilnameCount={}, cityCount={}, countryCount={}",
+                    event.getSource(),
+                    event.getSourceRecordId(),
+                    text(payload, "eid"),
+                    afids.size(),
+                    names.size(),
+                    cities.size(),
+                    countries.size());
+            result.markSkipped(sample(event, "affiliation catalog length mismatch"));
+            return;
+        }
 
         for (int i = 0; i < afids.size(); i++) {
             String afid = trim(afids.get(i));
@@ -704,12 +740,16 @@ public class ScopusFactBuilderService {
         if (isBlank(value)) {
             return List.of();
         }
-        String[] raw = value.split(";");
+        String[] raw = value.split(";", -1);
         List<String> out = new ArrayList<>(raw.length);
         for (String part : raw) {
             out.add(trim(part));
         }
         return out;
+    }
+
+    private List<String> splitSemicolonDecoded(String value) {
+        return splitSemicolon(decodeHtmlEntities(value));
     }
 
     private List<String> splitDash(String value) {
@@ -738,11 +778,80 @@ public class ScopusFactBuilderService {
         return new ArrayList<>(out);
     }
 
+    private List<String> mergeDistinctStable(List<String> existingValues, List<String> incomingValues) {
+        Set<String> out = new LinkedHashSet<>();
+        out.addAll(distinctNonBlank(existingValues));
+        out.addAll(distinctNonBlank(incomingValues));
+        return new ArrayList<>(out);
+    }
+
+    private void mergeAuthorNames(ScopusAuthorFact fact, String incomingName) {
+        if (fact == null) {
+            return;
+        }
+        String currentName = trim(fact.getName());
+        LinkedHashMap<String, String> observedNames = new LinkedHashMap<>();
+        rememberName(observedNames, currentName);
+        if (fact.getAlternativeNames() != null) {
+            fact.getAlternativeNames().forEach(name -> rememberName(observedNames, name));
+        }
+        rememberName(observedNames, incomingName);
+
+        String preferredName = !isBlank(incomingName)
+                ? observedNames.get(normalizeForNameMerge(incomingName))
+                : observedNames.getOrDefault(normalizeForNameMerge(currentName), currentName);
+        fact.setName(trim(preferredName));
+
+        List<String> alternativeNames = new ArrayList<>();
+        String preferredKey = normalizeForNameMerge(preferredName);
+        for (Map.Entry<String, String> entry : observedNames.entrySet()) {
+            if (!entry.getKey().equals(preferredKey)) {
+                alternativeNames.add(entry.getValue());
+            }
+        }
+        fact.setAlternativeNames(alternativeNames);
+    }
+
+    private void rememberName(Map<String, String> observedNames, String candidate) {
+        String normalized = normalizeForNameMerge(candidate);
+        if (!normalized.isBlank()) {
+            observedNames.putIfAbsent(normalized, trim(candidate));
+        }
+    }
+
+    private String normalizeForNameMerge(String value) {
+        if (isBlank(value)) {
+            return "";
+        }
+        String decomposed = Normalizer.normalize(trim(value), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "");
+        return decomposed
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9\\s]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
     private String arrayValue(List<String> values, int index) {
         if (values == null || index < 0 || index >= values.size()) {
             return "";
         }
         return trim(values.get(index));
+    }
+
+    private boolean isAuthorCatalogAligned(List<String> authorIds, List<String> authorNames, List<String> authorAfids) {
+        return authorIds.size() == authorNames.size() && authorIds.size() == authorAfids.size();
+    }
+
+    private boolean isAffiliationCatalogAligned(
+            List<String> afids,
+            List<String> names,
+            List<String> cities,
+            List<String> countries
+    ) {
+        return afids.size() == names.size()
+                && afids.size() == cities.size()
+                && afids.size() == countries.size();
     }
 
     private String text(JsonNode node, String field) {
@@ -813,6 +922,13 @@ public class ScopusFactBuilderService {
 
     private String trim(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private String decodeHtmlEntities(String value) {
+        if (isBlank(value)) {
+            return "";
+        }
+        return Parser.unescapeEntities(value, false);
     }
 
     private boolean isBlank(String value) {

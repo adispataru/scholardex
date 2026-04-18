@@ -114,6 +114,19 @@ public class ResearcherServiceImpl implements ResearcherService {
         profile.setWosId(researcher.getWosId() != null
                 ? researcher.getWosId() : new ArrayList<>());
         profile.setPrimaryScholardexAuthorId(researcher.getPrimaryScholardexAuthorId());
+        if (researcher.getCurrentAffiliationIds() != null && !researcher.getCurrentAffiliationIds().isEmpty()) {
+            profile.setCurrentAffiliationIds(researcher.getCurrentAffiliationIds());
+        } else if (profile.getCurrentAffiliationIds() == null) {
+            profile.setCurrentAffiliationIds(new ArrayList<>());
+        }
+        if (researcher.getPastAffiliationIds() != null && !researcher.getPastAffiliationIds().isEmpty()) {
+            profile.setPastAffiliationIds(researcher.getPastAffiliationIds());
+        } else if (profile.getPastAffiliationIds() == null) {
+            profile.setPastAffiliationIds(new ArrayList<>());
+        }
+        if (researcher.getAffiliationsConfirmedAt() != null) {
+            profile.setAffiliationsConfirmedAt(researcher.getAffiliationsConfirmedAt());
+        }
         profile.setPosition(researcher.getPosition());
         user.setResearcherProfile(profile);
     }

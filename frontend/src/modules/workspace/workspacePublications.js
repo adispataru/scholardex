@@ -78,6 +78,10 @@ let _wSubtypeDesc   = '';
 let _wDoi           = '';
 let _wVolume        = '';
 let _wIssueIdentifier = '';
+let _pendingRejectId = null;
+let _publicationFilter = 'all';
+let _queueFeedback = null;
+let _selectedPendingIds = new Set();
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
@@ -105,6 +109,9 @@ function _init(panel) {
     _page      = 1;
     _activeId  = null;
     _wizardOpen = false;
+    _publicationFilter = 'all';
+    _queueFeedback = null;
+    _selectedPendingIds = new Set();
     _showSkeleton();
 
     fetch(src, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
@@ -145,6 +152,7 @@ function _showSkeleton() {
 // ── Top-level render ─────────────────────────────────────────────────────────
 
 function _renderAll() {
+    _selectedPendingIds = new Set([..._selectedPendingIds].filter(pubId => _isPending(pubId) && _allPubs.some(pub => pub.id === pubId)));
     const container = document.createElement('div');
     container.className = 'app-ws-pubs';
 
@@ -153,6 +161,9 @@ function _renderAll() {
 
     // Toolbar
     container.insertAdjacentHTML('beforeend', _buildToolbar());
+
+    // Review summary
+    container.insertAdjacentHTML('beforeend', _buildReviewSummary());
 
     // Wizard placeholder — always present so wizard can open even when list is empty
     const wizPlaceholder = document.createElement('div');
@@ -181,6 +192,7 @@ function _renderAll() {
 
     _renderPage();
     _wireStaticEvents();
+    _wireReviewSummaryEvents();
     if (_pendingWizard) { _pendingWizard = false; _openWizard(); }
 
     // Escape key
@@ -221,16 +233,31 @@ function _renderPage() {
     if (!wrap) return;
     wrap.innerHTML = '';
 
+    const visiblePubs = _filteredPublications();
+    if (_activeId && !visiblePubs.some(pub => pub.id === _activeId)) {
+        _activeId = null;
+    }
+
+    if (visiblePubs.length === 0) {
+        wrap.innerHTML = _publicationFilter === 'pending-review'
+            ? _buildQueueEmpty()
+            : _buildEmpty();
+        return;
+    }
+
     const start    = (_page - 1) * PAGE_SIZE;
-    const pagePubs = _allPubs.slice(start, start + PAGE_SIZE);
-    const total    = _allPubs.length;
+    const pagePubs = visiblePubs.slice(start, start + PAGE_SIZE);
+    const total    = visiblePubs.length;
     const pages    = Math.ceil(total / PAGE_SIZE);
 
     const table = document.createElement('table');
     table.className = 'app-ws-pubs__table';
     table.setAttribute('role', 'grid');
+    const selectablePagePubs = pagePubs.filter(pub => _isPending(pub.id));
+    const allPageSelected = selectablePagePubs.length > 0 && selectablePagePubs.every(pub => _selectedPendingIds.has(pub.id));
     table.innerHTML = `
         <colgroup>
+          <col class="app-ws-pubs__col-select">
           <col class="app-ws-pubs__col-title">
           <col class="app-ws-pubs__col-year">
           <col class="app-ws-pubs__col-type">
@@ -240,6 +267,14 @@ function _renderPage() {
         </colgroup>
         <thead>
           <tr>
+            <th scope="col" class="app-ws-pubs__col-select">
+              <input type="checkbox"
+                     class="app-ws-pubs__select-all"
+                     aria-label="Select all pending publications on this page"
+                     data-select-all-pending
+                     ${allPageSelected ? 'checked' : ''}
+                     ${selectablePagePubs.length === 0 ? 'disabled' : ''}>
+            </th>
             <th scope="col">Title</th>
             <th scope="col">Year</th>
             <th scope="col">Type</th>
@@ -256,6 +291,15 @@ function _renderPage() {
     for (const pub of pagePubs) {
         _appendRow(tbody, pub);
     }
+
+    table.querySelector('[data-select-all-pending]')?.addEventListener('change', e => {
+        if (e.target.checked) {
+            selectablePagePubs.forEach(pub => _selectedPendingIds.add(pub.id));
+        } else {
+            selectablePagePubs.forEach(pub => _selectedPendingIds.delete(pub.id));
+        }
+        _renderPage();
+    });
 
     // Pagination
     if (pages > 1) {
@@ -283,19 +327,39 @@ function _appendRow(tbody, pub) {
     const typeLabel  = pub.subtypeDescription ?? pub.subtype ?? '—';
     const year       = pub.coverDate ? pub.coverDate.substring(0, 4) : '—';
     const cites      = pub.citedByCount ?? pub.citedbyCount ?? 0;
+    const reviewState = _reviewState(pub.id);
+    const suspiciousState = _suspiciousState(pub.id);
+    const reviewBadge = _buildReviewBadge(reviewState);
+    const suspiciousBadge = _buildSuspiciousBadge(suspiciousState);
+    const pending = _isPending(pub.id);
+    const selected = pending && _selectedPendingIds.has(pub.id);
+    const recommendationBadge = _buildRecommendationBadge(pub.id);
 
     const tr = document.createElement('tr');
     tr.className = 'app-ws-pubs__row';
     tr.dataset.pubId = pub.id;
     if (_activeId === pub.id) tr.classList.add('app-ws-pubs__row--active');
+    if (selected) tr.classList.add('app-ws-pubs__row--selected');
 
     tr.innerHTML =
+        `<td class="app-ws-pubs__col-select">` +
+            (pending
+                ? `<input type="checkbox"
+                          class="app-ws-pubs__row-select"
+                          aria-label="Select publication ${_esc(pub.title ?? '')}"
+                          data-select-pending="${_esc(pub.id)}"
+                          ${selected ? 'checked' : ''}>`
+                : `<span class="app-ws-pubs__row-select-placeholder" aria-hidden="true"></span>`) +
+        `</td>` +
         `<td class="app-ws-pubs__col-title">` +
             `<span class="app-ws-pubs__title">${_esc(pub.title ?? '(untitled)')}</span>` +
         `</td>` +
         `<td class="app-ws-pubs__col-year">${_esc(year)}</td>` +
         `<td class="app-ws-pubs__col-type">` +
             `<span class="app-ws-pubs__type-badge ${badgeCls}">${_esc(typeLabel)}</span>` +
+            reviewBadge +
+            suspiciousBadge +
+            recommendationBadge +
         `</td>` +
         `<td class="app-ws-pubs__col-venue">` +
             `<span class="app-ws-pubs__venue" title="${_esc(venueTitle)}">${_esc(venueTitle)}</span>` +
@@ -315,8 +379,17 @@ function _appendRow(tbody, pub) {
 
     // Click on row or action button → toggle detail
     tr.addEventListener('click', e => {
-        if (e.target.closest('a')) return;
+        if (e.target.closest('a') || e.target.closest('[data-select-pending]')) return;
         _toggleDetail(pub, tr);
+    });
+
+    tr.querySelector('[data-select-pending]')?.addEventListener('change', e => {
+        if (e.target.checked) {
+            _selectedPendingIds.add(pub.id);
+        } else {
+            _selectedPendingIds.delete(pub.id);
+        }
+        _renderPage();
     });
 
     tbody.appendChild(tr);
@@ -366,7 +439,7 @@ function _closeDetail() {
 }
 
 function _insertDetailRow(pub, tr) {
-    const colCount = 6;
+    const colCount = 7;
     const detailTr = document.createElement('tr');
     detailTr.id        = 'ws-pubs-detail-row';
     detailTr.className = 'app-ws-pubs__detail-row';
@@ -386,6 +459,15 @@ function _insertDetailRow(pub, tr) {
     // Save button
     detailTr.querySelector('[data-save-pub]')?.addEventListener('click', () => {
         _savePub(pub.id, detailTr);
+    });
+    detailTr.querySelector('[data-confirm-authorship]')?.addEventListener('click', () => {
+        _saveAuthorshipDecision(pub.id, 'confirm', detailTr);
+    });
+    detailTr.querySelector('[data-reject-authorship]')?.addEventListener('click', () => {
+        _handleRejectAuthorship(pub.id, detailTr);
+    });
+    detailTr.querySelector('[data-clear-authorship]')?.addEventListener('click', () => {
+        _clearAuthorshipDecision(pub.id, detailTr);
     });
 }
 
@@ -421,6 +503,11 @@ function _buildDetailPanel(pub) {
     const optionsHtml    = SUBTYPE_OPTIONS.map(o =>
         `<option value="${_esc(o.value)}" ${o.value === currentSubtype ? 'selected' : ''}>${_esc(o.label)}</option>`
     ).join('');
+    const reviewState = _reviewState(pub.id);
+    const reviewBadge = _buildReviewBadge(reviewState);
+    const reviewMeta = _buildReviewMeta(reviewState);
+    const rejectConfirm = _pendingRejectId === pub.id;
+    const suspiciousState = _suspiciousState(pub.id);
 
     return `
         <div class="app-ws-pubs__detail-inner">
@@ -460,6 +547,40 @@ function _buildDetailPanel(pub) {
                   </button>
                   <span class="app-ws-pubs__edit-feedback" role="status" aria-live="polite"></span>
                 </div>
+              </div>
+            </div>
+
+            <div>
+              ${_buildSuspiciousDetailSection(suspiciousState)}
+            </div>
+
+            <div>
+              <p class="app-ws-pubs__detail-section-title">Authorship</p>
+              <div class="app-ws-pubs__authorship-panel">
+                <div class="app-ws-pubs__authorship-header">
+                  ${reviewBadge}
+                  ${reviewMeta}
+                </div>
+                <p class="app-ws-pubs__authorship-body">
+                  ${_authorshipBodyText(pub.id, reviewState)}
+                </p>
+                ${rejectConfirm
+                    ? `<div class="app-ws-pubs__authorship-inline-alert" role="alert">
+                         Reject authorship for this publication?
+                       </div>`
+                    : ''}
+                <div class="app-ws-pubs__authorship-actions">
+                  <button class="btn btn-sm btn-outline-success" type="button" data-confirm-authorship="${_esc(pub.id)}">
+                    Confirm mine
+                  </button>
+                  <button class="btn btn-sm ${rejectConfirm ? 'btn-danger' : 'btn-outline-danger'}" type="button" data-reject-authorship="${_esc(pub.id)}">
+                    ${rejectConfirm ? 'Confirm rejection' : 'Reject authorship'}
+                  </button>
+                  <button class="btn btn-sm btn-link px-0" type="button" data-clear-authorship="${_esc(pub.id)}">
+                    Clear decision
+                  </button>
+                </div>
+                <span class="app-ws-pubs__authorship-feedback" role="status" aria-live="polite"></span>
               </div>
             </div>
 
@@ -514,6 +635,341 @@ function _savePub(pubId, detailTr) {
         .finally(() => {
             if (saveBtn) saveBtn.disabled = false;
         });
+}
+
+function _saveAuthorshipDecision(pubId, action, detailTr) {
+    const feedback = detailTr.querySelector('.app-ws-pubs__authorship-feedback');
+    const endpoint = action === 'confirm'
+        ? `/user/workspace/publications/${encodeURIComponent(pubId)}/authorship/confirm`
+        : `/user/workspace/publications/${encodeURIComponent(pubId)}/authorship/reject`;
+
+    fetch(endpoint, {
+        method: 'POST',
+        headers: postJsonHeaders(),
+        body: JSON.stringify({ reason: null }),
+    })
+        .then(async res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        })
+        .then(state => {
+            _pendingRejectId = null;
+            _setReviewState(pubId, state);
+            _queueFeedback = { message: action === 'confirm' ? 'Authorship confirmed.' : 'Authorship rejected.', isError: false };
+            _refreshAfterAuthorshipDecision(pubId);
+        })
+        .catch(() => {
+            _showAuthorshipFeedback(feedback, 'Decision save failed — please try again.', true);
+        });
+}
+
+function _handleRejectAuthorship(pubId, detailTr) {
+    if (_pendingRejectId !== pubId) {
+        _pendingRejectId = pubId;
+        _rerenderActiveDetail(pubId);
+        return;
+    }
+    _saveAuthorshipDecision(pubId, 'reject', detailTr);
+}
+
+function _clearAuthorshipDecision(pubId, detailTr) {
+    const feedback = detailTr.querySelector('.app-ws-pubs__authorship-feedback');
+    fetch(`/user/workspace/publications/${encodeURIComponent(pubId)}/authorship`, {
+        method: 'DELETE',
+        headers: postJsonHeaders(),
+    })
+        .then(async res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        })
+        .then(state => {
+            _pendingRejectId = null;
+            _setReviewState(pubId, state);
+            _queueFeedback = { message: 'Decision cleared.', isError: false };
+            _refreshAfterAuthorshipDecision(pubId);
+        })
+        .catch(() => {
+            _showAuthorshipFeedback(feedback, 'Decision clear failed — please try again.', true);
+        });
+}
+
+function _showAuthorshipFeedback(feedback, message, isError) {
+    if (!feedback) return;
+    feedback.textContent = message;
+    feedback.classList.toggle('app-ws-pubs__authorship-feedback--error', Boolean(isError));
+    feedback.classList.add('app-ws-pubs__authorship-feedback--visible');
+    if (!isError) {
+        setTimeout(() => feedback.classList.remove('app-ws-pubs__authorship-feedback--visible'), 2500);
+    }
+}
+
+function _runBulkAuthorshipDecision(action) {
+    const publicationIds = [..._selectedPendingIds].filter(pubId => _isPending(pubId));
+    if (publicationIds.length === 0) {
+        return;
+    }
+
+    fetch('/user/workspace/publications/authorship/bulk', {
+        method: 'POST',
+        headers: postJsonHeaders(),
+        body: JSON.stringify({
+            publicationIds,
+            action,
+            reason: null,
+        }),
+    })
+        .then(async res => {
+            const body = await res.json();
+            if (!res.ok) {
+                const message = body?.failures?.[0]?.message ?? `HTTP ${res.status}`;
+                throw new Error(message);
+            }
+            return body;
+        })
+        .then(body => {
+            const updatedStates = Array.isArray(body.updatedStates) ? body.updatedStates : [];
+            const failures = Array.isArray(body.failures) ? body.failures : [];
+            const succeededIds = Array.isArray(body.succeededIds) ? body.succeededIds : [];
+
+            updatedStates.forEach(state => _setReviewState(state.publicationId, state));
+            succeededIds.forEach(pubId => _selectedPendingIds.delete(pubId));
+
+            if (failures.length > 0) {
+                _selectedPendingIds = new Set(failures.map(failure => failure.publicationId).filter(Boolean));
+            }
+
+            const successLabel = action === 'CONFIRM' ? 'confirmed' : 'rejected';
+            _queueFeedback = {
+                message: failures.length > 0
+                    ? `${succeededIds.length} ${successLabel}, ${failures.length} failed`
+                    : `${succeededIds.length} publication${succeededIds.length === 1 ? '' : 's'} ${successLabel}.`,
+                isError: false
+            };
+            _activeId = null;
+            _renderAll();
+        })
+        .catch(err => {
+            _queueFeedback = { message: err.message ?? 'Bulk review failed.', isError: true };
+            _renderAll();
+        });
+}
+
+function _reviewState(pubId) {
+    return _data?.authorshipReviewStateByPublicationId?.[pubId] ?? { status: 'PENDING', reason: null, updatedAt: null };
+}
+
+function _suspiciousState(pubId) {
+    return _data?.suspiciousAuthorshipByPublicationId?.[pubId] ?? null;
+}
+
+function _setReviewState(pubId, state) {
+    if (!_data) return;
+    if (!_data.authorshipReviewStateByPublicationId) _data.authorshipReviewStateByPublicationId = {};
+    _data.authorshipReviewStateByPublicationId[pubId] = state;
+    _data.pendingReviewCount = _allPubs.filter(pub => _isPending(pub.id)).length;
+    _data.suspiciousPendingCount = _allPubs.filter(pub => _isPendingSuspicious(pub.id)).length;
+    _data.recommendedPendingCount = Math.max(0, _data.pendingReviewCount - _data.suspiciousPendingCount);
+}
+
+function _buildReviewBadge(state) {
+    const status = state?.status ?? 'PENDING';
+    const text = status === 'CONFIRMED' ? 'Confirmed' : status === 'REJECTED' ? 'Rejected' : 'Pending review';
+    const cls = status === 'CONFIRMED'
+        ? 'app-ws-pubs__review-badge--confirmed'
+        : status === 'REJECTED'
+            ? 'app-ws-pubs__review-badge--rejected'
+            : 'app-ws-pubs__review-badge--pending';
+    return `<span class="app-ws-pubs__review-badge ${cls}">${_esc(text)}</span>`;
+}
+
+function _buildReviewMeta(state) {
+    if (!state?.updatedAt) return '';
+    const date = new Date(state.updatedAt);
+    if (Number.isNaN(date.getTime())) return '';
+    return `<span class="app-ws-pubs__authorship-meta">Updated ${_esc(date.toLocaleDateString())}</span>`;
+}
+
+function _buildSuspiciousBadge(state) {
+    if (!state?.flags?.length) return '';
+    return `<span class="app-ws-pubs__suspicious-badge">Needs review</span>`;
+}
+
+function _buildRecommendationBadge(pubId) {
+    if (!_isRecommendedPending(pubId)) return '';
+    return `<span class="app-ws-pubs__recommended-badge">Recommended accept</span>`;
+}
+
+function _authorshipBodyText(pubId, state) {
+    if (state?.status === 'CONFIRMED') {
+        return 'This publication is confirmed as yours and will count in scoring.';
+    }
+    if (state?.status === 'REJECTED') {
+        return 'This publication is marked as not yours. It stays visible here for review, but will not count in scoring.';
+    }
+    if (_isPendingSuspicious(pubId)) {
+        return 'This publication is still pending review. Confirm it if it is yours, or reject it if Scopus linked it incorrectly.';
+    }
+    if (_isRecommendedPending(pubId)) {
+        return 'This publication is pending review, but current identity and affiliation checks do not show any mismatch. It is recommended for acceptance if it is yours.';
+    }
+    return 'This publication is still pending review. Confirm it if it is yours, or reject it if Scopus linked it incorrectly.';
+}
+
+function _rerenderActiveDetail(pubId) {
+    const tr = document.querySelector(`[data-pub-id="${CSS.escape(pubId)}"]`);
+    const pub = _allPubs.find(p => p.id === pubId);
+    if (!tr || !pub) return;
+    _closeDetail();
+    _activeId = pubId;
+    _toggleDetail(pub, tr);
+    _renderPage();
+}
+
+function _refreshAfterAuthorshipDecision(pubId) {
+    const nextVisibleId = _nextVisiblePublicationId(pubId);
+    _selectedPendingIds.delete(pubId);
+    if (_publicationFilter === 'pending-review' && !_isPending(pubId)) {
+        _activeId = nextVisibleId;
+    } else {
+        _activeId = pubId;
+    }
+    _renderAll();
+}
+
+function _wireReviewSummaryEvents() {
+    _mount.querySelectorAll('[data-publication-filter]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const nextFilter = btn.dataset.publicationFilter === 'pending-review' ? 'pending-review' : 'all';
+            if (_publicationFilter === nextFilter) return;
+            _publicationFilter = nextFilter;
+            _page = 1;
+            _activeId = null;
+            _queueFeedback = null;
+            _renderAll();
+        });
+    });
+    _mount.querySelector('[data-bulk-confirm]')?.addEventListener('click', () => {
+        _runBulkAuthorshipDecision('CONFIRM');
+    });
+    _mount.querySelector('[data-bulk-reject]')?.addEventListener('click', () => {
+        _runBulkAuthorshipDecision('REJECT');
+    });
+    _mount.querySelector('[data-bulk-clear-selection]')?.addEventListener('click', () => {
+        _selectedPendingIds.clear();
+        _renderAll();
+    });
+}
+
+function _buildReviewSummary() {
+    const pendingCount = _pendingReviewCount();
+    const suspiciousCount = _pendingSuspiciousCount();
+    const recommendedCount = _recommendedPendingCount();
+    const selectedCount = _selectedPendingIds.size;
+    const allActive = _publicationFilter === 'all';
+    const queueActive = _publicationFilter === 'pending-review';
+    const feedback = _queueFeedback
+        ? `<div class="app-ws-pubs__triage-feedback ${_queueFeedback.isError ? 'app-ws-pubs__triage-feedback--error' : ''}" role="status" aria-live="polite">${_esc(_queueFeedback.message)}</div>`
+        : '';
+    const bulkBar = selectedCount > 0
+        ? `<div class="app-ws-pubs__bulk-bar" role="region" aria-label="Bulk authorship review actions">
+            <span class="app-ws-pubs__bulk-count">${selectedCount} selected</span>
+            <button type="button" class="btn btn-sm btn-outline-success" data-bulk-confirm>Confirm selected</button>
+            <button type="button" class="btn btn-sm btn-outline-danger" data-bulk-reject>Reject selected</button>
+            <button type="button" class="btn btn-sm btn-link px-0" data-bulk-clear-selection>Clear selection</button>
+          </div>`
+        : '';
+    return `
+        <section class="app-ws-pubs__triage-bar" aria-label="Authorship review queue">
+          <div class="app-ws-pubs__triage-summary">
+            <span class="app-ws-pubs__triage-label">Pending Review</span>
+            <strong class="app-ws-pubs__triage-count">${pendingCount}</strong>
+            <span class="app-ws-pubs__triage-body">pending publication${pendingCount === 1 ? '' : 's'} need authorship review</span>
+            <span class="app-ws-pubs__triage-meta">${suspiciousCount} suspicious, ${recommendedCount} recommended accept</span>
+          </div>
+          <div class="app-ws-pubs__triage-filters" role="tablist" aria-label="Publication review filters">
+            <button type="button" class="app-ws-pubs__triage-filter ${allActive ? 'app-ws-pubs__triage-filter--active' : ''}" data-publication-filter="all" aria-pressed="${allActive}">
+              All
+            </button>
+            <button type="button" class="app-ws-pubs__triage-filter ${queueActive ? 'app-ws-pubs__triage-filter--active' : ''}" data-publication-filter="pending-review" aria-pressed="${queueActive}">
+              Pending Review
+            </button>
+          </div>
+          ${bulkBar}
+          ${feedback}
+        </section>`;
+}
+
+function _pendingReviewCount() {
+    return typeof _data?.pendingReviewCount === 'number'
+        ? _data.pendingReviewCount
+        : _allPubs.filter(pub => _isPending(pub.id)).length;
+}
+
+function _pendingSuspiciousCount() {
+    if (typeof _data?.suspiciousPendingCount === 'number') return _data.suspiciousPendingCount;
+    if (!_data?.suspiciousAuthorshipByPublicationId) return 0;
+    return Object.keys(_data.suspiciousAuthorshipByPublicationId).filter(_isPendingSuspicious).length;
+}
+
+function _recommendedPendingCount() {
+    if (typeof _data?.recommendedPendingCount === 'number') return _data.recommendedPendingCount;
+    return Math.max(0, _pendingReviewCount() - _pendingSuspiciousCount());
+}
+
+function _buildSuspiciousDetailSection(state) {
+    if (!state?.flags?.length) {
+        return '';
+    }
+    const reasons = state.flags.map(flag =>
+        `<li class="app-ws-pubs__triage-reason-item"><span class="app-ws-pubs__triage-reason-code">${_esc(_formatFlagCode(flag.code))}</span><span>${_esc(flag.message ?? '')}</span></li>`
+    ).join('');
+    return `
+      <p class="app-ws-pubs__detail-section-title">Why this needs review</p>
+      <div class="app-ws-pubs__triage-panel">
+        <ul class="app-ws-pubs__triage-reason-list">${reasons}</ul>
+      </div>`;
+}
+
+function _formatFlagCode(code) {
+    if (!code) return 'Needs review';
+    return code.toLowerCase().split('_').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+}
+
+function _filteredPublications() {
+    if (_publicationFilter === 'pending-review') {
+        return _allPubs.filter(pub => _isPending(pub.id));
+    }
+    return _allPubs;
+}
+
+function _isPending(pubId) {
+    return _reviewState(pubId).status === 'PENDING';
+}
+
+function _isRecommendedPending(pubId) {
+    return _isPending(pubId) && !_isPendingSuspicious(pubId);
+}
+
+function _isPendingSuspicious(pubId) {
+    return _isPending(pubId) && Boolean(_suspiciousState(pubId)?.flags?.length);
+}
+
+function _nextVisiblePublicationId(currentId) {
+    const visiblePubs = _filteredPublications();
+    const currentIndex = visiblePubs.findIndex(pub => pub.id === currentId);
+    if (currentIndex === -1) {
+        return visiblePubs[0]?.id ?? null;
+    }
+    return visiblePubs[currentIndex + 1]?.id ?? visiblePubs[currentIndex - 1]?.id ?? null;
+}
+
+function _buildQueueEmpty() {
+    return `
+      <div class="app-ws-pubs__queue-empty">
+        <div class="app-ws-pubs__queue-empty-icon"><i class="fa-solid fa-shield-check" aria-hidden="true"></i></div>
+        <h3 class="app-ws-pubs__queue-empty-title">No pending publications need review</h3>
+        <p class="app-ws-pubs__queue-empty-body">Pending authorship items will appear here until they are confirmed or rejected.</p>
+      </div>`;
 }
 
 // ── Keyboard ─────────────────────────────────────────────────────────────────

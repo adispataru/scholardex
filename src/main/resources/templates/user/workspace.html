@@ -156,7 +156,7 @@
                                 <th:block th:if="${workspace.workspaceState.name() != 'NEW_USER'}">
                                     <div class="app-overview-panels" id="ws-overview-cards">
 
-                                        <!-- INCOMPLETE_PROFILE: profile completion nudge -->
+                                        <!-- INCOMPLETE_PROFILE: nudge + standalone key metrics -->
                                         <th:block th:if="${workspace.workspaceState.name() == 'INCOMPLETE_PROFILE'}">
                                             <div class="app-attention-panel app-overview-panel"
                                                  draggable="true" data-card-id="profile-banner">
@@ -164,7 +164,7 @@
                                                     <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
                                                     Complete Your Profile
                                                 </p>
-                                                <p class="app-attention-panel__body">Add your Scopus IDs and WoS IDs to enable full publication and citation tracking.</p>
+                                                <p class="app-attention-panel__body">Link your research identities and confirm your current and past affiliations to enable publication review and citation tracking.</p>
                                                 <div class="app-onboarding-progress" style="margin-top: 0.75rem;"
                                                      role="progressbar"
                                                      th:attr="aria-valuenow=${workspace.profileCompletenessPercent}"
@@ -175,16 +175,48 @@
                                                 </div>
                                                 <p class="app-attention-panel__body" style="margin-top: 0.5rem; font-size: 0.86rem;">
                                                     Profile <strong th:text="${workspace.profileCompletenessPercent}">0</strong>% complete —
-                                                    <a th:href="@{/user/profile}" class="fw-semibold">Edit profile</a>
+                                                    <a href="#" data-tab-goto="profile" class="fw-semibold">Go to Profile &amp; Sync</a>
                                                 </p>
+                                            </div>
+                                            <div class="app-summary-panel app-overview-panel"
+                                                 draggable="true" data-card-id="stat-grid">
+                                                <div class="app-summary-panel__header">
+                                                    <span class="app-drag-handle" title="Drag to reorder" aria-hidden="true">
+                                                        <i class="fa-solid fa-grip-vertical"></i>
+                                                    </span>
+                                                    <h2 class="app-summary-panel__title">Key Metrics</h2>
+                                                </div>
+                                                <div class="app-summary-panel__body">
+                                                    <div class="app-summary-grid">
+                                                        <div class="app-summary-card">
+                                                            <p class="app-summary-card__label">Publications</p>
+                                                            <p class="app-summary-card__value" th:text="${workspace.publicationCount}">0</p>
+                                                            <p class="app-summary-card__meta">Total publications in your record.</p>
+                                                        </div>
+                                                        <div class="app-summary-card app-summary-card--success">
+                                                            <p class="app-summary-card__label">Citations</p>
+                                                            <p class="app-summary-card__value" th:text="${workspace.totalCitations}">0</p>
+                                                            <p class="app-summary-card__meta">Total citations across all publications.</p>
+                                                        </div>
+                                                        <div class="app-summary-card app-summary-card--warning">
+                                                            <p class="app-summary-card__label">H-Index</p>
+                                                            <p class="app-summary-card__value" th:text="${workspace.hIndex}">0</p>
+                                                            <p class="app-summary-card__meta">Current h-index for your publication record.</p>
+                                                        </div>
+                                                        <div class="app-summary-card">
+                                                            <p class="app-summary-card__label">Activities</p>
+                                                            <p class="app-summary-card__value" th:text="${workspace.activityInstanceCount}">0</p>
+                                                            <p class="app-summary-card__meta">Recorded activity instances.</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </th:block>
 
-                                        <!-- ACTIVE / REPORTING_SEASON: identity card -->
+                                        <!-- ACTIVE / REPORTING_SEASON: single consolidated researcher card -->
                                         <th:block th:if="${workspace.workspaceState.name() == 'ACTIVE' or workspace.workspaceState.name() == 'REPORTING_SEASON'}">
-                                            <div th:if="${workspace.hasResearcherProfile}"
-                                                 class="app-summary-panel app-overview-panel"
-                                                 draggable="true" data-card-id="identity">
+                                            <div class="app-summary-panel app-overview-panel"
+                                                 draggable="true" data-card-id="researcher-overview">
                                                 <div class="app-summary-panel__header">
                                                     <span class="app-drag-handle" title="Drag to reorder" aria-hidden="true">
                                                         <i class="fa-solid fa-grip-vertical"></i>
@@ -192,69 +224,53 @@
                                                     <h2 class="app-summary-panel__title">Researcher Profile</h2>
                                                 </div>
                                                 <div class="app-summary-panel__body">
-                                                    <div class="app-summary-identity">
-                                                        <div class="app-summary-identity__avatar" aria-hidden="true">
-                                                            <i class="fa-solid fa-user-graduate"></i>
-                                                        </div>
-                                                        <div class="app-summary-identity__body">
-                                                            <p class="app-summary-identity__title" th:text="${workspace.researcherName}">Researcher</p>
-                                                            <p class="app-summary-identity__meta">
-                                                                H-index: <strong th:text="${workspace.hIndex}">0</strong>
-                                                                &middot; <span th:text="${workspace.publicationCount}">0</span> publications
-                                                                &middot; <span th:text="${workspace.totalCitations}">0</span> citations
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </th:block>
 
-                                        <!-- Key metrics panel (all non-NEW_USER states) -->
-                                        <div class="app-summary-panel app-overview-panel"
-                                             draggable="true" data-card-id="stat-grid">
-                                            <div class="app-summary-panel__header">
-                                                <span class="app-drag-handle" title="Drag to reorder" aria-hidden="true">
-                                                    <i class="fa-solid fa-grip-vertical"></i>
-                                                </span>
-                                                <h2 class="app-summary-panel__title">Key Metrics</h2>
-                                            </div>
-                                            <div class="app-summary-panel__body">
-                                                <div class="app-summary-grid">
-                                                    <div class="app-summary-card">
-                                                        <p class="app-summary-card__label">Publications</p>
-                                                        <p class="app-summary-card__value" th:text="${workspace.publicationCount}">0</p>
-                                                        <p class="app-summary-card__meta">Total publications in your record.</p>
-                                                    </div>
-                                                    <div class="app-summary-card app-summary-card--success">
-                                                        <p class="app-summary-card__label">Citations</p>
-                                                        <p class="app-summary-card__value" th:text="${workspace.totalCitations}">0</p>
-                                                        <p class="app-summary-card__meta">Total citations across all publications.</p>
-                                                    </div>
-                                                    <div class="app-summary-card app-summary-card--warning">
-                                                        <p class="app-summary-card__label">H-Index</p>
-                                                        <p class="app-summary-card__value" th:text="${workspace.hIndex}">0</p>
-                                                        <p class="app-summary-card__meta">Current h-index for your publication record.</p>
-                                                    </div>
-                                                    <div class="app-summary-card">
-                                                        <p class="app-summary-card__label">Activities</p>
-                                                        <p class="app-summary-card__value" th:text="${workspace.activityInstanceCount}">0</p>
-                                                        <p class="app-summary-card__meta">Recorded activity instances.</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                                    <!-- Identity (only if profile exists) -->
+                                                    <th:block th:if="${workspace.hasResearcherProfile}">
+                                                        <div class="app-summary-identity">
+                                                            <div class="app-summary-identity__avatar" aria-hidden="true">
+                                                                <i class="fa-solid fa-user-graduate"></i>
+                                                            </div>
+                                                            <div class="app-summary-identity__body">
+                                                                <p class="app-summary-identity__title" th:text="${workspace.researcherName}">Researcher</p>
+                                                                <p class="app-summary-identity__meta">
+                                                                    H-index: <strong th:text="${workspace.hIndex}">0</strong>
+                                                                    &middot; <span th:text="${workspace.publicationCount}">0</span> publications
+                                                                    &middot; <span th:text="${workspace.totalCitations}">0</span> citations
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <hr class="app-summary-panel__divider">
+                                                    </th:block>
 
-                                        <!-- Research trends (ACTIVE / REPORTING_SEASON) -->
-                                        <th:block th:if="${workspace.workspaceState.name() == 'ACTIVE' or workspace.workspaceState.name() == 'REPORTING_SEASON'}">
-                                            <div class="app-summary-panel app-overview-panel"
-                                                 draggable="true" data-card-id="charts">
-                                                <div class="app-summary-panel__header">
-                                                    <span class="app-drag-handle" title="Drag to reorder" aria-hidden="true">
-                                                        <i class="fa-solid fa-grip-vertical"></i>
-                                                    </span>
-                                                    <h2 class="app-summary-panel__title">Research Trends</h2>
-                                                </div>
-                                                <div class="app-summary-panel__body">
+                                                    <!-- Key Metrics -->
+                                                    <p class="app-summary-panel__section-title">Key Metrics</p>
+                                                    <div class="app-summary-grid">
+                                                        <div class="app-summary-card">
+                                                            <p class="app-summary-card__label">Publications</p>
+                                                            <p class="app-summary-card__value" th:text="${workspace.publicationCount}">0</p>
+                                                            <p class="app-summary-card__meta">Total publications in your record.</p>
+                                                        </div>
+                                                        <div class="app-summary-card app-summary-card--success">
+                                                            <p class="app-summary-card__label">Citations</p>
+                                                            <p class="app-summary-card__value" th:text="${workspace.totalCitations}">0</p>
+                                                            <p class="app-summary-card__meta">Total citations across all publications.</p>
+                                                        </div>
+                                                        <div class="app-summary-card app-summary-card--warning">
+                                                            <p class="app-summary-card__label">H-Index</p>
+                                                            <p class="app-summary-card__value" th:text="${workspace.hIndex}">0</p>
+                                                            <p class="app-summary-card__meta">Current h-index for your publication record.</p>
+                                                        </div>
+                                                        <div class="app-summary-card">
+                                                            <p class="app-summary-card__label">Activities</p>
+                                                            <p class="app-summary-card__value" th:text="${workspace.activityInstanceCount}">0</p>
+                                                            <p class="app-summary-card__meta">Recorded activity instances.</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Research Trends -->
+                                                    <hr class="app-summary-panel__divider">
+                                                    <p class="app-summary-panel__section-title">Research Trends</p>
                                                     <div class="app-charts-row">
                                                         <div>
                                                             <p class="app-mini-chart__label">Publications per year</p>
@@ -269,12 +285,11 @@
                                                             </div>
                                                         </div>
                                                     </div>
+
                                                 </div>
                                             </div>
-                                        </th:block>
 
-                                        <!-- Quick actions (ACTIVE / REPORTING_SEASON) -->
-                                        <th:block th:if="${workspace.workspaceState.name() == 'ACTIVE' or workspace.workspaceState.name() == 'REPORTING_SEASON'}">
+                                            <!-- Quick Actions -->
                                             <div class="app-summary-panel app-overview-panel"
                                                  draggable="true" data-card-id="quick-actions">
                                                 <div class="app-summary-panel__header">
@@ -293,7 +308,7 @@
                                                                 onclick="window.appWorkspaceTabs?.activateTab('activities'); window.appWorkspaceActivities?.openCreate();">
                                                             <i class="fa-solid fa-pen-fancy" aria-hidden="true"></i> Add Activity
                                                         </button>
-                                                        <a th:href="@{/user/individual-reports}" class="btn btn-sm btn-outline-secondary">
+                                                        <a th:href="@{/user/evaluation}" class="btn btn-sm btn-outline-secondary">
                                                             <i class="fa-solid fa-file-lines" aria-hidden="true"></i> View Reports
                                                         </a>
                                                         <button type="button" class="btn btn-sm btn-outline-secondary"
@@ -303,50 +318,30 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                        </th:block>
 
-                                        <!-- Recent activity -->
-                                        <div th:if="${!workspace.recentActivities.isEmpty()}"
-                                             class="app-summary-panel app-overview-panel"
-                                             draggable="true" data-card-id="recent-activity">
-                                            <div class="app-summary-panel__header">
-                                                <span class="app-drag-handle" title="Drag to reorder" aria-hidden="true">
-                                                    <i class="fa-solid fa-grip-vertical"></i>
-                                                </span>
-                                                <h2 class="app-summary-panel__title">Recent Activity</h2>
-                                            </div>
-                                            <div class="app-summary-panel__body">
-                                                <div class="app-summary-list">
-                                                    <div th:each="item : ${workspace.recentActivities}"
-                                                         class="app-summary-list__item">
-                                                        <span class="app-summary-list__label" th:text="${item.activityName}">Activity</span>
-                                                        <span class="app-summary-list__value" th:text="${item.date}">Date</span>
+                                            <!-- Report Readiness (REPORTING_SEASON only) -->
+                                            <th:block th:if="${workspace.workspaceState.name() == 'REPORTING_SEASON'}">
+                                                <div class="app-summary-panel app-overview-panel"
+                                                     draggable="true" data-card-id="report-readiness">
+                                                    <div class="app-summary-panel__header">
+                                                        <span class="app-drag-handle" title="Drag to reorder" aria-hidden="true">
+                                                            <i class="fa-solid fa-grip-vertical"></i>
+                                                        </span>
+                                                        <h2 class="app-summary-panel__title">
+                                                            <i class="fa-solid fa-file-circle-check" aria-hidden="true"></i>
+                                                            Reports Available
+                                                        </h2>
+                                                    </div>
+                                                    <div class="app-summary-panel__body">
+                                                        <p th:text="'You have ' + ${workspace.availableReportCount} + ' individual report(s) available for review.'">Reports ready.</p>
+                                                        <a th:href="@{/user/evaluation}"
+                                                           class="btn btn-sm btn-primary" style="margin-top: 0.75rem;">
+                                                            <i class="fa-solid fa-file-lines" aria-hidden="true"></i> View Reports
+                                                        </a>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </div>
+                                            </th:block>
 
-                                        <!-- Report readiness (REPORTING_SEASON) -->
-                                        <th:block th:if="${workspace.workspaceState.name() == 'REPORTING_SEASON'}">
-                                            <div class="app-summary-panel app-overview-panel"
-                                                 draggable="true" data-card-id="report-readiness">
-                                                <div class="app-summary-panel__header">
-                                                    <span class="app-drag-handle" title="Drag to reorder" aria-hidden="true">
-                                                        <i class="fa-solid fa-grip-vertical"></i>
-                                                    </span>
-                                                    <h2 class="app-summary-panel__title">
-                                                        <i class="fa-solid fa-file-circle-check" aria-hidden="true"></i>
-                                                        Reports Available
-                                                    </h2>
-                                                </div>
-                                                <div class="app-summary-panel__body">
-                                                    <p th:text="'You have ' + ${workspace.availableReportCount} + ' individual report(s) available for review.'">Reports ready.</p>
-                                                    <a th:href="@{/user/individual-reports}"
-                                                       class="btn btn-sm btn-primary" style="margin-top: 0.75rem;">
-                                                        <i class="fa-solid fa-file-lines" aria-hidden="true"></i> View Reports
-                                                    </a>
-                                                </div>
-                                            </div>
                                         </th:block>
 
                                     </div><!-- /.app-overview-panels -->

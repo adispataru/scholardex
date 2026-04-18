@@ -11,6 +11,7 @@ import java.util.Objects;
 public class ScholardexAuthorView {
     private String id;
     private String name;
+    private List<String> alternativeNames = new ArrayList<>();
     private List<String> affiliationIds = new ArrayList<>();
     private List<ScholardexAffiliationView> affiliations = new ArrayList<>();
     private String buildVersion;

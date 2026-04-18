@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.tasks.Status;
 import ro.uvt.pokedex.core.model.tasks.ScopusCitationsUpdate;
@@ -18,7 +19,10 @@ import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.workspace.WorkspacePreferences;
 import ro.uvt.pokedex.core.repository.WorkspacePreferencesRepository;
 import ro.uvt.pokedex.core.repository.UserRepository;
+import ro.uvt.pokedex.core.service.application.PublicationAuthorshipDecisionService;
 import ro.uvt.pokedex.core.service.application.PublicationWizardFacade;
+import ro.uvt.pokedex.core.service.application.ResearcherAuthorLookupService;
+import ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService;
 import ro.uvt.pokedex.core.service.application.UserActivityInstanceFacade;
 import ro.uvt.pokedex.core.service.application.UserPublicationFacade;
 import ro.uvt.pokedex.core.service.application.UserReportFacade;
@@ -29,6 +33,7 @@ import ro.uvt.pokedex.core.service.application.model.ResearcherWorkspaceViewMode
 import ro.uvt.pokedex.core.service.application.model.ResearcherWorkspaceViewModel.WorkspaceState;
 import ro.uvt.pokedex.core.service.application.model.TabDef;
 import ro.uvt.pokedex.core.service.application.model.UserActivityInstancesViewModel;
+import ro.uvt.pokedex.core.service.application.model.PublicationAuthorshipReviewState;
 import ro.uvt.pokedex.core.service.application.model.PublicationMetadataPatch;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.WorkspaceNotification;
@@ -59,6 +64,9 @@ public class ResearcherWorkspaceController {
     private final UserReportFacade userReportFacade;
     private final WorkspacePreferencesRepository workspacePreferencesRepository;
     private final PublicationWizardFacade publicationWizardFacade;
+    private final PublicationAuthorshipDecisionService publicationAuthorshipDecisionService;
+    private final ResearcherAuthorLookupService researcherAuthorLookupService;
+    private final ScholardexProjectionReadService scholardexProjectionReadService;
 
     // ── MVC ──────────────────────────────────────────────────────────────
     @GetMapping
@@ -75,7 +83,7 @@ public class ResearcherWorkspaceController {
     @ResponseBody
     public ResponseEntity<UserPublicationsViewModel> getPublications(Authentication authentication) {
         return currentUser(authentication).map(u ->
-                userPublicationFacade.buildUserPublicationsView(u.getEmail())
+                userPublicationFacade.buildWorkspacePublicationsView(u.getEmail())
                         .map(ResponseEntity::ok)
                         .orElseGet(() -> ResponseEntity.ok(emptyPublicationsViewModel()))
         ).orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
@@ -245,6 +253,147 @@ public class ResearcherWorkspaceController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/publications/{id}/authorship/confirm")
+    @ResponseBody
+    public ResponseEntity<AuthorshipDecisionResponse> confirmPublicationAuthorship(
+            @PathVariable String id,
+            @RequestBody(required = false) AuthorshipDecisionRequest request,
+            Authentication authentication) {
+        Optional<User> userOpt = currentUser(authentication);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        try {
+            var decision = publicationAuthorshipDecisionService.upsertDecision(
+                    userOpt.get().getEmail(),
+                    id,
+                    ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision.Status.CONFIRMED,
+                    request != null ? request.reason() : null
+            );
+            return ResponseEntity.ok(new AuthorshipDecisionResponse(
+                    id,
+                    PublicationAuthorshipReviewState.Status.CONFIRMED,
+                    decision.getReason(),
+                    decision.getUpdatedAt()
+            ));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(new AuthorshipDecisionResponse(
+                    id,
+                    PublicationAuthorshipReviewState.Status.PENDING,
+                    ex.getMessage(),
+                    null
+            ));
+        }
+    }
+
+    @PostMapping("/publications/{id}/authorship/reject")
+    @ResponseBody
+    public ResponseEntity<AuthorshipDecisionResponse> rejectPublicationAuthorship(
+            @PathVariable String id,
+            @RequestBody(required = false) AuthorshipDecisionRequest request,
+            Authentication authentication) {
+        Optional<User> userOpt = currentUser(authentication);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        try {
+            var decision = publicationAuthorshipDecisionService.upsertDecision(
+                    userOpt.get().getEmail(),
+                    id,
+                    ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision.Status.REJECTED,
+                    request != null ? request.reason() : null
+            );
+            return ResponseEntity.ok(new AuthorshipDecisionResponse(
+                    id,
+                    PublicationAuthorshipReviewState.Status.REJECTED,
+                    decision.getReason(),
+                    decision.getUpdatedAt()
+            ));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(new AuthorshipDecisionResponse(
+                    id,
+                    PublicationAuthorshipReviewState.Status.PENDING,
+                    ex.getMessage(),
+                    null
+            ));
+        }
+    }
+
+    @DeleteMapping("/publications/{id}/authorship")
+    @ResponseBody
+    public ResponseEntity<AuthorshipDecisionResponse> clearPublicationAuthorshipDecision(
+            @PathVariable String id,
+            Authentication authentication) {
+        Optional<User> userOpt = currentUser(authentication);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        publicationAuthorshipDecisionService.clearDecision(userOpt.get().getEmail(), id);
+        return ResponseEntity.ok(new AuthorshipDecisionResponse(
+                id,
+                PublicationAuthorshipReviewState.Status.PENDING,
+                null,
+                null
+        ));
+    }
+
+    @PostMapping("/publications/authorship/bulk")
+    @ResponseBody
+    public ResponseEntity<BulkAuthorshipDecisionResponse> bulkPublicationAuthorshipDecision(
+            @RequestBody BulkAuthorshipDecisionRequest request,
+            Authentication authentication) {
+        Optional<User> userOpt = currentUser(authentication);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision.Status actionStatus;
+        try {
+            actionStatus = switch (request.action()) {
+                case CONFIRM -> ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision.Status.CONFIRMED;
+                case REJECT -> ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision.Status.REJECTED;
+            };
+        } catch (RuntimeException ex) {
+            return ResponseEntity.badRequest().body(new BulkAuthorshipDecisionResponse(
+                    List.of(),
+                    List.of(new BulkAuthorshipDecisionFailure(null, "Invalid bulk review action.")),
+                    List.of()
+            ));
+        }
+
+        try {
+            var result = publicationAuthorshipDecisionService.upsertBulkDecisions(
+                    userOpt.get().getEmail(),
+                    request.publicationIds(),
+                    actionStatus,
+                    request.reason()
+            );
+            List<AuthorshipDecisionResponse> successes = result.succeededByPublicationId().values().stream()
+                    .map(decision -> new AuthorshipDecisionResponse(
+                            decision.getPublicationId(),
+                            decision.getStatus() == ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision.Status.CONFIRMED
+                                    ? PublicationAuthorshipReviewState.Status.CONFIRMED
+                                    : PublicationAuthorshipReviewState.Status.REJECTED,
+                            decision.getReason(),
+                            decision.getUpdatedAt()
+                    ))
+                    .toList();
+            List<BulkAuthorshipDecisionFailure> failures = result.failures().stream()
+                    .map(failure -> new BulkAuthorshipDecisionFailure(failure.publicationId(), failure.message()))
+                    .toList();
+            return ResponseEntity.ok(new BulkAuthorshipDecisionResponse(
+                    successes.stream().map(AuthorshipDecisionResponse::publicationId).toList(),
+                    failures,
+                    successes
+            ));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(new BulkAuthorshipDecisionResponse(
+                    List.of(),
+                    List.of(new BulkAuthorshipDecisionFailure(null, ex.getMessage())),
+                    List.of()
+            ));
+        }
+    }
+
     // ── JSON: preferences ─────────────────────────────────────────────────
     @PostMapping("/preferences")
     @ResponseBody
@@ -269,17 +418,18 @@ public class ResearcherWorkspaceController {
         return currentUser(authentication).map(u -> {
             // Re-load from DB — the session principal is stale after a profile save.
             User freshUser = userRepository.findById(u.getEmail()).orElse(u);
-            // Always return a Researcher object — even an empty stub — so the JS
-            // form renders for new users who haven't saved their profile yet.
-            Researcher researcher = Researcher.fromUser(freshUser);
-            if (researcher == null) {
-                researcher = new Researcher();   // empty stub; id is not set
+            User.ResearcherProfile profile = freshUser.getResearcherProfile();
+            if (profile == null) {
+                profile = new User.ResearcherProfile();
             }
-            int completeness = computeProfileCompleteness(researcher);
+            int completeness = computeProfileCompleteness(profile);
             var tasksVm = userScopusTaskFacade.buildTasksView(freshUser.getEmail(), freshUser.getEmail());
+            List<ScholardexAffiliationView> observedAffiliations = loadObservedAffiliations(profile);
             return ResponseEntity.ok(new WorkspaceProfileViewModel(
-                    researcher, completeness,
-                    tasksVm.tasks(), tasksVm.citationsTasks()
+                    profile, completeness,
+                    tasksVm.tasks(), tasksVm.citationsTasks(),
+                    observedAffiliations,
+                    requiresAffiliationConfirmation(profile)
             ));
         }).orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
@@ -305,6 +455,14 @@ public class ResearcherWorkspaceController {
                 ? new ArrayList<>(request.scopusId()) : new ArrayList<>());
         profile.setWosId(request.wosId() != null
                 ? new ArrayList<>(request.wosId()) : new ArrayList<>());
+        List<String> currentAffiliationIds = normalizeAffiliationIds(request.currentAffiliationIds());
+        List<String> pastAffiliationIds = normalizeAffiliationIds(request.pastAffiliationIds());
+        pastAffiliationIds.removeIf(currentAffiliationIds::contains);
+        profile.setCurrentAffiliationIds(currentAffiliationIds);
+        profile.setPastAffiliationIds(pastAffiliationIds);
+        if (Boolean.TRUE.equals(request.confirmAffiliationScope())) {
+            profile.setAffiliationsConfirmedAt(Instant.now());
+        }
         user.setResearcherProfile(profile);
         if (isNewProfile) {
             // Grant RESEARCHER role on first profile creation so the user gains
@@ -518,11 +676,7 @@ public class ResearcherWorkspaceController {
         if (researcherId == null || researcher == null) {
             return WorkspaceState.NEW_USER;
         }
-        boolean hasScopus = researcher.getScopusId() != null && !researcher.getScopusId().isEmpty();
-        boolean hasWos = researcher.getWosId() != null && !researcher.getWosId().isEmpty();
-        boolean hasPrimaryAuthor = researcher.getPrimaryScholardexAuthorId() != null
-                && !researcher.getPrimaryScholardexAuthorId().isBlank();
-        if (!hasScopus && !hasWos && !hasPrimaryAuthor) {
+        if (!hasLinkedResearchIdentity(researcher) || requiresAffiliationConfirmation(researcher)) {
             return WorkspaceState.INCOMPLETE_PROFILE;
         }
         if (availableReportCount > 0) {
@@ -538,9 +692,122 @@ public class ResearcherWorkspaceController {
         int score = 0;
         if (researcher.getFirstName() != null && !researcher.getFirstName().isBlank()) score += 25;
         if (researcher.getLastName() != null && !researcher.getLastName().isBlank()) score += 25;
-        if (researcher.getScopusId() != null && !researcher.getScopusId().isEmpty()) score += 25;
-        if (researcher.getWosId() != null && !researcher.getWosId().isEmpty()) score += 25;
+        if (hasLinkedResearchIdentity(researcher)) score += 25;
+        if (!requiresAffiliationConfirmation(researcher)) score += 25;
         return score;
+    }
+
+    private int computeProfileCompleteness(User.ResearcherProfile profile) {
+        if (profile == null) {
+            return 0;
+        }
+        int score = 0;
+        if (profile.getFirstName() != null && !profile.getFirstName().isBlank()) score += 25;
+        if (profile.getLastName() != null && !profile.getLastName().isBlank()) score += 25;
+        if (hasLinkedResearchIdentity(profile)) score += 25;
+        if (!requiresAffiliationConfirmation(profile)) score += 25;
+        return score;
+    }
+
+    private boolean hasLinkedResearchIdentity(Researcher researcher) {
+        if (researcher == null) {
+            return false;
+        }
+        boolean hasScopus = researcher.getScopusId() != null && !researcher.getScopusId().isEmpty();
+        boolean hasWos = researcher.getWosId() != null && !researcher.getWosId().isEmpty();
+        boolean hasPrimaryAuthor = researcher.getPrimaryScholardexAuthorId() != null
+                && !researcher.getPrimaryScholardexAuthorId().isBlank();
+        return hasScopus || hasWos || hasPrimaryAuthor;
+    }
+
+    private boolean requiresAffiliationConfirmation(Researcher researcher) {
+        return hasLinkedResearchIdentity(researcher)
+                && (researcher == null || researcher.getAffiliationsConfirmedAt() == null);
+    }
+
+    private boolean hasLinkedResearchIdentity(User.ResearcherProfile profile) {
+        if (profile == null) {
+            return false;
+        }
+        boolean hasScopus = profile.getScopusId() != null && !profile.getScopusId().isEmpty();
+        boolean hasWos = profile.getWosId() != null && !profile.getWosId().isEmpty();
+        boolean hasPrimaryAuthor = profile.getPrimaryScholardexAuthorId() != null
+                && !profile.getPrimaryScholardexAuthorId().isBlank();
+        return hasScopus || hasWos || hasPrimaryAuthor;
+    }
+
+    private boolean requiresAffiliationConfirmation(User.ResearcherProfile profile) {
+        return hasLinkedResearchIdentity(profile)
+                && (profile == null || profile.getAffiliationsConfirmedAt() == null);
+    }
+
+    private List<ScholardexAffiliationView> loadObservedAffiliations(Researcher researcher) {
+        if (researcher == null || !hasLinkedResearchIdentity(researcher)) {
+            return List.of();
+        }
+        List<String> authorLookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(researcher);
+        if (authorLookupKeys.isEmpty()) {
+            return List.of();
+        }
+        List<ScholardexAuthorView> authors = scholardexProjectionReadService.findAuthorsByIdIn(authorLookupKeys);
+        Set<String> affiliationIds = authors.stream()
+                .map(ScholardexAuthorView::getAffiliationIds)
+                .filter(ids -> ids != null && !ids.isEmpty())
+                .flatMap(List::stream)
+                .filter(id -> id != null && !id.isBlank())
+                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+        if (affiliationIds.isEmpty()) {
+            return List.of();
+        }
+        return scholardexProjectionReadService.findAffiliationsByIdIn(affiliationIds).stream()
+                .sorted(Comparator.comparing(
+                        affiliation -> affiliation.getName() == null ? "" : affiliation.getName(),
+                        String.CASE_INSENSITIVE_ORDER
+                ))
+                .toList();
+    }
+
+    private List<ScholardexAffiliationView> loadObservedAffiliations(User.ResearcherProfile profile) {
+        if (profile == null || !hasLinkedResearchIdentity(profile)) {
+            return List.of();
+        }
+        List<String> authorLookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeysFromProfile(profile);
+        if (authorLookupKeys.isEmpty()) {
+            return List.of();
+        }
+        List<ScholardexAuthorView> authors = scholardexProjectionReadService.findAuthorsByIdIn(authorLookupKeys);
+        Set<String> affiliationIds = authors.stream()
+                .map(ScholardexAuthorView::getAffiliationIds)
+                .filter(ids -> ids != null && !ids.isEmpty())
+                .flatMap(List::stream)
+                .filter(id -> id != null && !id.isBlank())
+                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+        if (affiliationIds.isEmpty()) {
+            return List.of();
+        }
+        return scholardexProjectionReadService.findAffiliationsByIdIn(affiliationIds).stream()
+                .sorted(Comparator.comparing(
+                        affiliation -> affiliation.getName() == null ? "" : affiliation.getName(),
+                        String.CASE_INSENSITIVE_ORDER
+                ))
+                .toList();
+    }
+
+    private List<String> normalizeAffiliationIds(List<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return new ArrayList<>();
+        }
+        java.util.LinkedHashSet<String> normalized = new java.util.LinkedHashSet<>();
+        for (String id : ids) {
+            if (id == null) {
+                continue;
+            }
+            String trimmed = id.trim();
+            if (!trimmed.isEmpty()) {
+                normalized.add(trimmed);
+            }
+        }
+        return new ArrayList<>(normalized);
     }
 
     private List<WorkspaceSearchResult> performSearch(String q, String userEmail) {
@@ -614,7 +881,7 @@ public class ResearcherWorkspaceController {
                     "profile-incomplete",
                     NotificationType.PROFILE_INCOMPLETE,
                     "Profile incomplete",
-                    "Add your Scopus IDs and WoS IDs to improve publication detection.",
+                    "Add your identity links and confirm your current and past affiliations to enable publication review.",
                     null,
                     "/user/profile"
             ));
@@ -698,10 +965,27 @@ public class ResearcherWorkspaceController {
 
     private UserPublicationsViewModel emptyPublicationsViewModel() {
         return new UserPublicationsViewModel(
-                List.of(), 0, Map.of(), Map.of(), 0, null, List.of());
+                List.of(), 0, Map.of(), Map.of(), Map.of(), Map.of(), 0, 0, 0, 0, null, List.of());
     }
 
     record WorkspacePreferencesRequest(List<String> cardOrder) {}
+    record AuthorshipDecisionRequest(String reason) {}
+    record BulkAuthorshipDecisionRequest(List<String> publicationIds,
+                                         BulkAuthorshipAction action,
+                                         String reason) {}
+    record AuthorshipDecisionResponse(String publicationId,
+                                      PublicationAuthorshipReviewState.Status status,
+                                      String reason,
+                                      Instant updatedAt) {}
+    record BulkAuthorshipDecisionFailure(String publicationId,
+                                         String message) {}
+    record BulkAuthorshipDecisionResponse(List<String> succeededIds,
+                                          List<BulkAuthorshipDecisionFailure> failures,
+                                          List<AuthorshipDecisionResponse> updatedStates) {}
+    enum BulkAuthorshipAction {
+        CONFIRM,
+        REJECT
+    }
 
     record NotificationDismissRequest(String id) {}
 
@@ -718,17 +1002,22 @@ public class ResearcherWorkspaceController {
             Map<String, String> referenceFields) {}
 
     record WorkspaceProfileViewModel(
-            Researcher researcher,
+            User.ResearcherProfile researcher,
             int completeness,
             List<ScopusPublicationUpdate> pubTasks,
-            List<ScopusCitationsUpdate> citeTasks) {}
+            List<ScopusCitationsUpdate> citeTasks,
+            List<ScholardexAffiliationView> observedAffiliations,
+            boolean affiliationConfirmationRequired) {}
 
     record ProfileSaveRequest(
             String firstName,
             String lastName,
             String scholarId,
             List<String> scopusId,
-            List<String> wosId) {}
+            List<String> wosId,
+            List<String> currentAffiliationIds,
+            List<String> pastAffiliationIds,
+            Boolean confirmAffiliationScope) {}
 
     record SyncRequest(
         String scopusId,

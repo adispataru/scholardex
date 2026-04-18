@@ -400,8 +400,41 @@ public class ScholardexSourceLinkService {
                 String desiredState = normalizeState(link.getLinkState());
                 String desiredRecordId = normalize(link.getSourceRecordId());
                 String desiredCanonical = normalize(link.getCanonicalEntityId());
+                boolean sourceChanged = desiredSource != null && !desiredSource.equals(link.getSource());
+                ScholardexSourceLink normalizedExisting = null;
+                if (sourceChanged && link.getEntityType() != null && desiredRecordId != null) {
+                    normalizedExisting = sourceLinkRepository
+                            .findByEntityTypeAndSourceAndSourceRecordId(link.getEntityType(), desiredSource, desiredRecordId)
+                            .filter(existing -> existing.getId() != null && !existing.getId().equals(link.getId()))
+                            .orElse(null);
+                }
+                if (normalizedExisting != null) {
+                    String normalizedExistingCanonical = normalize(normalizedExisting.getCanonicalEntityId());
+                    if (desiredCanonical != null
+                            && normalizedExistingCanonical != null
+                            && !desiredCanonical.equals(normalizedExistingCanonical)) {
+                        openRelinkConflict(
+                                link.getEntityType(),
+                                desiredSource,
+                                desiredRecordId,
+                                link.getSourceEventId(),
+                                link.getSourceBatchId(),
+                                link.getSourceCorrelationId(),
+                                normalizedExistingCanonical,
+                                desiredCanonical
+                        );
+                        skipped++;
+                        continue;
+                    }
+                    mergeNormalizedLink(normalizedExisting, link, desiredState, desiredCanonical);
+                    normalizedExisting.setUpdatedAt(Instant.now());
+                    sourceLinkRepository.save(normalizedExisting);
+                    sourceLinkRepository.delete(link);
+                    updated++;
+                    continue;
+                }
                 boolean changed = false;
-                if (desiredSource != null && !desiredSource.equals(link.getSource())) {
+                if (sourceChanged) {
                     link.setSource(desiredSource);
                     changed = true;
                 }
@@ -457,7 +490,41 @@ public class ScholardexSourceLinkService {
             return null;
         }
         String upper = token.toUpperCase(Locale.ROOT);
+        if (upper.equals("SCOPUS") || upper.startsWith("SCOPUS_")) {
+            return "SCOPUS";
+        }
         return SOURCE_ALIASES.getOrDefault(upper, upper);
+    }
+
+    private void mergeNormalizedLink(
+            ScholardexSourceLink target,
+            ScholardexSourceLink legacy,
+            String desiredState,
+            String desiredCanonical
+    ) {
+        if (target.getLinkedAt() == null) {
+            target.setLinkedAt(legacy.getLinkedAt() == null ? Instant.now() : legacy.getLinkedAt());
+        }
+        if ((STATE_LINKED.equals(target.getLinkState()) || STATE_UNMATCHED.equals(target.getLinkState()))
+                && normalize(target.getCanonicalEntityId()) == null
+                && desiredCanonical != null) {
+            target.setCanonicalEntityId(desiredCanonical);
+        }
+        if (target.getLinkState() == null && desiredState != null) {
+            target.setLinkState(desiredState);
+        }
+        if (target.getLinkReason() == null && legacy.getLinkReason() != null) {
+            target.setLinkReason(legacy.getLinkReason());
+        }
+        if (target.getSourceEventId() == null && legacy.getSourceEventId() != null) {
+            target.setSourceEventId(legacy.getSourceEventId());
+        }
+        if (target.getSourceBatchId() == null && legacy.getSourceBatchId() != null) {
+            target.setSourceBatchId(legacy.getSourceBatchId());
+        }
+        if (target.getSourceCorrelationId() == null && legacy.getSourceCorrelationId() != null) {
+            target.setSourceCorrelationId(legacy.getSourceCorrelationId());
+        }
     }
 
     private boolean isTransitionAllowed(String current, String next, boolean explicitReplayAttempt) {

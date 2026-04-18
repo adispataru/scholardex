@@ -32,11 +32,12 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -94,6 +95,7 @@ class ScopusProjectionBuilderServiceTest {
         publicationFact.setId("p1");
         publicationFact.setEid("2-s2.0-1");
         publicationFact.setTitle("Paper");
+        publicationFact.setAuthorCount(1);
         publicationFact.setDoi("https://doi.org/10.1000/AbC");
         publicationFact.setAuthorIds(List.of("a1"));
         publicationFact.setAffiliationIds(List.of("af1"));
@@ -113,7 +115,7 @@ class ScopusProjectionBuilderServiceTest {
         when(mongoTemplate.find(any(), eq(ScholardexCitationFact.class))).thenReturn(List.of(citationFact));
         when(mongoTemplate.find(any(), eq(ScholardexAuthorshipFact.class))).thenReturn(List.of());
         when(mongoTemplate.find(any(), eq(ScholardexAuthorAffiliationFact.class))).thenReturn(List.of());
-        when(jdbcTemplate.batchUpdate(anyString(), anyList(), eq(500), any())).thenReturn(new int[0][]);
+        when(jdbcTemplate.batchUpdate(anyString(), any(BatchPreparedStatementSetter.class))).thenReturn(new int[0]);
 
         ImportProcessingResult result = service.rebuildViews();
 
@@ -154,7 +156,7 @@ class ScopusProjectionBuilderServiceTest {
         lenient().when(mongoTemplate.find(any(), eq(ScholardexCitationFact.class))).thenReturn(List.of());
         lenient().when(mongoTemplate.find(any(), eq(ScholardexAuthorshipFact.class))).thenReturn(List.of());
         lenient().when(mongoTemplate.find(any(), eq(ScholardexAuthorAffiliationFact.class))).thenReturn(List.of());
-        lenient().when(jdbcTemplate.batchUpdate(anyString(), anyList(), eq(500), any())).thenReturn(new int[0][]);
+        lenient().when(jdbcTemplate.batchUpdate(anyString(), any(BatchPreparedStatementSetter.class))).thenReturn(new int[0]);
 
         ImportProcessingResult result = service.rebuildViews();
 
@@ -220,6 +222,7 @@ class ScopusProjectionBuilderServiceTest {
         publicationFact.setId("p1");
         publicationFact.setEid("2-s2.0-affected");
         publicationFact.setTitle("Affected Paper");
+        publicationFact.setAuthorCount(1);
 
         ScholardexCitationFact citationFact = new ScholardexCitationFact();
         citationFact.setId("scit_1");
@@ -234,7 +237,6 @@ class ScopusProjectionBuilderServiceTest {
         when(citationFactRepository.findByCitedPublicationIdIn(Set.of("p1"))).thenReturn(List.of());
         when(citationFactRepository.findByCitingPublicationIdIn(Set.of("p1"))).thenReturn(List.of(citationFact));
         when(authorshipFactRepository.findByPublicationIdIn(Set.of("p1"))).thenReturn(List.of());
-        lenient().when(jdbcTemplate.batchUpdate(anyString(), anyList(), eq(500), any())).thenReturn(new int[0][]);
         lenient().when(jdbcTemplate.batchUpdate(anyString(), any(BatchPreparedStatementSetter.class))).thenReturn(new int[0]);
 
         ImportProcessingResult result = service.rebuildViewsForBatch("upload-batch-7");
@@ -267,6 +269,7 @@ class ScopusProjectionBuilderServiceTest {
         publicationFact.setId("p1");
         publicationFact.setEid("2-s2.0-affected");
         publicationFact.setTitle("Affected Paper");
+        publicationFact.setAuthorCount(1);
 
         ScholardexCitationFact citationFact = new ScholardexCitationFact();
         citationFact.setId("scit_2");
@@ -348,6 +351,7 @@ class ScopusProjectionBuilderServiceTest {
         publicationFact.setId("p1");
         publicationFact.setEid("2-s2.0-affected");
         publicationFact.setTitle("Affected Paper");
+        publicationFact.setAuthorCount(1);
 
         ScholardexAuthorFact authorFact = new ScholardexAuthorFact();
         authorFact.setId("a1");
@@ -386,6 +390,58 @@ class ScopusProjectionBuilderServiceTest {
     }
 
     @Test
+    void rebuildViewsProjectsAuthorAlternativeNames() {
+        ScopusProjectionBuilderService service = new ScopusProjectionBuilderService(
+                forumFactRepository,
+                canonicalForumFactRepository,
+                authorFactRepository,
+                affiliationFactRepository,
+                publicationFactRepository,
+                citationFactRepository,
+                authorshipFactRepository,
+                authorAffiliationFactRepository,
+                mongoTemplate,
+                jdbcTemplate,
+                transactionManager
+        );
+
+        TransactionStatus txStatus = mock(TransactionStatus.class);
+        when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenReturn(txStatus);
+
+        ScholardexAuthorFact authorFact = new ScholardexAuthorFact();
+        authorFact.setId("a1");
+        authorFact.setDisplayName("Spataru A.");
+        authorFact.setAlternativeNames(List.of("Spataru, Adrian", "Adrian Spataru"));
+
+        when(forumFactRepository.findAll()).thenReturn(List.of());
+        when(canonicalForumFactRepository.findAll()).thenReturn(List.of());
+        when(authorFactRepository.findAll()).thenReturn(List.of(authorFact));
+        when(affiliationFactRepository.findAll()).thenReturn(List.of());
+        when(publicationFactRepository.findAll()).thenReturn(List.of());
+        when(mongoTemplate.find(any(), eq(ScholardexCitationFact.class))).thenReturn(List.of());
+        when(mongoTemplate.find(any(), eq(ScholardexAuthorshipFact.class))).thenReturn(List.of());
+        when(mongoTemplate.find(any(), eq(ScholardexAuthorAffiliationFact.class))).thenReturn(List.of());
+        when(jdbcTemplate.batchUpdate(anyString(), any(BatchPreparedStatementSetter.class))).thenReturn(new int[0]);
+
+        service.rebuildViews();
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<BatchPreparedStatementSetter> setterCaptor = ArgumentCaptor.forClass(BatchPreparedStatementSetter.class);
+        verify(jdbcTemplate, atLeastOnce()).batchUpdate(sqlCaptor.capture(), setterCaptor.capture());
+        int authorWriteIndex = -1;
+        List<String> sqls = sqlCaptor.getAllValues();
+        for (int i = 0; i < sqls.size(); i++) {
+            if (sqls.get(i).contains("reporting_read.scholardex_author_view")) {
+                authorWriteIndex = i;
+                break;
+            }
+        }
+        assertTrue(authorWriteIndex >= 0);
+        assertTrue(sqls.get(authorWriteIndex).contains("alternative_names"));
+        assertEquals(1, setterCaptor.getAllValues().get(authorWriteIndex).getBatchSize());
+    }
+
+    @Test
     void rebuildViewsDedupesCanonicalCitationPairsBeforeWritingProjectionRows() {
         ScopusProjectionBuilderService service = new ScopusProjectionBuilderService(
                 forumFactRepository,
@@ -408,11 +464,13 @@ class ScopusProjectionBuilderServiceTest {
         citedPublication.setId("p1");
         citedPublication.setEid("2-s2.0-1");
         citedPublication.setTitle("Cited");
+        citedPublication.setAuthorCount(1);
 
         ScholardexPublicationFact citingPublication = new ScholardexPublicationFact();
         citingPublication.setId("p2");
         citingPublication.setEid("2-s2.0-2");
         citingPublication.setTitle("Citing");
+        citingPublication.setAuthorCount(1);
 
         ScholardexCitationFact bootstrapCitation = new ScholardexCitationFact();
         bootstrapCitation.setId("scit_bootstrap");

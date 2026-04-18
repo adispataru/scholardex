@@ -13,11 +13,13 @@ import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.repository.scopus.canonical.PublicationAuthorshipDecisionRepository;
 import ro.uvt.pokedex.core.service.UserService;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -111,7 +113,8 @@ class EffectiveAuthorshipReadServiceTest {
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(raw));
         when(publicationAuthorshipDecisionRepository.findByUserEmailOrderByUpdatedAtDesc("user@uvt.ro"))
                 .thenReturn(List.of(decision("p2", PublicationAuthorshipDecision.Status.CONFIRMED)));
-        when(scholardexProjectionReadService.findAllPublicationsByIdIn(List.of("p2"))).thenReturn(List.of(confirmed));
+        when(scholardexProjectionReadService.findAllPublicationsByIdIn(anyCollection()))
+                .thenReturn(List.of(confirmed));
 
         List<ScholardexPublicationView> result = service.findEffectivePublicationsForUser("user@uvt.ro");
 
@@ -153,6 +156,46 @@ class EffectiveAuthorshipReadServiceTest {
         assertThat(service.findEffectivePublicationsForUser("user@uvt.ro")).isEmpty();
     }
 
+    @Test
+    void confirmedOnlyPathReturnsOnlyConfirmedPublications() {
+        ScholardexPublicationView confirmed = publication("p2", "Paper 2");
+
+        when(publicationAuthorshipDecisionRepository.findByUserEmailOrderByUpdatedAtDesc("user@uvt.ro"))
+                .thenReturn(List.of(
+                        decision("p1", PublicationAuthorshipDecision.Status.REJECTED),
+                        decision("p2", PublicationAuthorshipDecision.Status.CONFIRMED)
+                ));
+        when(scholardexProjectionReadService.findAllPublicationsByIdIn(anyCollection()))
+                .thenReturn(List.of(confirmed));
+
+        List<ScholardexPublicationView> result = service.findConfirmedPublicationsForScoring("user@uvt.ro");
+
+        assertThat(result).extracting(ScholardexPublicationView::getId).containsExactly("p2");
+        assertThat(service.hasConfirmedPublicationsForScoring("user@uvt.ro")).isTrue();
+    }
+
+    @Test
+    void confirmedOnlyPathExcludesPendingRawPublications() {
+        when(publicationAuthorshipDecisionRepository.findByUserEmailOrderByUpdatedAtDesc("user@uvt.ro"))
+                .thenReturn(List.of());
+
+        assertThat(service.findConfirmedPublicationsForScoring("user@uvt.ro")).isEmpty();
+        assertThat(service.hasConfirmedPublicationsForScoring("user@uvt.ro")).isFalse();
+    }
+
+    @Test
+    void confirmedOnlyPathReincludesConfirmedPublicationWithoutRawAuthorLink() {
+        ScholardexPublicationView confirmed = publication("p2", "Paper 2");
+
+        when(publicationAuthorshipDecisionRepository.findByUserEmailOrderByUpdatedAtDesc("user@uvt.ro"))
+                .thenReturn(List.of(decision("p2", PublicationAuthorshipDecision.Status.CONFIRMED)));
+        when(scholardexProjectionReadService.findAllPublicationsByIdIn(anyCollection())).thenReturn(List.of(confirmed));
+
+        List<ScholardexPublicationView> result = service.findConfirmedPublicationsForScoring("user@uvt.ro");
+
+        assertThat(result).extracting(ScholardexPublicationView::getId).containsExactly("p2");
+    }
+
     private User user(String email) {
         User user = new User();
         user.setEmail(email);
@@ -180,6 +223,7 @@ class EffectiveAuthorshipReadServiceTest {
         PublicationAuthorshipDecision decision = new PublicationAuthorshipDecision();
         decision.setPublicationId(publicationId);
         decision.setStatus(status);
+        decision.setUpdatedAt(Instant.parse("2026-04-16T12:00:00Z"));
         return decision;
     }
 }

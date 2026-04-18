@@ -4,12 +4,15 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.service.application.model.PublicationAuthorshipReviewState;
 import ro.uvt.pokedex.core.service.application.model.PublicationMetadataPatch;
+import ro.uvt.pokedex.core.service.application.model.SuspiciousAuthorshipState;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationCitationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationsViewModel;
 
@@ -23,6 +26,8 @@ public class UserPublicationFacade {
 
     private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final EffectiveAuthorshipReadService effectiveAuthorshipReadService;
+    private final PublicationAuthorshipDecisionService publicationAuthorshipDecisionService;
+    private final SuspiciousAuthorshipTriageService suspiciousAuthorshipTriageService;
 
     public Optional<UserPublicationsViewModel> buildUserPublicationsView(String userEmail) {
         long startedAtNanos = System.nanoTime();
@@ -40,6 +45,35 @@ public class UserPublicationFacade {
 
         long totalMs = nanosToMillis(System.nanoTime() - startedAtNanos);
         log.info("User publications load finished: userEmail={} publications={} forums={} citations={} timingsMs[publicationsFetch={}, relatedLookup={}, total={}]",
+                userEmail,
+                publications.size(),
+                viewModel.forumMap().size(),
+                viewModel.numCitations(),
+                publicationsFetchMs,
+                relatedLookupMs,
+                totalMs);
+
+        return Optional.of(viewModel);
+    }
+
+    public Optional<UserPublicationsViewModel> buildWorkspacePublicationsView(String userEmail) {
+        long startedAtNanos = System.nanoTime();
+        log.info("Workspace publications load started: userEmail={}", userEmail);
+
+        long publicationsFetchStartedAtNanos = System.nanoTime();
+        List<ScholardexPublicationView> publications = dedupeAndSortPublications(
+                effectiveAuthorshipReadService.findWorkspaceReviewPublicationsForUser(userEmail)
+        );
+        long publicationsFetchMs = nanosToMillis(System.nanoTime() - publicationsFetchStartedAtNanos);
+
+        long relatedLookupStartedAtNanos = System.nanoTime();
+        Map<String, PublicationAuthorshipReviewState> reviewStateByPublicationId =
+                buildReviewStateByPublicationId(userEmail, publications);
+        UserPublicationsViewModel viewModel = buildPublicationsViewModel(publications, reviewStateByPublicationId, userEmail);
+        long relatedLookupMs = nanosToMillis(System.nanoTime() - relatedLookupStartedAtNanos);
+
+        long totalMs = nanosToMillis(System.nanoTime() - startedAtNanos);
+        log.info("Workspace publications load finished: userEmail={} publications={} forums={} citations={} timingsMs[publicationsFetch={}, relatedLookup={}, total={}]",
                 userEmail,
                 publications.size(),
                 viewModel.forumMap().size(),
@@ -72,7 +106,9 @@ public class UserPublicationFacade {
 
         UserPublicationsViewModel baseVm = buildPublicationsViewModel(publications);
         return Optional.of(new UserPublicationsViewModel(
-                baseVm.publications(), baseVm.hIndex(), baseVm.authorMap(), baseVm.forumMap(),
+                baseVm.publications(), baseVm.hIndex(), baseVm.authorMap(), baseVm.forumMap(), baseVm.authorshipReviewStateByPublicationId(),
+                baseVm.suspiciousAuthorshipByPublicationId(), baseVm.pendingReviewCount(), baseVm.suspiciousPendingCount(),
+                baseVm.recommendedPendingCount(),
                 baseVm.numCitations(), theAuthor, affiliations
         ));
     }
@@ -200,10 +236,97 @@ public class UserPublicationFacade {
                 hIndex,
                 authorMap,
                 forumMap,
+                Map.of(),
+                Map.of(),
+                0,
+                0,
+                0,
                 numCitations.get(),
                 null,
                 List.of()
         );
+    }
+
+    private UserPublicationsViewModel buildPublicationsViewModel(List<ScholardexPublicationView> publications,
+                                                                 Map<String, PublicationAuthorshipReviewState> reviewStateByPublicationId) {
+        return buildPublicationsViewModel(publications, reviewStateByPublicationId, null);
+    }
+
+    private UserPublicationsViewModel buildPublicationsViewModel(List<ScholardexPublicationView> publications,
+                                                                 Map<String, PublicationAuthorshipReviewState> reviewStateByPublicationId,
+                                                                 String userEmail) {
+        UserPublicationsViewModel base = buildPublicationsViewModel(publications);
+        Map<String, SuspiciousAuthorshipState> suspiciousAuthorshipByPublicationId = userEmail == null || userEmail.isBlank()
+                ? Map.of()
+                : suspiciousAuthorshipTriageService.evaluatePendingSuspiciousAuthorship(
+                        userEmail,
+                        publications,
+                        reviewStateByPublicationId,
+                        base.authorMap()
+                );
+        int pendingReviewCount = (int) reviewStateByPublicationId.values().stream()
+                .filter(state -> state != null && state.status() == PublicationAuthorshipReviewState.Status.PENDING)
+                .count();
+        int suspiciousPendingCount = (int) suspiciousAuthorshipByPublicationId.keySet().stream()
+                .filter(publicationId -> {
+                    PublicationAuthorshipReviewState state = reviewStateByPublicationId.get(publicationId);
+                    return state != null && state.status() == PublicationAuthorshipReviewState.Status.PENDING;
+                })
+                .count();
+        int recommendedPendingCount = Math.max(0, pendingReviewCount - suspiciousPendingCount);
+        return new UserPublicationsViewModel(
+                base.publications(),
+                base.hIndex(),
+                base.authorMap(),
+                base.forumMap(),
+                reviewStateByPublicationId,
+                suspiciousAuthorshipByPublicationId,
+                pendingReviewCount,
+                suspiciousPendingCount,
+                recommendedPendingCount,
+                base.numCitations(),
+                base.profileAuthor(),
+                base.affiliations()
+        );
+    }
+
+    private Map<String, PublicationAuthorshipReviewState> buildReviewStateByPublicationId(String userEmail,
+                                                                                          List<ScholardexPublicationView> publications) {
+        List<String> publicationIds = publications.stream()
+                .map(ScholardexPublicationView::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        List<PublicationAuthorshipDecision> decisions =
+                publicationAuthorshipDecisionService.findDecisionsForUserAndPublications(userEmail, publicationIds);
+        Map<String, PublicationAuthorshipReviewState> stateByPublicationId = new HashMap<>();
+        for (ScholardexPublicationView publication : publications) {
+            if (publication.getId() == null) {
+                continue;
+            }
+            stateByPublicationId.put(publication.getId(), new PublicationAuthorshipReviewState(
+                    PublicationAuthorshipReviewState.Status.PENDING,
+                    null,
+                    null
+            ));
+        }
+        for (PublicationAuthorshipDecision decision : decisions) {
+            if (decision.getPublicationId() == null || decision.getStatus() == null) {
+                continue;
+            }
+            stateByPublicationId.put(decision.getPublicationId(), new PublicationAuthorshipReviewState(
+                    toReviewStatus(decision.getStatus()),
+                    decision.getReason(),
+                    decision.getUpdatedAt()
+            ));
+        }
+        return stateByPublicationId;
+    }
+
+    private PublicationAuthorshipReviewState.Status toReviewStatus(PublicationAuthorshipDecision.Status status) {
+        return switch (status) {
+            case CONFIRMED -> PublicationAuthorshipReviewState.Status.CONFIRMED;
+            case REJECTED -> PublicationAuthorshipReviewState.Status.REJECTED;
+        };
     }
 
     private long nanosToMillis(long nanos) {

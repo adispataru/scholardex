@@ -17,6 +17,7 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFact
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -150,6 +151,26 @@ class PublicationAuthorshipDecisionServiceTest {
     }
 
     @Test
+    void blocksDecisionWhenAffiliationScopeConfirmationIsMissing() {
+        User user = user("user@example.com", "researcher-1", "sauth_primary");
+        user.getResearcherProfile().setAffiliationsConfirmedAt(null);
+        user.getResearcherProfile().setScopusId(List.of("55637349100"));
+
+        when(userRepository.findById("user@example.com")).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> service.upsertDecision(
+                "user@example.com",
+                "spub_1",
+                PublicationAuthorshipDecision.Status.CONFIRMED,
+                null
+        )).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Confirm your current and past affiliations");
+
+        verify(publicationFactRepository, never()).findById(any());
+        verify(decisionRepository, never()).save(any());
+    }
+
+    @Test
     void fillsSnapshotOnLegacyDecisionWithoutOne() {
         User user = user("user@example.com", "researcher-1", "sauth_primary");
         ScholardexPublicationFact publication = publication("spub_1", "Paper title", "2-s2.0-1", "10.1000/test", List.of());
@@ -176,6 +197,61 @@ class PublicationAuthorshipDecisionServiceTest {
         assertThat(saved.getSnapshot().getPublication().getTitle()).isEqualTo("Paper title");
     }
 
+    @Test
+    void bulkDecisionProcessesPendingItemsBestEffort() {
+        User user = user("user@example.com", "researcher-1", "sauth_primary");
+        ScholardexPublicationFact pending = publication("spub_1", "Paper title", "2-s2.0-1", "10.1000/test", List.of("sauth_primary"));
+
+        when(userRepository.findById("user@example.com")).thenReturn(Optional.of(user));
+        when(decisionRepository.findByUserEmailAndPublicationIdIn("user@example.com", java.util.Set.of("spub_1", "spub_2")))
+                .thenReturn(List.of(existingDecision("user@example.com", "spub_2", PublicationAuthorshipDecision.Status.REJECTED)));
+        when(publicationFactRepository.findById("spub_1")).thenReturn(Optional.of(pending));
+        when(decisionRepository.findByUserEmailAndPublicationId("user@example.com", "spub_1")).thenReturn(Optional.empty());
+        when(authorshipFactRepository.findByPublicationId("spub_1")).thenReturn(List.of());
+        when(decisionRepository.save(any(PublicationAuthorshipDecision.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        PublicationAuthorshipDecisionService.BulkDecisionResult result = service.upsertBulkDecisions(
+                "user@example.com",
+                List.of("spub_1", "spub_2"),
+                PublicationAuthorshipDecision.Status.CONFIRMED,
+                "mine"
+        );
+
+        assertThat(result.succeededByPublicationId()).containsOnlyKeys("spub_1");
+        assertThat(result.succeededByPublicationId().get("spub_1").getStatus()).isEqualTo(PublicationAuthorshipDecision.Status.CONFIRMED);
+        assertThat(result.failures()).containsExactly(new PublicationAuthorshipDecisionService.DecisionFailure("spub_2", "Only pending publications can be reviewed in bulk."));
+    }
+
+    @Test
+    void bulkDecisionFailsFastWhenAffiliationScopeConfirmationIsMissing() {
+        User user = user("user@example.com", "researcher-1", "sauth_primary");
+        user.getResearcherProfile().setAffiliationsConfirmedAt(null);
+        user.getResearcherProfile().setScopusId(List.of("55637349100"));
+
+        when(userRepository.findById("user@example.com")).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> service.upsertBulkDecisions(
+                "user@example.com",
+                List.of("spub_1"),
+                PublicationAuthorshipDecision.Status.CONFIRMED,
+                null
+        )).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Confirm your current and past affiliations");
+
+        verify(decisionRepository, never()).findByUserEmailAndPublicationIdIn(any(), any());
+    }
+
+    private PublicationAuthorshipDecision existingDecision(String userEmail,
+                                                           String publicationId,
+                                                           PublicationAuthorshipDecision.Status status) {
+        PublicationAuthorshipDecision decision = new PublicationAuthorshipDecision();
+        decision.setId("decision-" + publicationId);
+        decision.setUserEmail(userEmail);
+        decision.setPublicationId(publicationId);
+        decision.setStatus(status);
+        return decision;
+    }
+
     private User user(String email, String researcherId, String primaryAuthorId) {
         User user = new User();
         user.setEmail(email);
@@ -184,6 +260,7 @@ class PublicationAuthorshipDecisionServiceTest {
         profile.setFirstName("Ada");
         profile.setLastName("Lovelace");
         profile.setPrimaryScholardexAuthorId(primaryAuthorId);
+        profile.setAffiliationsConfirmedAt(Instant.parse("2026-04-18T08:00:00Z"));
         user.setResearcherProfile(profile);
         return user;
     }

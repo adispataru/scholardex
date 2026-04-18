@@ -128,8 +128,8 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
         }
         target.setId(canonicalId);
         addUnique(target.getScopusAuthorIds(), sourceRecordId);
-        target.setDisplayName(sourceFact.getName());
-        target.setNameNormalized(normalizeName(sourceFact.getName()));
+        mergeCanonicalAuthorNames(target, sourceFact.getName(), sourceFact.getAlternativeNames());
+        target.setNameNormalized(normalizeName(target.getDisplayName()));
         target.setAffiliationIds(affiliationBridge.canonicalAffiliationIds());
         target.setPendingAffiliationSourceIds(affiliationBridge.pendingSourceAffiliationIds());
         target.setSourceEventId(sourceFact.getSourceEventId());
@@ -333,8 +333,8 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
         }
         target.setId(canonicalId);
         addUnique(target.getScopusAuthorIds(), sourceRecordId);
-        target.setDisplayName(sourceFact.getName());
-        target.setNameNormalized(normalizeName(sourceFact.getName()));
+        mergeCanonicalAuthorNames(target, sourceFact.getName(), sourceFact.getAlternativeNames());
+        target.setNameNormalized(normalizeName(target.getDisplayName()));
         target.setAffiliationIds(affiliationBridge.canonicalAffiliationIds());
         target.setPendingAffiliationSourceIds(affiliationBridge.pendingSourceAffiliationIds());
         target.setSourceEventId(sourceFact.getSourceEventId());
@@ -447,7 +447,7 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
         if (sourceAffiliationIds == null || sourceAffiliationIds.isEmpty()) {
             return new AffiliationBridgeResult(List.of(), List.of(), List.of());
         }
-        String sourceToken = normalizeToken(source);
+        String sourceToken = sourceLinkService.normalizeSource(source);
         Map<String, AffiliationBridgeEntry> byCanonicalId = new LinkedHashMap<>();
         LinkedHashSet<String> pendingSource = new LinkedHashSet<>();
         for (String rawAffiliationId : sourceAffiliationIds) {
@@ -721,7 +721,7 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
     }
 
     private String buildCanonicalAffiliationFallbackId(String sourceToken, String sourceAffiliationId) {
-        String normalizedSource = isBlank(sourceToken) ? "unknown" : sourceToken;
+        String normalizedSource = isBlank(sourceToken) ? "unknown" : normalizeToken(sourceToken);
         return "saff_" + shortHash("source|" + normalizedSource + "|affiliation|" + normalizeToken(sourceAffiliationId));
     }
 
@@ -760,8 +760,8 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
         if (sourceRecordId != null) {
             addUnique(target.getScopusAuthorIds(), sourceRecordId);
         }
-        target.setDisplayName(incoming.getDisplayName());
-        target.setNameNormalized(incoming.getNameNormalized());
+        mergeCanonicalAuthorNames(target, incoming.getDisplayName(), incoming.getAlternativeNames());
+        target.setNameNormalized(normalizeName(target.getDisplayName()));
         target.setAffiliationIds(incoming.getAffiliationIds());
         target.setPendingAffiliationSourceIds(incoming.getPendingAffiliationSourceIds());
         target.setSourceEventId(incoming.getSourceEventId());
@@ -770,6 +770,46 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
         target.setSourceBatchId(incoming.getSourceBatchId());
         target.setSourceCorrelationId(incoming.getSourceCorrelationId());
         target.setUpdatedAt(Instant.now());
+    }
+
+    private void mergeCanonicalAuthorNames(ScholardexAuthorFact target, String incomingDisplayName, List<String> incomingAlternativeNames) {
+        if (target == null) {
+            return;
+        }
+        LinkedHashMap<String, String> observedNames = new LinkedHashMap<>();
+        rememberAuthorName(observedNames, target.getDisplayName());
+        if (target.getAlternativeNames() != null) {
+            target.getAlternativeNames().forEach(name -> rememberAuthorName(observedNames, name));
+        }
+        rememberAuthorName(observedNames, incomingDisplayName);
+        if (incomingAlternativeNames != null) {
+            incomingAlternativeNames.forEach(name -> rememberAuthorName(observedNames, name));
+        }
+
+        String preferredName = normalizeBlank(incomingDisplayName);
+        if (preferredName == null) {
+            preferredName = normalizeBlank(target.getDisplayName());
+        }
+        if (preferredName == null && !observedNames.isEmpty()) {
+            preferredName = observedNames.values().iterator().next();
+        }
+        target.setDisplayName(preferredName);
+
+        String preferredKey = normalizeBlank(preferredName) == null ? null : normalizeName(preferredName);
+        List<String> alternativeNames = new ArrayList<>();
+        for (Map.Entry<String, String> entry : observedNames.entrySet()) {
+            if (preferredKey == null || !entry.getKey().equals(preferredKey)) {
+                alternativeNames.add(entry.getValue());
+            }
+        }
+        target.setAlternativeNames(alternativeNames);
+    }
+
+    private void rememberAuthorName(Map<String, String> observedNames, String candidate) {
+        String normalized = normalizeBlank(candidate) == null ? null : normalizeName(candidate);
+        if (normalized != null) {
+            observedNames.putIfAbsent(normalized, candidate.trim());
+        }
     }
 
     private void rewritePendingAuthorSourceLinkCanonicalId(

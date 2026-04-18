@@ -4,6 +4,7 @@ import lombok.Data;
 import ro.uvt.pokedex.core.model.reporting.Position;
 import ro.uvt.pokedex.core.model.user.User;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,6 +26,9 @@ public class Researcher {
     private List<String> scopusId = new ArrayList<>();
     private List<String> wosId = new ArrayList<>();
     private String primaryScholardexAuthorId;
+    private List<String> currentAffiliationIds = new ArrayList<>();
+    private List<String> pastAffiliationIds = new ArrayList<>();
+    private Instant affiliationsConfirmedAt;
     private Position position;
 
     public String getName() {
@@ -53,6 +57,9 @@ public class Researcher {
         r.setScopusId(p.getScopusId() != null ? p.getScopusId() : new ArrayList<>());
         r.setWosId(p.getWosId() != null ? p.getWosId() : new ArrayList<>());
         r.setPrimaryScholardexAuthorId(p.getPrimaryScholardexAuthorId());
+        r.setCurrentAffiliationIds(p.getCurrentAffiliationIds() != null ? p.getCurrentAffiliationIds() : new ArrayList<>());
+        r.setPastAffiliationIds(p.getPastAffiliationIds() != null ? p.getPastAffiliationIds() : new ArrayList<>());
+        r.setAffiliationsConfirmedAt(p.getAffiliationsConfirmedAt());
         r.setPosition(p.getPosition());
         return r;
     }

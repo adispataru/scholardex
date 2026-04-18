@@ -20,6 +20,7 @@ public class ScholardexAuthorFact {
     private List<String> googleScholarAuthorIds = new ArrayList<>();
     private List<String> userSourceAuthorIds = new ArrayList<>();
     private String displayName;
+    private List<String> alternativeNames = new ArrayList<>();
     private String nameNormalized;
     private List<String> affiliationIds = new ArrayList<>();
     private List<String> pendingAffiliationSourceIds = new ArrayList<>();

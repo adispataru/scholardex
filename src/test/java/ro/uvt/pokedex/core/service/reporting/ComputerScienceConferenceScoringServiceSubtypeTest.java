@@ -310,7 +310,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
 
         assertEquals(4.0, score.getScore());
         assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent());
-        assertEquals("SCOPUS+CORE", score.getScoringSource());
+        assertEquals("SCOPUS+CORE(WS)", score.getScoringSource());
         assertEquals(true, score.getScoringInfo().get("workshopAdjusted"));
         ComputerScienceConferenceScoringService.ConferenceScoreTrace trace = service.getLastTraceForTests();
         assertEquals(true, trace.workshopAdjusted());
@@ -640,7 +640,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
 
         assertEquals(4.0, score.getScore());
         assertEquals(CoreConferenceRanking.Rank.A.toString(), score.getCoreRankingEquivalent());
-        assertEquals("DBLP+CORE", score.getScoringSource());
+        assertEquals("DBLP+CORE(WS)", score.getScoringSource());
         assertEquals("DBLP", score.getScoringInfo().get("matchSource"));
         assertEquals(true, score.getScoringInfo().get("workshopAdjusted"));
         ComputerScienceConferenceScoringService.ConferenceScoreTrace trace = service.getLastTraceForTests();

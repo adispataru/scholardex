@@ -13,8 +13,10 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFact
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -62,6 +64,9 @@ public class PublicationAuthorshipDecisionService {
 
         User user = userRepository.findById(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userEmail));
+        if (requiresAffiliationScopeConfirmation(user)) {
+            throw new IllegalStateException("Confirm your current and past affiliations in the profile tab before reviewing publication authorship.");
+        }
         ScholardexPublicationFact publication = publicationFactRepository.findById(publicationId)
                 .orElseThrow(() -> new IllegalArgumentException("Publication not found: " + publicationId));
 
@@ -87,6 +92,54 @@ public class PublicationAuthorshipDecisionService {
         }
 
         return decisionRepository.save(decision);
+    }
+
+    public BulkDecisionResult upsertBulkDecisions(String userEmail,
+                                                  Collection<String> publicationIds,
+                                                  PublicationAuthorshipDecision.Status status,
+                                                  String reason) {
+        if (status == null) {
+            throw new IllegalArgumentException("status is required");
+        }
+        User user = userRepository.findById(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userEmail));
+        if (requiresAffiliationScopeConfirmation(user)) {
+            throw new IllegalStateException("Confirm your current and past affiliations in the profile tab before reviewing publication authorship.");
+        }
+
+        Map<String, PublicationAuthorshipDecision> succeeded = new LinkedHashMap<>();
+        List<DecisionFailure> failed = new ArrayList<>();
+        Set<String> normalizedPublicationIds = new LinkedHashSet<>();
+        if (publicationIds != null) {
+            publicationIds.stream()
+                    .map(this::normalize)
+                    .filter(value -> value != null)
+                    .forEach(normalizedPublicationIds::add);
+        }
+
+        if (normalizedPublicationIds.isEmpty()) {
+            return new BulkDecisionResult(succeeded, failed);
+        }
+
+        List<PublicationAuthorshipDecision> existingDecisions =
+                decisionRepository.findByUserEmailAndPublicationIdIn(userEmail, normalizedPublicationIds);
+        Map<String, PublicationAuthorshipDecision> decisionsByPublicationId = new LinkedHashMap<>();
+        existingDecisions.forEach(decision -> decisionsByPublicationId.put(decision.getPublicationId(), decision));
+
+        for (String publicationId : normalizedPublicationIds) {
+            PublicationAuthorshipDecision existing = decisionsByPublicationId.get(publicationId);
+            if (existing != null && existing.getStatus() != null) {
+                failed.add(new DecisionFailure(publicationId, "Only pending publications can be reviewed in bulk."));
+                continue;
+            }
+            try {
+                PublicationAuthorshipDecision saved = upsertDecision(userEmail, publicationId, status, reason);
+                succeeded.put(publicationId, saved);
+            } catch (IllegalArgumentException | IllegalStateException ex) {
+                failed.add(new DecisionFailure(publicationId, ex.getMessage()));
+            }
+        }
+        return new BulkDecisionResult(succeeded, failed);
     }
 
     public boolean clearDecision(String userEmail, String publicationId) {
@@ -139,11 +192,41 @@ public class PublicationAuthorshipDecisionService {
         return normalize(user.getResearcherId());
     }
 
+    private boolean requiresAffiliationScopeConfirmation(User user) {
+        User.ResearcherProfile profile = user.getResearcherProfile();
+        if (profile == null) {
+            return false;
+        }
+        boolean hasLinkedIdentity = normalize(profile.getPrimaryScholardexAuthorId()) != null
+                || hasValues(profile.getScopusId())
+                || hasValues(profile.getWosId());
+        return hasLinkedIdentity && profile.getAffiliationsConfirmedAt() == null;
+    }
+
+    private boolean hasValues(Collection<String> values) {
+        if (values == null || values.isEmpty()) {
+            return false;
+        }
+        return values.stream().map(this::normalize).anyMatch(value -> value != null);
+    }
+
     private String normalize(String value) {
         if (value == null) {
             return null;
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    public record BulkDecisionResult(
+            Map<String, PublicationAuthorshipDecision> succeededByPublicationId,
+            List<DecisionFailure> failures
+    ) {
+    }
+
+    public record DecisionFailure(
+            String publicationId,
+            String message
+    ) {
     }
 }

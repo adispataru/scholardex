@@ -3,6 +3,7 @@ package ro.uvt.pokedex.core.service.importing.scopus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -155,6 +156,7 @@ class ScholardexPublicationCanonicalizationServiceTest {
     void bridgeAuthorIdsReturnsDeterministicFallbackAndPendingMarkerWhenNoCanonicalLinkExists() {
         when(sourceLinkService.findByKey(any(), any(), any()))
                 .thenReturn(Optional.empty());
+        when(sourceLinkService.normalizeSource("SCOPUS_JSON_BOOTSTRAP")).thenReturn("SCOPUS");
 
         ScholardexPublicationCanonicalizationService.AuthorBridgeResult bridged = service.bridgeAuthorIds(
                 List.of("  au-1 ", "au-1"),
@@ -165,6 +167,25 @@ class ScholardexPublicationCanonicalizationServiceTest {
         assertEquals("au-1", bridged.pendingSourceIds().getFirst());
         assertEquals("au-1", bridged.entries().getFirst().sourceAuthorId());
         assertEquals(true, bridged.entries().getFirst().pendingResolution());
+    }
+
+    @Test
+    void bridgeAuthorIdsUsesStableFallbackIdsAcrossScopusVariants() {
+        when(sourceLinkService.findByKey(any(), any(), any())).thenReturn(Optional.empty());
+        when(sourceLinkService.normalizeSource("SCOPUS_JSON_BOOTSTRAP")).thenReturn("SCOPUS");
+        when(sourceLinkService.normalizeSource("SCOPUS_PYTHON_AUTHOR_WORKS")).thenReturn("SCOPUS");
+
+        ScholardexPublicationCanonicalizationService.AuthorBridgeResult bootstrap = service.bridgeAuthorIds(
+                List.of("au-1"),
+                "SCOPUS_JSON_BOOTSTRAP"
+        );
+        ScholardexPublicationCanonicalizationService.AuthorBridgeResult python = service.bridgeAuthorIds(
+                List.of("au-1"),
+                "SCOPUS_PYTHON_AUTHOR_WORKS"
+        );
+
+        assertEquals(bootstrap.canonicalAuthorIds(), python.canonicalAuthorIds());
+        assertEquals(bootstrap.pendingSourceIds(), python.pendingSourceIds());
     }
 
     @Test
@@ -224,6 +245,52 @@ class ScholardexPublicationCanonicalizationServiceTest {
         service.upsertFromScopusFact(scopusFact, new ImportProcessingResult(10));
 
         verify(edgeWriterService).batchUpsertPublicationAuthorAffiliationEdges(any(), any(), any(), eq(true));
+    }
+
+    @Test
+    void upsertFromScopusFactCanonicalizesPublicationAffiliationIdsAndDropsUnresolvedSourceIds() {
+        ScopusPublicationFact scopusFact = new ScopusPublicationFact();
+        scopusFact.setEid("2-s2.0-aff");
+        scopusFact.setSource("SCOPUS");
+        scopusFact.setSourceRecordId("2-s2.0-aff");
+        scopusFact.setAuthors(List.of("au-1"));
+        scopusFact.setAffiliations(List.of("60000434", "missing", "60000434"));
+        scopusFact.setAuthorAffiliationSourceIds(List.of("af2-60000434"));
+
+        ScholardexSourceLink authorLink = new ScholardexSourceLink();
+        authorLink.setCanonicalEntityId("sauth_1");
+        ScholardexSourceLink uvtAffiliationLink = new ScholardexSourceLink();
+        uvtAffiliationLink.setCanonicalEntityId("saff_uvt");
+        ScholardexSourceLink partnerAffiliationLink = new ScholardexSourceLink();
+        partnerAffiliationLink.setCanonicalEntityId("saff_partner");
+
+        when(scholardexPublicationFactRepository.findByEid("2-s2.0-aff")).thenReturn(Optional.empty());
+        when(sourceLinkService.findByKey(eq(ScholardexEntityType.AUTHOR), eq("SCOPUS"), eq("au-1")))
+                .thenReturn(Optional.of(authorLink));
+        when(sourceLinkService.findByKey(eq(ScholardexEntityType.AFFILIATION), eq("SCOPUS"), eq("60000434")))
+                .thenReturn(Optional.of(uvtAffiliationLink));
+        when(sourceLinkService.findByKey(eq(ScholardexEntityType.AFFILIATION), eq("SCOPUS"), eq("af2")))
+                .thenReturn(Optional.of(partnerAffiliationLink));
+        when(sourceLinkService.findByKey(eq(ScholardexEntityType.AFFILIATION), eq("SCOPUS"), eq("missing")))
+                .thenReturn(Optional.empty());
+        when(scholardexAuthorshipFactRepository.findByPublicationIdIn(any())).thenReturn(List.of());
+        when(scholardexPublicationAuthorAffiliationFactRepository.findByPublicationIdIn(any())).thenReturn(List.of());
+        when(edgeWriterService.batchUpsertAuthorshipEdges(any(), any(), any(), eq(true)))
+                .thenReturn(new ScholardexEdgeWriterService.BatchEdgeWriteResult(1, 0, 1, 0, 0));
+        when(edgeWriterService.batchUpsertPublicationAuthorAffiliationEdges(any(), any(), any(), eq(true)))
+                .thenReturn(new ScholardexEdgeWriterService.BatchEdgeWriteResult(2, 0, 2, 0, 0));
+
+        service.upsertFromScopusFact(scopusFact, new ImportProcessingResult(10));
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Iterable<ScholardexPublicationFact>> insertedFactsCaptor =
+                ArgumentCaptor.forClass((Class<Iterable<ScholardexPublicationFact>>) (Class<?>) Iterable.class);
+
+        verify(scholardexPublicationFactRepository).insert(insertedFactsCaptor.capture());
+
+        List<ScholardexPublicationFact> insertedFacts = new java.util.ArrayList<>();
+        insertedFactsCaptor.getValue().forEach(insertedFacts::add);
+        assertEquals(List.of("saff_uvt", "saff_partner"), insertedFacts.getFirst().getAffiliationIds());
     }
 
     @Test

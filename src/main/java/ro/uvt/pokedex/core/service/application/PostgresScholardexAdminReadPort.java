@@ -160,12 +160,13 @@ public class PostgresScholardexAdminReadPort {
             return List.of();
         }
         return namedParameterJdbcTemplate.query(
-                "SELECT id, name, affiliation_ids FROM reporting_read.scholardex_author_view WHERE id IN (:ids)",
+                "SELECT id, name, alternative_names, affiliation_ids FROM reporting_read.scholardex_author_view WHERE id IN (:ids)",
                 new MapSqlParameterSource("ids", authorIds),
                 (rs, rowNum) -> {
                     ScholardexAuthorView author = new ScholardexAuthorView();
                     author.setId(rs.getString("id"));
                     author.setName(rs.getString("name"));
+                    author.setAlternativeNames(toStringList(rs.getArray("alternative_names")));
                     List<ScholardexAffiliationView> affiliations = toStringList(rs.getArray("affiliation_ids")).stream()
                             .map(affiliationId -> {
                                 ScholardexAffiliationView affiliation = new ScholardexAffiliationView();

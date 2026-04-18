@@ -10,6 +10,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import ro.uvt.pokedex.core.model.reporting.Position;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -98,6 +99,9 @@ public class User implements UserDetails {
         private List<String> scopusId = new ArrayList<>();
         private List<String> wosId = new ArrayList<>();
         private String primaryScholardexAuthorId;
+        private List<String> currentAffiliationIds = new ArrayList<>();
+        private List<String> pastAffiliationIds = new ArrayList<>();
+        private Instant affiliationsConfirmedAt;
         private Position position;
 
         public String getName() {

@@ -336,6 +336,7 @@ public class ScopusProjectionBuilderService {
         ScholardexAuthorView view = new ScholardexAuthorView();
         view.setId(fact.getId());
         view.setName(fact.getDisplayName());
+        view.setAlternativeNames(fact.getAlternativeNames() == null ? List.of() : new ArrayList<>(fact.getAlternativeNames()));
         view.setAffiliationIds(fact.getAffiliationIds() == null ? List.of() : new ArrayList<>(fact.getAffiliationIds()));
         view.setBuildVersion(buildVersion);
         view.setBuildAt(buildAt);
@@ -507,8 +508,8 @@ public class ScopusProjectionBuilderService {
     private void insertAuthorRows(List<ScholardexAuthorView> rows) {
         String sql = """
                 INSERT INTO reporting_read.scholardex_author_view
-                    (id, name, affiliation_ids, build_version, build_at, updated_at, source_event_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                    (id, name, alternative_names, affiliation_ids, build_version, build_at, updated_at, source_event_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         writeAuthorRows(rows, sql);
     }
@@ -516,10 +517,11 @@ public class ScopusProjectionBuilderService {
     private void upsertAuthorRows(List<ScholardexAuthorView> rows) {
         String sql = """
                 INSERT INTO reporting_read.scholardex_author_view
-                    (id, name, affiliation_ids, build_version, build_at, updated_at, source_event_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                    (id, name, alternative_names, affiliation_ids, build_version, build_at, updated_at, source_event_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (id) DO UPDATE SET
                     name = EXCLUDED.name,
+                    alternative_names = EXCLUDED.alternative_names,
                     affiliation_ids = EXCLUDED.affiliation_ids,
                     build_version = EXCLUDED.build_version,
                     build_at = EXCLUDED.build_at,
@@ -536,11 +538,12 @@ public class ScopusProjectionBuilderService {
                 ScholardexAuthorView row = chunk.get(i);
                 ps.setString(1, row.getId());
                 ps.setString(2, row.getName());
-                ps.setArray(3, textArray(ps.getConnection(), row.getAffiliationIds()));
-                ps.setString(4, row.getBuildVersion());
-                setInstant(ps, 5, row.getBuildAt());
-                setInstant(ps, 6, row.getUpdatedAt());
-                ps.setString(7, row.getSourceEventId());
+                ps.setArray(3, textArray(ps.getConnection(), row.getAlternativeNames()));
+                ps.setArray(4, textArray(ps.getConnection(), row.getAffiliationIds()));
+                ps.setString(5, row.getBuildVersion());
+                setInstant(ps, 6, row.getBuildAt());
+                setInstant(ps, 7, row.getUpdatedAt());
+                ps.setString(8, row.getSourceEventId());
             }
 
             @Override

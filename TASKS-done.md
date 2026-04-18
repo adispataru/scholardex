@@ -1653,3 +1653,20 @@ Archived from `TASKS.md` on 2026-04-16.
   - `RunSummary.createdAt` changed from `Instant` to `String` to fix a Thymeleaf/Jackson JSR310 serialisation error in inline JS.
   - CSS `.app-eval-compare-picker[hidden] { display: none }` explicit rule prevents `display: flex` overriding the `hidden` attribute on the picker.
   - All evaluation-page select elements given `padding-top/bottom: 0.2rem; height: auto` to correct disproportionate height at the 0.82rem context font-size.
+
+## H37.8 Saved Report Snapshots
+
+Archived from `TASKS.md` on 2026-04-17.
+
+- [x] `H37.8` **Saved report snapshots.**
+  Completed: 2026-04-17.
+  Handover:
+  - `EvaluationSnapshot` MongoDB document (`evaluationSnapshots` collection); `EvaluationSnapshotRepository` with find-by-user/report, count, and find-by-id-and-user queries.
+  - Four CRUD endpoints in `EvaluationWorkspaceController`: create (50-cap, 422 on overflow), list, detail, delete.
+  - `GET /user/evaluation/compare-snapshot?snapshotId=&runId=` endpoint diffs snapshot scores against a current run, returns standard `ComparisonResponse` with `runA.status="SNAPSHOT"` and `runA.name`.
+  - `RunSummary` record gained a nullable `name` field; all existing call sites pass `null`.
+  - Toolbar gains "Save Snapshot" (browser prompt → POST) and "My Snapshots" (toggle panel) buttons, plus an inline feedback span.
+  - "My Snapshots" collapsible panel shows name, date, score per snapshot, with Compare and delete-with-confirmation actions.
+  - Compare picker gains an async-populated `<optgroup>` for saved snapshots; `fetchAndApplyComparison` routes to the correct endpoint based on `snap:` prefix.
+  - Compare banner updated to show `snapshot "{name}" ({date})` vs. `run from {date}`.
+  - Deleting the active comparison snapshot clears deltas and URL param automatically.

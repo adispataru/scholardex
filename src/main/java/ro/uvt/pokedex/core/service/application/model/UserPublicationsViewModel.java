@@ -13,6 +13,11 @@ public record UserPublicationsViewModel(
         int hIndex,
         Map<String, ScholardexAuthorView> authorMap,
         Map<String, ScholardexForumView> forumMap,
+        Map<String, PublicationAuthorshipReviewState> authorshipReviewStateByPublicationId,
+        Map<String, SuspiciousAuthorshipState> suspiciousAuthorshipByPublicationId,
+        int pendingReviewCount,
+        int suspiciousPendingCount,
+        int recommendedPendingCount,
         int numCitations,
         ScholardexAuthorView profileAuthor,
         List<ScholardexAffiliationView> affiliations

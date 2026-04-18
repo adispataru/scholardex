@@ -37,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -499,6 +500,448 @@ class ScopusFactBuilderServiceTest {
         ArgumentCaptor<java.util.Collection<ScopusCitationFact>> citationCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
         verify(citationFactRepository).saveAll(citationCaptor.capture());
         assertEquals("b-replay", citationCaptor.getValue().iterator().next().getSourceBatchId());
+    }
+
+    @Test
+    void buildFactsFromImportEventsSkipsAmbiguousAffiliationUpdatesAndPreservesExistingFact() throws Exception {
+        ScopusImportEvent goodEvent = new ScopusImportEvent();
+        goodEvent.setEntityType(ScopusImportEntityType.PUBLICATION);
+        goodEvent.setSource("SCOPUS_JSON_BOOTSTRAP");
+        goodEvent.setSourceRecordId("2-s2.0-good");
+        goodEvent.setPayload(mapper.writeValueAsString(java.util.Map.ofEntries(
+                java.util.Map.entry("eid", "2-s2.0-good"),
+                java.util.Map.entry("title", "Good Paper"),
+                java.util.Map.entry("author_ids", "a1"),
+                java.util.Map.entry("author_names", "Alice"),
+                java.util.Map.entry("author_afids", "60000434"),
+                java.util.Map.entry("afid", "60000434"),
+                java.util.Map.entry("affilname", "Universitatea de Vest din Timisoara"),
+                java.util.Map.entry("affiliation_city", "Timisoara"),
+                java.util.Map.entry("affiliation_country", "Romania"),
+                java.util.Map.entry("source_id", "f1")
+        )));
+
+        when(importEventRepository.findAll()).thenReturn(List.of(goodEvent));
+        when(publicationFactRepository.findByEidIn(anyCollection())).thenReturn(List.of());
+        when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
+        when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
+        when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
+        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
+
+        service.buildFactsFromImportEvents();
+
+        reset(publicationFactRepository, forumFactRepository, authorFactRepository, affiliationFactRepository, fundingFactRepository, importEventRepository);
+
+        ScopusImportEvent malformedEvent = new ScopusImportEvent();
+        malformedEvent.setEntityType(ScopusImportEntityType.PUBLICATION);
+        malformedEvent.setSource("SCOPUS_PYTHON_CITATIONS_PUBLICATION");
+        malformedEvent.setSourceRecordId("2-s2.0-bad");
+        malformedEvent.setPayload(mapper.writeValueAsString(java.util.Map.ofEntries(
+                java.util.Map.entry("eid", "2-s2.0-bad"),
+                java.util.Map.entry("title", "Bad Paper"),
+                java.util.Map.entry("author_ids", "a1"),
+                java.util.Map.entry("author_names", "Alice"),
+                java.util.Map.entry("author_afids", "60000434"),
+                java.util.Map.entry("afid", "60031106;60000434"),
+                java.util.Map.entry("affilname", "Universitatea de Vest din Timisoara;Univerza v Ljubljani;Extra Name"),
+                java.util.Map.entry("affiliation_city", "Timisoara;Ljubljana"),
+                java.util.Map.entry("affiliation_country", "Romania;Slovenia"),
+                java.util.Map.entry("source_id", "f2")
+        )));
+
+        ScopusAffiliationFact existingAffiliation = new ScopusAffiliationFact();
+        existingAffiliation.setAfid("60000434");
+        existingAffiliation.setName("Universitatea de Vest din Timisoara");
+        existingAffiliation.setCity("Timisoara");
+        existingAffiliation.setCountry("Romania");
+
+        when(importEventRepository.findAll()).thenReturn(List.of(malformedEvent));
+        when(publicationFactRepository.findByEidIn(anyCollection())).thenReturn(List.of());
+        when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
+        when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
+        when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of(existingAffiliation));
+        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
+
+        ImportProcessingResult result = service.buildFactsFromImportEvents();
+
+        assertTrue(result.getSkippedCount() >= 1);
+        assertEquals("Universitatea de Vest din Timisoara", existingAffiliation.getName());
+        assertEquals("Timisoara", existingAffiliation.getCity());
+        assertEquals("Romania", existingAffiliation.getCountry());
+        verify(affiliationFactRepository, never()).saveAll(anyCollection());
+        assertTrue(logAppender.list.stream()
+                .map(ILoggingEvent::getFormattedMessage)
+                .anyMatch(m -> m.contains("skipped ambiguous affiliation update") && m.contains("sourceRecordId=2-s2.0-bad")));
+    }
+
+    @Test
+    void buildFactsFromImportEventsSkipsAmbiguousAuthorUpdatesAndPreservesExistingFact() throws Exception {
+        ScopusImportEvent malformedEvent = new ScopusImportEvent();
+        malformedEvent.setEntityType(ScopusImportEntityType.PUBLICATION);
+        malformedEvent.setSource("SCOPUS_PYTHON_AUTHOR_WORKS");
+        malformedEvent.setSourceRecordId("2-s2.0-bad-author");
+        malformedEvent.setPayload(mapper.writeValueAsString(java.util.Map.ofEntries(
+                java.util.Map.entry("eid", "2-s2.0-bad-author"),
+                java.util.Map.entry("title", "Bad Author Paper"),
+                java.util.Map.entry("author_ids", "a1;a2"),
+                java.util.Map.entry("author_names", "Alice"),
+                java.util.Map.entry("author_afids", "af1;af2"),
+                java.util.Map.entry("afid", "af1"),
+                java.util.Map.entry("affilname", "Aff 1"),
+                java.util.Map.entry("affiliation_city", "City1"),
+                java.util.Map.entry("affiliation_country", "RO"),
+                java.util.Map.entry("source_id", "f1")
+        )));
+
+        ScopusAuthorFact existingAuthor = new ScopusAuthorFact();
+        existingAuthor.setAuthorId("a1");
+        existingAuthor.setName("Alice");
+        existingAuthor.setAffiliationIds(List.of("af1"));
+
+        when(importEventRepository.findAll()).thenReturn(List.of(malformedEvent));
+        when(publicationFactRepository.findByEidIn(anyCollection())).thenReturn(List.of());
+        when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
+        when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of(existingAuthor));
+        when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
+        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
+
+        ImportProcessingResult result = service.buildFactsFromImportEvents();
+
+        assertTrue(result.getSkippedCount() >= 1);
+        assertEquals("Alice", existingAuthor.getName());
+        assertEquals(List.of("af1"), existingAuthor.getAffiliationIds());
+        verify(authorFactRepository, never()).saveAll(anyCollection());
+        assertTrue(logAppender.list.stream()
+                .map(ILoggingEvent::getFormattedMessage)
+                .anyMatch(m -> m.contains("skipped ambiguous author update") && m.contains("sourceRecordId=2-s2.0-bad-author")));
+    }
+
+    @Test
+    void buildFactsFromImportEventsDecodesHtmlAffiliationNamesBeforeAlignmentCheck() throws Exception {
+        ScopusImportEvent event = new ScopusImportEvent();
+        event.setEntityType(ScopusImportEntityType.PUBLICATION);
+        event.setSource("SCOPUS_JSON_BOOTSTRAP");
+        event.setSourceRecordId("2-s2.0-85179172081");
+        event.setPayload(mapper.writeValueAsString(java.util.Map.ofEntries(
+                java.util.Map.entry("eid", "2-s2.0-85179172081"),
+                java.util.Map.entry("title", "ATLAS"),
+                java.util.Map.entry("author_ids", "a1"),
+                java.util.Map.entry("author_names", "Alice"),
+                java.util.Map.entry("author_afids", "60113665"),
+                java.util.Map.entry("afid", "60113665;60017293"),
+                java.util.Map.entry("affilname", "State Key Laboratory of Particle Detection &amp; Electronics;Horia Hulubei National Institute for R&amp;D in Physics and Nuclear Engineering"),
+                java.util.Map.entry("affiliation_city", "Hefei;Magurele"),
+                java.util.Map.entry("affiliation_country", "China;Romania"),
+                java.util.Map.entry("source_id", "f1")
+        )));
+
+        when(importEventRepository.findAll()).thenReturn(List.of(event));
+        when(publicationFactRepository.findByEidIn(anyCollection())).thenReturn(List.of());
+        when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
+        when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
+        when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
+        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
+
+        service.buildFactsFromImportEvents();
+
+        ArgumentCaptor<java.util.Collection<ScopusAffiliationFact>> affiliationCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(affiliationFactRepository).saveAll(affiliationCaptor.capture());
+        List<ScopusAffiliationFact> savedFacts = List.copyOf(affiliationCaptor.getValue());
+        assertEquals(2, savedFacts.size());
+        assertTrue(savedFacts.stream().anyMatch(f -> "60113665".equals(f.getAfid()) && "State Key Laboratory of Particle Detection & Electronics".equals(f.getName())));
+        assertTrue(savedFacts.stream().anyMatch(f -> "60017293".equals(f.getAfid()) && "Horia Hulubei National Institute for R&D in Physics and Nuclear Engineering".equals(f.getName())));
+        assertTrue(logAppender.list.stream()
+                .map(ILoggingEvent::getFormattedMessage)
+                .noneMatch(m -> m.contains("skipped ambiguous affiliation update") && m.contains("sourceRecordId=2-s2.0-85179172081")));
+    }
+
+    @Test
+    void buildFactsFromImportEventsPreservesTrailingEmptyAuthorAffiliationSlots() throws Exception {
+        ScopusImportEvent event = new ScopusImportEvent();
+        event.setEntityType(ScopusImportEntityType.PUBLICATION);
+        event.setSource("SCOPUS_JSON_BOOTSTRAP");
+        event.setSourceRecordId("2-s2.0-85179483813");
+        event.setPayload(mapper.writeValueAsString(java.util.Map.ofEntries(
+                java.util.Map.entry("eid", "2-s2.0-85179483813"),
+                java.util.Map.entry("title", "Crayfish"),
+                java.util.Map.entry("author_ids", "56225564000;55274491800;55256903500;6506072411;57550278700;6506217375"),
+                java.util.Map.entry("author_names", "Gašparič, Rok;Audo, Denis;Kawai, Tadashi;Kolar-Jurkovšek, Tea;Marinšek, Miha;Jurkovšek, Bogdan"),
+                java.util.Map.entry("author_afids", "129811068-119936631;60001422;60107875;60029147;60029147;"),
+                java.util.Map.entry("afid", "60107875;60029147;60001422;129811068;119936631"),
+                java.util.Map.entry("affilname", "Hokkaido Research Organization;Geological Survey of Slovenia;Sorbonne Université;Institute for Palaeobiology and Evolution;Oertijdmuseum"),
+                java.util.Map.entry("affiliation_city", "Sapporo;Ljubljana;Paris;Kamnik;Boxtel"),
+                java.util.Map.entry("affiliation_country", "Japan;Slovenia;France;Slovenia;Netherlands"),
+                java.util.Map.entry("source_id", "22543")
+        )));
+
+        when(importEventRepository.findAll()).thenReturn(List.of(event));
+        when(publicationFactRepository.findByEidIn(anyCollection())).thenReturn(List.of());
+        when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
+        when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
+        when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
+        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
+
+        service.buildFactsFromImportEvents();
+
+        ArgumentCaptor<java.util.Collection<ScopusAuthorFact>> authorCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(authorFactRepository).saveAll(authorCaptor.capture());
+        List<ScopusAuthorFact> savedFacts = List.copyOf(authorCaptor.getValue());
+        assertEquals(6, savedFacts.size());
+        assertTrue(savedFacts.stream().anyMatch(f -> "6506217375".equals(f.getAuthorId()) && f.getAffiliationIds().isEmpty()));
+        assertTrue(logAppender.list.stream()
+                .map(ILoggingEvent::getFormattedMessage)
+                .noneMatch(m -> m.contains("skipped ambiguous author update") && m.contains("sourceRecordId=2-s2.0-85179483813")));
+    }
+
+    @Test
+    void buildFactsFromImportEventsPreservesExistingAffiliationsWhenAuthorSlotIsExplicitlyEmpty() throws Exception {
+        ScopusImportEvent event = new ScopusImportEvent();
+        event.setEntityType(ScopusImportEntityType.PUBLICATION);
+        event.setSource("SCOPUS_JSON_BOOTSTRAP");
+        event.setSourceRecordId("2-s2.0-explicit-empty-slot");
+        event.setPayload(mapper.writeValueAsString(java.util.Map.ofEntries(
+                java.util.Map.entry("eid", "2-s2.0-explicit-empty-slot"),
+                java.util.Map.entry("title", "Explicit Empty Slot"),
+                java.util.Map.entry("author_ids", "a1;a2"),
+                java.util.Map.entry("author_names", "Alice;Bob"),
+                java.util.Map.entry("author_afids", "af1;"),
+                java.util.Map.entry("afid", "af1"),
+                java.util.Map.entry("affilname", "Aff 1"),
+                java.util.Map.entry("affiliation_city", "City1"),
+                java.util.Map.entry("affiliation_country", "RO"),
+                java.util.Map.entry("source_id", "f1")
+        )));
+
+        ScopusAuthorFact existingBob = new ScopusAuthorFact();
+        existingBob.setAuthorId("a2");
+        existingBob.setName("Bob");
+        existingBob.setAffiliationIds(List.of("af-existing"));
+
+        when(importEventRepository.findAll()).thenReturn(List.of(event));
+        when(publicationFactRepository.findByEidIn(anyCollection())).thenReturn(List.of());
+        when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
+        when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of(existingBob));
+        when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
+        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
+
+        service.buildFactsFromImportEvents();
+
+        ArgumentCaptor<java.util.Collection<ScopusAuthorFact>> authorCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(authorFactRepository).saveAll(authorCaptor.capture());
+        List<ScopusAuthorFact> savedFacts = List.copyOf(authorCaptor.getValue());
+        assertTrue(savedFacts.stream().anyMatch(f -> "a2".equals(f.getAuthorId()) && List.of("af-existing").equals(f.getAffiliationIds())));
+    }
+
+    @Test
+    void buildFactsFromImportEventsTreatsMissingAuthorAfidsAsEmptyAffiliationLists() throws Exception {
+        ScopusImportEvent event = new ScopusImportEvent();
+        event.setEntityType(ScopusImportEntityType.PUBLICATION);
+        event.setSource("SCOPUS_JSON_BOOTSTRAP");
+        event.setSourceRecordId("2-s2.0-no-author-afids");
+        event.setPayload(mapper.writeValueAsString(java.util.Map.ofEntries(
+                java.util.Map.entry("eid", "2-s2.0-no-author-afids"),
+                java.util.Map.entry("title", "Sparse Authors"),
+                java.util.Map.entry("author_ids", "a1;a2"),
+                java.util.Map.entry("author_names", "Alice;Bob"),
+                java.util.Map.entry("afid", "af1"),
+                java.util.Map.entry("affilname", "Aff 1"),
+                java.util.Map.entry("affiliation_city", "City1"),
+                java.util.Map.entry("affiliation_country", "RO"),
+                java.util.Map.entry("source_id", "f1")
+        )));
+
+        ScopusAuthorFact existingAlice = new ScopusAuthorFact();
+        existingAlice.setAuthorId("a1");
+        existingAlice.setName("Alice");
+        existingAlice.setAffiliationIds(List.of("af-existing-1", "af-existing-2"));
+
+        ScopusAuthorFact existingBob = new ScopusAuthorFact();
+        existingBob.setAuthorId("a2");
+        existingBob.setName("Bob");
+        existingBob.setAffiliationIds(List.of("af-existing-3"));
+
+        when(importEventRepository.findAll()).thenReturn(List.of(event));
+        when(publicationFactRepository.findByEidIn(anyCollection())).thenReturn(List.of());
+        when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
+        when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of(existingAlice, existingBob));
+        when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
+        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
+
+        service.buildFactsFromImportEvents();
+
+        ArgumentCaptor<java.util.Collection<ScopusAuthorFact>> authorCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(authorFactRepository).saveAll(authorCaptor.capture());
+        List<ScopusAuthorFact> savedFacts = List.copyOf(authorCaptor.getValue());
+        assertEquals(2, savedFacts.size());
+        assertTrue(savedFacts.stream().anyMatch(f -> "a1".equals(f.getAuthorId()) && List.of("af-existing-1", "af-existing-2").equals(f.getAffiliationIds())));
+        assertTrue(savedFacts.stream().anyMatch(f -> "a2".equals(f.getAuthorId()) && List.of("af-existing-3").equals(f.getAffiliationIds())));
+        assertTrue(logAppender.list.stream()
+                .map(ILoggingEvent::getFormattedMessage)
+                .noneMatch(m -> m.contains("skipped ambiguous author update") && m.contains("sourceRecordId=2-s2.0-no-author-afids")));
+    }
+
+    @Test
+    void buildFactsFromImportEventsTreatsBlankAuthorAfidsAsEmptyAffiliationLists() throws Exception {
+        ScopusImportEvent event = new ScopusImportEvent();
+        event.setEntityType(ScopusImportEntityType.PUBLICATION);
+        event.setSource("SCOPUS_JSON_BOOTSTRAP");
+        event.setSourceRecordId("2-s2.0-blank-author-afids");
+        event.setPayload(mapper.writeValueAsString(java.util.Map.ofEntries(
+                java.util.Map.entry("eid", "2-s2.0-blank-author-afids"),
+                java.util.Map.entry("title", "Sparse Authors"),
+                java.util.Map.entry("author_ids", "a1"),
+                java.util.Map.entry("author_names", "Alice"),
+                java.util.Map.entry("author_afids", ""),
+                java.util.Map.entry("afid", "af1"),
+                java.util.Map.entry("affilname", "Aff 1"),
+                java.util.Map.entry("affiliation_city", "City1"),
+                java.util.Map.entry("affiliation_country", "RO"),
+                java.util.Map.entry("source_id", "f1")
+        )));
+
+        ScopusAuthorFact existingAuthor = new ScopusAuthorFact();
+        existingAuthor.setAuthorId("a1");
+        existingAuthor.setName("Alice");
+        existingAuthor.setAffiliationIds(List.of("af-existing"));
+
+        when(importEventRepository.findAll()).thenReturn(List.of(event));
+        when(publicationFactRepository.findByEidIn(anyCollection())).thenReturn(List.of());
+        when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
+        when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of(existingAuthor));
+        when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
+        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
+
+        service.buildFactsFromImportEvents();
+
+        ArgumentCaptor<java.util.Collection<ScopusAuthorFact>> authorCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(authorFactRepository).saveAll(authorCaptor.capture());
+        List<ScopusAuthorFact> savedFacts = List.copyOf(authorCaptor.getValue());
+        assertEquals(1, savedFacts.size());
+        assertEquals(List.of("af-existing"), savedFacts.getFirst().getAffiliationIds());
+        assertTrue(logAppender.list.stream()
+                .map(ILoggingEvent::getFormattedMessage)
+                .noneMatch(m -> m.contains("skipped ambiguous author update") && m.contains("sourceRecordId=2-s2.0-blank-author-afids")));
+    }
+
+    @Test
+    void buildFactsFromImportEventsUnionsAuthorAffiliationsAcrossEvents() throws Exception {
+        ScopusImportEvent event = new ScopusImportEvent();
+        event.setEntityType(ScopusImportEntityType.PUBLICATION);
+        event.setSource("SCOPUS_JSON_BOOTSTRAP");
+        event.setSourceRecordId("2-s2.0-author-union");
+        event.setPayload(mapper.writeValueAsString(java.util.Map.ofEntries(
+                java.util.Map.entry("eid", "2-s2.0-author-union"),
+                java.util.Map.entry("title", "Union Authors"),
+                java.util.Map.entry("author_ids", "a1"),
+                java.util.Map.entry("author_names", "Alice"),
+                java.util.Map.entry("author_afids", "af2-af3"),
+                java.util.Map.entry("afid", "af2;af3"),
+                java.util.Map.entry("affilname", "Aff Existing 2;Aff New"),
+                java.util.Map.entry("affiliation_city", "City2;City3"),
+                java.util.Map.entry("affiliation_country", "RO;RO"),
+                java.util.Map.entry("source_id", "f1")
+        )));
+
+        ScopusAuthorFact existingAuthor = new ScopusAuthorFact();
+        existingAuthor.setAuthorId("a1");
+        existingAuthor.setName("Alice");
+        existingAuthor.setAffiliationIds(List.of("af1", "af2"));
+
+        when(importEventRepository.findAll()).thenReturn(List.of(event));
+        when(publicationFactRepository.findByEidIn(anyCollection())).thenReturn(List.of());
+        when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
+        when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of(existingAuthor));
+        when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
+        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
+
+        service.buildFactsFromImportEvents();
+
+        ArgumentCaptor<java.util.Collection<ScopusAuthorFact>> authorCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(authorFactRepository).saveAll(authorCaptor.capture());
+        List<ScopusAuthorFact> savedFacts = List.copyOf(authorCaptor.getValue());
+        assertEquals(1, savedFacts.size());
+        assertEquals(List.of("af1", "af2", "af3"), savedFacts.getFirst().getAffiliationIds());
+    }
+
+    @Test
+    void buildFactsFromImportEventsPreservesAlternativeAuthorNamesAcrossUpdates() throws Exception {
+        ScopusImportEvent event = new ScopusImportEvent();
+        event.setEntityType(ScopusImportEntityType.PUBLICATION);
+        event.setSource("SCOPUS_JSON_BOOTSTRAP");
+        event.setSourceRecordId("2-s2.0-author-name-merge");
+        event.setPayload(mapper.writeValueAsString(java.util.Map.ofEntries(
+                java.util.Map.entry("eid", "2-s2.0-author-name-merge"),
+                java.util.Map.entry("title", "Author Name Merge"),
+                java.util.Map.entry("author_ids", "a1"),
+                java.util.Map.entry("author_names", "Spataru A."),
+                java.util.Map.entry("author_afids", "af1"),
+                java.util.Map.entry("afid", "af1"),
+                java.util.Map.entry("affilname", "Aff 1"),
+                java.util.Map.entry("affiliation_city", "City1"),
+                java.util.Map.entry("affiliation_country", "RO"),
+                java.util.Map.entry("source_id", "f1")
+        )));
+
+        ScopusAuthorFact existingAuthor = new ScopusAuthorFact();
+        existingAuthor.setAuthorId("a1");
+        existingAuthor.setName("Spataru, Adrian");
+        existingAuthor.setAlternativeNames(List.of("Adrian Spataru"));
+        existingAuthor.setAffiliationIds(List.of("af1"));
+
+        when(importEventRepository.findAll()).thenReturn(List.of(event));
+        when(publicationFactRepository.findByEidIn(anyCollection())).thenReturn(List.of());
+        when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
+        when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of(existingAuthor));
+        when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
+        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
+
+        service.buildFactsFromImportEvents();
+
+        ArgumentCaptor<java.util.Collection<ScopusAuthorFact>> authorCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(authorFactRepository).saveAll(authorCaptor.capture());
+        ScopusAuthorFact saved = List.copyOf(authorCaptor.getValue()).getFirst();
+        assertEquals("Spataru A.", saved.getName());
+        assertEquals(List.of("Spataru, Adrian", "Adrian Spataru"), saved.getAlternativeNames());
+    }
+
+    @Test
+    void buildFactsFromImportEventsSkipsBlankAuthorNamesWithoutClearingStoredNameEvidence() throws Exception {
+        ScopusImportEvent event = new ScopusImportEvent();
+        event.setEntityType(ScopusImportEntityType.PUBLICATION);
+        event.setSource("SCOPUS_JSON_BOOTSTRAP");
+        event.setSourceRecordId("2-s2.0-author-name-blank");
+        event.setPayload(mapper.writeValueAsString(java.util.Map.ofEntries(
+                java.util.Map.entry("eid", "2-s2.0-author-name-blank"),
+                java.util.Map.entry("title", "Author Name Blank"),
+                java.util.Map.entry("author_ids", "a1"),
+                java.util.Map.entry("author_names", ""),
+                java.util.Map.entry("author_afids", "af1"),
+                java.util.Map.entry("afid", "af1"),
+                java.util.Map.entry("affilname", "Aff 1"),
+                java.util.Map.entry("affiliation_city", "City1"),
+                java.util.Map.entry("affiliation_country", "RO"),
+                java.util.Map.entry("source_id", "f1")
+        )));
+
+        ScopusAuthorFact existingAuthor = new ScopusAuthorFact();
+        existingAuthor.setAuthorId("a1");
+        existingAuthor.setName("Spataru, Adrian");
+        existingAuthor.setAlternativeNames(List.of("Spataru A."));
+        existingAuthor.setAffiliationIds(List.of("af1"));
+
+        when(importEventRepository.findAll()).thenReturn(List.of(event));
+        when(publicationFactRepository.findByEidIn(anyCollection())).thenReturn(List.of());
+        when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
+        when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of(existingAuthor));
+        when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
+        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
+
+        service.buildFactsFromImportEvents();
+
+        verify(authorFactRepository, never()).saveAll(anyCollection());
+        assertTrue(logAppender.list.stream()
+                .map(ILoggingEvent::getFormattedMessage)
+                .anyMatch(m -> m.contains("skipped ambiguous author update") && m.contains("sourceRecordId=2-s2.0-author-name-blank")));
     }
 
     private String hashKey(String... values) {

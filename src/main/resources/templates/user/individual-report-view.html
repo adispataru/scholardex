@@ -26,6 +26,11 @@
 
             <!-- ── No run state ──────────────────────────────────────────────── -->
             <div th:if="${noRun == true and noReports != true}" class="container-fluid app-page-content">
+                <div th:if="${confirmedPublicationScoringWarning == true}"
+                     class="alert alert-warning mb-3"
+                     role="status">
+                    Only confirmed publications are counted in scoring. Confirm publications in your workspace before relying on these scores.
+                </div>
                 <div class="app-empty-state">
                     <i class="fa-solid fa-rotate fa-2x app-empty-state__icon" aria-hidden="true"></i>
                     <p class="app-empty-state__title">No run available for this report</p>
@@ -58,16 +63,22 @@
                         <!-- Compare run picker (hidden until toggled) -->
                         <div class="app-eval-compare-picker" id="eval-compare-picker" hidden>
                             <select id="eval-compare-select" class="form-control form-control-sm">
-                                <option value="">— select a run —</option>
+                                <option value="">— select a run or snapshot —</option>
                             </select>
                         </div>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="eval-compare-btn"
-                                th:if="${priorRuns != null and #lists.size(priorRuns) > 1}">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="eval-compare-btn">
                             <i class="fa-solid fa-code-compare fa-sm" aria-hidden="true"></i> Compare with&hellip;
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-danger" id="eval-clear-compare-btn" hidden>
                             <i class="fa-solid fa-xmark fa-sm" aria-hidden="true"></i> Clear comparison
                         </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="eval-save-snapshot-btn">
+                            <i class="fa-solid fa-camera fa-sm" aria-hidden="true"></i> Save Snapshot
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="eval-snapshots-btn">
+                            <i class="fa-solid fa-layer-group fa-sm" aria-hidden="true"></i> My Snapshots
+                        </button>
+                        <span class="app-eval-snapshot-feedback" id="eval-snapshot-feedback" hidden aria-live="polite"></span>
                         <form th:action="@{/user/evaluation/refresh(report=${report.id})}" method="post">
                             <button type="submit" class="btn btn-sm btn-outline-primary">
                                 <i class="fa-solid fa-rotate fa-sm" aria-hidden="true"></i> Refresh All
@@ -76,10 +87,32 @@
                     </div>
                 </div>
 
+                <div th:if="${confirmedPublicationScoringWarning == true}"
+                     class="alert alert-warning mb-3"
+                     role="status">
+                    Only confirmed publications are counted in scoring. Confirm publications in your workspace before relying on these scores.
+                </div>
+
                 <!-- Comparison active banner -->
                 <div class="app-eval-compare-banner" id="eval-compare-banner" hidden aria-live="polite">
                     <i class="fa-solid fa-code-compare" aria-hidden="true"></i>
-                    Comparing current run against run from <strong id="eval-compare-banner-date">—</strong>
+                    Comparing current run against <strong id="eval-compare-banner-label">—</strong>
+                </div>
+
+                <!-- My Snapshots panel -->
+                <div class="app-eval-snapshots-panel" id="eval-snapshots-panel" hidden>
+                    <div class="app-eval-snapshots-panel__header">
+                        <span class="app-eval-snapshots-panel__title">
+                            <i class="fa-solid fa-layer-group fa-sm" aria-hidden="true"></i> My Snapshots
+                        </span>
+                        <button type="button" class="app-eval-snapshots-panel__close" id="eval-snapshots-close"
+                                aria-label="Close snapshots panel">
+                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <div class="app-eval-snapshots-panel__body" id="eval-snapshots-body">
+                        <!-- populated by JS -->
+                    </div>
                 </div>
 
                 <!-- ── Aggregate score panel ────────────────────────────────── -->

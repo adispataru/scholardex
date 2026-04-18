@@ -36,6 +36,12 @@
                     </div>
                 </div>
 
+                <div th:if="${confirmedPublicationScoringWarning == true}"
+                     class="alert alert-warning mb-3"
+                     role="status">
+                    Only confirmed publications are counted in scoring. Confirm publications in your workspace before relying on these scores.
+                </div>
+
                 <!-- ── Indicator Overview panel ───────────────────────────────── -->
                 <div class="app-form-surface mb-3">
                     <div class="app-form-surface__panel">

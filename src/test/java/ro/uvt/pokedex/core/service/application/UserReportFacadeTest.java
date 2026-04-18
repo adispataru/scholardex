@@ -185,7 +185,7 @@ class UserReportFacadeTest {
         allDomain.setName("ALL");
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
+        when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro")).thenReturn(List.of(publication));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
         when(scholardexProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false)))
@@ -225,7 +225,7 @@ class UserReportFacadeTest {
         allDomain.setName("ALL");
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(pStart, pIn, pEnd, pOut));
+        when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro")).thenReturn(List.of(pStart, pIn, pEnd, pOut));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
         when(scholardexProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of());
         when(exportService.generateCNFISReportWorkbook(anyList(), anyList(), anyMap(), eq(List.of("a1")), eq(false)))
@@ -293,7 +293,7 @@ class UserReportFacadeTest {
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
         when(indicatorRepository.findById("i1")).thenReturn(Optional.of(indicator));
         when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
-        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
+        when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro")).thenReturn(List.of(publication));
         when(scholardexProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of(forum));
         when(scientificProductionService.calculateScientificProductionScore(anyList(), eq(indicator)))
                 .thenReturn(Map.of("Paper One", publicationScore));
@@ -344,7 +344,7 @@ class UserReportFacadeTest {
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
         when(indicatorRepository.findById("i1")).thenReturn(Optional.of(indicator));
         when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
-        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
+        when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro")).thenReturn(List.of(publication));
         when(scholardexProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of(forum));
         when(scientificProductionService.calculateScientificProductionScore(anyList(), eq(indicator)))
                 .thenReturn(Map.of("Paper One", publicationScore));
@@ -380,7 +380,7 @@ class UserReportFacadeTest {
         CNFISReport2025 report = new CNFISReport2025();
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(pIn, pOut));
+        when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro")).thenReturn(List.of(pIn, pOut));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
         when(cnfiSScoringService2025.getReport(any(ScoringPublicationReadModel.class), eq(allDomain))).thenReturn(report);
         when(scholardexProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of());
@@ -419,7 +419,7 @@ class UserReportFacadeTest {
         CNFISReport2025 report = new CNFISReport2025();
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(valid, invalid));
+        when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro")).thenReturn(List.of(valid, invalid));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
         when(cnfiSScoringService2025.getReport(any(ScoringPublicationReadModel.class), eq(allDomain))).thenReturn(report);
         when(scholardexProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of());
@@ -489,7 +489,7 @@ class UserReportFacadeTest {
         when(indicatorRepository.findById("ind-cit")).thenReturn(Optional.of(indicator));
         when(individualReportRepository.findById("rep-cit")).thenReturn(Optional.of(report));
         when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
-        when(effectiveAuthorshipReadService.findEffectivePublicationsForUser("user@uvt.ro")).thenReturn(List.of(cited));
+        when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro")).thenReturn(List.of(cited));
         when(scholardexProjectionReadService.findAllCitationsByCitedIdIn(List.of("p1"))).thenReturn(citations);
         when(scholardexProjectionReadService.findAllPublicationsByIdIn(citingIds)).thenReturn(citingPublications);
         when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of());
@@ -531,7 +531,7 @@ class UserReportFacadeTest {
     }
 
     @Test
-    void buildIndicatorApplyViewUsesEffectivePublicationsWhenAuthorLookupIsEmpty() {
+    void buildIndicatorApplyViewUsesConfirmedPublicationsWhenAuthorLookupIsEmpty() {
         User user = new User();
         user.setEmail("user@uvt.ro");
         User.ResearcherProfile profile = new User.ResearcherProfile();
@@ -558,7 +558,7 @@ class UserReportFacadeTest {
         when(indicatorRepository.findById("ind-pub")).thenReturn(Optional.of(indicator));
         when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(Researcher.class))).thenReturn(List.of("a1"));
         when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of());
-        when(effectiveAuthorshipReadService.findEffectivePublicationsForUser("user@uvt.ro")).thenReturn(List.of(confirmed));
+        when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro")).thenReturn(List.of(confirmed));
         when(scientificProductionService.calculateScientificProductionScore(anyList(), eq(indicator)))
                 .thenReturn(new java.util.LinkedHashMap<>(Map.of(
                         "Confirmed Publication", publicationScore,
@@ -573,6 +573,90 @@ class UserReportFacadeTest {
         @SuppressWarnings("unchecked")
         List<ScholardexPublicationView> visiblePublications = (List<ScholardexPublicationView>) applyView.attributes().get("publications");
         assertEquals(List.of(confirmed), visiblePublications);
+    }
+
+    @Test
+    void buildIndicatorApplyViewShowsWarningWhenNoConfirmedPublicationsExistForPublicationScoring() {
+        User user = userWithProfile("user@uvt.ro", List.of("a1"));
+
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-pub");
+        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
+        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+
+        when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
+        when(indicatorRepository.findById("ind-pub")).thenReturn(Optional.of(indicator));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author("a1", "Author One")));
+        when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro")).thenReturn(List.of());
+        when(scientificProductionService.calculateScientificProductionScore(anyList(), eq(indicator)))
+                .thenReturn(new java.util.LinkedHashMap<>(Map.of("total", totalScore(0.0))));
+        when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of());
+
+        UserIndicatorApplyViewModel applyView = facade.buildIndicatorApplyView("user@uvt.ro", "ind-pub");
+
+        assertEquals(Boolean.TRUE, applyView.attributes().get("confirmedPublicationScoringWarning"));
+    }
+
+    @Test
+    void buildIndicatorApplyViewDoesNotShowWarningForActivityIndicators() {
+        User user = userWithProfile("user@uvt.ro", List.of("a1"));
+
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-act");
+        indicator.setOutputType(Indicator.Type.GENERIC_ACTIVITIES);
+        var activity = new ro.uvt.pokedex.core.model.activities.Activity();
+        activity.setName("Mentoring");
+        indicator.setActivity(activity);
+
+        when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
+        when(indicatorRepository.findById("ind-act")).thenReturn(Optional.of(indicator));
+        when(activityInstanceRepository.findAllByResearcherId("user@uvt.ro")).thenReturn(List.of());
+        when(activityReportingService.calculateActivityScores(anyList(), eq(indicator)))
+                .thenReturn(new java.util.LinkedHashMap<>(Map.of("total", totalScore(0.0))));
+
+        UserIndicatorApplyViewModel applyView = facade.buildIndicatorApplyView("user@uvt.ro", "ind-act");
+
+        assertEquals(null, applyView.attributes().get("confirmedPublicationScoringWarning"));
+    }
+
+    @Test
+    void buildIndicatorWorkbookExportUsesConfirmedPublicationsForScoring() throws Exception {
+        User user = userWithProfile("user@uvt.ro", List.of("a1"));
+
+        Indicator indicator = new Indicator();
+        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
+
+        ScholardexAuthorView author = author("a1", "Author One");
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("f1");
+        forum.setPublicationName("Forum One");
+
+        ScholardexPublicationView confirmed = new ScholardexPublicationView();
+        confirmed.setId("p-confirmed");
+        confirmed.setTitle("Confirmed Publication");
+        confirmed.setAuthors(List.of("a1"));
+        confirmed.setForum("f1");
+        confirmed.setCoverDate("2023-01-01");
+
+        Score publicationScore = new Score();
+        publicationScore.setCoreRankingEquivalent("Q1");
+        publicationScore.setScore(10.0);
+        publicationScore.setAuthorScore(5.0);
+
+        when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
+        when(indicatorRepository.findById("i1")).thenReturn(Optional.of(indicator));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro")).thenReturn(List.of(confirmed));
+        when(scholardexProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of(forum));
+        when(scientificProductionService.calculateScientificProductionScore(anyList(), eq(indicator)))
+                .thenReturn(Map.of("Confirmed Publication", publicationScore));
+        when(cacheService.getAuthorCache()).thenReturn(Map.of("a1", author));
+
+        var result = facade.buildIndicatorWorkbookExport("user@uvt.ro", "i1");
+
+        assertTrue(result.isPresent());
+        verify(effectiveAuthorshipReadService).findConfirmedPublicationsForScoring("user@uvt.ro");
     }
 
     private static User userWithProfile(String email, List<String> scopusIds) {
@@ -595,5 +679,12 @@ class UserReportFacadeTest {
         forum.setId(id);
         forum.setPublicationName(id);
         return forum;
+    }
+
+    private static ScholardexAuthorView author(String id, String name) {
+        ScholardexAuthorView author = new ScholardexAuthorView();
+        author.setId(id);
+        author.setName(name);
+        return author;
     }
 }

@@ -18,4 +18,9 @@ public interface ScholardexPublicationAuthorAffiliationFactRepository
     );
 
     List<ScholardexPublicationAuthorAffiliationFact> findByPublicationIdIn(Collection<String> publicationIds);
+
+    List<ScholardexPublicationAuthorAffiliationFact> findByPublicationIdAndAuthorIdIn(
+            String publicationId,
+            Collection<String> authorIds
+    );
 }

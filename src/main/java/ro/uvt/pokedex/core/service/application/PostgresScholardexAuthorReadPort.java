@@ -35,7 +35,7 @@ public class PostgresScholardexAuthorReadPort implements ScholardexAuthorReadPor
             params.addValue("afid", normalizedAfid);
         }
         if (normalizedQuery != null) {
-            whereClause.append(" AND (a.name ILIKE :qPattern ESCAPE '\\' OR a.id ILIKE :qPattern ESCAPE '\\')");
+            whereClause.append(" AND (a.name ILIKE :qPattern ESCAPE '\\' OR a.id ILIKE :qPattern ESCAPE '\\' OR EXISTS (SELECT 1 FROM unnest(a.alternative_names) alt WHERE alt ILIKE :qPattern ESCAPE '\\'))");
             params.addValue("qPattern", "%" + escapeLikePattern(normalizedQuery) + "%");
         }
 
@@ -43,7 +43,7 @@ public class PostgresScholardexAuthorReadPort implements ScholardexAuthorReadPor
         params.addValue("offset", (long) page * size);
 
         String sql = """
-                SELECT a.id, a.name, a.affiliation_ids
+                SELECT a.id, a.name, a.alternative_names, a.affiliation_ids
                 FROM reporting_read.scholardex_author_view a
                 """ + whereClause + " ORDER BY " + normalizedSort + " " + normalizedDirection
                 + ", a.id COLLATE \"C\" " + normalizedDirection + " LIMIT :limit OFFSET :offset";
@@ -91,6 +91,7 @@ public class PostgresScholardexAuthorReadPort implements ScholardexAuthorReadPor
         return new AuthorRow(
                 rs.getString("id"),
                 rs.getString("name"),
+                toStringList(rs.getArray("alternative_names")),
                 toStringList(rs.getArray("affiliation_ids"))
         );
     }
@@ -131,6 +132,6 @@ public class PostgresScholardexAuthorReadPort implements ScholardexAuthorReadPor
         return QueryNormalizationSupport.escapeLikePattern(value);
     }
 
-    private record AuthorRow(String id, String name, List<String> affiliationIds) {
+    private record AuthorRow(String id, String name, List<String> alternativeNames, List<String> affiliationIds) {
     }
 }

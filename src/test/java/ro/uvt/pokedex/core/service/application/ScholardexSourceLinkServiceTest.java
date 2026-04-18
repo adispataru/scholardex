@@ -85,6 +85,112 @@ class ScholardexSourceLinkServiceTest {
     }
 
     @Test
+    void findByKeyNormalizesScopusFamilyVariantsToScopus() {
+        ScholardexSourceLinkService service = new ScholardexSourceLinkService(sourceLinkRepository, identityConflictRepository);
+        ScholardexSourceLink existing = new ScholardexSourceLink();
+        existing.setSource("SCOPUS");
+
+        when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
+                ScholardexEntityType.AFFILIATION, "SCOPUS", "60000434")).thenReturn(Optional.of(existing));
+
+        Optional<ScholardexSourceLink> resolved = service.findByKey(
+                ScholardexEntityType.AFFILIATION,
+                "SCOPUS_PYTHON_AUTHOR_WORKS",
+                "60000434"
+        );
+
+        assertTrue(resolved.isPresent());
+        assertEquals("SCOPUS", resolved.get().getSource());
+    }
+
+    @Test
+    void findByKeyStillFallsBackToLegacyRawScopusVariantRows() {
+        ScholardexSourceLinkService service = new ScholardexSourceLinkService(sourceLinkRepository, identityConflictRepository);
+        ScholardexSourceLink legacy = new ScholardexSourceLink();
+        legacy.setSource("SCOPUS_JSON_UPLOAD");
+
+        when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
+                ScholardexEntityType.AUTHOR, "SCOPUS", "14027901400")).thenReturn(Optional.empty());
+        when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
+                ScholardexEntityType.AUTHOR, "SCOPUS_JSON_UPLOAD", "14027901400")).thenReturn(Optional.of(legacy));
+
+        Optional<ScholardexSourceLink> resolved = service.findByKey(
+                ScholardexEntityType.AUTHOR,
+                "SCOPUS_JSON_UPLOAD",
+                "14027901400"
+        );
+
+        assertTrue(resolved.isPresent());
+        assertEquals("SCOPUS_JSON_UPLOAD", resolved.get().getSource());
+    }
+
+    @Test
+    void reconcileLinksCollapsesSafeLegacyScopusVariantRowIntoNormalizedScopusRow() {
+        ScholardexSourceLinkService service = new ScholardexSourceLinkService(sourceLinkRepository, identityConflictRepository);
+        ScholardexSourceLink legacy = new ScholardexSourceLink();
+        legacy.setId("legacy-link");
+        legacy.setEntityType(ScholardexEntityType.AFFILIATION);
+        legacy.setSource("SCOPUS_JSON_BOOTSTRAP");
+        legacy.setSourceRecordId("60000434");
+        legacy.setCanonicalEntityId("saff_uvt");
+        legacy.setLinkState("LINKED");
+
+        ScholardexSourceLink normalized = new ScholardexSourceLink();
+        normalized.setId("normalized-link");
+        normalized.setEntityType(ScholardexEntityType.AFFILIATION);
+        normalized.setSource("SCOPUS");
+        normalized.setSourceRecordId("60000434");
+        normalized.setCanonicalEntityId("saff_uvt");
+        normalized.setLinkState("LINKED");
+
+        when(sourceLinkRepository.findAll()).thenReturn(List.of(legacy));
+        when(sourceLinkRepository.findByEntityTypeAndSourceAndSourceRecordId(
+                ScholardexEntityType.AFFILIATION, "SCOPUS", "60000434"
+        )).thenReturn(Optional.of(normalized));
+
+        ScholardexSourceLinkService.ImportRepairSummary result = service.reconcileLinks();
+
+        assertEquals(1, result.updated());
+        verify(sourceLinkRepository).save(argThat(saved ->
+                "normalized-link".equals(saved.getId()) && "SCOPUS".equals(saved.getSource())));
+        verify(sourceLinkRepository).delete(legacy);
+    }
+
+    @Test
+    void reconcileLinksLeavesConflictingLegacyScopusVariantRowsAndOpensConflict() {
+        ScholardexSourceLinkService service = new ScholardexSourceLinkService(sourceLinkRepository, identityConflictRepository);
+        ScholardexSourceLink legacy = new ScholardexSourceLink();
+        legacy.setId("legacy-link");
+        legacy.setEntityType(ScholardexEntityType.AFFILIATION);
+        legacy.setSource("SCOPUS_PYTHON_AUTHOR_WORKS");
+        legacy.setSourceRecordId("60000434");
+        legacy.setCanonicalEntityId("saff_variant");
+        legacy.setLinkState("LINKED");
+
+        ScholardexSourceLink normalized = new ScholardexSourceLink();
+        normalized.setId("normalized-link");
+        normalized.setEntityType(ScholardexEntityType.AFFILIATION);
+        normalized.setSource("SCOPUS");
+        normalized.setSourceRecordId("60000434");
+        normalized.setCanonicalEntityId("saff_uvt");
+        normalized.setLinkState("LINKED");
+
+        when(sourceLinkRepository.findAll()).thenReturn(List.of(legacy));
+        when(sourceLinkRepository.findByEntityTypeAndSourceAndSourceRecordId(
+                ScholardexEntityType.AFFILIATION, "SCOPUS", "60000434"
+        )).thenReturn(Optional.of(normalized));
+        when(identityConflictRepository.findByEntityTypeAndIncomingSourceAndIncomingSourceRecordIdAndReasonCodeAndStatus(
+                eq(ScholardexEntityType.AFFILIATION), eq("SCOPUS"), eq("60000434"), eq("SOURCE_LINK_RELINK_REJECTED"), eq("OPEN")
+        )).thenReturn(Optional.empty());
+
+        ScholardexSourceLinkService.ImportRepairSummary result = service.reconcileLinks();
+
+        assertEquals(1, result.skipped());
+        verify(identityConflictRepository).save(any(ScholardexIdentityConflict.class));
+        verify(sourceLinkRepository, never()).delete(any());
+    }
+
+    @Test
     void linkedCanonicalIdIsImmutableAndOpensConflictOnRelinkAttempt() {
         ScholardexSourceLinkService service = new ScholardexSourceLinkService(sourceLinkRepository, identityConflictRepository);
         ScholardexSourceLink existing = new ScholardexSourceLink();
@@ -184,7 +290,7 @@ class ScholardexSourceLinkServiceTest {
         existing.setLinkState("LINKED");
 
         when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
-                ScholardexEntityType.AUTHOR, "SCOPUS_JSON_UPLOAD", "14027901400"
+                ScholardexEntityType.AUTHOR, "SCOPUS", "14027901400"
         )).thenReturn(Optional.of(existing));
 
         ScholardexSourceLinkService.BatchWriteResult result = service.batchUpsertWithState(
@@ -219,7 +325,7 @@ class ScholardexSourceLinkServiceTest {
             }
             return "link-1".equals(saved.getId())
                     && "batch-2".equals(saved.getSourceBatchId())
-                    && "SCOPUS_JSON_UPLOAD".equals(saved.getSource());
+                    && "SCOPUS".equals(saved.getSource());
         }));
     }
 
@@ -250,7 +356,7 @@ class ScholardexSourceLinkServiceTest {
                 );
 
         when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
-                ScholardexEntityType.AUTHOR, "SCOPUS_JSON_UPLOAD", "14027901400"
+                ScholardexEntityType.AUTHOR, "SCOPUS", "14027901400"
         )).thenReturn(Optional.of(persisted));
 
         ScholardexSourceLinkService.BatchWriteResult result = service.batchUpsertWithState(
@@ -285,7 +391,8 @@ class ScholardexSourceLinkServiceTest {
             }
             return "persisted-link-1".equals(saved.getId())
                     && "sauth_existing".equals(saved.getCanonicalEntityId())
-                    && "batch-3".equals(saved.getSourceBatchId());
+                    && "batch-3".equals(saved.getSourceBatchId())
+                    && "SCOPUS".equals(saved.getSource());
         }));
     }
 }

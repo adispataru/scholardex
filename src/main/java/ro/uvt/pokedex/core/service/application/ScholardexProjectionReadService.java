@@ -363,6 +363,7 @@ public class ScholardexProjectionReadService {
         ScholardexAuthorView out = new ScholardexAuthorView();
         out.setId(canonicalId);
         out.setName(author.getName());
+        out.setAlternativeNames(author.getAlternativeNames() == null ? List.of() : new ArrayList<>(author.getAlternativeNames()));
         out.setAffiliations(affiliationIds.stream().map(id -> {
             ScholardexAffiliationView affiliation = new ScholardexAffiliationView();
             affiliation.setAfid(id);

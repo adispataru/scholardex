@@ -17,6 +17,7 @@ public class ScopusAuthorFact implements HasLineageFields {
     private String id;
     private String authorId;
     private String name;
+    private List<String> alternativeNames = new ArrayList<>();
     private List<String> affiliationIds = new ArrayList<>();
     private String sourceEventId;
     private String source;

@@ -51,6 +51,7 @@ class PostgresScholardexAuthorReadPortTest {
 
         assertTrue(sql.contains("a.affiliation_ids @> ARRAY[:afid]::text[]"));
         assertTrue(sql.contains("ILIKE :qPattern ESCAPE '\\'"));
+        assertTrue(sql.contains("unnest(a.alternative_names)"));
         assertEquals("af-1", params.getValue("afid"));
         assertEquals("%a\\%b\\_c\\\\d%", params.getValue("qPattern"));
     }

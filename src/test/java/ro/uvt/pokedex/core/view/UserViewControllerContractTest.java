@@ -267,6 +267,11 @@ class UserViewControllerContractTest {
                         3,
                         Map.of("a1", author),
                         Map.of("f1", forum),
+                        Map.of(),
+                        Map.of(),
+                        0,
+                        0,
+                        0,
                         8,
                         null,
                         List.of()
@@ -312,6 +317,11 @@ class UserViewControllerContractTest {
                         3,
                         Map.of("sauth_1", author),
                         Map.of("f1", forum),
+                        Map.of(),
+                        Map.of(),
+                        0,
+                        0,
+                        0,
                         8,
                         author,
                         List.of()

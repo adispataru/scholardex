@@ -110,13 +110,13 @@ public class UserReportFacade {
         }
 
         Indicator indicator = indicatorOpt.get();
+        List<ScholardexPublicationView> publications = findConfirmedPublicationsForScoring(userEmail);
         List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
         if (authors.isEmpty()) {
             return Optional.empty();
         }
 
         List<String> authorIds = authors.stream().map(ScholardexAuthorView::getId).toList();
-        List<ScholardexPublicationView> publications = findPublicationsByAuthorIds(authorIds);
         Set<String> forumKeys = publications.stream().map(ScholardexPublicationView::getForum).collect(Collectors.toSet());
         Map<String, ScholardexForumView> forumMap = findForumsByIds(forumKeys).stream()
                 .collect(Collectors.toMap(ScholardexForumView::getId, forum -> forum));
@@ -150,7 +150,7 @@ public class UserReportFacade {
 
         List<String> lookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(researcher0);
         List<String> authorIds = findAuthorsByIds(lookupKeys).stream().map(ScholardexAuthorView::getId).toList();
-        List<ScholardexPublicationView> publications = findPublicationsByAuthorIds(authorIds);
+        List<ScholardexPublicationView> publications = findConfirmedPublicationsForScoring(userEmail);
         publications = publications.stream().filter(publication -> {
             return PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)
                     .map(pubYear -> pubYear >= startYear && pubYear <= endYear)
@@ -212,7 +212,7 @@ public class UserReportFacade {
         }
 
         List<String> authorIds = authors.stream().map(ScholardexAuthorView::getId).toList();
-        List<ScholardexPublicationView> publications = findPublicationsByAuthorIds(authorIds);
+        List<ScholardexPublicationView> publications = findConfirmedPublicationsForScoring(userEmail);
         Set<String> forumKeys = publications.stream().map(ScholardexPublicationView::getForum).collect(Collectors.toSet());
         Map<String, ScholardexForumView> forumMap = findForumsByIds(forumKeys).stream()
                 .collect(Collectors.toMap(ScholardexForumView::getId, forum -> forum));
@@ -281,7 +281,10 @@ public class UserReportFacade {
         }
 
         List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
-        List<ScholardexPublicationView> publications = findEffectivePublicationsForUser(userEmail);
+        List<ScholardexPublicationView> publications = findConfirmedPublicationsForScoring(userEmail);
+        if (requiresPublicationScoring(indicator)) {
+            attrs.put("confirmedPublicationScoringWarning", publications.isEmpty());
+        }
         if (indicator.getOutputType().toString().contains("PUBLICATIONS")) {
             return handlePublications(indicator, authors, publications, attrs);
         }
@@ -329,7 +332,7 @@ public class UserReportFacade {
         }
 
         List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
-        List<ScholardexPublicationView> publications = findEffectivePublicationsForUser(userEmail);
+        List<ScholardexPublicationView> publications = findConfirmedPublicationsForScoring(userEmail);
         if (report.getIndividualAffiliation() != null
                 && !"ANY".equals(report.getIndividualAffiliation().getName())) {
             publications = publications.stream()
@@ -464,7 +467,7 @@ public class UserReportFacade {
         if (researcher == null) return Optional.empty();
 
         List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
-        List<ScholardexPublicationView> publications = findEffectivePublicationsForUser(userEmail);
+        List<ScholardexPublicationView> publications = findConfirmedPublicationsForScoring(userEmail);
 
         // Apply the same affiliation filter as computeReportScopedIndividualReport
         if (report.getIndividualAffiliation() != null
@@ -897,6 +900,38 @@ public class UserReportFacade {
 
     private List<ScholardexPublicationView> findEffectivePublicationsForUser(String userEmail) {
         return effectiveAuthorshipReadService.findEffectivePublicationsForUser(userEmail);
+    }
+
+    private List<ScholardexPublicationView> findConfirmedPublicationsForScoring(String userEmail) {
+        return effectiveAuthorshipReadService.findConfirmedPublicationsForScoring(userEmail);
+    }
+
+    public boolean hasConfirmedPublicationsForScoring(String userEmail) {
+        return effectiveAuthorshipReadService.hasConfirmedPublicationsForScoring(userEmail);
+    }
+
+    public boolean reportUsesPublicationScoring(String reportId) {
+        return individualReportRepository.findById(reportId)
+                .map(this::reportUsesPublicationScoring)
+                .orElse(false);
+    }
+
+    private boolean reportUsesPublicationScoring(IndividualReport report) {
+        if (report == null || report.getIndicators() == null) {
+            return false;
+        }
+        return report.getIndicators().stream()
+                .filter(Objects::nonNull)
+                .anyMatch(this::requiresPublicationScoring);
+    }
+
+    private boolean requiresPublicationScoring(Indicator indicator) {
+        if (indicator == null || indicator.getOutputType() == null) {
+            return false;
+        }
+        return indicator.getOutputType().toString().contains("PUBLICATIONS")
+                || indicator.getOutputType().equals(Indicator.Type.CITATIONS)
+                || indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF);
     }
 
     private List<ScholardexPublicationView> findPublicationsByIds(Collection<String> publicationIds) {

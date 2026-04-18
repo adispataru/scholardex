@@ -64,6 +64,10 @@ public class EvaluationWorkspaceController {
             return "redirect:/user/evaluation";
         }
         IndividualReport report = reportOpt.get();
+        boolean confirmedPublicationScoringWarning =
+                userReportFacade.reportUsesPublicationScoring(report.getId())
+                        && !userReportFacade.hasConfirmedPublicationsForScoring(currentUser.getEmail());
+        model.addAttribute("confirmedPublicationScoringWarning", confirmedPublicationScoringWarning);
 
         Optional<IndividualReportRunDto> runOpt = userIndividualReportRunService.getOrCreateLatestRun(
                 currentUser.getEmail(), resolvedReportId);
@@ -96,7 +100,7 @@ public class EvaluationWorkspaceController {
         List<RunSummary> priorRuns = userIndividualReportRunRepository
                 .findByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc(currentUser.getEmail(), resolvedReportId)
                 .stream()
-                .map(r -> new RunSummary(r.getId(), r.getCreatedAt() != null ? r.getCreatedAt().toString() : null, r.getStatus().name()))
+                .map(r -> new RunSummary(r.getId(), r.getCreatedAt() != null ? r.getCreatedAt().toString() : null, r.getStatus().name(), null))
                 .toList();
 
         Map<Integer, Double> criterionScores = run.criteriaScores() != null ? run.criteriaScores() : Map.of();
@@ -288,8 +292,69 @@ public class EvaluationWorkspaceController {
         double totalB = sumScores(runB.getIndicatorScoresByIndicatorId());
 
         return ResponseEntity.ok(new ComparisonResponse(
-                new RunSummary(runA.getId(), runA.getCreatedAt() != null ? runA.getCreatedAt().toString() : null, runA.getStatus().name()),
-                new RunSummary(runB.getId(), runB.getCreatedAt() != null ? runB.getCreatedAt().toString() : null, runB.getStatus().name()),
+                new RunSummary(runA.getId(), runA.getCreatedAt() != null ? runA.getCreatedAt().toString() : null, runA.getStatus().name(), null),
+                new RunSummary(runB.getId(), runB.getCreatedAt() != null ? runB.getCreatedAt().toString() : null, runB.getStatus().name(), null),
+                indicatorDeltas,
+                criterionDeltas,
+                new ScoreDelta(totalA, totalB, totalB - totalA)
+        ));
+    }
+
+    // ── JSON: compare snapshot vs. current run ───────────────────────────────
+
+    @GetMapping("/compare-snapshot")
+    @ResponseBody
+    public ResponseEntity<ComparisonResponse> compareSnapshot(
+            @RequestParam("snapshotId") String snapshotId,
+            @RequestParam("runId") String runBId,
+            Authentication authentication) {
+        Optional<User> userOpt = currentUser(authentication);
+        if (userOpt.isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        User user = userOpt.get();
+
+        Optional<EvaluationSnapshot> snapOpt = evaluationSnapshotRepository.findByIdAndUserEmail(snapshotId, user.getEmail());
+        Optional<UserIndividualReportRun> runBOpt = userIndividualReportRunRepository.findById(runBId);
+        if (snapOpt.isEmpty() || runBOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        EvaluationSnapshot snap = snapOpt.get();
+        UserIndividualReportRun runB = runBOpt.get();
+        if (!runB.getUserEmail().equals(user.getEmail())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        Map<String, Double> snapInd = snap.getIndicatorScores() != null ? snap.getIndicatorScores() : Map.of();
+        Map<Integer, Double> snapCrit = snap.getCriteriaScores() != null ? snap.getCriteriaScores() : Map.of();
+        Map<String, Double> runBInd = runB.getIndicatorScoresByIndicatorId() != null ? runB.getIndicatorScoresByIndicatorId() : Map.of();
+        Map<Integer, Double> runBCrit = runB.getCriteriaScores() != null ? runB.getCriteriaScores() : Map.of();
+
+        Set<String> indKeys = new HashSet<>(snapInd.keySet());
+        indKeys.addAll(runBInd.keySet());
+        Map<String, ScoreDelta> indicatorDeltas = new LinkedHashMap<>();
+        for (String key : indKeys) {
+            indicatorDeltas.put(key, new ScoreDelta(
+                    snapInd.getOrDefault(key, 0.0),
+                    runBInd.getOrDefault(key, 0.0),
+                    runBInd.getOrDefault(key, 0.0) - snapInd.getOrDefault(key, 0.0)));
+        }
+
+        Set<Integer> critKeys = new HashSet<>(snapCrit.keySet());
+        critKeys.addAll(runBCrit.keySet());
+        Map<Integer, ScoreDelta> criterionDeltas = new LinkedHashMap<>();
+        for (Integer key : critKeys) {
+            criterionDeltas.put(key, new ScoreDelta(
+                    snapCrit.getOrDefault(key, 0.0),
+                    runBCrit.getOrDefault(key, 0.0),
+                    runBCrit.getOrDefault(key, 0.0) - snapCrit.getOrDefault(key, 0.0)));
+        }
+
+        double totalA = sumDoubles(snapInd.values());
+        double totalB = sumScores(runB.getIndicatorScoresByIndicatorId());
+
+        return ResponseEntity.ok(new ComparisonResponse(
+                new RunSummary("snap:" + snap.getId(), snap.getCreatedAt() != null ? snap.getCreatedAt().toString() : null, "SNAPSHOT", snap.getName()),
+                new RunSummary(runB.getId(), runB.getCreatedAt() != null ? runB.getCreatedAt().toString() : null, runB.getStatus().name(), null),
                 indicatorDeltas,
                 criterionDeltas,
                 new ScoreDelta(totalA, totalB, totalB - totalA)
@@ -701,7 +766,7 @@ public class EvaluationWorkspaceController {
 
     record CitationDetailResponse(String pubTitle, double totalScore, List<ScoredItem> citations) {}
 
-    record RunSummary(String runId, String createdAt, String status) {}
+    record RunSummary(String runId, String createdAt, String status, String name) {}
 
     record ScoreDelta(double before, double after, double delta) {}
 

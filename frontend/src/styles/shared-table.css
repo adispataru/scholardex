@@ -230,13 +230,13 @@
   background: color-mix(in srgb, var(--app-color-primary) 6%, transparent);
 }
 
-.app-table a {
+.app-table a:not(.btn) {
   color: var(--app-color-primary);
   font-weight: 600;
 }
 
-.app-table a:hover,
-.app-table a:focus {
+.app-table a:not(.btn):hover,
+.app-table a:not(.btn):focus {
   color: var(--app-color-primary-strong);
 }
 
