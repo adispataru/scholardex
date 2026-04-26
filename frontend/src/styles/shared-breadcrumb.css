@@ -1,0 +1,51 @@
+/* Shared breadcrumb (H44.6) */
+.app-breadcrumb {
+  margin: 0 0 1rem;
+  color: var(--app-color-text-muted);
+  font-size: 0.84rem;
+}
+
+.app-breadcrumb__list {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-breadcrumb__item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.app-breadcrumb__item + .app-breadcrumb__item::before {
+  content: "›";
+  color: var(--app-color-text-muted);
+  font-weight: 500;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.app-breadcrumb__link {
+  color: var(--app-color-primary);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.app-breadcrumb__link:hover,
+.app-breadcrumb__link:focus-visible {
+  color: var(--app-color-primary-strong);
+  text-decoration: underline;
+}
+
+.app-breadcrumb__current {
+  color: var(--app-color-text-strong);
+  font-weight: 500;
+}
+
+.app-breadcrumb--admin {
+  margin-bottom: 1rem;
+}

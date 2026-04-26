@@ -1,0 +1,26 @@
+/* ── Shared confirmation dialog (H44.1) ─────────────────────────────────── */
+
+/* Compact width — confirmation dialogs should be brief */
+.app-confirm-dialog .modal-dialog {
+  max-width: 24rem;
+}
+
+/* Body text inherits app typography and color */
+.app-confirm-dialog .modal-body {
+  font-size: 0.9rem;
+  color: var(--app-color-text);
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+
+/* Title: strong, not oversized */
+.app-confirm-dialog .modal-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--app-color-text-strong);
+}
+
+/* Align footer buttons: cancel left, confirm right */
+.app-confirm-dialog .modal-footer {
+  justify-content: space-between;
+}

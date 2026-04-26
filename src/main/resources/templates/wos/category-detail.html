@@ -14,9 +14,7 @@
         <div id="content">
             <div th:replace="~{fragments :: navbar('WoS Category')}"></div>
             <div class="container-fluid app-page-content">
-                <div class="app-page-toolbar">
-                    <a class="btn btn-outline-primary btn-sm" th:href="@{/wos/categories}">Back to Categories</a>
-                </div>
+                <th:block th:replace="~{fragments :: breadcrumb(${breadcrumbs}, 'default')}"></th:block>
 
                 <div class="row">
                     <div class="col-xl-4 col-md-6 mb-4">

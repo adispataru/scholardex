@@ -31,6 +31,7 @@ import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.WosBigBangMigrationService;
 import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
 import ro.uvt.pokedex.core.service.application.model.AdminDashboardViewModel;
+import ro.uvt.pokedex.core.service.application.model.GroupListViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminOperationStatus;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.model.MigrationStepResult;
@@ -51,6 +52,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
@@ -195,6 +197,30 @@ class AdminViewControllerContractTest {
     void removedAdminEventsReadRouteReturnsNotFound() throws Exception {
         mockMvc.perform(get("/admin/rankings/events"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void usersPageRendersSharedStatCardGrid() throws Exception {
+        when(userService.getAllUsers()).thenReturn(List.of());
+        when(groupManagementFacade.buildGroupListView())
+                .thenReturn(new GroupListViewModel(List.of(), List.of(), List.of(), List.of(), null));
+
+        mockMvc.perform(get("/admin/users").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin/users"))
+                .andExpect(model().attributeExists("statCards"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.containsString("app-summary-card--primary")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.containsString("All registered accounts on the platform.")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.containsString("id=\"editUserModal\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.containsString("id=\"assignGroupModal\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.containsString("data-app-modal-shell")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.containsString("aria-labelledby=\"editUserModalLabel\"")));
     }
 
     @Test

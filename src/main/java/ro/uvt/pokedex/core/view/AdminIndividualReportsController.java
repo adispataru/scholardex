@@ -43,6 +43,7 @@ public class AdminIndividualReportsController {
     public String editIndividualReport(@PathVariable String id, Model model) {
         IndividualReport individualReport = individualReportsManagementFacade.findIndividualReportRequired(id);
         model.addAttribute("individualReport", individualReport);
+        model.addAttribute("adminFormObject", individualReport);
         model.addAttribute("allIndicators", individualReportsManagementFacade.listIndicators());
         model.addAttribute("reportIndicators", individualReport.getIndicators());
         model.addAttribute("allAffiliations", individualReportsManagementFacade.listInstitutions());

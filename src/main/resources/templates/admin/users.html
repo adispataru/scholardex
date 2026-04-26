@@ -22,24 +22,7 @@
                 <div th:if="${bulkSuccess}" class="app-form-state app-form-state--success" th:text="${bulkSuccess}"></div>
                 <div th:if="${bulkError}" class="app-form-state app-form-state--danger" th:text="${bulkError}"></div>
 
-                <!-- Stat cards -->
-                <div class="app-summary-grid">
-                    <div class="app-summary-card">
-                        <p class="app-summary-card__label">Total Users</p>
-                        <p class="app-summary-card__value" th:text="${totalUsers}">0</p>
-                        <p class="app-summary-card__meta">All registered accounts on the platform.</p>
-                    </div>
-                    <div class="app-summary-card app-summary-card--success">
-                        <p class="app-summary-card__label">Active</p>
-                        <p class="app-summary-card__value" th:text="${activeUsers}">0</p>
-                        <p class="app-summary-card__meta">Unlocked accounts able to sign in.</p>
-                    </div>
-                    <div class="app-summary-card app-summary-card--warning">
-                        <p class="app-summary-card__label">Without Profile</p>
-                        <p class="app-summary-card__value" th:text="${usersWithoutProfile}">0</p>
-                        <p class="app-summary-card__meta">Accounts not yet linked to a researcher profile.</p>
-                    </div>
-                </div>
+                <th:block th:replace="~{fragments :: stat-card-grid(${statCards})}"></th:block>
 
                 <div class="app-page-toolbar app-workflow">
                     <p class="app-workflow__intro">Manage platform access, assign roles, and link researcher profiles from one place.</p>
@@ -295,18 +278,13 @@
 </div>
 
 <!-- ── Edit User Modal ── -->
-<div class="modal fade app-modal" id="editUserModal" tabindex="-1"
-     role="dialog" aria-modal="true"
-     aria-labelledby="editUserModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editUserModalLabel">Edit User</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close modal">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
+<th:block th:replace="~{fragments :: modal-shell(
+    id='editUserModal',
+    title='Edit User',
+    size='lg',
+    bodySlot=~{::#edit-user-modal-body},
+    footerSlot=~{::#edit-user-modal-footer})}">
+    <th:block id="edit-user-modal-body">
 
                 <!-- Account section -->
                 <div class="app-form-section">
@@ -384,34 +362,28 @@
                 <!-- Inline feedback -->
                 <p id="edit-user-feedback" class="app-form-feedback" hidden></p>
 
-            </div>
-            <div class="modal-footer app-form-actions">
+    </th:block>
+    <th:block id="edit-user-modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" id="edit-user-save-btn">Save Changes</button>
-            </div>
-        </div>
-    </div>
-</div>
+    </th:block>
+</th:block>
 
 <!-- Scroll to Top -->
-<a class="scroll-to-top rounded" href="#page-top">
+<a class="scroll-to-top rounded" href="#page-top" aria-label="Scroll to top">
     <i class="fa-solid fa-angle-up"></i>
 </a>
 
 <!-- Assign to Group Modal -->
-<div class="modal fade" id="assignGroupModal" tabindex="-1" role="dialog"
-     aria-labelledby="assignGroupModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
+<th:block th:replace="~{fragments :: modal-shell(
+    id='assignGroupModal',
+    title='Assign to Group',
+    size='',
+    bodySlot=~{::#assign-group-modal-body},
+    footerSlot=~{::#assign-group-modal-footer})}">
+    <th:block id="assign-group-modal-body">
             <form id="user-bulk-form" method="post" th:action="@{/admin/users/bulk/assign-group}">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="assignGroupModalLabel">Assign to Group</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
                     <p class="text-muted small mb-2">Selected users will be added as members of the chosen group.</p>
                     <div class="form-group">
                         <label for="assign-group-select" class="font-weight-bold" style="font-size:0.84rem;">Group</label>
@@ -420,15 +392,13 @@
                             <option th:each="g : ${allGroups}" th:value="${g.id}" th:text="${g.name}"></option>
                         </select>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary btn-sm">Assign</button>
-                </div>
             </form>
-        </div>
-    </div>
-</div>
+    </th:block>
+    <th:block id="assign-group-modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button>
+        <button type="submit" form="user-bulk-form" class="btn btn-primary btn-sm">Assign</button>
+    </th:block>
+</th:block>
 
 <!-- Bootstrap core JavaScript -->
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>

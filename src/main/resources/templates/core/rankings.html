@@ -21,7 +21,13 @@
                         <div class="app-table-filters__grid">
                             <div class="form-group app-table-filters__field app-table-filters__field--span-5">
                                 <label for="core-search">Search</label>
-                                <input id="core-search" type="text" class="form-control" placeholder="Conference, acronym, source ID">
+                                <th:block th:replace="~{fragments :: search-input(
+                                    id='core-search',
+                                    name='q',
+                                    placeholder='Conference, acronym, source ID',
+                                    value='',
+                                    kbdHint=null,
+                                    clearable=true)}"></th:block>
                             </div>
                             <div class="form-group app-table-filters__field app-table-filters__field--span-2">
                                 <label for="core-sort">Sort By</label>

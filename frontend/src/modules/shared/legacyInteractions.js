@@ -78,7 +78,7 @@ function initModalTriggers() {
   const backdrop = ensureModalBackdrop();
 
   const closeAnyOpenModal = () => {
-    const openModal = document.querySelector('.modal.show');
+    const openModal = document.querySelector('.modal.show:not([data-app-modal-shell])');
     if (openModal) {
       setModalState(openModal, false);
     }
@@ -87,6 +87,9 @@ function initModalTriggers() {
   triggers.forEach((trigger) => {
     const target = querySelectorFromTarget(trigger.getAttribute('data-target'));
     if (!target) {
+      return;
+    }
+    if (target.hasAttribute('data-app-modal-shell')) {
       return;
     }
 

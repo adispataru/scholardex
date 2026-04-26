@@ -32,6 +32,7 @@ import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.model.AdminDashboardViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsViewModel;
+import ro.uvt.pokedex.core.service.application.model.StatCardDef;
 import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
 import ro.uvt.pokedex.core.service.UserService;
 
@@ -69,7 +70,18 @@ public class AdminViewController {
         model.addAttribute("totalUsers", (long) users.size());
         model.addAttribute("activeUsers", users.stream().filter(u -> !u.isLocked()).count());
         model.addAttribute("usersWithoutProfile", users.stream().filter(u -> u.getResearcherProfile() == null).count());
+        model.addAttribute("statCards", buildUserStatCards(users));
         return "admin/users";
+    }
+
+    private List<StatCardDef> buildUserStatCards(List<User> users) {
+        long activeUsers = users.stream().filter(u -> !u.isLocked()).count();
+        long usersWithoutProfile = users.stream().filter(u -> u.getResearcherProfile() == null).count();
+        return List.of(
+                new StatCardDef("Total Users", users.size(), "primary", "All registered accounts on the platform.", "fa-solid fa-users"),
+                new StatCardDef("Active", activeUsers, "success", "Unlocked accounts able to sign in.", "fa-solid fa-user-check"),
+                new StatCardDef("Without Profile", usersWithoutProfile, "warning", "Accounts not yet linked to a researcher profile.", "fa-solid fa-user-clock")
+        );
     }
 
     @PostMapping("/users/bulk/assign-group")

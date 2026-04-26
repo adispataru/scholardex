@@ -6,7 +6,7 @@
  *  - Submits the edit form via fetch() to POST /admin/users/{email}/edit
  *  - On success, re-renders the relevant table row cells in-place (no page reload)
  *  - Shows a native confirm() guard when the user is removing PLATFORM_ADMIN
- *  - Bootstrap 4 handles Escape-to-close and focus trap natively
+ *  - Shared appModal handles Escape-to-close, focus trap, and return focus
  */
 export function initAdminUsers() {
     const modal = document.getElementById('editUserModal');
@@ -75,14 +75,20 @@ export function initAdminUsers() {
         const hadAdmin = (_triggerBtn?.dataset.roles || '').includes('PLATFORM_ADMIN');
         const keepingAdmin = selectedRoles.includes('PLATFORM_ADMIN');
         if (hadAdmin && !keepingAdmin) {
-            if (!window.confirm(
-                'Remove PLATFORM_ADMIN from ' + _currentEmail + '?\n\n' +
-                'This will revoke their admin access immediately.'
-            )) {
-                return;
-            }
+            window.appConfirmDialog?.open({
+                title: 'Remove admin access?',
+                body: 'Remove PLATFORM_ADMIN from ' + _currentEmail + '? This will revoke their admin access immediately.',
+                confirmLabel: 'Remove',
+                tone: 'danger',
+                onConfirm: () => _doSave(selectedRoles),
+            });
+            return;
         }
 
+        _doSave(selectedRoles);
+    }
+
+    function _doSave(selectedRoles) {
         const scopusRaw = (_getField('edit-scopus-ids') || '').trim();
         const wosRaw = (_getField('edit-wos-ids') || '').trim();
 
@@ -120,6 +126,8 @@ export function initAdminUsers() {
                         : null;
                     if (bsModal) {
                         bsModal.hide();
+                    } else if (window.appModal) {
+                        window.appModal.close('editUserModal');
                     } else if (window.$) {
                         window.$('#editUserModal').modal('hide');
                     }

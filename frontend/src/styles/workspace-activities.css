@@ -463,65 +463,6 @@
   color: var(--app-color-danger);
 }
 
-/* ── Pagination ───────────────────────────────────────────────────────────── */
-
-.app-ws-acts__pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  padding: 0.65rem 0.85rem;
-  border-top: 1px solid var(--app-color-border);
-  background: color-mix(in srgb, var(--app-color-card-bg-muted) 60%, transparent);
-  font-size: 0.83rem;
-  color: var(--app-color-text-muted);
-}
-
-.app-ws-acts__pagination-btns {
-  display: flex;
-  gap: 0.3rem;
-}
-
-.app-ws-acts__page-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 2rem;
-  height: 2rem;
-  padding: 0 0.4rem;
-  border: 1px solid var(--app-color-border);
-  border-radius: 0.3rem;
-  background: var(--app-color-card-bg);
-  color: var(--app-color-text-strong);
-  font-size: 0.82rem;
-  cursor: pointer;
-  transition: background 0.1s, color 0.1s;
-}
-
-.app-ws-acts__page-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--app-color-primary) 8%, transparent);
-  color: var(--app-color-primary);
-  border-color: color-mix(in srgb, var(--app-color-primary) 35%, var(--app-color-border));
-}
-
-.app-ws-acts__page-btn--active {
-  background: var(--app-color-primary);
-  color: #fff;
-  border-color: var(--app-color-primary);
-  font-weight: 700;
-}
-
-.app-ws-acts__page-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.app-ws-acts__page-btn:focus-visible {
-  outline: 2px solid var(--app-color-focus);
-  outline-offset: 1px;
-}
-
 /* ── Empty state ──────────────────────────────────────────────────────────── */
 
 .app-ws-acts__empty {

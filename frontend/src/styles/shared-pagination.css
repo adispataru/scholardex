@@ -1,0 +1,82 @@
+/* ── Shared pagination (H44.3) ───────────────────────────────────────────── */
+
+/* Container: flex row, used both standalone (workspace footer) and inline
+   inside app-table-toolbar__actions (server-side toolbar usage). */
+.app-pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.83rem;
+  color: var(--app-color-text-muted);
+}
+
+/* When used as a panel footer (client-side workspace context) */
+.app-pagination--panel-footer {
+  justify-content: space-between;
+  padding: 0.65rem 0.85rem;
+  border-top: 1px solid var(--app-color-border);
+  background: color-mix(in srgb, var(--app-color-card-bg-muted) 60%, transparent);
+}
+
+/* ── Info text ("Showing X–Y of Z") ──────────────────────────────────────── */
+
+.app-pagination__info {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* ── Button group ────────────────────────────────────────────────────────── */
+
+.app-pagination__btns {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+/* ── Individual page / prev / next button ────────────────────────────────── */
+
+.app-pagination__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.45rem;
+  border: 1px solid var(--app-color-border);
+  border-radius: 0.3rem;
+  background: var(--app-color-card-bg);
+  color: var(--app-color-text-strong);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  text-decoration: none;
+  line-height: 1;
+  user-select: none;
+}
+
+.app-pagination__btn:hover:not(:disabled):not(.disabled) {
+  background: color-mix(in srgb, var(--app-color-primary) 8%, transparent);
+  color: var(--app-color-primary);
+  border-color: color-mix(in srgb, var(--app-color-primary) 35%, var(--app-color-border));
+  text-decoration: none;
+}
+
+.app-pagination__btn--active {
+  background: var(--app-color-primary);
+  color: #fff;
+  border-color: var(--app-color-primary);
+  font-weight: 700;
+}
+
+.app-pagination__btn:disabled,
+.app-pagination__btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.app-pagination__btn:focus-visible {
+  outline: 2px solid var(--app-color-focus);
+  outline-offset: 1px;
+}

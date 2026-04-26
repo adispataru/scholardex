@@ -79,7 +79,6 @@
                                 aria-expanded="false" aria-controls="eval-snapshots-panel">
                             <i class="fa-solid fa-layer-group fa-sm" aria-hidden="true"></i> My Snapshots
                         </button>
-                        <span class="app-eval-snapshot-feedback" id="eval-snapshot-feedback" hidden aria-live="polite"></span>
                         <form th:action="@{/user/evaluation/refresh(report=${report.id})}" method="post">
                             <button type="submit" class="btn btn-sm btn-outline-primary">
                                 <i class="fa-solid fa-rotate fa-sm" aria-hidden="true"></i> Refresh All

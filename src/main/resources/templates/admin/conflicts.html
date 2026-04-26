@@ -19,74 +19,14 @@
                     <div th:if="${errorMessage}" class="app-feedback app-feedback--danger" th:text="${errorMessage}"></div>
                     <div th:if="${successMessage}" class="app-feedback app-feedback--success" th:text="${successMessage}"></div>
 
-                    <!-- Stat cards -->
-                    <div class="app-summary-grid">
-                        <div class="app-summary-card app-summary-card--danger">
-                            <p class="app-summary-card__label">Open</p>
-                            <p class="app-summary-card__value" th:text="${summary.open}">0</p>
-                            <p class="app-summary-card__meta">Conflicts that still require operator action.</p>
-                        </div>
-                        <div class="app-summary-card app-summary-card--warning">
-                            <p class="app-summary-card__label">Investigating</p>
-                            <p class="app-summary-card__value" th:text="${summary.investigated}">0</p>
-                            <p class="app-summary-card__meta">Marked for active investigation by an operator.</p>
-                        </div>
-                        <div class="app-summary-card app-summary-card--success">
-                            <p class="app-summary-card__label">Resolved</p>
-                            <p class="app-summary-card__value" th:text="${summary.resolved}">0</p>
-                            <p class="app-summary-card__meta">Conflicts cleared through explicit operator resolution.</p>
-                        </div>
-                        <div class="app-summary-card">
-                            <p class="app-summary-card__label">Dismissed</p>
-                            <p class="app-summary-card__value" th:text="${summary.dismissed}">0</p>
-                            <p class="app-summary-card__meta">Records intentionally removed from the active queue.</p>
-                        </div>
-                    </div>
+                    <th:block th:replace="~{fragments :: stat-card-grid(${statCards})}"></th:block>
 
-                    <!-- ── Integrated filter ── -->
-                    <form method="get" th:action="@{/admin/conflicts}" class="app-queue-filter">
-                        <p class="app-queue-filter__title">Filter queue</p>
-                        <div class="app-queue-filter__grid">
-                            <div class="app-queue-filter__field">
-                                <label>Entity type</label>
-                                <input name="entityType" class="form-control form-control-sm" th:value="${entityType}" placeholder="PUBLICATION">
-                            </div>
-                            <div class="app-queue-filter__field">
-                                <label>Incoming source</label>
-                                <input name="incomingSource" class="form-control form-control-sm" th:value="${incomingSource}" placeholder="SCOPUS">
-                            </div>
-                            <div class="app-queue-filter__field">
-                                <label>Reason code</label>
-                                <input name="reasonCode" class="form-control form-control-sm" th:value="${reasonCode}" placeholder="SOURCE_ID_COLLISION">
-                            </div>
-                            <div class="app-queue-filter__field">
-                                <label>Status</label>
-                                <select name="status" class="form-control form-control-sm">
-                                    <option value="" th:selected="${#strings.isEmpty(status)}">All</option>
-                                    <option value="OPEN"         th:selected="${status == 'OPEN'}">Open</option>
-                                    <option value="INVESTIGATED" th:selected="${status == 'INVESTIGATED'}">Investigating</option>
-                                    <option value="RESOLVED"     th:selected="${status == 'RESOLVED'}">Resolved</option>
-                                    <option value="DISMISSED"    th:selected="${status == 'DISMISSED'}">Dismissed</option>
-                                </select>
-                            </div>
-                            <div class="app-queue-filter__field">
-                                <label>Detected from</label>
-                                <input name="detectedFrom" type="date" class="form-control form-control-sm" th:value="${detectedFrom}">
-                            </div>
-                            <div class="app-queue-filter__field">
-                                <label>Detected to</label>
-                                <input name="detectedTo" type="date" class="form-control form-control-sm" th:value="${detectedTo}">
-                            </div>
-                            <div class="app-queue-filter__field" style="max-width:6rem">
-                                <label>Page size</label>
-                                <input name="size" type="number" min="1" class="form-control form-control-sm" th:value="${identityPageData.size}">
-                            </div>
-                            <div class="app-queue-filter__actions">
-                                <button type="submit" class="btn btn-primary btn-sm">Apply</button>
-                                <a th:href="@{/admin/conflicts}" class="btn btn-outline-secondary btn-sm">Reset</a>
-                            </div>
-                        </div>
-                    </form>
+                    <th:block th:replace="~{fragments :: filter-panel(
+                        formId='conflict-filter-form',
+                        method='get',
+                        action=@{/admin/conflicts},
+                        fields=${filterFields})}">
+                    </th:block>
 
                     <!-- ── Queue table ── -->
                     <div class="app-table-section">
@@ -199,22 +139,10 @@
 
                     <!-- ── Pagination + bulk actions bar ── -->
                     <div class="app-queue-bulk-bar">
-                        <span class="app-queue-bulk-bar__label">
-                            Page
-                            <th:block th:text="${identityPageData.number + 1}"></th:block>
-                            /
-                            <th:block th:text="${identityPageData.totalPages}"></th:block>
-                        </span>
-                        <a class="btn btn-outline-secondary btn-sm"
-                           th:classappend="${!identityPageData.hasPrevious()} ? 'disabled'"
-                           th:href="@{/admin/conflicts(page=${identityPageData.number - 1},size=${identityPageData.size},entityType=${entityType},incomingSource=${incomingSource},reasonCode=${reasonCode},status=${status},detectedFrom=${detectedFrom},detectedTo=${detectedTo})}">
-                            <i class="fa-solid fa-chevron-left fa-xs"></i> Prev
-                        </a>
-                        <a class="btn btn-outline-secondary btn-sm"
-                           th:classappend="${!identityPageData.hasNext()} ? 'disabled'"
-                           th:href="@{/admin/conflicts(page=${identityPageData.number + 1},size=${identityPageData.size},entityType=${entityType},incomingSource=${incomingSource},reasonCode=${reasonCode},status=${status},detectedFrom=${detectedFrom},detectedTo=${detectedTo})}">
-                            Next <i class="fa-solid fa-chevron-right fa-xs"></i>
-                        </a>
+                        <th:block th:with="prevUrl=${identityPageData.hasPrevious()} ? @{/admin/conflicts(page=${identityPageData.number - 1},size=${identityPageData.size},entityType=${entityType},incomingSource=${incomingSource},reasonCode=${reasonCode},status=${status},detectedFrom=${detectedFrom},detectedTo=${detectedTo})} : null,
+                                           nextUrl=${identityPageData.hasNext()} ? @{/admin/conflicts(page=${identityPageData.number + 1},size=${identityPageData.size},entityType=${entityType},incomingSource=${incomingSource},reasonCode=${reasonCode},status=${status},detectedFrom=${detectedFrom},detectedTo=${detectedTo})} : null">
+                            <th:block th:replace="~{fragments :: pagination(${prevUrl}, ${nextUrl}, ${identityPageData.number}, ${identityPageData.totalPages}, null, 'Conflicts pagination')}"></th:block>
+                        </th:block>
                         <span style="width:1px; background:var(--app-color-border); align-self:stretch; margin: 0 0.25rem;"></span>
                         <!-- Bulk action buttons (submit the bulk form) -->
                         <button type="submit" form="conflicts-bulk-form" name="action" value="resolve"
@@ -300,7 +228,7 @@
         </div>
     </div>
 
-    <a class="scroll-to-top rounded" href="#page-top">
+    <a class="scroll-to-top rounded" href="#page-top" aria-label="Scroll to top">
         <i class="fa-solid fa-angle-up"></i>
     </a>
 </div>

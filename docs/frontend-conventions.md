@@ -39,6 +39,75 @@ Status: active frontend and template guidance.
 - After `H35`, the authenticated shell, table/list, workflow, summary, footer, and shared runtime families share one ScholarDex-owned frontend baseline, and touched work must preserve that accessibility, responsive, cross-theme, and remnant-cleanup contract.
 - Remaining Bootstrap 4 or SB Admin debt is intentionally bounded to untouched non-authenticated or otherwise deferred legacy pages until a later active task reopens them.
 
+## Button Conventions
+
+- Icon-only admin row actions use `.app-admin-icon-btn` and must include one accessible name with `aria-label`. The visible content should remain icon-only, and the icon must be `aria-hidden="true"`.
+- Labeled actions use the existing `btn` classes and may include a leading Font Awesome icon marked `aria-hidden="true"`. The visible label is the accessible name; do not also add a competing `aria-label`.
+- Icon-button tones map as follows: neutral/default uses `.app-admin-icon-btn`, destructive uses `.app-admin-icon-btn--danger`, cautionary uses `.app-admin-icon-btn--warning`, and positive/resolve uses `.app-admin-icon-btn--success`.
+- Disabled buttons should use native `disabled`. Use `aria-disabled="true"` only for links that must remain anchors, and prevent activation in JS when doing so.
+- Button groups should use existing flex wrappers such as `.app-admin-actions`, `.app-form-actions`, `.app-workflow__actions`, or `.app-bulk-select-bar__actions`. Keep destructive actions visually separated when they appear beside primary actions.
+
+```html
+<button type="button" class="app-admin-icon-btn" aria-label="Edit user">
+    <i class="fa-solid fa-pen fa-xs" aria-hidden="true"></i>
+</button>
+<button type="submit" class="app-admin-icon-btn app-admin-icon-btn--danger" aria-label="Delete user">
+    <i class="fa-solid fa-trash fa-xs" aria-hidden="true"></i>
+</button>
+```
+
+```html
+<button type="button" class="btn btn-primary btn-sm">
+    <i class="fa-solid fa-plus fa-sm" aria-hidden="true"></i> New User
+</button>
+```
+
+```html
+<div class="app-admin-actions">
+    <button type="button" class="app-admin-icon-btn" aria-label="Edit item">
+        <i class="fa-solid fa-pen fa-xs" aria-hidden="true"></i>
+    </button>
+    <button type="submit" class="app-admin-icon-btn app-admin-icon-btn--danger" aria-label="Delete item">
+        <i class="fa-solid fa-trash fa-xs" aria-hidden="true"></i>
+    </button>
+</div>
+```
+
+```html
+<button type="button" class="btn btn-primary btn-sm" disabled>Save</button>
+<a class="btn btn-outline-secondary btn-sm disabled" href="#" aria-disabled="true">Export</a>
+```
+
+## Shared Components
+
+Use these shared fragments and JS utilities before adding page-local variants. Keep HTML in `src/main/resources/templates/fragments.html`, behavior in `frontend/src/modules/shared/**`, and styling in the matching `frontend/src/styles/**` file.
+
+### H44 Components
+
+| Component | Contract | Use | Avoid |
+| --- | --- | --- | --- |
+| Confirmation dialog | `confirmation-dialog(id, title, body, confirmLabel, tone)` plus `window.appConfirmDialog.open({ title, body, confirmLabel, tone, onConfirm })`; CSS: `.app-confirm-dialog`; tones: `primary`, `danger`. | Destructive or irreversible confirmation flows that need an accessible modal prompt. | New `window.confirm()` calls or page-local confirmation modals. |
+| Toast notifications | `window.appToast.show({ message, tone, duration, actionLabel, onAction })`; CSS: `.app-toast`; tones: `success`, `error`, `warning`, `info`. | Ephemeral success/error/status feedback after client-side actions. | Inline feedback spans for transient feedback unless the message must remain in the form layout. |
+| Pagination | Server fragment `pagination(prevHref, nextHref, page, totalPages, showingText, label)` and client helpers `buildPaginationHtml(...)` / `wirePaginationClicks(...)`; CSS: `.app-pagination`. | Server-rendered page navigation and client-rendered table panels. | New `.app-table-pager` markup for touched paginated surfaces. |
+| Filter panel | `filter-panel(formId, method, action, fields)` with `FilterFieldDef`; CSS: `.app-filter-panel`. | Table/list filter surfaces that submit as a form. | Page-local queue/filter panels for touched tables. |
+| Stat cards | `stat-card(label, value, accent, contextLine, icon)` and `stat-card-grid(cards)` with `StatCardDef`; CSS: `.app-summary-card`, `.app-summary-grid`; accents: `primary`, `success`, `warning`, `danger`, `neutral`. | Compact metric summaries and dashboard stat rows. | Hand-written stat-card grids when the values are already available server-side. |
+| Breadcrumbs | `breadcrumb(items, variant)` and `admin-breadcrumb(items)` with `BreadcrumbItem`; CSS: `.app-breadcrumb`; variants: `default`, `admin`. | Navigation context above detail/workspace pages. | Hand-built breadcrumb lists on touched pages. |
+| Admin form | `admin-form(id, action, method, title, sections, submitLabel, cancelHref)` and `admin-form-section(title, helperText, body)`; CSS: `.app-admin-form`. | Long-form admin edit pages that need sticky Save/Cancel controls and consistent sections. | New `.app-form-surface` shells on admin edit pages. |
+| Modal shell | `modal-shell(id, title, size, bodySlot, footerSlot)` plus `window.appModal.open(id)` / `window.appModal.close(id)`; CSS: `.app-modal-shell`; sizes: empty, `sm`, `lg`, `xl`. | Reusable Bootstrap-shaped modals with shared focus, Escape, backdrop, and return-focus behavior. | New raw `modal fade` blocks on touched pages. |
+| Search input | `search-input(id, name, placeholder, value, kbdHint, clearable)` plus clear behavior from `searchInput.js`; CSS: `.app-search-input`. | Search fields in filters, headers, and table controls. | Plain text inputs for search on touched pages. |
+| Button conventions | CSS: `.app-admin-icon-btn`, `.app-admin-actions`, `.app-form-actions`, `.app-workflow__actions`; tones: default, `--danger`, `--warning`, `--success`. | Icon-only admin row actions, labeled actions, and grouped action controls. | Icon-only controls without `aria-label` or custom action wrappers when an existing group fits. |
+
+### Existing Shared Components
+
+| Component | Contract | Use | Avoid |
+| --- | --- | --- | --- |
+| Tab bar | `tab-bar(tabs, callbacksRef)` or existing `[data-app-tab-bar]` markup with `workspaceTabs.js`; CSS: `.app-tab-bar`. | Sectioned pages with keyboard-accessible tabs and optional lazy callbacks. | Page-local tab state managers for touched tabbed surfaces. |
+| Admin empty state | `admin-empty-state(...)`; CSS: `.app-admin-empty` / `.app-admin-empty-state`. | Empty rows or standalone empty panels in admin tables and lists. | Empty table rows that only say “No data” without guidance. |
+| Skeleton loaders | CSS: `.app-skeleton-*`; helpers in `workspacePanelLoader.js` and workspace modules. | Async panel/table/chart loading placeholders. | Spinners for larger table or chart loading areas. |
+| Shortcuts overlays | `workspaceShortcuts.js` and `adminShortcuts.js`; CSS: `.app-shortcuts-*` and focused-row styles. | Keyboard help overlays and row navigation on guarded workspace/admin tables. | Hidden keyboard shortcuts without discoverable help. |
+| Bulk select | `initAdminBulkSelect({ tableKey, fingerprint, cbSelector, selectAllSelector, barSelector, countSelector, bulkFormId, inputName })`; CSS: `.app-bulk-select-bar`. | Cross-page admin table selection and bulk forms. | Page-local selected-id tracking on touched admin tables. |
+| Column toggle | `initAdminColumnToggle({ tableId, tableEl, toolbarActionsEl, columns })`. | Optional admin table column visibility controls. | One-off column visibility controls that do not persist consistently. |
+
 ## Verification
 
 - Use the frontend and route guardrails for template, asset, and canonical-route changes.

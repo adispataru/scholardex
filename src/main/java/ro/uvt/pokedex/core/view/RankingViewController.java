@@ -16,6 +16,7 @@ import ro.uvt.pokedex.core.service.application.ScholardexForumMvcService;
 import ro.uvt.pokedex.core.service.application.UrapRankingFacade;
 import ro.uvt.pokedex.core.service.application.WosCategoryPageService;
 import ro.uvt.pokedex.core.controller.dto.ScholardexForumTablePageResponse;
+import ro.uvt.pokedex.core.service.application.model.BreadcrumbItem;
 import ro.uvt.pokedex.core.service.application.model.ScholardexForumDetailViewModel;
 
 import java.util.List;
@@ -58,6 +59,10 @@ public class RankingViewController {
         model.addAttribute("detail", detail.get());
         model.addAttribute("forum", detail.get().forum());
         model.addAttribute("wosRanking", detail.get().wosRanking());
+        model.addAttribute("breadcrumbs", List.of(
+                new BreadcrumbItem("Forums", "/forums"),
+                new BreadcrumbItem(detail.get().forum().getPublicationName())
+        ));
         return "forums/detail";
     }
 
@@ -73,6 +78,10 @@ public class RankingViewController {
             return "shared/not-found";
         }
         model.addAttribute("categoryDetail", detail.get());
+        model.addAttribute("breadcrumbs", List.of(
+                new BreadcrumbItem("WoS Categories", "/wos/categories"),
+                new BreadcrumbItem(detail.get().categoryName())
+        ));
         return "wos/category-detail";
     }
 
@@ -102,6 +111,10 @@ public class RankingViewController {
         if (ranking.isPresent()) {
             model.addAttribute("ranking", ranking.get());
             model.addAttribute("fields", List.of("article", "citation", "totalDocument", "AIT", "CIT", "collaboration"));
+            model.addAttribute("breadcrumbs", List.of(
+                    new BreadcrumbItem("Universities", "/universities"),
+                    new BreadcrumbItem(ranking.get().getName())
+            ));
             return "universities/detail";
         }
         return "redirect:/universities";

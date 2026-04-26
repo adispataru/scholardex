@@ -104,15 +104,11 @@
                             </tbody>
                         </table>
                         </div>
-                        <div class="app-dashboard-pager">
-                            <p class="app-dashboard-pager__meta" th:text="'Page ' + (${pageData.number} + 1) + ' / ' + ${pageData.totalPages} + ' (' + ${pageData.totalElements} + ' rows)'"></p>
-                            <div class="app-dashboard__actions">
-                                <a class="btn btn-outline-secondary btn-sm" th:classappend="${pageData.hasPrevious()} ? '' : 'disabled'"
-                                   th:href="@{/admin/source-links(page=${pageData.number - 1},size=${pageData.size},entityType=${entityType},source=${source},linkState=${linkState},sourceBatchId=${sourceBatchId},sourceCorrelationId=${sourceCorrelationId},sourceEventId=${sourceEventId},updatedFrom=${updatedFrom},updatedTo=${updatedTo},lookupSourceRecordId=${lookupSourceRecordId},lookupCanonicalId=${lookupCanonicalId})}">Prev</a>
-                                <a class="btn btn-outline-secondary btn-sm" th:classappend="${pageData.hasNext()} ? '' : 'disabled'"
-                                   th:href="@{/admin/source-links(page=${pageData.number + 1},size=${pageData.size},entityType=${entityType},source=${source},linkState=${linkState},sourceBatchId=${sourceBatchId},sourceCorrelationId=${sourceCorrelationId},sourceEventId=${sourceEventId},updatedFrom=${updatedFrom},updatedTo=${updatedTo},lookupSourceRecordId=${lookupSourceRecordId},lookupCanonicalId=${lookupCanonicalId})}">Next</a>
-                            </div>
-                        </div>
+                        <th:block th:with="showText=|Page ${pageData.number + 1} / ${pageData.totalPages} (${pageData.totalElements} rows)|,
+                                           prevUrl=${pageData.hasPrevious()} ? @{/admin/source-links(page=${pageData.number - 1},size=${pageData.size},entityType=${entityType},source=${source},linkState=${linkState},sourceBatchId=${sourceBatchId},sourceCorrelationId=${sourceCorrelationId},sourceEventId=${sourceEventId},updatedFrom=${updatedFrom},updatedTo=${updatedTo},lookupSourceRecordId=${lookupSourceRecordId},lookupCanonicalId=${lookupCanonicalId})} : null,
+                                           nextUrl=${pageData.hasNext()} ? @{/admin/source-links(page=${pageData.number + 1},size=${pageData.size},entityType=${entityType},source=${source},linkState=${linkState},sourceBatchId=${sourceBatchId},sourceCorrelationId=${sourceCorrelationId},sourceEventId=${sourceEventId},updatedFrom=${updatedFrom},updatedTo=${updatedTo},lookupSourceRecordId=${lookupSourceRecordId},lookupCanonicalId=${lookupCanonicalId})} : null">
+                            <th:block th:replace="~{fragments :: pagination(${prevUrl}, ${nextUrl}, ${pageData.number}, ${pageData.totalPages}, ${showText}, 'Source links pagination')}"></th:block>
+                        </th:block>
                         </div>
                     </div>
 

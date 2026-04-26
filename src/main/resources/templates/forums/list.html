@@ -21,7 +21,13 @@
                         <div class="app-table-filters__grid">
                             <div class="form-group app-table-filters__field app-table-filters__field--span-4">
                                 <label for="scholardex-forums-search">Search</label>
-                                <input id="scholardex-forums-search" type="text" class="form-control" placeholder="Forum, ISSN, eISSN, aggregation type">
+                                <th:block th:replace="~{fragments :: search-input(
+                                    id='scholardex-forums-search',
+                                    name='q',
+                                    placeholder='Forum, ISSN, eISSN, aggregation type',
+                                    value='',
+                                    kbdHint=null,
+                                    clearable=true)}"></th:block>
                             </div>
                             <div class="form-group app-table-filters__field app-table-filters__field--span-2">
                                 <label for="scholardex-forums-sort">Sort By</label>

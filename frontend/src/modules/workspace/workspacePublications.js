@@ -18,6 +18,7 @@
  */
 
 import { postJsonHeaders } from '../shared/fetchUtils';
+import { buildPaginationHtml, wirePaginationClicks } from '../shared/clientPagination';
 
 const PAGE_SIZE = 20;
 
@@ -81,7 +82,6 @@ let _wIssueIdentifier = '';
 let _pendingRejectId = null;
 let _publicationFilter = 'all';
 let _searchQuery = '';
-let _queueFeedback = null;
 let _selectedPendingIds = new Set();
 
 // ── Public API ───────────────────────────────────────────────────────────────
@@ -118,7 +118,6 @@ function _init(panel) {
     _activeId  = null;
     _wizardOpen = false;
     _publicationFilter = 'all';
-    _queueFeedback = null;
     _selectedPendingIds = new Set();
     _showSkeleton();
 
@@ -312,16 +311,13 @@ function _renderPage() {
 
     // Pagination
     if (pages > 1) {
-        wrap.insertAdjacentHTML('beforeend', _buildPagination(total, pages));
-        wrap.querySelectorAll('.app-ws-pubs__page-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const target = Number(btn.dataset.page);
-                if (!isNaN(target)) {
-                    _page     = target;
-                    _activeId = null;
-                    _renderPage();
-                }
-            });
+        const paginationEl = document.createElement('div');
+        paginationEl.innerHTML = buildPaginationHtml({ page: _page, total, pageSize: PAGE_SIZE, label: 'Publications pagination' });
+        wrap.appendChild(paginationEl.firstElementChild);
+        wirePaginationClicks(wrap, (newPage) => {
+            _page     = newPage;
+            _activeId = null;
+            _renderPage();
         });
     }
 }
@@ -671,7 +667,7 @@ function _saveAuthorshipDecision(pubId, action, detailTr) {
         .then(state => {
             _pendingRejectId = null;
             _setReviewState(pubId, state);
-            _queueFeedback = { message: action === 'confirm' ? 'Authorship confirmed.' : 'Authorship rejected.', isError: false };
+            window.appToast?.show({ message: action === 'confirm' ? 'Authorship confirmed.' : 'Authorship rejected.', tone: 'success' });
             _refreshAfterAuthorshipDecision(pubId);
         })
         .catch(() => {
@@ -701,7 +697,7 @@ function _clearAuthorshipDecision(pubId, detailTr) {
         .then(state => {
             _pendingRejectId = null;
             _setReviewState(pubId, state);
-            _queueFeedback = { message: 'Decision cleared.', isError: false };
+            window.appToast?.show({ message: 'Decision cleared.', tone: 'success' });
             _refreshAfterAuthorshipDecision(pubId);
         })
         .catch(() => {
@@ -755,17 +751,15 @@ function _runBulkAuthorshipDecision(action) {
             }
 
             const successLabel = action === 'CONFIRM' ? 'confirmed' : 'rejected';
-            _queueFeedback = {
-                message: failures.length > 0
-                    ? `${succeededIds.length} ${successLabel}, ${failures.length} failed`
-                    : `${succeededIds.length} publication${succeededIds.length === 1 ? '' : 's'} ${successLabel}.`,
-                isError: false
-            };
+            const bulkMsg = failures.length > 0
+                ? `${succeededIds.length} ${successLabel}, ${failures.length} failed`
+                : `${succeededIds.length} publication${succeededIds.length === 1 ? '' : 's'} ${successLabel}.`;
+            window.appToast?.show({ message: bulkMsg, tone: failures.length > 0 ? 'warning' : 'success' });
             _activeId = null;
             _renderAll();
         })
         .catch(err => {
-            _queueFeedback = { message: err.message ?? 'Bulk review failed.', isError: true };
+            window.appToast?.show({ message: err.message ?? 'Bulk review failed.', tone: 'error' });
             _renderAll();
         });
 }
@@ -899,7 +893,6 @@ function _wireReviewSummaryEvents() {
             _publicationFilter = nextFilter;
             _page = 1;
             _activeId = null;
-            _queueFeedback = null;
             _renderAll();
         });
     });
@@ -922,9 +915,6 @@ function _buildReviewSummary() {
     const selectedCount = _selectedPendingIds.size;
     const allActive = _publicationFilter === 'all';
     const queueActive = _publicationFilter === 'pending-review';
-    const feedback = _queueFeedback
-        ? `<div class="app-ws-pubs__triage-feedback ${_queueFeedback.isError ? 'app-ws-pubs__triage-feedback--error' : ''}" role="status" aria-live="polite">${_esc(_queueFeedback.message)}</div>`
-        : '';
     const bulkBar = selectedCount > 0
         ? `<div class="app-ws-pubs__bulk-bar" role="region" aria-label="Bulk authorship review actions">
             <span class="app-ws-pubs__bulk-count">${selectedCount} selected</span>
@@ -950,7 +940,6 @@ function _buildReviewSummary() {
             </button>
           </div>
           ${bulkBar}
-          ${feedback}
         </section>`;
 }
 
@@ -1207,7 +1196,14 @@ function _openWizard() {
 function _closeWizard(force) {
     if (!_wizardOpen) return;
     if (!force && _wizardIsDirty()) {
-        if (!confirm('Discard unsaved changes?')) return;
+        window.appConfirmDialog?.open({
+            title: 'Discard changes?',
+            body: 'The wizard has unsaved changes. Discard them and close?',
+            confirmLabel: 'Discard',
+            tone: 'danger',
+            onConfirm: () => _closeWizard(true),
+        });
+        return;
     }
     _wizardOpen = false;
     const placeholder = document.getElementById('ws-pubs-wizard');
@@ -1747,36 +1743,6 @@ function _buildStats() {
         </div>`;
 }
 
-function _buildPagination(total, pages) {
-    const info = `Showing ${Math.min((_page - 1) * PAGE_SIZE + 1, total)}–${Math.min(_page * PAGE_SIZE, total)} of ${total}`;
-
-    const prevBtn = `<button class="app-ws-pubs__page-btn" type="button" data-page="${_page - 1}" ${_page <= 1 ? 'disabled' : ''} aria-label="Previous page">
-        <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
-    </button>`;
-
-    const range = [];
-    const half  = 2;
-    let lo = Math.max(1, _page - half);
-    let hi = Math.min(pages, lo + 2 * half);
-    lo = Math.max(1, hi - 2 * half);
-    for (let p = lo; p <= hi; p++) range.push(p);
-
-    const pageBtns = range.map(p =>
-        `<button class="app-ws-pubs__page-btn ${p === _page ? 'app-ws-pubs__page-btn--active' : ''}" type="button" data-page="${p}" aria-label="Page ${p}" ${p === _page ? 'aria-current="page"' : ''}>${p}</button>`
-    ).join('');
-
-    const nextBtn = `<button class="app-ws-pubs__page-btn" type="button" data-page="${_page + 1}" ${_page >= pages ? 'disabled' : ''} aria-label="Next page">
-        <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
-    </button>`;
-
-    return `
-        <div class="app-ws-pubs__pagination" role="navigation" aria-label="Publications pagination">
-          <span>${_esc(info)}</span>
-          <div class="app-ws-pubs__pagination-btns">
-            ${prevBtn}${pageBtns}${nextBtn}
-          </div>
-        </div>`;
-}
 
 function _buildEmpty() {
     return `

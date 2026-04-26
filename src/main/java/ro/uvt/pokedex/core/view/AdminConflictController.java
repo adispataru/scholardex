@@ -10,6 +10,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ro.uvt.pokedex.core.service.application.ConflictOperationsFacade;
+import ro.uvt.pokedex.core.service.application.model.FilterFieldDef;
+import ro.uvt.pokedex.core.service.application.model.FilterOptionDef;
+import ro.uvt.pokedex.core.service.application.model.StatCardDef;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -37,16 +40,19 @@ public class AdminConflictController {
     ) {
         Instant from = parseDateStart(detectedFrom);
         Instant to = parseDateEnd(detectedTo);
+        ConflictOperationsFacade.ConflictSummary summary = conflictOperationsFacade.summarizeIdentityConflicts();
         model.addAttribute("identityPageData", conflictOperationsFacade.findIdentityConflicts(
                 page, size, entityType, incomingSource, reasonCode, status, from, to
         ));
-        model.addAttribute("summary", conflictOperationsFacade.summarizeIdentityConflicts());
+        model.addAttribute("summary", summary);
+        model.addAttribute("statCards", buildStatCards(summary));
         model.addAttribute("entityType", normalize(entityType));
         model.addAttribute("incomingSource", normalize(incomingSource));
         model.addAttribute("reasonCode", normalize(reasonCode));
         model.addAttribute("status", normalize(status));
         model.addAttribute("detectedFrom", normalize(detectedFrom));
         model.addAttribute("detectedTo", normalize(detectedTo));
+        model.addAttribute("filterFields", buildFilterFields(entityType, incomingSource, reasonCode, status, detectedFrom, detectedTo, size));
 
         return "admin/conflicts";
     }
@@ -198,6 +204,46 @@ public class AdminConflictController {
 
     private String normalize(String value) {
         return value == null ? "" : value;
+    }
+
+    private List<FilterFieldDef> buildFilterFields(
+            String entityType,
+            String incomingSource,
+            String reasonCode,
+            String status,
+            String detectedFrom,
+            String detectedTo,
+            Integer size
+    ) {
+        return List.of(
+                new FilterFieldDef("entityType", "Entity type", "text", normalize(entityType)),
+                new FilterFieldDef("incomingSource", "Incoming source", "text", normalize(incomingSource)),
+                new FilterFieldDef("reasonCode", "Reason code", "text", normalize(reasonCode)),
+                new FilterFieldDef("status", "Status", "select", normalize(status), List.of(
+                        new FilterOptionDef("", "All"),
+                        new FilterOptionDef("OPEN", "Open"),
+                        new FilterOptionDef("INVESTIGATED", "Investigating"),
+                        new FilterOptionDef("RESOLVED", "Resolved"),
+                        new FilterOptionDef("DISMISSED", "Dismissed")
+                )),
+                new FilterFieldDef("detectedFrom", "Detected from", "date", normalize(detectedFrom)),
+                new FilterFieldDef("detectedTo", "Detected to", "date", normalize(detectedTo)),
+                new FilterFieldDef("size", "Page size", "select", size == null ? "20" : String.valueOf(size), List.of(
+                        new FilterOptionDef("20", "20"),
+                        new FilterOptionDef("25", "25"),
+                        new FilterOptionDef("50", "50"),
+                        new FilterOptionDef("100", "100")
+                ))
+        );
+    }
+
+    private List<StatCardDef> buildStatCards(ConflictOperationsFacade.ConflictSummary summary) {
+        return List.of(
+                new StatCardDef("Open", summary.open(), "danger", "Conflicts that still require operator action.", "fa-solid fa-triangle-exclamation"),
+                new StatCardDef("Investigating", summary.investigated(), "warning", "Marked for active investigation by an operator.", "fa-solid fa-magnifying-glass"),
+                new StatCardDef("Resolved", summary.resolved(), "success", "Conflicts cleared through explicit operator resolution.", "fa-solid fa-circle-check"),
+                new StatCardDef("Dismissed", summary.dismissed(), "neutral", "Records intentionally removed from the active queue.", "fa-solid fa-ban")
+        );
     }
 
     private Instant parseDateStart(String raw) {

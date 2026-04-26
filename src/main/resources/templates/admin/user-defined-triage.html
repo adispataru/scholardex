@@ -67,16 +67,10 @@
                                           th:text="'— ' + ${triageQueue.totalElements} + ' total'"></span>
                                 </h6>
                                 <div class="app-table-toolbar__actions" id="triage-toolbar-actions">
-                                    <a th:if="${triageQueue.hasPrevious()}"
-                                       th:href="@{/admin/user-defined-triage(triagePage=${triageQueue.number - 1})}"
-                                       class="btn btn-outline-secondary btn-sm">
-                                        <i class="fa-solid fa-chevron-left fa-xs"></i>
-                                    </a>
-                                    <a th:if="${triageQueue.hasNext()}"
-                                       th:href="@{/admin/user-defined-triage(triagePage=${triageQueue.number + 1})}"
-                                       class="btn btn-outline-secondary btn-sm">
-                                        <i class="fa-solid fa-chevron-right fa-xs"></i>
-                                    </a>
+                                    <th:block th:with="prevUrl=${triageQueue.hasPrevious()} ? @{/admin/user-defined-triage(triagePage=${triageQueue.number - 1})} : null,
+                                                       nextUrl=${triageQueue.hasNext()} ? @{/admin/user-defined-triage(triagePage=${triageQueue.number + 1})} : null">
+                                        <th:block th:replace="~{fragments :: pagination(${prevUrl}, ${nextUrl}, ${triageQueue.number}, ${triageQueue.totalPages}, null, 'Triage pagination')}"></th:block>
+                                    </th:block>
                                 </div>
                             </div>
                             <div class="app-table-section__body">

@@ -1,3 +1,97 @@
+/* ── Shared search input (H44.9) ───────────────────────────────────────── */
+
+.app-search-input {
+  min-width: 0;
+}
+
+.app-search-input__field {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-card);
+  background: var(--app-color-card-bg);
+  box-shadow: var(--app-shadow-card);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.app-search-input__field:focus-within {
+  border-color: color-mix(in srgb, var(--app-color-primary) 42%, var(--app-color-border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-color-primary) 16%, transparent),
+              var(--app-shadow-card);
+}
+
+.app-search-input__icon {
+  flex: 0 0 auto;
+  color: var(--app-color-text-muted);
+  font-size: 0.88rem;
+  line-height: 1;
+}
+
+.app-search-input__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-size: 0.9rem;
+  color: var(--app-color-text);
+}
+
+.app-search-input__input::placeholder {
+  color: var(--app-color-text-muted);
+  font-size: 0.87rem;
+}
+
+.app-search-input__input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+.app-search-input__hint {
+  flex: 0 0 auto;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid var(--app-color-border);
+  border-radius: 0.3rem;
+  background: var(--app-color-card-bg-muted);
+  font-family: monospace;
+  font-size: 0.72rem;
+  color: var(--app-color-text-muted);
+  opacity: 0.65;
+  white-space: nowrap;
+}
+
+.app-search-input__field:focus-within .app-search-input__hint {
+  display: none;
+}
+
+.app-search-input__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 1.45rem;
+  height: 1.45rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--app-color-text-muted);
+  line-height: 1;
+}
+
+.app-search-input__clear:hover,
+.app-search-input__clear:focus-visible {
+  background: var(--app-color-card-bg-muted);
+  color: var(--app-color-text);
+}
+
+.app-search-input__clear:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--app-color-primary) 45%, transparent);
+  outline-offset: 2px;
+}
+
 /* ── Workspace unified search combobox (H36.5) ─────────────────────────── */
 
 .app-ws-search {

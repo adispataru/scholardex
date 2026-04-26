@@ -19,35 +19,56 @@
                 <div class="app-workflow">
                 <p class="app-workflow__intro">Edit the individual report in the same shared builder surface used across admin report workflows, with clearer grouping for affiliation, indicators, and criteria.</p>
 
-                <div class="app-form-surface">
-                    <div class="app-form-surface__panel">
-                    <div class="app-form-surface__header">
-                        <h6 class="app-form-surface__title">Edit Individual Report</h6>
-                    </div>
-                    <div class="app-form-surface__body">
-                        <form th:action="@{/admin/individualReports/update}" th:object="${individualReport}" method="post">
+                        <form th:replace="~{fragments :: admin-form(
+                                  id='individual-report-admin-form',
+                                  action=@{/admin/individualReports/update},
+                                  method='post',
+                                  title='Edit Individual Report',
+                                  sections=~{::#individual-report-form-sections},
+                                  submitLabel='Update',
+                                  cancelHref=@{/admin/individualReports})}">
+                            <th:block id="individual-report-form-sections">
                             <div class="form-group">
                                 <input type="text" class="form-control" id="reportId" th:field="*{id}" hidden>
                             </div>
-                            <div class="form-group">
+                            <th:block th:replace="~{fragments :: admin-form-section(
+                                title='Report metadata',
+                                helperText='Review the report title and description before adjusting affiliation, indicators, and criteria.',
+                                body=~{::#report-metadata-fields})}">
+                                <div id="report-metadata-fields" class="app-form-grid app-form-grid--two-up">
+                            <div class="form-group app-form-field">
                                 <label for="reportTitle">Title</label>
                                 <input type="text" class="form-control" id="reportTitle" th:field="*{title}" required>
+                                <span class="app-admin-form__field-error" aria-live="polite"></span>
                             </div>
-                            <div class="form-group">
+                            <div class="form-group app-form-field app-form-grid--full">
                                 <label for="reportDescription">Description</label>
                                 <textarea class="form-control" id="reportDescription" th:field="*{description}" required></textarea>
+                                <span class="app-admin-form__field-error" aria-live="polite"></span>
                             </div>
-                            <div class="form-group app-form-field app-form-section">
-                                <label for="reportAffiliation">Institution</label>
+                                </div>
+                            </th:block>
+                            <th:block th:replace="~{fragments :: admin-form-section(
+                                title='Institution',
+                                helperText='Choose the institution context this individual report applies to.',
+                                body=~{::#report-affiliation-fields})}">
+                                <div id="report-affiliation-fields" class="app-form-field">
+                                <label for="individualAffiliation">Institution</label>
                                 <div id="affiliationContainer">
                                     <div class="input-group mb-2">
-                                        <select class="form-control" th:field="*{individualAffiliation}" th:selected="${individualReport.individualAffiliation}">
+                                        <select id="individualAffiliation" class="form-control" th:field="*{individualAffiliation}" th:selected="${individualReport.individualAffiliation}">
                                             <option th:each="affiliation : ${allAffiliations}" th:value="${affiliation.name}" th:text="${affiliation.name}"></option>
                                         </select>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="form-group app-form-field app-form-section">
+                                <span class="app-admin-form__field-error" aria-live="polite"></span>
+                                </div>
+                            </th:block>
+                            <th:block th:replace="~{fragments :: admin-form-section(
+                                title='Report indicators',
+                                helperText='Control the source indicators available to the criteria builder.',
+                                body=~{::#report-indicators-fields})}">
+                                <div id="report-indicators-fields" class="app-form-field">
                                 <label for="reportIndicators">Indicators</label>
                                 <div id="indicatorsContainer" class="app-collection">
                                     <div class="input-group mb-2 app-collection__item" th:each="indicator, iterStat : *{indicators}">
@@ -60,10 +81,15 @@
                                 <div class="app-form-actions app-form-actions--inline">
                                     <button id="addIndicator" class="btn btn-primary" type="button">Add Indicator</button>
                                 </div>
-                            </div>
+                                </div>
+                            </th:block>
 
                             <!-- Criteria Section -->
-                            <div class="form-group app-form-field app-form-section">
+                            <th:block th:replace="~{fragments :: admin-form-section(
+                                title='Criteria builder',
+                                helperText='Each criterion can map indicators and threshold positions without leaving this editor.',
+                                body=~{::#criteria-builder-fields})}">
+                                <div id="criteria-builder-fields" class="app-form-field">
                                 <label for="criteria">Criteria</label>
                                 <div id="criteriaContainer" class="app-collection">
                                     <div class="card mb-2 app-builder-card" th:each="criterion, critIndex : *{criteria}">
@@ -107,15 +133,10 @@
                                 <div class="app-form-actions app-form-actions--inline">
                                     <button id="addCriterion" class="btn btn-primary" type="button">Add Criterion</button>
                                 </div>
-                            </div>
-
-                            <div class="app-form-actions">
-                                <button type="submit" class="btn btn-primary">Update</button>
-                            </div>
+                                </div>
+                            </th:block>
+                            </th:block>
                         </form>
-                    </div>
-                    </div>
-                </div>
                 </div>
             </div>
 

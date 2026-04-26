@@ -10,14 +10,19 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.service.application.AdminDashboardService;
 import ro.uvt.pokedex.core.service.application.PostgresScholardexAdminReadPort;
 import ro.uvt.pokedex.core.service.application.model.AdminOperationStatus;
+import ro.uvt.pokedex.core.service.application.model.BreadcrumbItem;
+import ro.uvt.pokedex.core.service.application.model.FilterFieldDef;
+import ro.uvt.pokedex.core.service.application.model.FilterOptionDef;
 import ro.uvt.pokedex.core.service.application.model.ScholardexCitationsView;
+import ro.uvt.pokedex.core.service.application.model.StatCardDef;
 
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 @Controller
 @RequestMapping("/admin/scholardex/publications")
@@ -41,6 +46,7 @@ public class AdminScholardexPublicationViewController {
     ) {
         AdminDashboardService.PublicationCatalogStats stats = adminDashboardService.buildPublicationCatalogStats();
         model.addAttribute("pubStats", stats);
+        model.addAttribute("statCards", buildPublicationStatCards(stats));
 
         PostgresScholardexAdminReadPort.PublicationCatalogPage catalogPage =
                 postgresScholardexAdminReadPort.buildPublicationCatalogPage(q, forumId, authorId, affiliationId, page, size, sort, direction);
@@ -53,6 +59,7 @@ public class AdminScholardexPublicationViewController {
         model.addAttribute("sort", sort);
         model.addAttribute("direction", direction);
         model.addAttribute("size", size);
+        model.addAttribute("filterFields", buildFilterFields(q, sort, direction, size));
 
         // Context labels for active cross-link filters
         if (forumId != null && !forumId.isBlank()) {
@@ -132,12 +139,60 @@ public class AdminScholardexPublicationViewController {
             model.addAttribute("authorMap", vm.authorMap());
             model.addAttribute("forumMap", vm.forumMap());
             model.addAttribute("citationsPage", vm);
+            model.addAttribute("breadcrumbs", List.of(
+                    new BreadcrumbItem("Publications", "/admin/scholardex/publications"),
+                    new BreadcrumbItem(vm.publication().getTitle())
+            ));
         });
         AdminOperationStatus citationSync = adminDashboardService.buildCitationSyncStatus();
         model.addAttribute("citationSync", citationSync);
+        model.addAttribute("statCards", buildCitationStatCards(
+                viewModel.map(ScholardexCitationsView::totalCitations).orElse(0L),
+                citationSync
+        ));
         model.addAttribute("pubId", id);
         model.addAttribute("citPage", page);
         model.addAttribute("citSize", size);
         return "admin/scholardex-citations";
+    }
+
+    private List<FilterFieldDef> buildFilterFields(String q, String sort, String direction, int size) {
+        return List.of(
+                new FilterFieldDef("q", "Title search", "text", q == null ? "" : q),
+                new FilterFieldDef("sort", "Sort", "select", sort, List.of(
+                        new FilterOptionDef("title", "Title"),
+                        new FilterOptionDef("year", "Year"),
+                        new FilterOptionDef("citations", "Citations")
+                )),
+                new FilterFieldDef("direction", "Direction", "select", direction, List.of(
+                        new FilterOptionDef("asc", "Ascending"),
+                        new FilterOptionDef("desc", "Descending")
+                )),
+                new FilterFieldDef("size", "Page size", "select", String.valueOf(size), List.of(
+                        new FilterOptionDef("25", "25"),
+                        new FilterOptionDef("50", "50"),
+                        new FilterOptionDef("100", "100")
+                ))
+        );
+    }
+
+    private List<StatCardDef> buildPublicationStatCards(AdminDashboardService.PublicationCatalogStats stats) {
+        return List.of(
+                new StatCardDef("Total Publications", stats.total(), "primary", "All canonical publications in the Scholardex catalog.", "fa-solid fa-book-open"),
+                new StatCardDef("Added Last 30 Days", stats.recentlyAdded(), "success", "Publications imported in the last 30 days.", "fa-solid fa-calendar-plus")
+        );
+    }
+
+    private List<StatCardDef> buildCitationStatCards(long totalCitations, AdminOperationStatus citationSync) {
+        return List.of(
+                new StatCardDef("Citations", totalCitations, "primary", "Citing publications tracked for this record.", "fa-solid fa-quote-right"),
+                new StatCardDef(
+                        "Last Citation Sync",
+                        citationSync.hasRun() ? DateTimeFormatter.ISO_LOCAL_DATE.withZone(ZoneId.systemDefault()).format(citationSync.lastRunAt()) : "—",
+                        citationSync.hasRun() && AdminOperationStatus.OUTCOME_SUCCESS.equals(citationSync.outcome()) ? "success" : "warning",
+                        citationSync.hasRun() ? "Outcome: " + citationSync.outcome() : "No citation sync has run yet.",
+                        "fa-solid fa-rotate"
+                )
+        );
     }
 }

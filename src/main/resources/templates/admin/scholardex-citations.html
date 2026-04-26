@@ -16,16 +16,7 @@
             <div class="container-fluid app-page-content">
                 <div class="app-dashboard">
 
-                    <!-- Breadcrumb -->
-                    <ol class="app-admin-breadcrumb">
-                        <li class="app-admin-breadcrumb__item">
-                            <a class="app-admin-breadcrumb__link" th:href="@{/admin/scholardex/publications}">Publications</a>
-                        </li>
-                        <li class="app-admin-breadcrumb__item">
-                            <span class="app-admin-breadcrumb__current"
-                                  th:text="${publication != null ? publication.title : 'Citations'}" aria-current="page">Citations</span>
-                        </li>
-                    </ol>
+                    <th:block th:replace="~{fragments :: admin-breadcrumb(${breadcrumbs})}"></th:block>
 
                     <!-- Publication summary panel -->
                     <div class="app-summary-panel" th:if="${publication != null}">
@@ -50,24 +41,7 @@
                         </div>
                     </div>
 
-                    <!-- Stat cards -->
-                    <div class="app-summary-grid">
-                        <div class="app-summary-card">
-                            <p class="app-summary-card__label">Citations</p>
-                            <p class="app-summary-card__value"
-                               th:text="${citationsPage != null ? citationsPage.totalCitations() : #lists.size(citations)}">0</p>
-                            <p class="app-summary-card__meta">Citing publications tracked for this record.</p>
-                        </div>
-                        <div class="app-summary-card"
-                             th:classappend="${citationSync.hasRun()} ? (${citationSync.outcome() == 'SUCCESS'} ? ' app-summary-card--success' : ' app-summary-card--warning') : ''">
-                            <p class="app-summary-card__label">Last Citation Sync</p>
-                            <p class="app-summary-card__value" th:if="${citationSync.hasRun()}"
-                               th:text="${#temporals.format(citationSync.lastRunAt(), 'yyyy-MM-dd')}">—</p>
-                            <p class="app-summary-card__value" th:unless="${citationSync.hasRun()}">—</p>
-                            <p class="app-summary-card__meta"
-                               th:text="${citationSync.hasRun()} ? ('Outcome: ' + ${citationSync.outcome()}) : 'No citation sync has run yet.'">—</p>
-                        </div>
-                    </div>
+                    <th:block th:replace="~{fragments :: stat-card-grid(${statCards})}"></th:block>
 
                     <!-- Citations table -->
                     <div class="app-table-section">
@@ -75,19 +49,10 @@
                             <div class="app-table-section__header app-table-toolbar">
                                 <h6 class="app-table-section__title">Citing Publications</h6>
                                 <div class="app-table-toolbar__actions" id="cit-toolbar-actions">
-                                    <th:block th:if="${citationsPage != null}">
-                                    <a th:if="${citationsPage.hasPrevious()}"
-                                       th:href="@{/admin/scholardex/publications/citations(id=${pubId},page=${citationsPage.page()-1},size=${citSize})}"
-                                       class="btn btn-outline-secondary btn-sm">
-                                        <i class="fa-solid fa-chevron-left fa-xs"></i>
-                                    </a>
-                                    <span class="text-muted" style="font-size:0.82rem;"
-                                          th:text="'Page ' + (${citationsPage.page()} + 1) + ' of ' + ${citationsPage.totalPages()}"></span>
-                                    <a th:if="${citationsPage.hasNext()}"
-                                       th:href="@{/admin/scholardex/publications/citations(id=${pubId},page=${citationsPage.page()+1},size=${citSize})}"
-                                       class="btn btn-outline-secondary btn-sm">
-                                        <i class="fa-solid fa-chevron-right fa-xs"></i>
-                                    </a>
+                                    <th:block th:if="${citationsPage != null}"
+                                              th:with="prevUrl=${citationsPage.hasPrevious()} ? @{/admin/scholardex/publications/citations(id=${pubId},page=${citationsPage.page()-1},size=${citSize})} : null,
+                                                       nextUrl=${citationsPage.hasNext()} ? @{/admin/scholardex/publications/citations(id=${pubId},page=${citationsPage.page()+1},size=${citSize})} : null">
+                                        <th:block th:replace="~{fragments :: pagination(${prevUrl}, ${nextUrl}, ${citationsPage.page()}, ${citationsPage.totalPages()}, null, 'Citations pagination')}"></th:block>
                                     </th:block>
                                 </div>
                             </div>
@@ -156,7 +121,7 @@
         </div>
     </div>
 
-    <a class="scroll-to-top rounded" href="#page-top">
+    <a class="scroll-to-top rounded" href="#page-top" aria-label="Scroll to top">
         <i class="fa-solid fa-angle-up"></i>
     </a>
 </div>

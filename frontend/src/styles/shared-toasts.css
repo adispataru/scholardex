@@ -1,0 +1,117 @@
+/* ── Toast notification system (H44.2) ──────────────────────────────────── */
+
+/* Fixed stack: bottom-right, newest at bottom */
+.app-toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1080; /* above Bootstrap modals (1050) */
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(22rem, calc(100vw - 2rem));
+  pointer-events: none; /* container itself doesn't block clicks */
+}
+
+.app-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--app-radius-card, 1rem);
+  background: var(--app-color-card-bg);
+  border: 1px solid var(--app-color-border);
+  box-shadow: var(--app-shadow-float);
+  pointer-events: auto;
+  animation: _toast-in 200ms ease both;
+}
+
+.app-toast--leaving {
+  animation: _toast-out 180ms ease both;
+}
+
+/* ── Tone icons ─────────────────────────────────────────────────────────── */
+
+.app-toast__icon {
+  flex: 0 0 auto;
+  font-size: 1rem;
+  margin-top: 0.1rem;
+}
+
+.app-toast--success .app-toast__icon { color: var(--app-color-success); }
+.app-toast--error   .app-toast__icon { color: var(--app-color-danger); }
+.app-toast--warning .app-toast__icon { color: var(--app-color-warning); }
+.app-toast--info    .app-toast__icon { color: var(--app-color-primary); }
+
+/* ── Body ───────────────────────────────────────────────────────────────── */
+
+.app-toast__body {
+  flex: 1 1 auto;
+  font-size: 0.875rem;
+  color: var(--app-color-text);
+  line-height: 1.5;
+}
+
+.app-toast__action {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--app-color-primary);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.app-toast__action:hover {
+  text-decoration: underline;
+}
+
+/* ── Dismiss button ─────────────────────────────────────────────────────── */
+
+.app-toast__dismiss {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--app-color-text-muted);
+  cursor: pointer;
+  font-size: 0.875rem;
+  line-height: 1;
+  margin-top: 0.1rem;
+}
+
+.app-toast__dismiss:hover {
+  color: var(--app-color-text);
+}
+
+.app-toast__dismiss:focus-visible {
+  outline: 2px solid var(--app-color-focus);
+  border-radius: 2px;
+  outline-offset: 2px;
+}
+
+/* ── Animations ─────────────────────────────────────────────────────────── */
+
+@keyframes _toast-in {
+  from { opacity: 0; transform: translateY(0.5rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes _toast-out {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(0.5rem); }
+}
+
+/* ── Mobile: full-width ─────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .app-toast-container {
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: 1rem;
+    width: auto;
+  }
+}

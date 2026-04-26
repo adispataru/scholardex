@@ -9,10 +9,7 @@
  */
 
 export function initWorkspaceSearch() {
-    const root = document.getElementById('ws-search-root');
-    if (!root) return;
-
-    const input = root.querySelector('#ws-search-input');
+    const input = document.getElementById('ws-search-input');
     if (!input) return;
 
     // ── Global shortcut: / or Ctrl+K ─────────────────────────────────────

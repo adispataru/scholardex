@@ -905,6 +905,11 @@
   }
 
   function _showSnapshotFeedback(msg, isError) {
+    if (window.appToast) {
+      window.appToast.show({ message: msg, tone: isError ? 'error' : 'success' });
+      return;
+    }
+    // Fallback for environments where app.js bundle hasn't initialised yet
     var el = document.getElementById('eval-snapshot-feedback');
     if (!el) return;
     el.textContent = msg;
@@ -975,8 +980,18 @@
       btn.addEventListener('click', function () {
         var snapId   = btn.getAttribute('data-snap-id');
         var snapName = btn.getAttribute('data-snap-name');
-        if (!confirm('Delete snapshot \u201c' + snapName + '\u201d? This cannot be undone.')) return;
-        _deleteSnapshot(body, snapId, root, reportId, currentRunId);
+        if (window.appConfirmDialog) {
+          window.appConfirmDialog.open({
+            title: 'Delete snapshot?',
+            body: 'Delete \u201c' + snapName + '\u201d? This cannot be undone.',
+            confirmLabel: 'Delete',
+            tone: 'danger',
+            onConfirm: function () { _deleteSnapshot(body, snapId, root, reportId, currentRunId); },
+          });
+        } else {
+          if (!confirm('Delete snapshot \u201c' + snapName + '\u201d? This cannot be undone.')) return;
+          _deleteSnapshot(body, snapId, root, reportId, currentRunId);
+        }
       });
     });
   }

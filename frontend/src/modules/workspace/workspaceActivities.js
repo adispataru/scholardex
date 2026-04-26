@@ -21,6 +21,7 @@
  */
 
 import { postJsonHeaders } from '../shared/fetchUtils';
+import { buildPaginationHtml, wirePaginationClicks } from '../shared/clientPagination';
 
 const PAGE_SIZE = 20;
 
@@ -202,12 +203,13 @@ function _renderPage() {
     for (const inst of pageItems) _appendRow(tbody, inst);
 
     if (pages > 1) {
-        wrap.insertAdjacentHTML('beforeend', _buildPagination(total, pages));
-        wrap.querySelectorAll('.app-ws-acts__page-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const p = Number(btn.dataset.page);
-                if (!isNaN(p)) { _page = p; _activeId = null; _renderPage(); }
-            });
+        const paginationEl = document.createElement('div');
+        paginationEl.innerHTML = buildPaginationHtml({ page: _page, total, pageSize: PAGE_SIZE, label: 'Activities pagination' });
+        wrap.appendChild(paginationEl.firstElementChild);
+        wirePaginationClicks(wrap, (newPage) => {
+            _page = newPage;
+            _activeId = null;
+            _renderPage();
         });
     }
 }
@@ -749,23 +751,6 @@ function _buildSummaryCard() {
         </div>`;
 }
 
-function _buildPagination(total, pages) {
-    const info = `Showing ${Math.min((_page - 1) * PAGE_SIZE + 1, total)}–${Math.min(_page * PAGE_SIZE, total)} of ${total}`;
-    const prev = `<button class="app-ws-acts__page-btn" type="button" data-page="${_page - 1}" ${_page <= 1 ? 'disabled' : ''} aria-label="Previous page"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>`;
-    const next = `<button class="app-ws-acts__page-btn" type="button" data-page="${_page + 1}" ${_page >= pages ? 'disabled' : ''} aria-label="Next page"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>`;
-
-    let lo = Math.max(1, _page - 2), hi = Math.min(pages, lo + 4);
-    lo = Math.max(1, hi - 4);
-    const nums = [];
-    for (let p = lo; p <= hi; p++) {
-        nums.push(`<button class="app-ws-acts__page-btn ${p === _page ? 'app-ws-acts__page-btn--active' : ''}" type="button" data-page="${p}" aria-label="Page ${p}" ${p === _page ? 'aria-current="page"' : ''}>${p}</button>`);
-    }
-    return `
-        <div class="app-ws-acts__pagination" role="navigation" aria-label="Activities pagination">
-          <span>${_esc(info)}</span>
-          <div class="app-ws-acts__pagination-btns">${prev}${nums.join('')}${next}</div>
-        </div>`;
-}
 
 function _buildEmpty() {
     return `

@@ -78,6 +78,7 @@
         <div id="content">
             <div th:replace="~{fragments :: navbar('Forum')}"></div>
             <div class="container-fluid app-page-content">
+                <th:block th:replace="~{fragments :: breadcrumb(${breadcrumbs}, 'default')}"></th:block>
                 <p class="mb-4">Canonical Scholardex forum detail page. Ranking content is shown by forum type.</p>
 
                 <div class="card shadow mb-4 card-spacing">

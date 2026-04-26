@@ -33,10 +33,13 @@ import ro.uvt.pokedex.core.service.application.model.SuspiciousAuthorshipState;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationsViewModel;
 
 import java.time.Instant;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -74,6 +77,15 @@ class ResearcherWorkspaceControllerContractTest {
     private ResearcherAuthorLookupService researcherAuthorLookupService;
     @MockitoBean
     private ScholardexProjectionReadService scholardexProjectionReadService;
+
+    @Test
+    void workspaceTemplateUsesSharedSearchInputFragment() throws Exception {
+        String template = Files.readString(Path.of("src/main/resources/templates/user/workspace.html"));
+
+        assertTrue(template.contains("fragments :: search-input"));
+        assertTrue(template.contains("id='ws-search-input'"));
+        assertTrue(template.contains("kbdHint='/ or Ctrl+K'"));
+    }
 
     @Test
     void workspacePublicationsJsonIncludesAuthorshipReviewState() throws Exception {

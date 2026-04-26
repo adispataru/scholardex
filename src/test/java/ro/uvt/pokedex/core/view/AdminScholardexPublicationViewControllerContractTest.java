@@ -97,7 +97,11 @@ class AdminScholardexPublicationViewControllerContractTest {
                 .andExpect(model().attributeExists("publication"))
                 .andExpect(model().attributeExists("forum"))
                 .andExpect(model().attributeExists("authorMap"))
-                .andExpect(model().attributeExists("forumMap"));
+                .andExpect(model().attributeExists("forumMap"))
+                .andExpect(model().attributeExists("breadcrumbs"))
+                .andExpect(model().attributeExists("statCards"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("app-breadcrumb--admin")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("Citing publications tracked for this record.")));
 
         verify(postgresScholardexAdminReadPort).buildPublicationCitationsView("p1", 0, 25);
     }
@@ -116,6 +120,17 @@ class AdminScholardexPublicationViewControllerContractTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/scholardex-publications"))
                 .andExpect(model().attributeExists("pubStats"))
-                .andExpect(model().attributeExists("catalogPage"));
+                .andExpect(model().attributeExists("catalogPage"))
+                .andExpect(model().attributeExists("statCards"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("All canonical publications in the Scholardex catalog.")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"publication-filter-form\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("role=\"search\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("class=\"app-filter-panel\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"publication-filter-form-q\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("class=\"app-search-input\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("data-app-search-clear")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"reassignForumModal\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("data-app-modal-shell")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("aria-labelledby=\"reassignForumModalLabel\"")));
     }
 }

@@ -9,7 +9,7 @@
    5. Researcher-profile inline ID pills
    6. Locked / status indicator
    7. Queue badges (OPEN / RESOLVED / DISMISSED / INVESTIGATED)
-   8. Queue filter panel
+  8. Queue filter panel (legacy aliases; shared rules live in shared-filter-panel.css)
    9. Queue bulk-action bar
    ========================================================= */
 
@@ -264,61 +264,7 @@
   color: color-mix(in srgb, var(--app-color-warning) 85%, var(--app-color-text-strong));
 }
 
-/* ----------------------------------------------------------
-   Queue filter panel — integrated above the queue table
-   ---------------------------------------------------------- */
-.app-queue-filter {
-  padding: 1rem 1.2rem 0.8rem;
-  background: var(--app-color-card-bg);
-  border: 1px solid var(--app-color-border);
-  border-bottom: none;
-  border-radius: 0.7rem 0.7rem 0 0;
-}
-
-.app-queue-filter__title {
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--app-color-text-muted);
-  margin: 0 0 0.75rem;
-}
-
-.app-queue-filter__grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem 1rem;
-  align-items: flex-end;
-}
-
-.app-queue-filter__field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  min-width: 9rem;
-  flex: 1 1 9rem;
-  max-width: 18rem;
-}
-
-.app-queue-filter__field label {
-  font-size: 0.76rem;
-  font-weight: 600;
-  color: var(--app-color-text-muted);
-  margin: 0;
-}
-
-.app-queue-filter__actions {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-
-/* Table section immediately following a filter panel */
-.app-queue-filter + .app-table-section .app-table-section__surface {
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-}
+/* Queue filter aliases are styled by shared-filter-panel.css. */
 
 /* ----------------------------------------------------------
    Queue bulk-action bar — sits below the table

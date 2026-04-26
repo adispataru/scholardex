@@ -483,31 +483,34 @@
 </div>
 
 <!--
-    Admin breadcrumb.
+    Breadcrumb.
     Params:
-      crumbs — list of maps: [{label, href}]. Last entry is treated as the current page
-               (rendered as non-link with aria-current="page"). Pass href=null on intermediate
-               entries to render a non-link crumb.
+      items   — List<BreadcrumbItem>; last item is treated as current page.
+      variant — 'default' or 'admin'. Styling uses the same class structure with a variant modifier.
 -->
-<nav th:fragment="admin-breadcrumb(crumbs)"
-     class="app-admin-breadcrumb"
+<nav th:fragment="breadcrumb(items, variant)"
+     class="app-breadcrumb"
+     th:with="resolvedVariant=${variant == null or #strings.isEmpty(variant)} ? 'default' : ${variant}"
+     th:classappend="${'app-breadcrumb--' + resolvedVariant}"
      aria-label="Breadcrumb"
-     th:if="${crumbs != null and !#lists.isEmpty(crumbs)}">
-    <ol class="app-admin-breadcrumb__list">
-        <li th:each="crumb, iter : ${crumbs}"
-            class="app-admin-breadcrumb__item"
-            th:classappend="${iter.last} ? ' app-admin-breadcrumb__item--current' : ''">
-            <a th:if="${!iter.last and crumb.href != null}"
-               class="app-admin-breadcrumb__link"
-               th:href="${crumb.href}"
-               th:text="${crumb.label}">Parent</a>
-            <span th:unless="${!iter.last and crumb.href != null}"
+     th:if="${items != null and !#lists.isEmpty(items)}">
+    <ol class="app-breadcrumb__list">
+        <li th:each="item, iter : ${items}" class="app-breadcrumb__item">
+            <a th:if="${!iter.last and item.href() != null and !#strings.isEmpty(item.href())}"
+               class="app-breadcrumb__link"
+               th:href="${item.href()}"
+               th:text="${item.label()}">Parent</a>
+            <span th:unless="${!iter.last and item.href() != null and !#strings.isEmpty(item.href())}"
+                  class="app-breadcrumb__current"
                   th:attr="aria-current=${iter.last ? 'page' : null}"
-                  th:text="${crumb.label}">Current</span>
-            <i th:unless="${iter.last}" class="fa-solid fa-angle-right app-admin-breadcrumb__sep" aria-hidden="true"></i>
+                  th:text="${item.label()}">Current</span>
         </li>
     </ol>
 </nav>
+
+<th:block th:fragment="admin-breadcrumb(items)">
+    <th:block th:replace="~{fragments :: breadcrumb(${items}, 'admin')}"></th:block>
+</th:block>
 
 <!--
     Admin empty state (standalone panel).
@@ -589,6 +592,88 @@
     </div>
 </div>
 
+<!--
+    Admin form shell.
+    Params:
+      id          — unique form id
+      action      — form action URL
+      method      — form method, usually 'post'
+      title       — sticky form header title
+      sections    — fragment expression containing form sections/fields
+      submitLabel — primary submit button text
+      cancelHref  — cancel link href
+
+    Optional caller local:
+      adminFormObject — form-backing object used by th:object for *{} field binding.
+-->
+<form th:fragment="admin-form(id, action, method, title, sections, submitLabel, cancelHref)"
+      class="app-admin-form"
+      th:id="${id}"
+      th:action="${action}"
+      th:method="${method}"
+      th:object="${adminFormObject}">
+    <input th:if="${_csrf != null}" type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+    <div class="app-admin-form__header">
+        <h2 class="app-admin-form__title" th:text="${title}">Admin form</h2>
+        <div class="app-admin-form__actions">
+            <a th:href="${cancelHref}" class="btn btn-outline-secondary btn-sm">Cancel</a>
+            <button type="submit" class="btn btn-primary btn-sm" th:text="${submitLabel}">Save</button>
+        </div>
+    </div>
+    <div class="app-admin-form__body">
+        <th:block th:replace="${sections}"></th:block>
+    </div>
+</form>
+
+<!-- Admin form section helper for long-form pages. -->
+<section th:fragment="admin-form-section(title, helperText, body)" class="app-form-section">
+    <div class="app-form-section__header">
+        <h3 class="app-form-section__title" th:text="${title}">Section</h3>
+        <p th:if="${helperText != null and !#strings.isEmpty(helperText)}"
+           class="app-form-section__description"
+           th:text="${helperText}">Helper text</p>
+    </div>
+    <th:block th:replace="${body}"></th:block>
+</section>
+
+<!--
+    Modal shell.
+    Params:
+      id         — unique modal id
+      title      — modal heading text
+      size       — optional Bootstrap size suffix: sm | lg | xl
+      bodySlot   — fragment expression containing modal body content
+      footerSlot — fragment expression containing footer controls
+-->
+<div th:fragment="modal-shell(id, title, size, bodySlot, footerSlot)"
+     class="modal fade app-modal app-modal-shell"
+     th:id="${id}"
+     tabindex="-1"
+     role="dialog"
+     aria-modal="true"
+     th:attr="aria-labelledby=${id + 'Label'}"
+     aria-hidden="true"
+     data-app-modal-shell>
+    <div class="modal-dialog modal-dialog-centered"
+         th:classappend="${size != null and !#strings.isEmpty(size)} ? ${' modal-' + size} : ''"
+         role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" th:id="${id + 'Label'}" th:text="${title}">Modal title</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close modal">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <th:block th:replace="${bodySlot}"></th:block>
+            </div>
+            <div class="modal-footer app-form-actions">
+                <th:block th:replace="${footerSlot}"></th:block>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Tab-Bar Fragment -->
 <th:block th:fragment="tab-bar(tabs, callbacksRef)">
     <div class="app-tab-bar"
@@ -628,26 +713,6 @@
     </div>
 </th:block>
 
-<!-- Admin Breadcrumb Fragment
-     items: list of {label, href} maps; last item is rendered as current (no link) -->
-<nav th:fragment="admin-breadcrumb(items)"
-     aria-label="Breadcrumb"
-     class="app-admin-breadcrumb">
-    <ol class="app-admin-breadcrumb" style="margin:0;padding:0;list-style:none;">
-        <li class="app-admin-breadcrumb__item"
-            th:each="item, stat : ${items}">
-            <a th:if="${!stat.last}"
-               class="app-admin-breadcrumb__link"
-               th:href="${item.href}"
-               th:text="${item.label}">Parent</a>
-            <span th:if="${stat.last}"
-                  class="app-admin-breadcrumb__current"
-                  aria-current="page"
-                  th:text="${item.label}">Current</span>
-        </li>
-    </ol>
-</nav>
-
 <!-- Admin Empty State Fragment
      icon:        FontAwesome class string, e.g. "fa-solid fa-inbox"
      title:       short "nothing here" headline
@@ -667,5 +732,245 @@
            th:text="${actionLabel}">Action</a>
     </div>
 </th:block>
+
+<!--
+    Search input.
+    Params:
+      id          — input id
+      name        — optional input name
+      placeholder — placeholder text
+      value       — current value
+      kbdHint     — optional keyboard hint text, hidden while focused
+      clearable   — true to show a clear button that emits an input event
+-->
+<div th:fragment="search-input(id, name, placeholder, value, kbdHint, clearable)"
+     class="app-search-input"
+     data-app-search-input>
+    <div class="app-search-input__field">
+        <i class="fa-solid fa-magnifying-glass app-search-input__icon" aria-hidden="true"></i>
+        <input th:id="${id}"
+               type="search"
+               class="app-search-input__input"
+               th:name="${name}"
+               th:placeholder="${placeholder}"
+               th:value="${value}"
+               th:attr="aria-label=${placeholder}"
+               autocomplete="off">
+        <kbd th:if="${kbdHint != null and !#strings.isEmpty(kbdHint)}"
+             class="app-search-input__hint"
+             aria-hidden="true"
+             th:text="${kbdHint}">/</kbd>
+        <button th:if="${clearable}"
+                type="button"
+                class="app-search-input__clear"
+                data-app-search-clear
+                th:attr="aria-controls=${id}"
+                aria-label="Clear search">
+            <i class="fa-solid fa-xmark fa-xs" aria-hidden="true"></i>
+        </button>
+    </div>
+</div>
+
+<!--
+    Server-side pagination bar.
+    Renders a prev / page-info / next navigation strip using the shared .app-pagination CSS.
+    Callers are responsible for computing prevHref and nextHref; pass null or empty string
+    to render a disabled button when there is no previous / next page.
+
+    Params:
+      prevHref    — URL for the previous-page link (null / '' = disabled)
+      nextHref    — URL for the next-page link     (null / '' = disabled)
+      page        — current page index, 0-based (displayed as page+1)
+      totalPages  — total number of pages
+      showingText — optional "Showing X of Y …" string; omit with null to hide
+      label       — aria-label for the <nav> element (default: 'Pagination')
+
+    Typical usage (wrapping th:block computes the URLs in caller scope):
+
+      <th:block th:with="
+          prev=${pageData.hasPrevious() ? '/some/path?page=' + (pageData.number - 1) : null},
+          next=${pageData.hasNext()     ? '/some/path?page=' + (pageData.number + 1) : null}">
+        <th:block th:replace="~{fragments :: pagination(
+            prevHref=${prev}, nextHref=${next},
+            page=${pageData.number}, totalPages=${pageData.totalPages},
+            showingText=null, label='Items pagination')}">
+        </th:block>
+      </th:block>
+-->
+<nav th:fragment="pagination(prevHref, nextHref, page, totalPages, showingText, label)"
+     class="app-pagination"
+     th:attr="aria-label=${label != null and !#strings.isEmpty(label)} ? ${label} : 'Pagination'">
+    <span th:if="${showingText != null and !#strings.isEmpty(showingText)}"
+          class="app-pagination__info"
+          th:text="${showingText}">Showing items</span>
+    <div class="app-pagination__btns">
+        <a class="app-pagination__btn"
+           th:classappend="${#strings.isEmpty(prevHref)} ? ' disabled'"
+           th:href="${#strings.isEmpty(prevHref) ? '#' : prevHref}"
+           th:attr="aria-disabled=${#strings.isEmpty(prevHref) ? 'true' : null}"
+           rel="prev"
+           aria-label="Previous page">
+            <i class="fa-solid fa-chevron-left fa-xs" aria-hidden="true"></i>
+        </a>
+        <span class="app-pagination__info" aria-current="page">
+            <th:block th:text="${page + 1}"/> / <th:block th:text="${totalPages}"/>
+        </span>
+        <a class="app-pagination__btn"
+           th:classappend="${#strings.isEmpty(nextHref)} ? ' disabled'"
+           th:href="${#strings.isEmpty(nextHref) ? '#' : nextHref}"
+           th:attr="aria-disabled=${#strings.isEmpty(nextHref) ? 'true' : null}"
+           rel="next"
+           aria-label="Next page">
+            <i class="fa-solid fa-chevron-right fa-xs" aria-hidden="true"></i>
+        </a>
+    </div>
+</nav>
+
+<!--
+    Summary stat card.
+
+    Params:
+      label       — short uppercase metric label
+      value       — rendered metric value
+      accent      — primary | success | warning | danger | neutral
+      contextLine — optional secondary explanatory text
+      icon        — optional Font Awesome class
+-->
+<div th:fragment="stat-card(label, value, accent, contextLine, icon)"
+     th:with="resolvedAccent=${accent == null or #strings.isEmpty(accent)} ? 'neutral' : ${accent}"
+     class="app-summary-card"
+     th:classappend="| app-summary-card--${resolvedAccent}|">
+    <div class="app-summary-card__top">
+        <p class="app-summary-card__label" th:text="${label}">Metric</p>
+        <span th:if="${icon != null and !#strings.isEmpty(icon)}"
+              class="app-summary-card__icon"
+              aria-hidden="true">
+            <i th:class="${icon}"></i>
+        </span>
+    </div>
+    <p class="app-summary-card__value" th:text="${value}">0</p>
+    <p th:if="${contextLine != null and !#strings.isEmpty(contextLine)}"
+       class="app-summary-card__meta"
+       th:text="${contextLine}">Context</p>
+</div>
+
+<!--
+    Summary stat card grid.
+
+    Params:
+      cards — List<StatCardDef>; cards render via stat-card(...)
+-->
+<div th:fragment="stat-card-grid(cards)" class="app-summary-grid">
+    <th:block th:each="card : ${cards}">
+        <th:block th:replace="~{fragments :: stat-card(
+            label=${card.label()},
+            value=${card.value()},
+            accent=${card.accent()},
+            contextLine=${card.contextLine()},
+            icon=${card.icon()})}">
+        </th:block>
+    </th:block>
+</div>
+
+<!--
+    Shared filter panel — integrated filter controls that visually connect to a
+    following .app-table-section surface.
+
+    Params:
+      formId — unique form id
+      method — form method, usually 'get'
+      action — form action URL
+      fields — List<FilterFieldDef> with:
+               name, label, type ('text'|'select'|'date'), value, options for select
+-->
+<div th:fragment="filter-panel(formId, method, action, fields)"
+     class="app-filter-panel">
+    <p class="app-filter-panel__title">Filters</p>
+    <form class="app-filter-panel__grid"
+          role="search"
+          th:id="${formId}"
+          th:method="${method}"
+          th:action="${action}">
+        <div th:each="field : ${fields}"
+             class="app-filter-panel__field">
+            <label th:for="${formId + '-' + field.name()}"
+                   th:text="${field.label()}">Filter</label>
+            <select th:if="${field.type() == 'select'}"
+                    class="form-control form-control-sm"
+                    th:id="${formId + '-' + field.name()}"
+                    th:name="${field.name()}">
+                <option th:each="option : ${field.options()}"
+                        th:value="${option.value()}"
+                        th:selected="${option.value() == field.value()}"
+                        th:text="${option.label()}">Option</option>
+            </select>
+            <th:block th:if="${field.type() == 'text'}"
+                      th:replace="~{fragments :: search-input(
+                          id=${formId + '-' + field.name()},
+                          name=${field.name()},
+                          placeholder=${field.label()},
+                          value=${field.value()},
+                          kbdHint=null,
+                          clearable=true)}"></th:block>
+            <input th:unless="${field.type() == 'select' or field.type() == 'text'}"
+                   class="form-control form-control-sm"
+                   th:type="${field.type() == 'date'} ? 'date' : 'text'"
+                   th:id="${formId + '-' + field.name()}"
+                   th:name="${field.name()}"
+                   th:value="${field.value()}">
+        </div>
+        <div class="app-filter-panel__actions">
+            <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+            <a th:href="${action}" class="btn btn-outline-secondary btn-sm">Reset</a>
+        </div>
+    </form>
+</div>
+
+<!--
+    Confirmation dialog — accessible Bootstrap 4 modal for destructive-action confirmation.
+
+    Prefer window.appConfirmDialog.open({...}) for purely JS-driven prompts; embed this
+    fragment only when the dialog content is fixed at render time and you need a stable
+    HTML id to wire via data-* attributes or a server-side form action.
+
+    Params:
+      id           — element id for this dialog (required; must be unique per page)
+      title        — dialog heading (required)
+      body         — explanatory sentence shown in the modal body (required)
+      confirmLabel — confirm button label (default: 'Confirm')
+      tone         — 'danger' (red button) or 'primary' (default blue button)
+-->
+<div th:fragment="confirmation-dialog(id, title, body, confirmLabel, tone)"
+     class="modal fade app-confirm-dialog"
+     th:id="${id}"
+     role="alertdialog"
+     aria-modal="true"
+     th:attr="aria-labelledby=${id + '-title'}, aria-describedby=${id + '-body'}"
+     tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered app-confirm-dialog__dialog">
+        <div class="modal-content app-confirm-dialog__content">
+            <div class="modal-header app-confirm-dialog__header">
+                <h5 class="modal-title app-confirm-dialog__title"
+                    th:id="${id + '-title'}"
+                    th:text="${title}">Confirm</h5>
+                <button type="button" class="close app-confirm-dialog__close"
+                        data-dismiss="modal" aria-label="Cancel">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body app-confirm-dialog__body"
+                 th:id="${id + '-body'}"
+                 th:text="${body}">Are you sure?</div>
+            <div class="modal-footer app-confirm-dialog__footer">
+                <button type="button" class="btn btn-secondary app-confirm-dialog__cancel"
+                        data-dismiss="modal">Cancel</button>
+                <button type="button"
+                        class="btn app-confirm-dialog__confirm"
+                        th:classappend="${tone == 'danger'} ? ' btn-danger' : ' btn-primary'"
+                        th:text="${confirmLabel ?: 'Confirm'}">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>

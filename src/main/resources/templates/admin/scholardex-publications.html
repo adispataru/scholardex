@@ -15,19 +15,7 @@
             <div th:replace="~{fragments :: navbar('Publications')}"></div>
             <div class="container-fluid app-page-content">
                 <div class="app-dashboard">
-                    <!-- Stat cards -->
-                    <div class="app-summary-grid">
-                        <div class="app-summary-card">
-                            <p class="app-summary-card__label">Total Publications</p>
-                            <p class="app-summary-card__value" th:text="${pubStats.total()}">0</p>
-                            <p class="app-summary-card__meta">All canonical publications in the Scholardex catalog.</p>
-                        </div>
-                        <div class="app-summary-card app-summary-card--success">
-                            <p class="app-summary-card__label">Added Last 30 Days</p>
-                            <p class="app-summary-card__value" th:text="${pubStats.recentlyAdded()}">0</p>
-                            <p class="app-summary-card__meta">Publications imported in the last 30 days.</p>
-                        </div>
-                    </div>
+                    <th:block th:replace="~{fragments :: stat-card-grid(${statCards})}"></th:block>
 
                     <!-- Bulk operation feedback -->
                     <div th:if="${bulkSuccess}" class="app-form-state app-form-state--success" th:text="${bulkSuccess}"></div>
@@ -40,47 +28,15 @@
                         <a th:href="@{/admin/scholardex/publications}">Clear filter</a>
                     </div>
 
-                    <!-- Integrated filter panel -->
-                    <div class="app-queue-filter">
-                        <p class="app-queue-filter__title">Filter &amp; Search</p>
-                        <form method="get" th:action="@{/admin/scholardex/publications}" class="app-queue-filter__grid" style="align-items:flex-end;">
-                            <input type="hidden" name="forumId" th:value="${forumId}" th:if="${!#strings.isEmpty(forumId)}">
-                            <input type="hidden" name="authorId" th:value="${authorId}" th:if="${!#strings.isEmpty(authorId)}">
-                            <input type="hidden" name="affiliationId" th:value="${affiliationId}" th:if="${!#strings.isEmpty(affiliationId)}">
-                            <div class="app-queue-filter__field" style="flex:2 1 16rem;">
-                                <label for="pub-q" style="font-size:0.76rem;font-weight:600;color:var(--app-color-text-muted);margin:0;">Title search</label>
-                                <input id="pub-q" type="text" name="q" class="form-control form-control-sm"
-                                       placeholder="Search by title…" th:value="${q}">
-                            </div>
-                            <div class="app-queue-filter__field">
-                                <label for="pub-sort" style="font-size:0.76rem;font-weight:600;color:var(--app-color-text-muted);margin:0;">Sort</label>
-                                <select id="pub-sort" name="sort" class="form-control form-control-sm">
-                                    <option value="title" th:selected="${sort == 'title'}">Title</option>
-                                    <option value="year" th:selected="${sort == 'year'}">Year</option>
-                                    <option value="citations" th:selected="${sort == 'citations'}">Citations</option>
-                                </select>
-                            </div>
-                            <div class="app-queue-filter__field">
-                                <label for="pub-dir" style="font-size:0.76rem;font-weight:600;color:var(--app-color-text-muted);margin:0;">Direction</label>
-                                <select id="pub-dir" name="direction" class="form-control form-control-sm">
-                                    <option value="asc" th:selected="${direction == 'asc'}">Ascending</option>
-                                    <option value="desc" th:selected="${direction == 'desc'}">Descending</option>
-                                </select>
-                            </div>
-                            <div class="app-queue-filter__field">
-                                <label for="pub-size" style="font-size:0.76rem;font-weight:600;color:var(--app-color-text-muted);margin:0;">Page size</label>
-                                <select id="pub-size" name="size" class="form-control form-control-sm">
-                                    <option value="25" th:selected="${size == 25}">25</option>
-                                    <option value="50" th:selected="${size == 50}">50</option>
-                                    <option value="100" th:selected="${size == 100}">100</option>
-                                </select>
-                            </div>
-                            <div class="app-queue-filter__actions">
-                                <button type="submit" class="btn btn-primary btn-sm">Apply</button>
-                                <a th:href="@{/admin/scholardex/publications}" class="btn btn-outline-secondary btn-sm">Reset</a>
-                            </div>
-                        </form>
-                    </div>
+                    <input form="publication-filter-form" type="hidden" name="forumId" th:value="${forumId}" th:if="${!#strings.isEmpty(forumId)}">
+                    <input form="publication-filter-form" type="hidden" name="authorId" th:value="${authorId}" th:if="${!#strings.isEmpty(authorId)}">
+                    <input form="publication-filter-form" type="hidden" name="affiliationId" th:value="${affiliationId}" th:if="${!#strings.isEmpty(affiliationId)}">
+                    <th:block th:replace="~{fragments :: filter-panel(
+                        formId='publication-filter-form',
+                        method='get',
+                        action=@{/admin/scholardex/publications},
+                        fields=${filterFields})}">
+                    </th:block>
 
                     <!-- Bulk select bar (hidden until selection) -->
                     <div id="pub-bulk-bar" class="app-bulk-select-bar d-none" style="margin-top:0.5rem;">
@@ -108,18 +64,10 @@
                                           th:text="'— ' + ${catalogPage.total()} + ' total'"></span>
                                 </h6>
                                 <div class="app-table-toolbar__actions" id="pub-toolbar-actions">
-                                    <a th:if="${catalogPage.hasPrevious()}"
-                                       th:href="@{/admin/scholardex/publications(q=${q},forumId=${forumId},authorId=${authorId},affiliationId=${affiliationId},page=${catalogPage.page()-1},size=${size},sort=${sort},direction=${direction})}"
-                                       class="btn btn-outline-secondary btn-sm">
-                                        <i class="fa-solid fa-chevron-left fa-xs"></i>
-                                    </a>
-                                    <span class="text-muted" style="font-size:0.82rem;"
-                                          th:text="'Page ' + (${catalogPage.page()} + 1) + ' of ' + ${catalogPage.totalPages()}"></span>
-                                    <a th:if="${catalogPage.hasNext()}"
-                                       th:href="@{/admin/scholardex/publications(q=${q},forumId=${forumId},authorId=${authorId},affiliationId=${affiliationId},page=${catalogPage.page()+1},size=${size},sort=${sort},direction=${direction})}"
-                                       class="btn btn-outline-secondary btn-sm">
-                                        <i class="fa-solid fa-chevron-right fa-xs"></i>
-                                    </a>
+                                    <th:block th:with="prevUrl=${catalogPage.hasPrevious()} ? @{/admin/scholardex/publications(q=${q},forumId=${forumId},authorId=${authorId},affiliationId=${affiliationId},page=${catalogPage.page()-1},size=${size},sort=${sort},direction=${direction})} : null,
+                                                       nextUrl=${catalogPage.hasNext()} ? @{/admin/scholardex/publications(q=${q},forumId=${forumId},authorId=${authorId},affiliationId=${affiliationId},page=${catalogPage.page()+1},size=${size},sort=${sort},direction=${direction})} : null">
+                                        <th:block th:replace="~{fragments :: pagination(${prevUrl}, ${nextUrl}, ${catalogPage.page()}, ${catalogPage.totalPages()}, null, 'Publications catalog pagination')}"></th:block>
+                                    </th:block>
                                 </div>
                             </div>
                             <div class="app-table-section__body">
@@ -200,20 +148,12 @@
                     </div>
 
                     <!-- Bottom pagination bar -->
-                    <div class="app-queue-bulk-bar" th:if="${catalogPage.total() > 0}">
-                        <span class="app-queue-bulk-bar__label"
-                              th:text="'Showing ' + ${catalogPage.content().size()} + ' of ' + ${catalogPage.total()} + ' publications'"></span>
-                        <a th:if="${catalogPage.hasPrevious()}"
-                           th:href="@{/admin/scholardex/publications(q=${q},forumId=${forumId},authorId=${authorId},affiliationId=${affiliationId},page=${catalogPage.page()-1},size=${size},sort=${sort},direction=${direction})}"
-                           class="btn btn-outline-secondary btn-sm">
-                            <i class="fa-solid fa-chevron-left fa-xs"></i> Prev
-                        </a>
-                        <a th:if="${catalogPage.hasNext()}"
-                           th:href="@{/admin/scholardex/publications(q=${q},forumId=${forumId},authorId=${authorId},affiliationId=${affiliationId},page=${catalogPage.page()+1},size=${size},sort=${sort},direction=${direction})}"
-                           class="btn btn-outline-secondary btn-sm">
-                            Next <i class="fa-solid fa-chevron-right fa-xs"></i>
-                        </a>
-                    </div>
+                    <th:block th:if="${catalogPage.total() > 0}"
+                              th:with="showText=|Showing ${catalogPage.content().size()} of ${catalogPage.total()} publications|,
+                                       prevUrl=${catalogPage.hasPrevious()} ? @{/admin/scholardex/publications(q=${q},forumId=${forumId},authorId=${authorId},affiliationId=${affiliationId},page=${catalogPage.page()-1},size=${size},sort=${sort},direction=${direction})} : null,
+                                       nextUrl=${catalogPage.hasNext()} ? @{/admin/scholardex/publications(q=${q},forumId=${forumId},authorId=${authorId},affiliationId=${affiliationId},page=${catalogPage.page()+1},size=${size},sort=${sort},direction=${direction})} : null">
+                        <th:block th:replace="~{fragments :: pagination(${prevUrl}, ${nextUrl}, ${catalogPage.page()}, ${catalogPage.totalPages()}, ${showText}, 'Publications catalog pagination')}"></th:block>
+                    </th:block>
                 </div>
             </div>
             <div th:replace="~{fragments :: app-footer}"></div>
@@ -221,9 +161,13 @@
     </div>
 </div>
 <!-- Reassign Forum modal -->
-<div class="modal fade" id="reassignForumModal" tabindex="-1" role="dialog" aria-labelledby="reassignForumModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
+<th:block th:replace="~{fragments :: modal-shell(
+    id='reassignForumModal',
+    title='Reassign Forum',
+    size='',
+    bodySlot=~{::#reassign-forum-modal-body},
+    footerSlot=~{::#reassign-forum-modal-footer})}">
+    <th:block id="reassign-forum-modal-body">
             <form id="pub-bulk-form" method="post"
                   th:action="@{/admin/scholardex/publications/bulk/reassign-forum}">
                 <input type="hidden" name="q" th:value="${q}">
@@ -234,13 +178,6 @@
                 <input type="hidden" name="size" th:value="${size}">
                 <input type="hidden" name="sort" th:value="${sort}">
                 <input type="hidden" name="direction" th:value="${direction}">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="reassignForumModalLabel">Reassign Forum</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
                     <p class="text-muted small mb-2">Selected publications will be assigned to the forum below.</p>
                     <div class="form-group">
                         <label for="reassign-forum-input" class="font-weight-bold" style="font-size:0.84rem;">Forum ID</label>
@@ -249,15 +186,13 @@
                                placeholder="Enter Scopus forum ID…" required autocomplete="off">
                         <small class="form-text text-muted">Enter the Scopus source ID for the target forum.</small>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary btn-sm">Reassign</button>
-                </div>
             </form>
-        </div>
-    </div>
-</div>
+    </th:block>
+    <th:block id="reassign-forum-modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button>
+        <button type="submit" form="pub-bulk-form" class="btn btn-primary btn-sm">Reassign</button>
+    </th:block>
+</th:block>
 
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
 <script th:inline="javascript">

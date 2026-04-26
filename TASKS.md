@@ -676,6 +676,141 @@ Done history moved to `TASKS-done.md`.
     - `PublicationAuthorshipDecisionRepository` now supports publication-scoped decision lookup across users, and `PostgresScholardexAdminReadPort` aggregates that into `PublicationAuthorshipDecisionAdminSummary` for admin/debug read flows.
     - Targeted regression coverage now exists in `AdminScholardexPublicationViewControllerContractTest`, `PublicationAuthorshipDecisionRepositoryTest`, `ResearcherWorkspaceControllerContractTest`, and `UserPublicationFacadeTest`.
 
+- [ ] `H44` Phase B — Tier 3.1 Shared Component Library (Option C).
+  Goal: lock the ScholarDex design system before scaling Tier 2 (admin form modernization) and further UX work by building all missing shared fragments and JS utilities enumerated in the Tier 3.1 Option C decision, then documenting them in `docs/frontend-conventions.md` and migrating existing ad-hoc usages where the diff is small.
+  Design reference: `docs/tasks/active/ux-redesign-plan-after-tier1.md` §3.1 Option C.
+  UX guide reference: `docs/ux-design-guide.md` §6.2, §6.3, §6.5, §6.6, §6.7, §7.1, §8.1, §8.2.
+  Exit criteria: all 10 fragments/components listed below are built, tested, and importable; `docs/frontend-conventions.md` documents each component's shape, variants, and usage contract; existing ad-hoc implementations are migrated to the shared components where the diff is ≤ a few lines per call site; `npm run build`, `npm run verify-assets`, `npm run verify-template-assets`, `npm run verify-route-guardrails`, `npm run verify-ui-guardrails`, and `./gradlew compileJava` all pass clean; both light and dark themes render correctly for every new component.
+
+  Subtasks:
+
+  - [x] `H44.1` **`confirmation-dialog` fragment and JS API.** *(completed 2026-04-26)*
+    Extract the pattern used ad-hoc in conflicts (bulk resolve/dismiss), bulk select (publisher reassign, group assign), and two-click delete flows into a single reusable `confirmation-dialog(id, title, body, confirmLabel, tone)` Thymeleaf fragment backed by a `confirmationDialog.js` module.
+    The JS API must expose `window.appConfirmDialog.open({ dialogId, onConfirm, onCancel })` so callers never manage modal lifecycle directly. The confirm button must use the `--danger` accent when `tone="danger"` and the default primary accent otherwise. Focus must be trapped inside the dialog; Escape cancels; ARIA `role="alertdialog"`, `aria-modal="true"`, `aria-labelledby`, `aria-describedby`.
+    Exit criteria: fragment renders a functional confirmation dialog in any template; all existing ad-hoc confirm flows in `conflicts.html`, `user-defined-triage.html`, workspace delete, and bulk select are migrated to the shared fragment; `npm run build` and both verify-assets scripts pass.
+
+  - [x] `H44.2` **Toast notification system.** *(completed 2026-04-26)*
+    Build a `toastManager.js` module and supporting `shared-toasts.css` that provide an ephemeral feedback queue: `window.appToast.show({ message, tone, duration, actionLabel, onAction })`. Tones: `success`, `error`, `warning`, `info`. Default duration 4 s; `duration: 0` means sticky until dismissed. Queue renders as a fixed stack in the bottom-right corner (per §8.1), max 5 visible, older toasts pushed up. Each toast is dismissible by X button. ARIA `role="status"` for non-error tones, `role="alert"` for error; `aria-live="polite"` on the container. Both themes.
+    Migrate at least the inline `#eval-snapshot-feedback` span and workspace publications save-feedback span to `appToast.show()`.
+    Exit criteria: `appToast.show()` is usable from any page after `app.js` loads; toasts stack, auto-dismiss, and are keyboard/screen-reader accessible; migrated call sites no longer use inline feedback spans; `npm run build` passes.
+
+  - [x] `H44.3` **`pagination` fragment (server-side and client-side variants).** *(completed 2026-04-26)*
+    Promote the ad-hoc pagination patterns in the publications catalog, citations page, conflicts queue, and workspace tabs into a single `pagination(page, totalPages, baseUrl, pageSizeOptions, currentPageSize)` fragment for server-side contexts and a `clientPagination.js` utility (wraps existing workspace publications/activities pagination logic) for client-side contexts.
+    Server-side fragment: prev/next buttons, current-page display, first/last buttons for jump, page-size `<select>` that posts/gets with `size=` param — all per §6.3. ARIA `role="navigation"`, `aria-label="Pagination"`. Both themes.
+    Client-side utility: exported `initClientPagination({ data, pageSize, renderFn, container })` replacing the hand-rolled per-module pagination in `workspacePublications.js` and `workspaceActivities.js`.
+    Exit criteria: server-side fragment renders and navigates correctly on publications catalog, citations, conflicts, and triage pages; client-side utility replaces duplicated paging code in workspace modules; `npm run build` and all verify scripts pass.
+
+  - [x] `H44.4` **`filter-panel` fragment.** *(completed 2026-04-26)*
+    Promote the integrated filter patterns from `.app-queue-filter` (conflicts/triage) and the publications catalog inline filter to a shared `filter-panel(formId, method, action, fields)` fragment. Fields are passed as a list of `FilterFieldDef` objects (name, label, type: `text|select|date`, options list for select). The panel has a visually connected header that folds into the table's top border (per §6.3), a Reset link that clears all fields and submits, and an Apply button that submits the form. ARIA `role="search"` on the form. Responsive: collapses to a stack on narrow screens.
+    - Added `FilterFieldDef` / `FilterOptionDef`, shared `filter-panel(...)` Thymeleaf fragment, and `shared-filter-panel.css`.
+    - Migrated admin conflicts and Scholardex publication catalog filter panels to the shared fragment while preserving hidden cross-link filters for publication catalog applies.
+    Migrate conflicts, triage, and publications catalog filter blocks to the shared fragment.
+    Exit criteria: shared fragment renders in all three migrated contexts; existing filter behavior is preserved; `npm run build` and all verify scripts pass.
+
+  - [x] `H44.5` **`stat-card` fragment.** *(completed 2026-04-26)*
+    Consolidate the ad-hoc `.app-summary-grid` / `stat-card` pattern (used across admin dashboard, conflicts, users, publications, citations, evaluation aggregate panel) into a single `stat-card(label, value, accent, contextLine, icon)` Thymeleaf fragment. Accent values: `primary`, `success`, `warning`, `danger`, `neutral`. Context line is optional secondary text (e.g. "last 30 days"). Icon is optional Font Awesome class. Cards compose into a grid via a `stat-card-grid(cards)` fragment that auto-reflows to single column on mobile (per §4.4).
+    - Added `StatCardDef`, shared `stat-card(...)` and `stat-card-grid(cards)` fragments, and primary/neutral/icon styling on the existing summary-card foundation.
+    - Migrated admin conflicts, users, Scholardex publications, and Scholardex citation detail stat grids to the shared grid fragment with render-contract assertions.
+    Migrate all existing `.app-summary-grid` usages that are ≤ 5 cards with static values to the shared fragment.
+    Exit criteria: fragment renders correctly on admin users, publications, citations, conflicts, and evaluation aggregate panels; single-column reflow works at 576 px; both themes; `npm run build` passes.
+
+  - [x] `H44.6` **Generic `breadcrumb` fragment.** *(completed 2026-04-26)*
+    Add a non-admin `breadcrumb(items)` fragment mirroring the existing `admin-breadcrumb` shape but using workspace-appropriate styling (lighter, no admin-sidebar assumption). Items are `BreadcrumbItem` objects with `label` and optional `href`. The last item renders as `aria-current="page"` without a link. Integrate with the existing `admin-breadcrumb` so both share the same CSS class structure and can be toggled by a `variant` param (`admin` vs `default`), or keep as two separate named fragments if the diff is trivial.
+    Apply generic breadcrumbs to: workspace sub-flows that need back-navigation context (e.g. evaluation criterion deep links), public pages (Tier 2.3 prep).
+    Exit criteria: fragment renders in at least two non-admin contexts; `npm run build` passes; screen reader announces breadcrumb correctly.
+    - Added `BreadcrumbItem`, shared `breadcrumb(items, variant)` fragment, and `admin-breadcrumb(items)` wrapper using the same class structure.
+    - Applied default breadcrumbs to forum detail, WoS category detail, and university detail; migrated Scholardex citation detail to the admin wrapper.
+
+  - [x] `H44.7` **`admin-form` fragment.** *(completed 2026-04-26)*
+    Build a `admin-form(id, action, method, title, sections, submitLabel, cancelHref)` Thymeleaf fragment providing the shared admin form shell: sticky header with title and Save/Cancel controls, `<section>` blocks with heading and helper text slot, consistent field layout (label above input, error message below), and CSRF token injection. Replaces the ad-hoc form layouts in the long-form admin edit pages (`edit-individualReport.html`, `edit-groupReport.html`, `indicators-edit.html`).
+    CSS: `.app-admin-form` BEM block in `admin-tables.css` (or new `admin-forms.css`); sticky header uses `position: sticky; top: 0` with a white/dark background so it stays visible during scroll.
+    Exit criteria: fragment is usable by at least one long-form admin edit page (apply to `edit-individualReport.html` as the pilot); Save/Cancel sticky behavior works; `npm run build` and `verify-template-assets` pass.
+    - Added the shared `admin-form(...)` and `admin-form-section(...)` fragments with CSRF injection, sticky Save/Cancel controls, section helper text, and slotted body content.
+    - Added `admin-forms.css`, imported it into the bundled frontend assets, and migrated `edit-individualReport.html` as the pilot long-form edit page.
+    - Covered the pilot with a controller render test asserting the shared shell, sticky action header, cancel route, and section output.
+
+  - [x] `H44.8` **`modal-shell` fragment.** *(completed 2026-04-26)*
+    Build a `modal-shell(id, title, size, footerSlot)` Thymeleaf fragment providing a reusable Bootstrap modal wrapper with: `role="dialog"`, `aria-modal="true"`, `aria-labelledby` wired to title, focus trap (first focusable element on open, returns to trigger on close), Escape-key close via JS, and consistent header/body/footer layout. Wrap the existing `#editUserModal` in `users.html` and the bulk-action modals in publications/users as the pilot migration.
+    The JS module (`modalShell.js` or integrated into `app.js`) must expose `window.appModal.open(id)` and `window.appModal.close(id)` as a thin wrapper above Bootstrap's modal API, adding the focus-trap and return-focus behavior that Bootstrap 5 does not guarantee consistently.
+    Exit criteria: `modal-shell` renders three existing modals correctly; focus trap and return-focus work; Escape closes; `npm run build` and both verify-assets scripts pass.
+    - Added shared `modal-shell(...)` with title wiring, close control, body/footer slots, and the `data-app-modal-shell` marker for JS behavior.
+    - Added `modalShell.js` exposing `window.appModal.open(id)` / `window.appModal.close(id)`, including focus trap, Escape close, backdrop close, Bootstrap-style lifecycle events, and return-focus handling.
+    - Migrated `#editUserModal`, `#assignGroupModal`, and `#reassignForumModal`; legacy modal handling now skips migrated shell modals.
+    - Covered the users and publication catalog pilots with render-contract assertions for shell IDs, ARIA labels, and shell markers.
+
+  - [x] `H44.9` **`search-input` fragment.** *(completed 2026-04-26)*
+    Build a `search-input(id, name, placeholder, value, kbdHint, clearable)` fragment that produces a styled search input with optional `<kbd>` shortcut hint (hidden when input is focused, per `app-ws-search__hint` pattern) and optional clear (×) button. Mirrors the existing `app-ws-search__field` shape from the workspace but packaged as a standalone fragment usable outside the workspace (admin catalog filter search, public page search, evaluation page search). CSS goes into `shared-forms.css` (new file) or is added to `admin-tables.css`.
+    Apply the fragment to: the publications catalog title-search field, the evaluation page (if a search input is present), and the workspace unified-search field (as a drop-in swap).
+    Exit criteria: fragment renders in all three applied contexts; clear button empties the input and triggers form submit or `input` event; shortcut hint shows/hides correctly; both themes; `npm run build` passes.
+    - Added shared `search-input(...)` with optional keyboard hint, clear button, accessible icon treatment, and bundled clear-button behavior via `searchInput.js`.
+    - `filter-panel(...)` now renders text fields through `search-input(...)`, covering the Scholardex publications title search while preserving form submission.
+    - Migrated the workspace unified search and public directory searches for forums, core rankings, and WoS categories while preserving existing input IDs for current JS modules.
+    - Covered the migrated admin/public/workspace contexts with targeted render/template assertions.
+
+  - [x] `H44.10` **Button group and icon-button conventions documentation.** *(completed 2026-04-26)*
+    No new code required. Audit the existing `.app-admin-icon-btn` usages and the workspace action-button patterns and write up the button taxonomy in `docs/frontend-conventions.md`: icon-only action button, labeled action button, danger variant, disabled state, button group with divider. Include HTML snippet examples, ARIA requirements (every icon-only button must have `aria-label`), and tone-to-CSS-class mapping. Flag any existing call sites that are missing `aria-label` and fix them as part of this subtask.
+    Exit criteria: button-group section added to `docs/frontend-conventions.md`; all icon-only admin buttons across all admin templates carry `aria-label`; `npm run verify-ui-guardrails` passes.
+    - Added button taxonomy guidance to `docs/frontend-conventions.md` covering icon-only buttons, labeled actions, tone classes, disabled state, and action groups with snippets.
+    - Audited admin icon-only controls; `.app-admin-icon-btn` call sites were already labeled, and repeated admin scroll-to-top anchors now carry `aria-label="Scroll to top"`.
+
+  - [x] `H44.11` **`frontend-conventions.md` documentation pass and ad-hoc migration cleanup.** *(completed 2026-04-27)*
+    With all components built, do a final pass:
+    — Add a "Shared Components" section to `docs/frontend-conventions.md` documenting each of the 10 components: purpose, Thymeleaf fragment signature, JS API (if any), CSS block name, variants, and when to use vs. when not to use.
+    — List the existing components that were already built before H44 (`tab-bar`, `admin-breadcrumb`, `admin-empty-state`, skeleton loader, shortcuts overlay, bulk-select, column-toggle) with the same documentation shape for completeness.
+    — Identify any remaining ad-hoc usages of patterns now covered by shared components that were not migrated in H44.1–H44.9 and file them as known technical debt in a `docs/tasks/active/component-library-debt.md` note (do not attempt a full sweep in this subtask).
+    — Run the full verification suite and confirm a clean pass.
+    Exit criteria: `docs/frontend-conventions.md` "Shared Components" section is complete and accurate; `npm run build`, `verify-assets`, `verify-template-assets`, `verify-route-guardrails`, `verify-ui-guardrails`, and `./gradlew compileJava` all pass; debt note filed if any remaining ad-hoc usages were found.
+    - Added the shared component catalog to `docs/frontend-conventions.md`, covering all H44 components plus the pre-existing tab bar, empty state, skeleton, shortcuts, bulk-select, and column-toggle utilities.
+    - Filed remaining ad-hoc usages in `docs/tasks/active/component-library-debt.md` for future focused migrations.
+    - Completed the H44 verification closeout with build, asset/template/route/UI guardrails, and Java compilation.
+
+- [ ] `H45` Phase C — Admin Form Modernization (Tier 2.2 Option D).
+  Goal: modernize admin edit workflows by collapsing short edit pages into row-edit modals powered by the shared `modal-shell` fragment, while keeping genuinely long configuration forms as dedicated pages using the shared `admin-form` baseline.
+  Design reference: `docs/tasks/active/ux-redesign-plan-after-tier1.md` §2.2 Option D and Phase C.
+  UX guide reference: `docs/ux-design-guide.md` §6.2, §6.3, §6.5, §6.6, §6.7, §8.1, §8.2.
+  Exit criteria: short admin edit pages no longer require full-page navigation; row-level Edit actions open accessible shared modals with pre-populated values, Save/Cancel behavior, validation/error placement, focus return, Escape close, and toast/status feedback; long-form admin edit pages use the shared `admin-form` shell with sticky Save/Cancel controls, section headings, helper text, breadcrumbs, and consistent field layout; legacy edit URLs redirect to their parent list/detail surface where practical; deleted templates are removed from template guardrails; both light and dark themes render correctly; `npm run build`, `npm run verify-assets`, `npm run verify-template-assets`, `npm run verify-route-guardrails`, `npm run verify-ui-guardrails`, and `./gradlew compileJava` pass clean.
+
+  Subtasks:
+
+  - [ ] `H45.1` **Admin edit form inventory and modal/dedicated classification.**
+    Audit the Tier 2.2 candidate edit pages and record the chosen treatment at the top of the implementation handoff. Default rule: convert forms with simple scalar fields or shallow lists to row-edit modals; keep forms with nested repeaters, builders, or many related collections as dedicated pages.
+    Initial classification: convert `scholardex-editForum.html`, `scholardex-editAffiliation.html`, `edit-institutions.html`, and `domains-edit.html` to modals; keep `edit-group.html`, `activities-edit.html`, `edit-individualReport.html`, `edit-groupReport.html`, `indicators-edit.html`, and `activity-indicators.html` as dedicated surfaces unless the audit proves a form is simpler than it currently appears.
+    Exit criteria: each candidate form has an explicit modal-vs-dedicated decision before migration starts.
+
+  - [ ] `H45.2` **Scholardex forum and affiliation row-edit modals.**
+    Replace `admin/scholardex-editForum.html` and `admin/scholardex-editAffiliation.html` with row-edit modals on `admin/scholardex-forums.html` and `admin/scholardex-affiliations.html`.
+    Use `modal-shell`, row Edit icon buttons, preloaded row data or a compact JSON/detail endpoint, existing save facades, toast feedback, and focus return. Redirect old edit URLs back to the parent catalog.
+    Exit criteria: forum and affiliation edits complete without leaving the catalog pages; old edit templates are unused.
+
+  - [ ] `H45.3` **Institution row-edit modal.**
+    Move `admin/edit-institutions.html` into an edit modal on `admin/institutions.html`, preserving name, description, Scopus affiliation mapping, and WoS affiliation fields.
+    Keep existing create/delete behavior intact, and make Save update the row or refresh the page consistently after success.
+    Exit criteria: institution edits happen from the institutions list; `/admin/institutions/edit/{id}` redirects to `/admin/institutions`.
+
+  - [ ] `H45.4` **Domain row-edit modal.**
+    Move `admin/domains-edit.html` into an edit modal on `admin/domains.html`, preserving name, description, and WoS category assignment behavior.
+    Reuse existing category option data already loaded for the domains page.
+    Exit criteria: domain edits happen from the domains list; `/admin/domains/edit/{id}` redirects to `/admin/domains`.
+
+  - [ ] `H45.5` **Dedicated admin-form baseline for complex group and activity editors.**
+    Keep `admin/edit-group.html` and `admin/activities-edit.html` as dedicated pages, but migrate their layout to the shared `admin-form` shell.
+    Preserve dynamic domain/member rows for groups and dynamic activity field/reference-field rows for activities. Add breadcrumbs back to the parent list and consistent Save/Cancel placement.
+    Exit criteria: group and activity edit pages match the shared admin form pattern without changing their data contract.
+
+  - [ ] `H45.6` **Dedicated admin-form baseline for report and indicator configuration.**
+    Complete the long-form baseline for `admin/edit-groupReport.html`, `admin/indicators-edit.html`, and any remaining report/indicator configuration holdouts not already covered by H44.7.
+    Keep these as dedicated pages because they contain report criteria, scoring rules, or configuration builders.
+    Exit criteria: all surviving long-form admin edit pages use the shared `admin-form` pattern or an explicitly documented equivalent.
+
+  - [ ] `H45.7` **Legacy template, route, and guardrail cleanup.**
+    Remove dead short edit templates after their parent-list modals are live, update route guardrails/template asset checks, and make legacy edit GET routes redirect to canonical parent pages.
+    Do not remove POST endpoints that are still used by modal saves unless they are replaced by tested JSON endpoints.
+    Exit criteria: no deleted template is referenced by controllers, tests, or verification scripts.
+
+  - [ ] `H45.8` **Regression coverage and UI verification.**
+    Add or update MVC/render-contract tests for each migrated modal and each surviving dedicated admin form. Cover modal shell markers, ARIA labels, populated edit data, save endpoints, redirect compatibility, and guardrail expectations.
+    Exit criteria: targeted controller/template tests pass, frontend build and guardrails pass, and Java compilation is clean.
+
 - [ ] `H20` Google Scholar (PoP) user-onboarding into Scholardex.
   Goal: support user-triggered Google Scholar imports from Publish-or-Perish exports as first-class canonical ingestion into Scholardex identity/link models.
   Deliverable: user-operation onboarding flow for PoP exports (upload/import from user surface) with parser + ingest adapter into Scholar-source events/facts and linker integration with Scholardex entities.
