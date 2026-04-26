@@ -94,7 +94,7 @@ class PublicationEnrichmentLinkerServiceTest {
     @Test
     void linkWosEnrichmentSkipsNonWosSentinel() {
         PublicationEnrichmentLinkerService.LinkResult result =
-                service.linkWosEnrichment(null, null, null, CanonicalPublicationConstants.NON_WOS_ID, "WOSEXTRACTOR", "h17.10", "run-1");
+                service.linkWosEnrichment("p1", null, null, CanonicalPublicationConstants.NON_WOS_ID, "WOSEXTRACTOR", "h17.10", "run-1");
 
         assertEquals(PublicationEnrichmentLinkerService.LinkState.SKIPPED, result.state());
         verify(publicationFactRepository, never()).save(any());

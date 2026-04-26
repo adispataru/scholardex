@@ -6,8 +6,11 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
+import ro.uvt.pokedex.core.service.application.ConflictOperationsFacade;
 import ro.uvt.pokedex.core.service.application.UserDefinedTriageFacade;
 
 import java.util.List;
@@ -29,6 +32,8 @@ class AdminUserDefinedTriageControllerContractTest {
 
     @MockitoBean
     private UserDefinedTriageFacade userDefinedTriageFacade;
+    @MockitoBean
+    private ConflictOperationsFacade conflictOperationsFacade;
 
     @Test
     void triagePageRendersTemplateAndDelegatesSnapshot() throws Exception {
@@ -40,6 +45,8 @@ class AdminUserDefinedTriageControllerContractTest {
                 List.of(),
                 List.of()
         ));
+        when(conflictOperationsFacade.findIdentityConflicts(null, null, null, "USER_DEFINED", null, "OPEN", null, null))
+                .thenReturn(new PageImpl<>(List.of()));
 
         mockMvc.perform(get("/admin/user-defined-triage"))
                 .andExpect(status().isOk())

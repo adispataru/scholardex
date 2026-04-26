@@ -458,7 +458,9 @@ Done history moved to `TASKS-done.md`.
     - Removed redundant manual `${_csrf.parameterName}` hidden input from publications bulk form (`th:action` already injects CSRF).
     - All verification passes: `compileJava`, `npm run build`, `verify-assets`, `verify-template-assets`, `verify-route-guardrails`, `verify-ui-guardrails`; 34/34 contract tests green.
 
-- [ ] `H41` Delete Standalone Publication Wizard (Tier 2.1) — remove the three-step `publications-add-step*.html` templates and their controller routes; the workspace inline wizard (H36.9) is the only Add Publication path going forward.
+## Backlog
+
+- [x] `H41` Delete Standalone Publication Wizard (Tier 2.1). *(completed 2026-04-26)*
   Goal: eliminate the dead standalone wizard surface so no user-facing route resolves to it and no template asset validation entry references it.
   Deliverable:
   - Delete `templates/user/publications-add-step1.html`, `step2.html`, `step3.html`.
@@ -467,11 +469,18 @@ Done history moved to `TASKS-done.md`.
   - Drop the corresponding entries from the `verify-template-assets` allowlist.
   - Confirm no remaining template, JS module, or test references the deleted routes or templates.
   Exit criteria: `verify-template-assets`, `verify-route-guardrails`, and `verify-ui-guardrails` all pass; hitting `/user/publications/add` in a browser redirects to the workspace publications tab; no broken links in workspace HTML.
-  Effort: ~1-2 days.
+  Handover:
+  - All three wizard templates deleted (`publications-add-step1/2/3.html`).
+  - `PublicationWizardController` replaced with single-method redirect class: all `GET /user/publications/add/**` routes redirect to `/user/workspace#publications`.
+  - `PublicationWizardControllerContractTest` deleted (no longer applicable).
+  - Workspace fallback `href`s changed from `/user/publications/add` to `#` (click handlers already prevent navigation and trigger inline wizard).
+  - Onboarding link in workspace updated: `th:href="@{/user/publications/add-step-1}"` → `href="#" data-tab-goto="publications"`.
+  - Legacy `publications.html` "Add Publication" button removed (workspace is now the primary path).
+  - `verify-template-assets.js` cleaned: removed allowlist entries for step1/step2 external assets and inline scripts.
+  - All verify scripts pass; compile is clean; no regressions in existing tests (pre-existing 14 failures unrelated to this task).
   Reference: `docs/tasks/active/ux-redesign-plan-after-tier1.md` §2.1, Phase A.
-  Dependency: none (H36.9 already complete).
 
-## Backlog
+
 
 - [x] `H38` User-Reviewed Publication Authorship Overlay. *(completed 2026-04-19)*
   Goal: let researchers confirm or reject authorship for imported publications so noisy Scopus links stop polluting reports, indicators, citations, and workspace views without deleting source data.

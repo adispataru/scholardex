@@ -12,6 +12,7 @@ import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.config.WebSecurityConfig;
 import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.CustomUserDetailsService;
+import ro.uvt.pokedex.core.service.application.ConflictOperationsFacade;
 import ro.uvt.pokedex.core.service.application.UserDefinedTriageFacade;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -33,6 +34,8 @@ class AdminUserDefinedTriageControllerSecurityContractTest {
     private CacheService cacheService;
     @MockitoBean
     private UserDefinedTriageFacade userDefinedTriageFacade;
+    @MockitoBean
+    private ConflictOperationsFacade conflictOperationsFacade;
 
     @Test
     void nonAdminCannotAccessUserDefinedTriagePage() throws Exception {

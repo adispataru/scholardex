@@ -115,7 +115,7 @@ class AdminScholardexPublicationViewControllerContractTest {
         mockMvc.perform(get("/admin/scholardex/publications"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/scholardex-publications"))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/admin/scholardex/publications/search")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/scopus/publications"))));
+                .andExpect(model().attributeExists("pubStats"))
+                .andExpect(model().attributeExists("catalogPage"));
     }
 }

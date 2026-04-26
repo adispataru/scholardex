@@ -485,6 +485,7 @@ public class GroupReportFacade {
         attrs.put("group", group);
         attrs.put("researchers", researchers);
         attrs.put("researcherScores", resolveResearcherScoresForView(run, researchers));
+        attrs.put("researcherScoreKeyByEmail", buildResearcherScoreKeyMap(researchers));
         attrs.put("criteriaThresholds", run.getCriteriaThresholds() == null ? Map.of() : run.getCriteriaThresholds());
         attrs.put("runCreatedAt", run.getCreatedAt());
         attrs.put("runStatus", run.getStatus());
@@ -516,6 +517,17 @@ public class GroupReportFacade {
         return Math.max(0L, nanos / 1_000_000L);
     }
 
+    private Map<String, String> buildResearcherScoreKeyMap(List<User> researchers) {
+        Map<String, String> keyMap = new HashMap<>();
+        for (User researcher : researchers) {
+            String email = researcher.getEmail();
+            if (email != null && !email.isBlank()) {
+                keyMap.put(email, mongoSafeReportKey(email));
+            }
+        }
+        return keyMap;
+    }
+
     static String mongoSafeReportKey(String email) {
         if (email == null || email.isBlank()) {
             return "";
@@ -534,12 +546,10 @@ public class GroupReportFacade {
             if (email == null || email.isBlank()) {
                 continue;
             }
-            Map<Integer, Double> score = persistedScores.get(email);
-            if (score == null) {
-                score = persistedScores.get(mongoSafeReportKey(email));
-            }
+            String safeKey = mongoSafeReportKey(email);
+            Map<Integer, Double> score = persistedScores.get(safeKey);
             if (score != null) {
-                resolved.put(email, score);
+                resolved.put(safeKey, score);
             }
         }
         return resolved;

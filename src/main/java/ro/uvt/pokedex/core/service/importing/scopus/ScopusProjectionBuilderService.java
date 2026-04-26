@@ -380,7 +380,6 @@ public class ScopusProjectionBuilderService {
         view.setVolume(fact.getVolume());
         view.setIssueIdentifier(fact.getIssueIdentifier());
         view.setDescription(fact.getDescription());
-        view.setAuthorCount(fact.getAuthorCount());
         view.setCorrespondingAuthors(fact.getCorrespondingAuthors() == null ? List.of() : new ArrayList<>(fact.getCorrespondingAuthors()));
         view.setOpenAccess(Boolean.TRUE.equals(fact.getOpenAccess()));
         view.setFreetoread(fact.getFreetoread());
@@ -390,6 +389,7 @@ public class ScopusProjectionBuilderService {
         view.setPageRange(fact.getPageRange());
         view.setApproved(Boolean.TRUE.equals(fact.getApproved()));
         view.setAuthorIds(fact.getAuthorIds() == null ? List.of() : new ArrayList<>(fact.getAuthorIds()));
+        view.setAuthorCount(fact.getAuthorCount() == null ? view.getAuthorIds().size() : fact.getAuthorCount());
         view.setAffiliationIds(fact.getAffiliationIds() == null ? List.of() : new ArrayList<>(fact.getAffiliationIds()));
         view.setForumId(fact.getForumId());
         List<String> citingPublicationIds = citingByCited.getOrDefault(fact.getId(), List.of());

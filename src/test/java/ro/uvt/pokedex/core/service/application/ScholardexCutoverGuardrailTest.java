@@ -55,8 +55,16 @@ class ScholardexCutoverGuardrailTest {
                 "public ImportProcessingResult importScopusDataSync(",
                 "@Async(\"taskExecutor\")\n    public void importScopusDataCitations("
         );
-        assertTrue(publicationIngestSync.contains("importEventIngestionService.ingest("),
-                "Publication canonical ingest entrypoint must emit import events.");
+        String publicationIngestFromRoot = methodSlice(
+                content,
+                "private ImportProcessingResult importScopusDataFromRoot(",
+                "private ImportProcessingResult importScopusCitationsFromRoot("
+        );
+        assertTrue(
+                publicationIngestSync.contains("importScopusDataFromRoot(")
+                        && publicationIngestFromRoot.contains("importEventIngestionService.ingest("),
+                "Publication canonical ingest entrypoint must emit import events through the shared publication ingest helper."
+        );
         assertFalse(publicationIngestSync.contains("publicationRepository."),
                 "Publication canonical ingest entrypoint must not write legacy publication repository.");
         assertFalse(publicationIngestSync.contains("authorRepository."),
@@ -184,8 +192,8 @@ class ScholardexCutoverGuardrailTest {
                 "Post-cutover runtime must not expose app.reporting.read-store toggle for migrated surfaces.");
 
         String guardContent = Files.readString(Path.of("src/main/java/ro/uvt/pokedex/core/service/application/PostgresReadCutoverGuard.java"));
-        assertTrue(guardContent.contains("spring.datasource.url"),
-                "Postgres cutover guard must activate with Postgres datasource presence.");
+        assertTrue(guardContent.contains("@Component") && guardContent.contains("JdbcTemplate"),
+                "Postgres cutover guard must be a datasource-backed startup component.");
         assertTrue(guardContent.contains("projection_checkpoint"),
                 "Postgres cutover must verify projection checkpoint state at startup.");
         assertTrue(guardContent.contains("slice_name IN ('wos', 'scopus')"),
