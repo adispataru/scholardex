@@ -9,16 +9,25 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import ro.uvt.pokedex.core.controller.ErrorPageModelFactory;
 
 @ControllerAdvice(basePackages = "ro.uvt.pokedex.core.view")
 public class MvcExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(MvcExceptionHandler.class);
 
+    private final ErrorPageModelFactory errorPageModelFactory = new ErrorPageModelFactory();
+
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public String handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request, Model model) {
-        log.warn("MVC bad request: requestId={}, path={}, message={}", requestId(), request.getRequestURI(), ex.getMessage());
+        log.warn(
+                "MVC bad request: requestId={}, path={}, message={}",
+                requestId(),
+                request.getRequestURI(),
+                ex.getMessage()
+        );
         model.addAttribute("error", "400");
+        errorPageModelFactory.apply(model, request, HttpStatus.BAD_REQUEST.value());
         return "errors/error";
     }
 
@@ -27,6 +36,7 @@ public class MvcExceptionHandler {
     public String handleUnexpected(Exception ex, HttpServletRequest request, Model model) {
         log.error("Unhandled MVC exception: requestId={}, path={}", requestId(), request.getRequestURI(), ex);
         model.addAttribute("error", "500");
+        errorPageModelFactory.apply(model, request, HttpStatus.INTERNAL_SERVER_ERROR.value());
         return "errors/error-500";
     }
 

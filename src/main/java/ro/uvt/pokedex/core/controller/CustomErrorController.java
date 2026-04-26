@@ -13,30 +13,36 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 public class CustomErrorController implements ErrorController {
 
+    private final ErrorPageModelFactory errorPageModelFactory = new ErrorPageModelFactory();
+
     @RequestMapping("/error")
-    public String handleError(HttpServletRequest request) {
+    public String handleError(HttpServletRequest request, Model model) {
         Object status = request.getAttribute(RequestDispatcher.ERROR_STATUS_CODE);
 
         if (status != null) {
             int statusCode = Integer.parseInt(status.toString());
+            errorPageModelFactory.apply(model, request, statusCode);
 
-            if(statusCode == HttpStatus.NOT_FOUND.value()) {
+            if (statusCode == HttpStatus.NOT_FOUND.value()) {
                 return "errors/error-404";
-            }
-            else if(statusCode == HttpStatus.INTERNAL_SERVER_ERROR.value()) {
+            } else if (statusCode == HttpStatus.INTERNAL_SERVER_ERROR.value()) {
                 return "errors/error-500";
-            }
-            else if(statusCode == HttpStatus.FORBIDDEN.value()) {
+            } else if (statusCode == HttpStatus.FORBIDDEN.value()) {
                 return "errors/error-403";
             }
-            // Add other status codes as needed
         }
+        errorPageModelFactory.apply(model, request, HttpStatus.INTERNAL_SERVER_ERROR.value());
         return "errors/error";
     }
 
     @GetMapping("/custom-error")
-    public String customError(@RequestParam(required = false) String error, Model model) {
+    public String customError(@RequestParam(required = false) String error, HttpServletRequest request, Model model) {
         model.addAttribute("error", error);
-        return "errors/error-403"; // View name for the error page
+        int statusCode = HttpStatus.FORBIDDEN.value();
+        if (error != null && error.matches("\\d{3}")) {
+            statusCode = Integer.parseInt(error);
+        }
+        errorPageModelFactory.apply(model, request, statusCode);
+        return "errors/error-403";
     }
 }

@@ -24,6 +24,90 @@
     <script src="/assets/app.js"></script>
 </th:block>
 
+<th:block th:fragment="error-page">
+    <th:block th:with="authenticated=${currentUser != null and currentUser.isPresent()}">
+        <div th:if="${authenticated}" id="wrapper">
+            <div th:replace="~{fragments :: sidebar(${errorActiveSection})}"></div>
+
+            <div id="content-wrapper" class="d-flex flex-column">
+                <div id="content">
+                    <div th:replace="~{fragments :: navbar(${errorTitle})}"></div>
+                    <main class="container-fluid app-page-content app-error-page" aria-labelledby="app-error-title">
+                        <th:block th:replace="~{fragments :: error-surface}"></th:block>
+                    </main>
+                    <div th:replace="~{fragments :: app-footer}"></div>
+                </div>
+            </div>
+
+            <a class="scroll-to-top rounded" href="#page-top">
+                <i class="fa-solid fa-angle-up" aria-hidden="true"></i>
+            </a>
+        </div>
+
+        <main th:unless="${authenticated}" class="app-error-standalone" aria-labelledby="app-error-title">
+            <div class="app-error-standalone__brand">
+                <span class="app-error-standalone__brand-mark">
+                    <img src="/images/logo.webp" width="48" height="48" alt="">
+                </span>
+                <span>ScholarDex</span>
+            </div>
+            <th:block th:replace="~{fragments :: error-surface}"></th:block>
+        </main>
+    </th:block>
+</th:block>
+
+<th:block th:fragment="error-surface">
+    <section class="app-error-surface" th:classappend="' app-error-surface--' + ${errorTone}">
+        <div class="app-error-surface__icon" aria-hidden="true">
+            <i th:class="${errorIcon}"></i>
+        </div>
+        <p class="app-error-surface__status" th:text="'Error ' + ${errorStatus}">Error 500</p>
+        <h1 id="app-error-title" class="app-error-surface__title" th:text="${errorTitle}">Unexpected request error</h1>
+        <p class="app-error-surface__lead" th:text="${errorLead}">ScholarDex could not complete this request.</p>
+        <p class="app-error-surface__message" th:text="${errorMessage}">Use the recovery actions below.</p>
+
+        <dl class="app-error-meta">
+            <div th:if="${errorPath != null and !#strings.isEmpty(errorPath)}">
+                <dt>Path</dt>
+                <dd th:text="${errorPath}">/requested-path</dd>
+            </div>
+            <div th:if="${errorShowRetry}">
+                <dt>Timestamp</dt>
+                <dd th:text="${errorTimestamp}">2026-04-26 12:00:00 EEST</dd>
+            </div>
+            <div th:if="${errorRequestId != null and !#strings.isEmpty(errorRequestId)}">
+                <dt>Request ID</dt>
+                <dd th:text="${errorRequestId}">request-id</dd>
+            </div>
+        </dl>
+
+        <div class="app-error-actions">
+            <button th:if="${errorShowRetry}" type="button" class="btn btn-primary app-error-actions__button" data-app-error-retry>
+                <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+                <span>Try again</span>
+            </button>
+            <a class="btn btn-primary app-error-actions__button" th:href="${errorPrimaryHref}">
+                <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                <span th:text="${errorPrimaryLabel}">Go to workspace</span>
+            </a>
+            <button type="button" class="btn btn-outline-primary app-error-actions__button" data-app-error-back th:data-fallback-href="${errorPrimaryHref}">
+                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                <span>Go back</span>
+            </button>
+        </div>
+
+        <nav th:if="${errorShowBrowseLinks}" class="app-error-browse" aria-label="Suggested areas">
+            <p class="app-error-browse__title">Try one of these areas instead</p>
+            <div class="app-error-browse__links">
+                <a href="/forums"><i class="fa-solid fa-book-open" aria-hidden="true"></i><span>Forums</span></a>
+                <a href="/wos/categories"><i class="fa-solid fa-layer-group" aria-hidden="true"></i><span>WoS categories</span></a>
+                <a href="/core/rankings"><i class="fa-solid fa-ranking-star" aria-hidden="true"></i><span>CORE rankings</span></a>
+                <a href="/universities"><i class="fa-solid fa-building-columns" aria-hidden="true"></i><span>Universities</span></a>
+            </div>
+        </nav>
+    </section>
+</th:block>
+
 <!-- Navigation Bar Fragment -->
 <th:block th:fragment="navbar(pageTitle)">
     <header class="app-shell-header">

@@ -8,7 +8,9 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.MvcExceptionHandler;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
@@ -26,7 +28,9 @@ class MvcExceptionHandlerTest {
         mockMvc.perform(get("/test/mvc/illegal"))
                 .andExpect(status().isBadRequest())
                 .andExpect(view().name("errors/error"))
-                .andExpect(model().attribute("error", "400"));
+                .andExpect(model().attribute("error", "400"))
+                .andExpect(model().attribute("errorStatus", "400"))
+                .andExpect(model().attribute("errorTitle", "Request could not be processed"));
     }
 
     @Test
@@ -34,6 +38,9 @@ class MvcExceptionHandlerTest {
         mockMvc.perform(get("/test/mvc/runtime"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(view().name("errors/error-500"))
-                .andExpect(model().attribute("error", "500"));
+                .andExpect(model().attribute("error", "500"))
+                .andExpect(model().attribute("errorStatus", "500"))
+                .andExpect(model().attributeExists("errorTimestamp"))
+                .andExpect(content().string(containsString("Timestamp")));
     }
 }

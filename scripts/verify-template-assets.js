@@ -9,7 +9,8 @@ const roots = [
   'src/main/resources/templates/core',
   'src/main/resources/templates/universities',
   'src/main/resources/templates/events',
-  'src/main/resources/templates/shared'
+  'src/main/resources/templates/shared',
+  'src/main/resources/templates/errors'
 ];
 
 const allowlistedExternalAssetReferences = new Map([

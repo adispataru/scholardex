@@ -542,6 +542,32 @@ Done history moved to `TASKS-done.md`.
   - Role elevation remains local/admin-managed; Keycloak roles are not mapped to `PLATFORM_ADMIN` or `SUPERVISOR` in this task.
   - Forgot password and self-registration remain out of scope.
 
+- [x] `H43` Error Pages Option B — contextual recovery surfaces. *(completed 2026-04-26)*
+  Goal: modernize `403`, `404`, `500`, generic error, and shared not-found pages per `docs/tasks/active/ux-redesign-plan-after-tier1.md` §2.5 Option B.
+  Deliverable: theme-aware error pages that keep authenticated users inside the ScholarDex app shell, provide clear recovery actions, and show context-specific guidance for permission, not-found, and server-error cases.
+  Design reference: `docs/tasks/active/ux-redesign-plan-after-tier1.md` §2.5 Option B; `docs/ux-design-guide.md` §7.6.
+  Exit criteria: authenticated errors render with sidebar/navbar/footer; unauthenticated errors render as a standalone ScholarDex-centered surface; no error template loads Bootstrap/CDN scripts; 403 explains permission recovery, 404 offers search/browse suggestions, 500 includes retry action plus timestamp/request context where available; `shared/not-found.html` uses the same visual/error pattern; targeted MVC/template/asset checks pass.
+
+  Subtasks:
+
+  - [x] `H43.1` **Shared error-page presentation baseline.**
+    Handover: Added a reusable error-page fragment and bundled error-page CSS/JS through the existing `/assets/app.*` pipeline; legacy Bootstrap/CDN and inline error styling were removed from runtime error templates.
+
+  - [x] `H43.2` **Authenticated shell vs standalone rendering.**
+    Handover: Error pages now render inside the app shell when a local `User` principal is present, and render as a standalone ScholarDex surface for unauthenticated sessions.
+
+  - [x] `H43.3` **Context-specific Option B content.**
+    Handover: 403 now gives permission guidance, 404 provides browse/search recovery links, 500 shows retry plus timestamp/request context, and generic errors use safe fallback copy.
+
+  - [x] `H43.4` **Controller model metadata.**
+    Handover: `CustomErrorController` and `MvcExceptionHandler` now populate consistent error metadata through `ErrorPageModelFactory`.
+
+  - [x] `H43.5` **Shared not-found alignment.**
+    Handover: `shared/not-found.html` now uses the shared error-page pattern for missing entity/detail flows.
+
+  - [x] `H43.6` **Regression and guardrail coverage.**
+    Handover: Focused MVC tests cover error routing, model metadata, authenticated shell rendering, standalone unauthenticated rendering, and exception-handler metadata; `verify-template-assets` now includes `templates/errors`.
+
 - [x] `H38` User-Reviewed Publication Authorship Overlay. *(completed 2026-04-19)*
   Goal: let researchers confirm or reject authorship for imported publications so noisy Scopus links stop polluting reports, indicators, citations, and workspace views without deleting source data.
   Deliverable: a local authorship-decision layer on top of canonical imported publication links, with review UI, suspicious-publication triage, and reporting/read-model filtering that prefers user decisions over raw source linkage.

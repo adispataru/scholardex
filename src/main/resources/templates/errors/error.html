@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Error</title>
+    <title th:text="${errorTitle} ?: 'Error'">Error</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
 </head>
-<body>
-<h1 th:text="'Error ' + (${error} != null ? ${error} : 'unknown')">Error</h1>
-<p>Unexpected request error.</p>
+<body id="page-top" class="app-error-body">
+<th:block th:replace="~{fragments :: error-page}"></th:block>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
 </body>
 </html>

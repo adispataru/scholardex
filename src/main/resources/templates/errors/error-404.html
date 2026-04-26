@@ -1,45 +1,13 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Page Not Found</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <style>
-        body {
-            padding-top: 50px;
-            padding-bottom: 50px;
-        }
-        .error-container {
-            text-align: center;
-        }
-        .error-container h1 {
-            font-size: 180px;
-            line-height: 180px;
-            font-weight: bold;
-        }
-        .error-container p {
-            font-size: 24px;
-        }
-        .img-fluid {
-            max-width: 70%;
-            height: auto;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${errorTitle} ?: 'Page not found'">Page not found</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
 </head>
-<body>
-<div class="container error-container">
-    <h2>404</h2>
-    <p class="lead">Oops! It looks like you're lost.</p>
-    <p>The page you are looking for is not available or doesn't exist.</p>
-    <img src="/images/404.webp" alt="Lost in space" class="img-fluid" />
-    <div class="mt-5">
-        <a href="/" class="btn btn-primary">Take Me Home</a>
-        <a href="javascript:history.back()" class="btn btn-secondary">Go Back</a>
-    </div>
-</div>
-
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.7/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<body id="page-top" class="app-error-body">
+<th:block th:replace="~{fragments :: error-page}"></th:block>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
 </body>
 </html>

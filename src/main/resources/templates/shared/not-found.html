@@ -1,50 +1,27 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Rankings</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page not found</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <style>
-        .card-spacing {
-            margin-bottom: 20px;
-        }
-    </style>
 </head>
-<body id="page-top">
-
-<div id="wrapper">
-    <!-- Sidebar -->
-    <div th:replace="~{fragments :: sidebar('scholardex-forums')}"></div>
-
-    <!-- Content Wrapper -->
-    <div id="content-wrapper" class="d-flex flex-column">
-        <!-- Main Content -->
-        <div id="content">
-            <div th:replace="~{fragments :: navbar('Not Found')}"></div>
-            <div class="container-fluid app-page-content">
-                <!--                <p class="mb-4">This page displays the rankings of journals.</p>-->
-
-                <div class="card shadow mb-4 card-spacing">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Not found</h6>
-                    </div>
-                    <div class="card-body">
-                        <p>
-                            <span>Forum not found </span>
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <div th:replace="~{fragments :: app-footer}"></div>
-        </div>
-    </div>
-
-    <a class="scroll-to-top rounded" href="#page-top">
-        <i class="fa-solid fa-angle-up"></i>
-    </a>
-</div>
+<body id="page-top" class="app-error-body"
+      th:with="errorStatus='404',
+               errorTitle='Page not found',
+               errorLead='The requested record or page could not be found.',
+               errorMessage='It may have moved, been removed, or the address may be mistyped. Try searching from the forum directory or browse another ranking area.',
+               errorIcon='fa-solid fa-magnifying-glass',
+               errorTone='primary',
+               errorPath=${#httpServletRequest != null ? #httpServletRequest.requestURI : ''},
+               errorTimestamp='',
+               errorRequestId='',
+               errorShowRetry=false,
+               errorShowBrowseLinks=true,
+               errorActiveSection='scholardex-forums',
+               errorPrimaryHref='/forums',
+               errorPrimaryLabel='Browse forums'">
+<th:block th:replace="~{fragments :: error-page}"></th:block>
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
-
 </body>
 </html>

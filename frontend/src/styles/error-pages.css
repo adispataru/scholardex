@@ -1,0 +1,251 @@
+.app-error-body {
+  min-height: 100vh;
+}
+
+.app-error-page {
+  display: grid;
+  place-items: center;
+  flex: 1 0 auto;
+  padding-top: 1.5rem;
+}
+
+.app-error-standalone {
+  min-height: 100vh;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 1.5rem;
+  padding: 2rem;
+  background:
+    radial-gradient(circle at 18% 16%, color-mix(in srgb, var(--app-color-primary) 14%, transparent), transparent 28rem),
+    radial-gradient(circle at 84% 18%, color-mix(in srgb, var(--app-color-warning) 10%, transparent), transparent 26rem),
+    var(--app-color-content-bg);
+}
+
+.app-error-standalone__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: .75rem;
+  color: var(--app-color-text-strong);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.app-error-standalone__brand-mark {
+  width: 2.75rem;
+  height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: .9rem;
+  background: var(--app-color-card-bg);
+  box-shadow: var(--app-shadow-card);
+}
+
+.app-error-standalone__brand-mark img {
+  width: 2rem;
+  height: 2rem;
+  object-fit: contain;
+}
+
+.app-error-surface {
+  width: min(44rem, 100%);
+  display: grid;
+  justify-items: center;
+  gap: .85rem;
+  padding: 2.5rem;
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-shell);
+  background: color-mix(in srgb, var(--app-color-card-bg) 94%, transparent);
+  box-shadow: var(--app-shadow-card);
+  text-align: center;
+}
+
+.app-error-surface__icon {
+  width: 4rem;
+  height: 4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1.15rem;
+  background: var(--app-color-primary-soft);
+  color: var(--app-color-primary);
+  font-size: 1.45rem;
+}
+
+.app-error-surface--warning .app-error-surface__icon {
+  background: color-mix(in srgb, var(--app-color-warning) 15%, transparent);
+  color: var(--app-color-warning);
+}
+
+.app-error-surface--danger .app-error-surface__icon {
+  background: color-mix(in srgb, var(--app-color-danger) 14%, transparent);
+  color: var(--app-color-danger);
+}
+
+.app-error-surface__status {
+  margin: .25rem 0 0;
+  color: var(--app-color-primary);
+  font-size: .76rem;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.app-error-surface__title {
+  max-width: 34rem;
+  margin: 0;
+  color: var(--app-color-text-strong);
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.app-error-surface__lead,
+.app-error-surface__message {
+  max-width: 34rem;
+  margin: 0;
+}
+
+.app-error-surface__lead {
+  color: var(--app-color-text-strong);
+  font-size: 1.05rem;
+  font-weight: 650;
+}
+
+.app-error-surface__message {
+  color: var(--app-color-text-muted);
+  font-size: .95rem;
+}
+
+.app-error-meta {
+  width: 100%;
+  display: grid;
+  gap: .5rem;
+  margin: .5rem 0 0;
+  padding: .9rem 1rem;
+  border: 1px solid var(--app-color-border);
+  border-radius: .9rem;
+  background: var(--app-color-card-bg-muted);
+  text-align: left;
+}
+
+.app-error-meta:empty {
+  display: none;
+}
+
+.app-error-meta div {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  gap: .75rem;
+  align-items: start;
+}
+
+.app-error-meta dt,
+.app-error-meta dd {
+  margin: 0;
+  font-size: .84rem;
+}
+
+.app-error-meta dt {
+  color: var(--app-color-text-muted);
+  font-weight: 750;
+}
+
+.app-error-meta dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--app-color-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.app-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .75rem;
+  margin-top: .5rem;
+}
+
+.app-error-actions__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  min-height: 2.65rem;
+  white-space: normal;
+}
+
+.app-error-browse {
+  width: 100%;
+  display: grid;
+  gap: .75rem;
+  margin-top: .75rem;
+}
+
+.app-error-browse__title {
+  margin: 0;
+  color: var(--app-color-text-strong);
+  font-size: .9rem;
+  font-weight: 750;
+}
+
+.app-error-browse__links {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .65rem;
+}
+
+.app-error-browse__links a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  min-height: 3rem;
+  padding: .65rem .75rem;
+  border: 1px solid var(--app-color-border);
+  border-radius: .8rem;
+  background: var(--app-color-card-bg-muted);
+  color: var(--app-color-text);
+  font-size: .86rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.app-error-browse__links a:hover,
+.app-error-browse__links a:focus {
+  border-color: color-mix(in srgb, var(--app-color-primary) 36%, var(--app-color-border));
+  color: var(--app-color-primary);
+  text-decoration: none;
+}
+
+@media (max-width: 767.98px) {
+  .app-error-standalone {
+    padding: 1rem;
+  }
+
+  .app-error-surface {
+    padding: 1.5rem;
+  }
+
+  .app-error-surface__title {
+    font-size: 1.55rem;
+  }
+
+  .app-error-meta div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: .15rem;
+  }
+
+  .app-error-actions {
+    width: 100%;
+  }
+
+  .app-error-actions__button {
+    width: 100%;
+  }
+
+  .app-error-browse__links {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
