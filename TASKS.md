@@ -480,7 +480,67 @@ Done history moved to `TASKS-done.md`.
   - All verify scripts pass; compile is clean; no regressions in existing tests (pre-existing 14 failures unrelated to this task).
   Reference: `docs/tasks/active/ux-redesign-plan-after-tier1.md` §2.1, Phase A.
 
+- [x] `H42` Login Page & Single-Keycloak Institutional Sign-In. *(completed 2026-04-26)*
+  Goal: modernize the login page and add one institutional SSO path through Keycloak while preserving the existing local account login contract. The app talks to a single configured Keycloak realm/client; Keycloak handles institutional identity selection and federation outside this app.
+  Design reference: `docs/tasks/active/ux-redesign-plan-after-tier1.md` §2.4, scoped as Option C-lite: Option B visual treatment plus SSO area, without in-app institution selector, register flow, or animated forgot/register transitions.
+  UX guide reference: `docs/ux-design-guide.md` §1.1, §1.2, §4.1, §6.2, §6.3, §6.6, §8.1.
+  Exit criteria: `/login` presents a polished ScholarDex login surface with local email/password form and a clear institutional sign-in action; Spring form-login still posts to `/login` with `username` and `password`; institutional sign-in redirects to `/oauth2/authorization/keycloak`; successful Keycloak login creates or resolves a local `User` principal so existing controllers continue to see `authentication.getPrincipal() instanceof User`; first-time Keycloak users are auto-created as `RESEARCHER` accounts with no usable local password; existing local users keep their locally assigned roles and profiles; unauthenticated MVC routes still redirect to `/login`; API unauthenticated behavior remains JSON 401; logout works for both login types; all work passes `./gradlew compileJava`, targeted auth/security contract tests, `npm run build`, `npm run verify-assets`, and `npm run verify-template-assets`.
 
+  Subtasks:
+
+  - [x] `H42.1` **Login page visual refresh and dual-login layout.** *(completed 2026-04-26)*
+    Rework `login.html` into a responsive ScholarDex login surface: local account form, institutional sign-in area, branded wordmark/header, inline error/logout states, light/dark support, and concise onboarding/help copy. Preserve `name="username"`, `name="password"`, `autocomplete="username"`, `autocomplete="current-password"`, `th:action="@{/login}"`, CSRF behavior, and local form submission.
+    Exit criteria: local login contract tests still pass; login page includes `/oauth2/authorization/keycloak`; responsive layout collapses cleanly on mobile; no external runtime CSS dependency is introduced beyond existing asset patterns.
+    Handover:
+    - `login.html` now uses the bundled `core-styles` / `core-scripts` fragments instead of the Bootstrap CDN and inline styles.
+    - The page renders a standalone two-panel ScholarDex login surface with local email/password login and an institutional sign-in CTA to `/oauth2/authorization/keycloak`.
+    - `frontend/src/styles/login.css` contains the responsive light/dark layout using existing `--app-*` design tokens and is imported by `frontend/src/app.js`.
+    - `AuthViewControllerSecurityContractTest` now locks the local form contract, the Keycloak link, and the no-CDN asset contract.
+    - Verification passed: `./gradlew test --tests "*AuthViewControllerSecurityContractTest" -q`, `npm run build`, `npm run verify-assets`, `npm run verify-template-assets`.
+
+  - [x] `H42.2` **Keycloak OAuth2 client configuration.** *(completed 2026-04-26)*
+    Add Spring OAuth2 client support for one registration id, `keycloak`, configured only through environment-backed properties: issuer URI, client id, client secret, and scopes. Keep local form login enabled.
+    Exit criteria: app starts without Keycloak config when SSO is disabled or absent; with config present, `/oauth2/authorization/keycloak` initiates OAuth2 login; existing form login still works.
+    Handover:
+    - Added `spring-boot-starter-oauth2-client`.
+    - `KeycloakOAuth2ClientConfig` conditionally creates an in-memory `keycloak` `ClientRegistrationRepository` only when `KEYCLOAK_ISSUER_URI` and `KEYCLOAK_CLIENT_ID` are non-blank, using OIDC discovery and redirect URI `{baseUrl}/login/oauth2/code/{registrationId}`.
+    - Keycloak settings are env-backed through `scholardex.oauth2.keycloak.*` properties instead of active blank `spring.security.oauth2.client.*` defaults, because Boot validates blank OAuth registrations at startup.
+    - `WebSecurityConfig` permits `/oauth2/**` and `/login/oauth2/**`, and enables `oauth2Login(loginPage("/login"))` only when a `ClientRegistrationRepository` bean exists; local form login/logout/API entry-point behavior is unchanged.
+    - `.env.example` documents `KEYCLOAK_ISSUER_URI`, `KEYCLOAK_CLIENT_ID`, `KEYCLOAK_CLIENT_SECRET`, and `KEYCLOAK_SCOPES`.
+    - Targeted coverage added in `AuthViewControllerOAuth2SecurityContractTest`; verification passed: `./gradlew test --tests "*AuthViewController*SecurityContractTest" -q`, `./gradlew compileJava`.
+
+  - [x] `H42.3` **Local user bridge for OIDC principals.** *(completed 2026-04-26)*
+    Add an OAuth2/OIDC success path that extracts verified email from Keycloak, resolves the local `User`, or auto-creates a new local `RESEARCHER` account with a generated unusable password. Replace or wrap the authenticated principal so downstream MVC/user controllers continue receiving the local `User` model.
+    Exit criteria: existing local users keep their roles/profile; new Keycloak users get only `RESEARCHER`; missing/blank/unverified email fails login with a safe `/login?error` redirect; locked local users cannot sign in through Keycloak.
+    Handover:
+    - `KeycloakOAuth2LoginSuccessHandler` now converts successful Keycloak OAuth2 logins into local `User` principals by requiring a verified email claim, normalizing it, resolving the local account, or provisioning a new `RESEARCHER` user with a generated password.
+    - Existing local users keep their stored roles/profile; locked users, missing email, blank email, and unverified email fail through `/login?error`.
+    - `WebSecurityConfig` wires the bridge as the OAuth2 success handler when OAuth2 login is enabled, while preserving local form login.
+    - Focused coverage added in `KeycloakOAuth2LoginSuccessHandlerTest`.
+
+  - [x] `H42.4` **Security contract updates.** *(completed 2026-04-26)*
+    Extend `WebSecurityConfig` to support both `formLogin` and `oauth2Login` on the same login page. Keep `/login`, static assets, health endpoints, and OAuth2 callback/authorization endpoints permitted as needed. Preserve current MVC redirect and API 401/403 handling.
+    Exit criteria: unauthenticated MVC pages redirect to `/login`; unauthenticated `/api/**` returns JSON auth errors; logout invalidates local session for both auth methods; no existing admin/researcher authorization rules are weakened.
+    Handover:
+    - Existing `WebSecurityConfig` behavior remains unchanged: local form login and conditional Keycloak OAuth2 login share `/login`, OAuth2 callback/authorization endpoints are permitted, and API/MVC exception handling remains split between JSON auth errors and MVC redirects.
+    - Contract tests now lock OAuth2 authorization redirect behavior, OAuth2 callback failure handling, POST-only logout, local form-login logout, and logout for the bridged Keycloak local `User` principal.
+    - Existing API and MVC security contracts cover JSON 401/403 behavior and unauthorized admin/MVC redirects.
+
+  - [x] `H42.5` **Auth regression tests and documentation notes.** *(completed 2026-04-26)*
+    Add focused tests for local login preservation, login page SSO link, OAuth2 user provisioning, existing-user role preservation, locked-user rejection, and unknown first-time Keycloak user auto-creation. Document required Keycloak env vars in the relevant project config/docs surface.
+    Exit criteria: targeted auth/security tests pass; compile and frontend verification pass; `.env.example` or equivalent config guidance includes the Keycloak variables without real secrets.
+    Handover:
+    - `AuthViewControllerSecurityContractTest` covers local form-login preservation, login-page Keycloak CTA, bundled login assets, and logout contracts.
+    - `KeycloakOAuth2LoginSuccessHandlerTest` covers existing-user role/profile preservation, new verified-email `RESEARCHER` provisioning, generated local password secret use, email normalization, invalid email claims, locked-user rejection, and local `User` principal bridging.
+    - `.env.example` and `docs/authentication.md` document the Keycloak environment variables, redirect URI, verified-email requirement, local-user bridge, ignored Keycloak roles/groups, and app-only logout behavior without real secrets.
+    - Verification passed: `./gradlew test --tests "*Keycloak*OAuth2*" -q`, `./gradlew test --tests "*AuthViewController*SecurityContractTest" -q`, `./gradlew compileJava`, `./gradlew test -q`, `npm run verify-assets`, `npm run verify-template-assets`.
+
+  Assumptions:
+  - Single Keycloak registration id is `keycloak`.
+  - Keycloak is the only institutional auth integration; no in-app institution selector.
+  - First-time Keycloak users are auto-created as local `RESEARCHER` users.
+  - Role elevation remains local/admin-managed; Keycloak roles are not mapped to `PLATFORM_ADMIN` or `SUPERVISOR` in this task.
+  - Forgot password and self-registration remain out of scope.
 
 - [x] `H38` User-Reviewed Publication Authorship Overlay. *(completed 2026-04-19)*
   Goal: let researchers confirm or reject authorship for imported publications so noisy Scopus links stop polluting reports, indicators, citations, and workspace views without deleting source data.

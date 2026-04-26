@@ -14,6 +14,7 @@ This directory now separates durable project docs from task-specific history.
 ## Project Docs
 
 - `docs/architecture.md`
+- `docs/authentication.md`
 - `docs/contracts.md`
 - `docs/workflows.md`
 - `docs/operational-playbook.md`

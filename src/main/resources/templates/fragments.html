@@ -75,6 +75,12 @@
                         </a>
                     </div>
                 </div>
+                <form class="app-shell-logout" th:action="@{/logout}" method="post">
+                    <button type="submit" class="app-shell-logout__button" aria-label="Log out">
+                        <span class="app-shell-logout__label">Log out</span>
+                        <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+                    </button>
+                </form>
             </div>
         </div>
 

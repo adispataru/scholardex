@@ -30,6 +30,8 @@ import ro.uvt.pokedex.core.service.application.GroupManagementFacade;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.WosBigBangMigrationService;
 import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
+import ro.uvt.pokedex.core.service.application.model.AdminDashboardViewModel;
+import ro.uvt.pokedex.core.service.application.model.AdminOperationStatus;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.model.MigrationStepResult;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsExportViewModel;
@@ -77,6 +79,33 @@ class AdminViewControllerContractTest {
     private AdminDashboardService adminDashboardService;
     @MockitoBean
     private GroupManagementFacade groupManagementFacade;
+
+    @Test
+    void sharedNavbarRendersPostLogoutControl() throws Exception {
+        when(adminDashboardService.buildDashboard()).thenReturn(new AdminDashboardViewModel(
+                0,
+                0,
+                0,
+                0,
+                0,
+                AdminOperationStatus.neverRun(),
+                AdminOperationStatus.neverRun(),
+                AdminOperationStatus.neverRun(),
+                List.of(),
+                List.of()
+        ));
+
+        mockMvc.perform(get("/admin").with(authenticatedUser("admin@uvt.ro")))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.containsString("class=\"app-shell-logout\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.containsString("action=\"/logout\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.containsString("method=\"post\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .string(org.hamcrest.Matchers.containsString("Log out")));
+    }
 
     @Test
     void rebuildWosProjectionsRedirectsAndDelegates() throws Exception {

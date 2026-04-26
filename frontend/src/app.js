@@ -2,6 +2,7 @@ import $ from 'jquery';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import 'datatables.net-bs5/css/dataTables.bootstrap5.min.css';
 import './styles/foundation.css';
+import './styles/login.css';
 import './styles/shared-header.css';
 import './styles/shared-sidebar.css';
 import './styles/shared-table.css';

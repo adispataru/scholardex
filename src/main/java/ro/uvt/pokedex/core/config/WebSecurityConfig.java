@@ -8,6 +8,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -24,6 +25,7 @@ import ro.uvt.pokedex.core.handlers.CustomAccessDeniedHandler;
 import ro.uvt.pokedex.core.service.CustomUserDetailsService;
 
 import java.util.LinkedHashMap;
+import java.util.Optional;
 
 @Configuration
 @EnableWebSecurity
@@ -31,9 +33,20 @@ import java.util.LinkedHashMap;
 public class WebSecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
+    private final Optional<ClientRegistrationRepository> clientRegistrationRepository;
+    private final Optional<KeycloakOAuth2LoginSuccessHandler> keycloakOAuth2LoginSuccessHandler;
+    private final Optional<KeycloakOAuth2LoginFailureHandler> keycloakOAuth2LoginFailureHandler;
 
-    public WebSecurityConfig(CustomUserDetailsService userDetailsService) {
+    public WebSecurityConfig(
+            CustomUserDetailsService userDetailsService,
+            Optional<ClientRegistrationRepository> clientRegistrationRepository,
+            Optional<KeycloakOAuth2LoginSuccessHandler> keycloakOAuth2LoginSuccessHandler,
+            Optional<KeycloakOAuth2LoginFailureHandler> keycloakOAuth2LoginFailureHandler
+    ) {
         this.userDetailsService = userDetailsService;
+        this.clientRegistrationRepository = clientRegistrationRepository;
+        this.keycloakOAuth2LoginSuccessHandler = keycloakOAuth2LoginSuccessHandler;
+        this.keycloakOAuth2LoginFailureHandler = keycloakOAuth2LoginFailureHandler;
     }
 
     @Bean
@@ -56,7 +69,9 @@ public class WebSecurityConfig {
                             "/webjars/**",
                             "/assets/**",
                             "/favicon.ico",
-                            "/.well-known/**"
+                            "/.well-known/**",
+                            "/oauth2/**",
+                            "/login/oauth2/**"
                     ).permitAll();
                     ahr.requestMatchers("/actuator/**").hasAuthority("PLATFORM_ADMIN");
                     ahr.requestMatchers("/forums/**", "/wos/**", "/core/**", "/universities/**", "/events/**").authenticated();
@@ -84,6 +99,14 @@ public class WebSecurityConfig {
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID"))
                 .httpBasic(AbstractHttpConfigurer::disable);
+
+        clientRegistrationRepository.ifPresent(repository ->
+                http.oauth2Login(oauth2 -> {
+                    oauth2.loginPage("/login")
+                            .failureUrl("/login?error");
+                    keycloakOAuth2LoginSuccessHandler.ifPresent(oauth2::successHandler);
+                    keycloakOAuth2LoginFailureHandler.ifPresent(oauth2::failureHandler);
+                }));
 
         return http.build();
     }
@@ -137,7 +160,7 @@ public class WebSecurityConfig {
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
+    public static PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 }

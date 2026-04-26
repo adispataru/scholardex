@@ -3,47 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <style>
-        body {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
-        }
-        .login-card {
-            width: 100%;
-            max-width: 420px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            border-radius: 10px;
-            border: 0;
-        }
-        .card-body {
-            padding: 2rem;
-        }
-    </style>
+    <title>Sign in | ScholarDex</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
 </head>
-<body>
-<div class="card login-card">
-    <div class="card-body">
-        <h4 class="mb-4">Sign In</h4>
-
-        <div th:if="${param.error}" class="alert alert-danger" role="alert">
-            Invalid email or password.
+<body class="app-login-page">
+<main class="app-login" aria-labelledby="login-title">
+    <section class="app-login__welcome" aria-labelledby="login-brand-title">
+        <div class="app-login__brand">
+            <span class="app-login__brand-mark" aria-hidden="true">SD</span>
+            <div>
+                <p class="app-login__eyebrow">ScholarDex</p>
+                <h1 id="login-brand-title" class="app-login__brand-title">Research reporting workspace</h1>
+            </div>
         </div>
-        <div th:if="${param.logout}" class="alert alert-success" role="alert">
-            You have been logged out.
+
+        <p class="app-login__intro">
+            Manage publications, activities, evaluations, and institutional reporting from one secure account.
+        </p>
+
+        <ul class="app-login__trust-list" aria-label="ScholarDex account capabilities">
+            <li>
+                <i class="fa-solid fa-building-columns" aria-hidden="true"></i>
+                <span>Institutional sign-in is handled by Keycloak.</span>
+            </li>
+            <li>
+                <i class="fa-solid fa-user-shield" aria-hidden="true"></i>
+                <span>Local accounts remain available for platform-managed access.</span>
+            </li>
+            <li>
+                <i class="fa-solid fa-chart-line" aria-hidden="true"></i>
+                <span>Reporting data stays tied to your ScholarDex profile.</span>
+            </li>
+        </ul>
+    </section>
+
+    <section class="app-login__panel" aria-labelledby="login-title">
+        <div class="app-login__panel-header">
+            <p class="app-login__eyebrow">Welcome back</p>
+            <h2 id="login-title" class="app-login__title">Sign in</h2>
+            <p class="app-login__subtitle">Use your local ScholarDex account or continue through your institution.</p>
         </div>
 
-        <form th:action="@{/login}" method="post">
-            <div class="form-group">
-                <label for="username">Email</label>
+        <div th:if="${param.error}" class="app-login-alert app-login-alert--danger" role="alert">
+            <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+            <span>Invalid email or password.</span>
+        </div>
+        <div th:if="${param.logout}" class="app-login-alert app-login-alert--success" role="alert">
+            <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+            <span>You have been logged out.</span>
+        </div>
+
+        <form class="app-login-form" th:action="@{/login}" method="post">
+            <div class="app-login-field">
+                <label class="app-login-field__label" for="username">Email</label>
                 <input id="username"
                        name="username"
                        type="email"
-                       class="form-control"
+                       class="app-login-field__control"
                        autocomplete="username"
                        inputmode="email"
                        autocapitalize="none"
@@ -53,19 +69,35 @@
                        autofocus>
             </div>
 
-            <div class="form-group">
-                <label for="password">Password</label>
+            <div class="app-login-field">
+                <label class="app-login-field__label" for="password">Password</label>
                 <input id="password"
                        name="password"
                        type="password"
-                       class="form-control"
+                       class="app-login-field__control"
                        autocomplete="current-password"
                        required>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-block">Login</button>
+            <button type="submit" class="app-login__primary">Sign in with local account</button>
         </form>
-    </div>
-</div>
+
+        <div class="app-login-divider" aria-hidden="true">
+            <span>or</span>
+        </div>
+
+        <div class="app-login-sso" aria-labelledby="institutional-login-title">
+            <h3 id="institutional-login-title" class="app-login-sso__title">Institutional account</h3>
+            <p class="app-login-sso__body">
+                Continue to Keycloak for institutional authentication. ScholarDex will use the account returned by your institution.
+            </p>
+            <a class="app-login__secondary" th:href="@{/oauth2/authorization/keycloak}">
+                <i class="fa-solid fa-building-columns" aria-hidden="true"></i>
+                <span>Continue with institutional account</span>
+            </a>
+        </div>
+    </section>
+</main>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
 </body>
 </html>
