@@ -282,7 +282,6 @@ class PublicationAuthorshipDecisionServiceTest {
     private User user(String email, String researcherId, String primaryAuthorId) {
         User user = new User();
         user.setEmail(email);
-        user.setResearcherId(researcherId);
         User.ResearcherProfile profile = new User.ResearcherProfile();
         profile.setFirstName("Ada");
         profile.setLastName("Lovelace");

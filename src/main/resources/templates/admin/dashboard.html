@@ -22,49 +22,281 @@
             <div class="container-fluid app-page-content">
                 <div class="app-dashboard">
                     <div class="app-page-toolbar">
-                        <p class="app-dashboard__intro">Use this page as the starting point for operational diagnostics, maintenance follow-up, and quick access to admin tools.</p>
+                        <p class="app-dashboard__intro">Operations center — live health metrics, content volume, and recent system activity at a glance.</p>
                     </div>
 
+                    <!-- Degraded-state banner (shown only when some sections failed to load) -->
+                    <div class="app-admin-degraded-banner"
+                         th:if="${dashboard != null and dashboard.hasErrors()}">
+                        <span class="app-admin-degraded-banner__icon" aria-hidden="true">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </span>
+                        <div class="app-admin-degraded-banner__body">
+                            <p class="app-admin-degraded-banner__title">Some metrics could not be loaded</p>
+                            <p class="app-admin-degraded-banner__detail"
+                               th:text="'Affected sections: ' + ${#strings.listJoin(dashboard.aggregationErrors, ', ')}">
+                                Affected sections: …
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Quick-links toolbar -->
+                    <nav class="app-admin-quicklinks" aria-label="Admin quick links">
+                        <a class="app-admin-quicklinks__btn" th:href="@{/admin/conflicts}">
+                            <i class="fa-solid fa-gavel" aria-hidden="true"></i>Conflicts queue
+                        </a>
+                        <a class="app-admin-quicklinks__btn" th:href="@{/admin/researchers}">
+                            <i class="fa-solid fa-users" aria-hidden="true"></i>Researchers
+                        </a>
+                        <a class="app-admin-quicklinks__btn" th:href="@{/admin/scholardex/forums}">
+                            <i class="fa-solid fa-book-open" aria-hidden="true"></i>Forums catalog
+                        </a>
+                        <a class="app-admin-quicklinks__btn" th:href="@{/admin/user-defined-triage}">
+                            <i class="fa-solid fa-inbox" aria-hidden="true"></i>Data triage
+                        </a>
+                        <a class="app-admin-quicklinks__btn" th:href="@{/admin/source-links}">
+                            <i class="fa-solid fa-link" aria-hidden="true"></i>Source links
+                        </a>
+                    </nav>
+
+                    <!-- Health metric stat cards -->
                     <div class="app-summary-grid">
-                        <div class="app-summary-card">
-                            <p class="app-summary-card__label">Admin Entry</p>
-                            <p class="app-summary-card__value">Ready</p>
-                            <p class="app-summary-card__meta">The admin landing page is ready for daily operational work.</p>
-                        </div>
-                        <div class="app-summary-card app-summary-card--warning">
-                            <p class="app-summary-card__label">Operational Focus</p>
-                            <p class="app-summary-card__value">Diagnostics</p>
-                            <p class="app-summary-card__meta">Conflicts, source-link health, and enrichment tasks remain the primary operational focus here.</p>
-                        </div>
-                        <div class="app-summary-card app-summary-card--success">
-                            <p class="app-summary-card__label">Quick Access</p>
-                            <p class="app-summary-card__value">Live</p>
-                            <p class="app-summary-card__meta">Jump directly into the highest-signal admin operational pages from here.</p>
-                        </div>
-                    </div>
 
-                    <div class="app-attention-panel">
-                        <h2 class="app-attention-panel__title">Use the dashboard for orientation, not bulk maintenance</h2>
-                        <p class="app-attention-panel__body">This page should surface the right operational entry points quickly. Detailed filtering, destructive actions, and queue handling remain inside the destination admin pages linked below.</p>
-                    </div>
+                        <!-- Open conflicts -->
+                        <a class="app-summary-card app-summary-card--link"
+                           th:href="@{/admin/conflicts}"
+                           th:classappend="${dashboard != null and dashboard.openConflictCount() > 0} ? 'app-summary-card--danger' : 'app-summary-card--success'"
+                           th:attr="aria-label=${dashboard != null} ? 'Open conflicts: ' + ${dashboard.openConflictCount()} : 'Open conflicts: unavailable'">
+                            <p class="app-summary-card__label">Open conflicts</p>
+                            <p class="app-summary-card__value"
+                               th:text="${dashboard != null} ? ${dashboard.openConflictCount()} : '—'">—</p>
+                            <p class="app-summary-card__meta"
+                               th:text="${dashboard != null and dashboard.openConflictCount() > 0} ? 'Requires attention' : 'No open conflicts'">—</p>
+                        </a>
 
+                        <!-- Pending triage -->
+                        <a class="app-summary-card app-summary-card--link"
+                           th:href="@{/admin/user-defined-triage}"
+                           th:classappend="${dashboard != null and dashboard.pendingTriageCount() > 0} ? 'app-summary-card--warning' : ''"
+                           th:attr="aria-label=${dashboard != null} ? 'Pending triage: ' + ${dashboard.pendingTriageCount()} : 'Pending triage: unavailable'">
+                            <p class="app-summary-card__label">Pending triage</p>
+                            <p class="app-summary-card__value"
+                               th:text="${dashboard != null} ? ${dashboard.pendingTriageCount()} : '—'">—</p>
+                            <p class="app-summary-card__meta"
+                               th:text="${dashboard != null and dashboard.pendingTriageCount() > 0} ? 'User-defined items need review' : 'No pending triage items'">—</p>
+                        </a>
+
+                        <!-- Total researchers -->
+                        <a class="app-summary-card app-summary-card--link"
+                           th:href="@{/admin/researchers}"
+                           th:attr="aria-label=${dashboard != null} ? 'Researchers: ' + ${dashboard.totalResearchers()} : 'Researchers: unavailable'">
+                            <p class="app-summary-card__label">Researchers</p>
+                            <p class="app-summary-card__value"
+                               th:text="${dashboard != null} ? ${dashboard.totalResearchers()} : '—'">—</p>
+                            <p class="app-summary-card__meta">Registered researcher profiles</p>
+                        </a>
+
+                        <!-- Total publications -->
+                        <a class="app-summary-card app-summary-card--link"
+                           th:href="@{/admin/scholardex/publications}"
+                           th:attr="aria-label=${dashboard != null} ? 'Publications: ' + ${dashboard.totalPublications()} : 'Publications: unavailable'">
+                            <p class="app-summary-card__label">Publications</p>
+                            <p class="app-summary-card__value"
+                               th:text="${dashboard != null} ? ${dashboard.totalPublications()} : '—'">—</p>
+                            <p class="app-summary-card__meta">Canonical publication facts</p>
+                        </a>
+
+                        <!-- Recent sync status -->
+                        <a class="app-summary-card app-summary-card--link"
+                           th:href="@{/admin/incremental-updates}"
+                           aria-label="Recent sync status">
+                            <p class="app-summary-card__label">Last sync</p>
+
+                            <!-- outcome badge -->
+                            <p class="app-summary-card__value" th:if="${dashboard != null}">
+                                <span class="app-admin-status-badge"
+                                      th:with="outcome=${dashboard.incrementalUpdateStatus().outcome()}"
+                                      th:classappend="${outcome == 'SUCCESS' ? 'app-admin-status-badge--success'
+                                                    : (outcome == 'FAILED' ? 'app-admin-status-badge--danger'
+                                                    : (outcome == 'IN_PROGRESS' or outcome == 'PARTIAL' ? 'app-admin-status-badge--warning'
+                                                    : 'app-admin-status-badge--muted'))}"
+                                      th:text="${outcome == 'NEVER_RUN'} ? 'Never run' : ${outcome}">—</span>
+                            </p>
+                            <p class="app-summary-card__value" th:if="${dashboard == null}">—</p>
+
+                            <!-- relative timestamp (filled by admin-dashboard.js) -->
+                            <p class="app-summary-card__meta"
+                               th:if="${dashboard != null and dashboard.incrementalUpdateStatus().lastRunAt() != null}"
+                               th:attr="data-admin-ts=${dashboard.incrementalUpdateStatus().lastRunAt()}"
+                               th:text="${dashboard.incrementalUpdateStatus().lastRunAt()}">—</p>
+                            <p class="app-summary-card__meta"
+                               th:if="${dashboard == null or dashboard.incrementalUpdateStatus().lastRunAt() == null}">No run history</p>
+                        </a>
+
+                    </div><!-- /.app-summary-grid -->
+
+                    <!-- System Operations section -->
                     <div class="app-summary-panel">
                         <div class="app-summary-panel__header">
-                            <h2 class="app-summary-panel__title">Admin Quick Actions</h2>
+                            <h2 class="app-summary-panel__title">System operations</h2>
                         </div>
                         <div class="app-summary-panel__body">
-                            <div class="app-quick-actions">
-                                <a class="btn btn-outline-primary btn-sm" th:href="@{/admin/conflicts}">Open conflicts</a>
-                                <a class="btn btn-outline-primary btn-sm" th:href="@{/admin/source-links}">Review source links</a>
-                                <a class="btn btn-outline-primary btn-sm" th:href="@{/admin/incremental-updates}">Run incremental updates</a>
+                            <div class="app-admin-ops-grid">
+
+                                <!-- Initialization -->
+                                <div class="app-admin-ops-card">
+                                    <p class="app-admin-ops-card__title">Initialization</p>
+                                    <div class="app-admin-ops-card__status">
+                                        <span class="app-admin-status-badge app-admin-status-badge--muted"
+                                              aria-label="Initialization status: no run history">Never run</span>
+                                    </div>
+                                    <p class="app-admin-ops-card__meta">No persistent run history available for initialization.</p>
+                                    <div class="app-admin-ops-card__actions">
+                                        <a class="btn btn-outline-secondary btn-sm" th:href="@{/admin/initialization}">
+                                            <i class="fa-solid fa-arrow-right me-1" aria-hidden="true"></i>Go to initialization
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <!-- WoS Enrichment -->
+                                <div class="app-admin-ops-card">
+                                    <p class="app-admin-ops-card__title">WoS enrichment</p>
+                                    <div class="app-admin-ops-card__status">
+                                        <span id="wos-status-badge"
+                                              class="app-admin-status-badge"
+                                              th:with="s=${dashboard != null ? dashboard.wosEnrichmentStatus() : null}"
+                                              th:classappend="${s == null or s.outcome() == 'NEVER_RUN' ? 'app-admin-status-badge--muted'
+                                                            : (s.outcome() == 'SUCCESS' ? 'app-admin-status-badge--success'
+                                                            : (s.outcome() == 'FAILED' ? 'app-admin-status-badge--danger'
+                                                            : 'app-admin-status-badge--warning'))}"
+                                              th:text="${s == null or s.outcome() == 'NEVER_RUN' ? 'Never run'
+                                                      : (s.outcome() == 'SUCCESS' ? 'Success'
+                                                      : (s.outcome() == 'FAILED' ? 'Failed'
+                                                      : (s.outcome() == 'PARTIAL' ? 'Partial' : s.outcome())))}"
+                                              aria-label="WoS enrichment status">—</span>
+                                    </div>
+                                    <p class="app-admin-ops-card__meta"
+                                       th:if="${dashboard != null and dashboard.wosEnrichmentStatus().summary() != null}"
+                                       th:text="${dashboard.wosEnrichmentStatus().summary()}">—</p>
+                                    <p id="wos-run-meta"
+                                       class="app-admin-ops-card__meta"
+                                       th:if="${dashboard != null and dashboard.wosEnrichmentStatus().lastRunAt() != null}"
+                                       th:attr="data-admin-ts=${dashboard.wosEnrichmentStatus().lastRunAt()}"
+                                       th:text="${dashboard.wosEnrichmentStatus().lastRunAt()}">—</p>
+                                    <p class="app-admin-ops-card__meta"
+                                       th:if="${dashboard == null or dashboard.wosEnrichmentStatus().lastRunAt() == null}">No run history</p>
+                                    <div id="wos-run-feedback" class="app-admin-ops-card__feedback" hidden></div>
+                                    <div class="app-admin-ops-card__actions">
+                                        <button id="wos-run-btn" class="btn btn-primary btn-sm" type="button"
+                                                aria-label="Run WoS enrichment">
+                                            <i class="fa-solid fa-play me-1" aria-hidden="true"></i>Run now
+                                        </button>
+                                        <a class="btn btn-outline-secondary btn-sm" th:href="@{/admin/initialization/wos/enrichment}">
+                                            Details
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <!-- Incremental Updates -->
+                                <div class="app-admin-ops-card">
+                                    <p class="app-admin-ops-card__title">Incremental updates</p>
+                                    <div class="app-admin-ops-card__status">
+                                        <span class="app-admin-status-badge"
+                                              th:with="s=${dashboard != null ? dashboard.incrementalUpdateStatus() : null}"
+                                              th:classappend="${s == null or s.outcome() == 'NEVER_RUN' ? 'app-admin-status-badge--muted'
+                                                            : (s.outcome() == 'SUCCESS' ? 'app-admin-status-badge--success'
+                                                            : (s.outcome() == 'FAILED' ? 'app-admin-status-badge--danger'
+                                                            : 'app-admin-status-badge--warning'))}"
+                                              th:text="${s == null or s.outcome() == 'NEVER_RUN' ? 'Never run'
+                                                      : (s.outcome() == 'SUCCESS' ? 'Success'
+                                                      : (s.outcome() == 'FAILED' ? 'Failed' : s.outcome()))}"
+                                              aria-label="Incremental update status">—</span>
+                                    </div>
+                                    <p class="app-admin-ops-card__meta"
+                                       th:if="${dashboard != null and dashboard.incrementalUpdateStatus().lastRunAt() != null}"
+                                       th:attr="data-admin-ts=${dashboard.incrementalUpdateStatus().lastRunAt()}"
+                                       th:text="${dashboard.incrementalUpdateStatus().lastRunAt()}">—</p>
+                                    <p class="app-admin-ops-card__meta"
+                                       th:if="${dashboard == null or dashboard.incrementalUpdateStatus().lastRunAt() == null}">No upload history</p>
+                                    <div class="app-admin-ops-card__actions">
+                                        <a class="btn btn-primary btn-sm" th:href="@{/admin/incremental-updates}">
+                                            <i class="fa-solid fa-upload me-1" aria-hidden="true"></i>Upload
+                                        </a>
+                                    </div>
+                                </div>
+
+                            </div><!-- /.app-admin-ops-grid -->
+                        </div>
+                    </div>
+
+                    <!-- WoS enrichment confirmation dialog -->
+                    <div id="admin-confirm-dialog" hidden>
+                        <div class="app-admin-confirm__overlay" role="dialog" aria-modal="true"
+                             aria-labelledby="admin-confirm-title">
+                            <div class="app-admin-confirm__dialog">
+                                <p id="admin-confirm-title" class="app-admin-confirm__title">Run WoS enrichment?</p>
+                                <p class="app-admin-confirm__body">This will run WoS category ranking enrichment against all known publications. The operation may take several minutes.</p>
+                                <div class="app-admin-confirm__actions">
+                                    <button id="admin-confirm-cancel" class="btn btn-outline-secondary btn-sm" type="button">Cancel</button>
+                                    <button id="admin-confirm-ok" class="btn btn-danger btn-sm" type="button">Run enrichment</button>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="app-dashboard-empty">
-                        <h2 class="app-dashboard-empty__title">Operational metrics will appear here</h2>
-                        <p class="app-dashboard-empty__body">Use the links above to reach detailed admin pages while this overview remains lightweight.</p>
+                    <!-- Recent activity feed -->
+                    <div class="app-summary-panel">
+                        <div class="app-summary-panel__header">
+                            <h2 class="app-summary-panel__title">Recent activity</h2>
+                        </div>
+                        <div class="app-summary-panel__body">
+
+                            <!-- Empty state -->
+                            <p class="app-admin-feed__empty"
+                               th:if="${dashboard == null or dashboard.recentActivity().isEmpty()}">
+                                No recent system activity.
+                            </p>
+
+                            <!-- Feed list -->
+                            <ul class="app-admin-feed"
+                                th:if="${dashboard != null and !dashboard.recentActivity().isEmpty()}"
+                                aria-label="Recent system activity">
+                                <li class="app-admin-feed__item"
+                                    th:each="event : ${dashboard.recentActivity()}">
+
+                                    <!-- Type icon -->
+                                    <span class="app-admin-feed__icon"
+                                          th:with="iconMod=${event.type() == 'WOS_ENRICHMENT' ? 'enrichment' : (event.type() == 'CONFLICT_RESOLUTION' ? 'conflict' : (event.type() == 'PUBLICATION_UPLOAD' ? 'upload' : 'sync'))}"
+                                          th:classappend="${'app-admin-feed__icon--' + iconMod}"
+                                          aria-hidden="true">
+                                        <i th:classappend="${event.type() == 'WOS_ENRICHMENT' ? 'fa-database' : (event.type() == 'CONFLICT_RESOLUTION' ? 'fa-gavel' : (event.type() == 'PUBLICATION_UPLOAD' ? 'fa-upload' : 'fa-rotate'))}"
+                                           class="fa-solid"></i>
+                                    </span>
+
+                                    <!-- Description + timestamp -->
+                                    <div class="app-admin-feed__body">
+                                        <p class="app-admin-feed__desc">
+                                            <a th:if="${event.link() != null}"
+                                               th:href="${event.link()}"
+                                               th:text="${event.description()}">—</a>
+                                            <span th:if="${event.link() == null}"
+                                                  th:text="${event.description()}">—</span>
+                                        </p>
+                                        <p class="app-admin-feed__ts"
+                                           th:if="${event.timestamp() != null}"
+                                           th:attr="data-admin-ts=${event.timestamp()}"
+                                           th:text="${event.timestamp()}">—</p>
+                                        <p class="app-admin-feed__ts"
+                                           th:if="${event.timestamp() == null}">Unknown time</p>
+                                    </div>
+
+                                </li>
+                            </ul>
+
+                        </div>
                     </div>
+
+
                 </div>
             </div>
             <!-- End of Main Content -->
@@ -85,6 +317,7 @@
 
 <!-- Bootstrap core JavaScript-->
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
+<script src="/js/admin-dashboard.js"></script>
 
 </body>
 </html>

@@ -53,7 +53,10 @@
                     <div class="app-table-section__surface">
                     <div class="app-table-section__header app-table-toolbar">
                         <h6 class="app-table-section__title">Detailed View of Authors</h6>
-                        <span id="admin-authors-total-info" class="app-table-toolbar__meta"></span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span id="admin-authors-total-info" class="app-table-toolbar__meta"></span>
+                            <div class="app-table-toolbar__actions" id="authors-toolbar-actions"></div>
+                        </div>
                     </div>
                     <div class="app-table-section__body">
                         <div id="admin-authors-loading" class="app-table-state app-table-state--info" role="status">Loading authors...</div>
@@ -61,11 +64,12 @@
                         <div id="admin-authors-empty" class="app-table-state app-table-state--warning d-none" role="status">No authors found for the current search.</div>
 
                         <div class="app-table-scroll">
-                            <table class="table table-bordered app-table" id="admin-authors-table" width="100%" cellspacing="0">
+                            <table class="table app-table" id="admin-authors-table" width="100%" cellspacing="0">
                                 <thead>
                                 <tr>
-                                    <th>Name</th>
-                                    <th>Affiliations</th>
+                                    <th data-col="name">Name</th>
+                                    <th data-col="affiliations">Affiliations</th>
+                                    <th data-col="actions">Actions</th>
                                 </tr>
                                 </thead>
                                 <tbody id="admin-authors-table-body"></tbody>

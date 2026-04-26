@@ -8,6 +8,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -23,15 +24,15 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.user.UserRole;
 import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
+import ro.uvt.pokedex.core.service.application.AdminDashboardService;
 import ro.uvt.pokedex.core.service.application.AdminInstitutionReportFacade;
+import ro.uvt.pokedex.core.service.application.GroupManagementFacade;
 import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
+import ro.uvt.pokedex.core.service.application.model.AdminDashboardViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsViewModel;
-import ro.uvt.pokedex.core.service.application.model.ScholardexCitationsView;
-import ro.uvt.pokedex.core.service.application.model.ScholardexPublicationSearchView;
 import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
-import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
 
 import java.io.IOException;
@@ -45,32 +46,50 @@ public class AdminViewController {
     private static final Logger log = LoggerFactory.getLogger(AdminViewController.class);
 
     private final UserService userService;
-    private final ResearcherService researcherService;
     private final AdminCatalogFacade adminCatalogFacade;
     private final AdminInstitutionReportFacade adminInstitutionReportFacade;
     private final RankingMaintenanceFacade rankingMaintenanceFacade;
+    private final AdminDashboardService adminDashboardService;
+    private final GroupManagementFacade groupManagementFacade;
     private final String Country = "Romania";
 
     @GetMapping()
     public String showDashboard(Model model) {
-
-        return "admin/dashboard"; // Returns the users.html template
+        AdminDashboardViewModel dashboard = adminDashboardService.buildDashboard();
+        model.addAttribute("dashboard", dashboard);
+        return "admin/dashboard";
     }
 
     @GetMapping("/users")
     public String showUsersPage(Model model) {
         List<User> users = userService.getAllUsers();
         model.addAttribute("users", users);
-        model.addAttribute("allRoles", Arrays.asList(UserRole.values())); // Adjust based on how you retrieve all roles
-
+        model.addAttribute("allRoles", Arrays.asList(UserRole.values()));
+        model.addAttribute("allGroups", groupManagementFacade.buildGroupListView().groups());
+        model.addAttribute("totalUsers", (long) users.size());
+        model.addAttribute("activeUsers", users.stream().filter(u -> !u.isLocked()).count());
+        model.addAttribute("usersWithoutProfile", users.stream().filter(u -> u.getResearcherProfile() == null).count());
         return "admin/users";
     }
 
+    @PostMapping("/users/bulk/assign-group")
+    public String bulkAssignGroup(
+            @RequestParam(value = "userId", required = false) List<String> userIds,
+            @RequestParam(required = false) String groupId,
+            RedirectAttributes redirectAttributes
+    ) {
+        if (userIds != null && !userIds.isEmpty() && groupId != null && !groupId.isBlank()) {
+            int added = groupManagementFacade.addMembersToGroup(groupId, userIds);
+            redirectAttributes.addFlashAttribute("bulkSuccess", "Added " + added + " user(s) to the group.");
+        } else {
+            redirectAttributes.addFlashAttribute("bulkError", "No users selected or no group specified.");
+        }
+        return "redirect:/admin/users";
+    }
+
     @GetMapping("/researchers")
-    public String showResearchersPage(Model model) {
-        List<ro.uvt.pokedex.core.model.Researcher> researchers = researcherService.findAllResearchers();
-        model.addAttribute("researchers", researchers);
-        return "admin/researchers";
+    public String showResearchersPage() {
+        return "redirect:/admin/users";
     }
 
     @GetMapping("/institutions")
@@ -99,8 +118,8 @@ public class AdminViewController {
         return "admin/edit-institutions";
     }
 
-    @GetMapping("/institutions/{id}/publications")
-    public String viewInstitutionPublication(@PathVariable String id, Model model) {
+    @GetMapping("/institutions/{id}")
+    public String viewInstitutionWorkspace(@PathVariable String id, Model model) {
         Optional<AdminInstitutionPublicationsViewModel> viewModel = adminInstitutionReportFacade.buildInstitutionPublicationsView(id);
         if (viewModel.isEmpty()) {
             return "redirect:/admin/institutions";
@@ -108,13 +127,16 @@ public class AdminViewController {
         AdminInstitutionPublicationsViewModel vm = viewModel.get();
         model.addAttribute("authorMap", vm.authorMap());
         model.addAttribute("publicationsByYear", vm.publicationsByYear());
-        model.addAttribute("publicationsCountByYear", vm.publicationsCountByYear());
         model.addAttribute("individualReports", vm.individualReports());
         model.addAttribute("forumMap", vm.forumMap());
         model.addAttribute("publications", vm.publications());
         model.addAttribute("institution", vm.institution());
-        model.addAttribute("publications", vm.publications());
-        return "admin/institution-publications";
+        return "admin/institution-workspace";
+    }
+
+    @GetMapping("/institutions/{id}/publications")
+    public String viewInstitutionPublication(@PathVariable String id) {
+        return "redirect:/admin/institutions/" + id + "#publications";
     }
 
     @GetMapping("/institutions/{id}/publications/exportExcel")
@@ -411,11 +433,6 @@ public class AdminViewController {
         return "redirect:/admin/scholardex/affiliations";
     }
 
-    @GetMapping("/scholardex/publications")
-    public String showScholardexPublicationsPage() {
-        return "admin/scholardex-publications";
-    }
-
     @PostMapping("/rankings/wos/rebuildProjections")
     public String rebuildWosProjections(RedirectAttributes redirectAttributes) {
         var result = rankingMaintenanceFacade.rebuildWosProjections();
@@ -525,6 +542,78 @@ public class AdminViewController {
     public String updateRoles(@RequestParam String email, @RequestParam(required = false) List<String> roles) {
         userService.updateUserRoles(email, roles);
         return "redirect:/admin/users";
+    }
+
+    /** JSON endpoint used by the inline edit modal — returns updated row data for client-side re-render. */
+    @PostMapping(value = "/users/{email}/edit", produces = "application/json")
+    @ResponseBody
+    public ResponseEntity<AdminUserEditResponse> editUser(
+            @PathVariable String email,
+            @RequestBody AdminUserEditRequest request) {
+        if (!userService.areValidRoleNames(request.roles())) {
+            return ResponseEntity.badRequest().build();
+        }
+        userService.updateUserRoles(email, request.roles());
+
+        if (request.profile() != null) {
+            User.ResearcherProfile profile = new User.ResearcherProfile();
+            profile.setFirstName(request.profile().firstName());
+            profile.setLastName(request.profile().lastName());
+            profile.setScholarId(request.profile().scholarId());
+            profile.setScopusId(request.profile().scopusIds() != null ? request.profile().scopusIds() : List.of());
+            profile.setWosId(request.profile().wosIds() != null ? request.profile().wosIds() : List.of());
+            if (request.profile().position() != null && !request.profile().position().isBlank()) {
+                try {
+                    profile.setPosition(ro.uvt.pokedex.core.model.reporting.Position.valueOf(request.profile().position()));
+                } catch (IllegalArgumentException ignored) {}
+            }
+            userService.saveResearcherProfile(email, profile);
+        }
+
+        User updated = userService.getUserByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + email));
+        return ResponseEntity.ok(AdminUserEditResponse.from(updated));
+    }
+
+    record AdminUserEditProfileRequest(
+            String firstName,
+            String lastName,
+            String scholarId,
+            List<String> scopusIds,
+            List<String> wosIds,
+            String position
+    ) {}
+
+    record AdminUserEditRequest(
+            List<String> roles,
+            AdminUserEditProfileRequest profile
+    ) {}
+
+    record AdminUserEditResponse(
+            String email,
+            List<String> roles,
+            boolean locked,
+            String name,
+            String scholarId,
+            List<String> scopusIds,
+            List<String> wosIds,
+            String position,
+            boolean hasProfile
+    ) {
+        static AdminUserEditResponse from(User user) {
+            User.ResearcherProfile p = user.getResearcherProfile();
+            return new AdminUserEditResponse(
+                    user.getEmail(),
+                    user.getRoles().stream().map(Enum::name).toList(),
+                    user.isLocked(),
+                    p != null ? p.getName() : null,
+                    p != null ? p.getScholarId() : null,
+                    p != null ? p.getScopusId() : List.of(),
+                    p != null ? p.getWosId() : List.of(),
+                    p != null && p.getPosition() != null ? p.getPosition().name() : null,
+                    p != null
+            );
+        }
     }
 
 }

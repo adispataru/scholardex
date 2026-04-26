@@ -6,8 +6,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
+import ro.uvt.pokedex.core.model.user.User;
+import ro.uvt.pokedex.core.repository.UserRepository;
 import ro.uvt.pokedex.core.model.Institution;
 import ro.uvt.pokedex.core.model.reporting.Group;
 import ro.uvt.pokedex.core.model.reporting.GroupIndividualReportRun;
@@ -40,6 +41,8 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.any;
@@ -80,16 +83,18 @@ class GroupReportFacadeTest {
     private GroupIndividualReportRunRepository groupIndividualReportRunRepository;
     @Mock
     private ReportingLookupMemoization reportingLookupMemoization;
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private GroupReportFacade facade;
 
     @BeforeEach
     void setUpLookupService() {
-        lenient().when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(Researcher.class)))
+        lenient().when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(User.ResearcherProfile.class)))
                 .thenAnswer(invocation -> {
-                    Researcher researcher = invocation.getArgument(0);
-                    return researcher.getScopusId() == null ? List.of() : researcher.getScopusId();
+                    User.ResearcherProfile profile = invocation.getArgument(0);
+                    return profile.getScopusId() == null ? List.of() : profile.getScopusId();
                 });
         lenient().doAnswer(invocation -> ((Supplier<?>) invocation.getArgument(0)).get())
                 .when(reportingLookupMemoization).withRefreshScope(any(Supplier.class));
@@ -107,13 +112,10 @@ class GroupReportFacadeTest {
 
     @Test
     void buildGroupPublicationsViewSkipsMalformedPublicationDatesInYearMaps() {
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(memberUser("r1", "R", "One", List.of("a1"))));
         Group group = new Group();
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setFirstName("R");
-        researcher.setLastName("One");
-        researcher.setScopusId(List.of("a1"));
-        group.setResearchers(new ArrayList<>(List.of(researcher)));
+        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         Publication validPublication = new Publication();
         validPublication.setId("p1");
@@ -152,13 +154,10 @@ class GroupReportFacadeTest {
 
     @Test
     void buildGroupPublicationsViewAppliesDeterministicOrderingAndYearBucketSorting() {
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(memberUser("r1", "R", "One", List.of("a1"))));
         Group group = new Group();
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setFirstName("R");
-        researcher.setLastName("One");
-        researcher.setScopusId(List.of("a1"));
-        group.setResearchers(new ArrayList<>(List.of(researcher)));
+        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         Publication p1 = new Publication();
         p1.setId("p1");
@@ -204,13 +203,10 @@ class GroupReportFacadeTest {
 
     @Test
     void buildGroupPublicationsViewDedupesDuplicatePublications() {
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(memberUser("r1", "R", "One", List.of("a1"))));
         Group group = new Group();
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setFirstName("R");
-        researcher.setLastName("One");
-        researcher.setScopusId(List.of("a1"));
-        group.setResearchers(new ArrayList<>(List.of(researcher)));
+        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         Publication shared = new Publication();
         shared.setId("p-shared");
@@ -241,13 +237,10 @@ class GroupReportFacadeTest {
 
     @Test
     void buildGroupPublicationsViewBuildsVenueClassCountByYear() {
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(memberUser("r1", "R", "One", List.of("a1"))));
         Group group = new Group();
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setFirstName("R");
-        researcher.setLastName("One");
-        researcher.setScopusId(List.of("a1"));
-        group.setResearchers(new ArrayList<>(List.of(researcher)));
+        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         Publication q1Journal = new Publication();
         q1Journal.setId("p1");
@@ -384,11 +377,9 @@ class GroupReportFacadeTest {
     void buildGroupIndividualReportViewUsesPersistedRunWithoutRecomputing() {
         Group group = new Group();
         group.setId("g1");
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setFirstName("A");
-        researcher.setLastName("B");
-        group.setResearchers(new ArrayList<>(List.of(researcher)));
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(memberUser("r1", "A", "B", List.of())));
+        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         IndividualReport report = new IndividualReport();
         report.setId("rep1");
@@ -414,14 +405,11 @@ class GroupReportFacadeTest {
 
     @Test
     void refreshGroupIndividualReportViewComputesAndPersistsNewRun() {
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(memberUser("r1", "A", "B", List.of("a1"))));
         Group group = new Group();
         group.setId("g1");
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setFirstName("A");
-        researcher.setLastName("B");
-        researcher.setScopusId(List.of("a1"));
-        group.setResearchers(new ArrayList<>(List.of(researcher)));
+        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         IndividualReport report = new IndividualReport();
         report.setId("rep1");
@@ -447,15 +435,55 @@ class GroupReportFacadeTest {
     }
 
     @Test
-    void buildGroupIndividualReportViewWhenRunMissingUsesMemoizedComputeScope() {
+    void refreshGroupIndividualReportViewEncodesDottedEmailsForPersistedScoreMapKeys() {
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(memberUser("raluca.muresan@e-uvt.ro", "Raluca", "Muresan", List.of("a1"))));
         Group group = new Group();
         group.setId("g1");
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setFirstName("A");
-        researcher.setLastName("B");
-        researcher.setScopusId(List.of("a1"));
-        group.setResearchers(new ArrayList<>(List.of(researcher)));
+        group.setMemberIds(new ArrayList<>(List.of("raluca.muresan@e-uvt.ro")));
+
+        AbstractReport.Criterion criterion = new AbstractReport.Criterion();
+        criterion.setIndicatorIndices(List.of());
+
+        IndividualReport report = new IndividualReport();
+        report.setId("rep1");
+        report.setCriteria(List.of(criterion));
+        report.setIndicators(List.of());
+        Institution affiliation = new Institution();
+        affiliation.setName("ANY");
+        report.setIndividualAffiliation(affiliation);
+
+        Author author = new Author();
+        author.setId("a1");
+
+        when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
+        when(individualReportRepository.findById("rep1")).thenReturn(Optional.of(report));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of());
+        when(groupIndividualReportRunRepository.save(any(GroupIndividualReportRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = facade.refreshGroupIndividualReportView("g1", "rep1");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Map<Integer, Double>> researcherScores =
+                (Map<String, Map<Integer, Double>>) result.attributes().get("researcherScores");
+        @SuppressWarnings("unchecked")
+        Map<String, String> researcherScoreKeyByEmail =
+                (Map<String, String>) result.attributes().get("researcherScoreKeyByEmail");
+        String scoreKey = researcherScoreKeyByEmail.get("raluca.muresan@e-uvt.ro");
+
+        assertNotNull(scoreKey);
+        assertFalse(scoreKey.contains("."));
+        assertTrue(researcherScores.containsKey(scoreKey));
+    }
+
+    @Test
+    void buildGroupIndividualReportViewWhenRunMissingUsesMemoizedComputeScope() {
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(memberUser("r1", "A", "B", List.of("a1"))));
+        Group group = new Group();
+        group.setId("g1");
+        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         IndividualReport report = new IndividualReport();
         report.setId("rep1");
@@ -484,14 +512,11 @@ class GroupReportFacadeTest {
 
     @Test
     void refreshGroupIndividualReportViewLoadsCitationDataOncePerResearcher() {
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(memberUser("r1", "A", "B", List.of("a1"))));
         Group group = new Group();
         group.setId("g1");
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setFirstName("A");
-        researcher.setLastName("B");
-        researcher.setScopusId(List.of("a1"));
-        group.setResearchers(new ArrayList<>(List.of(researcher)));
+        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         Indicator citations = new Indicator();
         citations.setOutputType(Indicator.Type.CITATIONS);
@@ -545,14 +570,11 @@ class GroupReportFacadeTest {
 
     @Test
     void refreshGroupIndividualReportViewLoadsActivitiesOncePerResearcher() {
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(memberUser("r1", "A", "B", List.of("a1"))));
         Group group = new Group();
         group.setId("g1");
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setFirstName("A");
-        researcher.setLastName("B");
-        researcher.setScopusId(List.of("a1"));
-        group.setResearchers(new ArrayList<>(List.of(researcher)));
+        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         Activity activity = new Activity();
         activity.setName("Forum Activity");
@@ -599,14 +621,11 @@ class GroupReportFacadeTest {
 
     @Test
     void refreshGroupIndividualReportViewPreservesCitationExcludeSelfSemantics() {
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(memberUser("r1", "A", "B", List.of("a1"))));
         Group group = new Group();
         group.setId("g1");
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setFirstName("A");
-        researcher.setLastName("B");
-        researcher.setScopusId(List.of("a1"));
-        group.setResearchers(new ArrayList<>(List.of(researcher)));
+        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         Indicator citations = new Indicator();
         citations.setOutputType(Indicator.Type.CITATIONS);
@@ -691,14 +710,11 @@ class GroupReportFacadeTest {
 
     @Test
     void refreshGroupIndividualReportViewPreservesTop10CitationSelectorBehavior() {
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(memberUser("r1", "A", "B", List.of("a1"))));
         Group group = new Group();
         group.setId("g1");
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setFirstName("A");
-        researcher.setLastName("B");
-        researcher.setScopusId(List.of("a1"));
-        group.setResearchers(new ArrayList<>(List.of(researcher)));
+        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         Indicator citationsTop10 = new Indicator();
         citationsTop10.setOutputType(Indicator.Type.CITATIONS);
@@ -773,5 +789,16 @@ class GroupReportFacadeTest {
                 (Map<String, Map<Integer, Double>>) result.attributes().get("researcherScores");
         Map<Integer, Double> scores = researcherScores.get("r1");
         assertEquals(75.0, scores.get(0));
+    }
+
+    private static User memberUser(String email, String firstName, String lastName, List<String> scopusIds) {
+        User user = new User();
+        user.setEmail(email);
+        User.ResearcherProfile profile = new User.ResearcherProfile();
+        profile.setFirstName(firstName);
+        profile.setLastName(lastName);
+        profile.setScopusId(new java.util.ArrayList<>(scopusIds));
+        user.setResearcherProfile(profile);
+        return user;
     }
 }

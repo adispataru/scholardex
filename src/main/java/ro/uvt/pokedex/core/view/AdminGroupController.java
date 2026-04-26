@@ -89,8 +89,8 @@ public class AdminGroupController {
         return "admin/edit-group";
     }
 
-    @GetMapping("/{id}/publications")
-    public String seeGroupPublications(@PathVariable String id, Model model) {
+    @GetMapping("/{id}")
+    public String viewGroupWorkspace(@PathVariable String id, Model model) {
         Optional<GroupPublicationsViewModel> viewModel = groupReportFacade.buildGroupPublicationsView(id);
         if (viewModel.isEmpty()) {
             return "redirect:/admin/groups";
@@ -104,7 +104,13 @@ public class AdminGroupController {
         model.addAttribute("forumMap", vm.forumMap());
         model.addAttribute("group", vm.group());
         model.addAttribute("publications", vm.publications());
-        return "admin/group-publications";
+        model.addAttribute("researchers", vm.researchers());
+        return "admin/group-workspace";
+    }
+
+    @GetMapping("/{id}/publications")
+    public String seeGroupPublications(@PathVariable String id) {
+        return "redirect:/admin/groups/" + id + "#publications";
     }
 
     @GetMapping("{gid}/reports/view/{id}")

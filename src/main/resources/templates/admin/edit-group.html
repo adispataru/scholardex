@@ -68,9 +68,9 @@
                             <div class="form-group app-form-field app-form-section">
                                 <label for="groupResearchers">Researchers</label>
                                 <div id="researchersContainer" class="app-collection">
-                                    <div class="input-group mb-2 app-collection__item" th:each="researcher, iterStat : *{researchers}">
-                                        <select class="form-control" th:field="*{researchers[__${iterStat.index}__]}" th:selected="${researcher}">
-                                            <option th:each="researcher : ${allResearchers}" th:value="${researcher.id}" th:text="${researcher.name}"></option>
+                                    <div class="input-group mb-2 app-collection__item" th:each="memberId, iterStat : *{memberIds}">
+                                        <select class="form-control" th:field="*{memberIds[__${iterStat.index}__]}" th:selected="${memberId}">
+                                            <option th:each="researcher : ${allResearchers}" th:value="${researcher.email}" th:text="${researcher.researcherProfile?.name}"></option>
                                         </select>
                                         <button class="btn btn-danger remove-researcher" type="button">Remove</button>
                                     </div>
@@ -129,8 +129,8 @@
             let index = researchersContainer.children().length;
             let researcherTemplate = `
                 <div class="input-group mb-2 app-collection__item">
-                    <select class="form-control" name="researchers[${index}]">
-                        ${allResearchers.map(researcher => `<option value="${researcher.id}">${researcher.name}</option>`).join('')}
+                    <select class="form-control" name="memberIds[${index}]">
+                        ${allResearchers.map(researcher => `<option value="${researcher.email}">${researcher.researcherProfile?.name ?? ''}</option>`).join('')}
                     </select>
                     <button class="btn btn-danger remove-researcher" type="button">Remove</button>
                 </div>`;
@@ -141,7 +141,7 @@
             $(this).closest('.input-group').remove();
             // Optionally, update the indices of the remaining elements
             researchersContainer.children().each(function(index, element) {
-                $(element).find('select').attr('name', `researchers[${index}]`);
+                $(element).find('select').attr('name', `memberIds[${index}]`);
             });
         });
     });

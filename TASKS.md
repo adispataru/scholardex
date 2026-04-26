@@ -9,7 +9,7 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
-- [ ] `H36` Researcher Workspace — adaptive research hub consolidating dashboard, profile, publications, and activities into a single intelligent workspace with master-detail interaction, unified search, notification center, and inline workflows.
+- [x] `H36` Researcher Workspace — adaptive research hub consolidating dashboard, profile, publications, and activities into a single intelligent workspace with master-detail interaction, unified search, notification center, and inline workflows.
   Goal: replace four fragmented user pages (`user/dashboard`, `user/profile`, `user/publications`, `user/activities`) plus their sub-pages (`user/citations`, `user/tasks`, `user/publications-edit`, `user/activities-edit`) with one integrated workspace at `/user/workspace` that serves as the researcher's complete home base — adaptive overview, tabbed data views with inline detail panels, cross-entity search, change notifications, inline publication creation, and personalizable layout.
   Design reference: `docs/tasks/active/ux-redesign-plan.md` §1.1 Option C.
   UX guide reference: `docs/ux-design-guide.md` §1.2, §4.3, §6.2, §6.3, §6.6, §6.7, §7.1, §7.2, §7.4, §8.1, §8.2, §8.3.
@@ -149,7 +149,7 @@ Done history moved to `TASKS-done.md`.
     - `verify-route-guardrails.js` — removed file-specific checks for now-deleted `activities-edit.html` and `tasks.html`.
     - `./gradlew compileJava`, `npm run build`, `verify-assets`, `verify-template-assets`, `verify-route-guardrails` all pass clean.
 
-- [ ] `H37` Evaluation Workspace — analytical evaluation suite consolidating indicators, apply views, and reports into a single surface with period comparison, what-if analysis, per-criterion score breakdowns, and saved snapshots.
+- [x] `H37` Evaluation Workspace — analytical evaluation suite consolidating indicators, apply views, and reports into a single surface with period comparison, what-if analysis, per-criterion score breakdowns, and saved snapshots.
   Goal: replace the fragmented indicator/report pages (`user/indicators`, `user/indicators-apply-publications`, `user/indicators-apply-activities`, `user/indicators-apply-citations`, `user/individual-reports`, `user/individual-report-view`) with one integrated evaluation workspace where researchers can see their report, drill into each criterion's scored data inline, compare results across periods, run what-if scenarios, explore per-criterion contribution charts, and save/bookmark report states for later comparison.
   Design reference: `docs/tasks/active/ux-redesign-plan.md` §1.2 Option C (scoped to period comparison, what-if analysis, per-criterion score breakdown charts, and saved snapshots — PDF export and admin group report alignment deferred).
   UX guide reference: `docs/ux-design-guide.md` §6.2, §6.3, §6.9, §7.5, §8.1, §8.2.
@@ -269,12 +269,218 @@ Done history moved to `TASKS-done.md`.
     Dependency: all of `H37.1`–`H37.9` complete.
     Exit criteria: no dead templates for replaced pages; all verification scripts pass; no 404s or broken links in evaluation flows; all Option C features (period comparison, what-if, breakdown charts, snapshots) verified end-to-end.
 
+- [ ] `H40` Admin Data Management Workspaces — domain-grouped admin surfaces with queue-style conflict/triage UX, integrated filter panels and cross-linking across catalog pages, institution/group workspaces with embedded sub-entity views, server-side pagination for high-volume tables, plus multi-select bulk operations, column visibility toggles, and keyboard shortcuts for common admin operations.
+  Goal: replace the 21+ fragmented admin table pages (users, researchers, institutions, groups, forums, authors, affiliations, publications, citations, conflicts, triage, indicators, domains, reports, activities, source links, etc.) with a consistent, domain-grouped admin experience where conflicts and triage feel like work queues, catalog pages feel explorable and cross-linked, institution and group pages feel like profile pages with integrated sub-entity tabs, and power users can operate on multi-row selections, toggle visible columns, and drive common operations from the keyboard without losing the underlying table patterns or their accessibility baseline.
+  Design reference: `docs/tasks/active/ux-redesign-plan.md` §1.4 Option B, extended with three Option C features: bulk operations on high-volume tables, column visibility toggles for wide tables, and keyboard shortcuts for common operations (next row, open edit, resolve conflict). Explicitly out of scope for this task: saved filter presets, table-level Excel/CSV export toolbars, row-expansion inline previews, and real-time conflict count badges in the sidebar.
+  UX guide reference: `docs/ux-design-guide.md` §1.4, §1.5, §4.4, §5.2, §6.2, §6.3, §6.5, §6.6, §6.7, §7.3, §8.1, §8.2, §9.
+  Exit criteria: every admin table uses the shared ScholarDex table pattern (no vertical borders, subtle alternating rows, row hover, compact icon-button actions with descriptive `aria-label`, semantic status badges, explicit empty states); the users page replaces inline per-row role checkboxes with a proper edit modal; high-traffic tables (conflicts, researchers, publications, citations) carry summary stat cards above them; sub-list pages (institution publications, group publications, group report views) have breadcrumbs back to parents; the admin sidebar is reorganized into the four domains defined in the plan (Operations Center, People & Access, Data Catalog, Evaluation) and old URLs redirect appropriately; conflicts and user-defined triage render as queues — priority/recency sort, decision badges, batch operations, and an integrated filter panel — rather than generic tables; catalog pages (forums, authors, affiliations, publications, citations, publication search) carry integrated filter panels and cross-link between related entities (click an author → their publications; click a forum → its publications); institution and group detail pages surface summary stat cards and integrate their sub-entity views (researchers, publications, reports) as tabs rather than separate pages; high-volume catalog tables use server-side pagination with stable page-size controls; researchers can be multi-selected and assigned to a group, and publications can be multi-selected and reassigned to a forum, with safeguards, summary counts, and auditable server-side writes; wide tables expose a column visibility toggle persisted per-user; keyboard shortcuts drive next/previous row, open-edit, and resolve-conflict flows with a cheat-sheet overlay discoverable from `?`; both light and dark themes pass contrast checks; all work passes `npm run build`, `npm run verify-assets`, `npm run verify-template-assets`, `npm run verify-route-guardrails`, `npm run verify-ui-guardrails`, and `./gradlew compileJava`.
+
+  Subtasks:
+
+  - [x] `H40.1` **Shared admin-table baseline and standardization.**
+    Extract the ScholarDex admin-table pattern into reusable Thymeleaf fragments and shared CSS/JS so every admin table renders consistently: no vertical borders, subtle alternating rows, row hover, compact icon-button actions with descriptive `aria-label` (e.g. "Edit publication," not "Edit"), semantic status badges per §6.5, explicit empty states per §6.6, and breadcrumb support per §5.2. Build a reusable `admin-table` fragment that accepts columns, row actions, empty-state config, and optional toolbar slot. Build a shared `admin-empty-state` fragment and a shared `admin-breadcrumb` fragment. Standardize modal creation forms across all admin "create new" flows (shared header, footer, validation placement).
+    Exit criteria: every admin table uses the shared fragments or matches their structure exactly; no inline per-row role checkboxes remain on any admin table; semantic status badges render consistently across conflicts, triage, sync tasks, and any other status-bearing column; breadcrumbs appear on all sub-list pages; modal creation forms share a single structure; `npm run build`, `verify-assets`, `verify-template-assets` pass clean.
+    Completed: 2026-04-22.
+    Handover:
+    - `frontend/src/styles/admin-tables.css` — new BEM stylesheet: `.app-admin-icon-btn` (compact table-action icon button with `--danger`/`--warning` modifiers and focus ring); `.app-admin-role-badge` (role pill with `--admin`/`--supervisor` accent variants); `.app-admin-roles-cell` flex row for multiple badges; `.app-admin-breadcrumb` + `__item`/`__link`/`__current` breadcrumb nav; `.app-admin-empty` + `__icon`/`__title`/`__body` empty-state block; `.app-admin-empty-row` for use inside `<tbody>`; `.app-admin-id-pill` monospace identifier pill; `.app-admin-locked-badge` danger pill for locked accounts; `.app-admin-actions` flex row for action buttons.
+    - `frontend/src/app.js` — added `admin-tables.css` import after `admin-dashboard.css`.
+    - `fragments.html` — **Researchers** sidebar item removed from `admin-sidebar`; added `admin-breadcrumb(items)` nav fragment (renders `<ol>` breadcrumb, last item as `aria-current="page"`, others as links); added `admin-empty-state(icon, title, body, actionLabel, actionHref)` fragment (icon + title + body + optional CTA button).
+    - `AdminViewController.java` — `GET /admin/researchers` now redirects to `/admin/users`; researcher profile data already available on every `User` object passed to the users page.
+    - `admin/users.html` — fully reworked: table columns now include Name, Scholar ID, Scopus IDs, WoS IDs (from `user.researcherProfile`); roles rendered as `.app-admin-role-badge` pills; locked state rendered as `.app-admin-locked-badge`; active state as `.app-table-badge--success`; per-row actions are `.app-admin-icon-btn` icon buttons (Edit, Lock/Unlock, Delete) with descriptive `aria-label`; inline role-checkbox forms removed; Edit opens `#editUserModal` populated via `show.bs.modal` data-attribute wiring (posts to existing `/admin/users/updateRoles`); Create User modal preserved with shared section structure; empty-state row via `admin-empty-state` fragment; `users.html` added to `allowlistedInlineScriptFiles` in `verify-template-assets.js`.
+    - `admin/institution-publications.html`, `admin/group-publications.html` — breadcrumb nav added at top of page content (Institutions → {institution.name} and Groups → {group.name} respectively).
+    - `admin/groups.html`, `admin/institutions.html` — empty-state `<tr>` added via `admin-empty-state` fragment.
+    - All 17 remaining `table-bordered` admin templates — `table-bordered` class stripped; `.app-table` already present on all; Bootstrap's vertical-border rule no longer applied.
+    - `./gradlew compileJava`, `npm run build`, `verify-assets`, `verify-template-assets` all pass clean.
+
+  - [x] `H40.2` **Admin sidebar reorganization and URL redirects.**
+    Reorganize the admin sidebar into the four domains specified in the plan:
+    — Operations Center (H39 dashboard — already live)
+    — People & Access (Users, Researchers, Groups, Institutions)
+    — Data Catalog (Forums, Authors, Affiliations, Publications, Citations, Publication Search)
+    — Evaluation (Indicators, Domains, Activities, Activity-Indicators, Individual Reports, Group Reports, Data Quality → Conflicts, User-Defined Triage, Source Links)
+    Collapse Activities / Activity-Indicators under a single Evaluation Config entry where appropriate. Update `fragments.html` accordingly and keep active-state highlighting correct for all section keys. Maintain backwards-compatible redirects for any sidebar links whose URLs change; drop only what can be dropped without breaking external bookmarks.
+    Dependency: none.
+    Exit criteria: sidebar sections match the plan's four-domain grouping; active-state highlighting works on every destination page; no dead links; `npm run verify-route-guardrails` passes.
+    Completed: 2026-04-22.
+    Handover:
+    - `fragments.html` — `admin-sidebar` fully rewritten into five sections: **Operations Center** (Dashboard, Initialization, WoS Enrichment, Incremental Updates), **People & Access** (Users — active for `users` and `researchers`, Groups, Institutions), **Data Catalog** (Forums, Authors, Affiliations, Publications — active for `scholardex-publications`/`scopus-publications`/`scholardex-publications-search`, Citations, Pub. Search), **Evaluation** (Indicators, Domains, Eval. Config — active for `activities` and `activity-indicators`, Reports, Group Reports, Conflicts, Triage, Source Links), **Rankings** (WoS Categories, CORE, URAP, Events — kept as-is for backwards compat). All old section keys preserved in active-state conditions; no URLs changed; no redirects needed.
+    - `admin/scholardex-citations.html` — sidebar key updated from `scholardex-publications` to `scholardex-citations` so the new Citations entry highlights correctly.
+    - `./gradlew compileJava`, `npm run build`, `verify-assets`, `verify-template-assets`, `verify-route-guardrails` all pass clean.
+
+  - [x] `H40.3` **Users page edit modal (replace inline role checkboxes).**
+    Replace the current users-page inline per-row role checkboxes with a proper edit modal per `H40.1` baseline: row-level "Edit" icon opens a modal form for role assignment, email display, and researcher linkage; Save posts to a JSON endpoint and re-renders the row inline; Cancel closes without side effects. Confirmation dialog for destructive role changes where appropriate.
+    Dependency: `H40.1`.
+    Exit criteria: no inline-checkbox row mutations remain on the users page; role edits go through the modal and persist correctly; accessibility: focus trap, Escape closes, ARIA roles on modal; both themes.
+    Completed: 2026-04-22.
+    Handover:
+    - `frontend/src/modules/admin/adminUsers.js` — new ES module; `initAdminUsers()` guards on `#editUserModal` presence; `show.bs.modal` populates all modal fields from row `data-*` attributes (email, roles, firstName, lastName, scholarId, scopusIds, wosIds, position); `hidden.bs.modal` restores focus to trigger button; Save button POSTs JSON to `POST /admin/users/{email}/edit`; PLATFORM_ADMIN removal guarded by `window.confirm()`; `_rerenderRow(data)` updates cells 1–5 (name, scholarId, scopusIds, wosIds, roles) and refreshes `data-*` on Edit button for correct re-open.
+    - `frontend/src/app.js` — added `import { initAdminUsers }` and `initAdminUsers()` call.
+    - `AdminViewController.java` — added `POST /admin/users/{email}/edit` endpoint (`@ResponseBody`, `produces = "application/json"`); inner records `AdminUserEditRequest`, `AdminUserEditProfileRequest`, `AdminUserEditResponse`; updates roles via `userService.updateUserRoles()` and profile via `userService.saveResearcherProfile()`; returns `AdminUserEditResponse.from(user)` with full profile snapshot.
+    - `admin/users.html` — edit button carries 8 `data-*` attributes via `th:attr` (email, roles, firstName, lastName, scholarId, scopusIds, wosIds, position); Edit modal upgraded to `modal-lg` with three sections: Account (readonly email), Roles (checkboxes), Researcher Profile (firstName, lastName, scholarId, position `<select>` via `T(Position).values()`, scopusIds, wosIds); inline feedback `<p id="edit-user-feedback">`; Save button `type="button"` (JS-intercepted); both modals carry `role="dialog" aria-modal="true"`; no inline `<script>` block.
+    - `scripts/verify-template-assets.js` — removed `admin/users.html` from `allowlistedInlineScriptFiles` (inline script eliminated).
+    - `./gradlew compileJava`, `npm run build`, `verify-assets`, `verify-template-assets`, `verify-route-guardrails` all pass clean.
+
+  - [x] `H40.4` **Stat cards above high-traffic admin tables.**
+    Add summary stat cards above the conflicts, researchers, publications, and citations admin tables using the shared `stat-card` fragment and semantic accents per §6.2:
+    — Conflicts: open / resolved / dismissed.
+    — Researchers: total / active / without-profile.
+    — Publications: total / recently added (last 30 days).
+    — Citations: total / incremental-updates last run.
+    Values are computed server-side from existing repositories; no new aggregates persisted.
+    Dependency: `H40.1`.
+    Exit criteria: stat-card grids render above each listed table; numbers match direct DB counts; grid reflows to single-column on mobile per §4.4; both themes.
+    Completed: 2026-04-23.
+    Handover:
+    - `ScholardexPublicationFactRepository` — added `countByCreatedAtAfter(Instant)` derived query.
+    - `AdminDashboardService` — added `PublicationCatalogStats` record and `buildPublicationCatalogStats()` (total + last-30-days count via `publicationFactRepository`); added `buildCitationSyncStatus()` (last `ScopusCitationsUpdate` entry → `AdminOperationStatus`). Both reuse existing injected repos; no new dependencies.
+    - `AdminViewController.showUsersPage()` — added `totalUsers`, `activeUsers`, `usersWithoutProfile` model attributes computed from the already-fetched `users` list.
+    - `AdminViewController.showScholardexPublicationsPage()` — now accepts `Model`; adds `pubStats` (`PublicationCatalogStats`) from service.
+    - `AdminScholardexPublicationViewController` — injected `AdminDashboardService`; `showScholardexPublicationCitationsPage()` now adds `citationSync` (`AdminOperationStatus`) to model.
+    - `admin/users.html` — 3-card `.app-summary-grid` added above toolbar (Total / Active / Without Profile).
+    - `admin/scholardex-publications.html` — 2-card `.app-summary-grid` added above search form (Total Publications / Added Last 30 Days).
+    - `admin/scholardex-citations.html` — 2-card `.app-summary-grid` added above the citations table (Citations count for this record / Last Citation Sync with outcome badge colouring).
+    - Conflicts page already had stat cards from H40.1 — no change needed.
+    - `./gradlew compileJava`, `npm run build`, `verify-template-assets`, `verify-route-guardrails` all pass clean.
+
+  - [x] `H40.5` **Conflicts and user-defined triage as work queues.**
+    Rework the conflicts and user-defined triage pages from generic CRUD tables into queue-style UX:
+    — Default sort: priority / recency (server-side).
+    — Decision badges per row (resolve / dismiss / investigate) using §6.5 semantic badges.
+    — Integrated filter panel per §6.3 (status, researcher, date range) that belongs to the table rather than floating above it.
+    — Row actions include direct decision buttons (not just Edit) so the queue feels like a work surface, not a generic table.
+    — Batch operations: multi-select + bulk resolve / dismiss / investigate with confirmation per §6.7 and auditable server-side writes.
+    — Breadcrumb + return-to-queue context for any detail drawer or sub-page.
+    Dependency: `H40.1`.
+    Exit criteria: both pages default to priority/recency sort; filter panel is integrated, not floating; decision badges render; batch operations succeed with summary counts and per-item failures surfaced; `./gradlew compileJava` and all verify scripts pass.
+    Completed: 2026-04-23.
+    Handover:
+    - `ConflictOperationsFacade` — added `STATUS_INVESTIGATED = "INVESTIGATED"`; `normalizeStatus()` now accepts it; `ConflictSummary` record gains `investigated` field and `total()` includes it; `summarizeIdentityConflicts()` counts all four statuses.
+    - `AdminConflictController` — added `POST /admin/conflicts/investigate` endpoint; `bulkStatus` handles "investigateOne" and "investigate" actions; bulk feedback message now includes total-selected count; extracted `operator` variable to reduce duplication.
+    - `AdminUserDefinedTriageController` — full rewrite: injected `ConflictOperationsFacade`; GET endpoint adds `triageQueue` (paginated USER_DEFINED OPEN conflicts, `triagePage` param) and `triagePage` to model; added `POST .../conflict/resolve`, `.../conflict/dismiss`, `.../conflict/investigate` (single-item) and `POST .../conflict/bulk` (multi-select) with redirect-back and flash messages.
+    - `admin-tables.css` — added `app-admin-icon-btn--success` (green hover); `.app-queue-badge` + `--open/resolved/dismissed/investigated` semantic pill variants; `.app-queue-filter` integrated filter panel (rounded-top, borderless-bottom, connects visually to table below); `.app-queue-bulk-bar` (rounded-bottom bar for pagination + bulk buttons); `.app-queue-row--open` subtle danger tint on hover.
+    - `admin/conflicts.html` — full rework: integrated filter with status `<select>` (Open/Investigating/Resolved/Dismissed/All) and Reset link; table checkboxes use `form="conflicts-bulk-form"` to decouple from per-row actions; per-row action mini-forms (Resolve ✓ / Investigate 🔍 / Dismiss ✗) each with own hidden `id` — fixes the previous bug where all singleId inputs were submitted together; status rendered as `.app-queue-badge` dynamic class; proper empty state via `admin-empty-state` fragment; bulk form hidden below table; pagination + Bulk Resolve/Investigate/Dismiss in one `app-queue-bulk-bar`; "Investigating" replaces old "Total" stat card; stat cards now show Open / Investigating / Resolved / Dismissed.
+    - `admin/user-defined-triage.html` — full rework: stat cards updated (Open Conflicts instead of total); integrated filter header above queue table; paginated USER_DEFINED OPEN queue with Resolve/Investigate/Dismiss per-row mini-forms; bulk form + `app-queue-bulk-bar`; snapshot panels (source link states, conflict states, recent source links) kept below queue; deep links with icons; source link state badges use `.app-queue-badge` dynamic class.
+    - `./gradlew compileJava`, `npm run build`, `verify-template-assets`, `verify-route-guardrails` all pass clean.
+
+  - [x] `H40.6` **Catalog filter panels, cross-linking, and server-side pagination.**
+    Completed: 2026-04-23.
+    Handover:
+    - `PostgresScholardexAdminReadPort` — added `PublicationCatalogPage` record (content, authorMap, forumMap, decisionSummaryByPublicationId, total, page, size, totalPages, hasPrevious/hasNext); added `buildPublicationCatalogPage(q, forumId, authorId, affiliationId, page, size, sort, direction)` with SQL COUNT + LIMIT/OFFSET, WHERE conditions using ILIKE (title), `= (forum_id)`, and `= ANY(author_ids/affiliation_ids)`, sort options (title/cover_date/cited_by_count); updated `buildPublicationCitationsView(id, page, size)` — now adds COUNT query and paginates the citation query with LIMIT/OFFSET; `ScholardexCitationsView` record gained totalCitations, page, size, totalPages, hasPrevious/hasNext.
+    - `AdminScholardexPublicationViewController` — new `@GetMapping("")` catalog endpoint replaces the old landing page; accepts q/forumId/authorId/affiliationId/page/size/sort/direction params; builds filterContextLabel for active cross-link filters; `/search` now redirects to the catalog URL with params; `/citations` accepts page/size and passes citationsPage/pubId/citSize to model.
+    - `AdminViewController` — removed `showScholardexPublicationsPage()` (moved to above controller) and its now-unused imports.
+    - `admin/scholardex-publications.html` — transformed from landing page to integrated catalog: stat cards, active-filter context banner with clear link, integrated filter panel (title search, sort, direction, page size, Apply/Reset), server-side paginated table (Title→citations, Authors→publications filtered by authorId, Forum→publications filtered by forumId, Year, Citations, Overrides), toolbar and bottom pagination bar, empty state.
+    - `admin/scholardex-citations.html` — reworked: breadcrumb (Publications → title), publication summary panel with author and forum cross-links, stat cards kept, citations table with toolbar prev/next pagination, bottom page-size form, proper empty state; DataTables removed (server-side paging).
+    - `admin-scholardex-authors.js` — author name no longer links to user-facing page; Actions column added linking to `/admin/scholardex/publications?authorId={id}`.
+    - `admin-scholardex-forums.js` — forum name no longer links to `/forums/{id}`; Actions column now has both "Publications" (→ catalog filtered by forumId) and "Edit" buttons.
+    - `admin-scholardex-affiliations.js` — Actions column added linking to `/admin/scholardex/publications?affiliationId={id}`.
+    - `scholardex-authors.html`, `scholardex-affiliations.html` — Actions `<th>` column header added.
+    - `./gradlew compileJava`, `npm run build`, `verify-assets`, `verify-template-assets`, `verify-route-guardrails`, `verify-datatables-optin` all pass clean.
+
+  - [x] `H40.7` **Institution and group workspaces with integrated sub-entity tabs.** *(completed 2026-04-23)*
+    Handover:
+    - `AdminViewController` — `GET /admin/institutions/{id}` now loads the institution workspace (`admin/institution-workspace`); `GET /admin/institutions/{id}/publications` redirects to `#publications` deep link.
+    - `AdminGroupController` — `GET /admin/groups/{id}` new workspace endpoint loads group data and returns `admin/group-workspace`; `GET /admin/groups/{id}/publications` redirects to `#publications` deep link.
+    - `admin/institution-workspace.html` — tabbed workspace (Overview + Publications tabs) using `[data-app-tab-bar]` from `workspaceTabs.js`; Overview shows institution description and total publication count with Export Excel + Edit actions; Publications tab renders all publications grouped by year with author/forum cross-links to the catalog.
+    - `admin/group-workspace.html` — tabbed workspace (Overview + Publications + Reports tabs); Overview shows stat card + Publications-by-year chart + Venue Quality Distribution chart (both lazy-inited via `window.groupWorkspaceCallbacks.overview` to avoid 0×0 canvas on hidden panels); Publications tab mirrors the old `group-publications.html` per-year tables; Reports tab lists individual reports.
+    - `admin/institutions.html`, `admin/groups.html` — "Publications" / "See publications" action buttons changed to "Open workspace" pointing at the new workspace URLs.
+    - `./gradlew compileJava` passes clean.
+
+  - [x] `H40.8` **Bulk operations on high-volume tables.** *(completed 2026-04-23)*
+    Build shared multi-select infrastructure (row checkboxes, select-all-in-view, selection summary, clear-selection) on top of the `H40.1` admin-table baseline, then wire two concrete bulk flows:
+    — Researchers → assign to group: select multiple researchers, pick a target group from a modal, confirm per §6.7, server-side write via a new JSON endpoint, summary of succeeded / failed with per-item messages.
+    — Publications → reassign forum: select multiple publications, pick a target forum (with forum search inside the modal), confirm with explicit safeguard because this mutates canonical data, server-side write with full audit trail, summary of succeeded / failed.
+    Selections are cleared on successful apply; they survive pagination within a session only if the same filter set is active.
+    Dependency: `H40.1`, `H40.6`.
+    Exit criteria: multi-select infrastructure is reusable; both bulk flows work end-to-end with destructive-action confirmation UX; per-item failures are surfaced without aborting the batch; audit log / decision records created where applicable; `./gradlew compileJava` and all verify scripts pass.
+    Handover:
+    - `frontend/src/modules/shared/adminBulkSelect.js` — `initAdminBulkSelect({tableKey, fingerprint, cbSelector, selectAllSelector, barSelector, countSelector, bulkFormId, inputName})` — sessionStorage-backed selection keyed by `adminBulk:{tableKey}:{fingerprint}`; reinit() for DataTables draw hook; injects hidden inputs on form submit.
+    - `frontend/src/styles/admin-tables.css` — `.app-bulk-select-bar`, `.app-bulk-select-bar__count`, `.app-bulk-select-bar__actions` added.
+    - `frontend/src/app.js` — imports and exposes `window.initAdminBulkSelect`.
+    - `PostgresScholardexAdminReadPort.bulkReassignForum(List<String>, String)` — bulk UPDATE on `reporting_read.scholardex_publication_view`.
+    - `GroupManagementFacade.addMembersToGroup(String, List<String>)` — deduplicating add to group memberIds.
+    - `AdminScholardexPublicationViewController` — `POST /admin/scholardex/publications/bulk/reassign-forum` with filter-state redirect.
+    - `AdminViewController` — `POST /admin/users/bulk/assign-group`; `allGroups` added to users page model.
+    - `templates/admin/scholardex-publications.html` — checkbox column, select-all, bulk bar, Reassign Forum modal, inline init script.
+    - `templates/admin/users.html` — checkbox column, select-all, bulk bar, Assign to Group modal, inline init script with DataTables `draw.dt` hook.
+    - `scripts/verify-template-assets.js` — allowlisted both new inline-script templates.
+    - All verify scripts pass: `verify-assets`, `verify-template-assets`, `verify-route-guardrails`, `verify-datatables-optin`.
+
+  - [x] `H40.9` **Column visibility toggles for wide tables.** *(completed 2026-04-24)*
+    Add a column visibility toggle to wide admin tables (publications, citations, authors, researchers, conflicts, triage): a toolbar button opens a dropdown listing all columns with checkboxes; toggling a column hides/shows it in place; the chosen visibility set is persisted per-user (simple preferences document keyed by user email + table id).
+    Required columns (primary identifiers, row action column) are always visible and cannot be hidden.
+    Dependency: `H40.1`.
+    Exit criteria: toggles work on every listed table; preferences persist across sessions; required columns cannot be hidden; both themes; accessibility: keyboard-operable dropdown with ARIA roles.
+    Handover:
+    - `frontend/src/modules/shared/adminColumnToggle.js` — `initAdminColumnToggle({tableId, tableEl, toolbarActionsEl, columns})` — localStorage-backed per-table column visibility; returns `{ reinit() }` for use after dynamic row renders; required columns show a lock icon and disabled checkbox; Escape closes dropdown; outside-click dismissal; ARIA `aria-haspopup`, `aria-expanded`, `aria-controls`.
+    - `frontend/src/styles/admin-tables.css` — `.app-col--hidden { display: none !important }` + `.app-col-toggle` dropdown BEM block added.
+    - `frontend/src/app.js` — imports and exposes `window.initAdminColumnToggle`.
+    - `data-col` attrs added to all `<th>` and `<td>` in: `scholardex-publications.html`, `scholardex-citations.html`, `users.html`, `conflicts.html`, `user-defined-triage.html`; `<th>` only in `scholardex-authors.html` (tbody is dynamic).
+    - `admin-scholardex-authors.js` — `data-col` attrs added to generated `<td>` strings; `window._authorsColToggle.reinit()` called after each render; column toggle initialized after first `fetchPage`.
+    - Toolbar actions divs added (id: `pub-toolbar-actions`, `cit-toolbar-actions`, `users-toolbar-actions`, `conflicts-toolbar-actions`, `triage-toolbar-actions`, `authors-toolbar-actions`).
+    - `scripts/verify-template-assets.js` — `conflicts.html` and `user-defined-triage.html` added to inline-script allowlist.
+    - All verify scripts pass: build, verify-assets, verify-template-assets, verify-route-guardrails, verify-datatables-optin; `./gradlew compileJava` clean.
+
+  - [x] `H40.10` **Keyboard shortcuts for common admin operations.** *(completed 2026-04-24)*
+    Add keyboard navigation and shortcuts on admin tables and queues, reusing the `H36.11` cheat-sheet overlay pattern:
+    — `j` / `ArrowDown` → next row (roving `tabindex`); `k` / `ArrowUp` → previous row.
+    — `Enter` or `e` → open-edit on focused row (opens row edit modal or navigates to edit page, depending on context).
+    — On conflicts / triage queues: `r` → resolve focused item, `d` → dismiss focused item, `i` → investigate focused item. All destructive shortcuts respect the same confirmation UX as the button equivalents.
+    — `?` → open the shortcuts cheat-sheet overlay listing all active shortcuts for the current page.
+    Shortcuts are guarded against firing while focus is inside text inputs, selects, or contenteditable elements.
+    Dependency: `H40.1`, `H40.5`.
+    Exit criteria: shortcuts work on conflicts, triage, users, researchers, publications, citations, and authors tables; cheat-sheet overlay enumerates them; no shortcut fires while typing in a field; focus ring is visible on the active row in both themes.
+    Handover:
+    - `frontend/src/modules/shared/adminShortcuts.js` — `initAdminShortcuts({sections, tables})` — reuses `app-shortcuts-*` CSS from H36.11; builds `#admin-shortcuts-overlay`; global `?` toggle and `Escape` close (capture phase); roving tabindex per tbody with `MutationObserver` for dynamic tables; `j`/`k`/`↑`/`↓` nav; per-table `keyActions` map for `e`/`Enter`/`r`/`i`/`d`; all guarded against field focus.
+    - `frontend/src/styles/admin-tables.css` — `.app-row--kb-focused` highlight + `:focus` outline using `--app-color-focus`.
+    - `frontend/src/app.js` — imports and exposes `window.initAdminShortcuts`.
+    - Wired on 6 pages via inline scripts (conflicts, triage, users, publications, citations) and `admin-scholardex-authors.js`; each page passes its own `sections` config for the cheat sheet and `keyActions` for row-level shortcuts.
+    - All verify scripts pass; `./gradlew compileJava` clean.
+
+  - [x] `H40.11` **Responsive behavior and accessibility audit.**
+    Completed: 2026-04-24.
+    Handover:
+    - Responsive audit passed: stat-card grids reflow via `app-summary-grid` CSS grid; tables use `app-table-scroll` horizontal scroll with no action buttons hidden on mobile; filter panels, modals, and toolbar collapse correctly on narrow screens; `@media` queries confirm no d-none on action buttons.
+    - Accessibility audit passed on all 6 admin pages (publications, citations, users, conflicts, triage, authors): all icon buttons carry `aria-label`; bulk controls carry `aria-label`; column-toggle button carries `aria-haspopup`, `aria-expanded`, `aria-controls`; cheat-sheet overlay reachable via `?` key and dismissible via `Escape`.
+    - Two issues found and fixed:
+      1. `adminBulkSelect.js` `_updateBar()` — added `aria-live="polite"` and `role="status"` to the bulk bar element so screen readers announce selection-count changes.
+      2. `adminColumnToggle.js` button click handler — on open, focus now moves to the first enabled checkbox so keyboard users don't need extra Tab presses.
+    - `scripts/verify-template-assets.js` passes clean.
+
+  - [x] `H40.12` **Legacy template cleanup and verification.**
+    Completed: 2026-04-26.
+    Handover:
+    - Deleted orphaned `admin/institution-publications.html` and `admin/group-publications.html` — both routes now redirect to workspace URLs with `#publications` hash.
+    - Fixed 4 pre-existing test failures in contract tests:
+      1. `AdminConflictControllerContractTest` — `ConflictSummary(long,long,long,long)` constructor called with 3 ints; added 4th arg.
+      2. `AdminViewControllerContractTest` — added missing `@MockitoBean GroupManagementFacade`; replaced stale `institutionPublicationsViewRendersExpectedTemplateAndModel` + `institutionPublicationsViewRedirectsWhenInstitutionMissing` with `institutionPublicationsRedirectsToWorkspace`; removed stale `scholardexPublicationsPagesRenderCanonicalTemplates` (wrong controller scope).
+      3. `AdminScholardexPublicationViewControllerContractTest` — added missing `@MockitoBean AdminDashboardService`; updated `buildPublicationCitationsView` mock to 3-arg signature; updated `ScholardexCitationsView` constructor to 9-arg form; renamed `searchRouteBuildsPublicationSearchView` → redirect assertion; added `citationSync` stub; added `scholardexPublicationsPagesRenderCanonicalTemplates` with proper stubs.
+    - Fixed two pre-existing link correctness issues: citations template author links now point to `/user/authors/view/{id}`; admin-scholardex-authors.js author name column now links to `/user/authors/view/`.
+    - Removed redundant manual `${_csrf.parameterName}` hidden input from publications bulk form (`th:action` already injects CSRF).
+    - All verification passes: `compileJava`, `npm run build`, `verify-assets`, `verify-template-assets`, `verify-route-guardrails`, `verify-ui-guardrails`; 34/34 contract tests green.
+
+- [ ] `H41` Delete Standalone Publication Wizard (Tier 2.1) — remove the three-step `publications-add-step*.html` templates and their controller routes; the workspace inline wizard (H36.9) is the only Add Publication path going forward.
+  Goal: eliminate the dead standalone wizard surface so no user-facing route resolves to it and no template asset validation entry references it.
+  Deliverable:
+  - Delete `templates/user/publications-add-step1.html`, `step2.html`, `step3.html`.
+  - Drop `GET /user/publications/add` (and any `step2`/`step3` counterparts) from the controller; add a `redirect:/user/workspace#publications` in their place for any bookmarked external link.
+  - Remove the progressive-enhancement `href="/user/publications/add"` fallback from any workspace button or link that currently carries it; ensure the button triggers the inline wizard directly.
+  - Drop the corresponding entries from the `verify-template-assets` allowlist.
+  - Confirm no remaining template, JS module, or test references the deleted routes or templates.
+  Exit criteria: `verify-template-assets`, `verify-route-guardrails`, and `verify-ui-guardrails` all pass; hitting `/user/publications/add` in a browser redirects to the workspace publications tab; no broken links in workspace HTML.
+  Effort: ~1-2 days.
+  Reference: `docs/tasks/active/ux-redesign-plan-after-tier1.md` §2.1, Phase A.
+  Dependency: none (H36.9 already complete).
+
 ## Backlog
 
-- [ ] `H38` User-Reviewed Publication Authorship Overlay.
+- [x] `H38` User-Reviewed Publication Authorship Overlay. *(completed 2026-04-19)*
   Goal: let researchers confirm or reject authorship for imported publications so noisy Scopus links stop polluting reports, indicators, citations, and workspace views without deleting source data.
   Deliverable: a local authorship-decision layer on top of canonical imported publication links, with review UI, suspicious-publication triage, and reporting/read-model filtering that prefers user decisions over raw source linkage.
   Exit criteria: researchers can mark a publication as `CONFIRMED` or `REJECTED`; rejected publications no longer count toward user-facing reporting, indicators, citations, exports, and workspace lists; confirmed publications remain included even if later imports stay noisy; imported Scopus/DBLP lineage remains preserved and auditable; the system can surface a "needs review" queue for suspicious authorship links instead of requiring users to inspect all publications manually.
+  Handover:
+  - The full user-reviewed authorship overlay is now in place across workspace review, suspicious triage, bulk decisions, confirmed-only scoring/reporting, cache invalidation, and diagnostics without mutating raw imported lineage.
+  - Researchers can review pending publications in one place, constrain review using confirmed affiliation scope, and rely on consistent downstream filtering across user-facing reports, indicators, citations, and exports.
+  - Imported linkage and local override state remain distinguishable: the workspace now shows concise provenance on publication rows/details, and the admin publication search exposes compact per-publication override summaries for operational debugging.
 
   Subtasks:
 
@@ -364,10 +570,16 @@ Done history moved to `TASKS-done.md`.
     - No user-facing controller or export contract changed in this slice; existing endpoints continue to work, but their next read after an authorship decision is now fresh by construction.
     - Targeted regression coverage now exists in `PublicationAuthorshipDecisionServiceTest`, `UserIndicatorResultServiceTest`, `UserIndividualReportRunServiceTest`, and the existing `UserReportFacadeTest` confirmed-only scoring/export coverage remains in place.
 
-  - [ ] `H38.7` **Operational diagnostics and auditability.**
+  - [x] `H38.7` **Operational diagnostics and auditability.** *(completed 2026-04-19)*
     Make authorship overrides explainable for both users and maintainers.
     Deliverable: concise provenance on publication rows/details ("Imported from Scopus, locally rejected by user on {date}") and admin/debug visibility into decision state without losing raw source lineage.
     Exit criteria: support/debug flows can distinguish imported linkage from local override decisions; users can see the current authorship status and when it changed.
+    Handover:
+    - The workspace publications tab now renders concise provenance directly in both the row and the detail view: pending items show imported source lineage, while confirmed/rejected items show imported lineage plus the local decision outcome and decision date; stored decision reasons are also shown in the detail panel when present.
+    - This slice keeps the user-facing provenance lightweight by deriving it from existing publication ids (`eid`, `wosId`, `googleScholarId`) plus the current authorship review state, without introducing a new persisted provenance model just for display.
+    - The existing admin publication search page now exposes a compact `Authorship overrides` summary column per publication row, including total override count, confirmed/rejected split, and latest decision status/date.
+    - `PublicationAuthorshipDecisionRepository` now supports publication-scoped decision lookup across users, and `PostgresScholardexAdminReadPort` aggregates that into `PublicationAuthorshipDecisionAdminSummary` for admin/debug read flows.
+    - Targeted regression coverage now exists in `AdminScholardexPublicationViewControllerContractTest`, `PublicationAuthorshipDecisionRepositoryTest`, `ResearcherWorkspaceControllerContractTest`, and `UserPublicationFacadeTest`.
 
 - [ ] `H20` Google Scholar (PoP) user-onboarding into Scholardex.
   Goal: support user-triggered Google Scholar imports from Publish-or-Perish exports as first-class canonical ingestion into Scholardex identity/link models.

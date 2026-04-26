@@ -9,16 +9,22 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.service.application.AdminDashboardService;
 import ro.uvt.pokedex.core.service.application.PostgresScholardexAdminReadPort;
+import ro.uvt.pokedex.core.service.application.model.AdminOperationStatus;
+import ro.uvt.pokedex.core.service.application.model.PublicationAuthorshipDecisionAdminSummary;
 import ro.uvt.pokedex.core.service.application.model.ScholardexCitationsView;
 import ro.uvt.pokedex.core.service.application.model.ScholardexPublicationSearchView;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -38,26 +44,16 @@ class AdminScholardexPublicationViewControllerContractTest {
     private MockMvc mockMvc;
 
     @MockitoBean
+    private AdminDashboardService adminDashboardService;
+    @MockitoBean
     private PostgresScholardexAdminReadPort postgresScholardexAdminReadPort;
 
     @Test
-    void searchRouteBuildsPublicationSearchView() throws Exception {
-        ScholardexPublicationView publication = new ScholardexPublicationView();
-        publication.setId("p1");
-        ScholardexAuthorView author = new ScholardexAuthorView();
-        author.setId("a1");
-        when(postgresScholardexAdminReadPort.buildPublicationSearchView("Paper"))
-                .thenReturn(new ScholardexPublicationSearchView(List.of(publication), Map.of("a1", author)));
-
+    void searchRouteRedirectsToPublicationCatalogWithQueryParams() throws Exception {
         mockMvc.perform(get("/admin/scholardex/publications/search")
-                        .param("authorName", "Author")
                         .param("paperTitle", "Paper"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("admin/scholardex-publications-search"))
-                .andExpect(model().attributeExists("authorMap"))
-                .andExpect(model().attributeExists("publications"));
-
-        verify(postgresScholardexAdminReadPort).buildPublicationSearchView("Paper");
+                .andExpect(status().is3xxRedirection())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern("/admin/scholardex/publications*"));
     }
 
     @Test
@@ -81,13 +77,16 @@ class AdminScholardexPublicationViewControllerContractTest {
         ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
         author.setName("Author One");
-        when(postgresScholardexAdminReadPort.buildPublicationCitationsView("p1"))
+        when(adminDashboardService.buildCitationSyncStatus())
+                .thenReturn(AdminOperationStatus.neverRun());
+        when(postgresScholardexAdminReadPort.buildPublicationCitationsView("p1", 0, 25))
                 .thenReturn(Optional.of(new ScholardexCitationsView(
                         publication,
                         forum,
                         List.of(citation),
                         Map.of("a1", author),
-                        Map.of("f1", forum)
+                        Map.of("f1", forum),
+                        1L, 0, 25, 1
                 )));
 
         mockMvc.perform(get("/admin/scholardex/publications/citations")
@@ -100,6 +99,23 @@ class AdminScholardexPublicationViewControllerContractTest {
                 .andExpect(model().attributeExists("authorMap"))
                 .andExpect(model().attributeExists("forumMap"));
 
-        verify(postgresScholardexAdminReadPort).buildPublicationCitationsView("p1");
+        verify(postgresScholardexAdminReadPort).buildPublicationCitationsView("p1", 0, 25);
+    }
+
+    @Test
+    void scholardexPublicationsPagesRenderCanonicalTemplates() throws Exception {
+        when(adminDashboardService.buildPublicationCatalogStats())
+                .thenReturn(new AdminDashboardService.PublicationCatalogStats(0L, 0L));
+        when(postgresScholardexAdminReadPort.buildPublicationCatalogPage(
+                any(), any(), any(), any(), org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyInt(), any(), any()))
+                .thenReturn(new PostgresScholardexAdminReadPort.PublicationCatalogPage(
+                        List.of(), Map.of(), Map.of(), Map.of(), 0L, 0, 25, 0));
+
+        mockMvc.perform(get("/admin/scholardex/publications"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin/scholardex-publications"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/admin/scholardex/publications/search")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/scopus/publications"))));
     }
 }

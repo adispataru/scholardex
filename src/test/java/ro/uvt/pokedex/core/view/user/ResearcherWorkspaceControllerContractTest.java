@@ -13,7 +13,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
@@ -243,11 +242,11 @@ class ResearcherWorkspaceControllerContractTest {
         old.setName("Old Institute");
 
         when(userRepository.findById("u@uvt.ro")).thenReturn(Optional.of(user));
-        when(researcherAuthorLookupService.resolveAuthorLookupKeysFromProfile(any(User.ResearcherProfile.class))).thenReturn(List.of("sauth_1"));
+        when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(User.ResearcherProfile.class))).thenReturn(List.of("sauth_1"));
         when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("sauth_1"))).thenReturn(List.of(author));
         when(scholardexProjectionReadService.findAffiliationsByIdIn(any())).thenReturn(List.of(uvt, old));
         when(userScopusTaskFacade.buildTasksView("u@uvt.ro", "u@uvt.ro"))
-                .thenReturn(new ro.uvt.pokedex.core.service.application.model.UserScopusTasksViewModel(new Researcher(), List.of(), List.of()));
+                .thenReturn(new ro.uvt.pokedex.core.service.application.model.UserScopusTasksViewModel(new User(), List.of(), List.of()));
 
         mockMvc.perform(get("/user/workspace/profile").with(authenticatedUser("u@uvt.ro")))
                 .andExpect(status().isOk())

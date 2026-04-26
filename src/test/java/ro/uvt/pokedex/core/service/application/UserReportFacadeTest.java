@@ -8,7 +8,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
@@ -26,7 +25,6 @@ import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndicatorRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 import ro.uvt.pokedex.core.service.CacheService;
-import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.model.UserIndicatorApplyViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserWorkbookExportStatus;
@@ -60,8 +58,6 @@ class UserReportFacadeTest {
 
     @Mock
     private UserService userService;
-    @Mock
-    private ResearcherService researcherService;
     @Mock
     private IndicatorRepository indicatorRepository;
     @Mock
@@ -98,10 +94,10 @@ class UserReportFacadeTest {
 
     @BeforeEach
     void setUpLookupService() {
-        lenient().when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(Researcher.class)))
+        lenient().when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(User.ResearcherProfile.class)))
                 .thenAnswer(invocation -> {
-                    Researcher researcher = invocation.getArgument(0);
-                    return researcher.getScopusId() == null ? List.of() : researcher.getScopusId();
+                    User.ResearcherProfile profile = invocation.getArgument(0);
+                    return profile.getScopusId() == null ? List.of() : profile.getScopusId();
                 });
         lenient().when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection()))
                 .thenAnswer(invocation -> {
@@ -556,7 +552,7 @@ class UserReportFacadeTest {
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
         when(indicatorRepository.findById("ind-pub")).thenReturn(Optional.of(indicator));
-        when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(Researcher.class))).thenReturn(List.of("a1"));
+        when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(User.ResearcherProfile.class))).thenReturn(List.of("a1"));
         when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of());
         when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro")).thenReturn(List.of(confirmed));
         when(scientificProductionService.calculateScientificProductionScore(anyList(), eq(indicator)))

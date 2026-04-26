@@ -100,8 +100,6 @@ class UserIndicatorResultServiceTest {
 
         User user = new User();
         user.setEmail("u@uvt.ro");
-        user.setResearcherId("r-1");
-        when(userService.getUserByEmail("u@uvt.ro")).thenReturn(Optional.of(user));
 
         when(userReportFacade.buildIndicatorApplyView("u@uvt.ro", "ind-1"))
                 .thenReturn(new UserIndicatorApplyViewModel("user/indicators-apply-publications", Map.of("indicator", indicator, "total", "2.50", "allQuarters", List.of("Q1"), "allValues", List.of(1))));
@@ -134,8 +132,6 @@ class UserIndicatorResultServiceTest {
 
         User user = new User();
         user.setEmail("u@uvt.ro");
-        user.setResearcherId("r-1");
-        when(userService.getUserByEmail("u@uvt.ro")).thenReturn(Optional.of(user));
 
         when(userReportFacade.buildIndicatorApplyView("u@uvt.ro", "ind-1"))
                 .thenReturn(new UserIndicatorApplyViewModel(
@@ -162,7 +158,6 @@ class UserIndicatorResultServiceTest {
         when(userIndicatorResultRepository.findByUserEmailAndIndicatorIdAndMode("u@uvt.ro", "ind-1", UserIndicatorResult.Mode.LATEST))
                 .thenReturn(Optional.of(existing));
         when(indicatorRepository.findById("ind-1")).thenReturn(Optional.of(new Indicator()));
-        when(userService.getUserByEmail("u@uvt.ro")).thenReturn(Optional.of(new User()));
         when(userReportFacade.buildIndicatorApplyView("u@uvt.ro", "ind-1"))
                 .thenReturn(new UserIndicatorApplyViewModel("user/indicators", Map.of("indicator", new Indicator(), "total", "0.00")));
         when(userIndicatorResultRepository.save(any(UserIndicatorResult.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -192,8 +187,6 @@ class UserIndicatorResultServiceTest {
         when(indicatorRepository.findById("ind-1")).thenReturn(Optional.of(indicator));
 
         User user = new User();
-        user.setResearcherId("r-1");
-        when(userService.getUserByEmail("u@uvt.ro")).thenReturn(Optional.of(user));
 
         when(userIndicatorResultRepository.save(any(UserIndicatorResult.class))).thenAnswer(invocation -> {
             UserIndicatorResult entity = invocation.getArgument(0);

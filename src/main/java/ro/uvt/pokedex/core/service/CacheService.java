@@ -7,6 +7,7 @@ import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.repository.UserRepository;
 import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
 import ro.uvt.pokedex.core.service.application.ResearcherAuthorLookupService;
@@ -26,6 +27,7 @@ public class CacheService {
 
     private final CoreConferenceRankingRepository coreConferenceRankingRepository;
     private final GroupRepository groupRepository;
+    private final UserRepository userRepository;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final ConcurrentMap<String, List<CoreConferenceRanking>> confRankingCache;
     private final ConcurrentMap<String, List<CoreConferenceRanking>> confRankingTitleCache;
@@ -38,11 +40,13 @@ public class CacheService {
             ScholardexProjectionReadService scholardexProjectionReadService,
             CoreConferenceRankingRepository coreConferenceRankingRepository,
             GroupRepository groupRepository,
+            UserRepository userRepository,
             ResearcherAuthorLookupService researcherAuthorLookupService
     ) {
         this.scholardexProjectionReadService = scholardexProjectionReadService;
         this.coreConferenceRankingRepository = coreConferenceRankingRepository;
         this.groupRepository = groupRepository;
+        this.userRepository = userRepository;
         this.researcherAuthorLookupService = researcherAuthorLookupService;
         this.forumCache = new ConcurrentHashMap<>();
         this.scholardexProjectionReadService.findAllForums().forEach(f -> {
@@ -55,13 +59,17 @@ public class CacheService {
         confRankingCache.putAll(allConferenceRankings.stream().collect(Collectors.groupingBy(CoreConferenceRanking::getAcronym)));
         allConferenceRankings.forEach(this::indexConferenceRankingByTitle);
         List<ScholardexAuthorView> all = scholardexProjectionReadService.findAllAuthors();
-        groupRepository.findAll().forEach(group ->
-                group.getResearchers().forEach(researcher -> {
-                    List<String> lookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(researcher);
-                            scholardexProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
-                            .map(ScholardexAuthorView::getId)
-                            .forEach(universityAuthorIds::add);
-                }));
+        groupRepository.findAll().forEach(group -> {
+            List<String> memberIds = group.getMemberIds() != null ? group.getMemberIds() : List.of();
+            userRepository.findAllById(memberIds).stream()
+                    .filter(u -> u.getResearcherProfile() != null)
+                    .forEach(researcher -> {
+                        List<String> lookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(researcher.getResearcherProfile());
+                        scholardexProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
+                                .map(ScholardexAuthorView::getId)
+                                .forEach(universityAuthorIds::add);
+                    });
+        });
         all.forEach(a -> {
             authorCache.put(a.getId(), a);
         });

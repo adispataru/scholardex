@@ -2,6 +2,12 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H39 Admin Operations Center — DONE 2026-04-19
+
+All 8 subtasks complete. Live admin dashboard replaces static placeholder: five stat cards (open conflicts, pending triage, researchers, publications, last sync) with real counts; three operation status cards (Initialization, WoS Enrichment, Incremental Updates) with live badges and "Run Now" action for WoS enrichment; confirmation dialog with full accessibility (focus trap, Escape, ARIA); recent-activity feed (up to 10 events, relative timestamps); quick-links toolbar above the stat grid; sidebar reorganized with "Operations Center" as the hub; responsive `@media (max-width: 576px)` breakpoints; all `aria-label` attributes evaluated by Thymeleaf; `npm run build`, `verify-assets`, `verify-template-assets`, `verify-route-guardrails`, `compileJava` all pass clean.
+
+Key files: `AdminDashboardService.java`, `AdminDashboardViewModel.java`, `AdminOperationStatus.java`, `AdminActivityEvent.java`, `AdminViewController.java`, `templates/admin/dashboard.html`, `frontend/src/styles/admin-dashboard.css`, `static/js/admin-dashboard.js`, `templates/fragments.html`.
+
 ## H37.10 Legacy template cleanup and verification — DONE 2026-04-18
 
 Completed cleanup of dead routes and templates:

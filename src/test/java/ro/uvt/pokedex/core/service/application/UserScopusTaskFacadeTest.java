@@ -9,7 +9,7 @@ import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;
 import ro.uvt.pokedex.core.model.tasks.Status;
 import ro.uvt.pokedex.core.repository.tasks.ScopusCitationUpdateRepository;
 import ro.uvt.pokedex.core.repository.tasks.ScopusPublicationUpdateRepository;
-import ro.uvt.pokedex.core.service.ResearcherService;
+import ro.uvt.pokedex.core.service.UserService;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -19,7 +19,7 @@ import static org.mockito.Mockito.when;
 class UserScopusTaskFacadeTest {
 
     @Mock
-    private ResearcherService researcherService;
+    private UserService userService;
     @Mock
     private ScopusPublicationUpdateRepository scopusPublicationUpdateRepository;
     @Mock

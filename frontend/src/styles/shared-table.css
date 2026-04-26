@@ -384,24 +384,38 @@
 }
 
 .app-table-section .dataTables_wrapper .pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-left: 0;
+  list-style: none;
   gap: 0.35rem;
+  margin-bottom: 0;
 }
 
 .app-table-section .dataTables_wrapper .page-link {
-  border: 1px solid var(--app-color-border);
-  border-radius: 0.75rem;
-  background: var(--app-color-card-bg);
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
   color: var(--app-color-text);
+  padding: 0.25rem 0.55rem;
+  line-height: 1.5;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.app-table-section .dataTables_wrapper .page-link:hover {
+  background: var(--app-color-primary-soft);
+  color: var(--app-color-primary);
 }
 
 .app-table-section .dataTables_wrapper .page-item.active .page-link {
   background: var(--app-color-primary);
-  border-color: var(--app-color-primary);
   color: #fff;
 }
 
 .app-table-section .dataTables_wrapper .page-item.disabled .page-link {
-  opacity: 0.55;
+  opacity: 0.45;
   pointer-events: none;
 }
 

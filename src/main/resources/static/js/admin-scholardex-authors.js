@@ -61,11 +61,15 @@
     els.tableBody.innerHTML = (items || []).map(function (item) {
       const affiliations = (item.affiliations || []).map(escapeHtml).join(', ');
       const id = encodeURIComponent(item.id || '');
+      const profileHref = '/user/authors/view/' + id;
+      const pubsHref = '/admin/scholardex/publications?authorId=' + id;
       return '<tr>' +
-        '<td><a href="/user/authors/view/' + id + '">' + escapeHtml(item.name) + '</a></td>' +
-        '<td>' + (affiliations || '<span class="text-muted">No affiliations</span>') + '</td>' +
+        '<td data-col="name"><a href="' + profileHref + '">' + escapeHtml(item.name) + '</a></td>' +
+        '<td data-col="affiliations">' + (affiliations || '<span class="text-muted">No affiliations</span>') + '</td>' +
+        '<td data-col="actions"><a class="btn btn-outline-secondary btn-sm" href="' + pubsHref + '" aria-label="View publications for this author"><i class="fa-solid fa-file-lines fa-xs"></i> Publications</a></td>' +
         '</tr>';
     }).join('');
+    if (window._authorsColToggle) window._authorsColToggle.reinit();
   }
 
   function buildUrl() {
@@ -144,6 +148,36 @@
     bindEvents();
     updatePager();
     fetchPage();
+    var toolbarActionsEl = document.getElementById('authors-toolbar-actions');
+    var tableEl = document.getElementById('admin-authors-table');
+    if (window.initAdminColumnToggle && toolbarActionsEl && tableEl) {
+      window._authorsColToggle = window.initAdminColumnToggle({
+        tableId: 'authors',
+        tableEl: tableEl,
+        toolbarActionsEl: toolbarActionsEl,
+        columns: [
+          { key: 'name',         label: 'Name',         required: true },
+          { key: 'affiliations', label: 'Affiliations', required: false },
+          { key: 'actions',      label: 'Actions',      required: true },
+        ],
+      });
+    }
+    var tbody = tableEl ? tableEl.querySelector('tbody') : null;
+    if (window.initAdminShortcuts && tbody) {
+      window.initAdminShortcuts({
+        sections: [{
+          title: 'Row Actions',
+          rows: [{ keys: ['e', 'Enter'], label: 'View publications for focused author' }],
+        }],
+        tables: [{
+          tbodyEl: tbody,
+          keyActions: {
+            'e':     function(tr) { var a = tr.querySelector('[data-col="actions"] a'); if (a) window.location.href = a.href; },
+            'Enter': function(tr) { var a = tr.querySelector('[data-col="actions"] a'); if (a) window.location.href = a.href; },
+          },
+        }],
+      });
+    }
   }
 
   if (document.readyState === 'loading') {

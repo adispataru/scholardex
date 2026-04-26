@@ -41,7 +41,7 @@ class AdminConflictControllerContractTest {
         when(conflictOperationsFacade.findIdentityConflicts(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
         when(conflictOperationsFacade.summarizeIdentityConflicts())
-                .thenReturn(new ConflictOperationsFacade.ConflictSummary(0, 0, 0));
+                .thenReturn(new ConflictOperationsFacade.ConflictSummary(0, 0, 0, 0));
 
         mockMvc.perform(get("/admin/conflicts"))
                 .andExpect(status().isOk())
@@ -57,7 +57,7 @@ class AdminConflictControllerContractTest {
         when(conflictOperationsFacade.findIdentityConflicts(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
         when(conflictOperationsFacade.summarizeIdentityConflicts())
-                .thenReturn(new ConflictOperationsFacade.ConflictSummary(1, 2, 3));
+                .thenReturn(new ConflictOperationsFacade.ConflictSummary(1, 2, 3, 0));
 
         mockMvc.perform(get("/admin/conflicts")
                         .param("page", "2")

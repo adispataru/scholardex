@@ -9,7 +9,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.WebSecurityConfig;
 import ro.uvt.pokedex.core.service.CustomUserDetailsService;
-import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.UserPublicationFacade;
 import ro.uvt.pokedex.core.service.application.UserIndividualReportRunService;
@@ -34,8 +33,6 @@ class UserViewSecurityContractTest {
     private CustomUserDetailsService userDetailsService;
     @MockitoBean
     private UserService userService;
-    @MockitoBean
-    private ResearcherService researcherService;
     @MockitoBean
     private UserPublicationFacade userPublicationFacade;
     @MockitoBean

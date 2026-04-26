@@ -14,14 +14,6 @@ const roots = [
 
 const allowlistedExternalAssetReferences = new Map([
   [
-    'src/main/resources/templates/user/publications-add-step1.html',
-    new Set(['https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css'])
-  ],
-  [
-    'src/main/resources/templates/user/publications-add-step2.html',
-    new Set(['https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css'])
-  ],
-  [
     'src/main/resources/templates/universities/detail.html',
     new Set(['https://cdn.jsdelivr.net/npm/chart.js'])
   ],
@@ -32,10 +24,12 @@ const allowlistedExternalAssetReferences = new Map([
 ]);
 
 const allowlistedInlineScriptFiles = new Set([
+  'src/main/resources/templates/admin/conflicts.html',
   'src/main/resources/templates/admin/indicators.html',
   'src/main/resources/templates/admin/scholardex-citations.html',
-  'src/main/resources/templates/user/publications-add-step1.html',
-  'src/main/resources/templates/user/publications-add-step2.html',
+  'src/main/resources/templates/admin/scholardex-publications.html',
+  'src/main/resources/templates/admin/user-defined-triage.html',
+  'src/main/resources/templates/admin/users.html',
   'src/main/resources/templates/user/publications.html'
 ]);
 

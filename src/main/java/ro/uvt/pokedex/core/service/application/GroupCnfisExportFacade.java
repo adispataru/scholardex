@@ -3,7 +3,6 @@ package ro.uvt.pokedex.core.service.application;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.reporting.CanonicalPublicationConstants;
 import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.reporting.Domain;
@@ -13,6 +12,7 @@ import ro.uvt.pokedex.core.model.reporting.WoSExtractor;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.repository.UserRepository;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisZipExportViewModel;
@@ -47,11 +47,11 @@ public class GroupCnfisExportFacade {
             return Optional.empty();
         }
 
-        List<Researcher> researchers = loadResearchers(group);
-        researchers.sort(Comparator.comparing(Researcher::getName));
+        List<User> researchers = loadResearchers(group);
+        researchers.sort(Comparator.comparing(u -> u.getResearcherProfile().getName()));
         List<String> lookupKeys = new ArrayList<>();
-        for (Researcher researcher : researchers) {
-            lookupKeys.addAll(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
+        for (User user : researchers) {
+            lookupKeys.addAll(researcherAuthorLookupService.resolveAuthorLookupKeys(user.getResearcherProfile()));
         }
         List<String> authorIds = scholardexProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
                 .map(ScholardexAuthorView::getId)
@@ -80,9 +80,9 @@ public class GroupCnfisExportFacade {
         Domain allDomain = resolveAllDomain();
         List<GroupMemberCnfisWorkbook> workbooks = new ArrayList<>();
 
-        for (Researcher researcher : loadResearchers(group)) {
+        for (User user : loadResearchers(group)) {
             List<String> authorIds = scholardexProjectionReadService.findAuthorsByIdIn(
-                    researcherAuthorLookupService.resolveAuthorLookupKeys(researcher)
+                    researcherAuthorLookupService.resolveAuthorLookupKeys(user.getResearcherProfile())
             ).stream().map(ScholardexAuthorView::getId).toList();
             List<ScholardexPublicationView> publications = scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
             publications = filterPublicationsByYear(publications, startYear, endYear);
@@ -93,7 +93,7 @@ public class GroupCnfisExportFacade {
             List<CNFISReport2025> cnfisReports = generateReports(scoringPublications, allDomain);
             Map<String, ScholardexForumView> forumMap = loadForumMap(publications);
             byte[] reportBytes = exportService.generateCNFISReportWorkbook(scoringPublications, cnfisReports, forumMap, authorIds, false);
-            String entryName = researcher.getLastName() + "_" + researcher.getFirstName().charAt(0) + "_AB.xlsx";
+            String entryName = user.getResearcherProfile().getLastName() + "_" + user.getResearcherProfile().getFirstName().charAt(0) + "_AB.xlsx";
             workbooks.add(new GroupMemberCnfisWorkbook(entryName, reportBytes));
         }
 
@@ -122,17 +122,12 @@ public class GroupCnfisExportFacade {
         ));
     }
 
-    private List<Researcher> loadResearchers(Group group) {
+    private List<User> loadResearchers(Group group) {
         List<String> memberIds = group.getMemberIds();
-        if (memberIds != null && !memberIds.isEmpty()) {
-            return userRepository.findAllById(memberIds).stream()
-                    .map(Researcher::fromUser)
-                    .filter(java.util.Objects::nonNull)
-                    .collect(Collectors.toList());
-        }
-        return group.getResearchers() != null
-                ? new ArrayList<>(group.getResearchers())
-                : new ArrayList<>();
+        if (memberIds == null || memberIds.isEmpty()) return new ArrayList<>();
+        return userRepository.findAllById(memberIds).stream()
+                .filter(u -> u.getResearcherProfile() != null)
+                .collect(Collectors.toList());
     }
 
     private Domain resolveAllDomain() {

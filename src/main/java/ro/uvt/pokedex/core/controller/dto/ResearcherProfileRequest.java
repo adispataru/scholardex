@@ -6,7 +6,7 @@ import ro.uvt.pokedex.core.model.reporting.Position;
 import java.util.ArrayList;
 import java.util.List;
 
-public record AdminResearcherUpsertRequest(
+public record ResearcherProfileRequest(
         /** User email — required for create; must match the User's email (which is their id). */
         String email,
         @NotBlank String firstName,

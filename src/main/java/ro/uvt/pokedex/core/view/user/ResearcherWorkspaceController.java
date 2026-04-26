@@ -7,7 +7,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
@@ -574,7 +573,7 @@ public class ResearcherWorkspaceController {
 
     private ResearcherWorkspaceViewModel buildWorkspaceViewModel(User currentUser) {
         String email = currentUser.getEmail();
-        Optional<Researcher> researcherOpt = Optional.ofNullable(Researcher.fromUser(currentUser));
+        User.ResearcherProfile profile = currentUser.getResearcherProfile();
 
         Optional<UserPublicationsViewModel> pubsOpt =
                 userPublicationFacade.buildUserPublicationsView(email);
@@ -595,9 +594,9 @@ public class ResearcherWorkspaceController {
 
         WorkspacePreferences prefs = loadOrCreatePreferences(email);
 
-        String researcherName = researcherOpt.map(Researcher::getName).orElse(null);
-        boolean hasProfile = researcherOpt.isPresent();
-        int completeness = computeProfileCompleteness(researcherOpt.orElse(null));
+        String researcherName = profile != null ? profile.getName() : null;
+        boolean hasProfile = profile != null;
+        int completeness = computeProfileCompleteness(profile);
 
         int publicationCount = pubsOpt.map(vm -> vm.publications().size()).orElse(0);
         int totalCitations = pubsOpt.map(UserPublicationsViewModel::numCitations).orElse(0);
@@ -615,8 +614,7 @@ public class ResearcherWorkspaceController {
                         ai.getDate()))
                 .toList();
 
-        WorkspaceState state = determineWorkspaceState(
-                researcherOpt.orElse(null), email, availableReportCount);
+        WorkspaceState state = determineWorkspaceState(profile, email, availableReportCount);
 
         // ── Chart data: publications and citations per year ──────────────
         List<String> chartYears = new ArrayList<>();
@@ -672,29 +670,17 @@ public class ResearcherWorkspaceController {
     }
 
     private WorkspaceState determineWorkspaceState(
-            Researcher researcher, String researcherId, int availableReportCount) {
-        if (researcherId == null || researcher == null) {
+            User.ResearcherProfile profile, String researcherId, int availableReportCount) {
+        if (researcherId == null || profile == null) {
             return WorkspaceState.NEW_USER;
         }
-        if (!hasLinkedResearchIdentity(researcher) || requiresAffiliationConfirmation(researcher)) {
+        if (!hasLinkedResearchIdentity(profile) || requiresAffiliationConfirmation(profile)) {
             return WorkspaceState.INCOMPLETE_PROFILE;
         }
         if (availableReportCount > 0) {
             return WorkspaceState.REPORTING_SEASON;
         }
         return WorkspaceState.ACTIVE;
-    }
-
-    private int computeProfileCompleteness(Researcher researcher) {
-        if (researcher == null) {
-            return 0;
-        }
-        int score = 0;
-        if (researcher.getFirstName() != null && !researcher.getFirstName().isBlank()) score += 25;
-        if (researcher.getLastName() != null && !researcher.getLastName().isBlank()) score += 25;
-        if (hasLinkedResearchIdentity(researcher)) score += 25;
-        if (!requiresAffiliationConfirmation(researcher)) score += 25;
-        return score;
     }
 
     private int computeProfileCompleteness(User.ResearcherProfile profile) {
@@ -707,22 +693,6 @@ public class ResearcherWorkspaceController {
         if (hasLinkedResearchIdentity(profile)) score += 25;
         if (!requiresAffiliationConfirmation(profile)) score += 25;
         return score;
-    }
-
-    private boolean hasLinkedResearchIdentity(Researcher researcher) {
-        if (researcher == null) {
-            return false;
-        }
-        boolean hasScopus = researcher.getScopusId() != null && !researcher.getScopusId().isEmpty();
-        boolean hasWos = researcher.getWosId() != null && !researcher.getWosId().isEmpty();
-        boolean hasPrimaryAuthor = researcher.getPrimaryScholardexAuthorId() != null
-                && !researcher.getPrimaryScholardexAuthorId().isBlank();
-        return hasScopus || hasWos || hasPrimaryAuthor;
-    }
-
-    private boolean requiresAffiliationConfirmation(Researcher researcher) {
-        return hasLinkedResearchIdentity(researcher)
-                && (researcher == null || researcher.getAffiliationsConfirmedAt() == null);
     }
 
     private boolean hasLinkedResearchIdentity(User.ResearcherProfile profile) {
@@ -741,37 +711,11 @@ public class ResearcherWorkspaceController {
                 && (profile == null || profile.getAffiliationsConfirmedAt() == null);
     }
 
-    private List<ScholardexAffiliationView> loadObservedAffiliations(Researcher researcher) {
-        if (researcher == null || !hasLinkedResearchIdentity(researcher)) {
-            return List.of();
-        }
-        List<String> authorLookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(researcher);
-        if (authorLookupKeys.isEmpty()) {
-            return List.of();
-        }
-        List<ScholardexAuthorView> authors = scholardexProjectionReadService.findAuthorsByIdIn(authorLookupKeys);
-        Set<String> affiliationIds = authors.stream()
-                .map(ScholardexAuthorView::getAffiliationIds)
-                .filter(ids -> ids != null && !ids.isEmpty())
-                .flatMap(List::stream)
-                .filter(id -> id != null && !id.isBlank())
-                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
-        if (affiliationIds.isEmpty()) {
-            return List.of();
-        }
-        return scholardexProjectionReadService.findAffiliationsByIdIn(affiliationIds).stream()
-                .sorted(Comparator.comparing(
-                        affiliation -> affiliation.getName() == null ? "" : affiliation.getName(),
-                        String.CASE_INSENSITIVE_ORDER
-                ))
-                .toList();
-    }
-
     private List<ScholardexAffiliationView> loadObservedAffiliations(User.ResearcherProfile profile) {
         if (profile == null || !hasLinkedResearchIdentity(profile)) {
             return List.of();
         }
-        List<String> authorLookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeysFromProfile(profile);
+        List<String> authorLookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(profile);
         if (authorLookupKeys.isEmpty()) {
             return List.of();
         }
@@ -859,8 +803,8 @@ public class ResearcherWorkspaceController {
         String email = user.getEmail();
 
         // Profile completeness
-        Researcher researcher = Researcher.fromUser(user);
-        WorkspaceState state = determineWorkspaceState(researcher, researcher != null ? email : null, 0);
+        User.ResearcherProfile userProfile = user.getResearcherProfile();
+        WorkspaceState state = determineWorkspaceState(userProfile, userProfile != null ? email : null, 0);
         if (state == WorkspaceState.NEW_USER || state == WorkspaceState.INCOMPLETE_PROFILE) {
             notifications.add(new WorkspaceNotification(
                     "profile-incomplete",
@@ -898,7 +842,7 @@ public class ResearcherWorkspaceController {
                 )));
 
         // New citations since last visit
-        if (since != null && researcher != null) {
+        if (since != null && userProfile != null) {
             userPublicationFacade.buildUserPublicationsView(email)
                     .ifPresent(vm -> vm.publications().stream()
                             .filter(p -> p.getUpdatedAt() != null && p.getUpdatedAt().isAfter(since)

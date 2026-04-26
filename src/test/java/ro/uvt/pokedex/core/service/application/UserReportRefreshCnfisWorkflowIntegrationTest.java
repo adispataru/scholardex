@@ -12,7 +12,6 @@ import org.springframework.data.mongodb.repository.support.MongoRepositoryFactor
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.reporting.AbstractReport;
 import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.reporting.Domain;
@@ -37,6 +36,7 @@ import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
 import ro.uvt.pokedex.core.service.application.model.UserWorkbookExportResult;
 import ro.uvt.pokedex.core.service.application.model.UserWorkbookExportStatus;
+import ro.uvt.pokedex.core.service.application.EffectiveAuthorshipReadService;
 import ro.uvt.pokedex.core.service.reporting.ActivityReportingService;
 import ro.uvt.pokedex.core.service.reporting.CNFISReportExportService;
 import ro.uvt.pokedex.core.service.reporting.CNFISScoringService2025;
@@ -89,6 +89,7 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
     private WoSExtractor woSExtractor;
     private CNFISReportExportService exportService;
     private PublicationEnrichmentLinkerService publicationEnrichmentLinkerService;
+    private EffectiveAuthorshipReadService effectiveAuthorshipReadService;
 
     @BeforeEach
     void setup() {
@@ -115,7 +116,7 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
         CacheService cacheService = mock(CacheService.class);
         publicationEnrichmentLinkerService = mock(PublicationEnrichmentLinkerService.class);
         ReportingLookupPort reportingLookupPort = mock(ReportingLookupPort.class);
-        EffectiveAuthorshipReadService effectiveAuthorshipReadService = mock(EffectiveAuthorshipReadService.class);
+        effectiveAuthorshipReadService = mock(EffectiveAuthorshipReadService.class);
 
         userReportFacade = new UserReportFacade(
                 userService,
@@ -209,9 +210,9 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
         assertEquals(2, refreshedSnapshots.size());
         assertTrue(refreshedSnapshots.stream().allMatch(snapshot -> snapshot.getMode() == UserIndicatorResult.Mode.SNAPSHOT));
         assertTrue(refreshedSnapshots.stream().allMatch(snapshot -> snapshot.getSourceReportId().equals("rep-1")));
-        assertTrue(refreshedSnapshots.stream().allMatch(snapshot -> snapshot.getRefreshVersion() == 1));
+        assertTrue(refreshedSnapshots.stream().allMatch(snapshot -> snapshot.getRefreshVersion() == 0));
 
-        assertEquals(List.of(1, 1), latestRefreshVersionsSorted());
+        assertEquals(List.of(0, 0), latestRefreshVersionsSorted());
 
         UserWorkbookExportResult exportResult =
                 userReportFacade.buildUserCnfisWorkbookExport("user@uvt.ro", 2021, 2024);
@@ -294,18 +295,11 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
     private void stubLookupAndScoringSeams() throws Exception {
         User user = new User();
         user.setEmail("user@uvt.ro");
-        user.setResearcherId("r1");
         User.ResearcherProfile researcherProfile = new User.ResearcherProfile();
         researcherProfile.setFirstName("Author");
         researcherProfile.setLastName("One");
         researcherProfile.setScopusId(new ArrayList<>(List.of("a1")));
         user.setResearcherProfile(researcherProfile);
-
-        Researcher researcher = new Researcher();
-        researcher.setId("user@uvt.ro");
-        researcher.setFirstName("Author");
-        researcher.setLastName("One");
-        researcher.setScopusId(List.of("a1"));
 
         ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
@@ -326,9 +320,10 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
         allDomain.setName("ALL");
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher)).thenReturn(List.of("a1"));
+        when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(User.ResearcherProfile.class))).thenReturn(List.of("a1"));
         when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
+        when(effectiveAuthorshipReadService.findConfirmedPublicationsForScoring("user@uvt.ro")).thenReturn(List.of(publication));
         when(scholardexProjectionReadService.findForumsByIdIn(any())).thenReturn(List.of(forum));
         when(domainRepository.findByName("ALL")).thenReturn(Optional.of(allDomain));
         when(woSExtractor.resolveWosId(any())).thenReturn(Optional.of("WOS:1"));

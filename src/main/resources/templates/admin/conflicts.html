@@ -14,16 +14,22 @@
             <div th:replace="~{fragments :: navbar('Canonical Identity Conflicts')}"></div>
             <div class="container-fluid app-page-content">
                 <div class="app-dashboard">
-                    <p class="app-dashboard__intro">Review the identity conflict queue, filter the active backlog, and run exceptional maintenance actions from one operational summary surface for <code>scholardex.identity_conflicts</code>.</p>
+                    <p class="app-dashboard__intro">Review the identity conflict queue, filter the active backlog, and drive decisions directly from this surface. Resolved and dismissed conflicts are retained for audit.</p>
 
                     <div th:if="${errorMessage}" class="app-feedback app-feedback--danger" th:text="${errorMessage}"></div>
                     <div th:if="${successMessage}" class="app-feedback app-feedback--success" th:text="${successMessage}"></div>
 
+                    <!-- Stat cards -->
                     <div class="app-summary-grid">
                         <div class="app-summary-card app-summary-card--danger">
                             <p class="app-summary-card__label">Open</p>
                             <p class="app-summary-card__value" th:text="${summary.open}">0</p>
                             <p class="app-summary-card__meta">Conflicts that still require operator action.</p>
+                        </div>
+                        <div class="app-summary-card app-summary-card--warning">
+                            <p class="app-summary-card__label">Investigating</p>
+                            <p class="app-summary-card__value" th:text="${summary.investigated}">0</p>
+                            <p class="app-summary-card__meta">Marked for active investigation by an operator.</p>
                         </div>
                         <div class="app-summary-card app-summary-card--success">
                             <p class="app-summary-card__label">Resolved</p>
@@ -35,91 +41,201 @@
                             <p class="app-summary-card__value" th:text="${summary.dismissed}">0</p>
                             <p class="app-summary-card__meta">Records intentionally removed from the active queue.</p>
                         </div>
-                        <div class="app-summary-card app-summary-card--warning">
-                            <p class="app-summary-card__label">Total</p>
-                            <p class="app-summary-card__value" th:text="${summary.total}">0</p>
-                            <p class="app-summary-card__meta">Overall conflict inventory tracked by the page.</p>
-                        </div>
                     </div>
 
-                    <div class="app-summary-panel">
-                        <div class="app-summary-panel__header">
-                            <h2 class="app-summary-panel__title">Identity Conflict Queue</h2>
-                        </div>
-                        <div class="app-summary-panel__body">
-                        <form method="get" th:action="@{/admin/conflicts}" class="app-dashboard-form app-dashboard-form--filters">
-                            <div class="app-dashboard-form__field app-dashboard-form__field--span-2"><label>Entity type</label><input name="entityType" class="form-control" th:value="${entityType}" placeholder="PUBLICATION"></div>
-                            <div class="app-dashboard-form__field app-dashboard-form__field--span-2"><label>Incoming source</label><input name="incomingSource" class="form-control" th:value="${incomingSource}" placeholder="SCOPUS"></div>
-                            <div class="app-dashboard-form__field app-dashboard-form__field--span-2"><label>Reason code</label><input name="reasonCode" class="form-control" th:value="${reasonCode}" placeholder="SOURCE_ID_COLLISION"></div>
-                            <div class="app-dashboard-form__field app-dashboard-form__field--span-2"><label>Status</label><input name="status" class="form-control" th:value="${status}" placeholder="OPEN"></div>
-                            <div class="app-dashboard-form__field app-dashboard-form__field--span-2"><label>Detected from</label><input name="detectedFrom" type="date" class="form-control" th:value="${detectedFrom}"></div>
-                            <div class="app-dashboard-form__field app-dashboard-form__field--span-2"><label>Detected to</label><input name="detectedTo" type="date" class="form-control" th:value="${detectedTo}"></div>
-                            <div class="app-dashboard-form__field app-dashboard-form__field--span-1"><label>Size</label><input name="size" type="number" min="1" class="form-control" th:value="${identityPageData.size}"></div>
-                            <div class="app-dashboard-form__actions"><button type="submit" class="btn btn-outline-primary btn-sm">Apply</button></div>
-                        </form>
-
-                        <form method="post" th:action="@{/admin/conflicts/bulkStatus}" class="mb-2">
-                            <div class="app-table-scroll">
-                                <table class="table table-sm app-table">
-                                    <thead>
-                                    <tr>
-                                        <th></th>
-                                        <th>Detected At</th>
-                                        <th>Entity</th>
-                                        <th>Source</th>
-                                        <th>Source Record</th>
-                                        <th>Reason</th>
-                                        <th>Status</th>
-                                        <th>Candidates</th>
-                                        <th>Resolved</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <tr th:each="c : ${identityPageData.content}">
-                                        <td><input type="checkbox" name="ids" th:value="${c.id}" th:disabled="${c.status != 'OPEN'}"></td>
-                                        <td th:text="${c.detectedAt}"></td>
-                                        <td th:text="${c.entityType}"></td>
-                                        <td th:text="${c.incomingSource}"></td>
-                                        <td th:text="${c.incomingSourceRecordId}"></td>
-                                        <td th:text="${c.reasonCode}"></td>
-                                        <td th:text="${c.status}"></td>
-                                        <td th:text="${#strings.listJoin(c.candidateCanonicalIds, ', ')}"></td>
-                                        <td th:text="${c.resolvedAt != null ? c.resolvedAt + ' / ' + c.resolvedBy : '-'}"></td>
-                                        <td>
-                                            <button th:if="${c.status == 'OPEN'}" class="btn btn-outline-success btn-sm" type="submit"
-                                                    name="action" value="resolveOne">Resolve</button>
-                                            <button th:if="${c.status == 'OPEN'}" class="btn btn-outline-secondary btn-sm" type="submit"
-                                                    name="action" value="dismissOne">Dismiss</button>
-                                            <input type="hidden" name="singleId" th:value="${c.id}">
-                                        </td>
-                                    </tr>
-                                    <tr th:if="${identityPageData.content.isEmpty()}">
-                                        <td colspan="10" class="app-dashboard-empty-row">No conflicts found.</td>
-                                    </tr>
-                                    </tbody>
-                                </table>
+                    <!-- ── Integrated filter ── -->
+                    <form method="get" th:action="@{/admin/conflicts}" class="app-queue-filter">
+                        <p class="app-queue-filter__title">Filter queue</p>
+                        <div class="app-queue-filter__grid">
+                            <div class="app-queue-filter__field">
+                                <label>Entity type</label>
+                                <input name="entityType" class="form-control form-control-sm" th:value="${entityType}" placeholder="PUBLICATION">
                             </div>
+                            <div class="app-queue-filter__field">
+                                <label>Incoming source</label>
+                                <input name="incomingSource" class="form-control form-control-sm" th:value="${incomingSource}" placeholder="SCOPUS">
+                            </div>
+                            <div class="app-queue-filter__field">
+                                <label>Reason code</label>
+                                <input name="reasonCode" class="form-control form-control-sm" th:value="${reasonCode}" placeholder="SOURCE_ID_COLLISION">
+                            </div>
+                            <div class="app-queue-filter__field">
+                                <label>Status</label>
+                                <select name="status" class="form-control form-control-sm">
+                                    <option value="" th:selected="${#strings.isEmpty(status)}">All</option>
+                                    <option value="OPEN"         th:selected="${status == 'OPEN'}">Open</option>
+                                    <option value="INVESTIGATED" th:selected="${status == 'INVESTIGATED'}">Investigating</option>
+                                    <option value="RESOLVED"     th:selected="${status == 'RESOLVED'}">Resolved</option>
+                                    <option value="DISMISSED"    th:selected="${status == 'DISMISSED'}">Dismissed</option>
+                                </select>
+                            </div>
+                            <div class="app-queue-filter__field">
+                                <label>Detected from</label>
+                                <input name="detectedFrom" type="date" class="form-control form-control-sm" th:value="${detectedFrom}">
+                            </div>
+                            <div class="app-queue-filter__field">
+                                <label>Detected to</label>
+                                <input name="detectedTo" type="date" class="form-control form-control-sm" th:value="${detectedTo}">
+                            </div>
+                            <div class="app-queue-filter__field" style="max-width:6rem">
+                                <label>Page size</label>
+                                <input name="size" type="number" min="1" class="form-control form-control-sm" th:value="${identityPageData.size}">
+                            </div>
+                            <div class="app-queue-filter__actions">
+                                <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+                                <a th:href="@{/admin/conflicts}" class="btn btn-outline-secondary btn-sm">Reset</a>
+                            </div>
+                        </div>
+                    </form>
 
-                            <div class="app-dashboard-pager">
-                                <p class="app-dashboard-pager__meta" th:text="'Page ' + (${identityPageData.number} + 1) + ' / ' + ${identityPageData.totalPages} + ' (' + ${identityPageData.totalElements} + ' records)'"></p>
-                                <div class="app-dashboard__actions">
-                                    <a class="btn btn-outline-secondary btn-sm" th:classappend="${identityPageData.hasPrevious()} ? '' : 'disabled'"
-                                       th:href="@{/admin/conflicts(page=${identityPageData.number - 1},size=${identityPageData.size},entityType=${entityType},incomingSource=${incomingSource},reasonCode=${reasonCode},status=${status},detectedFrom=${detectedFrom},detectedTo=${detectedTo})}">Prev</a>
-                                    <a class="btn btn-outline-secondary btn-sm" th:classappend="${identityPageData.hasNext()} ? '' : 'disabled'"
-                                       th:href="@{/admin/conflicts(page=${identityPageData.number + 1},size=${identityPageData.size},entityType=${entityType},incomingSource=${incomingSource},reasonCode=${reasonCode},status=${status},detectedFrom=${detectedFrom},detectedTo=${detectedTo})}">Next</a>
+                    <!-- ── Queue table ── -->
+                    <div class="app-table-section">
+                        <div class="app-table-section__surface">
+                            <div class="app-table-section__header app-table-toolbar">
+                                <h6 class="app-table-section__title">
+                                    Identity Conflict Queue
+                                    <span class="text-muted" style="font-weight:400; font-size:0.82rem;"
+                                          th:text="'— page ' + (${identityPageData.number} + 1) + ' of ' + ${identityPageData.totalPages} + ' (' + ${identityPageData.totalElements} + ' records)'"></span>
+                                </h6>
+                                <div class="app-table-toolbar__actions" id="conflicts-toolbar-actions">
+                                    <a th:href="@{/admin/conflicts(incomingSource='USER_DEFINED',status='OPEN')}"
+                                       class="btn btn-outline-secondary btn-sm">
+                                        <i class="fa-solid fa-filter fa-xs"></i> USER_DEFINED only
+                                    </a>
                                 </div>
                             </div>
+                            <div class="app-table-section__body">
+                                <div class="app-table-scroll">
+                                    <table class="table table-sm app-table" id="conflictsTable">
+                                        <thead>
+                                        <tr>
+                                            <th data-col="select" style="width:2rem">
+                                                <input type="checkbox" id="select-all-conflicts" aria-label="Select all open conflicts"
+                                                       title="Select / deselect all open conflicts on this page">
+                                            </th>
+                                            <th data-col="detected">Detected</th>
+                                            <th data-col="entity">Entity</th>
+                                            <th data-col="source">Source</th>
+                                            <th data-col="source-record">Source Record</th>
+                                            <th data-col="reason">Reason</th>
+                                            <th data-col="status">Status</th>
+                                            <th data-col="candidates">Candidates</th>
+                                            <th data-col="resolved-by">Resolved&nbsp;by</th>
+                                            <th data-col="actions">Actions</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr th:each="c : ${identityPageData.content}"
+                                            th:classappend="${c.status == 'OPEN'} ? 'app-queue-row--open' : ''">
+                                            <td data-col="select">
+                                                <input type="checkbox" form="conflicts-bulk-form"
+                                                       name="ids" th:value="${c.id}"
+                                                       th:disabled="${c.status != 'OPEN'}"
+                                                       th:classappend="${c.status != 'OPEN'} ? 'open-cb' : 'open-cb'"
+                                                       class="open-cb"
+                                                       aria-label="Select this conflict">
+                                            </td>
+                                            <td data-col="detected" th:text="${#temporals.format(c.detectedAt, 'yyyy-MM-dd HH:mm')}"></td>
+                                            <td data-col="entity" th:text="${c.entityType}"></td>
+                                            <td data-col="source" th:text="${c.incomingSource}"></td>
+                                            <td data-col="source-record" class="text-truncate" style="max-width:12rem" th:text="${c.incomingSourceRecordId}" th:title="${c.incomingSourceRecordId}"></td>
+                                            <td data-col="reason" th:text="${c.reasonCode}"></td>
+                                            <td data-col="status">
+                                                <span th:class="'app-queue-badge app-queue-badge--' + ${c.status.toLowerCase()}"
+                                                      th:text="${c.status}"></span>
+                                            </td>
+                                            <td data-col="candidates" class="text-truncate" style="max-width:10rem"
+                                                th:text="${#strings.listJoin(c.candidateCanonicalIds, ', ')}"
+                                                th:title="${#strings.listJoin(c.candidateCanonicalIds, ', ')}"></td>
+                                            <td data-col="resolved-by" th:text="${c.resolvedBy != null and !c.resolvedBy.isEmpty()} ? ${c.resolvedBy} : '—'"></td>
+                                            <td data-col="actions">
+                                                <div class="app-admin-actions" th:if="${c.status == 'OPEN'}">
+                                                    <!-- Resolve -->
+                                                    <form method="post" th:action="@{/admin/conflicts/resolve}" style="display:inline">
+                                                        <input type="hidden" name="id" th:value="${c.id}">
+                                                        <button type="submit" class="app-admin-icon-btn app-admin-icon-btn--success"
+                                                                aria-label="Resolve conflict">
+                                                            <i class="fa-solid fa-check fa-xs"></i>
+                                                        </button>
+                                                    </form>
+                                                    <!-- Investigate -->
+                                                    <form method="post" th:action="@{/admin/conflicts/investigate}" style="display:inline">
+                                                        <input type="hidden" name="id" th:value="${c.id}">
+                                                        <button type="submit" class="app-admin-icon-btn app-admin-icon-btn--warning"
+                                                                aria-label="Mark as under investigation">
+                                                            <i class="fa-solid fa-magnifying-glass fa-xs"></i>
+                                                        </button>
+                                                    </form>
+                                                    <!-- Dismiss -->
+                                                    <form method="post" th:action="@{/admin/conflicts/dismiss}" style="display:inline">
+                                                        <input type="hidden" name="id" th:value="${c.id}">
+                                                        <button type="submit" class="app-admin-icon-btn"
+                                                                aria-label="Dismiss conflict">
+                                                            <i class="fa-solid fa-ban fa-xs"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                                <span th:unless="${c.status == 'OPEN'}"
+                                                      class="app-admin-no-profile">—</span>
+                                            </td>
+                                        </tr>
 
-                            <div class="app-dashboard__actions">
-                                <button type="submit" name="action" value="resolve" class="btn btn-outline-success btn-sm">Bulk resolve selected OPEN</button>
-                                <button type="submit" name="action" value="dismiss" class="btn btn-outline-secondary btn-sm">Bulk dismiss selected OPEN</button>
+                                        <!-- Empty state -->
+                                        <tr th:if="${identityPageData.content.isEmpty()}" class="app-admin-empty-row">
+                                            <td colspan="10">
+                                                <th:block th:replace="~{fragments :: admin-empty-state(
+                                                    'Queue is clear',
+                                                    'No conflicts match the current filter. Try resetting the filter or check back after the next sync.',
+                                                    'Reset filter',
+                                                    '/admin/conflicts')}"></th:block>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                        </form>
                         </div>
                     </div>
 
-                    <div class="app-attention-panel">
+                    <!-- ── Pagination + bulk actions bar ── -->
+                    <div class="app-queue-bulk-bar">
+                        <span class="app-queue-bulk-bar__label">
+                            Page
+                            <th:block th:text="${identityPageData.number + 1}"></th:block>
+                            /
+                            <th:block th:text="${identityPageData.totalPages}"></th:block>
+                        </span>
+                        <a class="btn btn-outline-secondary btn-sm"
+                           th:classappend="${!identityPageData.hasPrevious()} ? 'disabled'"
+                           th:href="@{/admin/conflicts(page=${identityPageData.number - 1},size=${identityPageData.size},entityType=${entityType},incomingSource=${incomingSource},reasonCode=${reasonCode},status=${status},detectedFrom=${detectedFrom},detectedTo=${detectedTo})}">
+                            <i class="fa-solid fa-chevron-left fa-xs"></i> Prev
+                        </a>
+                        <a class="btn btn-outline-secondary btn-sm"
+                           th:classappend="${!identityPageData.hasNext()} ? 'disabled'"
+                           th:href="@{/admin/conflicts(page=${identityPageData.number + 1},size=${identityPageData.size},entityType=${entityType},incomingSource=${incomingSource},reasonCode=${reasonCode},status=${status},detectedFrom=${detectedFrom},detectedTo=${detectedTo})}">
+                            Next <i class="fa-solid fa-chevron-right fa-xs"></i>
+                        </a>
+                        <span style="width:1px; background:var(--app-color-border); align-self:stretch; margin: 0 0.25rem;"></span>
+                        <!-- Bulk action buttons (submit the bulk form) -->
+                        <button type="submit" form="conflicts-bulk-form" name="action" value="resolve"
+                                class="btn btn-outline-success btn-sm">
+                            <i class="fa-solid fa-check fa-xs"></i> Bulk Resolve
+                        </button>
+                        <button type="submit" form="conflicts-bulk-form" name="action" value="investigate"
+                                class="btn btn-outline-warning btn-sm">
+                            <i class="fa-solid fa-magnifying-glass fa-xs"></i> Bulk Investigate
+                        </button>
+                        <button type="submit" form="conflicts-bulk-form" name="action" value="dismiss"
+                                class="btn btn-outline-secondary btn-sm">
+                            <i class="fa-solid fa-ban fa-xs"></i> Bulk Dismiss
+                        </button>
+                    </div>
+
+                    <!-- Hidden bulk form — checkboxes in the table rows use form="conflicts-bulk-form" -->
+                    <form id="conflicts-bulk-form" method="post" th:action="@{/admin/conflicts/bulkStatus}"></form>
+
+                    <!-- ── Maintenance panel ── -->
+                    <div class="app-attention-panel mt-4">
                         <h2 class="app-attention-panel__title">High-impact maintenance</h2>
                         <p class="app-attention-panel__body">Use destructive clear actions only when you intend to reset the active queue. The queue controls above remain the normal day-to-day operational surface.</p>
                     </div>
@@ -189,5 +305,51 @@
     </a>
 </div>
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
+<script>
+(function () {
+    window.initAdminColumnToggle({
+        tableId: 'conflicts',
+        tableEl: document.getElementById('conflictsTable'),
+        toolbarActionsEl: document.getElementById('conflicts-toolbar-actions'),
+        columns: [
+            { key: 'select',        label: 'Select',        required: true },
+            { key: 'detected',      label: 'Detected',      required: false },
+            { key: 'entity',        label: 'Entity',        required: true },
+            { key: 'source',        label: 'Source',        required: false },
+            { key: 'source-record', label: 'Source Record', required: false },
+            { key: 'reason',        label: 'Reason',        required: false },
+            { key: 'status',        label: 'Status',        required: true },
+            { key: 'candidates',    label: 'Candidates',    required: false },
+            { key: 'resolved-by',   label: 'Resolved by',   required: false },
+            { key: 'actions',       label: 'Actions',       required: true },
+        ],
+    });
+
+    var tbody = document.querySelector('#conflictsTable tbody');
+    if (tbody) {
+        window.initAdminShortcuts({
+            sections: [{
+                title: 'Queue Actions',
+                rows: [
+                    { keys: ['e', 'Enter'], label: 'Open first action on row' },
+                    { keys: ['r'],          label: 'Resolve focused conflict' },
+                    { keys: ['i'],          label: 'Investigate focused conflict' },
+                    { keys: ['d'],          label: 'Dismiss focused conflict' },
+                ],
+            }],
+            tables: [{
+                tbodyEl: tbody,
+                keyActions: {
+                    'e':     function(tr) { tr.querySelector('.app-admin-icon-btn')?.click(); },
+                    'Enter': function(tr) { tr.querySelector('.app-admin-icon-btn')?.click(); },
+                    'r':     function(tr) { tr.querySelector('[aria-label="Resolve conflict"]')?.click(); },
+                    'i':     function(tr) { tr.querySelector('[aria-label="Mark as under investigation"]')?.click(); },
+                    'd':     function(tr) { tr.querySelector('[aria-label="Dismiss conflict"]')?.click(); },
+                },
+            }],
+        });
+    }
+})();
+</script>
 </body>
 </html>

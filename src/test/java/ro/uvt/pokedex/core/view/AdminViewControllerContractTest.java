@@ -16,24 +16,23 @@ import ro.uvt.pokedex.core.model.Institution;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
-import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.model.user.User;
-import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.AdminInstitutionReportFacade;
+import ro.uvt.pokedex.core.service.application.AdminDashboardService;
+import ro.uvt.pokedex.core.service.application.GroupManagementFacade;
 import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.WosBigBangMigrationService;
 import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.model.MigrationStepResult;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsExportViewModel;
-import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsViewModel;
 
 import java.io.ByteArrayInputStream;
 import java.nio.file.Files;
@@ -41,7 +40,6 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.TreeMap;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
@@ -68,8 +66,6 @@ class AdminViewControllerContractTest {
     @MockitoBean
     private UserService userService;
     @MockitoBean
-    private ResearcherService researcherService;
-    @MockitoBean
     private AdminCatalogFacade adminCatalogFacade;
     @MockitoBean
     private AdminInstitutionReportFacade adminInstitutionReportFacade;
@@ -77,6 +73,10 @@ class AdminViewControllerContractTest {
     private RankingMaintenanceFacade rankingMaintenanceFacade;
     @MockitoBean
     private WosRankingDetailsReadService wosRankingDetailsReadService;
+    @MockitoBean
+    private AdminDashboardService adminDashboardService;
+    @MockitoBean
+    private GroupManagementFacade groupManagementFacade;
 
     @Test
     void rebuildWosProjectionsRedirectsAndDelegates() throws Exception {
@@ -274,15 +274,6 @@ class AdminViewControllerContractTest {
     }
 
     @Test
-    void scholardexPublicationsPagesRenderCanonicalTemplates() throws Exception {
-        mockMvc.perform(get("/admin/scholardex/publications"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("admin/scholardex-publications"))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/admin/scholardex/publications/search")))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/scopus/publications"))));
-    }
-
-    @Test
     void removedScholardexAuthorEditRoutesRedirectToAuthorsList() throws Exception {
         mockMvc.perform(get("/admin/scholardex/authors/edit/{id}", "a1"))
                 .andExpect(status().is3xxRedirection())
@@ -405,54 +396,11 @@ class AdminViewControllerContractTest {
     }
 
     @Test
-    void institutionPublicationsViewRendersExpectedTemplateAndModel() throws Exception {
-        Institution institution = new Institution();
-        ScholardexPublicationView publication = publication("p1", "f1", "2023-01-01");
-        ScholardexAuthorView author = new ScholardexAuthorView();
-        author.setId("a1");
-        author.setName("Author A");
-        ScholardexForumView forum = new ScholardexForumView();
-        forum.setId("f1");
-        forum.setPublicationName("Forum A");
-        IndividualReport report = new IndividualReport();
-        report.setTitle("R1");
-
-        AdminInstitutionPublicationsViewModel vm = new AdminInstitutionPublicationsViewModel(
-                institution,
-                List.of(publication),
-                Map.of("a1", author),
-                Map.of("f1", forum),
-                new TreeMap<>(Map.of(2023, List.of(publication))),
-                new TreeMap<>(Map.of(2023, 1L)),
-                List.of(report)
-        );
-
-        when(adminInstitutionReportFacade.buildInstitutionPublicationsView(eq("i1")))
-                .thenReturn(Optional.of(vm));
-
+    void institutionPublicationsRedirectsToWorkspace() throws Exception {
         mockMvc.perform(get("/admin/institutions/{id}/publications", "i1")
                         .with(authenticatedUser("admin@uvt.ro")))
-                .andExpect(status().isOk())
-                .andExpect(view().name("admin/institution-publications"))
-                .andExpect(model().attributeExists(
-                        "authorMap",
-                        "publicationsByYear",
-                        "publicationsCountByYear",
-                        "individualReports",
-                        "forumMap",
-                        "publications",
-                        "institution"
-                ));
-    }
-
-    @Test
-    void institutionPublicationsViewRedirectsWhenInstitutionMissing() throws Exception {
-        when(adminInstitutionReportFacade.buildInstitutionPublicationsView(eq("missing")))
-                .thenReturn(Optional.empty());
-
-        mockMvc.perform(get("/admin/institutions/{id}/publications", "missing"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/institutions"));
+                .andExpect(redirectedUrl("/admin/institutions/i1#publications"));
     }
 
     @Test

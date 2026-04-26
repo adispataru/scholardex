@@ -8,6 +8,7 @@ import java.util.Map;
 
 public record ScholardexPublicationSearchView(
         List<ScholardexPublicationView> publications,
-        Map<String, ScholardexAuthorView> authorMap
+        Map<String, ScholardexAuthorView> authorMap,
+        Map<String, PublicationAuthorshipDecisionAdminSummary> decisionSummaryByPublicationId
 ) {
 }

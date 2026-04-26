@@ -60,7 +60,6 @@ public class UserController {
         User updated = new User();
         updated.setEmail(email);
         updated.setPassword((request.password() == null || request.password().isBlank()) ? existing.getPassword() : request.password());
-        updated.setResearcherId(existing.getResearcherId());
         updated.setLocked(request.locked() != null ? request.locked() : existing.isLocked());
         updated.setRoles(userService.parseRoles(request.roles()));
 

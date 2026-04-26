@@ -339,6 +339,7 @@ function _appendRow(tbody, pub) {
     const reviewState = _reviewState(pub.id);
     const suspiciousState = _suspiciousState(pub.id);
     const reviewBadge = _buildReviewBadge(reviewState);
+    const reviewSummary = _buildReviewSummaryText(pub, reviewState);
     const suspiciousBadge = _buildSuspiciousBadge(suspiciousState);
     const pending = _isPending(pub.id);
     const selected = pending && _selectedPendingIds.has(pub.id);
@@ -362,6 +363,9 @@ function _appendRow(tbody, pub) {
         `</td>` +
         `<td class="app-ws-pubs__col-title">` +
             `<span class="app-ws-pubs__title">${_esc(pub.title ?? '(untitled)')}</span>` +
+            (reviewSummary
+                ? `<span class="app-ws-pubs__title-meta">${_esc(reviewSummary)}</span>`
+                : '') +
         `</td>` +
         `<td class="app-ws-pubs__col-year">${_esc(year)}</td>` +
         `<td class="app-ws-pubs__col-type">` +
@@ -514,7 +518,7 @@ function _buildDetailPanel(pub) {
     ).join('');
     const reviewState = _reviewState(pub.id);
     const reviewBadge = _buildReviewBadge(reviewState);
-    const reviewMeta = _buildReviewMeta(reviewState);
+    const reviewMeta = _buildReviewMeta(pub, reviewState);
     const rejectConfirm = _pendingRejectId === pub.id;
     const suspiciousState = _suspiciousState(pub.id);
 
@@ -573,6 +577,9 @@ function _buildDetailPanel(pub) {
                 <p class="app-ws-pubs__authorship-body">
                   ${_authorshipBodyText(pub.id, reviewState)}
                 </p>
+                ${reviewState?.reason
+                    ? `<p class="app-ws-pubs__authorship-note">Reason: ${_esc(reviewState.reason)}</p>`
+                    : ''}
                 ${rejectConfirm
                     ? `<div class="app-ws-pubs__authorship-inline-alert" role="alert">
                          Reject authorship for this publication?
@@ -791,11 +798,10 @@ function _buildReviewBadge(state) {
     return `<span class="app-ws-pubs__review-badge ${cls}">${_esc(text)}</span>`;
 }
 
-function _buildReviewMeta(state) {
-    if (!state?.updatedAt) return '';
-    const date = new Date(state.updatedAt);
-    if (Number.isNaN(date.getTime())) return '';
-    return `<span class="app-ws-pubs__authorship-meta">Updated ${_esc(date.toLocaleDateString())}</span>`;
+function _buildReviewMeta(pub, state) {
+    const summary = _buildReviewSummaryText(pub, state);
+    if (!summary) return '';
+    return `<span class="app-ws-pubs__authorship-meta">${_esc(summary)}</span>`;
 }
 
 function _buildSuspiciousBadge(state) {
@@ -806,6 +812,46 @@ function _buildSuspiciousBadge(state) {
 function _buildRecommendationBadge(pubId) {
     if (!_isRecommendedPending(pubId)) return '';
     return `<span class="app-ws-pubs__recommended-badge">Recommended accept</span>`;
+}
+
+function _buildReviewSummaryText(pub, state) {
+    const importLineage = _buildImportLineage(pub);
+    const updatedLabel = _formatReviewDate(state?.updatedAt);
+    if (state?.status === 'CONFIRMED') {
+        return updatedLabel
+            ? `${importLineage}, locally confirmed on ${updatedLabel}`
+            : `${importLineage}, locally confirmed`;
+    }
+    if (state?.status === 'REJECTED') {
+        return updatedLabel
+            ? `${importLineage}, locally rejected on ${updatedLabel}`
+            : `${importLineage}, locally rejected`;
+    }
+    return importLineage;
+}
+
+function _buildImportLineage(pub) {
+    const sources = [];
+    if (pub?.eid) sources.push('Scopus');
+    if (pub?.wosId) sources.push('WoS');
+    if (pub?.googleScholarId) sources.push('Google Scholar');
+    if (sources.length === 0) {
+        return 'Imported linkage';
+    }
+    if (sources.length === 1) {
+        return `Imported from ${sources[0]}`;
+    }
+    if (sources.length === 2) {
+        return `Imported from ${sources[0]} and ${sources[1]}`;
+    }
+    return `Imported from ${sources.slice(0, -1).join(', ')}, and ${sources[sources.length - 1]}`;
+}
+
+function _formatReviewDate(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString();
 }
 
 function _authorshipBodyText(pubId, state) {
@@ -1667,7 +1713,7 @@ function _submitWizard() {
 function _buildToolbar() {
     return `
         <div class="app-ws-pubs__toolbar">
-          <a href="/user/publications/add" id="ws-pubs-add-btn" class="btn btn-sm btn-primary">
+          <a href="#" id="ws-pubs-add-btn" class="btn btn-sm btn-primary">
             <i class="fa-solid fa-plus" aria-hidden="true"></i> Add Publication
           </a>
           <a href="/user/publications" class="btn btn-sm btn-outline-secondary">
@@ -1738,7 +1784,7 @@ function _buildEmpty() {
           <i class="fa-solid fa-book-open app-ws-pubs__empty-icon" aria-hidden="true"></i>
           <h2 class="app-ws-pubs__empty-title">No publications yet</h2>
           <p class="app-ws-pubs__empty-body">Add your first publication to start tracking your research output.</p>
-          <a href="/user/publications/add" id="ws-pubs-add-btn-empty" class="btn btn-sm btn-primary" style="margin-top:0.5rem">
+          <a href="#" id="ws-pubs-add-btn-empty" class="btn btn-sm btn-primary" style="margin-top:0.5rem">
             <i class="fa-solid fa-plus" aria-hidden="true"></i> Add Publication
           </a>
         </div>`;

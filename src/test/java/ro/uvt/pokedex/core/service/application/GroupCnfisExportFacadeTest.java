@@ -7,8 +7,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
+import ro.uvt.pokedex.core.model.user.User;
+import ro.uvt.pokedex.core.repository.UserRepository;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Group;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
@@ -51,16 +52,18 @@ class GroupCnfisExportFacadeTest {
     private CNFISReportExportService exportService;
     @Mock
     private ResearcherAuthorLookupService researcherAuthorLookupService;
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private GroupCnfisExportFacade facade;
 
     @BeforeEach
     void setUpLookupService() {
-        lenient().when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(Researcher.class)))
+        lenient().when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(User.ResearcherProfile.class)))
                 .thenAnswer(invocation -> {
-                    Researcher researcher = invocation.getArgument(0);
-                    return researcher.getScopusId() == null ? List.of() : researcher.getScopusId();
+                    User.ResearcherProfile profile = invocation.getArgument(0);
+                    return profile.getScopusId() == null ? List.of() : profile.getScopusId();
                 });
         lenient().when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection()))
                 .thenAnswer(invocation -> {
@@ -86,8 +89,10 @@ class GroupCnfisExportFacadeTest {
 
     @Test
     void buildGroupCnfisExportFiltersByYearAndUsesAllDomain() {
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(memberUser("jane@uvt.ro", "Jane", "Doe", List.of("a1"))));
         Group group = new Group();
-        group.setResearchers(List.of(researcher("Jane", "Doe", List.of("a1"))));
+        group.setMemberIds(List.of("jane@uvt.ro"));
 
         ScholardexPublicationView inRange = publication("p1", "f1", "2022-05-01");
         ScholardexPublicationView outOfRange = publication("p2", "f2", "2018-03-10");
@@ -125,11 +130,13 @@ class GroupCnfisExportFacadeTest {
 
     @Test
     void buildGroupCnfisZipExportReturnsOneWorkbookPerResearcherWithExpectedName() throws IOException {
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(
+                        memberUser("ana@uvt.ro", "Ana", "Popescu", List.of("a1")),
+                        memberUser("dan@uvt.ro", "Dan", "Ionescu", List.of("a2"))
+                ));
         Group group = new Group();
-        group.setResearchers(List.of(
-                researcher("Ana", "Popescu", List.of("a1")),
-                researcher("Dan", "Ionescu", List.of("a2"))
-        ));
+        group.setMemberIds(List.of("ana@uvt.ro", "dan@uvt.ro"));
         Domain allDomain = new Domain();
         allDomain.setName("ALL");
 
@@ -171,8 +178,10 @@ class GroupCnfisExportFacadeTest {
 
     @Test
     void buildGroupCnfisWorkbookExportReturnsWorkbookMetadata() throws IOException {
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(memberUser("ana@uvt.ro", "Ana", "Popescu", List.of("a1"))));
         Group group = new Group();
-        group.setResearchers(List.of(researcher("Ana", "Popescu", List.of("a1"))));
+        group.setMemberIds(List.of("ana@uvt.ro"));
         Domain allDomain = new Domain();
         allDomain.setName("ALL");
 
@@ -218,8 +227,10 @@ class GroupCnfisExportFacadeTest {
 
     @Test
     void buildGroupCnfisZipExportHandlesResearcherWithoutPublications() throws IOException {
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(memberUser("ana@uvt.ro", "Ana", "Popescu", List.of("a1"))));
         Group group = new Group();
-        group.setResearchers(List.of(researcher("Ana", "Popescu", List.of("a1"))));
+        group.setMemberIds(List.of("ana@uvt.ro"));
         Domain allDomain = new Domain();
         allDomain.setName("ALL");
 
@@ -244,8 +255,10 @@ class GroupCnfisExportFacadeTest {
 
     @Test
     void buildGroupCnfisExportIncludesBoundaryYears() {
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(memberUser("jane@uvt.ro", "Jane", "Doe", List.of("a1"))));
         Group group = new Group();
-        group.setResearchers(List.of(researcher("Jane", "Doe", List.of("a1"))));
+        group.setMemberIds(List.of("jane@uvt.ro"));
         Domain allDomain = new Domain();
         allDomain.setName("ALL");
 
@@ -281,8 +294,10 @@ class GroupCnfisExportFacadeTest {
 
     @Test
     void buildGroupCnfisExportSkipsMalformedCoverDateWithoutCrash() {
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(memberUser("jane@uvt.ro", "Jane", "Doe", List.of("a1"))));
         Group group = new Group();
-        group.setResearchers(List.of(researcher("Jane", "Doe", List.of("a1"))));
+        group.setMemberIds(List.of("jane@uvt.ro"));
         Domain allDomain = new Domain();
         allDomain.setName("ALL");
 
@@ -316,12 +331,15 @@ class GroupCnfisExportFacadeTest {
         verify(scholardexProjectionReadService, never()).savePublicationView(any());
     }
 
-    private static Researcher researcher(String firstName, String lastName, List<String> scopusIds) {
-        Researcher researcher = new Researcher();
-        researcher.setFirstName(firstName);
-        researcher.setLastName(lastName);
-        researcher.setScopusId(scopusIds);
-        return researcher;
+    private static User memberUser(String email, String firstName, String lastName, List<String> scopusIds) {
+        User user = new User();
+        user.setEmail(email);
+        User.ResearcherProfile profile = new User.ResearcherProfile();
+        profile.setFirstName(firstName);
+        profile.setLastName(lastName);
+        profile.setScopusId(new java.util.ArrayList<>(scopusIds));
+        user.setResearcherProfile(profile);
+        return user;
     }
 
     private static ScholardexPublicationView publication(String id, String forumId, String coverDate) {

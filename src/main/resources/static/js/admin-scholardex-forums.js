@@ -97,13 +97,17 @@
   function renderRows(items) {
     els.tableBody.innerHTML = (items || []).map(function (item) {
       const id = encodeURIComponent(item.id || '');
+      const pubsHref = '/admin/scholardex/publications?forumId=' + id;
       return '<tr>' +
-        '<td><a href="/forums/' + id + '">' + escapeHtml(item.publicationName) + '</a></td>' +
+        '<td>' + escapeHtml(item.publicationName) + '</td>' +
         '<td class="app-table__cell--identifier">' + escapeHtml(item.issn || '—') + '</td>' +
         '<td class="app-table__cell--identifier">' + escapeHtml(item.eIssn || '—') + '</td>' +
         '<td>' + escapeHtml(item.aggregationType) + '</td>' +
         '<td>' + renderWosBadge(item.wosStatus) + '</td>' +
-        '<td><a class="btn btn-outline-secondary btn-sm" href="/admin/scholardex/forums/edit/' + id + '">Edit</a></td>' +
+        '<td><div class="app-admin-actions">' +
+          '<a class="btn btn-outline-secondary btn-sm" href="' + pubsHref + '" aria-label="View publications in this forum"><i class="fa-solid fa-file-lines fa-xs"></i> Publications</a>' +
+          '<a class="btn btn-outline-secondary btn-sm" href="/admin/scholardex/forums/edit/' + id + '" aria-label="Edit this forum">Edit</a>' +
+        '</div></td>' +
         '</tr>';
     }).join('');
   }

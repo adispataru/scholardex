@@ -92,7 +92,6 @@ class PublicationWizardFacadeTest {
 
         User submitter = new User();
         submitter.setEmail("user@example.com");
-        submitter.setResearcherId("r-1");
 
         PublicationWizardFacade.SubmissionResult result = facade.submitPublication(command, submitter);
 

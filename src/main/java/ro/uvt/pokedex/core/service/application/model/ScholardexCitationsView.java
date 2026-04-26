@@ -12,6 +12,12 @@ public record ScholardexCitationsView(
         ScholardexForumView publicationForum,
         List<ScholardexPublicationView> citations,
         Map<String, ScholardexAuthorView> authorMap,
-        Map<String, ScholardexForumView> forumMap
+        Map<String, ScholardexForumView> forumMap,
+        long totalCitations,
+        int page,
+        int size,
+        int totalPages
 ) {
+    public boolean hasPrevious() { return page > 0; }
+    public boolean hasNext() { return page < totalPages - 1; }
 }

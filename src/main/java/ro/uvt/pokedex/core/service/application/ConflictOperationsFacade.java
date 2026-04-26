@@ -26,6 +26,7 @@ public class ConflictOperationsFacade {
     private static final String STATUS_OPEN = "OPEN";
     private static final String STATUS_RESOLVED = "RESOLVED";
     private static final String STATUS_DISMISSED = "DISMISSED";
+    private static final String STATUS_INVESTIGATED = "INVESTIGATED";
 
     private final ScholardexIdentityConflictRepository scholardexIdentityConflictRepository;
     private final WosIdentityConflictRepository wosIdentityConflictRepository;
@@ -108,7 +109,8 @@ public class ConflictOperationsFacade {
         long open = scholardexIdentityConflictRepository.countByStatus(STATUS_OPEN);
         long resolved = scholardexIdentityConflictRepository.countByStatus(STATUS_RESOLVED);
         long dismissed = scholardexIdentityConflictRepository.countByStatus(STATUS_DISMISSED);
-        return new ConflictSummary(open, resolved, dismissed);
+        long investigated = scholardexIdentityConflictRepository.countByStatus(STATUS_INVESTIGATED);
+        return new ConflictSummary(open, resolved, dismissed, investigated);
     }
 
     public long clearWosIdentityConflicts() {
@@ -164,15 +166,15 @@ public class ConflictOperationsFacade {
 
     private String normalizeStatus(String requestedStatus) {
         String token = normalizeFilter(requestedStatus).toUpperCase();
-        if (STATUS_RESOLVED.equals(token) || STATUS_DISMISSED.equals(token)) {
+        if (STATUS_RESOLVED.equals(token) || STATUS_DISMISSED.equals(token) || STATUS_INVESTIGATED.equals(token)) {
             return token;
         }
         return null;
     }
 
-    public record ConflictSummary(long open, long resolved, long dismissed) {
+    public record ConflictSummary(long open, long resolved, long dismissed, long investigated) {
         public long total() {
-            return open + resolved + dismissed;
+            return open + resolved + dismissed + investigated;
         }
     }
 }

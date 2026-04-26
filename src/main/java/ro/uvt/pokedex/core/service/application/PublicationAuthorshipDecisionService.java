@@ -208,10 +208,7 @@ public class PublicationAuthorshipDecisionService {
     }
 
     private String resolveResearcherId(User user) {
-        if (user.getResearcherProfile() != null && normalize(user.getResearcherProfile().getPrimaryScholardexAuthorId()) != null) {
-            return normalize(user.getResearcherId());
-        }
-        return normalize(user.getResearcherId());
+        return normalize(user.getEmail());
     }
 
     private boolean requiresAffiliationScopeConfirmation(User user) {

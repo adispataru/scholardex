@@ -13,6 +13,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.model.tasks.ScopusCitationsUpdate;
 import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;
 import ro.uvt.pokedex.core.model.user.User;
+import ro.uvt.pokedex.core.service.application.UserIndividualReportRunService;
 import ro.uvt.pokedex.core.service.application.UserPublicationFacade;
 import ro.uvt.pokedex.core.service.application.UserReportFacade;
 import ro.uvt.pokedex.core.service.application.UserScopusTaskFacade;
@@ -22,7 +23,6 @@ import ro.uvt.pokedex.core.service.application.model.UserIndicatorWorkbookExport
 import ro.uvt.pokedex.core.service.application.model.UserPublicationCitationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserPublicationsViewModel;
 import ro.uvt.pokedex.core.service.application.model.UserScopusTasksViewModel;
-import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.model.UserWorkbookExportResult;
 import ro.uvt.pokedex.core.service.application.model.UserWorkbookExportStatus;
@@ -36,11 +36,11 @@ import java.util.*;
 public class UserViewController {
 
     private final UserService userService;
-    private final ResearcherService researcherService;
     // H02 V01 debt: remaining Z1->Z4 dependencies for deferred endpoints.
     private final UserPublicationFacade userPublicationFacade;
     private final UserScopusTaskFacade userScopusTaskFacade;
     private final UserReportFacade userReportFacade;
+    private final UserIndividualReportRunService userIndividualReportRunService;
 
     @GetMapping()
     public String showDashboardCompatibilityRedirect() {
@@ -150,6 +150,35 @@ public class UserViewController {
         response.setContentType(vm.contentType());
         response.setHeader("Content-Disposition", "attachment; filename=\"" + vm.fileName() + "\"");
         response.getOutputStream().write(vm.workbookBytes());
+    }
+
+    @GetMapping("/individual-reports")
+    public String showIndividualReportsList() {
+        return "redirect:/user/evaluation";
+    }
+
+    @GetMapping("/indicators/apply/{id}")
+    public String showIndicatorApplyPage(@PathVariable("id") String id) {
+        return "redirect:/user/evaluation#indicator-" + id;
+    }
+
+    @PostMapping("/indicators/apply/{id}/refresh")
+    public String refreshIndicatorApply(@PathVariable("id") String id) {
+        return "redirect:/user/evaluation#indicator-" + id;
+    }
+
+    @GetMapping("/individual-reports/view/{id}")
+    public String showIndividualReportView(@PathVariable("id") String id) {
+        return "redirect:/user/evaluation?report=" + id;
+    }
+
+    @PostMapping("/individual-reports/view/{id}/refresh-all-indicators")
+    public String refreshAllIndicators(@PathVariable("id") String id, Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
+            return "redirect:/login";
+        }
+        userIndividualReportRunService.refreshRunWithAllIndicators(currentUser.getEmail(), id);
+        return "redirect:/user/evaluation?report=" + id;
     }
 
     private int computeHIndex(List<ScholardexPublicationView> publications) {

@@ -122,91 +122,200 @@
         aria-label="Close sidebar"></button>
 </th:block>
 
-<!-- Admin Sidebar Fragment -->
+<!-- Admin Sidebar Fragment — four-domain grouping per H40.2 -->
 <div th:fragment="admin-sidebar(activeSection)">
     <nav class="app-shell-sidebar__nav" aria-label="Admin navigation">
+
+        <!-- 1. Operations Center -->
         <section class="app-shell-sidebar__section">
-            <p class="app-shell-sidebar__section-label">Management</p>
+            <p class="app-shell-sidebar__section-label">Operations Center</p>
             <ul class="app-shell-sidebar__section-list">
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'users' ? ' active' : ''">
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'dashboard'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/admin}">
+                        <i class="fa-solid fa-fw fa-gauge-high"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'initialization'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/admin/initialization}">
+                        <i class="fa-solid fa-fw fa-cogs"></i>
+                        <span>Initialization</span>
+                    </a>
+                </li>
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'wos-enrichment'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/admin/initialization/wos/enrichment}">
+                        <i class="fa-solid fa-fw fa-database"></i>
+                        <span>WoS Enrichment</span>
+                    </a>
+                </li>
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'incremental-updates'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/admin/incremental-updates}">
+                        <i class="fa-solid fa-fw fa-upload"></i>
+                        <span>Incremental Updates</span>
+                    </a>
+                </li>
+            </ul>
+        </section>
+
+        <!-- 2. People & Access -->
+        <section class="app-shell-sidebar__section">
+            <p class="app-shell-sidebar__section-label">People &amp; Access</p>
+            <ul class="app-shell-sidebar__section-list">
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'users' or activeSection == 'researchers'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/users}">
                         <i class="fa-solid fa-fw fa-users"></i>
                         <span>Users</span>
                     </a>
                 </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'researchers' ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/admin/researchers}">
-                        <i class="fa-solid fa-fw fa-user-graduate"></i>
-                        <span>Researchers</span>
-                    </a>
-                </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'institutions' ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/admin/institutions}">
-                        <i class="fa-solid fa-fw fa-university"></i>
-                        <span>Institutions</span>
-                    </a>
-                </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'groups' ? ' active' : ''">
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'groups'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/groups}">
                         <i class="fa-solid fa-fw fa-object-group"></i>
                         <span>Groups</span>
                     </a>
                 </li>
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'institutions'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/admin/institutions}">
+                        <i class="fa-solid fa-fw fa-university"></i>
+                        <span>Institutions</span>
+                    </a>
+                </li>
             </ul>
         </section>
 
+        <!-- 3. Data Catalog -->
         <section class="app-shell-sidebar__section">
-            <p class="app-shell-sidebar__section-label">Catalog</p>
+            <p class="app-shell-sidebar__section-label">Data Catalog</p>
             <ul class="app-shell-sidebar__section-list">
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection == 'scholardex-forums' or activeSection == 'scopus-forums' or activeSection == 'scopus-venues'} ? ' active' : ''">
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'scholardex-forums' or activeSection == 'scopus-forums' or activeSection == 'scopus-venues'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/scholardex/forums}">
-                        <i class="fa-solid fa-fw fa-chart-area"></i>
+                        <i class="fa-solid fa-fw fa-journal-whills"></i>
                         <span>Forums</span>
                     </a>
                 </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection == 'scholardex-authors' or activeSection == 'scopus-authors'} ? ' active' : ''">
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'scholardex-authors' or activeSection == 'scopus-authors'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/scholardex/authors}">
                         <i class="fa-solid fa-fw fa-user-graduate"></i>
                         <span>Authors</span>
                     </a>
                 </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection == 'scholardex-affiliations' or activeSection == 'scopus-affiliations'} ? ' active' : ''">
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'scholardex-affiliations' or activeSection == 'scopus-affiliations'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/scholardex/affiliations}">
                         <i class="fa-solid fa-fw fa-building"></i>
                         <span>Affiliations</span>
                     </a>
                 </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection == 'scholardex-publications' or activeSection == 'scopus-publications'} ? ' active' : ''">
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'scholardex-publications' or activeSection == 'scopus-publications' or activeSection == 'scholardex-publications-search'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/scholardex/publications}">
-                        <i class="fa-solid fa-fw fa-file"></i>
+                        <i class="fa-solid fa-fw fa-file-lines"></i>
                         <span>Publications</span>
+                    </a>
+                </li>
+
+
+            </ul>
+        </section>
+
+        <!-- 4. Evaluation -->
+        <section class="app-shell-sidebar__section">
+            <p class="app-shell-sidebar__section-label">Evaluation</p>
+            <ul class="app-shell-sidebar__section-list">
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'indicators'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/admin/indicators}">
+                        <i class="fa-solid fa-fw fa-chart-bar"></i>
+                        <span>Indicators</span>
+                    </a>
+                </li>
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'domains'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/admin/domains}">
+                        <i class="fa-solid fa-fw fa-umbrella"></i>
+                        <span>Domains</span>
+                    </a>
+                </li>
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'activities' or activeSection == 'activity-indicators'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/admin/activities}">
+                        <i class="fa-solid fa-fw fa-sliders"></i>
+                        <span>Eval. Config</span>
+                    </a>
+                </li>
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'individualReports'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/admin/individualReports}">
+                        <i class="fa-solid fa-fw fa-clipboard"></i>
+                        <span>Reports</span>
+                    </a>
+                </li>
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'groupReports'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/admin/groupReports}">
+                        <i class="fa-solid fa-fw fa-layer-group"></i>
+                        <span>Group Reports</span>
+                    </a>
+                </li>
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'conflicts'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/admin/conflicts}">
+                        <i class="fa-solid fa-fw fa-triangle-exclamation"></i>
+                        <span>Conflicts</span>
+                    </a>
+                </li>
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'user-defined-triage'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/admin/user-defined-triage}">
+                        <i class="fa-solid fa-fw fa-compass"></i>
+                        <span>Triage</span>
+                    </a>
+                </li>
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'sourceLinks'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/admin/source-links}">
+                        <i class="fa-solid fa-fw fa-link"></i>
+                        <span>Source Links</span>
                     </a>
                 </li>
             </ul>
         </section>
 
+        <!-- Rankings — kept for backwards compatibility -->
         <section class="app-shell-sidebar__section">
             <p class="app-shell-sidebar__section-label">Rankings</p>
             <ul class="app-shell-sidebar__section-list">
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection == 'rankings' or activeSection == 'rankings-categories'} ? ' active' : ''">
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'rankings' or activeSection == 'rankings-categories'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/wos/categories}">
                         <i class="fa-solid fa-fw fa-tags"></i>
                         <span>WoS Categories</span>
                     </a>
                 </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'rankings-core' ? ' active' : ''">
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'rankings-core'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/core/rankings}">
                         <i class="fa-solid fa-fw fa-atom"></i>
                         <span>CORE</span>
                     </a>
                 </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'rankings-urap' ? ' active' : ''">
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'rankings-urap'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/universities}">
                         <i class="fa-solid fa-fw fa-university"></i>
                         <span>URAP</span>
                     </a>
                 </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'rankings-events' ? ' active' : ''">
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'rankings-events'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/events}">
                         <i class="fa-solid fa-fw fa-theater-masks"></i>
                         <span>Events</span>
@@ -215,77 +324,6 @@
             </ul>
         </section>
 
-        <section class="app-shell-sidebar__section">
-            <p class="app-shell-sidebar__section-label">Reporting</p>
-            <ul class="app-shell-sidebar__section-list">
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'activities' ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/admin/activities}">
-                        <i class="fa-solid fa-fw fa-pen-fancy"></i>
-                        <span>Activities</span>
-                    </a>
-                </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'indicators' ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/admin/indicators}">
-                        <i class="fa-solid fa-fw fa-info"></i>
-                        <span>Indicators</span>
-                    </a>
-                </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'domains' ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/admin/domains}">
-                        <i class="fa-solid fa-fw fa-umbrella"></i>
-                        <span>Domains</span>
-                    </a>
-                </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'individualReports' ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/admin/individualReports}">
-                        <i class="fa-solid fa-fw fa-clipboard"></i>
-                        <span>Reports</span>
-                    </a>
-                </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'groupReports' ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/admin/groupReports}">
-                        <i class="fa-solid fa-fw fa-layer-group"></i>
-                        <span>Group Reports</span>
-                    </a>
-                </li>
-            </ul>
-        </section>
-
-        <section class="app-shell-sidebar__section">
-            <p class="app-shell-sidebar__section-label">Operations</p>
-            <ul class="app-shell-sidebar__section-list">
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'initialization' ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/admin/initialization}">
-                        <i class="fa-solid fa-fw fa-cogs"></i>
-                        <span>Initialization</span>
-                    </a>
-                </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'incremental-updates' ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/admin/incremental-updates}">
-                        <i class="fa-solid fa-fw fa-upload"></i>
-                        <span>Incremental Updates</span>
-                    </a>
-                </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'conflicts' ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/admin/conflicts}">
-                        <i class="fa-solid fa-fw fa-triangle-exclamation"></i>
-                        <span>Conflicts</span>
-                    </a>
-                </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'sourceLinks' ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/admin/source-links}">
-                        <i class="fa-solid fa-fw fa-link"></i>
-                        <span>Source Links</span>
-                    </a>
-                </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'user-defined-triage' ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/admin/user-defined-triage}">
-                        <i class="fa-solid fa-fw fa-compass"></i>
-                        <span>User-Defined Triage</span>
-                    </a>
-                </li>
-            </ul>
-        </section>
     </nav>
 </div>
 
@@ -354,6 +392,113 @@
     </nav>
 </div>
 
+<!--
+    Admin breadcrumb.
+    Params:
+      crumbs — list of maps: [{label, href}]. Last entry is treated as the current page
+               (rendered as non-link with aria-current="page"). Pass href=null on intermediate
+               entries to render a non-link crumb.
+-->
+<nav th:fragment="admin-breadcrumb(crumbs)"
+     class="app-admin-breadcrumb"
+     aria-label="Breadcrumb"
+     th:if="${crumbs != null and !#lists.isEmpty(crumbs)}">
+    <ol class="app-admin-breadcrumb__list">
+        <li th:each="crumb, iter : ${crumbs}"
+            class="app-admin-breadcrumb__item"
+            th:classappend="${iter.last} ? ' app-admin-breadcrumb__item--current' : ''">
+            <a th:if="${!iter.last and crumb.href != null}"
+               class="app-admin-breadcrumb__link"
+               th:href="${crumb.href}"
+               th:text="${crumb.label}">Parent</a>
+            <span th:unless="${!iter.last and crumb.href != null}"
+                  th:attr="aria-current=${iter.last ? 'page' : null}"
+                  th:text="${crumb.label}">Current</span>
+            <i th:unless="${iter.last}" class="fa-solid fa-angle-right app-admin-breadcrumb__sep" aria-hidden="true"></i>
+        </li>
+    </ol>
+</nav>
+
+<!--
+    Admin empty state (standalone panel).
+    Use inside a table section body when a server-rendered list is empty and outside a <table>,
+    or as a structured empty state for JS-populated surfaces.
+    Params:
+      title        — short, literal empty-state title (required).
+      body         — one sentence explaining what happened or what to do next (may be null).
+      actionLabel  — optional CTA label. Omit with null to skip the button.
+      actionHref   — optional CTA href. Required when actionLabel is non-null.
+-->
+<div th:fragment="admin-empty-state(title, body, actionLabel, actionHref)"
+     class="app-admin-empty-state"
+     role="status">
+    <span class="app-admin-empty-state__icon" aria-hidden="true">
+        <i class="fa-solid fa-inbox"></i>
+    </span>
+    <h3 class="app-admin-empty-state__title" th:text="${title}">Nothing here yet</h3>
+    <p th:if="${body != null}" class="app-admin-empty-state__body" th:text="${body}">Body explanation.</p>
+    <a th:if="${actionLabel != null and actionHref != null}"
+       class="btn btn-primary btn-sm app-admin-empty-state__action"
+       th:href="${actionHref}"
+       th:text="${actionLabel}">Action</a>
+</div>
+
+<!--
+    Admin empty row.
+    Use as a single <tr> inside a server-rendered <tbody> when the collection is empty.
+    The caller is responsible for th:if guarding this fragment.
+    Params:
+      colspan — integer spanning all columns in the parent table.
+      title   — short, literal empty-state title (required).
+      body    — optional supporting sentence (may be null).
+-->
+<tr th:fragment="admin-empty-row(colspan, title, body)" class="app-admin-empty-row">
+    <td th:attr="colspan=${colspan}">
+        <div class="app-admin-empty-row__inner">
+            <p class="app-admin-empty-row__title" th:text="${title}">No records found</p>
+            <p th:if="${body != null}" class="app-admin-empty-row__body" th:text="${body}">Body explanation.</p>
+        </div>
+    </td>
+</tr>
+
+<!--
+    Admin status badge.
+    Semantic status indicator per UX guide §6.5. Callers pass the tone explicitly so the server
+    decides the semantic mapping (OPEN → warning, RESOLVED → success, DISMISSED → muted, etc.).
+    Params:
+      label — human-readable status label (required).
+      tone  — one of: success, warning, danger, muted. Defaults to muted when null.
+-->
+<span th:fragment="admin-status-badge(label, tone)"
+      class="app-admin-status-badge"
+      th:classappend="${'app-admin-status-badge--' + (tone != null ? tone : 'muted')}"
+      th:text="${label}">STATUS</span>
+
+<!--
+    Admin table section wrapper.
+    Provides the canonical .app-table-section shell. Callers pass the body as a fragment
+    expression (e.g. ~{::#users-table-body}). Use this for server-rendered tables; JS-populated
+    catalog tables may keep their inline table-section markup because they embed inline
+    loading/empty/error panels that the body selector can still encapsulate.
+    Params:
+      title   — table section heading (required).
+      meta    — optional right-aligned meta text (e.g. record count). Pass null to omit.
+      toolbar — optional fragment expression for header-right controls. Pass null to omit.
+      body    — required fragment expression containing the table markup and pager.
+-->
+<div th:fragment="admin-table-section(title, meta, toolbar, body)" class="app-table-section">
+    <div class="app-table-section__surface">
+        <div class="app-table-section__header app-table-toolbar">
+            <h6 class="app-table-section__title" th:text="${title}">Table title</h6>
+            <span th:if="${meta != null}" class="app-table-toolbar__meta" th:text="${meta}">Meta</span>
+            <th:block th:if="${toolbar != null}" th:replace="${toolbar}"></th:block>
+        </div>
+        <div class="app-table-section__body">
+            <th:block th:replace="${body}"></th:block>
+        </div>
+    </div>
+</div>
+
 <!-- Tab-Bar Fragment -->
 <th:block th:fragment="tab-bar(tabs, callbacksRef)">
     <div class="app-tab-bar"
@@ -390,6 +535,46 @@
             </div>
         </div>
 
+    </div>
+</th:block>
+
+<!-- Admin Breadcrumb Fragment
+     items: list of {label, href} maps; last item is rendered as current (no link) -->
+<nav th:fragment="admin-breadcrumb(items)"
+     aria-label="Breadcrumb"
+     class="app-admin-breadcrumb">
+    <ol class="app-admin-breadcrumb" style="margin:0;padding:0;list-style:none;">
+        <li class="app-admin-breadcrumb__item"
+            th:each="item, stat : ${items}">
+            <a th:if="${!stat.last}"
+               class="app-admin-breadcrumb__link"
+               th:href="${item.href}"
+               th:text="${item.label}">Parent</a>
+            <span th:if="${stat.last}"
+                  class="app-admin-breadcrumb__current"
+                  aria-current="page"
+                  th:text="${item.label}">Current</span>
+        </li>
+    </ol>
+</nav>
+
+<!-- Admin Empty State Fragment
+     icon:        FontAwesome class string, e.g. "fa-solid fa-inbox"
+     title:       short "nothing here" headline
+     body:        one-line explanation or guidance
+     actionLabel: optional CTA label (null/empty to hide)
+     actionHref:  href for the optional CTA -->
+<th:block th:fragment="admin-empty-state(icon, title, body, actionLabel, actionHref)">
+    <div class="app-admin-empty">
+        <div class="app-admin-empty__icon" aria-hidden="true">
+            <i th:class="${icon}"></i>
+        </div>
+        <p class="app-admin-empty__title" th:text="${title}">No items</p>
+        <p class="app-admin-empty__body" th:text="${body}">Nothing to show here yet.</p>
+        <a th:if="${actionLabel != null and !#strings.isEmpty(actionLabel)}"
+           th:href="${actionHref}"
+           class="btn btn-outline-primary btn-sm"
+           th:text="${actionLabel}">Action</a>
     </div>
 </th:block>
 </body>

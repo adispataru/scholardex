@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
@@ -53,7 +52,7 @@ class EffectiveAuthorshipReadServiceTest {
         ScholardexPublicationView publication = publication("p1", "Paper 1");
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(Researcher.class))).thenReturn(List.of("a1"));
+        when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(User.ResearcherProfile.class))).thenReturn(List.of("a1"));
         when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
         when(publicationAuthorshipDecisionRepository.findByUserEmailOrderByUpdatedAtDesc("user@uvt.ro")).thenReturn(List.of());
@@ -71,7 +70,7 @@ class EffectiveAuthorshipReadServiceTest {
         ScholardexPublicationView rejected = publication("p2", "Paper 2");
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(Researcher.class))).thenReturn(List.of("a1"));
+        when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(User.ResearcherProfile.class))).thenReturn(List.of("a1"));
         when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(kept, rejected));
         when(publicationAuthorshipDecisionRepository.findByUserEmailOrderByUpdatedAtDesc("user@uvt.ro"))
@@ -89,7 +88,7 @@ class EffectiveAuthorshipReadServiceTest {
         ScholardexPublicationView publication = publication("p1", "Paper 1");
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(Researcher.class))).thenReturn(List.of("a1"));
+        when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(User.ResearcherProfile.class))).thenReturn(List.of("a1"));
         when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
         when(publicationAuthorshipDecisionRepository.findByUserEmailOrderByUpdatedAtDesc("user@uvt.ro"))
@@ -108,7 +107,7 @@ class EffectiveAuthorshipReadServiceTest {
         ScholardexPublicationView confirmed = publication("p2", "Paper 2");
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(Researcher.class))).thenReturn(List.of("a1"));
+        when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(User.ResearcherProfile.class))).thenReturn(List.of("a1"));
         when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(raw));
         when(publicationAuthorshipDecisionRepository.findByUserEmailOrderByUpdatedAtDesc("user@uvt.ro"))
@@ -128,7 +127,7 @@ class EffectiveAuthorshipReadServiceTest {
         ScholardexPublicationView raw = publication("p1", "Paper 1");
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
-        when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(Researcher.class))).thenReturn(List.of("a1"));
+        when(researcherAuthorLookupService.resolveAuthorLookupKeys(any(User.ResearcherProfile.class))).thenReturn(List.of("a1"));
         when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(raw));
         when(publicationAuthorshipDecisionRepository.findByUserEmailOrderByUpdatedAtDesc("user@uvt.ro"))

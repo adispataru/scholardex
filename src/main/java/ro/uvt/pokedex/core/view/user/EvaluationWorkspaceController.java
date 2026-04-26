@@ -7,7 +7,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.evaluation.EvaluationSnapshot;
 import ro.uvt.pokedex.core.model.reporting.AbstractReport;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
@@ -91,8 +90,8 @@ public class EvaluationWorkspaceController {
             }
         }
 
-        String researcherPosition = Optional.ofNullable(Researcher.fromUser(currentUser))
-                .map(Researcher::getPosition)
+        String researcherPosition = Optional.ofNullable(currentUser.getResearcherProfile())
+                .map(p -> p.getPosition())
                 .map(Enum::name)
                 .orElse("");
 

@@ -209,7 +209,7 @@ public class PublicationWizardFacade {
         payload.put("approved", 0);
 
         payload.put("wizardSubmitterEmail", submitter == null ? "" : trim(submitter.getEmail()));
-        payload.put("wizardSubmitterResearcherId", submitter == null ? "" : trim(submitter.getResearcherId()));
+        payload.put("wizardSubmitterResearcherId", submitter == null ? "" : trim(submitter.getEmail()));
         payload.put("wizardSourceRecordId", sourceRecordId);
         payload.put("wizardSubmittedAt", Instant.now().toString());
         return payload;

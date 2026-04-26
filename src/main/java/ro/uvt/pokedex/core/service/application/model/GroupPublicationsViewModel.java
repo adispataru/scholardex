@@ -1,7 +1,7 @@
 package ro.uvt.pokedex.core.service.application.model;
 
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.reporting.Group;
+import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
@@ -12,7 +12,7 @@ import java.util.Map;
 
 public record GroupPublicationsViewModel(
         Group group,
-        List<Researcher> researchers,
+        List<User> researchers,
         List<ScholardexPublicationView> publications,
         Map<String, ScholardexAuthorView> authorMap,
         Map<String, ScholardexForumView> forumMap,

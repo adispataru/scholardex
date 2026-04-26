@@ -9,6 +9,7 @@ import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.repository.UserRepository;
 import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
 import ro.uvt.pokedex.core.service.application.ResearcherAuthorLookupService;
@@ -30,6 +31,8 @@ class CacheServiceTest {
     private CoreConferenceRankingRepository coreConferenceRankingRepository;
     @Mock
     private GroupRepository groupRepository;
+    @Mock
+    private UserRepository userRepository;
     @Mock
     private ResearcherAuthorLookupService researcherAuthorLookupService;
 
@@ -58,6 +61,7 @@ class CacheServiceTest {
                 scholardexProjectionReadService,
                 coreConferenceRankingRepository,
                 groupRepository,
+                userRepository,
                 researcherAuthorLookupService
         );
     }

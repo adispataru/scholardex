@@ -8,159 +8,484 @@
 <body id="page-top">
 
 <div id="wrapper">
-    <!-- Sidebar -->
     <div th:replace="~{fragments :: sidebar('users')}"></div>
 
-    <!-- Content Wrapper -->
     <div id="content-wrapper" class="d-flex flex-column">
-        <!-- Main Content -->
         <div id="content">
-            <!-- Topbar -->
             <div th:replace="~{fragments :: navbar('Users')}"></div>
 
-            <!-- Begin Page Content -->
             <div class="container-fluid app-page-content">
+
+                <!-- Flash messages -->
+                <div th:if="${errorMessage}" class="app-form-state app-form-state--danger" th:text="${errorMessage}"></div>
+                <div th:if="${successMessage}" class="app-form-state app-form-state--success" th:text="${successMessage}"></div>
+                <div th:if="${bulkSuccess}" class="app-form-state app-form-state--success" th:text="${bulkSuccess}"></div>
+                <div th:if="${bulkError}" class="app-form-state app-form-state--danger" th:text="${bulkError}"></div>
+
+                <!-- Stat cards -->
+                <div class="app-summary-grid">
+                    <div class="app-summary-card">
+                        <p class="app-summary-card__label">Total Users</p>
+                        <p class="app-summary-card__value" th:text="${totalUsers}">0</p>
+                        <p class="app-summary-card__meta">All registered accounts on the platform.</p>
+                    </div>
+                    <div class="app-summary-card app-summary-card--success">
+                        <p class="app-summary-card__label">Active</p>
+                        <p class="app-summary-card__value" th:text="${activeUsers}">0</p>
+                        <p class="app-summary-card__meta">Unlocked accounts able to sign in.</p>
+                    </div>
+                    <div class="app-summary-card app-summary-card--warning">
+                        <p class="app-summary-card__label">Without Profile</p>
+                        <p class="app-summary-card__value" th:text="${usersWithoutProfile}">0</p>
+                        <p class="app-summary-card__meta">Accounts not yet linked to a researcher profile.</p>
+                    </div>
+                </div>
+
                 <div class="app-page-toolbar app-workflow">
-                    <p class="app-workflow__intro">Manage platform access, create new accounts, and update roles from one place.</p>
+                    <p class="app-workflow__intro">Manage platform access, assign roles, and link researcher profiles from one place.</p>
                     <div class="app-workflow__actions">
-                        <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#createUserModal">
-                            New User
+                        <button type="button" class="btn btn-primary btn-sm"
+                                data-toggle="modal" data-target="#createUserModal">
+                            <i class="fa-solid fa-plus fa-sm" aria-hidden="true"></i> New User
                         </button>
                     </div>
+                </div>
 
-                    <!-- Create User Modal -->
-                    <div class="modal fade app-modal" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="createUserModalLabel">New User</h5>
-                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
-                                <form th:action="@{/admin/users/create}" method="post">
-                                    <div class="modal-body">
-                                        <div class="app-form-section">
-                                            <div class="app-form-section__header">
-                                                <h6 class="app-form-section__title">Identity</h6>
-                                                <p class="app-form-section__description">Set the core credentials for the new account before assigning permissions.</p>
+                <!-- Bulk select bar -->
+                <div id="user-bulk-bar" class="app-bulk-select-bar d-none">
+                    <span class="app-bulk-select-bar__count">
+                        <span id="user-bulk-count">0 items</span> selected
+                    </span>
+                    <div class="app-bulk-select-bar__actions">
+                        <button type="button" class="btn btn-sm btn-primary"
+                                data-toggle="modal" data-target="#assignGroupModal">
+                            <i class="fa-solid fa-users fa-xs"></i> Assign to Group
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="user-bulk-clear">
+                            Clear selection
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ── Users table ── -->
+                <div class="app-table-section">
+                    <div class="app-table-section__surface">
+                        <div class="app-table-section__header app-table-toolbar">
+                            <h6 class="app-table-section__title">User Management</h6>
+                            <div class="app-table-toolbar__actions" id="users-toolbar-actions"></div>
+                        </div>
+                        <div class="app-table-section__body">
+                            <div class="app-table-scroll">
+                                <table class="table js-datatable app-table" id="dataTable" width="100%" cellspacing="0">
+                                    <thead>
+                                    <tr>
+                                        <th data-col="select" style="width:2.2rem;">
+                                            <input type="checkbox" id="user-select-all" title="Select all">
+                                        </th>
+                                        <th data-col="email">Email</th>
+                                        <th data-col="name">Name</th>
+                                        <th data-col="scholar-id">Scholar&nbsp;ID</th>
+                                        <th data-col="scopus-ids">Scopus&nbsp;IDs</th>
+                                        <th data-col="wos-ids">WoS&nbsp;IDs</th>
+                                        <th data-col="roles">Roles</th>
+                                        <th data-col="status">Status</th>
+                                        <th data-col="actions">Actions</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="user : ${users}">
+                                        <td data-col="select">
+                                            <input type="checkbox" class="js-user-bulk-cb"
+                                                   th:value="${user.email}" aria-label="Select user">
+                                        </td>
+                                        <td data-col="email" th:text="${user.email}"></td>
+
+                                        <!-- Name -->
+                                        <td data-col="name">
+                                            <span th:if="${user.researcherProfile != null}"
+                                                  th:text="${user.researcherProfile.name}"></span>
+                                            <span th:if="${user.researcherProfile == null}"
+                                                  class="app-admin-no-profile">—</span>
+                                        </td>
+
+                                        <!-- Scholar ID -->
+                                        <td data-col="scholar-id">
+                                            <span th:if="${user.researcherProfile?.scholarId != null}"
+                                                  class="app-admin-id-pill"
+                                                  th:text="${user.researcherProfile.scholarId}"></span>
+                                            <span th:if="${user.researcherProfile?.scholarId == null}"
+                                                  class="app-admin-no-profile">—</span>
+                                        </td>
+
+                                        <!-- Scopus IDs -->
+                                        <td data-col="scopus-ids">
+                                            <span th:if="${user.researcherProfile != null and !user.researcherProfile.scopusId.isEmpty()}">
+                                                <span th:each="sid : ${user.researcherProfile.scopusId}"
+                                                      class="app-admin-id-pill"
+                                                      th:text="${sid}"></span>
+                                            </span>
+                                            <span th:if="${user.researcherProfile == null or user.researcherProfile.scopusId.isEmpty()}"
+                                                  class="app-admin-no-profile">—</span>
+                                        </td>
+
+                                        <!-- WoS IDs -->
+                                        <td data-col="wos-ids">
+                                            <span th:if="${user.researcherProfile != null and !user.researcherProfile.wosId.isEmpty()}">
+                                                <span th:each="wid : ${user.researcherProfile.wosId}"
+                                                      class="app-admin-id-pill"
+                                                      th:text="${wid}"></span>
+                                            </span>
+                                            <span th:if="${user.researcherProfile == null or user.researcherProfile.wosId.isEmpty()}"
+                                                  class="app-admin-no-profile">—</span>
+                                        </td>
+
+                                        <!-- Roles as badges -->
+                                        <td data-col="roles">
+                                            <div class="app-admin-roles-cell">
+                                                <span th:each="role : ${user.roles}"
+                                                      class="app-admin-role-badge"
+                                                      th:classappend="${#strings.contains(role.name(), 'ADMIN')} ? ' app-admin-role-badge--admin' : (${#strings.contains(role.name(), 'SUPERVISOR')} ? ' app-admin-role-badge--supervisor' : '')"
+                                                      th:text="${role}"></span>
                                             </div>
-                                            <div class="app-form-grid app-form-grid--two-up">
-                                        <!-- Email Input -->
-                                        <div class="form-group app-form-field">
-                                            <label for="user-email">Email</label>
-                                            <input type="email" class="form-control" id="user-email" name="email" required>
-                                        </div>
-                                        <!-- Password Input -->
-                                        <div class="form-group app-form-field">
-                                            <label for="user-password">Password</label>
-                                            <input type="password" class="form-control" id="user-password" name="password" required>
-                                        </div>
+                                        </td>
+
+                                        <!-- Status -->
+                                        <td data-col="status">
+                                            <span th:if="${user.locked}"
+                                                  class="app-admin-locked-badge">
+                                                <i class="fa-solid fa-lock fa-xs" aria-hidden="true"></i> Locked
+                                            </span>
+                                            <span th:unless="${user.locked}"
+                                                  class="app-table-badge app-table-badge--success">Active</span>
+                                        </td>
+
+                                        <!-- Actions -->
+                                        <td data-col="actions">
+                                            <div class="app-admin-actions">
+                                                <!-- Edit — full data-* payload for modal pre-population -->
+                                                <button type="button"
+                                                        class="app-admin-icon-btn"
+                                                        aria-label="Edit user"
+                                                        data-toggle="modal"
+                                                        data-target="#editUserModal"
+                                                        th:attr="data-email=${user.email},
+                                                                 data-roles=${#strings.listJoin(user.roles, ',')},
+                                                                 data-first-name=${user.researcherProfile?.firstName ?: ''},
+                                                                 data-last-name=${user.researcherProfile?.lastName ?: ''},
+                                                                 data-scholar-id=${user.researcherProfile?.scholarId ?: ''},
+                                                                 data-scopus-ids=${user.researcherProfile != null ? #strings.listJoin(user.researcherProfile.scopusId, ',') : ''},
+                                                                 data-wos-ids=${user.researcherProfile != null ? #strings.listJoin(user.researcherProfile.wosId, ',') : ''},
+                                                                 data-position=${user.researcherProfile?.position ?: ''}">
+                                                    <i class="fa-solid fa-pen fa-xs" aria-hidden="true"></i>
+                                                </button>
+
+                                                <!-- Lock / Unlock -->
+                                                <form th:if="${!user.locked}"
+                                                      th:action="@{/admin/users/lock/{email}(email=${user.email})}"
+                                                      method="post" style="display:inline;">
+                                                    <button type="submit"
+                                                            class="app-admin-icon-btn app-admin-icon-btn--warning"
+                                                            aria-label="Lock user">
+                                                        <i class="fa-solid fa-lock fa-xs" aria-hidden="true"></i>
+                                                    </button>
+                                                </form>
+                                                <form th:if="${user.locked}"
+                                                      th:action="@{/admin/users/unlock/{email}(email=${user.email})}"
+                                                      method="post" style="display:inline;">
+                                                    <button type="submit"
+                                                            class="app-admin-icon-btn"
+                                                            aria-label="Unlock user">
+                                                        <i class="fa-solid fa-lock-open fa-xs" aria-hidden="true"></i>
+                                                    </button>
+                                                </form>
+
+                                                <!-- Delete -->
+                                                <form th:action="@{/admin/users/delete/{email}(email=${user.email})}"
+                                                      method="post" style="display:inline;">
+                                                    <input type="hidden" name="_method" value="delete" />
+                                                    <button type="submit"
+                                                            class="app-admin-icon-btn app-admin-icon-btn--danger"
+                                                            aria-label="Delete user">
+                                                        <i class="fa-solid fa-trash fa-xs" aria-hidden="true"></i>
+                                                    </button>
+                                                </form>
                                             </div>
-                                        </div>
-                                        <!-- Role Selection, adjust based on your Role entity -->
-                                        <!-- Role Selection, adjusted for multiple selection -->
-                                        <div class="form-group app-form-field app-form-section mt-3">
-                                            <div class="app-form-section__header">
-                                            <span class="app-form-label">Roles</span>
-                                            <p class="app-form-help mb-0">Select one or more roles for the new user.</p>
-                                            </div>
-                                            <!--                                <label for="user-roles">Roles</label>-->
-                                            <!--                                <select class="form-control" id="user-roles" name="roles" multiple>-->
-                                            <!--                                    <option value="RESEARCHER">RESEARCHER</option>-->
-                                            <!--                                    <option value="SUPERVISOR">SUPERVISOR</option>-->
-                                            <!--                                    <option value="PLATFORM_ADMIN">PLATFORM_ADMIN</option>-->
-                                            <!--                                </select>-->
-                                            <!--                                <input type="hidden" name="email" th:value="${user.email}" />-->
-                                            <div class="app-form-choice-list">
-                                            <label class="app-form-choice" th:each="role, roleStat : ${allRoles}">
-                                                <input type="checkbox" th:name="roles" th:value="${role}" />
-                                                <span class="app-form-choice__body">
-                                                    <span class="app-form-choice__label" th:text="${role}"></span>
-                                                    <span class="app-form-choice__meta">Grant this permission set when the account is created.</span>
-                                                </span>
-                                            </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer app-form-actions">
-                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                        <button type="submit" class="btn btn-primary">Create User</button>
-                                    </div>
-                                </form>
+                                        </td>
+                                    </tr>
+
+                                    <!-- Empty state -->
+                                    <tr th:if="${users.isEmpty()}" class="app-admin-empty-row">
+                                        <td colspan="9">
+                                            <th:block th:replace="~{fragments :: admin-empty-state(
+                                                'No users yet',
+                                                'Create the first platform account using the New User button above.',
+                                                'New User',
+                                                '#')}"></th:block>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="app-table-section">
-                    <div class="app-table-section__surface">
-                    <div class="app-table-section__header app-table-toolbar">
-                        <h6 class="app-table-section__title">User Management</h6>
-                    </div>
-                    <div class="app-table-section__body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered js-datatable app-table" id="dataTable" width="100%" cellspacing="0">
-                                <thead>
-                                <tr>
-                                    <th>Email</th>
-                                    <th>Roles</th>
-                                    <th>Actions</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <tr th:each="user : ${users}">
-                                    <td th:text="${user.email}"></td>
-                                    <td>
-                                        <form th:action="@{/admin/users/updateRoles}" method="post">
-                                            <input type="hidden" name="email" th:value="${user.email}" />
-                                            <div th:each="role, roleStat : ${allRoles}">
-                                                <input type="checkbox" th:name="roles" th:value="${role}"
-                                                       th:checked="${#lists.contains(user.roles, role)}" />
-                                                <label th:text="${role}"></label>
-                                            </div>
-                                            <button type="submit" class="btn btn-info btn-sm">Update Roles</button>
-                                        </form>
-                                    </td>
-                                    <td>
-                                        <form th:action="@{/admin/users/lock/{email}(email=${user.email})}" method="post" style="display:inline;">
-                                            <button type="submit" class="btn btn-warning btn-sm">Lock</button>
-                                        </form>
-                                        <form th:action="@{/admin/users/delete/{email}(email=${user.email})}" method="post" style="display:inline;">
-                                            <input type="hidden" name="_method" value="delete" />
-                                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    </div>
-                </div>
             </div>
-            <!-- End of Main Content -->
 
-            <!-- Footer -->
             <div th:replace="~{fragments :: app-footer}"></div>
-            <!-- End of Footer -->
         </div>
-        <!-- End of Content Wrapper -->
     </div>
-    <!-- End of Page Wrapper -->
-
-    <!-- Scroll to Top Button-->
-    <a class="scroll-to-top rounded" href="#page-top">
-        <i class="fa-solid fa-angle-up"></i>
-    </a>
 </div>
 
-<!-- Bootstrap core JavaScript-->
+<!-- ── Create User Modal ── -->
+<div class="modal fade app-modal" id="createUserModal" tabindex="-1"
+     role="dialog" aria-modal="true"
+     aria-labelledby="createUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createUserModalLabel">New User</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close modal">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form th:action="@{/admin/users/create}" method="post">
+                <div class="modal-body">
+                    <div class="app-form-section">
+                        <div class="app-form-section__header">
+                            <h6 class="app-form-section__title">Identity</h6>
+                            <p class="app-form-section__description">Set the core credentials for the new account before assigning permissions.</p>
+                        </div>
+                        <div class="app-form-grid app-form-grid--two-up">
+                            <div class="form-group app-form-field">
+                                <label for="create-user-email">Email</label>
+                                <input type="email" class="form-control" id="create-user-email" name="email" required
+                                       autocomplete="off">
+                            </div>
+                            <div class="form-group app-form-field">
+                                <label for="create-user-password">Password</label>
+                                <input type="password" class="form-control" id="create-user-password" name="password" required
+                                       autocomplete="new-password">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group app-form-field app-form-section mt-3">
+                        <div class="app-form-section__header">
+                            <span class="app-form-label">Roles</span>
+                            <p class="app-form-help mb-0">Select one or more roles for the new user.</p>
+                        </div>
+                        <div class="app-form-choice-list">
+                            <label class="app-form-choice" th:each="role : ${allRoles}">
+                                <input type="checkbox" th:name="roles" th:value="${role}" />
+                                <span class="app-form-choice__body">
+                                    <span class="app-form-choice__label" th:text="${role}"></span>
+                                    <span class="app-form-choice__meta">Grant this permission set when the account is created.</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer app-form-actions">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ── Edit User Modal ── -->
+<div class="modal fade app-modal" id="editUserModal" tabindex="-1"
+     role="dialog" aria-modal="true"
+     aria-labelledby="editUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editUserModalLabel">Edit User</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close modal">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+
+                <!-- Account section -->
+                <div class="app-form-section">
+                    <div class="app-form-section__header">
+                        <h6 class="app-form-section__title">Account</h6>
+                    </div>
+                    <div class="form-group app-form-field">
+                        <label for="edit-user-email-display">Email</label>
+                        <input type="text" class="form-control" id="edit-user-email-display"
+                               readonly aria-readonly="true" tabindex="-1">
+                    </div>
+                </div>
+
+                <!-- Roles section -->
+                <div class="app-form-section mt-3">
+                    <div class="app-form-section__header">
+                        <span class="app-form-label">Roles</span>
+                        <p class="app-form-help mb-0">Choose the roles this user should have. Removing <strong>PLATFORM_ADMIN</strong> requires confirmation.</p>
+                    </div>
+                    <div class="app-form-choice-list" id="editUserRolesList">
+                        <label class="app-form-choice" th:each="role : ${allRoles}">
+                            <input type="checkbox"
+                                   th:value="${role}"
+                                   th:id="'edit-role-' + ${role}"
+                                   class="edit-user-role-cb" />
+                            <span class="app-form-choice__body">
+                                <span class="app-form-choice__label" th:text="${role}"></span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Researcher profile section -->
+                <div class="app-form-section mt-3">
+                    <div class="app-form-section__header">
+                        <h6 class="app-form-section__title">Researcher Profile</h6>
+                        <p class="app-form-section__description">Leave fields blank to clear stored values. IDs are comma-separated.</p>
+                    </div>
+                    <div class="app-form-grid app-form-grid--two-up">
+                        <div class="form-group app-form-field">
+                            <label for="edit-first-name">First Name</label>
+                            <input type="text" class="form-control" id="edit-first-name" autocomplete="off">
+                        </div>
+                        <div class="form-group app-form-field">
+                            <label for="edit-last-name">Last Name</label>
+                            <input type="text" class="form-control" id="edit-last-name" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="app-form-grid app-form-grid--two-up">
+                        <div class="form-group app-form-field">
+                            <label for="edit-scholar-id">Scholar ID</label>
+                            <input type="text" class="form-control app-admin-id-input" id="edit-scholar-id" autocomplete="off">
+                        </div>
+                        <div class="form-group app-form-field">
+                            <label for="edit-position">Position</label>
+                            <select class="form-control" id="edit-position">
+                                <option value="">— None —</option>
+                                <option th:each="pos : ${T(ro.uvt.pokedex.core.model.reporting.Position).values()}"
+                                        th:value="${pos}" th:text="${pos}"></option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group app-form-field">
+                        <label for="edit-scopus-ids">Scopus IDs <span class="app-form-help">(comma-separated)</span></label>
+                        <input type="text" class="form-control app-admin-id-input" id="edit-scopus-ids"
+                               placeholder="e.g. 12345678, 87654321" autocomplete="off">
+                    </div>
+                    <div class="form-group app-form-field">
+                        <label for="edit-wos-ids">WoS IDs <span class="app-form-help">(comma-separated)</span></label>
+                        <input type="text" class="form-control app-admin-id-input" id="edit-wos-ids"
+                               placeholder="e.g. A-1234-5678" autocomplete="off">
+                    </div>
+                </div>
+
+                <!-- Inline feedback -->
+                <p id="edit-user-feedback" class="app-form-feedback" hidden></p>
+
+            </div>
+            <div class="modal-footer app-form-actions">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="edit-user-save-btn">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scroll to Top -->
+<a class="scroll-to-top rounded" href="#page-top">
+    <i class="fa-solid fa-angle-up"></i>
+</a>
+
+<!-- Assign to Group Modal -->
+<div class="modal fade" id="assignGroupModal" tabindex="-1" role="dialog"
+     aria-labelledby="assignGroupModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form id="user-bulk-form" method="post" th:action="@{/admin/users/bulk/assign-group}">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="assignGroupModalLabel">Assign to Group</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-2">Selected users will be added as members of the chosen group.</p>
+                    <div class="form-group">
+                        <label for="assign-group-select" class="font-weight-bold" style="font-size:0.84rem;">Group</label>
+                        <select id="assign-group-select" name="groupId" class="form-control form-control-sm" required>
+                            <option value="">— Select a group —</option>
+                            <option th:each="g : ${allGroups}" th:value="${g.id}" th:text="${g.name}"></option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Assign</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap core JavaScript -->
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
+<script>
+(function () {
+    var bulk = window.initAdminBulkSelect({
+        tableKey: 'users',
+        fingerprint: 'all',
+        cbSelector: '.js-user-bulk-cb',
+        selectAllSelector: '#user-select-all',
+        barSelector: '#user-bulk-bar',
+        countSelector: '#user-bulk-count',
+        bulkFormId: 'user-bulk-form',
+        inputName: 'userId',
+    });
+    document.getElementById('user-bulk-clear').addEventListener('click', function () {
+        bulk.clearAll();
+    });
+    // Re-sync after DataTables redraws rows
+    var dt = document.getElementById('dataTable');
+    if (dt) {
+        $(dt).on('draw.dt', function () { bulk.reinit(); });
+    }
+    window.initAdminColumnToggle({
+        tableId: 'users',
+        tableEl: document.getElementById('dataTable'),
+        toolbarActionsEl: document.getElementById('users-toolbar-actions'),
+        columns: [
+            { key: 'select',     label: 'Select',     required: true },
+            { key: 'email',      label: 'Email',      required: true },
+            { key: 'name',       label: 'Name',       required: false },
+            { key: 'scholar-id', label: 'Scholar ID', required: false },
+            { key: 'scopus-ids', label: 'Scopus IDs', required: false },
+            { key: 'wos-ids',    label: 'WoS IDs',    required: false },
+            { key: 'roles',      label: 'Roles',      required: false },
+            { key: 'status',     label: 'Status',     required: false },
+            { key: 'actions',    label: 'Actions',    required: true },
+        ],
+    });
 
-<!-- Page level plugins -->
-
-<!-- Page level custom scripts -->
-
+    var usersTbody = document.querySelector('#dataTable tbody');
+    if (usersTbody) {
+        window.initAdminShortcuts({
+            sections: [{
+                title: 'Row Actions',
+                rows: [{ keys: ['e', 'Enter'], label: 'Edit focused user' }],
+            }],
+            tables: [{
+                tbodyEl: usersTbody,
+                keyActions: {
+                    'e':     function(tr) { tr.querySelector('[aria-label="Edit user"]')?.click(); },
+                    'Enter': function(tr) { tr.querySelector('[aria-label="Edit user"]')?.click(); },
+                },
+            }],
+        });
+    }
+})();
+</script>
 </body>
 </html>

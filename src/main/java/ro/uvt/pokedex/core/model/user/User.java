@@ -28,13 +28,6 @@ public class User implements UserDetails {
     private Set<UserRole> roles = new HashSet<>();
 
     /**
-     * Legacy field kept during migration. After migration completes all
-     * profile data lives in {@link #researcherProfile} and this field will
-     * be removed.
-     */
-    private String researcherId;
-
-    /**
      * Embedded researcher profile. Non-null for users who have a researcher
      * identity; null for admin / system accounts.
      */

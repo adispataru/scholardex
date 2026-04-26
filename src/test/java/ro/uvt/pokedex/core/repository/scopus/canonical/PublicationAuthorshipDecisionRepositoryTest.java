@@ -87,6 +87,21 @@ class PublicationAuthorshipDecisionRepositoryTest extends MongoIntegrationTestBa
         assertThat(decisions).extracting(PublicationAuthorshipDecision::getPublicationId).containsExactly("spub_2");
     }
 
+    @Test
+    void queriesAllDecisionsForPublicationSubsetAcrossUsers() {
+        repository.saveAll(List.of(
+                decision("user@example.com", "spub_1", PublicationAuthorshipDecision.Status.CONFIRMED),
+                decision("other@example.com", "spub_1", PublicationAuthorshipDecision.Status.REJECTED),
+                decision("third@example.com", "spub_2", PublicationAuthorshipDecision.Status.CONFIRMED)
+        ));
+
+        List<PublicationAuthorshipDecision> decisions = repository.findByPublicationIdIn(List.of("spub_1"));
+
+        assertThat(decisions)
+                .extracting(PublicationAuthorshipDecision::getUserEmail)
+                .containsExactlyInAnyOrder("user@example.com", "other@example.com");
+    }
+
     private void ensureIndexes() {
         MappingContext<?, ?> mappingContext = mongoTemplate.getConverter().getMappingContext();
         IndexResolver resolver = new MongoPersistentEntityIndexResolver((MongoMappingContext) mappingContext);

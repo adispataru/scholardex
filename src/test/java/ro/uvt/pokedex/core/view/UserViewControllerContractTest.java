@@ -16,7 +16,6 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
@@ -26,7 +25,6 @@ import ro.uvt.pokedex.core.model.tasks.ScopusPublicationUpdate;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.user.UserRole;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
-import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.UserPublicationFacade;
 import ro.uvt.pokedex.core.service.application.UserIndividualReportRunService;
@@ -73,8 +71,6 @@ class UserViewControllerContractTest {
 
     @MockitoBean
     private UserService userService;
-    @MockitoBean
-    private ResearcherService researcherService;
     @MockitoBean
     private UserPublicationFacade userPublicationFacade;
     @MockitoBean
@@ -288,7 +284,6 @@ class UserViewControllerContractTest {
     @Test
     void userRouteKeepsUserSidebarForPlatformAdmin() throws Exception {
         User user = userPrincipal("admin@uvt.ro");
-        user.setResearcherId("r1");
         user.setRoles(Set.of(UserRole.PLATFORM_ADMIN));
 
         mockMvc.perform(get("/user/publications").with(authenticatedUser(user)))

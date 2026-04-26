@@ -2,8 +2,8 @@ package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.reporting.Group;
+import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
@@ -27,11 +27,11 @@ public class GroupExportFacade {
             return Optional.empty();
         }
 
-        List<Researcher> researchers = loadResearchers(group);
-        researchers.sort(Comparator.comparing(Researcher::getName));
+        List<User> researchers = loadResearchers(group);
+        researchers.sort(Comparator.comparing(u -> u.getResearcherProfile().getName()));
         List<String> lookupKeys = new ArrayList<>();
-        for (Researcher researcher : researchers) {
-            lookupKeys.addAll(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
+        for (User user : researchers) {
+            lookupKeys.addAll(researcherAuthorLookupService.resolveAuthorLookupKeys(user.getResearcherProfile()));
         }
         List<String> authorIds = scholardexProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
                 .map(ScholardexAuthorView::getId)
@@ -64,16 +64,11 @@ public class GroupExportFacade {
         ));
     }
 
-    private List<Researcher> loadResearchers(Group group) {
+    private List<User> loadResearchers(Group group) {
         List<String> memberIds = group.getMemberIds();
-        if (memberIds != null && !memberIds.isEmpty()) {
-            return userRepository.findAllById(memberIds).stream()
-                    .map(Researcher::fromUser)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
-        }
-        return group.getResearchers() != null
-                ? new ArrayList<>(group.getResearchers())
-                : new ArrayList<>();
+        if (memberIds == null || memberIds.isEmpty()) return new ArrayList<>();
+        return userRepository.findAllById(memberIds).stream()
+                .filter(u -> u.getResearcherProfile() != null)
+                .collect(Collectors.toList());
     }
 }

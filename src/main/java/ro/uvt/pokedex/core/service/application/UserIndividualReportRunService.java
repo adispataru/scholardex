@@ -67,7 +67,7 @@ public class UserIndividualReportRunService {
         IndividualReport report = reportOpt.get();
         UserIndividualReportRun run = new UserIndividualReportRun();
         run.setUserEmail(userEmail);
-        run.setResearcherId(userService.getUserByEmail(userEmail).map(ro.uvt.pokedex.core.model.user.User::getResearcherId).orElse(null));
+        run.setResearcherId(userEmail);
         run.setReportDefinitionId(reportDefinitionId);
         run.setCreatedAt(Instant.now());
 

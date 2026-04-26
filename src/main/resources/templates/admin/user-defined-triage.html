@@ -13,8 +13,12 @@
             <div th:replace="~{fragments :: navbar('USER_DEFINED Triage')}"></div>
             <div class="container-fluid app-page-content">
                 <div class="app-dashboard">
-                    <p class="app-dashboard__intro">Review USER_DEFINED lineage health with snapshot metrics, recent source-link activity, conflict status, and direct links to the underlying records.</p>
+                    <p class="app-dashboard__intro">Work through USER_DEFINED lineage issues — decide on open conflicts directly from this queue, inspect source-link states, and drill into the full catalog when deeper investigation is needed.</p>
 
+                    <div th:if="${errorMessage}" class="app-feedback app-feedback--danger" th:text="${errorMessage}"></div>
+                    <div th:if="${successMessage}" class="app-feedback app-feedback--success" th:text="${successMessage}"></div>
+
+                    <!-- Stat cards -->
                     <div class="app-summary-grid">
                         <div class="app-summary-card">
                             <p class="app-summary-card__label">Source Publications</p>
@@ -32,15 +36,153 @@
                             <p class="app-summary-card__meta">Total source-link ledger entries in this lineage slice.</p>
                         </div>
                         <div class="app-summary-card app-summary-card--danger">
-                            <p class="app-summary-card__label">Conflicts</p>
-                            <p class="app-summary-card__value" th:text="${snapshot.conflicts.total}">0</p>
-                            <p class="app-summary-card__meta">Conflicts currently visible for USER_DEFINED lineage.</p>
+                            <p class="app-summary-card__label">Open Conflicts</p>
+                            <p class="app-summary-card__value" th:text="${snapshot.conflicts.open}">0</p>
+                            <p class="app-summary-card__meta">USER_DEFINED conflicts still requiring operator action.</p>
                         </div>
                     </div>
 
-                    <div class="app-summary-grid">
+                    <!-- ── USER_DEFINED OPEN conflict queue ── -->
+                    <div class="app-queue-filter">
+                        <p class="app-queue-filter__title">USER_DEFINED open conflict queue</p>
+                        <div class="app-queue-filter__grid" style="align-items:center;">
+                            <span style="font-size:0.84rem; color:var(--app-color-text-muted);">
+                                Showing OPEN conflicts from USER_DEFINED source, newest first.
+                                Resolve, investigate, or dismiss each item directly, or use bulk actions below.
+                            </span>
+                            <div class="app-queue-filter__actions">
+                                <a th:href="${conflictsDeepLink}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fa-solid fa-arrow-up-right-from-square fa-xs"></i> Full view
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="app-table-section">
+                        <div class="app-table-section__surface">
+                            <div class="app-table-section__header app-table-toolbar">
+                                <h6 class="app-table-section__title">
+                                    Open Conflicts
+                                    <span class="text-muted" style="font-weight:400; font-size:0.82rem;"
+                                          th:text="'— ' + ${triageQueue.totalElements} + ' total'"></span>
+                                </h6>
+                                <div class="app-table-toolbar__actions" id="triage-toolbar-actions">
+                                    <a th:if="${triageQueue.hasPrevious()}"
+                                       th:href="@{/admin/user-defined-triage(triagePage=${triageQueue.number - 1})}"
+                                       class="btn btn-outline-secondary btn-sm">
+                                        <i class="fa-solid fa-chevron-left fa-xs"></i>
+                                    </a>
+                                    <a th:if="${triageQueue.hasNext()}"
+                                       th:href="@{/admin/user-defined-triage(triagePage=${triageQueue.number + 1})}"
+                                       class="btn btn-outline-secondary btn-sm">
+                                        <i class="fa-solid fa-chevron-right fa-xs"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="app-table-section__body">
+                                <div class="app-table-scroll">
+                                    <table class="table table-sm app-table" id="triage-table">
+                                        <thead>
+                                        <tr>
+                                            <th data-col="select" style="width:2rem">
+                                                <input type="checkbox" id="select-all-triage" aria-label="Select all on this page"
+                                                       title="Select / deselect all on this page">
+                                            </th>
+                                            <th data-col="detected">Detected</th>
+                                            <th data-col="entity">Entity</th>
+                                            <th data-col="source-record">Source Record</th>
+                                            <th data-col="reason">Reason</th>
+                                            <th data-col="candidates">Candidates</th>
+                                            <th data-col="actions">Actions</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr th:each="c : ${triageQueue.content}" class="app-queue-row--open">
+                                            <td data-col="select">
+                                                <input type="checkbox" form="triage-bulk-form"
+                                                       name="ids" th:value="${c.id}"
+                                                       class="triage-cb"
+                                                       aria-label="Select this conflict">
+                                            </td>
+                                            <td data-col="detected" th:text="${#temporals.format(c.detectedAt, 'yyyy-MM-dd HH:mm')}"></td>
+                                            <td data-col="entity" th:text="${c.entityType}"></td>
+                                            <td data-col="source-record" class="text-truncate" style="max-width:14rem"
+                                                th:text="${c.incomingSourceRecordId}"
+                                                th:title="${c.incomingSourceRecordId}"></td>
+                                            <td data-col="reason" th:text="${c.reasonCode}"></td>
+                                            <td data-col="candidates" class="text-truncate" style="max-width:10rem"
+                                                th:text="${#strings.listJoin(c.candidateCanonicalIds, ', ')}"
+                                                th:title="${#strings.listJoin(c.candidateCanonicalIds, ', ')}"></td>
+                                            <td data-col="actions">
+                                                <div class="app-admin-actions">
+                                                    <form method="post" th:action="@{/admin/user-defined-triage/conflict/resolve}" style="display:inline">
+                                                        <input type="hidden" name="id" th:value="${c.id}">
+                                                        <button type="submit" class="app-admin-icon-btn app-admin-icon-btn--success"
+                                                                aria-label="Resolve conflict">
+                                                            <i class="fa-solid fa-check fa-xs"></i>
+                                                        </button>
+                                                    </form>
+                                                    <form method="post" th:action="@{/admin/user-defined-triage/conflict/investigate}" style="display:inline">
+                                                        <input type="hidden" name="id" th:value="${c.id}">
+                                                        <button type="submit" class="app-admin-icon-btn app-admin-icon-btn--warning"
+                                                                aria-label="Mark as under investigation">
+                                                            <i class="fa-solid fa-magnifying-glass fa-xs"></i>
+                                                        </button>
+                                                    </form>
+                                                    <form method="post" th:action="@{/admin/user-defined-triage/conflict/dismiss}" style="display:inline">
+                                                        <input type="hidden" name="id" th:value="${c.id}">
+                                                        <button type="submit" class="app-admin-icon-btn"
+                                                                aria-label="Dismiss conflict">
+                                                            <i class="fa-solid fa-ban fa-xs"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+
+                                        <!-- Empty state -->
+                                        <tr th:if="${triageQueue.content.isEmpty()}" class="app-admin-empty-row">
+                                            <td colspan="7">
+                                                <th:block th:replace="~{fragments :: admin-empty-state(
+                                                    'No open USER_DEFINED conflicts',
+                                                    'All USER_DEFINED conflicts have been resolved or dismissed.',
+                                                    null,
+                                                    null)}"></th:block>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bulk action bar -->
+                    <div class="app-queue-bulk-bar">
+                        <span class="app-queue-bulk-bar__label">
+                            Bulk action on selected —
+                        </span>
+                        <button type="submit" form="triage-bulk-form" name="action" value="resolve"
+                                class="btn btn-outline-success btn-sm">
+                            <i class="fa-solid fa-check fa-xs"></i> Resolve
+                        </button>
+                        <button type="submit" form="triage-bulk-form" name="action" value="investigate"
+                                class="btn btn-outline-warning btn-sm">
+                            <i class="fa-solid fa-magnifying-glass fa-xs"></i> Investigate
+                        </button>
+                        <button type="submit" form="triage-bulk-form" name="action" value="dismiss"
+                                class="btn btn-outline-secondary btn-sm">
+                            <i class="fa-solid fa-ban fa-xs"></i> Dismiss
+                        </button>
+                    </div>
+
+                    <!-- Hidden bulk form -->
+                    <form id="triage-bulk-form" method="post" th:action="@{/admin/user-defined-triage/conflict/bulk}"></form>
+
+                    <!-- ── Snapshot panels ── -->
+                    <div class="app-summary-grid mt-3">
                         <div class="app-summary-panel">
-                            <div class="app-summary-panel__header"><h2 class="app-summary-panel__title">USER_DEFINED Source Link States</h2></div>
+                            <div class="app-summary-panel__header"><h2 class="app-summary-panel__title">Source Link States</h2></div>
                             <div class="app-summary-panel__body">
                                 <div class="app-summary-list">
                                     <div class="app-summary-list__item"><span class="app-summary-list__label">Linked</span><span class="app-summary-list__value" th:text="${snapshot.sourceLinks.linked}">0</span></div>
@@ -51,7 +193,7 @@
                             </div>
                         </div>
                         <div class="app-summary-panel">
-                            <div class="app-summary-panel__header"><h2 class="app-summary-panel__title">USER_DEFINED Conflict States</h2></div>
+                            <div class="app-summary-panel__header"><h2 class="app-summary-panel__title">Conflict States</h2></div>
                             <div class="app-summary-panel__body">
                                 <div class="app-summary-list">
                                     <div class="app-summary-list__item"><span class="app-summary-list__label">Open</span><span class="app-summary-list__value" th:text="${snapshot.conflicts.open}">0</span></div>
@@ -62,14 +204,14 @@
                         </div>
                     </div>
 
-                    <div class="app-summary-panel">
-                        <div class="app-summary-panel__header"><h2 class="app-summary-panel__title">Recent USER_DEFINED Source Links</h2></div>
+                    <div class="app-summary-panel mt-3">
+                        <div class="app-summary-panel__header"><h2 class="app-summary-panel__title">Recent Source Links</h2></div>
                         <div class="app-summary-panel__body">
                         <div class="app-table-scroll">
                         <table class="table table-sm app-table">
                             <thead>
                             <tr>
-                                <th>Updated</th><th>Entity</th><th>Source Record</th><th>Canonical</th><th>State</th><th>Event</th><th>Batch</th><th>Correlation</th>
+                                <th>Updated</th><th>Entity</th><th>Source Record</th><th>Canonical</th><th>State</th><th>Batch</th>
                             </tr>
                             </thead>
                             <tbody>
@@ -78,13 +220,14 @@
                                 <td th:text="${row.entityType}">-</td>
                                 <td th:text="${row.sourceRecordId}">-</td>
                                 <td th:text="${row.canonicalEntityId}">-</td>
-                                <td th:text="${row.linkState}">-</td>
-                                <td th:text="${row.sourceEventId}">-</td>
+                                <td>
+                                    <span th:class="'app-queue-badge app-queue-badge--' + ${row.linkState != null ? row.linkState.toLowerCase() : 'dismissed'}"
+                                          th:text="${row.linkState}">-</span>
+                                </td>
                                 <td th:text="${row.sourceBatchId}">-</td>
-                                <td th:text="${row.sourceCorrelationId}">-</td>
                             </tr>
                             <tr th:if="${snapshot.recentSourceLinks.isEmpty()}">
-                                <td colspan="8" class="app-dashboard-empty-row">No USER_DEFINED source links found.</td>
+                                <td colspan="6" class="app-dashboard-empty-row">No USER_DEFINED source links found.</td>
                             </tr>
                             </tbody>
                         </table>
@@ -92,43 +235,20 @@
                         </div>
                     </div>
 
-                    <div class="app-summary-panel">
-                        <div class="app-summary-panel__header"><h2 class="app-summary-panel__title">Recent USER_DEFINED Conflicts</h2></div>
-                        <div class="app-summary-panel__body">
-                        <div class="app-table-scroll">
-                        <table class="table table-sm app-table">
-                            <thead>
-                            <tr>
-                                <th>Detected</th><th>Entity</th><th>Source Record</th><th>Reason</th><th>Status</th><th>Event</th><th>Batch</th><th>Correlation</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            <tr th:each="row : ${snapshot.recentConflicts}">
-                                <td th:text="${row.detectedAt}">-</td>
-                                <td th:text="${row.entityType}">-</td>
-                                <td th:text="${row.incomingSourceRecordId}">-</td>
-                                <td th:text="${row.reasonCode}">-</td>
-                                <td th:text="${row.status}">-</td>
-                                <td th:text="${row.sourceEventId}">-</td>
-                                <td th:text="${row.sourceBatchId}">-</td>
-                                <td th:text="${row.sourceCorrelationId}">-</td>
-                            </tr>
-                            <tr th:if="${snapshot.recentConflicts.isEmpty()}">
-                                <td colspan="8" class="app-dashboard-empty-row">No USER_DEFINED conflicts found.</td>
-                            </tr>
-                            </tbody>
-                        </table>
-                        </div>
-                        </div>
-                    </div>
-
-                    <div class="app-summary-panel">
+                    <!-- Deep links -->
+                    <div class="app-summary-panel mt-3">
                         <div class="app-summary-panel__header"><h2 class="app-summary-panel__title">Deep Links</h2></div>
                         <div class="app-summary-panel__body">
                         <div class="app-quick-actions">
-                        <a class="btn btn-outline-primary btn-sm" th:href="${sourceLinksDeepLink}">Open source links (USER_DEFINED)</a>
-                        <a class="btn btn-outline-primary btn-sm" th:href="${conflictsDeepLink}">Open conflicts (USER_DEFINED)</a>
-                        <a class="btn btn-outline-secondary btn-sm" th:href="${initializationDeepLink}">Open initialization maintenance</a>
+                            <a class="btn btn-outline-primary btn-sm" th:href="${sourceLinksDeepLink}">
+                                <i class="fa-solid fa-link fa-xs"></i> Source links (USER_DEFINED)
+                            </a>
+                            <a class="btn btn-outline-primary btn-sm" th:href="${conflictsDeepLink}">
+                                <i class="fa-solid fa-triangle-exclamation fa-xs"></i> All conflicts (USER_DEFINED)
+                            </a>
+                            <a class="btn btn-outline-secondary btn-sm" th:href="${initializationDeepLink}">
+                                <i class="fa-solid fa-gear fa-xs"></i> Initialization maintenance
+                            </a>
                         </div>
                         </div>
                     </div>
@@ -139,5 +259,48 @@
     </div>
 </div>
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
+<script>
+(function () {
+    window.initAdminColumnToggle({
+        tableId: 'triage',
+        tableEl: document.getElementById('triage-table'),
+        toolbarActionsEl: document.getElementById('triage-toolbar-actions'),
+        columns: [
+            { key: 'select',        label: 'Select',        required: true },
+            { key: 'detected',      label: 'Detected',      required: false },
+            { key: 'entity',        label: 'Entity',        required: true },
+            { key: 'source-record', label: 'Source Record', required: false },
+            { key: 'reason',        label: 'Reason',        required: false },
+            { key: 'candidates',    label: 'Candidates',    required: false },
+            { key: 'actions',       label: 'Actions',       required: true },
+        ],
+    });
+
+    var tbody = document.querySelector('#triage-table tbody');
+    if (tbody) {
+        window.initAdminShortcuts({
+            sections: [{
+                title: 'Queue Actions',
+                rows: [
+                    { keys: ['e', 'Enter'], label: 'Open first action on row' },
+                    { keys: ['r'],          label: 'Resolve focused conflict' },
+                    { keys: ['i'],          label: 'Investigate focused conflict' },
+                    { keys: ['d'],          label: 'Dismiss focused conflict' },
+                ],
+            }],
+            tables: [{
+                tbodyEl: tbody,
+                keyActions: {
+                    'e':     function(tr) { tr.querySelector('.app-admin-icon-btn')?.click(); },
+                    'Enter': function(tr) { tr.querySelector('.app-admin-icon-btn')?.click(); },
+                    'r':     function(tr) { tr.querySelector('[aria-label="Resolve conflict"]')?.click(); },
+                    'i':     function(tr) { tr.querySelector('[aria-label="Mark as under investigation"]')?.click(); },
+                    'd':     function(tr) { tr.querySelector('[aria-label="Dismiss conflict"]')?.click(); },
+                },
+            }],
+        });
+    }
+})();
+</script>
 </body>
 </html>

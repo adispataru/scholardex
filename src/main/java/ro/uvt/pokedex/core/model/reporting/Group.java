@@ -5,7 +5,6 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import ro.uvt.pokedex.core.model.Institution;
-import ro.uvt.pokedex.core.model.Researcher;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,13 +20,7 @@ public class Group {
     private List<Domain> domains = new ArrayList<>();
     @DBRef
     private Institution institution;
-    @DBRef
-    private List<Researcher> researchers = new ArrayList<>();
 
-    /**
-     * User emails of group members. Replaces {@link #researchers} after
-     * migration; kept alongside during the transition so both old and new
-     * code paths can coexist.
-     */
+    /** User emails of group members. */
     private List<String> memberIds = new ArrayList<>();
 }

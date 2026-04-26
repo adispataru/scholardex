@@ -56,7 +56,7 @@ public class UserIndicatorResultService {
         UserIndicatorResult snapshot = new UserIndicatorResult();
         Instant now = Instant.now();
         snapshot.setUserEmail(userEmail);
-        snapshot.setResearcherId(userService.getUserByEmail(userEmail).map(ro.uvt.pokedex.core.model.user.User::getResearcherId).orElse(null));
+        snapshot.setResearcherId(userEmail);
         snapshot.setIndicatorId(indicatorId);
         snapshot.setMode(UserIndicatorResult.Mode.SNAPSHOT);
         snapshot.setSourceType(UserIndicatorResult.SourceType.REPORT_RUN);
@@ -117,7 +117,7 @@ public class UserIndicatorResultService {
 
         Instant now = Instant.now();
         entity.setUserEmail(userEmail);
-        entity.setResearcherId(userService.getUserByEmail(userEmail).map(ro.uvt.pokedex.core.model.user.User::getResearcherId).orElse(null));
+        entity.setResearcherId(userEmail);
         entity.setIndicatorId(indicatorId);
         entity.setMode(UserIndicatorResult.Mode.LATEST);
         entity.setSourceType(UserIndicatorResult.SourceType.APPLY_PAGE);

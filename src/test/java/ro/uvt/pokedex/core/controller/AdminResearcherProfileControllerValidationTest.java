@@ -7,8 +7,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import ro.uvt.pokedex.core.model.Researcher;
-import ro.uvt.pokedex.core.service.ResearcherService;
+import ro.uvt.pokedex.core.model.user.User;
+import ro.uvt.pokedex.core.service.UserService;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -16,18 +16,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(AdminResearcherController.class)
+@WebMvcTest(AdminResearcherProfileController.class)
 @AutoConfigureMockMvc(addFilters = false)
-class AdminResearcherControllerValidationTest {
+class AdminResearcherProfileControllerValidationTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ResearcherService researcherService;
+    private UserService userService;
 
     @Test
-    void addResearcherWithMissingFirstNameReturnsBadRequest() throws Exception {
+    void createProfileWithMissingFirstNameReturnsBadRequest() throws Exception {
         String body = """
                 {
                   "firstName":"",
@@ -35,14 +35,14 @@ class AdminResearcherControllerValidationTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/admin/researchers")
+        mockMvc.perform(post("/api/admin/researcher-profiles")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void updateResearcherWithMissingLastNameReturnsBadRequest() throws Exception {
+    void updateProfileWithMissingLastNameReturnsBadRequest() throws Exception {
         String body = """
                 {
                   "firstName":"Jane",
@@ -50,27 +50,28 @@ class AdminResearcherControllerValidationTest {
                 }
                 """;
 
-        mockMvc.perform(put("/api/admin/researchers/{id}", "r1")
+        mockMvc.perform(put("/api/admin/researcher-profiles/{email}", "jane@uvt.ro")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void addResearcherWithValidPayloadReturnsOk() throws Exception {
-        Researcher saved = new Researcher();
-        saved.setId("r1");
-        when(researcherService.saveResearcher(any(Researcher.class))).thenReturn(saved);
+    void createProfileWithValidPayloadReturnsOk() throws Exception {
+        User saved = new User();
+        saved.setEmail("jane@uvt.ro");
+        when(userService.saveResearcherProfile(any(), any())).thenReturn(saved);
 
         String body = """
                 {
+                  "email":"jane@uvt.ro",
                   "firstName":"Jane",
                   "lastName":"Doe",
                   "scopusId":["a1"]
                 }
                 """;
 
-        mockMvc.perform(post("/api/admin/researchers")
+        mockMvc.perform(post("/api/admin/researcher-profiles")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk());

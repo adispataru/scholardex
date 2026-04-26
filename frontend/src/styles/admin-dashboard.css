@@ -1,0 +1,557 @@
+/* ── Admin dashboard stat card badge ──────────────────────────────────── */
+
+.app-admin-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.app-admin-status-badge--success {
+  background: color-mix(in srgb, var(--app-color-success) 12%, transparent);
+  color: var(--app-color-success);
+  border-color: color-mix(in srgb, var(--app-color-success) 28%, var(--app-color-border));
+}
+
+.app-admin-status-badge--danger {
+  background: color-mix(in srgb, var(--app-color-danger) 12%, transparent);
+  color: var(--app-color-danger);
+  border-color: color-mix(in srgb, var(--app-color-danger) 28%, var(--app-color-border));
+}
+
+.app-admin-status-badge--warning {
+  background: color-mix(in srgb, var(--app-color-warning) 12%, transparent);
+  color: color-mix(in srgb, var(--app-color-warning) 80%, var(--app-color-text));
+  border-color: color-mix(in srgb, var(--app-color-warning) 28%, var(--app-color-border));
+}
+
+.app-admin-status-badge--muted {
+  background: color-mix(in srgb, var(--app-color-card-bg-muted) 90%, transparent);
+  color: var(--app-color-text-muted);
+  border-color: var(--app-color-border);
+}
+
+/* ── Degraded-state banner ─────────────────────────────────────────────── */
+
+.app-admin-degraded-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--app-color-warning) 30%, var(--app-color-border));
+  border-radius: var(--app-radius-card);
+  background: color-mix(in srgb, var(--app-color-warning) 7%, var(--app-color-card-bg-muted));
+  color: var(--app-color-text);
+  font-size: 0.88rem;
+}
+
+.app-admin-degraded-banner__icon {
+  color: color-mix(in srgb, var(--app-color-warning) 80%, var(--app-color-text));
+  font-size: 1rem;
+  flex: 0 0 auto;
+  margin-top: 0.1rem;
+}
+
+.app-admin-degraded-banner__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.app-admin-degraded-banner__title {
+  margin: 0 0 0.2rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--app-color-text-strong);
+}
+
+.app-admin-degraded-banner__detail {
+  margin: 0;
+  color: var(--app-color-text-muted);
+}
+
+/* ── Operation cards grid ─────────────────────────────────────────────── */
+
+.app-admin-ops-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+}
+
+.app-admin-ops-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-card);
+  background: var(--app-color-card-bg);
+  box-shadow: var(--app-shadow-card);
+  min-width: 0;
+}
+
+.app-admin-ops-card__title {
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--app-color-text-muted);
+}
+
+.app-admin-ops-card__status {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.app-admin-ops-card__meta {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--app-color-text-muted);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-admin-ops-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.25rem;
+}
+
+.app-admin-ops-card__feedback {
+  font-size: 0.84rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.6rem;
+  border: 1px solid transparent;
+}
+
+.app-admin-ops-card__feedback[hidden] {
+  display: none !important;
+}
+
+.app-admin-ops-card__feedback--success {
+  background: color-mix(in srgb, var(--app-color-success) 10%, var(--app-color-card-bg-muted));
+  border-color: color-mix(in srgb, var(--app-color-success) 28%, var(--app-color-border));
+  color: var(--app-color-text);
+}
+
+.app-admin-ops-card__feedback--danger {
+  background: color-mix(in srgb, var(--app-color-danger) 10%, var(--app-color-card-bg-muted));
+  border-color: color-mix(in srgb, var(--app-color-danger) 28%, var(--app-color-border));
+  color: var(--app-color-text);
+}
+
+/* ── Confirmation dialog ───────────────────────────────────────────────── */
+
+.app-admin-confirm[hidden] {
+  display: none !important;
+}
+
+.app-admin-confirm__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--app-color-text) 40%, transparent);
+  padding: 1rem;
+}
+
+.app-admin-confirm__dialog {
+  background: var(--app-color-card-bg);
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-card);
+  box-shadow: var(--app-shadow-card);
+  padding: 1.5rem;
+  max-width: 28rem;
+  width: 100%;
+}
+
+.app-admin-confirm__title {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--app-color-text-strong);
+}
+
+.app-admin-confirm__body {
+  margin: 0 0 1.25rem;
+  font-size: 0.92rem;
+  color: var(--app-color-text-muted);
+}
+
+.app-admin-confirm__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+/* ── Recent activity feed ─────────────────────────────────────────────── */
+
+.app-admin-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.app-admin-feed__item {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  align-items: start;
+  gap: 0.75rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--app-color-border);
+}
+
+.app-admin-feed__item:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.app-admin-feed__icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  flex: 0 0 auto;
+  background: color-mix(in srgb, var(--app-color-primary) 10%, transparent);
+  color: var(--app-color-primary);
+  border: 1px solid color-mix(in srgb, var(--app-color-primary) 22%, var(--app-color-border));
+}
+
+.app-admin-feed__icon--sync {
+  background: color-mix(in srgb, var(--app-color-primary) 10%, transparent);
+  color: var(--app-color-primary);
+  border-color: color-mix(in srgb, var(--app-color-primary) 22%, var(--app-color-border));
+}
+
+.app-admin-feed__icon--enrichment {
+  background: color-mix(in srgb, var(--app-color-success) 10%, transparent);
+  color: var(--app-color-success);
+  border-color: color-mix(in srgb, var(--app-color-success) 22%, var(--app-color-border));
+}
+
+.app-admin-feed__icon--conflict {
+  background: color-mix(in srgb, var(--app-color-danger) 10%, transparent);
+  color: var(--app-color-danger);
+  border-color: color-mix(in srgb, var(--app-color-danger) 22%, var(--app-color-border));
+}
+
+.app-admin-feed__icon--upload {
+  background: color-mix(in srgb, var(--app-color-warning) 10%, transparent);
+  color: color-mix(in srgb, var(--app-color-warning) 80%, var(--app-color-text));
+  border-color: color-mix(in srgb, var(--app-color-warning) 22%, var(--app-color-border));
+}
+
+.app-admin-feed__body {
+  min-width: 0;
+}
+
+.app-admin-feed__desc {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--app-color-text);
+  overflow-wrap: anywhere;
+}
+
+.app-admin-feed__desc a {
+  color: var(--app-color-primary);
+  text-decoration: none;
+}
+
+.app-admin-feed__desc a:hover,
+.app-admin-feed__desc a:focus {
+  text-decoration: underline;
+}
+
+.app-admin-feed__ts {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: var(--app-color-text-muted);
+  white-space: nowrap;
+}
+
+.app-admin-feed__empty {
+  padding: 1.5rem 0;
+  text-align: center;
+  color: var(--app-color-text-muted);
+  font-size: 0.92rem;
+}
+
+/* ── Quick-links toolbar ──────────────────────────────────────────────── */
+
+.app-admin-quicklinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.app-admin-quicklinks__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--app-color-border);
+  border-radius: 999px;
+  background: var(--app-color-card-bg);
+  color: var(--app-color-text);
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.app-admin-quicklinks__btn:hover,
+.app-admin-quicklinks__btn:focus-visible {
+  border-color: color-mix(in srgb, var(--app-color-primary) 50%, var(--app-color-border));
+  background: color-mix(in srgb, var(--app-color-primary) 6%, var(--app-color-card-bg));
+  color: var(--app-color-primary);
+  text-decoration: none;
+}
+
+.app-admin-quicklinks__btn:focus-visible {
+  outline: 2px solid var(--app-color-focus);
+  outline-offset: 2px;
+}
+
+.app-admin-quicklinks__btn i {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+/* ── Stat card link wrapper ────────────────────────────────────────────── */
+
+.app-summary-card--link {
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.12s;
+}
+
+.app-summary-card--link:hover,
+.app-summary-card--link:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-color-primary) 20%, transparent);
+  text-decoration: none;
+  color: inherit;
+}
+
+.app-summary-card--link:focus-visible {
+  outline: 2px solid var(--app-color-focus);
+  outline-offset: 2px;
+}
+
+/* ── Admin breadcrumb (fragments :: admin-breadcrumb) ──────────────────── */
+
+.app-admin-breadcrumb {
+  margin: 0 0 1rem;
+}
+
+.app-admin-breadcrumb__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+  color: var(--app-color-text-muted);
+}
+
+.app-admin-breadcrumb__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.app-admin-breadcrumb__item--current {
+  color: var(--app-color-text-strong);
+  font-weight: 600;
+}
+
+.app-admin-breadcrumb__link {
+  color: var(--app-color-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.app-admin-breadcrumb__link:hover,
+.app-admin-breadcrumb__link:focus-visible {
+  color: var(--app-color-primary-strong);
+  text-decoration: underline;
+}
+
+.app-admin-breadcrumb__link:focus-visible {
+  outline: 2px solid var(--app-color-focus);
+  outline-offset: 2px;
+  border-radius: 0.35rem;
+}
+
+.app-admin-breadcrumb__sep {
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+/* ── Admin empty states (fragments :: admin-empty-state / admin-empty-row) */
+
+.app-admin-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 2.25rem 1.5rem;
+  border: 1px dashed var(--app-color-border);
+  border-radius: var(--app-radius-card);
+  background: color-mix(in srgb, var(--app-color-card-bg-muted) 70%, transparent);
+  color: var(--app-color-text);
+  text-align: center;
+}
+
+.app-admin-empty-state__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-color-primary) 10%, var(--app-color-card-bg));
+  color: var(--app-color-primary);
+  font-size: 1.05rem;
+}
+
+.app-admin-empty-state__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--app-color-text-strong);
+}
+
+.app-admin-empty-state__body {
+  margin: 0;
+  max-width: 42ch;
+  font-size: 0.9rem;
+  color: var(--app-color-text-muted);
+}
+
+.app-admin-empty-state__action {
+  margin-top: 0.3rem;
+}
+
+.app-admin-empty-row td {
+  padding: 2rem 1rem !important;
+  text-align: center;
+  background: transparent;
+}
+
+.app-admin-empty-row__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.app-admin-empty-row__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--app-color-text-strong);
+}
+
+.app-admin-empty-row__body {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--app-color-text-muted);
+}
+
+/* ── Admin row actions (icon buttons for table rows) ──────────────────── */
+
+.app-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.app-row-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  border: 1px solid var(--app-color-border);
+  border-radius: 0.55rem;
+  background: var(--app-color-card-bg);
+  color: var(--app-color-text);
+  font-size: 0.9rem;
+  line-height: 1;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.app-row-action:hover,
+.app-row-action:focus-visible {
+  border-color: color-mix(in srgb, var(--app-color-primary) 40%, var(--app-color-border));
+  background: color-mix(in srgb, var(--app-color-primary) 8%, var(--app-color-card-bg));
+  color: var(--app-color-primary-strong);
+  text-decoration: none;
+}
+
+.app-row-action:focus-visible {
+  outline: 2px solid var(--app-color-focus);
+  outline-offset: 2px;
+}
+
+.app-row-action--danger:hover,
+.app-row-action--danger:focus-visible {
+  border-color: color-mix(in srgb, var(--app-color-danger) 40%, var(--app-color-border));
+  background: color-mix(in srgb, var(--app-color-danger) 10%, var(--app-color-card-bg));
+  color: var(--app-color-danger);
+}
+
+.app-row-action--success:hover,
+.app-row-action--success:focus-visible {
+  border-color: color-mix(in srgb, var(--app-color-success) 40%, var(--app-color-border));
+  background: color-mix(in srgb, var(--app-color-success) 10%, var(--app-color-card-bg));
+  color: var(--app-color-success);
+}
+
+.app-row-action-form {
+  display: inline-flex;
+  margin: 0;
+}
+
+/* ── Mobile breakpoints ────────────────────────────────────────────────── */
+
+@media (max-width: 576px) {
+  .app-admin-ops-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app-admin-feed__ts {
+    white-space: normal;
+  }
+
+  .app-admin-confirm__dialog {
+    padding: 1.1rem;
+  }
+
+  .app-admin-empty-state {
+    padding: 1.5rem 1rem;
+  }
+}

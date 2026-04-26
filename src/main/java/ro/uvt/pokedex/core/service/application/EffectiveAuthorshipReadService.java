@@ -2,7 +2,6 @@ package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
 import ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
@@ -35,13 +34,13 @@ public class EffectiveAuthorshipReadService {
         if (userOpt.isEmpty()) {
             return List.of();
         }
-        Researcher researcher = Researcher.fromUser(userOpt.get());
-        if (researcher == null) {
+        User user = userOpt.get();
+        if (user.getResearcherProfile() == null) {
             return List.of();
         }
 
         List<ScholardexAuthorView> authors = scholardexProjectionReadService.findAuthorsByIdIn(
-                researcherAuthorLookupService.resolveAuthorLookupKeys(researcher)
+                researcherAuthorLookupService.resolveAuthorLookupKeys(user.getResearcherProfile())
         );
         List<String> canonicalAuthorIds = authors.stream()
                 .map(ScholardexAuthorView::getId)
@@ -117,13 +116,13 @@ public class EffectiveAuthorshipReadService {
         if (userOpt.isEmpty()) {
             return List.of();
         }
-        Researcher researcher = Researcher.fromUser(userOpt.get());
-        if (researcher == null) {
+        User user = userOpt.get();
+        if (user.getResearcherProfile() == null) {
             return List.of();
         }
 
         List<ScholardexAuthorView> authors = scholardexProjectionReadService.findAuthorsByIdIn(
-                researcherAuthorLookupService.resolveAuthorLookupKeys(researcher)
+                researcherAuthorLookupService.resolveAuthorLookupKeys(user.getResearcherProfile())
         );
         List<String> canonicalAuthorIds = authors.stream()
                 .map(ScholardexAuthorView::getId)

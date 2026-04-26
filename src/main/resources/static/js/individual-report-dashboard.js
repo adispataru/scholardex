@@ -728,10 +728,6 @@
       })
       .then(function (data) {
         applyComparisonDeltas(root, data);
-        var params = new URLSearchParams(window.location.search);
-        params.set('compare', compareId);
-        if (reportId) params.set('report', reportId);
-        history.replaceState(null, '', window.location.pathname + '?' + params.toString());
       })
       .catch(function (err) {
         console.warn('[comparison] fetch failed:', err.message);
@@ -794,19 +790,9 @@
     if (clearBtn) {
       clearBtn.addEventListener('click', function () {
         clearComparisonDeltas(root);
-        var params = new URLSearchParams(window.location.search);
-        params.delete('compare');
-        history.replaceState(null, '', window.location.pathname +
-          (params.toString() ? '?' + params.toString() : ''));
       });
     }
 
-    // Restore from URL ?compare=
-    var params = new URLSearchParams(window.location.search);
-    var compareRunId = params.get('compare');
-    if (compareRunId) {
-      fetchAndApplyComparison(root, compareRunId, currentRunId, reportId);
-    }
   }
 
   // ── Snapshot utilities ────────────────────────────────────────────────────
@@ -1011,9 +997,6 @@
       // If this snapshot was the active comparison, clear it
       if (_compareData && _compareData.runA && _compareData.runA.runId === 'snap:' + snapshotId) {
         clearComparisonDeltas(root);
-        var params = new URLSearchParams(window.location.search);
-        params.delete('compare');
-        history.replaceState(null, '', window.location.pathname + (params.toString() ? '?' + params.toString() : ''));
       }
       _loadSnapshotList(root, reportId, currentRunId);
       _loadSnapshotsForPicker(reportId);
@@ -1079,22 +1062,11 @@
     boot();
   }
 
-  // When the page is restored from the bfcache (browser Back/Forward), reset the
-  // comparison toolbar state to match the current URL.  If ?compare= is absent the
-  // deltas are cleared; if it is present the comparison is re-fetched so the UI is
-  // consistent with what the URL says.
+  // When the page is restored from the bfcache (browser Back/Forward), always reset
+  // comparison state — comparisons are session-only and should not persist across navigation.
   window.addEventListener('pageshow', function (e) {
     if (!e.persisted) return; // normal load already handled by boot()
     var root = document.querySelector('.individual-report-dashboard');
-    if (!root) return;
-    var params      = new URLSearchParams(window.location.search);
-    var compareId   = params.get('compare');
-    var currentRunId = root.getAttribute('data-run-id') || null;
-    var reportId     = root.getAttribute('data-report-id') || '';
-    if (compareId && currentRunId) {
-      fetchAndApplyComparison(root, compareId, currentRunId, reportId);
-    } else {
-      clearComparisonDeltas(root);
-    }
+    if (root) clearComparisonDeltas(root);
   });
 })();

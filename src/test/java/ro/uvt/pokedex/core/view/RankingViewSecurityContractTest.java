@@ -13,9 +13,9 @@ import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.config.WebSecurityConfig;
 import ro.uvt.pokedex.core.service.CustomUserDetailsService;
 import ro.uvt.pokedex.core.service.CacheService;
-import ro.uvt.pokedex.core.service.ResearcherService;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
+import ro.uvt.pokedex.core.service.application.AdminDashboardService;
 import ro.uvt.pokedex.core.service.application.AdminInstitutionReportFacade;
 import ro.uvt.pokedex.core.service.application.PostgresScholardexAdminReadPort;
 import ro.uvt.pokedex.core.service.application.ScholardexForumDetailService;
@@ -68,13 +68,13 @@ class RankingViewSecurityContractTest {
     @MockitoBean
     private UserService userService;
     @MockitoBean
-    private ResearcherService researcherService;
-    @MockitoBean
     private PostgresScholardexAdminReadPort postgresScholardexAdminReadPort;
     @MockitoBean
     private AdminInstitutionReportFacade adminInstitutionReportFacade;
     @MockitoBean
     private RankingMaintenanceFacade rankingMaintenanceFacade;
+    @MockitoBean
+    private AdminDashboardService adminDashboardService;
 
     @BeforeEach
     void setupDefaults() {

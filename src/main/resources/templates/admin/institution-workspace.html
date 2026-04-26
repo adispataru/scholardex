@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${institution.name} + ' — Workspace'">Institution Workspace</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <div th:replace="~{fragments :: sidebar('institutions')}"></div>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar(${institution.name})}"></div>
+
+            <div class="container-fluid app-page-content">
+                <nav aria-label="Breadcrumb">
+                    <ol class="app-admin-breadcrumb">
+                        <li class="app-admin-breadcrumb__item">
+                            <a class="app-admin-breadcrumb__link" th:href="@{/admin/institutions}">Institutions</a>
+                        </li>
+                        <li class="app-admin-breadcrumb__item">
+                            <span class="app-admin-breadcrumb__current" aria-current="page"
+                                  th:text="${institution.name}">Institution</span>
+                        </li>
+                    </ol>
+                </nav>
+
+                <div class="app-dashboard">
+
+                    <div class="app-tab-bar"
+                         data-app-tab-bar>
+
+                        <div class="app-tab-bar__list" role="tablist" aria-label="Institution sections">
+                            <button type="button" role="tab"
+                                    class="app-tab-bar__tab app-tab-bar__tab--active"
+                                    data-tab-id="overview"
+                                    aria-controls="tab-panel-overview"
+                                    aria-selected="true"
+                                    tabindex="0">
+                                <i class="fa-solid fa-circle-info app-tab-bar__tab-icon" aria-hidden="true"></i>
+                                <span>Overview</span>
+                            </button>
+                            <button type="button" role="tab"
+                                    class="app-tab-bar__tab"
+                                    data-tab-id="publications"
+                                    aria-controls="tab-panel-publications"
+                                    aria-selected="false"
+                                    tabindex="-1">
+                                <i class="fa-solid fa-file-lines app-tab-bar__tab-icon" aria-hidden="true"></i>
+                                <span>Publications</span>
+                            </button>
+                        </div>
+
+                        <div class="app-tab-bar__panels">
+
+                            <!-- Overview tab -->
+                            <section id="tab-panel-overview"
+                                     role="tabpanel"
+                                     aria-labelledby="tab-trigger-overview"
+                                     class="app-tab-bar__panel app-tab-bar__panel--active">
+
+                                <div class="app-summary-panel">
+                                    <div class="app-summary-panel__header">
+                                        <h2 class="app-summary-panel__title" th:text="${institution.name}">Institution</h2>
+                                    </div>
+                                    <div class="app-summary-panel__body">
+                                        <p th:text="${institution.description}">Description.</p>
+                                        <div>
+                                            <span class="font-weight-bold">Total Publications: </span>
+                                            <span th:text="${publications.size()}">0</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="app-page-toolbar mt-3">
+                                    <a th:href="@{/admin/institutions/{name}/publications/exportExcel(name=${institution.name})}"
+                                       class="btn btn-sm btn-primary">
+                                        <i class="fa-solid fa-download fa-sm text-white-50"></i> Export Excel
+                                    </a>
+                                    <a th:href="@{/admin/institutions/edit/{name}(name=${institution.name})}"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        <i class="fa-solid fa-pen-to-square fa-sm"></i> Edit
+                                    </a>
+                                </div>
+
+                            </section>
+
+                            <!-- Publications tab -->
+                            <section id="tab-panel-publications"
+                                     role="tabpanel"
+                                     aria-labelledby="tab-trigger-publications"
+                                     class="app-tab-bar__panel"
+                                     hidden>
+
+                                <div th:each="entry : ${publicationsByYear}"
+                                     class="app-table-section mb-4">
+                                    <div class="app-table-section__surface">
+                                        <div class="app-table-section__header app-table-toolbar">
+                                            <h6 class="app-table-section__title" th:text="${entry.key}">Year</h6>
+                                        </div>
+                                        <div class="app-table-section__body">
+                                            <div class="app-table-scroll">
+                                                <table class="table app-table" width="100%" cellspacing="0">
+                                                    <thead>
+                                                    <tr>
+                                                        <th>Title</th>
+                                                        <th>Year</th>
+                                                        <th>Authors</th>
+                                                        <th>Type</th>
+                                                        <th>Venue</th>
+                                                        <th>Citations</th>
+                                                    </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                    <tr th:each="publication : ${entry.value}">
+                                                        <td>
+                                                            <a th:href="@{/admin/scholardex/publications/citations(id=${publication.id})}"
+                                                               th:text="${publication.title}">Title</a>
+                                                        </td>
+                                                        <td th:text="${publication.coverDate}">Year</td>
+                                                        <td>
+                                                            <div th:each="author, iterStat : ${publication.authors}">
+                                                                <a th:if="${authorMap[publication.authors[iterStat.index]] != null}"
+                                                                   th:text="${authorMap[publication.authors[iterStat.index]].name}"
+                                                                   th:href="@{/admin/scholardex/publications(authorId=${author})}"></a>
+                                                                <span th:if="${authorMap[publication.authors[iterStat.index]] == null}"
+                                                                      th:text="${author}"></span>
+                                                            </div>
+                                                        </td>
+                                                        <td th:text="${publication.subtypeDescription}">Type</td>
+                                                        <td>
+                                                            <span th:if="${forumMap[publication.forum] != null}"
+                                                                  th:text="${forumMap[publication.forum].publicationName}"></span>
+                                                        </td>
+                                                        <td th:text="${publication.citedbyCount}">0</td>
+                                                    </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <th:block th:if="${publications.isEmpty()}">
+                                    <th:block th:replace="~{fragments :: admin-empty-state(
+                                        'No publications yet',
+                                        'No publications have been linked to this institution.',
+                                        null, null)}"></th:block>
+                                </th:block>
+
+                            </section>
+
+                        </div><!-- /.app-tab-bar__panels -->
+                    </div><!-- /[data-app-tab-bar] -->
+
+                </div><!-- /.app-dashboard -->
+            </div>
+
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+
+    <a class="scroll-to-top rounded" href="#page-top">
+        <i class="fa-solid fa-angle-up"></i>
+    </a>
+</div>
+
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+
+</body>
+</html>

@@ -7,8 +7,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.reporting.Group;
+import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.reporting.Position;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
@@ -117,21 +117,9 @@ class AdminGroupControllerContractTest {
                         List.of(report)
                 )));
 
-        String html = mockMvc.perform(get("/admin/groups/{id}/publications", "g1"))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        assertTrue(html.contains("chart-publications"));
-        assertTrue(html.contains("chart-venue-quality"));
-        assertTrue(html.contains("Venue Quality Distribution By Year"));
-        assertTrue(html.contains("Q1"));
-        assertTrue(html.contains("A_STAR"));
-        assertTrue(html.contains("LNCS"));
-        assertTrue(html.contains("BOOK_LNCS"));
-        assertTrue(html.contains("SCOPUS"));
-        assertTrue(html.contains("Unranked"));
+        mockMvc.perform(get("/admin/groups/{id}/publications", "g1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/groups/g1#publications"));
     }
 
     @Test
@@ -333,11 +321,13 @@ class AdminGroupControllerContractTest {
         group.setId("g1");
         group.setName("G");
 
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setFirstName("A");
-        researcher.setLastName("B");
-        researcher.setPosition(Position.OTHER);
+        User member = new User();
+        member.setEmail("r1");
+        User.ResearcherProfile rProfile = new User.ResearcherProfile();
+        rProfile.setFirstName("A");
+        rProfile.setLastName("B");
+        rProfile.setPosition(Position.OTHER);
+        member.setResearcherProfile(rProfile);
 
         IndividualReport report = new IndividualReport();
         report.setId("rep1");
@@ -355,7 +345,7 @@ class AdminGroupControllerContractTest {
                         Map.of(
                                 "report", report,
                                 "group", group,
-                                "researchers", List.of(researcher),
+                                "researchers", List.of(member),
                                 "researcherScores", Map.of("r1", Map.of(0, 1.0, 1, 2.0)),
                                 "criteriaThresholds", Map.of(),
                                 "runCreatedAt", Instant.parse("2026-03-05T10:00:00Z"),
@@ -380,11 +370,13 @@ class AdminGroupControllerContractTest {
         group.setId("g1");
         group.setName("G");
 
-        Researcher researcher = new Researcher();
-        researcher.setId("r1");
-        researcher.setFirstName("A");
-        researcher.setLastName("B");
-        researcher.setPosition(Position.ASIST_UNIV);
+        User member = new User();
+        member.setEmail("r1");
+        User.ResearcherProfile rProfile2 = new User.ResearcherProfile();
+        rProfile2.setFirstName("A");
+        rProfile2.setLastName("B");
+        rProfile2.setPosition(Position.ASIST_UNIV);
+        member.setResearcherProfile(rProfile2);
 
         IndividualReport report = new IndividualReport();
         report.setId("rep1");
@@ -400,7 +392,7 @@ class AdminGroupControllerContractTest {
                         Map.of(
                                 "report", report,
                                 "group", group,
-                                "researchers", List.of(researcher),
+                                "researchers", List.of(member),
                                 "researcherScores", Map.of("r1", Map.of(0, 1.0)),
                                 "criteriaThresholds", Map.of(0, Map.of()),
                                 "runCreatedAt", Instant.parse("2026-03-05T10:00:00Z"),

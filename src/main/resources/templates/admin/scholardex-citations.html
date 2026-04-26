@@ -2,106 +2,196 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Publications</title>
+    <title>Citations</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
 </head>
 <body id="page-top">
 
 <div id="wrapper">
-    <!-- Sidebar -->
-    <div th:replace="~{fragments :: sidebar('scholardex-publications')}"></div>
+    <div th:replace="~{fragments :: sidebar('scholardex-citations')}"></div>
 
-    <!-- Content Wrapper -->
     <div id="content-wrapper" class="d-flex flex-column">
-        <!-- Main Content -->
         <div id="content">
-            <!-- Topbar -->
-            <div th:replace="~{fragments :: navbar('Publications')}"></div>
-
-            <!-- Begin Page Content -->
+            <div th:replace="~{fragments :: navbar('Citations')}"></div>
             <div class="container-fluid app-page-content">
                 <div class="app-dashboard">
-                <div class="app-summary-panel">
-                    <div class="app-summary-panel__header">
-                        <h2 class="app-summary-panel__title" th:text="${publication.title}">Publication details</h2>
-                    </div>
-                    <div class="app-summary-panel__body">
-                            <p>
-                                <div th:each="author, iterStat : ${publication.authors}">
 
-                                <a th:if="${authorMap[author]!=null}" th:text="${authorMap[author].name} + (iterStat.last ? '; ' : '')" th:href="@{/user/authors/view/{id}(id=${author})}">
-                                    <span>;</span>
-                                </a>
-                                </div>
-                            </p>
-                            <p th:text="${publication.subtypeDescription}"></p>
+                    <!-- Breadcrumb -->
+                    <ol class="app-admin-breadcrumb">
+                        <li class="app-admin-breadcrumb__item">
+                            <a class="app-admin-breadcrumb__link" th:href="@{/admin/scholardex/publications}">Publications</a>
+                        </li>
+                        <li class="app-admin-breadcrumb__item">
+                            <span class="app-admin-breadcrumb__current"
+                                  th:text="${publication != null ? publication.title : 'Citations'}" aria-current="page">Citations</span>
+                        </li>
+                    </ol>
 
-                            <div th:if="${forum != null}">
-                            <p>
-                                <span th:text="${forum.publicationName}"></span>,
-                                <span th:text="${publication.volume}"></span>,
-                                <span th:text="${publication.issueIdentifier}"></span>,
-                                <span th:if="${!forum.issn.equals('null-')}" th:text="${forum.issn}"></span>
-                            </p>
+                    <!-- Publication summary panel -->
+                    <div class="app-summary-panel" th:if="${publication != null}">
+                        <div class="app-summary-panel__header">
+                            <h2 class="app-summary-panel__title" th:text="${publication.title}">Publication</h2>
+                        </div>
+                        <div class="app-summary-panel__body">
+                            <div th:each="authorId : ${publication.authors}">
+                                <a th:if="${authorMap[authorId] != null}"
+                                   th:href="@{/user/authors/view/{id}(id=${authorId})}"
+                                   th:text="${authorMap[authorId].name}"></a>
                             </div>
-                    </div>
-                </div>
-                <div class="app-table-section">
-                    <div class="app-table-section__surface">
-                    <div class="app-table-section__header app-table-toolbar">
-                        <h6 class="app-table-section__title">Citations</h6>
-                    </div>
-                    <div class="app-table-section__body">
-                        <div class="app-table-scroll">
-                            <table class="table table-bordered js-datatable app-table" id="dataTable" width="100%" cellspacing="0">
-                                <thead>
-                                <tr>
-                                    <th>Title</th>
-                                    <th>Year</th>
-                                    <th>Venue</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <tr th:each="citation : ${citations}">
-                                    <td>
-                                        <a th:href="@{/admin/scholardex/publications/citations(id=${citation.id})}" th:text="${citation.title}">Publication Title</a>
-                                    </td>
-                                    <td th:text="${citation.coverDate}">Year Published</td>
-<!--                                    <td></td>-->
-                                    <td th:if="${forumMap[citation.forum] != null}" th:text="${forumMap[citation.forum].publicationName}">Venue</td>
-<!--                                    </td>-->
-                                </tr>
-                                </tbody>
-                            </table>
+                            <p th:text="${publication.subtypeDescription}" class="text-muted small"></p>
+                            <div th:if="${forum != null}">
+                                <p>
+                                    <a th:href="@{/admin/scholardex/publications(forumId=${publication.forum})}"
+                                       th:text="${forum.publicationName}"></a>
+                                    <span th:if="${publication.volume}" th:text="', vol. ' + ${publication.volume}"></span>
+                                    <span th:if="${!forum.issn.equals('null-')}" th:text="', ' + ${forum.issn}"></span>
+                                </p>
+                            </div>
                         </div>
                     </div>
+
+                    <!-- Stat cards -->
+                    <div class="app-summary-grid">
+                        <div class="app-summary-card">
+                            <p class="app-summary-card__label">Citations</p>
+                            <p class="app-summary-card__value"
+                               th:text="${citationsPage != null ? citationsPage.totalCitations() : #lists.size(citations)}">0</p>
+                            <p class="app-summary-card__meta">Citing publications tracked for this record.</p>
+                        </div>
+                        <div class="app-summary-card"
+                             th:classappend="${citationSync.hasRun()} ? (${citationSync.outcome() == 'SUCCESS'} ? ' app-summary-card--success' : ' app-summary-card--warning') : ''">
+                            <p class="app-summary-card__label">Last Citation Sync</p>
+                            <p class="app-summary-card__value" th:if="${citationSync.hasRun()}"
+                               th:text="${#temporals.format(citationSync.lastRunAt(), 'yyyy-MM-dd')}">—</p>
+                            <p class="app-summary-card__value" th:unless="${citationSync.hasRun()}">—</p>
+                            <p class="app-summary-card__meta"
+                               th:text="${citationSync.hasRun()} ? ('Outcome: ' + ${citationSync.outcome()}) : 'No citation sync has run yet.'">—</p>
+                        </div>
                     </div>
-                </div>
+
+                    <!-- Citations table -->
+                    <div class="app-table-section">
+                        <div class="app-table-section__surface">
+                            <div class="app-table-section__header app-table-toolbar">
+                                <h6 class="app-table-section__title">Citing Publications</h6>
+                                <div class="app-table-toolbar__actions" id="cit-toolbar-actions">
+                                    <th:block th:if="${citationsPage != null}">
+                                    <a th:if="${citationsPage.hasPrevious()}"
+                                       th:href="@{/admin/scholardex/publications/citations(id=${pubId},page=${citationsPage.page()-1},size=${citSize})}"
+                                       class="btn btn-outline-secondary btn-sm">
+                                        <i class="fa-solid fa-chevron-left fa-xs"></i>
+                                    </a>
+                                    <span class="text-muted" style="font-size:0.82rem;"
+                                          th:text="'Page ' + (${citationsPage.page()} + 1) + ' of ' + ${citationsPage.totalPages()}"></span>
+                                    <a th:if="${citationsPage.hasNext()}"
+                                       th:href="@{/admin/scholardex/publications/citations(id=${pubId},page=${citationsPage.page()+1},size=${citSize})}"
+                                       class="btn btn-outline-secondary btn-sm">
+                                        <i class="fa-solid fa-chevron-right fa-xs"></i>
+                                    </a>
+                                    </th:block>
+                                </div>
+                            </div>
+                            <div class="app-table-section__body">
+                                <div class="app-table-scroll">
+                                    <table class="table app-table" id="cit-table">
+                                        <thead>
+                                        <tr>
+                                            <th data-col="title">Title</th>
+                                            <th data-col="year">Year</th>
+                                            <th data-col="venue">Venue</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr th:each="citation : ${citations}">
+                                            <td data-col="title">
+                                                <a th:href="@{/admin/scholardex/publications/citations(id=${citation.id})}"
+                                                   th:text="${citation.title}">Title</a>
+                                            </td>
+                                            <td data-col="year" th:text="${citation.coverDate}">—</td>
+                                            <td data-col="venue">
+                                                <th:block th:with="venueForum=${forumMap[citation.forum]}">
+                                                    <a th:if="${venueForum != null}"
+                                                       th:href="@{/admin/scholardex/publications(forumId=${citation.forum})}"
+                                                       th:text="${venueForum.publicationName}"></a>
+                                                    <span th:if="${venueForum == null}" class="text-muted">—</span>
+                                                </th:block>
+                                            </td>
+                                        </tr>
+                                        <tr th:if="${citations.isEmpty()}" class="app-admin-empty-row">
+                                            <td colspan="3">
+                                                <th:block th:replace="~{fragments :: admin-empty-state(
+                                                    'No citations found',
+                                                    'No citing publications have been tracked for this record yet.',
+                                                    null,
+                                                    null)}"></th:block>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom page-size selector -->
+                    <div class="app-queue-bulk-bar" th:if="${citationsPage != null and citationsPage.totalCitations() > 0}">
+                        <span class="app-queue-bulk-bar__label"
+                              th:text="'Showing ' + ${#lists.size(citations)} + ' of ' + ${citationsPage.totalCitations()} + ' citations'"></span>
+                        <form method="get" th:action="@{/admin/scholardex/publications/citations}" style="display:flex;align-items:center;gap:0.4rem;">
+                            <input type="hidden" name="id" th:value="${pubId}">
+                            <input type="hidden" name="page" value="0">
+                            <label style="font-size:0.8rem;color:var(--app-color-text-muted);margin:0;">Per page:</label>
+                            <select name="size" class="form-control form-control-sm" style="width:5rem;"
+                                    onchange="this.form.submit()">
+                                <option value="25" th:selected="${citSize == 25}">25</option>
+                                <option value="50" th:selected="${citSize == 50}">50</option>
+                                <option value="100" th:selected="${citSize == 100}">100</option>
+                            </select>
+                        </form>
+                    </div>
+
                 </div>
             </div>
-            <!-- End of Main Content -->
-
-            <!-- Footer -->
             <div th:replace="~{fragments :: app-footer}"></div>
-            <!-- End of Footer -->
         </div>
-        <!-- End of Content Wrapper -->
     </div>
-    <!-- End of Page Wrapper -->
 
-    <!-- Scroll to Top Button-->
     <a class="scroll-to-top rounded" href="#page-top">
         <i class="fa-solid fa-angle-up"></i>
     </a>
 </div>
 
-<!-- Bootstrap core JavaScript-->
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
+<script>
+(function () {
+    window.initAdminColumnToggle({
+        tableId: 'citations',
+        tableEl: document.getElementById('cit-table'),
+        toolbarActionsEl: document.getElementById('cit-toolbar-actions'),
+        columns: [
+            { key: 'title', label: 'Title', required: true },
+            { key: 'year',  label: 'Year',  required: false },
+            { key: 'venue', label: 'Venue', required: false },
+        ],
+    });
 
-<!-- Page level plugins -->
-
-<!-- Page level custom scripts -->
-
-
+    var citTbody = document.querySelector('#cit-table tbody');
+    if (citTbody) {
+        window.initAdminShortcuts({
+            sections: [{
+                title: 'Row Actions',
+                rows: [{ keys: ['e', 'Enter'], label: 'Open citations for focused publication' }],
+            }],
+            tables: [{
+                tbodyEl: citTbody,
+                keyActions: {
+                    'e':     function(tr) { var a = tr.querySelector('[data-col="title"] a'); if (a) window.location.href = a.href; },
+                    'Enter': function(tr) { var a = tr.querySelector('[data-col="title"] a'); if (a) window.location.href = a.href; },
+                },
+            }],
+        });
+    }
+})();
+</script>
 </body>
 </html>

@@ -95,7 +95,6 @@ class ActivityInstanceControllerContractTest {
     private User userPrincipal(String email, String researcherId) {
         User user = new User();
         user.setEmail(email);
-        user.setResearcherId(researcherId);
         return user;
     }
 

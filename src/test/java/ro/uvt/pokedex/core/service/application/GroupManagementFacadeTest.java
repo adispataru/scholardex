@@ -6,13 +6,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.Institution;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Group;
+import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.repository.InstitutionRepository;
-import ro.uvt.pokedex.core.repository.ResearcherRepository;
 import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
+import ro.uvt.pokedex.core.service.UserService;
 
 import java.util.List;
 import java.util.Optional;
@@ -30,7 +30,7 @@ class GroupManagementFacadeTest {
     @Mock
     private InstitutionRepository institutionRepository;
     @Mock
-    private ResearcherRepository researcherRepository;
+    private UserService userService;
 
     @InjectMocks
     private GroupManagementFacade facade;
@@ -40,12 +40,12 @@ class GroupManagementFacadeTest {
         Group group = new Group();
         Domain domain = new Domain();
         Institution institution = new Institution();
-        Researcher researcher = new Researcher();
+        User user = new User();
 
         when(groupRepository.findAll()).thenReturn(List.of(group));
         when(domainRepository.findAll()).thenReturn(List.of(domain));
         when(institutionRepository.findAll()).thenReturn(List.of(institution));
-        when(researcherRepository.findAll()).thenReturn(List.of(researcher));
+        when(userService.findUsersWithResearcherProfile()).thenReturn(List.of(user));
 
         var vm = facade.buildGroupListView();
 
@@ -62,12 +62,12 @@ class GroupManagementFacadeTest {
         group.setName("G1");
         Domain domain = new Domain();
         Institution institution = new Institution();
-        Researcher researcher = new Researcher();
+        User user = new User();
 
         when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
         when(domainRepository.findAll()).thenReturn(List.of(domain));
         when(institutionRepository.findAll()).thenReturn(List.of(institution));
-        when(researcherRepository.findAll()).thenReturn(List.of(researcher));
+        when(userService.findUsersWithResearcherProfile()).thenReturn(List.of(user));
 
         var vm = facade.buildGroupEditView("g1");
 

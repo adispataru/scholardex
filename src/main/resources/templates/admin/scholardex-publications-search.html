@@ -29,11 +29,12 @@
                     </div>
                     <div class="app-table-section__body">
                         <div class="app-table-scroll">
-                            <table class="table table-bordered js-datatable app-table" id="dataTable" width="100%" cellspacing="0">
+                            <table class="table js-datatable app-table" id="dataTable" width="100%" cellspacing="0">
                                 <thead>
                                 <tr>
                                     <th>Title</th>
                                     <th>Authors</th>
+                                    <th>Authorship overrides</th>
                                     <th>Citations</th>
                                 </tr>
                                 </thead>
@@ -50,6 +51,26 @@
                                             </a>
                                         </div>
 <!--                                        <span th:each="author, iterStat : ${publication.authors}" th:text="${authorMap[author].name} + (iterStat.last ? '; ' : '')"></span>-->
+                                    </td>
+                                    <td>
+                                        <th:block th:with="summary=${decisionSummaryByPublicationId[publication.id]}">
+                                            <span th:if="${summary == null}" class="text-muted">None</span>
+                                            <div th:if="${summary != null}">
+                                                <div>
+                                                    <strong th:text="${summary.totalDecisions}">0</strong>
+                                                    <span th:text="${summary.totalDecisions == 1 ? ' override' : ' overrides'}">overrides</span>
+                                                </div>
+                                                <div class="text-muted small"
+                                                     th:text="${summary.confirmedCount + ' confirmed / ' + summary.rejectedCount + ' rejected'}">
+                                                    0 confirmed / 0 rejected
+                                                </div>
+                                                <div class="small">
+                                                    <span th:text="${'Latest ' + (summary.latestStatus != null ? #strings.toLowerCase(summary.latestStatus.name()) : 'unknown')}">Latest confirmed</span>
+                                                    <span th:if="${summary.latestUpdatedAt != null}"
+                                                          th:text="${' · ' + #temporals.format(summary.latestUpdatedAt, 'yyyy-MM-dd')}"> · 2026-04-19</span>
+                                                </div>
+                                            </div>
+                                        </th:block>
                                     </td>
                                     <td th:text="${publication.citedbyCount}">0</td>
                                 </tr>

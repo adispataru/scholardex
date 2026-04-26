@@ -87,9 +87,6 @@ class UserIndividualReportRunServiceTest {
 
         when(reportRepository.findById("rep-1")).thenReturn(Optional.of(report));
 
-        User user = new User();
-        user.setResearcherId("r-1");
-        when(userService.getUserByEmail("u@uvt.ro")).thenReturn(Optional.of(user));
 
         when(userReportFacade.computeReportScopedIndividualReport("u@uvt.ro", "rep-1"))
                 .thenReturn(Optional.of(new ReportScopedIndividualReportComputation(
@@ -145,9 +142,6 @@ class UserIndividualReportRunServiceTest {
 
         when(reportRepository.findById("rep-1")).thenReturn(Optional.of(report));
 
-        User user = new User();
-        user.setResearcherId("r-1");
-        when(userService.getUserByEmail("u@uvt.ro")).thenReturn(Optional.of(user));
 
         when(indicatorResultService.getLatestRefreshVersion("u@uvt.ro", "ind-1")).thenReturn(1);
         when(indicatorResultService.getLatestRefreshVersion("u@uvt.ro", "ind-2")).thenReturn(1);

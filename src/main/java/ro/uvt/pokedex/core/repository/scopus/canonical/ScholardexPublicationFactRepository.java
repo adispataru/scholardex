@@ -3,11 +3,13 @@ package ro.uvt.pokedex.core.repository.scopus.canonical;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface ScholardexPublicationFactRepository extends MongoRepository<ScholardexPublicationFact, String> {
+    long countByCreatedAtAfter(Instant after);
     Optional<ScholardexPublicationFact> findByEid(String eid);
     Optional<ScholardexPublicationFact> findByWosId(String wosId);
     Optional<ScholardexPublicationFact> findByGoogleScholarId(String googleScholarId);

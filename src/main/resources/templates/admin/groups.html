@@ -39,7 +39,7 @@
                     </div>
                     <div class="app-table-section__body">
                         <div class="app-table-scroll">
-                            <table class="table table-bordered js-datatable app-table" id="dataTable" width="100%" cellspacing="0">
+                            <table class="table js-datatable app-table" id="dataTable" width="100%" cellspacing="0">
                                 <thead>
                                 <tr>
                                     <th>Name</th>
@@ -62,15 +62,24 @@
                                     <td th:text="${group.institution.name}"></td>
                                     <td>
                                         <ul>
-                                            <li th:each="researcher : ${group.researchers}" th:text="${researcher.name}"></li>
+                                            <li th:each="memberId : ${group.memberIds}" th:text="${memberId}"></li>
                                         </ul>
                                     </td>
                                     <td>
                                         <a th:href="@{/admin/groups/edit/{id}(id=${group.id})}" class="btn btn-primary btn-sm">Edit</a>
-                                        <a th:href="@{/admin/groups/{id}/publications(id=${group.id})}" class="btn btn-info btn-sm">See publications</a>
+                                        <a th:href="@{/admin/groups/{id}(id=${group.id})}" class="btn btn-info btn-sm">Open workspace</a>
                                         <form th:action="@{/admin/groups/delete/{id}(id=${group.id})}" method="post" style="display:inline;">
                                             <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                                         </form>
+                                    </td>
+                                </tr>
+                                <tr th:if="${groups.isEmpty()}" class="app-admin-empty-row">
+                                    <td colspan="6">
+                                        <th:block th:replace="~{fragments :: admin-empty-state(
+                                            'fa-solid fa-object-group',
+                                            'No groups yet',
+                                            'Create the first research group using the button above.',
+                                            '', '')}"></th:block>
                                     </td>
                                 </tr>
                                 </tbody>
@@ -148,9 +157,9 @@
                         </div>
                         <label for="groupResearchers">Researchers</label>
                         <div id="researchersContainer" class="app-collection">
-                            <div class="input-group mb-2 app-collection__item" th:each="researcher, iterStat : *{researchers}">
-                                <select class="form-control" th:field="*{researchers[__${iterStat.index}__]}" th:selected="${researcher}">
-                                    <option th:each="researcher : ${allResearchers}" th:value="${researcher.id}" th:text="${researcher.name}"></option>
+                            <div class="input-group mb-2 app-collection__item" th:each="memberId, iterStat : *{memberIds}">
+                                <select class="form-control" th:field="*{memberIds[__${iterStat.index}__]}" th:selected="${memberId}">
+                                    <option th:each="researcher : ${allResearchers}" th:value="${researcher.email}" th:text="${researcher.researcherProfile?.name}"></option>
                                 </select>
                                 <button class="btn btn-danger remove-researcher" type="button">Remove</button>
                             </div>
@@ -234,8 +243,8 @@
             let index = researchersContainer.children().length;
             let researcherTemplate = `
                 <div class="input-group mb-2 app-collection__item">
-                    <select class="form-control" name="researchers[${index}]">
-                        ${allResearchers.map(researcher => `<option value="${researcher.id}">${researcher.name}</option>`).join('')}
+                    <select class="form-control" name="memberIds[${index}]">
+                        ${allResearchers.map(researcher => `<option value="${researcher.email}">${researcher.researcherProfile?.name ?? ''}</option>`).join('')}
                     </select>
                     <button class="btn btn-danger remove-researcher" type="button">Remove</button>
                 </div>`;
@@ -246,7 +255,7 @@
             $(this).closest('.input-group').remove();
             // Optionally, update the indices of the remaining elements
             researchersContainer.children().each(function(index, element) {
-                $(element).find('select').attr('name', `researchers[${index}]`);
+                $(element).find('select').attr('name', `memberIds[${index}]`);
             });
         });
     });

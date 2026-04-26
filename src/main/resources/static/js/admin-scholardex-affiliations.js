@@ -60,11 +60,13 @@
   function renderRows(items) {
     els.tableBody.innerHTML = (items || []).map(function (item) {
       const id = encodeURIComponent(item.afid || '');
+      const pubsHref = '/admin/scholardex/publications?affiliationId=' + id;
       return '<tr>' +
         '<td><a href="/admin/scholardex/affiliations/edit/' + id + '">' + escapeHtml(item.name) + '</a></td>' +
         '<td class="app-table__cell--identifier">' + escapeHtml(item.afid || '—') + '</td>' +
         '<td>' + escapeHtml(item.city || '—') + '</td>' +
         '<td>' + escapeHtml(item.country || '—') + '</td>' +
+        '<td><a class="btn btn-outline-secondary btn-sm" href="' + pubsHref + '" aria-label="View publications for this affiliation"><i class="fa-solid fa-file-lines fa-xs"></i> Publications</a></td>' +
         '</tr>';
     }).join('');
   }

@@ -3,8 +3,8 @@ package ro.uvt.pokedex.core.service.application;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
+import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.reporting.*;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GroupReportFacade {
     private static final long REFRESH_SLOW_WARN_THRESHOLD_MS = 5_000L;
+    private static final String MONGO_SAFE_EMAIL_DOT_REPLACEMENT = "\uFF0E";
     private static final List<String> VENUE_CLASS_BUCKET_ORDER = List.of(
             "Q1", "Q2", "Q3", "Q4", "A_STAR", "A", "B", "C", "D", "LNCS", "BOOK_LNCS", "SCOPUS", "NON_RANK", "Unranked"
     );
@@ -54,11 +55,11 @@ public class GroupReportFacade {
             return Optional.empty();
         }
 
-        List<Researcher> researchers = loadResearchers(group);
-        researchers.sort(Comparator.comparing(Researcher::getName));
+        List<User> researchers = loadResearchers(group);
+        researchers.sort(Comparator.comparing(u -> u.getResearcherProfile().getName()));
         List<String> lookupKeys = new ArrayList<>();
-        for (Researcher researcher : researchers) {
-            lookupKeys.addAll(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
+        for (User user : researchers) {
+            lookupKeys.addAll(researcherAuthorLookupService.resolveAuthorLookupKeys(user.getResearcherProfile()));
         }
         List<String> authorIds = scholardexProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
                 .map(ScholardexAuthorView::getId)
@@ -306,21 +307,21 @@ public class GroupReportFacade {
     }
 
     private ComputeGroupRunResult computeGroupRun(Group group, IndividualReport report) {
-        List<Researcher> researchers = loadResearchers(group);
-        researchers.sort(Comparator.comparing(Researcher::getName));
+        List<User> researchers = loadResearchers(group);
+        researchers.sort(Comparator.comparing(u -> u.getResearcherProfile().getName()));
 
         Map<String, Map<Integer, Double>> researcherScores = new HashMap<>();
         List<String> errors = new ArrayList<>();
         ComputeTimingsAccumulator timings = new ComputeTimingsAccumulator();
 
-        for (Researcher researcher : researchers) {
+        for (User user : researchers) {
             long authorLookupStartNanos = System.nanoTime();
             List<ScholardexAuthorView> authors = scholardexProjectionReadService.findAuthorsByIdIn(
-                    researcherAuthorLookupService.resolveAuthorLookupKeys(researcher)
+                    researcherAuthorLookupService.resolveAuthorLookupKeys(user.getResearcherProfile())
             );
             timings.authorLookupNanos += (System.nanoTime() - authorLookupStartNanos);
             if (authors.isEmpty()) {
-                errors.add("No authors found for researcher " + researcherDisplayName(researcher));
+                errors.add("No authors found for member " + memberDisplayName(user));
                 continue;
             }
 
@@ -366,7 +367,7 @@ public class GroupReportFacade {
             List<ActivityInstance> activities = List.of();
             if (hasActivityIndicators) {
                 long activityLoadStartNanos = System.nanoTime();
-                activities = activityInstanceRepository.findAllByResearcherId(researcher.getId());
+                activities = activityInstanceRepository.findAllByResearcherId(user.getEmail());
                 timings.activityLoadNanos += (System.nanoTime() - activityLoadStartNanos);
             }
 
@@ -445,7 +446,7 @@ public class GroupReportFacade {
                 }
                 criterionScores.put(i, criterionScore);
             }
-            researcherScores.put(researcher.getId(), criterionScores);
+            researcherScores.put(mongoSafeReportKey(user.getEmail()), criterionScores);
         }
 
         long thresholdBuildStartNanos = System.nanoTime();
@@ -476,14 +477,14 @@ public class GroupReportFacade {
     }
 
     private GroupIndividualReportViewModel toViewModel(Group group, IndividualReport report, GroupIndividualReportRun run) {
-        List<Researcher> researchers = loadResearchers(group);
-        researchers.sort(Comparator.comparing(Researcher::getName));
+        List<User> researchers = loadResearchers(group);
+        researchers.sort(Comparator.comparing(u -> u.getResearcherProfile().getName()));
 
         Map<String, Object> attrs = new HashMap<>();
         attrs.put("report", report);
         attrs.put("group", group);
         attrs.put("researchers", researchers);
-        attrs.put("researcherScores", run.getResearcherScores() == null ? Map.of() : run.getResearcherScores());
+        attrs.put("researcherScores", resolveResearcherScoresForView(run, researchers));
         attrs.put("criteriaThresholds", run.getCriteriaThresholds() == null ? Map.of() : run.getCriteriaThresholds());
         attrs.put("runCreatedAt", run.getCreatedAt());
         attrs.put("runStatus", run.getStatus());
@@ -495,34 +496,53 @@ public class GroupReportFacade {
         return ReportingComputationSupport.calculatePublicationScore(indicator, authors, publications, scientificProductionService);
     }
 
-    private String researcherDisplayName(Researcher researcher) {
-        String first = researcher.getFirstName() == null ? "" : researcher.getFirstName().trim();
-        String last = researcher.getLastName() == null ? "" : researcher.getLastName().trim();
+    private String memberDisplayName(User user) {
+        User.ResearcherProfile profile = user.getResearcherProfile();
+        String first = (profile == null || profile.getFirstName() == null) ? "" : profile.getFirstName().trim();
+        String last = (profile == null || profile.getLastName() == null) ? "" : profile.getLastName().trim();
         String full = (first + " " + last).trim();
-        return full.isBlank() ? researcher.getId() : full;
+        return full.isBlank() ? user.getEmail() : full;
     }
 
-    /**
-     * Loads the group's member users by their email ids and converts each to a
-     * {@link Researcher} value-object. Falls back to the legacy {@code @DBRef}
-     * list when {@code memberIds} is empty (e.g. before migration).
-     */
-    private List<Researcher> loadResearchers(Group group) {
+    private List<User> loadResearchers(Group group) {
         List<String> memberIds = group.getMemberIds();
-        if (memberIds != null && !memberIds.isEmpty()) {
-            return userRepository.findAllById(memberIds).stream()
-                    .map(Researcher::fromUser)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
-        }
-        // Legacy fallback — resolved via DBRef while migration is in progress
-        return group.getResearchers() != null
-                ? new ArrayList<>(group.getResearchers())
-                : new ArrayList<>();
+        if (memberIds == null || memberIds.isEmpty()) return new ArrayList<>();
+        return userRepository.findAllById(memberIds).stream()
+                .filter(u -> u.getResearcherProfile() != null)
+                .collect(Collectors.toList());
     }
 
     private long nanosToMs(long nanos) {
         return Math.max(0L, nanos / 1_000_000L);
+    }
+
+    static String mongoSafeReportKey(String email) {
+        if (email == null || email.isBlank()) {
+            return "";
+        }
+        return email.replace(".", MONGO_SAFE_EMAIL_DOT_REPLACEMENT);
+    }
+
+    private Map<String, Map<Integer, Double>> resolveResearcherScoresForView(GroupIndividualReportRun run,
+                                                                             List<User> researchers) {
+        Map<String, Map<Integer, Double>> persistedScores = run.getResearcherScores() == null
+                ? Map.of()
+                : run.getResearcherScores();
+        Map<String, Map<Integer, Double>> resolved = new LinkedHashMap<>();
+        for (User researcher : researchers) {
+            String email = researcher.getEmail();
+            if (email == null || email.isBlank()) {
+                continue;
+            }
+            Map<Integer, Double> score = persistedScores.get(email);
+            if (score == null) {
+                score = persistedScores.get(mongoSafeReportKey(email));
+            }
+            if (score != null) {
+                resolved.put(email, score);
+            }
+        }
+        return resolved;
     }
 
     private record ComputeGroupRunResult(

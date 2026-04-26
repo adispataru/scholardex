@@ -8,7 +8,6 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.AbstractReport;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
@@ -103,15 +102,15 @@ public class UserReportFacade {
             return Optional.empty();
         }
 
-        Researcher researcher = Researcher.fromUser(userOpt.get());
+        User user = userOpt.get();
         Optional<Indicator> indicatorOpt = indicatorRepository.findById(indicatorId);
-        if (researcher == null || indicatorOpt.isEmpty()) {
+        if (user.getResearcherProfile() == null || indicatorOpt.isEmpty()) {
             return Optional.empty();
         }
 
         Indicator indicator = indicatorOpt.get();
         List<ScholardexPublicationView> publications = findConfirmedPublicationsForScoring(userEmail);
-        List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
+        List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(user.getResearcherProfile()));
         if (authors.isEmpty()) {
             return Optional.empty();
         }
@@ -143,12 +142,12 @@ public class UserReportFacade {
             return UserWorkbookExportResult.unauthorized();
         }
 
-        Researcher researcher0 = Researcher.fromUser(userOpt.get());
-        if (researcher0 == null) {
+        User user0 = userOpt.get();
+        if (user0.getResearcherProfile() == null) {
             return UserWorkbookExportResult.notFound();
         }
 
-        List<String> lookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(researcher0);
+        List<String> lookupKeys = researcherAuthorLookupService.resolveAuthorLookupKeys(user0.getResearcherProfile());
         List<String> authorIds = findAuthorsByIds(lookupKeys).stream().map(ScholardexAuthorView::getId).toList();
         List<ScholardexPublicationView> publications = findConfirmedPublicationsForScoring(userEmail);
         publications = publications.stream().filter(publication -> {
@@ -201,12 +200,12 @@ public class UserReportFacade {
             return UserWorkbookExportResult.unauthorized();
         }
 
-        Researcher researcher = Researcher.fromUser(userOpt.get());
-        if (researcher == null) {
+        User user = userOpt.get();
+        if (user.getResearcherProfile() == null) {
             return UserWorkbookExportResult.notFound();
         }
 
-        List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
+        List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(user.getResearcherProfile()));
         if (authors.isEmpty()) {
             return UserWorkbookExportResult.notFound();
         }
@@ -262,10 +261,9 @@ public class UserReportFacade {
         }
 
         User user = userOpt.get();
-        Researcher researcher = Researcher.fromUser(user);
         Optional<Indicator> indicatorOpt = indicatorRepository.findById(indicatorId);
 
-        if (indicatorOpt.isEmpty() || researcher == null) {
+        if (indicatorOpt.isEmpty() || user.getResearcherProfile() == null) {
             return new UserIndicatorApplyViewModel("user/indicators", Map.of());
         }
 
@@ -280,7 +278,7 @@ public class UserReportFacade {
             return handleActivities(indicator, activities, attrs);
         }
 
-        List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
+        List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(user.getResearcherProfile()));
         List<ScholardexPublicationView> publications = findConfirmedPublicationsForScoring(userEmail);
         if (requiresPublicationScoring(indicator)) {
             attrs.put("confirmedPublicationScoringWarning", publications.isEmpty());
@@ -326,12 +324,12 @@ public class UserReportFacade {
         }
 
         IndividualReport report = reportOpt.get();
-        Researcher researcher = Researcher.fromUser(userOpt.get());
-        if (researcher == null) {
+        User user = userOpt.get();
+        if (user.getResearcherProfile() == null) {
             return Optional.empty();
         }
 
-        List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
+        List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(user.getResearcherProfile()));
         List<ScholardexPublicationView> publications = findConfirmedPublicationsForScoring(userEmail);
         if (report.getIndividualAffiliation() != null
                 && !"ANY".equals(report.getIndividualAffiliation().getName())) {
@@ -350,7 +348,7 @@ public class UserReportFacade {
                 .filter(Objects::nonNull)
                 .anyMatch(indicator -> Indicator.Type.CITATIONS.equals(indicator.getOutputType())
                         || Indicator.Type.CITATIONS_EXCLUDE_SELF.equals(indicator.getOutputType()));
-        List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(researcher.getId());
+        List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(user.getEmail());
         Set<String> researcherAuthorIds = authors.stream()
                 .map(ScholardexAuthorView::getId)
                 .filter(Objects::nonNull)
@@ -463,10 +461,10 @@ public class UserReportFacade {
         if (foundIndicator == null) return Optional.empty();
         final Indicator indicator = foundIndicator;
 
-        Researcher researcher = Researcher.fromUser(userOpt.get());
-        if (researcher == null) return Optional.empty();
+        User user = userOpt.get();
+        if (user.getResearcherProfile() == null) return Optional.empty();
 
-        List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher));
+        List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(user.getResearcherProfile()));
         List<ScholardexPublicationView> publications = findConfirmedPublicationsForScoring(userEmail);
 
         // Apply the same affiliation filter as computeReportScopedIndividualReport
@@ -483,7 +481,7 @@ public class UserReportFacade {
         String outputType = indicator.getOutputType().toString();
 
         if (outputType.contains("ACTIVIT")) {
-            List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(researcher.getId());
+            List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(user.getEmail());
             final String activityName = indicator.getActivity().getName();
             List<ActivityInstance> filteredActivities = activities.stream()
                     .filter(act -> act.getActivity().getName().equals(activityName))

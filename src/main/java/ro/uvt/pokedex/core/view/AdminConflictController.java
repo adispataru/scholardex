@@ -81,6 +81,21 @@ public class AdminConflictController {
         return "redirect:/admin/conflicts";
     }
 
+    @PostMapping("/investigate")
+    public String investigateConflict(
+            @RequestParam(name = "id") String id,
+            Authentication authentication,
+            RedirectAttributes redirectAttributes
+    ) {
+        long updated = conflictOperationsFacade.updateConflictStatus(id, "INVESTIGATED", authentication == null ? "" : authentication.getName());
+        if (updated == 0L) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Conflict investigate skipped. Conflict is missing or not OPEN.");
+        } else {
+            redirectAttributes.addFlashAttribute("successMessage", "Conflict marked as under investigation.");
+        }
+        return "redirect:/admin/conflicts";
+    }
+
     @PostMapping("/bulkStatus")
     public String bulkUpdateConflicts(
             @RequestParam(name = "ids", required = false) List<String> ids,
@@ -89,19 +104,27 @@ public class AdminConflictController {
             Authentication authentication,
             RedirectAttributes redirectAttributes
     ) {
+        String operator = authentication == null ? "" : authentication.getName();
         if ("resolveOne".equalsIgnoreCase(action) && singleId != null) {
-            long updated = conflictOperationsFacade.updateConflictStatus(singleId, "RESOLVED", authentication == null ? "" : authentication.getName());
-            redirectAttributes.addFlashAttribute("successMessage", "Conflict resolve requested. updated=" + updated + ".");
+            long updated = conflictOperationsFacade.updateConflictStatus(singleId, "RESOLVED", operator);
+            redirectAttributes.addFlashAttribute("successMessage", "Conflict resolved. updated=" + updated + ".");
             return "redirect:/admin/conflicts";
         }
         if ("dismissOne".equalsIgnoreCase(action) && singleId != null) {
-            long updated = conflictOperationsFacade.updateConflictStatus(singleId, "DISMISSED", authentication == null ? "" : authentication.getName());
-            redirectAttributes.addFlashAttribute("successMessage", "Conflict dismiss requested. updated=" + updated + ".");
+            long updated = conflictOperationsFacade.updateConflictStatus(singleId, "DISMISSED", operator);
+            redirectAttributes.addFlashAttribute("successMessage", "Conflict dismissed. updated=" + updated + ".");
             return "redirect:/admin/conflicts";
         }
-        String requestedStatus = "dismiss".equalsIgnoreCase(action) ? "DISMISSED" : "RESOLVED";
-        long updated = conflictOperationsFacade.bulkUpdateConflictStatus(ids, requestedStatus, authentication == null ? "" : authentication.getName());
-        redirectAttributes.addFlashAttribute("successMessage", "Bulk conflict update complete. updated=" + updated + ".");
+        if ("investigateOne".equalsIgnoreCase(action) && singleId != null) {
+            long updated = conflictOperationsFacade.updateConflictStatus(singleId, "INVESTIGATED", operator);
+            redirectAttributes.addFlashAttribute("successMessage", "Conflict marked as under investigation. updated=" + updated + ".");
+            return "redirect:/admin/conflicts";
+        }
+        String requestedStatus = "dismiss".equalsIgnoreCase(action) ? "DISMISSED"
+                : "investigate".equalsIgnoreCase(action) ? "INVESTIGATED"
+                : "RESOLVED";
+        long updated = conflictOperationsFacade.bulkUpdateConflictStatus(ids, requestedStatus, operator);
+        redirectAttributes.addFlashAttribute("successMessage", "Bulk conflict update complete. updated=" + updated + " of " + (ids == null ? 0 : ids.size()) + " selected.");
         return "redirect:/admin/conflicts";
     }
 

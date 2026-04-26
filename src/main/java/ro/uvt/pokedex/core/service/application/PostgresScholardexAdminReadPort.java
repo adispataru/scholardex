@@ -4,12 +4,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.repository.scopus.canonical.PublicationAuthorshipDecisionRepository;
 import ro.uvt.pokedex.core.service.application.model.ScholardexCitationsView;
+import ro.uvt.pokedex.core.service.application.model.PublicationAuthorshipDecisionAdminSummary;
 import ro.uvt.pokedex.core.service.application.model.ScholardexPublicationSearchView;
 
 import java.sql.Array;
@@ -31,6 +34,78 @@ import java.util.stream.Collectors;
 public class PostgresScholardexAdminReadPort {
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    private final PublicationAuthorshipDecisionRepository publicationAuthorshipDecisionRepository;
+
+    public record PublicationCatalogPage(
+            List<ScholardexPublicationView> content,
+            Map<String, ScholardexAuthorView> authorMap,
+            Map<String, ScholardexForumView> forumMap,
+            Map<String, PublicationAuthorshipDecisionAdminSummary> decisionSummaryByPublicationId,
+            long total,
+            int page,
+            int size,
+            int totalPages
+    ) {
+        public boolean hasPrevious() { return page > 0; }
+        public boolean hasNext() { return page < totalPages - 1; }
+    }
+
+    public PublicationCatalogPage buildPublicationCatalogPage(
+            String q, String forumId, String authorId, String affiliationId,
+            int page, int size, String sort, String direction
+    ) {
+        int safeSize = (size == 50 || size == 100) ? size : 25;
+        String safeSort = switch (sort != null ? sort : "") {
+            case "year" -> "cover_date";
+            case "citations" -> "cited_by_count";
+            default -> "title";
+        };
+        String safeDir = "desc".equalsIgnoreCase(direction) ? "DESC" : "ASC";
+
+        List<String> conditions = new ArrayList<>();
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        if (q != null && !q.isBlank()) {
+            conditions.add("title ILIKE :q");
+            params.addValue("q", "%" + q.trim() + "%");
+        }
+        if (forumId != null && !forumId.isBlank()) {
+            conditions.add("forum_id = :forumId");
+            params.addValue("forumId", forumId.trim());
+        }
+        if (authorId != null && !authorId.isBlank()) {
+            conditions.add(":authorId = ANY(author_ids)");
+            params.addValue("authorId", authorId.trim());
+        }
+        if (affiliationId != null && !affiliationId.isBlank()) {
+            conditions.add(":affiliationId = ANY(affiliation_ids)");
+            params.addValue("affiliationId", affiliationId.trim());
+        }
+        String where = conditions.isEmpty() ? "" : "WHERE " + String.join(" AND ", conditions);
+
+        Long total = namedParameterJdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM reporting_read.scholardex_publication_view " + where, params, Long.class);
+        long totalCount = total == null ? 0L : total;
+        int totalPages = totalCount == 0 ? 1 : (int) Math.ceil((double) totalCount / safeSize);
+        int safePage = Math.max(0, Math.min(page, totalPages - 1));
+
+        params.addValue("limit", safeSize);
+        params.addValue("offset", (long) safePage * safeSize);
+        List<ScholardexPublicationView> publications = namedParameterJdbcTemplate.query(
+                "SELECT * FROM reporting_read.scholardex_publication_view " + where
+                        + " ORDER BY " + safeSort + " " + safeDir + " LIMIT :limit OFFSET :offset",
+                params, this::mapPublication);
+
+        Set<String> authorKeys = publications.stream().flatMap(p -> p.getAuthors().stream()).collect(Collectors.toCollection(HashSet::new));
+        Set<String> forumKeys = publications.stream().map(ScholardexPublicationView::getForum)
+                .filter(f -> f != null && !f.isBlank()).collect(Collectors.toCollection(HashSet::new));
+        Map<String, ScholardexAuthorView> authorMap = findAuthorsByIdIn(authorKeys).stream()
+                .collect(Collectors.toMap(ScholardexAuthorView::getId, a -> a, (a, b) -> a, HashMap::new));
+        Map<String, ScholardexForumView> forumMap = findForumsByIdIn(forumKeys).stream()
+                .collect(Collectors.toMap(ScholardexForumView::getId, f -> f, (a, b) -> a, HashMap::new));
+        Map<String, PublicationAuthorshipDecisionAdminSummary> decisionMap = buildDecisionSummaryByPublicationId(publications);
+
+        return new PublicationCatalogPage(publications, authorMap, forumMap, decisionMap, totalCount, safePage, safeSize, totalPages);
+    }
 
     public ScholardexPublicationSearchView buildPublicationSearchView(String paperTitle) {
         String normalizedTitle = paperTitle == null ? "" : paperTitle.trim();
@@ -54,11 +129,13 @@ public class PostgresScholardexAdminReadPort {
         publications.forEach(publication -> authorKeys.addAll(publication.getAuthors()));
         Map<String, ScholardexAuthorView> authorMap = findAuthorsByIdIn(authorKeys).stream()
                 .collect(Collectors.toMap(ScholardexAuthorView::getId, author -> author));
+        Map<String, PublicationAuthorshipDecisionAdminSummary> decisionSummaryByPublicationId =
+                buildDecisionSummaryByPublicationId(publications);
 
-        return new ScholardexPublicationSearchView(publications, authorMap);
+        return new ScholardexPublicationSearchView(publications, authorMap, decisionSummaryByPublicationId);
     }
 
-    public Optional<ScholardexCitationsView> buildPublicationCitationsView(String publicationId) {
+    public Optional<ScholardexCitationsView> buildPublicationCitationsView(String publicationId, int page, int size) {
         if (publicationId == null || publicationId.isBlank()) {
             return Optional.empty();
         }
@@ -69,16 +146,13 @@ public class PostgresScholardexAdminReadPort {
         }
         ScholardexPublicationView publication = publicationOpt.get();
 
-        List<ScholardexCitationView> allByCited = namedParameterJdbcTemplate.query(
-                "SELECT cited_publication_id, citing_publication_id FROM reporting_read.mv_scholardex_citation_context WHERE cited_publication_id = :citedId",
-                new MapSqlParameterSource("citedId", publication.getId()),
-                (rs, rowNum) -> {
-                    ScholardexCitationView citation = new ScholardexCitationView();
-                    citation.setCitedId(rs.getString("cited_publication_id"));
-                    citation.setCitingId(rs.getString("citing_publication_id"));
-                    return citation;
-                }
-        );
+        int safeSize = (size == 50 || size == 100) ? size : 25;
+        Long totalCount = namedParameterJdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM reporting_read.mv_scholardex_citation_context WHERE cited_publication_id = :citedId",
+                new MapSqlParameterSource("citedId", publication.getId()), Long.class);
+        long total = totalCount == null ? 0L : totalCount;
+        int totalPages = total == 0 ? 1 : (int) Math.ceil((double) total / safeSize);
+        int safePage = Math.max(0, Math.min(page, totalPages - 1));
 
         List<ScholardexPublicationView> citations = namedParameterJdbcTemplate.query(
                 """
@@ -86,8 +160,12 @@ public class PostgresScholardexAdminReadPort {
                                citing_author_ids, citing_eid, citing_wos_id, citing_google_scholar_id
                         FROM reporting_read.mv_scholardex_citation_context
                         WHERE cited_publication_id = :citedId
+                        ORDER BY citing_cover_date DESC NULLS LAST, citing_title ASC
+                        LIMIT :limit OFFSET :offset
                         """,
-                new MapSqlParameterSource("citedId", publication.getId()),
+                new MapSqlParameterSource("citedId", publication.getId())
+                        .addValue("limit", safeSize)
+                        .addValue("offset", (long) safePage * safeSize),
                 (rs, rowNum) -> {
                     ScholardexPublicationView citing = new ScholardexPublicationView();
                     citing.setId(rs.getString("citing_publication_id"));
@@ -100,7 +178,6 @@ public class PostgresScholardexAdminReadPort {
                     return citing;
                 }
         );
-        PublicationOrderingSupport.sortPublicationsInPlace(citations);
 
         Set<String> authorKeys = new HashSet<>(publication.getAuthors());
         Set<String> forumKeys = new HashSet<>();
@@ -123,7 +200,11 @@ public class PostgresScholardexAdminReadPort {
                 publicationForum,
                 citations,
                 authorMap,
-                forumMap
+                forumMap,
+                total,
+                safePage,
+                safeSize,
+                totalPages
         ));
     }
 
@@ -247,6 +328,54 @@ public class PostgresScholardexAdminReadPort {
         forum.setEIssn(rs.getString("e_issn"));
         forum.setAggregationType(rs.getString("aggregation_type"));
         return forum;
+    }
+
+    private Map<String, PublicationAuthorshipDecisionAdminSummary> buildDecisionSummaryByPublicationId(
+            List<ScholardexPublicationView> publications) {
+        List<String> publicationIds = publications.stream()
+                .map(ScholardexPublicationView::getId)
+                .filter(id -> id != null && !id.isBlank())
+                .toList();
+        if (publicationIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<String, List<PublicationAuthorshipDecision>> decisionsByPublicationId =
+                publicationAuthorshipDecisionRepository.findByPublicationIdIn(publicationIds).stream()
+                        .filter(decision -> decision.getPublicationId() != null && !decision.getPublicationId().isBlank())
+                        .collect(Collectors.groupingBy(PublicationAuthorshipDecision::getPublicationId));
+
+        Map<String, PublicationAuthorshipDecisionAdminSummary> summaries = new HashMap<>();
+        decisionsByPublicationId.forEach((publicationId, decisions) -> {
+            int confirmedCount = (int) decisions.stream()
+                    .filter(decision -> decision.getStatus() == PublicationAuthorshipDecision.Status.CONFIRMED)
+                    .count();
+            int rejectedCount = (int) decisions.stream()
+                    .filter(decision -> decision.getStatus() == PublicationAuthorshipDecision.Status.REJECTED)
+                    .count();
+            PublicationAuthorshipDecision latestDecision = decisions.stream()
+                    .filter(decision -> decision.getUpdatedAt() != null)
+                    .max(java.util.Comparator.comparing(PublicationAuthorshipDecision::getUpdatedAt))
+                    .orElseGet(() -> decisions.get(0));
+            summaries.put(publicationId, new PublicationAuthorshipDecisionAdminSummary(
+                    decisions.size(),
+                    confirmedCount,
+                    rejectedCount,
+                    latestDecision.getStatus(),
+                    latestDecision.getUpdatedAt()
+            ));
+        });
+        return summaries;
+    }
+
+    public int bulkReassignForum(List<String> publicationIds, String newForumId) {
+        if (publicationIds == null || publicationIds.isEmpty()) return 0;
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("forumId", newForumId != null && !newForumId.isBlank() ? newForumId.trim() : null)
+                .addValue("ids", publicationIds);
+        return namedParameterJdbcTemplate.update(
+                "UPDATE reporting_read.scholardex_publication_view SET forum_id = :forumId WHERE id IN (:ids)",
+                params);
     }
 
     private List<String> toStringList(Array array) throws SQLException {

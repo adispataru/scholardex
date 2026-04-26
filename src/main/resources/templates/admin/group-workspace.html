@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${group.name} + ' — Workspace'">Group Workspace</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <div th:replace="~{fragments :: sidebar('groups')}"></div>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar(${group.name})}"></div>
+
+            <div class="container-fluid app-page-content">
+                <nav aria-label="Breadcrumb">
+                    <ol class="app-admin-breadcrumb">
+                        <li class="app-admin-breadcrumb__item">
+                            <a class="app-admin-breadcrumb__link" th:href="@{/admin/groups}">Groups</a>
+                        </li>
+                        <li class="app-admin-breadcrumb__item">
+                            <span class="app-admin-breadcrumb__current" aria-current="page"
+                                  th:text="${group.name}">Group</span>
+                        </li>
+                    </ol>
+                </nav>
+
+                <!-- Page-level toolbar: outside the tab bar so it's always visible -->
+                <div class="app-page-toolbar mb-3">
+                    <a th:href="@{/admin/groups/{id}/publications/exportCNFIS2025(id=${group.id})}"
+                       class="btn btn-sm btn-primary">
+                        <i class="fa-solid fa-download fa-sm text-white-50"></i> Export CNFIS
+                    </a>
+                    <a th:href="@{/admin/groups/{id}/publications/exportAllReports(id=${group.id})}"
+                       class="btn btn-sm btn-primary">
+                        <i class="fa-solid fa-download fa-sm text-white-50"></i> Export CNFIS zip
+                    </a>
+                    <a th:href="@{/admin/groups/{id}/publications/export(id=${group.id})}"
+                       class="btn btn-sm btn-primary">
+                        <i class="fa-solid fa-download fa-sm text-white-50"></i> Export CSV
+                    </a>
+                    <a th:href="@{/admin/groups/edit/{id}(id=${group.id})}"
+                       class="btn btn-sm btn-outline-secondary">
+                        <i class="fa-solid fa-pen-to-square fa-sm"></i> Edit
+                    </a>
+                </div>
+
+                <div class="app-dashboard">
+
+                    <div class="app-tab-bar"
+                         data-app-tab-bar
+                         data-app-tab-bar-callbacks="groupWorkspaceCallbacks">
+
+                        <div class="app-tab-bar__list" role="tablist" aria-label="Group sections">
+                            <button type="button" role="tab"
+                                    class="app-tab-bar__tab app-tab-bar__tab--active"
+                                    data-tab-id="overview"
+                                    aria-controls="tab-panel-overview"
+                                    aria-selected="true"
+                                    tabindex="0">
+                                <i class="fa-solid fa-circle-info app-tab-bar__tab-icon" aria-hidden="true"></i>
+                                <span>Overview</span>
+                            </button>
+                            <button type="button" role="tab"
+                                    class="app-tab-bar__tab"
+                                    data-tab-id="publications"
+                                    aria-controls="tab-panel-publications"
+                                    aria-selected="false"
+                                    tabindex="-1">
+                                <i class="fa-solid fa-file-lines app-tab-bar__tab-icon" aria-hidden="true"></i>
+                                <span>Publications</span>
+                            </button>
+                            <button type="button" role="tab"
+                                    class="app-tab-bar__tab"
+                                    data-tab-id="reports"
+                                    aria-controls="tab-panel-reports"
+                                    aria-selected="false"
+                                    tabindex="-1">
+                                <i class="fa-solid fa-chart-bar app-tab-bar__tab-icon" aria-hidden="true"></i>
+                                <span>Reports</span>
+                            </button>
+                        </div>
+
+                        <div class="app-tab-bar__panels">
+
+                            <!-- Overview tab -->
+                            <section id="tab-panel-overview"
+                                     role="tabpanel"
+                                     aria-labelledby="tab-trigger-overview"
+                                     class="app-tab-bar__panel app-tab-bar__panel--active">
+
+                                <!-- Summary card -->
+                                <div class="app-summary-panel mb-4">
+                                    <div class="app-summary-panel__header">
+                                        <h2 class="app-summary-panel__title" th:text="${group.name}">Group</h2>
+                                    </div>
+                                    <div class="app-summary-panel__body">
+                                        <p th:if="${group.description}" th:text="${group.description}">Description.</p>
+                                        <div class="row mt-2">
+                                            <div class="col-auto">
+                                                <span class="font-weight-bold">Total Publications: </span>
+                                                <span th:text="${publications.size()}">0</span>
+                                            </div>
+                                            <div class="col-auto">
+                                                <span class="font-weight-bold">Members: </span>
+                                                <span th:text="${group.memberIds.size()}">0</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Publications by year chart -->
+                                <div class="row">
+                                    <div class="col-12 mb-4">
+                                        <div class="card shadow py-2">
+                                            <div class="card-body">
+                                                <div class="font-weight-bold text-primary text-uppercase mb-3">Publications by Year (last 10)</div>
+                                                <canvas id="chart-publications"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Venue quality chart -->
+                                <div class="row">
+                                    <div class="col-12 mb-4">
+                                        <div class="card shadow py-2">
+                                            <div class="card-body">
+                                                <div class="font-weight-bold text-primary text-uppercase mb-3">Venue Quality Distribution by Year</div>
+                                                <canvas id="chart-venue-quality"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </section>
+
+                            <!-- Publications tab -->
+                            <section id="tab-panel-publications"
+                                     role="tabpanel"
+                                     aria-labelledby="tab-trigger-publications"
+                                     class="app-tab-bar__panel"
+                                     hidden>
+
+                                <div th:each="entry : ${publicationsByYear}"
+                                     class="app-table-section mb-4">
+                                    <div class="app-table-section__surface">
+                                        <div class="app-table-section__header app-table-toolbar">
+                                            <h6 class="app-table-section__title" th:text="${entry.key}">Year</h6>
+                                        </div>
+                                        <div class="app-table-section__body">
+                                            <div class="app-table-scroll">
+                                                <table class="table app-table" width="100%" cellspacing="0">
+                                                    <thead>
+                                                    <tr>
+                                                        <th>Title</th>
+                                                        <th>Year</th>
+                                                        <th>Authors</th>
+                                                        <th>Type</th>
+                                                        <th>Venue</th>
+                                                        <th>Citations</th>
+                                                    </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                    <tr th:each="publication : ${entry.value}">
+                                                        <td>
+                                                            <a th:href="@{/admin/scholardex/publications/citations(id=${publication.id})}"
+                                                               th:text="${publication.title}">Title</a>
+                                                        </td>
+                                                        <td th:text="${publication.coverDate}">Year</td>
+                                                        <td>
+                                                            <div th:each="author, iterStat : ${publication.authors}">
+                                                                <a th:if="${authorMap[publication.authors[iterStat.index]] != null}"
+                                                                   th:text="${authorMap[publication.authors[iterStat.index]].name}"
+                                                                   th:href="@{/admin/scholardex/publications(authorId=${author})}"></a>
+                                                                <span th:if="${authorMap[publication.authors[iterStat.index]] == null}"
+                                                                      th:text="${author}"></span>
+                                                            </div>
+                                                        </td>
+                                                        <td th:text="${publication.subtypeDescription}">Type</td>
+                                                        <td>
+                                                            <span th:if="${forumMap[publication.forum] != null}"
+                                                                  th:text="${forumMap[publication.forum].publicationName}"></span>
+                                                        </td>
+                                                        <td th:text="${publication.citedbyCount}">0</td>
+                                                    </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <th:block th:if="${publications.isEmpty()}">
+                                    <th:block th:replace="~{fragments :: admin-empty-state(
+                                        'No publications yet',
+                                        'No publications have been linked to this group.',
+                                        null, null)}"></th:block>
+                                </th:block>
+
+                            </section>
+
+                            <!-- Reports tab -->
+                            <section id="tab-panel-reports"
+                                     role="tabpanel"
+                                     aria-labelledby="tab-trigger-reports"
+                                     class="app-tab-bar__panel"
+                                     hidden>
+
+                                <div class="app-table-section">
+                                    <div class="app-table-section__surface">
+                                        <div class="app-table-section__header app-table-toolbar">
+                                            <h6 class="app-table-section__title">Individual Reports</h6>
+                                        </div>
+                                        <div class="app-table-section__body">
+                                            <div class="app-table-scroll">
+                                                <table class="table app-table" width="100%" cellspacing="0">
+                                                    <thead>
+                                                    <tr>
+                                                        <th>Title</th>
+                                                        <th>Actions</th>
+                                                    </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                    <tr th:each="report : ${individualReports}">
+                                                        <td th:text="${report.title}">Report Title</td>
+                                                        <td>
+                                                            <a th:href="@{/admin/groups/{gid}/reports/view/{id}(gid=${group.id},id=${report.id})}"
+                                                               class="btn btn-primary btn-sm">Apply</a>
+                                                        </td>
+                                                    </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </section>
+
+                        </div><!-- /.app-tab-bar__panels -->
+                    </div><!-- /[data-app-tab-bar] -->
+
+                </div><!-- /.app-dashboard -->
+            </div>
+
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+
+    <a class="scroll-to-top rounded" href="#page-top">
+        <i class="fa-solid fa-angle-up"></i>
+    </a>
+</div>
+
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+
+<script th:inline="javascript">
+    var _groupChartsInit = false;
+    var _countData = /*[[${publicationsCountByYear}]]*/ {};
+    var _venueClassCountByYear = /*[[${venueClassCountByYear}]]*/ {};
+
+    function initGroupCharts() {
+        if (_groupChartsInit) return;
+        _groupChartsInit = true;
+
+        var years = Object.keys(_countData)
+            .sort(function(a, b) { return Number(a) - Number(b); })
+            .slice(-10);
+        var counts = years.map(function(y) { return _countData[y]; });
+
+        var pubCtx = document.getElementById('chart-publications').getContext('2d');
+        new Chart(pubCtx, {
+            type: 'bar',
+            data: {
+                labels: years,
+                datasets: [{
+                    label: 'Publications',
+                    data: counts,
+                    backgroundColor: 'rgba(78, 115, 223, 0.5)',
+                    borderColor: 'rgba(78, 115, 223, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                aspectRatio: 3,
+                scales: {
+                    xAxes: [{ gridLines: { display: false } }],
+                    yAxes: [{ ticks: { beginAtZero: true, stepSize: 1 } }]
+                },
+                legend: { display: false }
+            }
+        });
+
+        var journalBuckets = ['Q1', 'Q2', 'Q3', 'Q4', 'SCOPUS'];
+        var conferenceBuckets = ['A_STAR', 'A', 'B', 'C', 'D', 'SCOPUS', 'LNCS'];
+        var bookLncsBuckets = ['BOOK_LNCS'];
+        var unrankedBuckets = ['Unranked'];
+        var venueBucketColors = {
+            'Q1': 'rgba(220, 53, 69, 0.82)', 'Q2': 'rgba(255, 193, 7, 0.85)',
+            'Q3': 'rgba(255, 255, 255, 0.96)', 'Q4': 'rgba(233, 236, 239, 0.96)',
+            'A_STAR': 'rgba(220, 53, 69, 0.82)', 'A': 'rgba(220, 53, 69, 0.82)',
+            'B': 'rgba(255, 193, 7, 0.85)', 'C': 'rgba(255, 255, 255, 0.96)',
+            'D': 'rgba(233, 236, 239, 0.96)', 'LNCS': 'rgba(86, 180, 233, 0.88)',
+            'BOOK_LNCS': 'rgba(0, 114, 178, 0.82)', 'SCOPUS': 'rgba(0, 158, 115, 0.82)',
+            'Unranked': 'rgba(90, 90, 90, 0.9)'
+        };
+        var venueBucketBorders = {
+            'Q1': 'rgba(220, 53, 69, 1)', 'Q2': 'rgba(196, 143, 0, 1)',
+            'Q3': 'rgba(173, 181, 189, 1)', 'Q4': 'rgba(173, 181, 189, 1)',
+            'A_STAR': 'rgba(220, 53, 69, 1)', 'A': 'rgba(220, 53, 69, 1)',
+            'B': 'rgba(196, 143, 0, 1)', 'C': 'rgba(173, 181, 189, 1)',
+            'D': 'rgba(173, 181, 189, 1)', 'LNCS': 'rgba(0, 114, 178, 1)',
+            'BOOK_LNCS': 'rgba(0, 78, 128, 1)', 'SCOPUS': 'rgba(0, 115, 85, 1)',
+            'Unranked': 'rgba(60, 60, 60, 1)'
+        };
+
+        var venueYears = Object.keys(_venueClassCountByYear)
+            .sort(function(a, b) { return Number(a) - Number(b); })
+            .slice(-10);
+
+        function buildStackedDatasets(bucketNames, stackName) {
+            return bucketNames.map(function(bucket) {
+                return {
+                    label: bucket,
+                    stack: stackName,
+                    data: venueYears.map(function(year) {
+                        return (_venueClassCountByYear[year] || {})[bucket] || 0;
+                    }),
+                    backgroundColor: venueBucketColors[bucket] || 'rgba(73, 80, 87, 0.9)',
+                    borderColor: venueBucketBorders[bucket] || 'rgba(52, 58, 64, 1)',
+                    borderWidth: 1
+                };
+            });
+        }
+
+        var venueDatasets = []
+            .concat(buildStackedDatasets(journalBuckets, 'journals'))
+            .concat(buildStackedDatasets(conferenceBuckets, 'conferences'))
+            .concat(buildStackedDatasets(bookLncsBuckets, 'book-lncs'))
+            .concat(buildStackedDatasets(unrankedBuckets, 'unranked'))
+            .filter(function(ds) { return ds.data.some(function(v) { return v > 0; }); });
+
+        var venueYearStackHeights = venueYears.map(function(year, index) {
+            return ['journals', 'conferences', 'book-lncs', 'unranked'].map(function(stackName) {
+                return venueDatasets
+                    .filter(function(ds) { return ds.stack === stackName; })
+                    .reduce(function(total, ds) { return total + (ds.data[index] || 0); }, 0);
+            });
+        });
+        var maxVenueStack = venueYearStackHeights.length
+            ? Math.max.apply(null, venueYearStackHeights.flat()) : 0;
+        var venueSuggestedMax = maxVenueStack > 0 ? Math.ceil(maxVenueStack * 1.1) : 1;
+
+        var venueCtx = document.getElementById('chart-venue-quality').getContext('2d');
+        new Chart(venueCtx, {
+            type: 'bar',
+            data: { labels: venueYears, datasets: venueDatasets },
+            options: {
+                aspectRatio: 3,
+                scales: {
+                    xAxes: [{ stacked: true, categoryPercentage: 0.7, barPercentage: 0.9, gridLines: { display: false } }],
+                    yAxes: [{ stacked: true, ticks: { beginAtZero: true, stepSize: 1, suggestedMax: venueSuggestedMax } }]
+                },
+                legend: { display: true }
+            }
+        });
+    }
+
+    window.groupWorkspaceCallbacks = {
+        overview: function() { initGroupCharts(); }
+    };
+
+    initGroupCharts();
+</script>
+
+</body>
+</html>

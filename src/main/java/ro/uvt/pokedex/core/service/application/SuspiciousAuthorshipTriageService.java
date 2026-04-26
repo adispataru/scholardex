@@ -2,7 +2,6 @@ package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.model.Researcher;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
@@ -44,20 +43,21 @@ public class SuspiciousAuthorshipTriageService {
             return Map.of();
         }
 
-        Researcher researcher = Researcher.fromUser(userOpt.get());
-        if (researcher == null) {
+        User user = userOpt.get();
+        if (user.getResearcherProfile() == null) {
             return Map.of();
         }
+        User.ResearcherProfile profile = user.getResearcherProfile();
 
         List<ScholardexAuthorView> researcherAuthors = scholardexProjectionReadService.findAuthorsByIdIn(
-                researcherAuthorLookupService.resolveAuthorLookupKeys(researcher)
+                researcherAuthorLookupService.resolveAuthorLookupKeys(profile)
         );
         Set<String> researcherAuthorIds = researcherAuthors.stream()
                 .map(ScholardexAuthorView::getId)
                 .filter(Objects::nonNull)
                 .collect(LinkedHashSet::new, Set::add, Set::addAll);
-        Set<String> researcherAffiliationScopeIds = researcherAffiliationScopeIds(researcher);
-        boolean affiliationScopeConfirmationRequired = requiresAffiliationScopeConfirmation(researcher);
+        Set<String> researcherAffiliationScopeIds = researcherAffiliationScopeIds(profile);
+        boolean affiliationScopeConfirmationRequired = requiresAffiliationScopeConfirmation(profile);
         Map<String, Map<String, Set<String>>> publicationAuthorAffiliationIds = preloadPublicationAuthorAffiliationIds(publications);
 
         Map<String, SuspiciousAuthorshipState> suspiciousByPublicationId = new LinkedHashMap<>();
@@ -77,7 +77,7 @@ public class SuspiciousAuthorshipTriageService {
                     .filter(Objects::nonNull)
                     .toList();
 
-            if (isNameMismatch(researcher, matchedPublicationAuthors)) {
+            if (isNameMismatch(profile, matchedPublicationAuthors)) {
                 flags.add(new SuspiciousAuthorshipState.Flag(
                         SuspiciousAuthorshipState.Code.NAME_MISMATCH,
                         "Matched author names do not align with your researcher profile."
@@ -95,7 +95,7 @@ public class SuspiciousAuthorshipTriageService {
                         "This publication is linked through affiliations outside your confirmed researcher affiliation scope."
                 ));
             }
-            if (isSecondaryIdOnly(researcher, publication, researcherAuthorIds)) {
+            if (isSecondaryIdOnly(profile, publication, researcherAuthorIds)) {
                 flags.add(new SuspiciousAuthorshipState.Flag(
                         SuspiciousAuthorshipState.Code.SECONDARY_ID_ONLY,
                         "This publication is linked through a secondary author identity, not your primary ScholarDex author."
@@ -109,13 +109,13 @@ public class SuspiciousAuthorshipTriageService {
         return suspiciousByPublicationId;
     }
 
-    private boolean isNameMismatch(Researcher researcher, List<ScholardexAuthorView> matchedPublicationAuthors) {
+    private boolean isNameMismatch(User.ResearcherProfile profile, List<ScholardexAuthorView> matchedPublicationAuthors) {
         if (matchedPublicationAuthors.isEmpty()) {
             return false;
         }
         for (ScholardexAuthorView matchedAuthor : matchedPublicationAuthors) {
-            if (namesLookLikeSamePerson(researcher, matchedAuthor.getName())
-                    || safeList(matchedAuthor.getAlternativeNames()).stream().anyMatch(name -> namesLookLikeSamePerson(researcher, name))) {
+            if (namesLookLikeSamePerson(profile, matchedAuthor.getName())
+                    || safeList(matchedAuthor.getAlternativeNames()).stream().anyMatch(name -> namesLookLikeSamePerson(profile, name))) {
                 return false;
             }
         }
@@ -147,10 +147,10 @@ public class SuspiciousAuthorshipTriageService {
         return !overlaps(publicationAffiliationIds, researcherAffiliationIds);
     }
 
-    private boolean isSecondaryIdOnly(Researcher researcher,
+    private boolean isSecondaryIdOnly(User.ResearcherProfile profile,
                                       ScholardexPublicationView publication,
                                       Set<String> researcherAuthorIds) {
-        String primaryAuthorId = researcher.getPrimaryScholardexAuthorId();
+        String primaryAuthorId = profile.getPrimaryScholardexAuthorId();
         if (primaryAuthorId == null || primaryAuthorId.isBlank()) {
             return false;
         }
@@ -161,11 +161,11 @@ public class SuspiciousAuthorshipTriageService {
         return publicationAuthorIds.stream().anyMatch(researcherAuthorIds::contains);
     }
 
-    private boolean namesLookLikeSamePerson(Researcher researcher, String candidateName) {
+    private boolean namesLookLikeSamePerson(User.ResearcherProfile profile, String candidateName) {
         if (candidateName == null || candidateName.isBlank()) {
             return false;
         }
-        NameParts researcherParts = NameParts.from(researcher.getFirstName(), researcher.getLastName());
+        NameParts researcherParts = NameParts.from(profile.getFirstName(), profile.getLastName());
         NameParts candidateParts = NameParts.from(candidateName);
         if (researcherParts.familyName().isBlank() || candidateParts.familyName().isBlank()) {
             return false;
@@ -203,26 +203,26 @@ public class SuspiciousAuthorshipTriageService {
         return values == null ? List.of() : values;
     }
 
-    private Set<String> researcherAffiliationScopeIds(Researcher researcher) {
+    private Set<String> researcherAffiliationScopeIds(User.ResearcherProfile profile) {
         LinkedHashSet<String> affiliationIds = new LinkedHashSet<>();
-        safeList(researcher.getCurrentAffiliationIds()).stream()
+        safeList(profile.getCurrentAffiliationIds()).stream()
                 .filter(Objects::nonNull)
                 .filter(id -> !id.isBlank())
                 .forEach(affiliationIds::add);
-        safeList(researcher.getPastAffiliationIds()).stream()
+        safeList(profile.getPastAffiliationIds()).stream()
                 .filter(Objects::nonNull)
                 .filter(id -> !id.isBlank())
                 .forEach(affiliationIds::add);
         return affiliationIds;
     }
 
-    private boolean requiresAffiliationScopeConfirmation(Researcher researcher) {
-        boolean hasLinkedIdentity = researcher.getPrimaryScholardexAuthorId() != null
-                && !researcher.getPrimaryScholardexAuthorId().isBlank();
+    private boolean requiresAffiliationScopeConfirmation(User.ResearcherProfile profile) {
+        boolean hasLinkedIdentity = profile.getPrimaryScholardexAuthorId() != null
+                && !profile.getPrimaryScholardexAuthorId().isBlank();
         hasLinkedIdentity = hasLinkedIdentity
-                || safeList(researcher.getScopusId()).stream().anyMatch(id -> id != null && !id.isBlank())
-                || safeList(researcher.getWosId()).stream().anyMatch(id -> id != null && !id.isBlank());
-        return hasLinkedIdentity && researcher.getAffiliationsConfirmedAt() == null;
+                || safeList(profile.getScopusId()).stream().anyMatch(id -> id != null && !id.isBlank())
+                || safeList(profile.getWosId()).stream().anyMatch(id -> id != null && !id.isBlank());
+        return hasLinkedIdentity && profile.getAffiliationsConfirmedAt() == null;
     }
 
     private Map<String, Map<String, Set<String>>> preloadPublicationAuthorAffiliationIds(List<ScholardexPublicationView> publications) {

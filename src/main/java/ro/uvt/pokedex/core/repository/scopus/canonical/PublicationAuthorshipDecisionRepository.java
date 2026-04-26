@@ -11,5 +11,6 @@ public interface PublicationAuthorshipDecisionRepository extends MongoRepository
     Optional<PublicationAuthorshipDecision> findByUserEmailAndPublicationId(String userEmail, String publicationId);
     List<PublicationAuthorshipDecision> findByUserEmailOrderByUpdatedAtDesc(String userEmail);
     List<PublicationAuthorshipDecision> findByUserEmailAndPublicationIdIn(String userEmail, Collection<String> publicationIds);
+    List<PublicationAuthorshipDecision> findByPublicationIdIn(Collection<String> publicationIds);
     long deleteByUserEmailAndPublicationId(String userEmail, String publicationId);
 }

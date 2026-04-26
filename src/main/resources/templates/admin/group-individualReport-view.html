@@ -37,7 +37,7 @@
                 </div>
 
                 <div class="table-responsive mt-3">
-                    <table class="table table-bordered">
+                    <table class="table">
                         <thead class="thead-light">
                         <tr>
                             <th>Name</th>
@@ -47,16 +47,16 @@
                         </tr>
                         </thead>
                         <tbody>
-                        <tr th:each="researcher : ${researchers}" th:if="${researcherScores[researcher.id] != null}">
-                            <td th:text="${researcher.name}">Researcher Name</td>
-                            <td th:text="${researcher.position}">Researcher Name</td>
+                        <tr th:each="researcher : ${researchers}" th:if="${researcherScores[researcher.email] != null}">
+                            <td th:text="${researcher.researcherProfile?.name}">Researcher Name</td>
+                            <td th:text="${researcher.researcherProfile?.position}">Researcher Name</td>
                             <td th:each="crit, stat : ${report.criteria}">
-                                <span th:text="${#numbers.formatDecimal(researcherScores[researcher.id][stat.index], 1, 2)}">0</span>
-                                <i th:if="${researcher.position != null
-                                    && !researcher.position.toString().equals('OTHER')
+                                <span th:text="${#numbers.formatDecimal(researcherScores[researcher.email][stat.index], 1, 2)}">0</span>
+                                <i th:if="${researcher.researcherProfile?.position != null
+                                    && !researcher.researcherProfile.position.toString().equals('OTHER')
                                     && criteriaThresholds[stat.index] != null
-                                    && criteriaThresholds[stat.index][researcher.position.toString()] != null
-                                    && researcherScores[researcher.id][stat.index] >= criteriaThresholds[stat.index][researcher.position.toString()]}"
+                                    && criteriaThresholds[stat.index][researcher.researcherProfile.position.toString()] != null
+                                    && researcherScores[researcher.email][stat.index] >= criteriaThresholds[stat.index][researcher.researcherProfile.position.toString()]}"
                                    class="fa-solid fa-check text-success ml-1"></i>
                             </td>
                         </tr>
