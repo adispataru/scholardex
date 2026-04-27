@@ -33,6 +33,36 @@ class AdminGroupReportsControllerContractTest {
     private GroupReportsManagementFacade groupReportsManagementFacade;
 
     @Test
+    void editGroupReportRendersSharedAdminFormBaseline() throws Exception {
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-1");
+        indicator.setName("Indicator One");
+
+        GroupReport report = new GroupReport();
+        report.setId("rep-1");
+        report.setTitle("Group Report");
+        report.setDescription("Report description");
+        report.setIndicators(new ArrayList<>(List.of(indicator)));
+        ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion criterion = new ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion();
+        criterion.setName("Research Impact");
+        criterion.setIndicatorIndices(new ArrayList<>(List.of(0)));
+        report.setCriteria(new ArrayList<>(List.of(criterion)));
+
+        when(groupReportsManagementFacade.findGroupReport("rep-1")).thenReturn(java.util.Optional.of(report));
+        when(groupReportsManagementFacade.listIndicators()).thenReturn(List.of(indicator));
+
+        mockMvc.perform(get("/admin/groupReports/edit/{id}", "rep-1"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.view().name("admin/edit-groupReport"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"group-report-admin-form\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("app-admin-form__header")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("aria-label=\"Breadcrumb\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("href=\"/admin/groupReports\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"indicatorsContainer\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"criteriaContainer\"")));
+    }
+
+    @Test
     void listDisplaysCriterionNamesWithFallback() throws Exception {
         GroupReport report = new GroupReport();
         report.setTitle("GR1");

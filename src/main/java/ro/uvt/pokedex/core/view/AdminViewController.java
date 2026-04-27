@@ -32,6 +32,7 @@ import ro.uvt.pokedex.core.service.application.RankingMaintenanceFacade;
 import ro.uvt.pokedex.core.service.application.model.AdminDashboardViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.AdminInstitutionPublicationsViewModel;
+import ro.uvt.pokedex.core.service.application.model.BreadcrumbItem;
 import ro.uvt.pokedex.core.service.application.model.StatCardDef;
 import ro.uvt.pokedex.core.service.application.model.WosEnrichmentRunSummaryDto;
 import ro.uvt.pokedex.core.service.UserService;
@@ -122,12 +123,16 @@ public class AdminViewController {
     }
 
     @GetMapping("/institutions/edit/{id}")
-    public String editInstitution(@PathVariable String id, Model model) {
-        Institution institution = adminCatalogFacade.findInstitutionById(id).orElse(null);
-        model.addAttribute("institution", institution);
-        List<ScholardexAffiliationView> allByCountry = adminCatalogFacade.listAffiliationsByCountry(Country);
-        model.addAttribute("allAffiliations", allByCountry);
-        return "admin/edit-institutions";
+    public String editInstitution(@PathVariable String id) {
+        return "redirect:/admin/institutions";
+    }
+
+    @GetMapping("/institutions/{id}/edit-data")
+    @ResponseBody
+    public ResponseEntity<Institution> getInstitutionEditData(@PathVariable String id) {
+        return adminCatalogFacade.findInstitutionById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/institutions/{id}")
@@ -305,6 +310,7 @@ public class AdminViewController {
         Optional<Indicator> byId = adminCatalogFacade.findIndicatorById(id);
         if(byId.isPresent()) {
             model.addAttribute("indicator", byId.get());
+            model.addAttribute("adminFormObject", byId.get());
             List<Indicator.Strategy> scoringStrategies =  Arrays.asList(
                     Indicator.Strategy.values()
             );
@@ -321,6 +327,10 @@ public class AdminViewController {
             model.addAttribute("types", types);
             model.addAttribute("domains", domains);
             model.addAttribute("selectors", Indicator.Selector.values());
+            model.addAttribute("breadcrumbs", List.of(
+                    new BreadcrumbItem("Indicators", "/admin/indicators"),
+                    new BreadcrumbItem(byId.get().getName() == null ? "Edit Indicator" : byId.get().getName())
+            ));
             return "admin/indicators-edit";
         }else {
             return "redirect:/admin/indicators";
@@ -355,17 +365,16 @@ public class AdminViewController {
     }
 
     @GetMapping("/domains/edit/{id}")
-    public String editDomain(@PathVariable String id, Model model) {
-        Optional<Domain> byId = adminCatalogFacade.findDomainById(id);
-        if(byId.isPresent()) {
-            List<String> allWosCategories = adminCatalogFacade.listWosCategories();
-            model.addAttribute("domain", byId.get());
-            model.addAttribute("allWosCategories", allWosCategories);
-            return "admin/domains-edit";
-        }else{
-            return "redirect:/admin/domains";
-        }
+    public String editDomain(@PathVariable String id) {
+        return "redirect:/admin/domains";
+    }
 
+    @GetMapping("/domains/{id}/edit-data")
+    @ResponseBody
+    public ResponseEntity<Domain> getDomainEditData(@PathVariable String id) {
+        return adminCatalogFacade.findDomainById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping("/domains/create")
@@ -398,17 +407,26 @@ public class AdminViewController {
     }
 
     @GetMapping("/scholardex/forums/edit/{id}")
-    public String editScholardexForumPage(Model model, @PathVariable String id) {
-        Optional<ScholardexForumView> venue = adminCatalogFacade.findScopusVenueById(id);
-        venue.ifPresent(v-> model.addAttribute("forum", v));
-        return "admin/scholardex-editForum";
+    public String editScholardexForumPage(@PathVariable String id) {
+        return "redirect:/admin/scholardex/forums";
+    }
+
+    @GetMapping("/scholardex/forums/{id}/edit-data")
+    @ResponseBody
+    public ResponseEntity<ScholardexForumView> getScholardexForumEditData(@PathVariable String id) {
+        return adminCatalogFacade.findScopusVenueById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping("/scholardex/forums/edit/{id}")
-    public String updateScholardexForum(@ModelAttribute("forum") ScholardexForumView forum, RedirectAttributes redirectAttributes) {
+    public String updateScholardexForum(@PathVariable String id, @ModelAttribute("forum") ScholardexForumView forum, RedirectAttributes redirectAttributes) {
+        if (forum.getId() == null || forum.getId().isBlank()) {
+            forum.setId(id);
+        }
         adminCatalogFacade.saveScopusVenue(forum);
         redirectAttributes.addFlashAttribute("message", "Forum updated successfully!");
-        return "redirect:/admin/scholardex/forums/edit/" + forum.getId();
+        return "redirect:/admin/scholardex/forums";
     }
 
     @GetMapping("/scholardex/authors")
@@ -432,14 +450,23 @@ public class AdminViewController {
     }
 
     @GetMapping("/scholardex/affiliations/edit/{id}")
-    public String editScholardexAffiliationsPage(Model model, @PathVariable String id) {
-        Optional<ScholardexAffiliationView> byId = adminCatalogFacade.findScopusAffiliationById(id);
-        byId.ifPresent(v-> model.addAttribute("affiliation", v));
-        return "admin/scholardex-editAffiliation";
+    public String editScholardexAffiliationsPage(@PathVariable String id) {
+        return "redirect:/admin/scholardex/affiliations";
+    }
+
+    @GetMapping("/scholardex/affiliations/{id}/edit-data")
+    @ResponseBody
+    public ResponseEntity<ScholardexAffiliationView> getScholardexAffiliationEditData(@PathVariable String id) {
+        return adminCatalogFacade.findScopusAffiliationById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping("/scholardex/affiliations/edit/{id}")
     public String updateScholardexAffiliations(@ModelAttribute("affiliation") ScholardexAffiliationView affiliation, RedirectAttributes redirectAttributes, @PathVariable String id) {
+        if (affiliation.getAfid() == null || affiliation.getAfid().isBlank()) {
+            affiliation.setAfid(id);
+        }
         adminCatalogFacade.saveScopusAffiliation(affiliation);
         redirectAttributes.addFlashAttribute("message", "Affiliation updated successfully!");
         return "redirect:/admin/scholardex/affiliations";

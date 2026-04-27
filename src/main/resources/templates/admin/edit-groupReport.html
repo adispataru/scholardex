@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Edit Individual Report</title>
+    <title>Edit Group Report</title>
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
 </head>
 <body id="page-top">
@@ -14,43 +14,43 @@
     <!-- Content Wrapper -->
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar('Edit Individual Report')}"></div>
+            <div th:replace="~{fragments :: navbar('Edit Group Report')}"></div>
             <div class="container-fluid app-page-content">
                 <div class="app-workflow">
-                <p class="app-workflow__intro">Update the report structure, group assignments, indicators, criteria, and thresholds in one editor.</p>
+                    <th:block th:replace="~{fragments :: admin-breadcrumb(${breadcrumbs})}"></th:block>
+                    <p class="app-workflow__intro">Update the report structure, group assignments, indicators, criteria, and thresholds in one editor.</p>
 
-                <div class="app-form-surface">
-                    <div class="app-form-surface__panel">
-                    <div class="app-form-surface__header">
-                        <h6 class="app-form-surface__title">Edit Group Report</h6>
-                    </div>
-                    <div class="app-form-surface__body">
-                        <form th:action="@{/admin/groupReports/update}" th:object="${groupReport}" method="post">
-                            <div class="form-group">
-                                <input type="text" class="form-control" id="reportId" th:field="*{id}" hidden>
-                            </div>
-                            <div class="app-form-section mb-3">
-                                <div class="app-form-section__header">
-                                    <h3 class="app-form-section__title">Report metadata</h3>
-                                    <p class="app-form-section__description">Start with the report title and summary, then manage indicators and criteria in the builder sections below.</p>
+                    <form th:replace="~{fragments :: admin-form(
+                              id='group-report-admin-form',
+                              action=@{/admin/groupReports/update},
+                              method='post',
+                              title='Edit Group Report',
+                              sections=~{::#group-report-form-sections},
+                              submitLabel='Update',
+                              cancelHref=@{/admin/groupReports})}">
+                        <th:block id="group-report-form-sections">
+                        <input type="hidden" class="form-control" id="reportId" th:field="*{id}">
+                        <th:block th:replace="~{fragments :: admin-form-section(
+                            title='Report metadata',
+                            helperText='Start with the report title and summary, then manage indicators and criteria in the builder sections below.',
+                            body=~{::#group-report-metadata-fields})}">
+                            <div id="group-report-metadata-fields" class="app-form-grid app-form-grid--two-up">
+                                <div class="form-group app-form-field">
+                                    <label for="reportTitle">Title</label>
+                                    <input type="text" class="form-control" id="reportTitle" th:field="*{title}" required>
                                 </div>
-                            <div class="app-form-grid app-form-grid--two-up">
-                            <div class="form-group app-form-field">
-                                <label for="reportTitle">Title</label>
-                                <input type="text" class="form-control" id="reportTitle" th:field="*{title}" required>
+                                <div class="form-group app-form-field app-form-grid--full">
+                                    <label for="reportDescription">Description</label>
+                                    <textarea class="form-control" id="reportDescription" th:field="*{description}" required></textarea>
+                                </div>
                             </div>
-                            <div class="form-group app-form-field app-form-grid--full">
-                                <label for="reportDescription">Description</label>
-                                <textarea class="form-control" id="reportDescription" th:field="*{description}" required></textarea>
-                            </div>
-                            </div>
-                            </div>
+                        </th:block>
 
-                            <div class="form-group app-form-field app-form-section">
-                                <div class="app-form-section__header">
-                                    <h3 class="app-form-section__title">Report indicators</h3>
-                                    <p class="app-form-section__description">Control the source indicators available to the criteria builder.</p>
-                                </div>
+                        <th:block th:replace="~{fragments :: admin-form-section(
+                            title='Report indicators',
+                            helperText='Control the source indicators available to the criteria builder.',
+                            body=~{::#group-report-indicators-fields})}">
+                            <div id="group-report-indicators-fields" class="app-form-field">
                                 <label for="reportIndicators">Indicators</label>
                                 <div id="indicatorsContainer" class="app-collection">
                                     <div class="input-group mb-2 app-collection__item" th:each="indicator, iterStat : *{indicators}">
@@ -60,17 +60,17 @@
                                         <button class="btn btn-danger remove-indicator" type="button">Remove</button>
                                     </div>
                                 </div>
-                                <div class="app-collection__actions">
+                                <div class="app-form-actions app-form-actions--inline">
                                     <button id="addIndicator" class="btn btn-primary" type="button">Add Indicator</button>
                                 </div>
                             </div>
+                        </th:block>
 
-                            <!-- Criteria Section -->
-                            <div class="form-group app-form-field app-form-section">
-                                <div class="app-form-section__header">
-                                    <h3 class="app-form-section__title">Criteria builder</h3>
-                                    <p class="app-form-section__description">Each criterion can map indicators and threshold positions without leaving this editor.</p>
-                                </div>
+                        <th:block th:replace="~{fragments :: admin-form-section(
+                            title='Criteria builder',
+                            helperText='Each criterion can map indicators and threshold positions without leaving this editor.',
+                            body=~{::#group-report-criteria-fields})}">
+                            <div id="group-report-criteria-fields" class="app-form-field">
                                 <label for="criteria">Criteria</label>
                                 <div id="criteriaContainer" class="app-collection">
                                     <div class="card mb-2 app-builder-card" th:each="criterion, critIndex : *{criteria}">
@@ -105,18 +105,13 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="app-collection__actions">
+                                <div class="app-form-actions app-form-actions--inline">
                                     <button id="addCriterion" class="btn btn-primary" type="button">Add Criterion</button>
                                 </div>
                             </div>
-
-                            <div class="app-form-actions">
-                                <button type="submit" class="btn btn-primary">Update</button>
-                            </div>
-                        </form>
-                    </div>
-                    </div>
-                </div>
+                        </th:block>
+                        </th:block>
+                    </form>
                 </div>
             </div>
 

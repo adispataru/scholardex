@@ -7,7 +7,9 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ro.uvt.pokedex.core.model.reporting.GroupReport;
+import ro.uvt.pokedex.core.model.reporting.Position;
 import ro.uvt.pokedex.core.service.application.GroupReportsManagementFacade;
+import ro.uvt.pokedex.core.service.application.model.BreadcrumbItem;
 
 import java.util.List;
 
@@ -38,19 +40,30 @@ public class AdminGroupReportsController {
     @GetMapping("/edit/{id}")
     public String editGroupReport(@PathVariable String id, Model model) {
         GroupReport groupReport = groupReportsManagementFacade.findGroupReport(id).orElse(null);
-        model.addAttribute("groupReport", groupReport);
-        model.addAttribute("allIndicators", groupReportsManagementFacade.listIndicators());
-        model.addAttribute("reportIndicators", groupReport != null ? groupReport.getIndicators() : List.of());
+        populateGroupReportEditModel(model, groupReport);
         return "admin/edit-groupReport";
     }
 
     @GetMapping("/apply/{id}")
     public String applyGroupReport(@PathVariable String id, Model model) {
         GroupReport groupReport = groupReportsManagementFacade.findGroupReport(id).orElse(null);
+        populateGroupReportEditModel(model, groupReport);
+        return "admin/edit-groupReport";
+    }
+
+    private void populateGroupReportEditModel(Model model, GroupReport groupReport) {
         model.addAttribute("groupReport", groupReport);
+        model.addAttribute("adminFormObject", groupReport);
         model.addAttribute("allIndicators", groupReportsManagementFacade.listIndicators());
         model.addAttribute("reportIndicators", groupReport != null ? groupReport.getIndicators() : List.of());
-        return "admin/edit-groupReport";
+        model.addAttribute("allPositions", Position.values());
+        String label = groupReport == null || groupReport.getTitle() == null
+                ? "Edit Group Report"
+                : groupReport.getTitle();
+        model.addAttribute("breadcrumbs", List.of(
+                new BreadcrumbItem("Group Reports", "/admin/groupReports"),
+                new BreadcrumbItem(label)
+        ));
     }
 
     @PostMapping("/update")

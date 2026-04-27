@@ -21,109 +21,106 @@
             <!-- Begin Page Content -->
             <div class="container-fluid app-page-content">
                 <div class="app-workflow">
-                <p class="app-workflow__intro">Edit indicator rules, including year ranges, formulas, and activity mappings, with the guidance needed on the page.</p>
+                    <th:block th:replace="~{fragments :: admin-breadcrumb(${breadcrumbs})}"></th:block>
+                    <p class="app-workflow__intro">Edit indicator rules, including year ranges, formulas, and activity mappings, with the guidance needed on the page.</p>
 
-                <div class="app-form-surface">
-                    <div class="app-form-surface__panel">
-                    <div class="app-form-surface__header">
-                        <h6 class="app-form-surface__title">Update Indicator</h6>
-                    </div>
-                    <div class="app-form-surface__body">
-                        <form th:action="@{/admin/indicators/update}" th:object="${indicator}" method="post">
-                            <input type="text" class="form-control" id="indicatorId" th:field="*{id}" hidden>
-                            <div class="app-form-section mb-3">
-                                <div class="app-form-section__header">
-                                    <h6 class="app-form-section__title" th:text="${indicator.name}"></h6>
-                                    <p class="app-form-section__description">Review the indicator identity and scoring rules together so the formula stays legible and auditable.</p>
+                    <form th:replace="~{fragments :: admin-form(
+                              id='indicator-admin-form',
+                              action=@{/admin/indicators/update},
+                              method='post',
+                              title='Update Indicator',
+                              sections=~{::#indicator-form-sections},
+                              submitLabel='Update',
+                              cancelHref=@{/admin/indicators})}">
+                        <th:block id="indicator-form-sections">
+                        <input type="hidden" class="form-control" id="indicatorId" th:field="*{id}">
+                        <th:block th:replace="~{fragments :: admin-form-section(
+                            title='Indicator identity',
+                            helperText='Review the indicator identity and activity mapping so scoring rules stay connected to the right source data.',
+                            body=~{::#indicator-identity-fields})}">
+                            <div id="indicator-identity-fields" class="app-form-grid app-form-grid--two-up">
+                                <div class="form-group app-form-field">
+                                    <label for="criterionName">Name</label>
+                                    <input type="text" class="form-control" id="criterionName" th:field="*{name}" required>
                                 </div>
-                                <div class="app-form-grid app-form-grid--two-up">
-                                    <div class="form-group app-form-field">
-                                        <label for="criterionName">Name</label>
-                                        <input type="text" class="form-control" id="criterionName" th:field="*{name}" required>
-                                    </div>
-                                    <div class="form-group app-form-field">
-                                        <label for="domain">Domain</label>
-                                        <select class="form-control" id="domain" th:field="*{domain}" required>
-                                            <option th:each="d : ${domains}" th:value="${d.name}" th:text="${d.name}"></option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group app-form-field">
-                                        <label for="criterionOutputType">Applies To</label>
-                                        <select class="form-control" id="criterionOutputType" th:field="*{outputType}" required>
-                                            <option th:each="ctype : ${types}" th:value="${ctype}" th:text="${ctype}"></option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group app-form-field">
-                                        <label for="activity">Activity</label>
-                                        <select class="form-control" id="activity"
-                                                data-sync-selected-description-target="#activityDescription"
-                                                th:field="*{activity}">
-                                            <option th:value="${null}"
-                                                    th:attr="data-description='No Activity selected'">
-                                                None
-                                            </option>
-                                            <option
-                                                    th:each="act : ${activities}"
-                                                    th:value="${act.id}"
-                                                    th:text="${act.name}"
-                                                    th:attr="data-description=${activityDescriptions[act.id]}">
-                                            </option>
-                                        </select>
-                                        <small id="activityDescription" class="app-form-help-inline"></small>
-                                    </div>
+                                <div class="form-group app-form-field">
+                                    <label for="domain">Domain</label>
+                                    <select class="form-control" id="domain" th:field="*{domain}" required>
+                                        <option th:each="d : ${domains}" th:value="${d.name}" th:text="${d.name}"></option>
+                                    </select>
                                 </div>
-                            </div>
-                            <div class="app-form-section">
-                                <div class="app-form-section__header">
-                                    <h6 class="app-form-section__title">Scoring rules</h6>
+                                <div class="form-group app-form-field">
+                                    <label for="criterionOutputType">Applies To</label>
+                                    <select class="form-control" id="criterionOutputType" th:field="*{outputType}" required>
+                                        <option th:each="ctype : ${types}" th:value="${ctype}" th:text="${ctype}"></option>
+                                    </select>
                                 </div>
-                                <div class="app-form-grid">
-                            <div class="form-group app-form-field">
-                                <label for="criterionFormula">Indicator Years</label>
-                                <input type="text" class="form-control" id="scoringYearRange" th:field="*{yearRange}" required>
-                                <ul class="app-form-help-list">
-                                    <li>Use `*` for any year.</li>
-                                    <li>Use explicit ranges like `2017->2019,2021->2023`.</li>
-                                </ul>
-                            </div>
-                            <div class="form-group app-form-field">
-                                <label for="scoringStrategy">Scoring Strategy</label>
-                                <select class="form-control" id="scoringStrategy" th:field="*{scoringStrategy}" required>
-                                    <option th:each="strategy : ${scoringStrategies}" th:value="${strategy}" th:text="${strategy}"></option>
-                                </select>
-                            </div>
-                            <div class="form-group app-form-field">
-                                <label for="criterionFormula">Scoring Years</label>
-                                <input type="text" class="form-control" id="yearRange" th:field="*{scoreYearRange}" required>
-                                <ul class="app-form-help-list">
-                                    <li>Use exact years or ranges.</li>
-                                    <li>You may reference item year as `IY` and ranges like `IY-1->IY+3,IY+5`.</li>
-                                </ul>
-                            </div>
-                            <div class="form-group app-form-field">
-                                <label for="criterionFormula">Formula</label>
-                                <textarea class="form-control" id="criterionFormula" th:field="*{formula}" required></textarea>
-                                <ul class="app-form-help-list">
-                                    <li>Available variables include `N` for author count and `S` for publication score.</li>
-                                    <li>Supported syntax includes `+`, `-`, `*`, `/`, `max(x,y)`, `min(x,y)`, and ternary conditions.</li>
-                                    <li>Example: `(S > 1.0) ? (3 + 3 * S) : (3 + S)`.</li>
-                                </ul>
-                            </div>
-                            <div class="form-group app-form-field">
-                                <label for="selector">Final Selector</label>
-                                <select class="form-control" id="selector" th:field="*{selector}" required>
-                                    <option th:each="selector : ${selectors}" th:value="${selector}" th:text="${selector}"></option>
-                                </select>
-                            </div>
+                                <div class="form-group app-form-field">
+                                    <label for="activity">Activity</label>
+                                    <select class="form-control" id="activity"
+                                            data-sync-selected-description-target="#activityDescription"
+                                            th:field="*{activity}">
+                                        <option th:value="${null}"
+                                                th:attr="data-description='No Activity selected'">
+                                            None
+                                        </option>
+                                        <option
+                                                th:each="act : ${activities}"
+                                                th:value="${act.id}"
+                                                th:text="${act.name}"
+                                                th:attr="data-description=${activityDescriptions[act.id]}">
+                                        </option>
+                                    </select>
+                                    <small id="activityDescription" class="app-form-help-inline"></small>
                                 </div>
                             </div>
-                            <div class="app-form-actions">
-                                <button type="submit" class="btn btn-primary">Update</button>
+                        </th:block>
+                        <th:block th:replace="~{fragments :: admin-form-section(
+                            title='Scoring rules',
+                            helperText='Configure the year windows, strategy, formula, and final selector used when scores are calculated.',
+                            body=~{::#indicator-scoring-fields})}">
+                            <div id="indicator-scoring-fields" class="app-form-grid">
+                                <div class="form-group app-form-field">
+                                    <label for="scoringYearRange">Indicator Years</label>
+                                    <input type="text" class="form-control" id="scoringYearRange" th:field="*{yearRange}" required>
+                                    <ul class="app-form-help-list">
+                                        <li>Use `*` for any year.</li>
+                                        <li>Use explicit ranges like `2017->2019,2021->2023`.</li>
+                                    </ul>
+                                </div>
+                                <div class="form-group app-form-field">
+                                    <label for="scoringStrategy">Scoring Strategy</label>
+                                    <select class="form-control" id="scoringStrategy" th:field="*{scoringStrategy}" required>
+                                        <option th:each="strategy : ${scoringStrategies}" th:value="${strategy}" th:text="${strategy}"></option>
+                                    </select>
+                                </div>
+                                <div class="form-group app-form-field">
+                                    <label for="yearRange">Scoring Years</label>
+                                    <input type="text" class="form-control" id="yearRange" th:field="*{scoreYearRange}" required>
+                                    <ul class="app-form-help-list">
+                                        <li>Use exact years or ranges.</li>
+                                        <li>You may reference item year as `IY` and ranges like `IY-1->IY+3,IY+5`.</li>
+                                    </ul>
+                                </div>
+                                <div class="form-group app-form-field">
+                                    <label for="criterionFormula">Formula</label>
+                                    <textarea class="form-control" id="criterionFormula" th:field="*{formula}" required></textarea>
+                                    <ul class="app-form-help-list">
+                                        <li>Available variables include `N` for author count and `S` for publication score.</li>
+                                        <li>Supported syntax includes `+`, `-`, `*`, `/`, `max(x,y)`, `min(x,y)`, and ternary conditions.</li>
+                                        <li>Example: `(S > 1.0) ? (3 + 3 * S) : (3 + S)`.</li>
+                                    </ul>
+                                </div>
+                                <div class="form-group app-form-field">
+                                    <label for="selector">Final Selector</label>
+                                    <select class="form-control" id="selector" th:field="*{selector}" required>
+                                        <option th:each="selector : ${selectors}" th:value="${selector}" th:text="${selector}"></option>
+                                    </select>
+                                </div>
                             </div>
-                        </form>
-                    </div>
-                    </div>
-                </div>
+                        </th:block>
+                        </th:block>
+                    </form>
                 </div>
             </div>
             <!-- End of Main Content -->

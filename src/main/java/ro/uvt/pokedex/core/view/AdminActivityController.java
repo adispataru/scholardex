@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.reporting.ActivityIndicator;
 import ro.uvt.pokedex.core.service.application.ActivityManagementFacade;
+import ro.uvt.pokedex.core.service.application.model.BreadcrumbItem;
 
 import java.util.List;
 import java.util.Map;
@@ -45,7 +46,12 @@ public class AdminActivityController {
         Optional<Activity> byId = activityManagementFacade.findActivity(id);
         if (byId.isPresent()) {
             model.addAttribute("activity", byId.get());
+            model.addAttribute("adminFormObject", byId.get());
             model.addAttribute("referenceTypes", Activity.ReferenceField.values());
+            model.addAttribute("breadcrumbs", List.of(
+                    new BreadcrumbItem("Activities", "/admin/activities"),
+                    new BreadcrumbItem(byId.get().getName() == null ? "Edit Activity" : byId.get().getName())
+            ));
             return "admin/activities-edit";
         } else {
             return "redirect:/admin/activities";

@@ -764,7 +764,7 @@ Done history moved to `TASKS-done.md`.
     - Filed remaining ad-hoc usages in `docs/tasks/active/component-library-debt.md` for future focused migrations.
     - Completed the H44 verification closeout with build, asset/template/route/UI guardrails, and Java compilation.
 
-- [ ] `H45` Phase C — Admin Form Modernization (Tier 2.2 Option D).
+- [x] `H45` Phase C — Admin Form Modernization (Tier 2.2 Option D). *(completed 2026-04-27)*
   Goal: modernize admin edit workflows by collapsing short edit pages into row-edit modals powered by the shared `modal-shell` fragment, while keeping genuinely long configuration forms as dedicated pages using the shared `admin-form` baseline.
   Design reference: `docs/tasks/active/ux-redesign-plan-after-tier1.md` §2.2 Option D and Phase C.
   UX guide reference: `docs/ux-design-guide.md` §6.2, §6.3, §6.5, §6.6, §6.7, §8.1, §8.2.
@@ -772,44 +772,93 @@ Done history moved to `TASKS-done.md`.
 
   Subtasks:
 
-  - [ ] `H45.1` **Admin edit form inventory and modal/dedicated classification.**
+  - [x] `H45.1` **Admin edit form inventory and modal/dedicated classification.** *(completed 2026-04-27)*
     Audit the Tier 2.2 candidate edit pages and record the chosen treatment at the top of the implementation handoff. Default rule: convert forms with simple scalar fields or shallow lists to row-edit modals; keep forms with nested repeaters, builders, or many related collections as dedicated pages.
     Initial classification: convert `scholardex-editForum.html`, `scholardex-editAffiliation.html`, `edit-institutions.html`, and `domains-edit.html` to modals; keep `edit-group.html`, `activities-edit.html`, `edit-individualReport.html`, `edit-groupReport.html`, `indicators-edit.html`, and `activity-indicators.html` as dedicated surfaces unless the audit proves a form is simpler than it currently appears.
     Exit criteria: each candidate form has an explicit modal-vs-dedicated decision before migration starts.
+    Handover:
+    - Modal conversions confirmed for `scholardex-editForum.html` and `scholardex-editAffiliation.html`: both are scalar-only edit forms (forum: name/ISSN/eISSN/ISBN/aggregation type/publisher; affiliation: name/city/country) and their parent catalogs already render async action columns from `admin-scholardex-forums.js` / `admin-scholardex-affiliations.js`.
+    - Modal conversions confirmed for `edit-institutions.html` and `domains-edit.html`: both are shallow list forms that match their existing create-modal workflows (institution profile plus Scopus/WoS affiliation rows; domain details plus WoS category rows). Keep saves on the existing create/update contracts unless H45.3/H45.4 choose JSON for smoother row refresh.
+    - Dedicated pages confirmed for `edit-group.html` and `activities-edit.html`: group editing has dynamic domain/member collections plus workspace navigation, and activity editing has nested fields, allowed values, and reference-field repeaters. Migrate their layout to `admin-form` in H45.5 instead of forcing them into modals.
+    - Dedicated pages confirmed for `edit-individualReport.html`, `edit-groupReport.html`, and `indicators-edit.html`: report definitions and indicators contain criteria, thresholds, scoring strategies, formula/configuration fields, and dynamic builders. `edit-individualReport.html` already uses the shared `admin-form` pilot from H44.7; H45.6 should finish the same baseline for the remaining report/indicator pages.
+    - `activity-indicators.html` is not a standalone edit-template candidate in current code; it is a list/create/delete configuration surface returned by `AdminActivityController#getActivityIndicators`. Treat it as a dedicated configuration surface if touched during H45.6, not as a row-edit modal migration target.
 
-  - [ ] `H45.2` **Scholardex forum and affiliation row-edit modals.**
+  - [x] `H45.2` **Scholardex forum and affiliation row-edit modals.** *(completed 2026-04-27)*
     Replace `admin/scholardex-editForum.html` and `admin/scholardex-editAffiliation.html` with row-edit modals on `admin/scholardex-forums.html` and `admin/scholardex-affiliations.html`.
     Use `modal-shell`, row Edit icon buttons, preloaded row data or a compact JSON/detail endpoint, existing save facades, toast feedback, and focus return. Redirect old edit URLs back to the parent catalog.
     Exit criteria: forum and affiliation edits complete without leaving the catalog pages; old edit templates are unused.
+    Handover:
+    - `admin/scholardex-forums.html` now includes an `editForumModal` shared `modal-shell`; the async table action renders an Edit button instead of a full-page edit link.
+    - `admin-scholardex-forums.js` fetches `/admin/scholardex/forums/{id}/edit-data`, populates the modal, posts the existing `/admin/scholardex/forums/edit/{id}` form contract with CSRF headers, closes the modal, shows a toast, and refreshes the current table page.
+    - `admin/scholardex-affiliations.html` now includes an `editAffiliationModal` shared `modal-shell`; the async table action renders Publications + Edit actions and removes the name-as-edit-link pattern.
+    - `admin-scholardex-affiliations.js` fetches `/admin/scholardex/affiliations/{id}/edit-data`, posts the existing `/admin/scholardex/affiliations/edit/{id}` contract with CSRF headers, closes the modal, shows a toast, and refreshes the current table page.
+    - `AdminViewController` legacy edit GET routes now redirect to their parent catalogs; compact JSON edit-data endpoints serve modal population; POST handlers keep the existing save facades and now redirect to parent catalogs.
+    - Focused verification passed: `./gradlew test --tests '*AdminViewControllerContractTest' -q`, `npm run build`, `npm run verify-assets`, `npm run verify-template-assets`, `npm run verify-route-guardrails`, `npm run verify-ui-guardrails`, and `./gradlew compileJava`.
 
-  - [ ] `H45.3` **Institution row-edit modal.**
+  - [x] `H45.3` **Institution row-edit modal.** *(completed 2026-04-27)*
     Move `admin/edit-institutions.html` into an edit modal on `admin/institutions.html`, preserving name, description, Scopus affiliation mapping, and WoS affiliation fields.
     Keep existing create/delete behavior intact, and make Save update the row or refresh the page consistently after success.
     Exit criteria: institution edits happen from the institutions list; `/admin/institutions/edit/{id}` redirects to `/admin/institutions`.
+    Handover:
+    - `admin/institutions.html` now renders an `editInstitutionModal` shared `modal-shell` beside the existing create modal. Row actions use an Edit button with `data-edit-institution-id` instead of navigating to the standalone edit page.
+    - The modal preserves institution name/description, Scopus affiliation rows, and WoS affiliation rows. It reuses the existing `/admin/institutions/update` POST contract and refreshes the page after a successful modal save so the server-rendered table stays authoritative.
+    - Added `/admin/institutions/{id}/edit-data` JSON endpoint for modal population. Legacy `GET /admin/institutions/edit/{id}` now redirects to `/admin/institutions`.
+    - Existing create/delete behavior is unchanged. The shared collection helpers now add generated Scopus rows as `scopusAffiliations[index].afid` so modal-generated rows bind to affiliation ids directly.
+    - Focused verification passed: `./gradlew test --tests '*AdminViewControllerContractTest' -q`, `npm run build`, `npm run verify-assets`, `npm run verify-template-assets`, `npm run verify-route-guardrails`, `npm run verify-ui-guardrails`, and `./gradlew compileJava`.
 
-  - [ ] `H45.4` **Domain row-edit modal.**
+  - [x] `H45.4` **Domain row-edit modal.** *(completed 2026-04-27)*
     Move `admin/domains-edit.html` into an edit modal on `admin/domains.html`, preserving name, description, and WoS category assignment behavior.
     Reuse existing category option data already loaded for the domains page.
     Exit criteria: domain edits happen from the domains list; `/admin/domains/edit/{id}` redirects to `/admin/domains`.
+    Handover:
+    - `admin/domains.html` now renders an `editDomainModal` shared `modal-shell` beside the existing create modal. Row actions use an Edit button with `data-edit-domain-id` instead of navigating to the standalone edit page.
+    - The modal preserves domain name/description and WoS category rows. It reuses the existing `/admin/domains/update` POST contract and refreshes the page after a successful modal save so the server-rendered table remains authoritative.
+    - Added `/admin/domains/{id}/edit-data` JSON endpoint for modal population. Legacy `GET /admin/domains/edit/{id}` now redirects to `/admin/domains`.
+    - Existing create/delete behavior is unchanged. Shared category helpers populate both create and edit modal rows from the existing `allWosCategories` model data.
+    - Focused verification passed: `./gradlew test --tests '*AdminViewControllerContractTest' -q`, `npm run build`, `npm run verify-assets`, `npm run verify-template-assets`, `npm run verify-route-guardrails`, `npm run verify-ui-guardrails`, and `./gradlew compileJava`.
 
-  - [ ] `H45.5` **Dedicated admin-form baseline for complex group and activity editors.**
+  - [x] `H45.5` **Dedicated admin-form baseline for complex group and activity editors.** *(completed 2026-04-27)*
     Keep `admin/edit-group.html` and `admin/activities-edit.html` as dedicated pages, but migrate their layout to the shared `admin-form` shell.
     Preserve dynamic domain/member rows for groups and dynamic activity field/reference-field rows for activities. Add breadcrumbs back to the parent list and consistent Save/Cancel placement.
     Exit criteria: group and activity edit pages match the shared admin form pattern without changing their data contract.
+    Handover:
+    - `admin/edit-group.html` now uses the shared `admin-form` shell with breadcrumbs, sticky Save/Cancel actions, and sections for group profile, domains, institution, and researchers. Existing dynamic domain/member row behavior and the `/admin/groups/update` POST contract are preserved.
+    - `AdminGroupController#editGroup` now supplies breadcrumbs, `adminFormObject`, and the `allDomains` alias needed by the modernized form while keeping existing model attributes intact.
+    - `admin/activities-edit.html` now uses the shared `admin-form` shell with breadcrumbs and sections for activity profile, activity fields, and referenced fields. Existing dynamic field, allowed-value, and reference-field JavaScript behavior and the `/admin/activities/update` POST contract are preserved.
+    - `AdminActivityController#editActivity` now supplies breadcrumbs and `adminFormObject`; existing reference-field rows submit indexed `referenceFields[n]` names so they match dynamically added rows.
+    - Focused verification passed: `./gradlew test --tests '*AdminGroupControllerContractTest' --tests '*AdminActivityControllerContractTest' -q`, `npm run build`, `npm run verify-assets`, `npm run verify-template-assets`, `npm run verify-route-guardrails`, `npm run verify-ui-guardrails`, and `./gradlew compileJava`.
 
-  - [ ] `H45.6` **Dedicated admin-form baseline for report and indicator configuration.**
+  - [x] `H45.6` **Dedicated admin-form baseline for report and indicator configuration.** *(completed 2026-04-27)*
     Complete the long-form baseline for `admin/edit-groupReport.html`, `admin/indicators-edit.html`, and any remaining report/indicator configuration holdouts not already covered by H44.7.
     Keep these as dedicated pages because they contain report criteria, scoring rules, or configuration builders.
     Exit criteria: all surviving long-form admin edit pages use the shared `admin-form` pattern or an explicitly documented equivalent.
+    Handover:
+    - `admin/edit-groupReport.html` now uses the shared `admin-form` shell with breadcrumbs, sticky Save/Cancel actions, and sections for report metadata, report indicators, and the criteria builder. Existing dynamic indicator, criterion, and threshold rows and the `/admin/groupReports/update` POST contract are preserved.
+    - `AdminGroupReportsController` now supplies `adminFormObject`, breadcrumbs, and `allPositions` for both edit and apply routes through a shared edit-model helper.
+    - `admin/indicators-edit.html` now uses the shared `admin-form` shell with breadcrumbs and sections for indicator identity/activity mapping and scoring rules. Existing scoring inputs, helper text, activity-description sync attributes, and the `/admin/indicators/update` POST contract are preserved.
+    - `AdminViewController#editIndicator` now supplies `adminFormObject` and breadcrumbs. `edit-individualReport.html` remains the existing H44.7 shared-form baseline, and `activity-indicators.html` remains unchanged because it is a list/create/delete configuration surface rather than a dedicated edit page.
+    - Focused verification passed: `./gradlew test --tests '*AdminGroupReportsControllerContractTest' --tests '*AdminViewControllerContractTest' -q`, `npm run build`, `npm run verify-assets`, `npm run verify-template-assets`, `npm run verify-route-guardrails`, `npm run verify-ui-guardrails`, and `./gradlew compileJava`.
 
-  - [ ] `H45.7` **Legacy template, route, and guardrail cleanup.**
+  - [x] `H45.7` **Legacy template, route, and guardrail cleanup.** *(completed 2026-04-27)*
     Remove dead short edit templates after their parent-list modals are live, update route guardrails/template asset checks, and make legacy edit GET routes redirect to canonical parent pages.
     Do not remove POST endpoints that are still used by modal saves unless they are replaced by tested JSON endpoints.
     Exit criteria: no deleted template is referenced by controllers, tests, or verification scripts.
+    Handover:
+    - Removed the dead short edit templates `admin/scholardex-editForum.html`, `admin/scholardex-editAffiliation.html`, `admin/edit-institutions.html`, and `admin/domains-edit.html` after their row-edit modals and redirect compatibility routes were in place.
+    - Kept the existing Scholardex forum/affiliation POST edit endpoints because the row-edit modals still submit to those save contracts.
+    - Updated the institution workspace Edit action to return to the canonical `/admin/institutions` surface instead of linking to the removed full-page editor.
+    - Updated async Scholardex forum/affiliation JS behavior tests to assert row edit buttons rather than legacy full-page edit links.
+    - Extended route guardrails to fail if removed short edit templates reappear and to reject stale domain/institution edit page links in runtime templates.
+    - Focused verification passed: `node scripts/test-admin-scholardex-forums.js`, `node scripts/test-admin-scholardex-affiliations.js`, `./gradlew test --tests '*AdminViewControllerContractTest' -q`, `npm run build`, `npm run verify-assets`, `npm run verify-template-assets`, `npm run verify-route-guardrails`, `npm run verify-ui-guardrails`, and `./gradlew compileJava`.
 
-  - [ ] `H45.8` **Regression coverage and UI verification.**
+  - [x] `H45.8` **Regression coverage and UI verification.** *(completed 2026-04-27)*
     Add or update MVC/render-contract tests for each migrated modal and each surviving dedicated admin form. Cover modal shell markers, ARIA labels, populated edit data, save endpoints, redirect compatibility, and guardrail expectations.
     Exit criteria: targeted controller/template tests pass, frontend build and guardrails pass, and Java compilation is clean.
+    Handover:
+    - Completed the Phase C regression closeout across migrated modal forms and surviving dedicated admin forms. Existing tests cover modal shell markers, ARIA labels, edit-data JSON, legacy redirect compatibility, and shared `admin-form` markers for group, activity, report, indicator, and individual-report editors.
+    - Added explicit short-edit modal save contract coverage for Scholardex forum, Scholardex affiliation, domain, and institution updates, including redirect targets and facade-bound model values.
+    - Verified async Scholardex table behavior with row edit buttons and canonical publication links through the dedicated JS behavior tests.
+    - Full H45 closeout verification passed: `./gradlew test --tests '*AdminViewControllerContractTest' --tests '*AdminGroupControllerContractTest' --tests '*AdminActivityControllerContractTest' --tests '*AdminGroupReportsControllerContractTest' --tests '*AdminIndividualReportsControllerContractTest' -q`, `node scripts/test-admin-scholardex-forums.js`, `node scripts/test-admin-scholardex-affiliations.js`, `npm run build`, `npm run verify-assets`, `npm run verify-template-assets`, `npm run verify-route-guardrails`, `npm run verify-ui-guardrails`, and `./gradlew compileJava`.
 
 - [ ] `H20` Google Scholar (PoP) user-onboarding into Scholardex.
   Goal: support user-triggered Google Scholar imports from Publish-or-Perish exports as first-class canonical ingestion into Scholardex identity/link models.

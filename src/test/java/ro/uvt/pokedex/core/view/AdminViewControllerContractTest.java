@@ -2,6 +2,7 @@ package ro.uvt.pokedex.core.view;
 
 import org.junit.jupiter.api.Test;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -54,6 +55,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -238,6 +240,9 @@ class AdminViewControllerContractTest {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-forums-prev\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-forums-next\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("Actions")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"editForumModal\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("data-app-modal-shell")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("aria-labelledby=\"editForumModalLabel\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/js/admin-scholardex-forums.js")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
     }
@@ -323,6 +328,9 @@ class AdminViewControllerContractTest {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-affiliations-direction\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-affiliations-size\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"admin-affiliations-table-body\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"editAffiliationModal\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("data-app-modal-shell")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("aria-labelledby=\"editAffiliationModalLabel\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("/js/admin-scholardex-affiliations.js")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
 
@@ -368,16 +376,46 @@ class AdminViewControllerContractTest {
     }
 
     @Test
-    void editScholardexAffiliationPageStillRenders() throws Exception {
+    void scholardexAffiliationEditPageRedirectsAndEditDataReturnsJson() throws Exception {
         ScholardexAffiliationView affiliation = new ScholardexAffiliationView();
         affiliation.setAfid("af1");
         affiliation.setName("Aff One");
+        affiliation.setCity("Timisoara");
+        affiliation.setCountry("Romania");
 
         when(adminCatalogFacade.findScopusAffiliationById("af1")).thenReturn(Optional.of(affiliation));
 
         mockMvc.perform(get("/admin/scholardex/affiliations/edit/{id}", "af1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/scholardex/affiliations"));
+
+        mockMvc.perform(get("/admin/scholardex/affiliations/{id}/edit-data", "af1"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("admin/scholardex-editAffiliation"));
+                .andExpect(jsonPath("$.name").value("Aff One"))
+                .andExpect(jsonPath("$.city").value("Timisoara"))
+                .andExpect(jsonPath("$.country").value("Romania"));
+    }
+
+    @Test
+    void scholardexForumEditPageRedirectsAndEditDataReturnsJson() throws Exception {
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("f1");
+        forum.setPublicationName("Forum One");
+        forum.setIssn("1234-5678");
+        forum.setAggregationType("Journal");
+
+        when(adminCatalogFacade.findScopusVenueById("f1")).thenReturn(Optional.of(forum));
+
+        mockMvc.perform(get("/admin/scholardex/forums/edit/{id}", "f1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/scholardex/forums"));
+
+        mockMvc.perform(get("/admin/scholardex/forums/{id}/edit-data", "f1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("f1"))
+                .andExpect(jsonPath("$.publicationName").value("Forum One"))
+                .andExpect(jsonPath("$.issn").value("1234-5678"))
+                .andExpect(jsonPath("$.aggregationType").value("Journal"));
     }
 
     @Test
@@ -442,6 +480,148 @@ class AdminViewControllerContractTest {
 
         verify(adminCatalogFacade).deleteDomain("CS");
         verify(adminCatalogFacade).deleteInstitution("UVT");
+    }
+
+    @Test
+    void shortEditModalSaveEndpointsDelegateAndRedirectToCanonicalSurfaces() throws Exception {
+        mockMvc.perform(post("/admin/scholardex/forums/edit/{id}", "f1")
+                        .param("publicationName", "Forum One")
+                        .param("issn", "1234-5678"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/scholardex/forums"));
+
+        ArgumentCaptor<ScholardexForumView> forumCaptor = ArgumentCaptor.forClass(ScholardexForumView.class);
+        verify(adminCatalogFacade).saveScopusVenue(forumCaptor.capture());
+        org.junit.jupiter.api.Assertions.assertEquals("f1", forumCaptor.getValue().getId());
+        org.junit.jupiter.api.Assertions.assertEquals("Forum One", forumCaptor.getValue().getPublicationName());
+
+        mockMvc.perform(post("/admin/scholardex/affiliations/edit/{id}", "af1")
+                        .param("name", "Aff One")
+                        .param("city", "Timisoara")
+                        .param("country", "Romania"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/scholardex/affiliations"));
+
+        ArgumentCaptor<ScholardexAffiliationView> affiliationCaptor = ArgumentCaptor.forClass(ScholardexAffiliationView.class);
+        verify(adminCatalogFacade).saveScopusAffiliation(affiliationCaptor.capture());
+        org.junit.jupiter.api.Assertions.assertEquals("af1", affiliationCaptor.getValue().getAfid());
+        org.junit.jupiter.api.Assertions.assertEquals("Aff One", affiliationCaptor.getValue().getName());
+
+        mockMvc.perform(post("/admin/domains/update")
+                        .param("name", "CS")
+                        .param("description", "Computer Science")
+                        .param("wosCategories[0]", "COMPUTER SCIENCE - SCIE"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/domains"));
+
+        ArgumentCaptor<Domain> domainCaptor = ArgumentCaptor.forClass(Domain.class);
+        verify(adminCatalogFacade).saveDomain(domainCaptor.capture());
+        org.junit.jupiter.api.Assertions.assertEquals("CS", domainCaptor.getValue().getName());
+        org.junit.jupiter.api.Assertions.assertEquals(List.of("COMPUTER SCIENCE - SCIE"), domainCaptor.getValue().getWosCategories());
+
+        mockMvc.perform(post("/admin/institutions/update")
+                        .param("name", "UVT")
+                        .param("description", "University")
+                        .param("scopusAffiliations[0].afid", "af1")
+                        .param("wosAffiliations[0]", "West University"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/institutions"));
+
+        ArgumentCaptor<Institution> institutionCaptor = ArgumentCaptor.forClass(Institution.class);
+        verify(adminCatalogFacade).saveInstitution(institutionCaptor.capture());
+        org.junit.jupiter.api.Assertions.assertEquals("UVT", institutionCaptor.getValue().getName());
+        org.junit.jupiter.api.Assertions.assertEquals("af1", institutionCaptor.getValue().getScopusAffiliations().getFirst().getAfid());
+        org.junit.jupiter.api.Assertions.assertEquals(List.of("West University"), institutionCaptor.getValue().getWosAffiliations());
+    }
+
+    @Test
+    void domainsPageRendersSharedEditModal() throws Exception {
+        Domain domain = new Domain();
+        domain.setName("CS");
+        domain.setDescription("Computer Science");
+        domain.setWosCategories(List.of("COMPUTER SCIENCE - SCIE"));
+
+        when(adminCatalogFacade.listDomains()).thenReturn(List.of(domain));
+        when(adminCatalogFacade.listWosCategories()).thenReturn(List.of("COMPUTER SCIENCE - SCIE"));
+
+        mockMvc.perform(get("/admin/domains"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin/domains"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"editDomainModal\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("data-app-modal-shell")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("aria-labelledby=\"editDomainModalLabel\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("data-edit-domain-id=\"CS\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"edit-domain-form\"")));
+    }
+
+    @Test
+    void domainEditPageRedirectsAndEditDataReturnsJson() throws Exception {
+        Domain domain = new Domain();
+        domain.setName("CS");
+        domain.setDescription("Computer Science");
+        domain.setWosCategories(List.of("COMPUTER SCIENCE - SCIE"));
+
+        when(adminCatalogFacade.findDomainById("CS")).thenReturn(Optional.of(domain));
+
+        mockMvc.perform(get("/admin/domains/edit/{id}", "CS"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/domains"));
+
+        mockMvc.perform(get("/admin/domains/{id}/edit-data", "CS"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("CS"))
+                .andExpect(jsonPath("$.description").value("Computer Science"))
+                .andExpect(jsonPath("$.wosCategories[0]").value("COMPUTER SCIENCE - SCIE"));
+    }
+
+    @Test
+    void institutionsPageRendersSharedEditModal() throws Exception {
+        Institution institution = new Institution();
+        institution.setName("UVT");
+        institution.setDescription("University");
+        ScholardexAffiliationView affiliation = new ScholardexAffiliationView();
+        affiliation.setAfid("af1");
+        affiliation.setName("Aff One");
+        institution.setScopusAffiliations(List.of(affiliation));
+        institution.setWosAffiliations(List.of("West University"));
+
+        when(adminCatalogFacade.listInstitutions()).thenReturn(List.of(institution));
+        when(adminCatalogFacade.listAffiliationsByNameContains("vest")).thenReturn(List.of(affiliation));
+
+        mockMvc.perform(get("/admin/institutions"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin/institutions"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"editInstitutionModal\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("data-app-modal-shell")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("aria-labelledby=\"editInstitutionModalLabel\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("data-edit-institution-id=\"UVT\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"edit-institution-form\"")));
+    }
+
+    @Test
+    void institutionEditPageRedirectsAndEditDataReturnsJson() throws Exception {
+        Institution institution = new Institution();
+        institution.setName("UVT");
+        institution.setDescription("University");
+        ScholardexAffiliationView affiliation = new ScholardexAffiliationView();
+        affiliation.setAfid("af1");
+        affiliation.setName("Aff One");
+        institution.setScopusAffiliations(List.of(affiliation));
+        institution.setWosAffiliations(List.of("West University"));
+
+        when(adminCatalogFacade.findInstitutionById("UVT")).thenReturn(Optional.of(institution));
+
+        mockMvc.perform(get("/admin/institutions/edit/{id}", "UVT"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/institutions"));
+
+        mockMvc.perform(get("/admin/institutions/{id}/edit-data", "UVT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("UVT"))
+                .andExpect(jsonPath("$.description").value("University"))
+                .andExpect(jsonPath("$.scopusAffiliations[0].id").value("af1"))
+                .andExpect(jsonPath("$.scopusAffiliations[0].name").value("Aff One"))
+                .andExpect(jsonPath("$.wosAffiliations[0]").value("West University"));
     }
 
     @Test
@@ -584,8 +764,17 @@ class AdminViewControllerContractTest {
                         "scoringStrategies",
                         "types",
                         "domains",
-                        "selectors"
-                ));
+                        "selectors",
+                        "adminFormObject",
+                        "breadcrumbs"
+                ))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"indicator-admin-form\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("app-admin-form__header")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("aria-label=\"Breadcrumb\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("href=\"/admin/indicators\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"scoringYearRange\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"yearRange\"")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"criterionFormula\"")));
     }
 
     private static ScholardexPublicationView publication(String id, String forumId, String coverDate) {

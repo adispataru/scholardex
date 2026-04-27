@@ -103,6 +103,19 @@ const checks = [
 ];
 
 const errors = [];
+const removedRuntimeTemplates = [
+  'src/main/resources/templates/admin/scholardex-editForum.html',
+  'src/main/resources/templates/admin/scholardex-editAffiliation.html',
+  'src/main/resources/templates/admin/edit-institutions.html',
+  'src/main/resources/templates/admin/domains-edit.html'
+];
+
+for (const removedTemplate of removedRuntimeTemplates) {
+  if (fs.existsSync(path.join(process.cwd(), removedTemplate))) {
+    errors.push(`${removedTemplate}: removed short edit template must not exist in runtime templates`);
+  }
+}
+
 for (const check of checks) {
   const filePath = path.join(process.cwd(), check.file);
   const content = fs.readFileSync(filePath, 'utf8');
@@ -139,6 +152,12 @@ for (const file of runtimeTemplateRoots.flatMap((dir) => listFiles(dir, '.html')
   }
   if (content.includes('/admin/scopus/')) {
     errors.push(`${file}: contains forbidden stale admin route reference '/admin/scopus/'`);
+  }
+  if (content.includes('/admin/institutions/edit') || content.includes('@{/admin/institutions/edit')) {
+    errors.push(`${file}: contains stale institution edit page link; use the canonical institutions surface`);
+  }
+  if (content.includes('/admin/domains/edit') || content.includes('@{/admin/domains/edit')) {
+    errors.push(`${file}: contains stale domain edit page link; use the canonical domains surface`);
   }
   const staleViewNamingTokens = [
     'user/individualReports',

@@ -57,10 +57,15 @@
                                         </ul>
                                     </td>
                                     <td>
-                                        <a th:href="@{/admin/domains/edit/{name}(name=${domain.name})}" class="btn btn-primary btn-sm">Edit</a>
+                                        <div class="app-admin-actions">
+                                        <button type="button"
+                                                class="btn btn-outline-secondary btn-sm"
+                                                th:attr="data-edit-domain-id=${domain.name}"
+                                                aria-label="Edit domain">Edit</button>
                                         <form th:action="@{/admin/domains/delete/{name}(name=${domain.name})}" method="post" style="display:inline;">
                                             <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                                         </form>
+                                        </div>
                                     </td>
                                 </tr>
                                 </tbody>
@@ -85,6 +90,50 @@
         <i class="fa-solid fa-angle-up"></i>
     </a>
 </div>
+
+<th:block th:replace="~{fragments :: modal-shell(
+    id='editDomainModal',
+    title='Edit Domain',
+    size='lg',
+    bodySlot=~{::#edit-domain-modal-body},
+    footerSlot=~{::#edit-domain-modal-footer})}">
+    <th:block id="edit-domain-modal-body">
+        <form id="edit-domain-form" th:action="@{/admin/domains/update}" method="post">
+            <div class="app-form-section">
+                <div class="app-form-section__header">
+                    <h6 class="app-form-section__title">Domain details</h6>
+                    <p class="app-form-section__description">Update the taxonomy label and its WoS category coverage without leaving the list.</p>
+                </div>
+                <div class="app-form-grid">
+                    <div class="form-group app-form-field">
+                        <label for="edit-domain-name">Name</label>
+                        <input type="text" class="form-control" id="edit-domain-name" name="name" required>
+                    </div>
+                    <div class="form-group app-form-field">
+                        <label for="edit-domain-description">Description</label>
+                        <input type="text" class="form-control" id="edit-domain-description" name="description" required>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group app-form-field app-form-section">
+                <div class="app-form-section__header">
+                    <h6 class="app-form-section__title">WoS coverage</h6>
+                    <p class="app-form-section__description">Attach one or more WoS categories for downstream evaluation workflows.</p>
+                </div>
+                <label for="edit-wos-categories-container">WOS Categories</label>
+                <div id="edit-wos-categories-container" class="app-collection"></div>
+                <div class="app-form-actions app-form-actions--inline">
+                    <button id="edit-add-category" class="btn btn-primary" type="button">Add Category</button>
+                </div>
+            </div>
+            <p id="edit-domain-feedback" class="app-form-help mb-0" aria-live="polite"></p>
+        </form>
+    </th:block>
+    <th:block id="edit-domain-modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button>
+        <button type="submit" form="edit-domain-form" id="edit-domain-save" class="btn btn-primary btn-sm">Save changes</button>
+    </th:block>
+</th:block>
 
 <!-- Create Domain Modal-->
 <div class="modal fade app-modal" id="createDomainModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
@@ -152,25 +201,128 @@
         // Ensure Thymeleaf processes this part correctly
         var allWosCategories = /*[[${allWosCategories}]]*/ [];
         let wosCategoriesContainer = $('#wosCategoriesContainer');
+        let editWosCategoriesContainer = $('#edit-wos-categories-container');
 
-        $('#addCategory').click(function() {
-            let index = wosCategoriesContainer.children().length;
-            let categoryTemplate = `
+        function escapeHtml(value) {
+            return String(value == null ? '' : value)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#39;');
+        }
+
+        function buildCategoryOptions(selectedCategory) {
+            return allWosCategories.map(category => {
+                let selected = category === selectedCategory ? ' selected' : '';
+                return `<option value="${escapeHtml(category)}"${selected}>${escapeHtml(category)}</option>`;
+            }).join('');
+        }
+
+        function appendCategoryRow(container, selectedCategory) {
+            let index = container.children().length;
+            container.append(`
                 <div class="input-group mb-2 app-collection__item">
                     <select class="form-control" name="wosCategories[${index}]">
-                        ${allWosCategories.map(category => `<option value="${category}">${category}</option>`).join('')}
+                        ${buildCategoryOptions(selectedCategory || '')}
                     </select>
                     <button class="btn btn-danger remove-category" type="button">Remove</button>
-                </div>`;
-            wosCategoriesContainer.append(categoryTemplate);
+                </div>`);
+        }
+
+        function renumberCategories(container) {
+            container.children().each(function(index, element) {
+                $(element).find('select').attr('name', `wosCategories[${index}]`);
+            });
+        }
+
+        function showToast(message, tone) {
+            if (window.appToast) {
+                window.appToast.show({ message, tone: tone || 'info' });
+                return;
+            }
+            $('#edit-domain-feedback').text(message);
+        }
+
+        function setEditBusy(isBusy) {
+            $('#edit-domain-save')
+                .prop('disabled', isBusy)
+                .text(isBusy ? 'Saving...' : 'Save changes');
+        }
+
+        function csrfHeaders() {
+            let token = document.querySelector('meta[name="_csrf"]');
+            let header = document.querySelector('meta[name="_csrf_header"]');
+            if (!token || !header) return {};
+            return { [header.content]: token.content };
+        }
+
+        $('#addCategory').click(function() {
+            appendCategoryRow(wosCategoriesContainer);
         });
 
         wosCategoriesContainer.on('click', '.remove-category', function() {
             $(this).closest('.input-group').remove();
-            // Optionally, update the indices of the remaining elements
-            wosCategoriesContainer.children().each(function(index, element) {
-                $(element).find('select').attr('name', `wosCategories[${index}]`);
-            });
+            renumberCategories(wosCategoriesContainer);
+        });
+
+        $('#dataTable').on('click', '[data-edit-domain-id]', async function(event) {
+            event.preventDefault();
+            let trigger = this;
+            let id = $(trigger).attr('data-edit-domain-id');
+            try {
+                let response = await fetch(`/admin/domains/${encodeURIComponent(id)}/edit-data`, {
+                    headers: { Accept: 'application/json' }
+                });
+                if (!response.ok) throw new Error('Could not load domain details.');
+                let domain = await response.json();
+                $('#edit-domain-name').val(domain.name || '');
+                $('#edit-domain-description').val(domain.description || '');
+                $('#edit-domain-feedback').text('');
+                editWosCategoriesContainer.empty();
+                (domain.wosCategories || []).forEach(category => {
+                    appendCategoryRow(editWosCategoriesContainer, category);
+                });
+                if (window.appModal) {
+                    window.appModal.open('editDomainModal', { trigger });
+                } else {
+                    $('#editDomainModal').modal('show');
+                }
+            } catch (error) {
+                showToast(error.message || 'Could not load domain details.', 'error');
+            }
+        });
+
+        $('#edit-add-category').click(function() {
+            appendCategoryRow(editWosCategoriesContainer);
+        });
+
+        editWosCategoriesContainer.on('click', '.remove-category', function() {
+            $(this).closest('.input-group').remove();
+            renumberCategories(editWosCategoriesContainer);
+        });
+
+        $('#edit-domain-form').on('submit', async function(event) {
+            event.preventDefault();
+            setEditBusy(true);
+            try {
+                let response = await fetch($(this).attr('action'), {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'text/html',
+                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                        ...csrfHeaders()
+                    },
+                    body: new URLSearchParams(new FormData(this)).toString()
+                });
+                if (!response.ok) throw new Error('Domain could not be saved.');
+                showToast('Domain updated.', 'success');
+                window.location.reload();
+            } catch (error) {
+                $('#edit-domain-feedback').text(error.message || 'Domain could not be saved.');
+                showToast(error.message || 'Domain could not be saved.', 'error');
+                setEditBusy(false);
+            }
         });
     });
 </script>

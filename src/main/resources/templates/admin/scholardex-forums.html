@@ -109,6 +109,56 @@
     </a>
 </div>
 
+<th:block th:replace="~{fragments :: modal-shell(
+    id='editForumModal',
+    title='Edit Forum',
+    size='lg',
+    bodySlot=~{::#edit-forum-modal-body},
+    footerSlot=~{::#edit-forum-modal-footer})}">
+    <th:block id="edit-forum-modal-body">
+        <form id="edit-forum-form" method="post" action="/admin/scholardex/forums/edit/">
+            <input type="hidden" id="edit-forum-id" name="id">
+            <div class="app-form-section">
+                <div class="app-form-section__header">
+                    <h6 class="app-form-section__title">Forum identity</h6>
+                    <p class="app-form-section__description">Update the canonical venue metadata used by publication catalog and reporting lookups.</p>
+                </div>
+                <div class="app-form-grid app-form-grid--two-up">
+                    <div class="form-group app-form-field">
+                        <label for="edit-forum-publication-name">Publication Name</label>
+                        <input type="text" class="form-control" id="edit-forum-publication-name" name="publicationName" required>
+                    </div>
+                    <div class="form-group app-form-field">
+                        <label for="edit-forum-aggregation-type">Aggregation Type</label>
+                        <input type="text" class="form-control" id="edit-forum-aggregation-type" name="aggregationType">
+                    </div>
+                    <div class="form-group app-form-field">
+                        <label for="edit-forum-issn">ISSN</label>
+                        <input type="text" class="form-control" id="edit-forum-issn" name="issn">
+                    </div>
+                    <div class="form-group app-form-field">
+                        <label for="edit-forum-eissn">eISSN</label>
+                        <input type="text" class="form-control" id="edit-forum-eissn" name="eIssn">
+                    </div>
+                    <div class="form-group app-form-field">
+                        <label for="edit-forum-isbn">ISBN</label>
+                        <input type="text" class="form-control" id="edit-forum-isbn" name="isbn">
+                    </div>
+                    <div class="form-group app-form-field">
+                        <label for="edit-forum-publisher">Publisher</label>
+                        <input type="text" class="form-control" id="edit-forum-publisher" name="publisher">
+                    </div>
+                </div>
+            </div>
+            <p id="edit-forum-feedback" class="app-form-help mb-0" aria-live="polite"></p>
+        </form>
+    </th:block>
+    <th:block id="edit-forum-modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button>
+        <button type="submit" form="edit-forum-form" id="edit-forum-save" class="btn btn-primary btn-sm">Save changes</button>
+    </th:block>
+</th:block>
+
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
 <script src="/js/admin-scholardex-forums.js"></script>
 

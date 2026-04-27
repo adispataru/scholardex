@@ -26,6 +26,17 @@
     next: document.getElementById('admin-affiliations-next')
   };
 
+  const editEls = {
+    modal: document.getElementById('editAffiliationModal'),
+    form: document.getElementById('edit-affiliation-form'),
+    feedback: document.getElementById('edit-affiliation-feedback'),
+    save: document.getElementById('edit-affiliation-save'),
+    afid: document.getElementById('edit-affiliation-afid'),
+    name: document.getElementById('edit-affiliation-name'),
+    city: document.getElementById('edit-affiliation-city'),
+    country: document.getElementById('edit-affiliation-country')
+  };
+
   function setLoading(isLoading) { els.loading.classList.toggle('d-none', !isLoading); }
   function setError(message) {
     els.error.textContent = message || '';
@@ -62,11 +73,14 @@
       const id = encodeURIComponent(item.afid || '');
       const pubsHref = '/admin/scholardex/publications?affiliationId=' + id;
       return '<tr>' +
-        '<td><a href="/admin/scholardex/affiliations/edit/' + id + '">' + escapeHtml(item.name) + '</a></td>' +
+        '<td>' + escapeHtml(item.name) + '</td>' +
         '<td class="app-table__cell--identifier">' + escapeHtml(item.afid || '—') + '</td>' +
         '<td>' + escapeHtml(item.city || '—') + '</td>' +
         '<td>' + escapeHtml(item.country || '—') + '</td>' +
-        '<td><a class="btn btn-outline-secondary btn-sm" href="' + pubsHref + '" aria-label="View publications for this affiliation"><i class="fa-solid fa-file-lines fa-xs"></i> Publications</a></td>' +
+        '<td><div class="app-admin-actions">' +
+          '<a class="btn btn-outline-secondary btn-sm" href="' + pubsHref + '" aria-label="View publications for this affiliation"><i class="fa-solid fa-file-lines fa-xs"></i> Publications</a>' +
+          '<button class="btn btn-outline-secondary btn-sm" type="button" data-edit-affiliation-id="' + id + '" aria-label="Edit this affiliation">Edit</button>' +
+        '</div></td>' +
         '</tr>';
     }).join('');
   }
@@ -79,6 +93,95 @@
     params.set('direction', state.direction);
     if (state.q) params.set('q', state.q);
     return '/api/entities/affiliations?' + params.toString();
+  }
+
+  function csrfHeaders() {
+    const token = document.querySelector('meta[name="_csrf"]');
+    const header = document.querySelector('meta[name="_csrf_header"]');
+    if (!token || !header) return {};
+    return { [header.getAttribute('content')]: token.getAttribute('content') };
+  }
+
+  function showToast(message, tone) {
+    if (window.appToast) {
+      window.appToast.show({ message: message, tone: tone || 'info' });
+      return;
+    }
+    if (editEls.feedback) editEls.feedback.textContent = message;
+  }
+
+  function setEditBusy(isBusy) {
+    if (editEls.save) {
+      editEls.save.disabled = isBusy;
+      editEls.save.textContent = isBusy ? 'Saving...' : 'Save changes';
+    }
+  }
+
+  function setField(input, value) {
+    if (input) input.value = value == null ? '' : value;
+  }
+
+  function populateEditForm(affiliation) {
+    const id = affiliation.afid || affiliation.id || '';
+    setField(editEls.afid, id);
+    setField(editEls.name, affiliation.name);
+    setField(editEls.city, affiliation.city);
+    setField(editEls.country, affiliation.country);
+    if (editEls.form) {
+      editEls.form.action = '/admin/scholardex/affiliations/edit/' + encodeURIComponent(id);
+    }
+    if (editEls.feedback) editEls.feedback.textContent = '';
+  }
+
+  async function openEditModal(id, trigger) {
+    if (!editEls.modal || !editEls.form) {
+      window.location.href = '/admin/scholardex/affiliations/edit/' + encodeURIComponent(id);
+      return;
+    }
+    try {
+      const response = await fetch('/admin/scholardex/affiliations/' + encodeURIComponent(id) + '/edit-data', {
+        headers: { Accept: 'application/json' }
+      });
+      if (!response.ok) throw new Error('Could not load affiliation details.');
+      populateEditForm(await response.json());
+      if (window.appModal) {
+        window.appModal.open('editAffiliationModal', { trigger: trigger });
+      } else if (window.$ && window.$.fn && window.$.fn.modal) {
+        window.$(editEls.modal).modal('show');
+      }
+    } catch (error) {
+      showToast(error.message || 'Could not load affiliation details.', 'error');
+    }
+  }
+
+  async function saveEditForm(event) {
+    event.preventDefault();
+    if (!editEls.form || !editEls.afid || !editEls.afid.value) return;
+    setEditBusy(true);
+    try {
+      const response = await fetch(editEls.form.action, {
+        method: 'POST',
+        headers: {
+          Accept: 'text/html',
+          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+          ...csrfHeaders()
+        },
+        body: new URLSearchParams(new FormData(editEls.form)).toString()
+      });
+      if (!response.ok) throw new Error('Affiliation could not be saved.');
+      if (window.appModal) {
+        window.appModal.close('editAffiliationModal');
+      } else if (window.$ && window.$.fn && window.$.fn.modal) {
+        window.$(editEls.modal).modal('hide');
+      }
+      showToast('Affiliation updated.', 'success');
+      fetchPage();
+    } catch (error) {
+      showToast(error.message || 'Affiliation could not be saved.', 'error');
+      if (editEls.feedback) editEls.feedback.textContent = error.message || 'Affiliation could not be saved.';
+    } finally {
+      setEditBusy(false);
+    }
   }
 
   async function fetchPage() {
@@ -140,6 +243,15 @@
       state.page += 1;
       fetchPage();
     });
+    els.tableBody.addEventListener('click', function (event) {
+      const button = event.target.closest('[data-edit-affiliation-id]');
+      if (!button) return;
+      event.preventDefault();
+      openEditModal(decodeURIComponent(button.getAttribute('data-edit-affiliation-id') || ''), button);
+    });
+    if (editEls.form) {
+      editEls.form.addEventListener('submit', saveEditForm);
+    }
   }
 
   function initialize() {

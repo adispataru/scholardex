@@ -17,24 +17,25 @@
             <div th:replace="~{fragments :: navbar('Edit Group')}"></div>
             <div class="container-fluid app-page-content">
                 <div class="app-workflow">
-                <p class="app-workflow__intro">Edit the group and its relationships in one workflow surface with shared sections for identity, domains, institution, and researchers.</p>
+                    <th:block th:replace="~{fragments :: admin-breadcrumb(${breadcrumbs})}"></th:block>
+                    <p class="app-workflow__intro">Edit the group and its relationships in one workflow surface with shared sections for identity, domains, institution, and researchers.</p>
 
-                <div class="app-form-surface">
-                    <div class="app-form-surface__panel">
-                    <div class="app-form-surface__header">
-                        <h6 class="app-form-surface__title">Edit Group</h6>
-                    </div>
-                    <div class="app-form-surface__body">
-                        <form th:action="@{/admin/groups/update}" th:object="${group}" method="post">
-                            <div class="form-group">
-<!--                                <label for="groupName">Name</label>-->
-                                <input type="text" class="form-control" id="groupId" th:field="*{id}" required hidden>
-                            </div>
-                            <div class="app-form-section mb-3">
-                                <div class="app-form-section__header">
-                                    <h6 class="app-form-section__title">Group profile</h6>
-                                </div>
-                                <div class="app-form-grid">
+                        <form th:with="adminFormObject=${group}"
+                              th:replace="~{fragments :: admin-form(
+                                  id='group-admin-form',
+                                  action=@{/admin/groups/update},
+                                  method='post',
+                                  title='Edit Group',
+                                  sections=~{::#group-form-sections},
+                                  submitLabel='Update',
+                                  cancelHref=@{/admin/groups})}">
+                            <th:block id="group-form-sections">
+                            <input type="hidden" class="form-control" id="groupId" th:field="*{id}" required>
+                            <th:block th:replace="~{fragments :: admin-form-section(
+                                title='Group profile',
+                                helperText='Keep the group identity concise and recognizable for workspace and report contexts.',
+                                body=~{::#group-profile-fields})}">
+                                <div id="group-profile-fields" class="app-form-grid">
                                     <div class="form-group app-form-field">
                                         <label for="groupName">Name</label>
                                         <input type="text" class="form-control" id="groupName" th:field="*{name}" required>
@@ -44,8 +45,12 @@
                                         <textarea class="form-control" id="groupDescription" th:field="*{description}" required></textarea>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="form-group app-form-field app-form-section">
+                            </th:block>
+                            <th:block th:replace="~{fragments :: admin-form-section(
+                                title='Domains',
+                                helperText='Assign the evaluation domains this group participates in.',
+                                body=~{::#group-domain-fields})}">
+                            <div id="group-domain-fields" class="app-form-field">
                                 <label for="groupDomains">Domains</label>
                                 <div id="domainsContainer" class="app-collection">
                                     <div class="input-group mb-2 app-collection__item" th:each="domain, iterStat : *{domains}">
@@ -59,13 +64,23 @@
                                     <button id="addDomain" class="btn btn-primary" type="button">Add Domain</button>
                                 </div>
                             </div>
-                            <div class="form-group app-form-field app-form-section">
+                            </th:block>
+                            <th:block th:replace="~{fragments :: admin-form-section(
+                                title='Institution',
+                                helperText='Choose the institution represented by this group.',
+                                body=~{::#group-institution-fields})}">
+                            <div id="group-institution-fields" class="form-group app-form-field">
                                 <label for="groupAffiliation">Institution</label>
                                 <select class="form-control" id="groupAffiliation" th:field="*{institution}">
                                     <option th:each="affiliation : ${affiliations}" th:value="${affiliation.name}" th:text="${affiliation.name}"></option>
                                 </select>
                             </div>
-                            <div class="form-group app-form-field app-form-section">
+                            </th:block>
+                            <th:block th:replace="~{fragments :: admin-form-section(
+                                title='Researchers',
+                                helperText='Manage the researcher accounts assigned to this group.',
+                                body=~{::#group-researcher-fields})}">
+                            <div id="group-researcher-fields" class="app-form-field">
                                 <label for="groupResearchers">Researchers</label>
                                 <div id="researchersContainer" class="app-collection">
                                     <div class="input-group mb-2 app-collection__item" th:each="memberId, iterStat : *{memberIds}">
@@ -79,13 +94,9 @@
                                     <button id="addResearcher" class="btn btn-primary" type="button">Add Researcher</button>
                                 </div>
                             </div>
-                            <div class="app-form-actions">
-                                <button type="submit" class="btn btn-primary">Update</button>
-                            </div>
+                            </th:block>
+                            </th:block>
                         </form>
-                    </div>
-                    </div>
-                </div>
                 </div>
             </div>
 

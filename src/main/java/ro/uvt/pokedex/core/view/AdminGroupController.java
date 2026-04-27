@@ -21,6 +21,7 @@ import ro.uvt.pokedex.core.service.application.GroupManagementFacade;
 import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 import ro.uvt.pokedex.core.service.application.RequestYearRangeSupport;
 import ro.uvt.pokedex.core.service.application.GroupReportFacade;
+import ro.uvt.pokedex.core.service.application.model.BreadcrumbItem;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisZipExportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupEditViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupIndividualReportViewModel;
@@ -35,6 +36,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
@@ -83,9 +85,18 @@ public class AdminGroupController {
     public String editGroup(@PathVariable String id, Model model) {
         GroupEditViewModel viewModel = groupManagementFacade.buildGroupEditView(id);
         model.addAttribute("group", viewModel.group());
+        model.addAttribute("adminFormObject", viewModel.group());
         model.addAttribute("domains", viewModel.domains());
+        model.addAttribute("allDomains", viewModel.domains());
         model.addAttribute("affiliations", viewModel.affiliations());
         model.addAttribute("allResearchers", viewModel.allResearchers());
+        String label = viewModel.group() == null || viewModel.group().getName() == null
+                ? "Edit Group"
+                : viewModel.group().getName();
+        model.addAttribute("breadcrumbs", List.of(
+                new BreadcrumbItem("Groups", "/admin/groups"),
+                new BreadcrumbItem(label)
+        ));
         return "admin/edit-group";
     }
 

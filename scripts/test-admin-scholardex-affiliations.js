@@ -136,7 +136,8 @@ async function testControlChangesTriggerRequestsAndCanonicalLinks() {
 
   await wait(10);
   assert.ok(calls[0].startsWith('/api/entities/affiliations?'));
-  assert.ok(els['admin-affiliations-table-body'].innerHTML.includes('/admin/scholardex/affiliations/edit/a'));
+  assert.ok(els['admin-affiliations-table-body'].innerHTML.includes('data-edit-affiliation-id="a"'));
+  assert.ok(!els['admin-affiliations-table-body'].innerHTML.includes('/admin/scholardex/affiliations/edit/'));
 
   els['admin-affiliations-next'].dispatch('click');
   await wait(10);

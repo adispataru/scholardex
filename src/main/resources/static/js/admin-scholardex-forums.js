@@ -28,6 +28,20 @@
     next: document.getElementById('admin-forums-next')
   };
 
+  const editEls = {
+    modal: document.getElementById('editForumModal'),
+    form: document.getElementById('edit-forum-form'),
+    feedback: document.getElementById('edit-forum-feedback'),
+    save: document.getElementById('edit-forum-save'),
+    id: document.getElementById('edit-forum-id'),
+    publicationName: document.getElementById('edit-forum-publication-name'),
+    issn: document.getElementById('edit-forum-issn'),
+    eIssn: document.getElementById('edit-forum-eissn'),
+    isbn: document.getElementById('edit-forum-isbn'),
+    aggregationType: document.getElementById('edit-forum-aggregation-type'),
+    publisher: document.getElementById('edit-forum-publisher')
+  };
+
   function labelWosStatus(status) {
     switch (status) {
       case 'indexed':
@@ -106,7 +120,7 @@
         '<td>' + renderWosBadge(item.wosStatus) + '</td>' +
         '<td><div class="app-admin-actions">' +
           '<a class="btn btn-outline-secondary btn-sm" href="' + pubsHref + '" aria-label="View publications in this forum"><i class="fa-solid fa-file-lines fa-xs"></i> Publications</a>' +
-          '<a class="btn btn-outline-secondary btn-sm" href="/admin/scholardex/forums/edit/' + id + '" aria-label="Edit this forum">Edit</a>' +
+          '<button class="btn btn-outline-secondary btn-sm" type="button" data-edit-forum-id="' + id + '" aria-label="Edit this forum">Edit</button>' +
         '</div></td>' +
         '</tr>';
     }).join('');
@@ -123,6 +137,114 @@
       params.set('q', state.q);
     }
     return '/forums/data?' + params.toString();
+  }
+
+  function csrfHeaders() {
+    const token = document.querySelector('meta[name="_csrf"]');
+    const header = document.querySelector('meta[name="_csrf_header"]');
+    if (!token || !header) {
+      return {};
+    }
+    return { [header.getAttribute('content')]: token.getAttribute('content') };
+  }
+
+  function showToast(message, tone) {
+    if (window.appToast) {
+      window.appToast.show({ message: message, tone: tone || 'info' });
+      return;
+    }
+    if (editEls.feedback) {
+      editEls.feedback.textContent = message;
+    }
+  }
+
+  function setEditBusy(isBusy) {
+    if (editEls.save) {
+      editEls.save.disabled = isBusy;
+      editEls.save.textContent = isBusy ? 'Saving...' : 'Save changes';
+    }
+  }
+
+  function setField(input, value) {
+    if (input) {
+      input.value = value == null ? '' : value;
+    }
+  }
+
+  function populateEditForm(forum) {
+    setField(editEls.id, forum.id);
+    setField(editEls.publicationName, forum.publicationName);
+    setField(editEls.issn, forum.issn);
+    setField(editEls.eIssn, forum.eissn || forum.eIssn);
+    setField(editEls.isbn, forum.isbn);
+    setField(editEls.aggregationType, forum.aggregationType);
+    setField(editEls.publisher, forum.publisher);
+    if (editEls.form) {
+      editEls.form.action = '/admin/scholardex/forums/edit/' + encodeURIComponent(forum.id || '');
+    }
+    if (editEls.feedback) {
+      editEls.feedback.textContent = '';
+    }
+  }
+
+  async function openEditModal(id, trigger) {
+    if (!editEls.modal || !editEls.form) {
+      window.location.href = '/admin/scholardex/forums/edit/' + encodeURIComponent(id);
+      return;
+    }
+    try {
+      const response = await fetch('/admin/scholardex/forums/' + encodeURIComponent(id) + '/edit-data', {
+        headers: { Accept: 'application/json' }
+      });
+      if (!response.ok) {
+        throw new Error('Could not load forum details.');
+      }
+      const forum = await response.json();
+      populateEditForm(forum);
+      if (window.appModal) {
+        window.appModal.open('editForumModal', { trigger: trigger });
+      } else if (window.$ && window.$.fn && window.$.fn.modal) {
+        window.$(editEls.modal).modal('show');
+      }
+    } catch (error) {
+      showToast(error.message || 'Could not load forum details.', 'error');
+    }
+  }
+
+  async function saveEditForm(event) {
+    event.preventDefault();
+    if (!editEls.form || !editEls.id || !editEls.id.value) {
+      return;
+    }
+    setEditBusy(true);
+    try {
+      const response = await fetch(editEls.form.action, {
+        method: 'POST',
+        headers: {
+          Accept: 'text/html',
+          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+          ...csrfHeaders()
+        },
+        body: new URLSearchParams(new FormData(editEls.form)).toString()
+      });
+      if (!response.ok) {
+        throw new Error('Forum could not be saved.');
+      }
+      if (window.appModal) {
+        window.appModal.close('editForumModal');
+      } else if (window.$ && window.$.fn && window.$.fn.modal) {
+        window.$(editEls.modal).modal('hide');
+      }
+      showToast('Forum updated.', 'success');
+      fetchPage();
+    } catch (error) {
+      showToast(error.message || 'Forum could not be saved.', 'error');
+      if (editEls.feedback) {
+        editEls.feedback.textContent = error.message || 'Forum could not be saved.';
+      }
+    } finally {
+      setEditBusy(false);
+    }
   }
 
   async function fetchPage() {
@@ -192,6 +314,19 @@
       state.page += 1;
       fetchPage();
     });
+
+    els.tableBody.addEventListener('click', function (event) {
+      const button = event.target.closest('[data-edit-forum-id]');
+      if (!button) {
+        return;
+      }
+      event.preventDefault();
+      openEditModal(decodeURIComponent(button.getAttribute('data-edit-forum-id') || ''), button);
+    });
+
+    if (editEls.form) {
+      editEls.form.addEventListener('submit', saveEditForm);
+    }
   }
 
   function initialize() {

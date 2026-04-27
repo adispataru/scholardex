@@ -21,23 +21,34 @@
       <!-- Begin Page Content -->
       <div class="container-fluid app-page-content">
         <div class="app-workflow">
-        <p class="app-workflow__intro">Update the activity structure, including its fields, allowed values, and referenced fields.</p>
+          <th:block th:replace="~{fragments :: admin-breadcrumb(${breadcrumbs})}"></th:block>
+          <p class="app-workflow__intro">Update the activity structure, including its fields, allowed values, and referenced fields.</p>
 
-        <div class="app-form-surface">
-          <div class="app-form-surface__panel">
-          <div class="app-form-surface__header">
-            <h6 class="app-form-surface__title">Update Activity</h6>
-          </div>
-          <div class="app-form-surface__body">
-            <form th:action="@{/admin/activities/update}" th:object="${activity}" method="post">
-              <div class="form-group">
-                <input type="text" class="form-control" id="activityId" th:field="*{id}" hidden>
-              </div>
-              <div class="form-group">
+            <form th:with="adminFormObject=${activity}"
+                  th:replace="~{fragments :: admin-form(
+                      id='activity-admin-form',
+                      action=@{/admin/activities/update},
+                      method='post',
+                      title='Edit Activity',
+                      sections=~{::#activity-form-sections},
+                      submitLabel='Update',
+                      cancelHref=@{/admin/activities})}">
+              <th:block id="activity-form-sections">
+              <input type="hidden" class="form-control" id="activityId" th:field="*{id}">
+              <th:block th:replace="~{fragments :: admin-form-section(
+                  title='Activity profile',
+                  helperText='Name the activity type before changing its dynamic fields.',
+                  body=~{::#activity-profile-fields})}">
+              <div id="activity-profile-fields" class="form-group app-form-field">
                 <label for="activityName">Name</label>
                 <input type="text" class="form-control" id="activityName" th:field="*{name}" required>
               </div>
-              <div class="form-group app-form-field app-form-section">
+              </th:block>
+              <th:block th:replace="~{fragments :: admin-form-section(
+                  title='Fields',
+                  helperText='Define the fields users complete when they add this activity, including allowed values where needed.',
+                  body=~{::#activity-fields-builder})}">
+              <div id="activity-fields-builder" class="app-form-field">
                 <label for="fieldsContainer">Fields</label>
                 <div id="fieldsContainer" class="app-collection">
                   <!-- Dynamically load existing fields and allowed values -->
@@ -68,15 +79,23 @@
                   <button id="addField" class="btn btn-primary" type="button">Add Field</button>
                 </div>
               </div>
-              <div class="form-group app-form-field app-form-section">
+              </th:block>
+              <th:block th:replace="~{fragments :: admin-form-section(
+                  title='Referenced fields',
+                  helperText='Select system reference fields that this activity can use for reporting and scoring.',
+                  body=~{::#activity-reference-fields-builder})}">
+              <div id="activity-reference-fields-builder" class="app-form-field">
                 <label for="referencedFieldsContainer">Referenced Fields</label>
                 <div id="referencedFieldsContainer" class="app-collection">
                   <div class="card mb-2 app-builder-card" th:each="field, fieldIndex : ${activity.referenceFields}">
                     <div class="card-body">
                       <div class="form-group">
                         <label>Reference</label>
-                        <select class="form-control" id="references" th:name="${field}" th:selected="${field}">
-                            <option th:each="ref : ${referenceTypes}" th:value="${ref}" th:text="${ref}"></option>
+                        <select class="form-control" th:name="|referenceFields[${fieldIndex.index}]|">
+                            <option th:each="ref : ${referenceTypes}"
+                                    th:value="${ref}"
+                                    th:text="${ref}"
+                                    th:selected="${ref == field}"></option>
                         </select>
                       </div>
                       <button class="btn btn-danger remove-ref-field" type="button">Remove Ref Field</button>
@@ -88,13 +107,9 @@
                   <button id="addReferencedField" class="btn btn-primary" type="button">Add Ref. Field</button>
                 </div>
               </div>
-              <div class="app-form-actions">
-                <button type="submit" class="btn btn-primary">Update</button>
-              </div>
+              </th:block>
+              </th:block>
             </form>
-          </div>
-          </div>
-        </div>
         </div>
       </div>
       <!-- End of Main Content -->

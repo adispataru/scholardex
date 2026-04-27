@@ -7,6 +7,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
+import ro.uvt.pokedex.core.model.Institution;
+import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Group;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
@@ -19,6 +21,7 @@ import ro.uvt.pokedex.core.service.application.GroupExportFacade;
 import ro.uvt.pokedex.core.service.application.GroupManagementFacade;
 import ro.uvt.pokedex.core.service.application.GroupReportFacade;
 import ro.uvt.pokedex.core.service.application.model.GroupCnfisZipExportViewModel;
+import ro.uvt.pokedex.core.service.application.model.GroupEditViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupIndividualReportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupMemberCnfisWorkbook;
 import ro.uvt.pokedex.core.service.application.model.GroupPublicationCsvExportViewModel;
@@ -45,6 +48,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 @WebMvcTest(AdminGroupController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -63,6 +67,34 @@ class AdminGroupControllerContractTest {
     private GroupCnfisExportFacade groupCnfisExportFacade;
     @MockitoBean
     private GroupService groupService;
+
+    @Test
+    void editGroupRendersSharedAdminFormBaseline() throws Exception {
+        Group group = new Group();
+        group.setId("g1");
+        group.setName("Group One");
+        group.setDescription("Research group");
+        group.setDomains(List.of());
+        group.setMemberIds(List.of());
+
+        Domain domain = new Domain();
+        domain.setName("CS");
+        Institution institution = new Institution();
+        institution.setName("UVT");
+
+        when(groupManagementFacade.buildGroupEditView("g1"))
+                .thenReturn(new GroupEditViewModel(group, List.of(domain), List.of(institution), List.of(new User())));
+
+        mockMvc.perform(get("/admin/groups/edit/{id}", "g1"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin/edit-group"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"group-admin-form\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("app-admin-form__header")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-label=\"Breadcrumb\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/admin/groups\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"domainsContainer\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"researchersContainer\"")));
+    }
 
     @Test
     void groupPublicationsViewRendersVenueQualityChartData() throws Exception {
