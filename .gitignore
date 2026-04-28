@@ -52,5 +52,7 @@ npm-debug.log*
 
 data/*/**
 data/*
+puncte/*/**
+puncte/*
 scopus-python/__pycache__/**/*
 scopus-python/__pycache__/*

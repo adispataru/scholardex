@@ -180,14 +180,14 @@ tasks.named('jacocoTestReport') {
 pitest {
     pitestVersion = '1.23.1'
     junit5PluginVersion = '1.2.1'
-    targetClasses = [
-            'ro.uvt.pokedex.core.service.*',
-            'ro.uvt.pokedex.core.handlers.*'
-    ]
-    targetTests = [
-            'ro.uvt.pokedex.core.service.*',
-            'ro.uvt.pokedex.core.handlers.*'
-    ]
+    targetClasses = (findProperty('pitTargetClasses') ?: 'ro.uvt.pokedex.core.service.*,ro.uvt.pokedex.core.handlers.*')
+            .split(',')
+            .collect { it.trim() }
+            .findAll { !it.isEmpty() }
+    targetTests = (findProperty('pitTargetTests') ?: 'ro.uvt.pokedex.core.service.*,ro.uvt.pokedex.core.handlers.*')
+            .split(',')
+            .collect { it.trim() }
+            .findAll { !it.isEmpty() }
     threads = 4
     timestampedReports = false
     outputFormats = ['HTML', 'XML']
