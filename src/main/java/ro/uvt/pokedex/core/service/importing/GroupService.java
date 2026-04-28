@@ -84,10 +84,6 @@ public class GroupService {
 
             // Add to group membership (deduplicated)
             List<String> memberIds = group.getMemberIds();
-            if (memberIds == null) {
-                memberIds = new ArrayList<>();
-                group.setMemberIds(memberIds);
-            }
             if (!memberIds.contains(row.email())) {
                 memberIds.add(row.email());
             }
@@ -114,9 +110,9 @@ public class GroupService {
         if (field.startsWith("Lect."))        return Position.LECT_UNIV;
         if (field.startsWith("Conf."))        return Position.CONF_UNIV;
         if (field.startsWith("Prof."))        return Position.PROF_UNIV;
-        if (field.startsWith("CS I"))         return Position.CS_I;
-        if (field.startsWith("CS II"))        return Position.CS_II;
         if (field.startsWith("CS III"))       return Position.CS_III;
+        if (field.startsWith("CS II"))        return Position.CS_II;
+        if (field.startsWith("CS I"))         return Position.CS_I;
         return Position.OTHER;
     }
 

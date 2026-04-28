@@ -141,9 +141,19 @@ Done history moved to `TASKS-done.md`.
       - Final H49.3 result: line 96% (447/465), mutation 85% (195/230), test strength 86% (195/227).
       - Remaining survivors are classified as low-value or equivalent: MDC/context-close/log-duration observability mutants; duplicate/guard fallthroughs in retry/date parsing; planner boundary cases where output is unchanged; and scheduler text-helper null/blank guard mutations that do not justify further monolith-specific tests now that the package exceeds the H49 threshold.
 
-  - [ ] `H49.4` **`ro.uvt.pokedex.core.service.importing`** — top-level importing (8 classes).
+  - [x] `H49.4` **`ro.uvt.pokedex.core.service.importing`** — top-level importing (8 classes). *(completed 2026-04-28)*
     Baseline: line 41% (307/756), mutation 16% (52/316), test strength 40% (52/131).
     Scope hint: both kinds of gap — missing tests and weak assertions. Triage by class size; pick the largest two or three first.
+    Handover:
+    - Added `GroupServiceTest`: 31 tests covering early-exit, group field propagation, new/existing user handling, position parsing (including CS III/II/I order bug fixed), scopusId filtering, and CSV validation. Fixed `parsePosition` CS order bug and removed dead `memberIds == null` guard. Post-remediation: line 98%, mutation 91% (52/57), test strength 91%.
+    - Added `CoreConferenceRankingServiceTest`: ~22 tests covering all supported years (2008–2023), rank parsing, existing conference update, malformed row, unreadable file, async delegation. Post-remediation: line 100%, mutation 81% (44/54), test strength 81%.
+    - Added `URAPRankingServiceTest`: 16 tests using real XSSFWorkbook files covering early return, file filter, score fields, year extraction, existing university, malformed rank, null cells, string numeric cells, directory filtering, unreadable file, missing cell, numeric cell. Post-remediation: line 98%, mutation 81% (30/37), test strength 81%.
+    - Added `ScopusDataServiceTest` extensions: `loadScopusDataIfEmptySync`, IO error paths, `createUploadBatchId` normalization, `normalizeOptionalValue` "null"/"n/a" literals, `readInt` string fallback and numeric paths, `readRequiredText` null/blank node cases, `readDataSize` scalar eid, `applyIngestionOutcome` error path, `extractCitationsFromJson` blank eid and NUMBER node paths, citation batch skipped/error count assertions. Post-remediation: line 79%, mutation 51% (68/134), test strength 69%. Remaining survivors: logging-only arithmetic and heartbeat mutations (equivalent), in-loop batch flush path (needs 1000+ citations, impractical), dead `splitSemicolon` method.
+    - Added `AdminUserServiceTest`: 3 tests for count>0 skip, email/password on create, role assignment.
+    - Added `ArtisticEventsServiceTest`: 2 tests for count>0 skip and happy-path smoke test (file exists in repo).
+    - Added `CNCSISServiceTest`: 4 tests for count>0 skip, IO error, valid xlsx, null row skip.
+    - Added `SenseRankingServiceTest`: 4 tests for IO error, valid ranking, invalid ranking (no setRanking), null row skip.
+    - Full package PIT (all 8 classes): line 90% (679/753), mutation 68% (212/314), test strength 77% (212/275).
 
   - [ ] `H49.5` **`ro.uvt.pokedex.core.service.importing.scopus`** — high coverage masking weak assertions (15 classes).
     Baseline: line 81% (3127/3872), mutation 33% (705/2149), test strength 40% (705/1754).
