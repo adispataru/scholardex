@@ -6,8 +6,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.activities.Activity;
-import ro.uvt.pokedex.core.model.reporting.ActivityIndicator;
-import ro.uvt.pokedex.core.repository.ActivityIndicatorRepository;
 import ro.uvt.pokedex.core.repository.ActivityRepository;
 
 import java.util.List;
@@ -21,8 +19,6 @@ class ActivityManagementFacadeTest {
 
     @Mock
     private ActivityRepository activityRepository;
-    @Mock
-    private ActivityIndicatorRepository activityIndicatorRepository;
 
     @InjectMocks
     private ActivityManagementFacade facade;
@@ -49,11 +45,11 @@ class ActivityManagementFacadeTest {
     }
 
     @Test
-    void saveAndDeleteIndicatorDelegateToRepository() {
-        ActivityIndicator indicator = new ActivityIndicator();
-        facade.saveActivityIndicator(indicator);
-        facade.deleteActivityIndicator("x");
-        verify(activityIndicatorRepository).save(indicator);
-        verify(activityIndicatorRepository).deleteById("x");
+    void saveAndDeleteActivityDelegateToRepository() {
+        Activity activity = new Activity();
+        facade.saveActivity(activity);
+        facade.deleteActivity("x");
+        verify(activityRepository).save(activity);
+        verify(activityRepository).deleteById("x");
     }
 }

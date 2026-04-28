@@ -85,6 +85,11 @@ class ResearcherWorkspaceControllerContractTest {
         assertTrue(template.contains("fragments :: search-input"));
         assertTrue(template.contains("id='ws-search-input'"));
         assertTrue(template.contains("kbdHint='/ or Ctrl+K'"));
+        assertTrue(template.contains("data-tab-goto=\"profile\">Start</button>"));
+        assertTrue(template.contains("data-tab-goto=\"publications\">Add</button>"));
+        assertTrue(template.contains("btn btn-link p-0 align-baseline fw-semibold\">Go to Profile &amp; Sync</button>"));
+        assertTrue(template.contains("aria-describedby=\"ws-citations-modal-pub ws-citations-modal-total\""));
+        assertTrue(!template.contains("href=\"#\" data-tab-goto=\"profile\">Start</a>"));
     }
 
     @Test

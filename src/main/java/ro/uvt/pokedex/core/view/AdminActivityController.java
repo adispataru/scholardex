@@ -5,12 +5,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import ro.uvt.pokedex.core.model.activities.Activity;
-import ro.uvt.pokedex.core.model.reporting.ActivityIndicator;
 import ro.uvt.pokedex.core.service.application.ActivityManagementFacade;
 import ro.uvt.pokedex.core.service.application.model.BreadcrumbItem;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @Controller
@@ -74,48 +72,13 @@ public class AdminActivityController {
         return "redirect:/admin/activities";
     }
 
-    // New endpoints for ActivityIndicator
-
     @GetMapping("/activityIndicators")
-    public String getActivityIndicators(Model model) {
-        List<ActivityIndicator> indicators = activityManagementFacade.listActivityIndicators();
-        List<Activity> activities = activityManagementFacade.listActivities();
-        model.addAttribute("activities", activities);
-        model.addAttribute("indicators", indicators);
-        model.addAttribute("activityIndicator", new ActivityIndicator());
-        Map<String, String> activityDescriptions = activityManagementFacade.buildActivityDescriptions(activities);
-        model.addAttribute("activityDescriptions", activityDescriptions);
-        return "admin/activity-indicators";
-    }
-
-    @PostMapping("/activityIndicators/create")
-    public String createActivityIndicator(@ModelAttribute ActivityIndicator activityIndicator) {
-        activityManagementFacade.saveActivityIndicator(activityIndicator);
-        return "redirect:/admin/activityIndicators";
-    }
-
-    @PostMapping("/activityIndicators/update")
-    public String updateActivityIndicator(@ModelAttribute ActivityIndicator activityIndicator) {
-        activityManagementFacade.saveActivityIndicator(activityIndicator);
-        return "redirect:/admin/activityIndicators";
+    public String redirectRetiredActivityIndicatorsList() {
+        return "redirect:/admin/activities";
     }
 
     @GetMapping("/activityIndicators/edit/{id}")
-    public String editActivityIndicator(@PathVariable String id, Model model) {
-        Optional<ActivityIndicator> indicator = activityManagementFacade.findActivityIndicator(id);
-        if (indicator.isPresent()) {
-            List<Activity> activities = activityManagementFacade.listActivities();
-            model.addAttribute("activityIndicator", indicator.get());
-            model.addAttribute("activities", activities);
-            return "admin/activity-indicator-edit";
-        } else {
-            return "redirect:/admin/activityIndicators";
-        }
-    }
-
-    @PostMapping("/activityIndicators/delete/{id}")
-    public String deleteActivityIndicator(@PathVariable String id) {
-        activityManagementFacade.deleteActivityIndicator(id);
-        return "redirect:/admin/activityIndicators";
+    public String redirectRetiredActivityIndicatorsEdit(@PathVariable String id) {
+        return "redirect:/admin/activities";
     }
 }

@@ -1,7 +1,9 @@
 plugins {
     id 'java'
+    id 'jacoco'
     id 'org.springframework.boot' version '4.0.2'
     id 'io.spring.dependency-management' version '1.1.7'
+    id 'info.solidsoft.pitest' version '1.19.0-rc.1'
 }
 
 group = 'ro.uvt.pokedex'
@@ -52,6 +54,7 @@ dependencies {
     testImplementation 'org.testcontainers:mongodb:1.19.7'
     testImplementation 'org.testcontainers:postgresql:1.19.7'
     runtimeOnly 'org.postgresql:postgresql'
+    pitest 'com.arcmutate:arcmutate-spring:1.1.2'
 }
 
 tasks.named('test') {
@@ -62,6 +65,7 @@ tasks.named('test') {
     systemProperty 'core.scopus.scheduler.enabled', 'false'
     systemProperty 'management.health.scopusPython.enabled', 'false'
     useJUnitPlatform()
+    finalizedBy tasks.named('jacocoTestReport')
 }
 
 tasks.named('bootRun') {
@@ -155,4 +159,40 @@ tasks.register('testH2210Baseline', Test) {
         includeTestsMatching '*AdminInitializationControllerContractTest'
         includeTestsMatching '*AdminInitializationSecurityContractTest'
     }
+}
+
+// --- Test quality measurement -----------------------------------------------
+// JaCoCo measures branch coverage; PIT measures mutation score.
+// See docs/test-quality.md for runbook and how to read results.
+
+jacoco {
+    toolVersion = '0.8.14'
+}
+
+tasks.named('jacocoTestReport') {
+    dependsOn tasks.named('test')
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+pitest {
+    pitestVersion = '1.23.1'
+    junit5PluginVersion = '1.2.1'
+    targetClasses = [
+            'ro.uvt.pokedex.core.service.*',
+            'ro.uvt.pokedex.core.handlers.*'
+    ]
+    targetTests = [
+            'ro.uvt.pokedex.core.service.*',
+            'ro.uvt.pokedex.core.handlers.*'
+    ]
+    threads = 4
+    timestampedReports = false
+    outputFormats = ['HTML', 'XML']
+    mutators = ['DEFAULTS', 'SPRING']
+    jvmArgs = ['-Xmx2g']
+    // Keep PIT off the standard `check` lifecycle so CI isn't slowed down.
+    // Run on demand via: ./gradlew pitest
 }

@@ -47,7 +47,8 @@
         <main th:unless="${authenticated}" class="app-error-standalone" aria-labelledby="app-error-title">
             <div class="app-error-standalone__brand">
                 <span class="app-error-standalone__brand-mark">
-                    <img src="/images/logo.webp" width="48" height="48" alt="">
+                    <img src="/images/logo-light.webp" width="48" height="48" alt="" class="app-logo--light">
+                    <img src="/images/logo-dark.webp" width="48" height="48" alt="" class="app-logo--dark">
                 </span>
                 <span>ScholarDex</span>
             </div>
@@ -100,7 +101,7 @@
             <p class="app-error-browse__title">Try one of these areas instead</p>
             <div class="app-error-browse__links">
                 <a href="/forums"><i class="fa-solid fa-book-open" aria-hidden="true"></i><span>Forums</span></a>
-                <a href="/wos/categories"><i class="fa-solid fa-layer-group" aria-hidden="true"></i><span>WoS categories</span></a>
+                <a th:if="${currentUser != null and currentUser.isPresent()}" href="/rankings"><i class="fa-solid fa-layer-group" aria-hidden="true"></i><span>Rankings</span></a>
                 <a href="/core/rankings"><i class="fa-solid fa-ranking-star" aria-hidden="true"></i><span>CORE rankings</span></a>
                 <a href="/universities"><i class="fa-solid fa-building-columns" aria-hidden="true"></i><span>Universities</span></a>
             </div>
@@ -181,7 +182,8 @@
         <div class="app-shell-sidebar__surface">
             <a class="app-shell-sidebar__brand" href="/">
                 <span class="app-shell-sidebar__brand-icon">
-                    <img src="/images/logo.webp" width="48" height="48" alt="">
+                    <img src="/images/logo-light.webp" width="48" height="48" alt="" class="app-logo--light">
+                    <img src="/images/logo-dark.webp" width="48" height="48" alt="" class="app-logo--dark">
                 </span>
                 <span class="app-shell-sidebar__brand-text">ScholarDex</span>
             </a>
@@ -256,7 +258,7 @@
             <p class="app-shell-sidebar__section-label">People &amp; Access</p>
             <ul class="app-shell-sidebar__section-list">
                 <li class="app-shell-sidebar__item"
-                    th:classappend="${activeSection == 'users' or activeSection == 'researchers'} ? ' active' : ''">
+                    th:classappend="${activeSection == 'users'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/users}">
                         <i class="fa-solid fa-fw fa-users"></i>
                         <span>Users</span>
@@ -305,7 +307,7 @@
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
-                    th:classappend="${activeSection == 'scholardex-publications' or activeSection == 'scopus-publications' or activeSection == 'scholardex-publications-search'} ? ' active' : ''">
+                    th:classappend="${activeSection == 'scholardex-publications' or activeSection == 'scopus-publications'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/scholardex/publications}">
                         <i class="fa-solid fa-fw fa-file-lines"></i>
                         <span>Publications</span>
@@ -335,7 +337,7 @@
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
-                    th:classappend="${activeSection == 'activities' or activeSection == 'activity-indicators'} ? ' active' : ''">
+                    th:classappend="${activeSection == 'activities'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/admin/activities}">
                         <i class="fa-solid fa-fw fa-sliders"></i>
                         <span>Eval. Config</span>
@@ -385,9 +387,9 @@
             <ul class="app-shell-sidebar__section-list">
                 <li class="app-shell-sidebar__item"
                     th:classappend="${activeSection == 'rankings' or activeSection == 'rankings-categories'} ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/wos/categories}">
-                        <i class="fa-solid fa-fw fa-tags"></i>
-                        <span>WoS Categories</span>
+                    <a class="app-shell-sidebar__link" th:href="@{/rankings}">
+                        <i class="fa-solid fa-fw fa-ranking-star"></i>
+                        <span>Rankings Hub</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item"
@@ -434,16 +436,16 @@
         <section class="app-shell-sidebar__section">
             <p class="app-shell-sidebar__section-label">Rankings</p>
             <ul class="app-shell-sidebar__section-list">
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection == 'scholardex-forums' or activeSection == 'rankings'} ? ' active' : ''">
+                <li class="app-shell-sidebar__item" th:classappend="${activeSection == 'scholardex-forums'} ? ' active' : ''">
                     <a class="app-shell-sidebar__link" th:href="@{/forums}">
                         <i class="fa-solid fa-fw fa-medal"></i>
                         <span>Forums</span>
                     </a>
                 </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'rankings-categories' ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/wos/categories}">
-                        <i class="fa-solid fa-fw fa-tags"></i>
-                        <span>WoS Categories</span>
+                <li class="app-shell-sidebar__item" th:classappend="${activeSection == 'rankings' or activeSection == 'rankings-categories'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/rankings}">
+                        <i class="fa-solid fa-fw fa-ranking-star"></i>
+                        <span>Rankings Hub</span>
                     </a>
                 </li>
                 <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'rankings-core' ? ' active' : ''">
@@ -691,7 +693,7 @@
                 th:id="'tab-trigger-' + ${tab.id}"
                 th:attr="data-tab-id=${tab.id},
                          aria-controls='tab-panel-' + ${tab.id},
-                         aria-selected='false',
+                         aria-selected=${iterStat.first ? 'true' : 'false'},
                          tabindex=${iterStat.first ? '0' : '-1'}">
                 <i th:if="${tab.icon != null}"
                    th:class="${tab.icon} + ' app-tab-bar__tab-icon'"
@@ -701,12 +703,12 @@
         </div>
 
         <div class="app-tab-bar__panels">
-            <div th:each="tab : ${tabs}"
+            <div th:each="tab, iterStat : ${tabs}"
                  role="tabpanel"
                  class="app-tab-bar__panel"
                  th:id="'tab-panel-' + ${tab.id}"
                  th:attr="aria-labelledby='tab-trigger-' + ${tab.id}"
-                 hidden="hidden">
+                 th:hidden="${!iterStat.first}">
             </div>
         </div>
 
@@ -972,5 +974,70 @@
         </div>
     </div>
 </div>
+<!-- Public shell header — for unauthenticated / public-facing pages.
+     activeSection: 'publications' | 'forums' | 'rankings' | 'wos-categories' | null
+-->
+<th:block th:fragment="public-shell(activeSection)">
+<a class="app-skip-link" href="#main-content">Skip to main content</a>
+<header class="app-public-header" role="banner">
+    <div class="app-public-header__inner">
+        <a class="app-public-header__brand" href="/">
+            <img src="/images/logo-light.webp" width="28" height="28" alt="ScholarDex logo" class="app-logo--light">
+            <img src="/images/logo-dark.webp" width="28" height="28" alt="ScholarDex logo" class="app-logo--dark">
+            <span>ScholarDex</span>
+        </a>
+
+        <nav class="app-public-header__nav" id="public-nav" aria-label="Public navigation">
+            <a href="/publications"
+               class="app-public-header__nav-link"
+               th:classappend="${activeSection == 'publications'} ? ' is-active' : ''"
+               th:attr="aria-current=${activeSection == 'publications'} ? 'page' : null">Publications</a>
+            <a href="/forums"
+               class="app-public-header__nav-link"
+               th:classappend="${activeSection == 'forums'} ? ' is-active' : ''"
+               th:attr="aria-current=${activeSection == 'forums'} ? 'page' : null">Forums</a>
+            <a href="/rankings"
+               class="app-public-header__nav-link"
+               th:classappend="${activeSection == 'rankings'} ? ' is-active' : ''"
+               th:attr="aria-current=${activeSection == 'rankings'} ? 'page' : null">Rankings</a>
+        </nav>
+
+        <div class="app-public-header__actions">
+            <button
+                type="button"
+                class="app-shell-theme-toggle"
+                data-app-theme-toggle
+                aria-label="Switch to dark theme"
+                aria-pressed="false">
+                <i class="fa-solid fa-moon" aria-hidden="true"></i>
+                <span class="app-shell-theme-toggle__label">Dark</span>
+            </button>
+
+            <a th:if="${currentUser != null and currentUser.isPresent()}"
+               href="/user/workspace"
+               class="app-public-header__cta app-public-header__cta--workspace">
+                <i class="fa-solid fa-gauge" aria-hidden="true"></i>
+                <span>Workspace</span>
+            </a>
+            <a th:unless="${currentUser != null and currentUser.isPresent()}"
+               href="/login"
+               class="app-public-header__cta app-public-header__cta--signin">
+                Sign in
+            </a>
+
+            <button
+                type="button"
+                class="app-public-header__menu-toggle"
+                aria-label="Toggle navigation"
+                aria-expanded="false"
+                aria-controls="public-nav"
+                data-app-public-menu-toggle>
+                <i class="fa-solid fa-bars" aria-hidden="true"></i>
+            </button>
+        </div>
+    </div>
+</header>
+</th:block>
+
 </body>
 </html>

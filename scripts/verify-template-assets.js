@@ -7,22 +7,19 @@ const roots = [
   'src/main/resources/templates/forums',
   'src/main/resources/templates/wos',
   'src/main/resources/templates/core',
+  'src/main/resources/templates/rankings',
   'src/main/resources/templates/universities',
   'src/main/resources/templates/events',
+  'src/main/resources/templates/publications',
   'src/main/resources/templates/shared',
   'src/main/resources/templates/errors'
 ];
 
-const allowlistedExternalAssetReferences = new Map([
-  [
-    'src/main/resources/templates/universities/detail.html',
-    new Set(['https://cdn.jsdelivr.net/npm/chart.js'])
-  ],
-  [
-    'src/main/resources/templates/forums/detail.html',
-    new Set(['https://unpkg.com/frappe-charts@1.6.2/dist/frappe-charts.min.umd.js'])
-  ]
-]);
+const standaloneTemplateFiles = [
+  'src/main/resources/templates/landing.html'
+];
+
+const allowlistedExternalAssetReferences = new Map();
 
 const allowlistedInlineScriptFiles = new Set([
   'src/main/resources/templates/admin/conflicts.html',
@@ -60,7 +57,10 @@ function listHtmlFiles(dir) {
   return out;
 }
 
-const files = roots.flatMap(listHtmlFiles);
+const files = [
+  ...roots.flatMap(listHtmlFiles),
+  ...standaloneTemplateFiles.filter((file) => fs.existsSync(file))
+];
 const errors = [];
 
 for (const file of files) {

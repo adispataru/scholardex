@@ -1,401 +1,187 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${forum.publicationName}">Scholardex Forum</title>
+    <meta name="description"
+          th:content="${'Forum profile for ' + forum.publicationName + ' with ISSN, eISSN, aggregation type, and authenticated ranking access.'}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" th:content="${forum.publicationName + ' — ScholarDex Forum'}">
+    <meta property="og:description"
+          th:content="${'Explore the ScholarDex forum profile for ' + forum.publicationName + '.'}">
+    <meta property="og:url" th:content="@{/forums/{id}(id=${forum.id})}">
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <style>
-        .card-spacing {
-            margin-bottom: 20px;
-        }
-        .heatmap-legend {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-            margin-bottom: 0.5rem;
-            font-size: 0.75rem;
-            color: #5a5c69;
-        }
-        .heatmap-legend-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-        }
-        .heatmap-legend-swatch {
-            width: 14px;
-            height: 14px;
-            border: 1px solid #d1d3e2;
-            border-radius: 2px;
-        }
-        .gh-heatmap-wrap {
-            overflow-x: auto;
-        }
-        .gh-heatmap {
-            min-width: fit-content;
-        }
-        .gh-heatmap-row {
-            display: grid;
-            grid-auto-rows: 16px;
-            column-gap: 4px;
-            row-gap: 0;
-            margin-bottom: 6px;
-            align-items: center;
-        }
-        .gh-label {
-            font-size: 0.72rem;
-            color: #5a5c69;
-            font-weight: 700;
-            text-align: left;
-            white-space: nowrap;
-            padding-right: 6px;
-        }
-        .gh-year {
-            font-size: 0.62rem;
-            color: #858796;
-            text-align: center;
-            line-height: 1;
-        }
-        .gh-cell {
-            width: 14px;
-            height: 14px;
-            border-radius: 2px;
-            border: 1px solid #d1d3e2;
-            cursor: default;
-        }
-        .gh-q1 { background: #d9534f; }
-        .gh-q2 { background: #f6c23e; }
-        .gh-q3 { background: #ffffff; }
-        .gh-q4 { background: #b8bcc2; }
-        .gh-empty { background: #6c757d; }
-    </style>
 </head>
-<body id="page-top">
+<body class="app-public-page">
 
-<div id="wrapper">
-    <div th:replace="~{fragments :: sidebar('scholardex-forums')}"></div>
+<th:block th:replace="~{fragments :: public-shell('forums')}"></th:block>
 
-    <div id="content-wrapper" class="d-flex flex-column">
-        <div id="content">
-            <div th:replace="~{fragments :: navbar('Forum')}"></div>
-            <div class="container-fluid app-page-content">
+<main class="app-public-content" id="main-content">
+            <div class="app-page-content app-forum-detail">
                 <th:block th:replace="~{fragments :: breadcrumb(${breadcrumbs}, 'default')}"></th:block>
-                <p class="mb-4">Canonical Scholardex forum detail page. Ranking content is shown by forum type.</p>
 
-                <div class="card shadow mb-4 card-spacing">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Forum Summary</h6>
+                <section class="app-forum-detail__section" aria-labelledby="forum-summary-title">
+                    <div class="app-forum-detail__section-header">
+                        <div>
+                            <p class="app-forum-detail__eyebrow">Forum profile</p>
+                            <h1 id="forum-summary-title" class="app-forum-detail__section-title" th:text="${forum.publicationName}">Forum Name</h1>
+                        </div>
+                        <a href="/forums" class="btn btn-outline-primary btn-sm">
+                            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                            <span>All forums</span>
+                        </a>
                     </div>
-                    <div class="card-body">
-                        <p><strong>Aggregation Type:</strong> <span th:text="${forum.aggregationType}">Journal</span></p>
-                        <p><strong>ISSN:</strong> <span th:text="${forum.issn != null && !forum.issn.isBlank() ? forum.issn : '—'}">0000-0000</span></p>
-                        <p><strong>eISSN:</strong> <span th:text="${forum.eIssn != null && !forum.eIssn.isBlank() ? forum.eIssn : '—'}">1111-1111</span></p>
-                        <p th:if="${detail.forumType().name() == 'JOURNAL'}" class="mb-0">
-                            <strong>Ranking Source:</strong>
-                            <span th:text="${detail.wosIndexed() ? 'Web of Science' : 'No WoS journal ranking currently available'}">Web of Science</span>
-                        </p>
-                        <p th:if="${detail.forumType().name() == 'CONFERENCE'}" class="mb-0"><strong>Ranking Source:</strong> CORE placeholder</p>
-                        <p th:if="${detail.forumType().name() == 'BOOK'}" class="mb-0"><strong>Ranking Source:</strong> Book ranking placeholder</p>
-                        <p th:if="${detail.showGenericPlaceholder()}" class="mb-0"><strong>Ranking Source:</strong> Not available yet for this forum type</p>
+
+                    <div class="app-summary-grid app-forum-detail__summary-grid">
+                        <th:block th:replace="~{fragments :: stat-card(
+                            label='Aggregation Type',
+                            value=${forum.aggregationType != null && !forum.aggregationType.isBlank() ? forum.aggregationType : 'Unknown'},
+                            accent='primary',
+                            contextLine='Forum classification',
+                            icon='fa-solid fa-layer-group')}"></th:block>
+                        <th:block th:replace="~{fragments :: stat-card(
+                            label='ISSN',
+                            value=${forum.issn != null && !forum.issn.isBlank() ? forum.issn : '—'},
+                            accent='neutral',
+                            contextLine='Print identifier',
+                            icon='fa-solid fa-barcode')}"></th:block>
+                        <th:block th:replace="~{fragments :: stat-card(
+                            label='eISSN',
+                            value=${forum.eIssn != null && !forum.eIssn.isBlank() ? forum.eIssn : '—'},
+                            accent='neutral',
+                            contextLine='Electronic identifier',
+                            icon='fa-solid fa-fingerprint')}"></th:block>
+                        <th:block th:replace="~{fragments :: stat-card(
+                            label='Ranking Source',
+                            value=${detail.forumType().name() == 'JOURNAL' ? (detail.wosIndexed() ? 'Web of Science' : 'Not indexed') : (detail.forumType().name() == 'CONFERENCE' ? 'CORE' : (detail.forumType().name() == 'BOOK' ? 'Book ranking' : 'Not available'))},
+                            accent=${detail.wosIndexed() ? 'success' : 'warning'},
+                            contextLine=${detail.wosIndexed() ? 'Authenticated ranking detail available' : 'No public metric detail'},
+                            icon='fa-solid fa-ranking-star')}"></th:block>
                     </div>
+                </section>
+
+                <div th:if="${detail.forumType().name() == 'JOURNAL' and detail.wosIndexed() and currentUser != null and currentUser.isEmpty()}"
+                     class="alert alert-info app-forum-detail__auth-callout"
+                     role="status">
+                    Sign in to view Web of Science rankings, quartile history, and journal metrics for this forum.
+                    <a href="/login" class="alert-link">Sign in</a>
                 </div>
 
-                <div th:if="${detail.wosIndexed()}">
-                    <div class="card shadow mb-4 card-spacing">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">Journal Details</h6>
-                        </div>
-                        <div class="card-body">
-                            <p>
-                                <span>Forum: </span>
-                                <span th:text="${wosRanking.name}">Name</span>
-                            </p>
-                            <p>
-                                <span>ISSN: </span>
-                                <span th:text="${wosRanking.issn}">ISSN</span>
-                            </p>
-                            <p>
-                                <span>eISSN: </span>
-                                <span th:text="${wosRanking.eIssn}">eISSN</span>
-                            </p>
-                            <p>
-                                <span>Alternative names: </span>
-                                <span th:if="${wosRanking.alternativeNames == null || wosRanking.alternativeNames.isEmpty()}">—</span>
-                                <span th:if="${wosRanking.alternativeNames != null && !wosRanking.alternativeNames.isEmpty()}"
-                                      th:text="${#strings.listJoin(wosRanking.alternativeNames, ', ')}">Alt names</span>
-                            </p>
-                            <p>
-                                <span>Alternative ISSNs: </span>
-                                <span th:if="${wosRanking.alternativeIssns == null || wosRanking.alternativeIssns.isEmpty()}">—</span>
-                                <span th:if="${wosRanking.alternativeIssns != null && !wosRanking.alternativeIssns.isEmpty()}"
-                                      th:text="${#strings.listJoin(wosRanking.alternativeIssns, ', ')}">Alt ISSNs</span>
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-xl-12 col-md-12 mb-12">
-                            <div class="card shadow py-2 card-spacing">
-                                <div class="card-body">
-                                    <h6 class="m-0 text-primary">General Metrics</h6>
-                                    <div class="chart-area">
-                                        <div id="chart-score"></div>
-                                    </div>
-                                </div>
+                <div th:if="${detail.wosIndexed() and currentUser != null and currentUser.isPresent()}">
+                    <section class="app-forum-detail__section" aria-labelledby="journal-details-title">
+                        <div class="app-forum-detail__section-header">
+                            <div>
+                                <p class="app-forum-detail__eyebrow">Web of Science</p>
+                                <h2 id="journal-details-title" class="app-forum-detail__section-title">Journal Details</h2>
                             </div>
                         </div>
-                    </div>
+                        <dl class="app-forum-detail__definition-grid">
+                            <div>
+                                <dt>Forum</dt>
+                                <dd th:text="${wosRanking.name}">Name</dd>
+                            </div>
+                            <div>
+                                <dt>ISSN</dt>
+                                <dd th:text="${wosRanking.issn != null && !wosRanking.issn.isBlank() ? wosRanking.issn : '—'}">ISSN</dd>
+                            </div>
+                            <div>
+                                <dt>eISSN</dt>
+                                <dd th:text="${wosRanking.eIssn != null && !wosRanking.eIssn.isBlank() ? wosRanking.eIssn : '—'}">eISSN</dd>
+                            </div>
+                            <div>
+                                <dt>Alternative names</dt>
+                                <dd th:if="${wosRanking.alternativeNames == null || wosRanking.alternativeNames.isEmpty()}">—</dd>
+                                <dd th:if="${wosRanking.alternativeNames != null && !wosRanking.alternativeNames.isEmpty()}"
+                                    th:text="${#strings.listJoin(wosRanking.alternativeNames, ', ')}">Alt names</dd>
+                            </div>
+                            <div>
+                                <dt>Alternative ISSNs</dt>
+                                <dd th:if="${wosRanking.alternativeIssns == null || wosRanking.alternativeIssns.isEmpty()}">—</dd>
+                                <dd th:if="${wosRanking.alternativeIssns != null && !wosRanking.alternativeIssns.isEmpty()}"
+                                    th:text="${#strings.listJoin(wosRanking.alternativeIssns, ', ')}">Alt ISSNs</dd>
+                            </div>
+                        </dl>
+                    </section>
 
-                    <div class="row">
-                        <div class="col-xl-12 col-md-12 mb-12">
-                            <div class="card shadow py-2 card-spacing">
-                                <div class="card-body">
-                                    <h6 class="m-0 text-primary mb-3">Category Rankings</h6>
-                                    <div class="heatmap-legend">
-                                        <span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#d9534f"></span>Q1</span>
-                                        <span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#f6c23e"></span>Q2</span>
-                                        <span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#ffffff"></span>Q3</span>
-                                        <span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#b8bcc2"></span>Q4</span>
-                                        <span class="heatmap-legend-item"><span class="heatmap-legend-swatch" style="background:#6c757d"></span>No data</span>
-                                    </div>
-                                    <div th:if="${wosRanking.webOfScienceCategoryIndex == null || wosRanking.webOfScienceCategoryIndex.isEmpty()}" class="alert alert-secondary mb-0">
-                                        No category-level WoS data is currently available for this journal.
-                                    </div>
-                                    <div th:each="e, iterStat : ${wosRanking.webOfScienceCategoryIndex}" class="mb-4">
-                                        <h6 class="m-0 text-primary">
-                                            <a th:href="@{/wos/categories/{key}(key=${e.key})}" th:text="${e.key}">Category</a>
-                                        </h6>
-                                        <div class="mt-2">
-                                            <div th:attr="id='chart-quartile-' + ${#strings.replace(e.key, ' ', '-')}"></div>
-                                        </div>
-                                        <hr th:if="${!iterStat.last}" />
-                                    </div>
-                                </div>
+                    <section class="app-forum-detail__section" aria-labelledby="general-metrics-title">
+                        <div class="app-forum-detail__section-header">
+                            <div>
+                                <p class="app-forum-detail__eyebrow">Timeline</p>
+                                <h2 id="general-metrics-title" class="app-forum-detail__section-title">General Metrics</h2>
                             </div>
                         </div>
-                    </div>
+                        <div class="app-forum-detail__chart-shell">
+                            <div id="chart-score"></div>
+                        </div>
+                    </section>
+
+                    <section class="app-forum-detail__section" aria-labelledby="category-rankings-title">
+                        <div class="app-forum-detail__section-header">
+                            <div>
+                                <p class="app-forum-detail__eyebrow">Category history</p>
+                                <h2 id="category-rankings-title" class="app-forum-detail__section-title">Category Rankings</h2>
+                            </div>
+                        </div>
+                        <div class="heatmap-legend" aria-label="Quartile legend">
+                            <span class="heatmap-legend-item"><span class="heatmap-legend-swatch gh-q1" aria-hidden="true"></span>Q1</span>
+                            <span class="heatmap-legend-item"><span class="heatmap-legend-swatch gh-q2" aria-hidden="true"></span>Q2</span>
+                            <span class="heatmap-legend-item"><span class="heatmap-legend-swatch gh-q3" aria-hidden="true"></span>Q3</span>
+                            <span class="heatmap-legend-item"><span class="heatmap-legend-swatch gh-q4" aria-hidden="true"></span>Q4</span>
+                            <span class="heatmap-legend-item"><span class="heatmap-legend-swatch gh-empty" aria-hidden="true"></span>No data</span>
+                        </div>
+                        <div th:if="${wosRanking.webOfScienceCategoryIndex == null || wosRanking.webOfScienceCategoryIndex.isEmpty()}" class="alert alert-secondary mb-0">
+                            No category-level WoS data is currently available for this journal.
+                        </div>
+                        <div class="app-forum-detail__category-list">
+                            <article th:each="e, iterStat : ${wosRanking.webOfScienceCategoryIndex}" class="app-forum-detail__category">
+                                <h3 class="app-forum-detail__category-title">
+                                    <a th:href="@{/wos/categories/{key}(key=${e.key})}" th:text="${e.key}">Category</a>
+                                </h3>
+                                <div class="app-forum-detail__heatmap-target">
+                                    <div th:attr="id='chart-quartile-' + ${#strings.replace(e.key, ' ', '-')}"></div>
+                                </div>
+                            </article>
+                        </div>
+                    </section>
                 </div>
 
-                <div th:if="${detail.forumType().name() == 'JOURNAL' && !detail.wosIndexed()}" class="card shadow mb-4 card-spacing">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">WoS Ranking</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="alert alert-warning mb-0" role="status">
-                            This journal is not indexed by WoS.
-                        </div>
-                    </div>
+                <div th:if="${detail.forumType().name() == 'JOURNAL' and !detail.wosIndexed() and currentUser != null and currentUser.isPresent()}"
+                     class="alert alert-warning app-forum-detail__auth-callout"
+                     role="status">
+                    This journal is not indexed by WoS.
                 </div>
 
-                <div th:if="${detail.showCorePlaceholder()}" class="card shadow mb-4 card-spacing">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">CORE Ranking</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="alert alert-info mb-0" role="status">
-                            CORE conference ranking rendering is reserved for a later H23 update. This forum detail page is the canonical place where that ranking will appear.
-                        </div>
-                    </div>
+                <div th:if="${detail.showCorePlaceholder()}"
+                     class="alert alert-info app-forum-detail__auth-callout"
+                     role="status">
+                    CORE conference ranking rendering is reserved for a later H23 update. This forum detail page is the canonical place where that ranking will appear.
                 </div>
 
-                <div th:if="${detail.showBookPlaceholder()}" class="card shadow mb-4 card-spacing">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Book Ranking</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="alert alert-info mb-0" role="status">
-                            Book ranking rendering is reserved for a later H23 update. This forum detail page is the canonical place where that ranking will appear.
-                        </div>
-                    </div>
+                <div th:if="${detail.showBookPlaceholder()}"
+                     class="alert alert-info app-forum-detail__auth-callout"
+                     role="status">
+                    Book ranking rendering is reserved for a later H23 update. This forum detail page is the canonical place where that ranking will appear.
                 </div>
 
-                <div th:if="${detail.showGenericPlaceholder()}" class="card shadow mb-4 card-spacing">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Ranking View</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="alert alert-secondary mb-0" role="status">
-                            A ranking-specific view is not available yet for this forum type.
-                        </div>
-                    </div>
+                <div th:if="${detail.showGenericPlaceholder()}"
+                     class="alert alert-secondary app-forum-detail__auth-callout"
+                     role="status">
+                    A ranking-specific view is not available yet for this forum type.
                 </div>
             </div>
+</main>
 
-            <div th:replace="~{fragments :: app-footer}"></div>
-        </div>
-    </div>
-
-    <a class="scroll-to-top rounded" href="#page-top">
-        <i class="fa-solid fa-angle-up"></i>
-    </a>
-</div>
+<th:block th:replace="~{fragments :: app-footer}"></th:block>
+<script th:if="${detail.wosIndexed() and currentUser != null and currentUser.isPresent()}"
+        id="forum-wos-category-data"
+        type="application/json"
+        th:inline="javascript">/*[[${wosRanking.webOfScienceCategoryIndex}]]*/ {}</script>
+<script th:if="${detail.wosIndexed() and currentUser != null and currentUser.isPresent()}"
+        id="forum-wos-score-data"
+        type="application/json"
+        th:inline="javascript">/*[[${wosRanking.score}]]*/ {}</script>
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
-
-<script th:if="${detail.wosIndexed()}" src="/js/demo/datatables-demo.js"></script>
-<script th:if="${detail.wosIndexed()}" src="https://unpkg.com/frappe-charts@1.6.2/dist/frappe-charts.min.umd.js"></script>
-<script th:if="${detail.wosIndexed()}" th:inline="javascript">
-    var categoryData = /*[[${wosRanking.webOfScienceCategoryIndex}]]*/ '{}';
-    var score = /*[[${wosRanking.score}]]*/ '{}';
-
-    function collectYearKeys(container, yearSet) {
-        if (!container || typeof container !== 'object') {
-            return;
-        }
-        Object.keys(container).forEach(function (key) {
-            if (/^\d{4}$/.test(key)) {
-                yearSet.add(Number(key));
-            }
-        });
-    }
-
-    var yearSet = new Set();
-    collectYearKeys(score.ais, yearSet);
-    collectYearKeys(score.ris, yearSet);
-    collectYearKeys(score.if, yearSet);
-
-    Object.keys(categoryData || {}).forEach(function (categoryKey) {
-        var category = categoryData[categoryKey] || {};
-        collectYearKeys(category.qAis, yearSet);
-        collectYearKeys(category.rankAis, yearSet);
-        collectYearKeys(category.qRis, yearSet);
-        collectYearKeys(category.rankRis, yearSet);
-        collectYearKeys(category.qif, yearSet);
-        collectYearKeys(category.qIF, yearSet);
-        collectYearKeys(category.rankIf, yearSet);
-        collectYearKeys(category.rankIF, yearSet);
-    });
-
-    var years = Array.from(yearSet).sort(function (a, b) { return a - b; });
-    var hasFrappe = window.frappe && window.frappe.Chart;
-
-    if (hasFrappe && years.length > 0) {
-        new frappe.Chart('#chart-score', {
-            title: 'AIS / RIS / IF',
-            type: 'line',
-            height: 280,
-            colors: ['#1cc88a', '#f6c23e', '#e74a3b'],
-            data: {
-                labels: years,
-                datasets: [{
-                    label: 'AIS',
-                    values: years.map(function (year) { return score.ais && score.ais[year] != null ? score.ais[year] : null; })
-                }, {
-                    label: 'RIS',
-                    values: years.map(function (year) { return score.ris && score.ris[year] != null ? score.ris[year] : null; })
-                }, {
-                    label: 'IF',
-                    values: years.map(function (year) { return score.if && score.if[year] != null ? score.if[year] : null; })
-                }]
-            },
-            options: {
-                lineOptions: { regionFill: 1 },
-                axisOptions: { xAxisMode: 'tick', yAxisMode: 'span', xIsSeries: true }
-            }
-        });
-    }
-
-    function getField(entry, keys) {
-        for (var i = 0; i < keys.length; i++) {
-            var key = keys[i];
-            if (entry && entry[key] != null) {
-                return entry[key];
-            }
-        }
-        return {};
-    }
-
-    function quarterNumber(rawQuarter) {
-        if (rawQuarter == null) {
-            return null;
-        }
-        if (Array.isArray(rawQuarter) && rawQuarter.length > 0) {
-            rawQuarter = rawQuarter[0];
-        }
-        if (typeof rawQuarter === 'number' && rawQuarter >= 1 && rawQuarter <= 4) {
-            return rawQuarter;
-        }
-        var normalized = String(rawQuarter).trim().toUpperCase();
-        var match = normalized.match(/^Q?([1-4])$/);
-        return match ? Number(match[1]) : null;
-    }
-
-    function metricCellLabel(quarter, rank) {
-        if (quarter == null && rank == null) {
-            return '—';
-        }
-        if (quarter != null && rank != null) {
-            return 'Q' + quarter + ' #' + rank;
-        }
-        if (quarter != null) {
-            return 'Q' + quarter;
-        }
-        return '#' + rank;
-    }
-
-    function quarterCssClass(quarter) {
-        if (quarter === 1) return 'gh-q1';
-        if (quarter === 2) return 'gh-q2';
-        if (quarter === 3) return 'gh-q3';
-        if (quarter === 4) return 'gh-q4';
-        return 'gh-empty';
-    }
-
-    function renderCategoryHeatmap(container, entry, years) {
-        if (!container) {
-            return;
-        }
-
-        var metricDefs = [
-            {
-                label: 'AIS',
-                quarterMap: getField(entry, ['qais', 'qAis']),
-                rankMap: getField(entry, ['rankAis', 'rankAIS']),
-                quartileRankMap: getField(entry, ['quartileRankAis', 'quartileRankAIS'])
-            },
-            {
-                label: 'RIS',
-                quarterMap: getField(entry, ['qris', 'qRis']),
-                rankMap: getField(entry, ['rankRis', 'rankRIS']),
-                quartileRankMap: getField(entry, ['quartileRankRis', 'quartileRankRIS'])
-            },
-            {
-                label: 'IF',
-                quarterMap: getField(entry, ['qif', 'qIF']),
-                rankMap: getField(entry, ['rankIf', 'rankIF']),
-                quartileRankMap: getField(entry, ['quartileRankIf', 'quartileRankIF'])
-            }
-        ];
-
-        var columnTemplate = '80px ' + years.map(function () { return '14px'; }).join(' ');
-        var headerRow = '<div class="gh-heatmap-row" style="grid-template-columns:' + columnTemplate + ';">'
-                + '<div class="gh-label"></div>'
-                + years.map(function (year) {
-                    return '<div class="gh-year" title="' + year + '">' + String(year).slice(-2) + '</div>';
-                }).join('')
-                + '</div>';
-
-        var rowsHtml = metricDefs.map(function (metric) {
-            var rowCells = years.map(function (year) {
-                var quarter = quarterNumber(metric.quarterMap[year]);
-                var rank = metric.rankMap[year];
-                var quartileRank = metric.quartileRankMap[year];
-                var title = metricCellLabel(quarter, rank);
-                if (quartileRank != null) {
-                    title += ' (quartile rank: #' + quartileRank + ')';
-                }
-                return '<div class="gh-cell ' + quarterCssClass(quarter) + '" title="' + title + '"></div>';
-            }).join('');
-            return '<div class="gh-heatmap-row" style="grid-template-columns:' + columnTemplate + ';">'
-                    + '<div class="gh-label">' + metric.label + '</div>' + rowCells + '</div>';
-        }).join('');
-
-        container.innerHTML = '<div class="gh-heatmap-wrap"><div class="gh-heatmap">' + headerRow + rowsHtml + '</div></div>';
-    }
-
-    Object.keys(categoryData || {}).forEach(function (key) {
-        var container = document.getElementById('chart-quartile-' + key.replace(/ /g, '-'));
-        renderCategoryHeatmap(container, categoryData[key] || {}, years);
-    });
-</script>
 
 </body>
 </html>

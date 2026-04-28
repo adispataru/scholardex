@@ -45,7 +45,7 @@
                         <a class="app-admin-quicklinks__btn" th:href="@{/admin/conflicts}">
                             <i class="fa-solid fa-gavel" aria-hidden="true"></i>Conflicts queue
                         </a>
-                        <a class="app-admin-quicklinks__btn" th:href="@{/admin/researchers}">
+                        <a class="app-admin-quicklinks__btn" th:href="@{/admin/users}">
                             <i class="fa-solid fa-users" aria-hidden="true"></i>Researchers
                         </a>
                         <a class="app-admin-quicklinks__btn" th:href="@{/admin/scholardex/forums}">
@@ -88,7 +88,7 @@
 
                         <!-- Total researchers -->
                         <a class="app-summary-card app-summary-card--link"
-                           th:href="@{/admin/researchers}"
+                           th:href="@{/admin/users}"
                            th:attr="aria-label=${dashboard != null} ? 'Researchers: ' + ${dashboard.totalResearchers()} : 'Researchers: unavailable'">
                             <p class="app-summary-card__label">Researchers</p>
                             <p class="app-summary-card__value"

@@ -10,6 +10,7 @@ const tasksDonePath = path.join(root, 'TASKS-done.md');
 const allowedTopLevelDocs = new Set([
   'docs/README.md',
   'docs/architecture.md',
+  'docs/authentication.md',
   'docs/case-study-coding-agent-research-reporting-platform.md',
   'docs/contracts.md',
   'docs/workflows.md',
@@ -20,7 +21,8 @@ const allowedTopLevelDocs = new Set([
   'docs/failure-triage.md',
   'docs/doc-governance.md',
   'docs/release-hygiene.md',
-  'docs/c01-cnfis-rule-spec.md'
+  'docs/c01-cnfis-rule-spec.md',
+  'docs/test-quality.md'
 ]);
 
 function listFiles(dir, extension) {

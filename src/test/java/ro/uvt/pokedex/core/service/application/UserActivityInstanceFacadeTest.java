@@ -7,7 +7,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
-import ro.uvt.pokedex.core.repository.ActivityIndicatorRepository;
 import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
 import ro.uvt.pokedex.core.repository.ActivityRepository;
 
@@ -26,8 +25,6 @@ class UserActivityInstanceFacadeTest {
     private ActivityInstanceRepository activityInstanceRepository;
     @Mock
     private ActivityRepository activityRepository;
-    @Mock
-    private ActivityIndicatorRepository activityIndicatorRepository;
 
     @InjectMocks
     private UserActivityInstanceFacade facade;

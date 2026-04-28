@@ -18,16 +18,16 @@
             <div class="container-fluid app-page-content">
                 <div class="app-page-toolbar app-workflow">
 <!--                    divs to show errorMessage or successMessage if present-->
-                    <div th:if="${errorMessage}" class="app-form-state app-form-state--danger" th:text="${errorMessage}"></div>
-                    <div th:if="${successMessage}" class="app-form-state app-form-state--success" th:text="${successMessage}"></div>
+                    <div th:if="${errorMessage}" class="app-form-state app-form-state--danger" role="alert" th:text="${errorMessage}"></div>
+                    <div th:if="${successMessage}" class="app-form-state app-form-state--success" role="status" th:text="${successMessage}"></div>
                     <p class="app-workflow__intro">Create groups, import memberships, and manage their domains, affiliations, and researchers from one admin page.</p>
                     <div class="app-workflow__actions">
-                    <a href="#" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#createGroupModal">
+                    <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#createGroupModal">
                         <i class="fa-solid fa-plus fa-sm"></i> Create New Group
-                    </a>
-                    <a href="#" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#importGroupModal">
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#importGroupModal">
                         <i class="fa-solid fa-plus fa-sm"></i> Import CSV
-                    </a>
+                    </button>
                     </div>
                 </div>
                 <p class="mb-4">This is a list of all Groups currently managed by the system.</p>

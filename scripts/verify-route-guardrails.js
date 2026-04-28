@@ -7,9 +7,15 @@ const runtimeTemplateRoots = [
   'src/main/resources/templates/forums',
   'src/main/resources/templates/wos',
   'src/main/resources/templates/core',
+  'src/main/resources/templates/rankings',
   'src/main/resources/templates/universities',
   'src/main/resources/templates/events',
+  'src/main/resources/templates/publications',
   'src/main/resources/templates/shared'
+];
+
+const runtimeTemplateFiles = [
+  'src/main/resources/templates/landing.html'
 ];
 
 const checks = [
@@ -51,15 +57,11 @@ const checks = [
     forbidden: ['/scholardex/forums/', '/rankings/categories"']
   },
   {
-    file: 'src/main/resources/templates/wos/categories.html',
-    forbidden: ['data-detail-base="/rankings/categories"']
-  },
-  {
-    file: 'src/main/resources/templates/core/rankings.html',
+    file: 'src/main/resources/templates/rankings/hub.html',
     forbidden: ['data-detail-base="/rankings/core"']
   },
   {
-    file: 'src/main/resources/templates/universities/list.html',
+    file: 'src/main/resources/templates/rankings/hub.html',
     forbidden: ['data-detail-base="/rankings/urap"']
   },
   {
@@ -107,7 +109,11 @@ const removedRuntimeTemplates = [
   'src/main/resources/templates/admin/scholardex-editForum.html',
   'src/main/resources/templates/admin/scholardex-editAffiliation.html',
   'src/main/resources/templates/admin/edit-institutions.html',
-  'src/main/resources/templates/admin/domains-edit.html'
+  'src/main/resources/templates/admin/domains-edit.html',
+  'src/main/resources/templates/admin/activity-indicators.html',
+  'src/main/resources/templates/admin/researchers.html',
+  'src/main/resources/templates/admin/scholardex-publications-search.html',
+  'src/main/resources/templates/wos/categories.html'
 ];
 
 for (const removedTemplate of removedRuntimeTemplates) {
@@ -145,7 +151,10 @@ function listFiles(dir, extension) {
   return out;
 }
 
-for (const file of runtimeTemplateRoots.flatMap((dir) => listFiles(dir, '.html'))) {
+for (const file of [
+  ...runtimeTemplateRoots.flatMap((dir) => listFiles(dir, '.html')),
+  ...runtimeTemplateFiles.filter((file) => fs.existsSync(path.join(process.cwd(), file)))
+]) {
   const content = fs.readFileSync(file, 'utf8');
   if (content.includes('fragments :: admin-sidebar(') || content.includes('fragments :: user-sidebar(')) {
     errors.push(`${file}: must use unified sidebar fragment 'fragments :: sidebar(...)'`);
@@ -158,6 +167,12 @@ for (const file of runtimeTemplateRoots.flatMap((dir) => listFiles(dir, '.html')
   }
   if (content.includes('/admin/domains/edit') || content.includes('@{/admin/domains/edit')) {
     errors.push(`${file}: contains stale domain edit page link; use the canonical domains surface`);
+  }
+  if (content.includes('/admin/activities/activityIndicators') || content.includes('@{/admin/activities/activityIndicators')) {
+    errors.push(`${file}: contains retired activity-indicator route reference; activity scoring is configured through canonical indicators`);
+  }
+  if (content.includes('/admin/researchers') || content.includes('@{/admin/researchers')) {
+    errors.push(`${file}: contains retired researchers alias; use the canonical admin users surface`);
   }
   const staleViewNamingTokens = [
     'user/individualReports',
@@ -172,7 +187,10 @@ for (const file of runtimeTemplateRoots.flatMap((dir) => listFiles(dir, '.html')
     'rankings/core-detail',
     'rankings/urap',
     'rankings/urap-detail',
-    'rankings/events'
+    'rankings/events',
+    'admin/activity-indicator-edit',
+    'admin/researchers',
+    'admin/scholardex-publications-search'
   ];
   for (const token of staleViewNamingTokens) {
     if (content.includes(token)) {

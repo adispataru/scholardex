@@ -3,8 +3,6 @@ package ro.uvt.pokedex.core.service.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.activities.Activity;
-import ro.uvt.pokedex.core.model.reporting.ActivityIndicator;
-import ro.uvt.pokedex.core.repository.ActivityIndicatorRepository;
 import ro.uvt.pokedex.core.repository.ActivityRepository;
 
 import java.util.List;
@@ -17,7 +15,6 @@ import java.util.stream.Collectors;
 public class ActivityManagementFacade {
 
     private final ActivityRepository activityRepository;
-    private final ActivityIndicatorRepository activityIndicatorRepository;
 
     public List<Activity> listActivities() {
         return activityRepository.findAll();
@@ -41,22 +38,6 @@ public class ActivityManagementFacade {
 
     public void deleteActivity(String id) {
         activityRepository.deleteById(id);
-    }
-
-    public List<ActivityIndicator> listActivityIndicators() {
-        return activityIndicatorRepository.findAll();
-    }
-
-    public ActivityIndicator saveActivityIndicator(ActivityIndicator activityIndicator) {
-        return activityIndicatorRepository.save(activityIndicator);
-    }
-
-    public Optional<ActivityIndicator> findActivityIndicator(String id) {
-        return activityIndicatorRepository.findById(id);
-    }
-
-    public void deleteActivityIndicator(String id) {
-        activityIndicatorRepository.deleteById(id);
     }
 
     public Map<String, String> buildActivityDescriptions(List<Activity> activities) {

@@ -26,6 +26,12 @@ function applyTheme(theme, toggle) {
   if (label) {
     label.textContent = isDark ? 'Light' : 'Dark';
   }
+
+  window.dispatchEvent(new CustomEvent('app:themechange', {
+    detail: {
+      theme: nextTheme
+    }
+  }));
 }
 
 function resolveInitialTheme() {

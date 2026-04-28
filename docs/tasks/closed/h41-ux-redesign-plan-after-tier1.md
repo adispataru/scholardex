@@ -1,15 +1,15 @@
 # UX Redesign Plan — After Tier 1
 
-Status: planning (decisions locked 2026-04-26)
+Status: historical completed plan (decisions locked 2026-04-26, work closed 2026-04-28)
 Date: 2026-04-26
-Supersedes (for forward-looking work): `docs/tasks/active/ux-redesign-plan.md`
+Supersedes (for forward-looking work): `docs/tasks/closed/h36-ux-redesign-plan.md`
 Reference: `docs/ux-design-guide.md`, `docs/frontend-conventions.md`, `TASKS.md`, `TASKS-done.md`
 
 ---
 
 ## Why This File Exists
 
-The original `ux-redesign-plan.md` was written before Tier 1 was built. Tier 1 is now substantially complete (H36, H37, H39, H40), and several assumptions baked into the original Tier 2 / Tier 3 / Phases sections no longer hold:
+The original `h36-ux-redesign-plan.md` was written before Tier 1 was built. Tier 1 is now substantially complete (H36, H37, H39, H40), and several assumptions baked into the original Tier 2 / Tier 3 / Phases sections no longer hold:
 
 - Tier 2.1 (publication wizard) was largely absorbed into the workspace as an inline wizard (H36.9), but the standalone `publications-add-step*.html` templates are still on disk.
 - Tier 2.2 (edit/detail pages) lost its user-side scope to the workspace; only admin edit pages remain candidates.
@@ -45,7 +45,7 @@ These resolve the open structural questions. Subsections below collapse to the c
 3. **Tier 2.2 — Admin edit pages:** **Option D — collapse simple admin edits into row-edit modals.** Keep dedicated pages only for genuinely long forms (group/individual report definitions).
 4. **Tier 2.3 — Public / ranking pages:** **In scope this cycle.** Specific option (A/B/C) still to pick.
 5. **Tier 3.1 — Shared fragments:** **Option C — full component library.** Lock the design system before scaling further work.
-6. *(Open)* Tier 3.2-3.4 — global audits — still defaulting to in-task verification unless you want a clean compliance milestone.
+6. **Tier 3.2-3.4 — global audits:** **Dedicated Phase E.** Close the UX cycle with one global compliance milestone after Phase D, focused on accessibility, theme parity, responsive behavior, visual regression coverage, and guardrail hardening.
 
 The remaining option-level questions (where a depth choice is still needed) are listed at the bottom under *Remaining Open Choices*.
 
@@ -61,7 +61,7 @@ The five candidates here are all dropped from this plan:
 - **1.5.4 Operations Center beyond Option A** — drop. No priority queue, operation history, real-time polling, or scheduling.
 - **1.5.5 H40 Option C extras** — drop, including the two items previously kept (table-level CSV export, sidebar conflict count badge).
 
-If any of these resurface as a real ask, treat them as fresh tasks referencing the relevant section of the original `ux-redesign-plan.md` (§1.2 Option C, §1.3 Option B/C, §1.4 Option C).
+If any of these resurface as a real ask, treat them as fresh tasks referencing the relevant section of the original `h36-ux-redesign-plan.md` (§1.2 Option C, §1.3 Option B/C, §1.4 Option C).
 
 ---
 
@@ -168,21 +168,17 @@ If any of these resurface as a real ask, treat them as fresh tasks referencing t
 
 **Effort:** ~9-12 days. Treat this as a single task with subtasks per fragment, ending with documentation in `docs/frontend-conventions.md` and a one-off pass to migrate existing ad-hoc usages to the new fragments where the diff is small.
 
-### 3.2 Accessibility baseline
+### 3.2 Accessibility baseline — PHASE E
 
-**Status.** H36.13, H37.9, H40.11 covered the workspace, evaluation, and admin surfaces. Login, error pages, public/ranking pages, and admin edit pages have not been audited.
+**Decided.** Run a dedicated global sweep after Phase D. H36.13, H37.9, H40.11, H45.8, H46.13, and H47 covered their touched surfaces, but the full product still needs one cross-route pass so keyboard flow, landmarks, labels, focus order, dynamic announcements, and contrast are validated consistently rather than only page-by-page.
 
-> **Open choice:** Do this in-task as Tier 2 surfaces are reworked (default), or run a standalone global sweep (~5-7d) for a clean compliance milestone?
+### 3.3 Theme parity audit — PHASE E
 
-### 3.3 Theme parity audit
+**Decided.** Audit light/dark/system theme behavior across authenticated, admin, and public shells. This includes charts, modals, tables, forms, empty states, public-shell navigation, detail-page hero sections, and legacy holdout surfaces that may not have been touched in the recent phases.
 
-Same situation: workspace and admin surfaces are theme-aware. Public pages, login, errors, admin edit pages — not swept. ~2-3 days for a global pass; otherwise audit-as-you-go.
+### 3.4 Responsive audit — PHASE E
 
-### 3.4 Responsive audit
-
-Same: workspace and admin surfaces verified. Remaining surfaces — not verified. ~3-4 days global; otherwise audit-as-you-go.
-
-> **Open choice (3.2-3.4 together):** in-task vs. dedicated audit phase.
+**Decided.** Sweep the same route set across desktop, tablet, and mobile breakpoints. The audit should catch clipped buttons, overlapping text, hidden actions, table overflow regressions, chart sizing failures, sticky header/footer issues, and shell/sidebar/public-nav behavior.
 
 ---
 
@@ -226,10 +222,23 @@ Approximate total: ~10-14 days.
 
 Approximate total: ~5-22 days depending on Option A vs C.
 
-### Phase E — Global audits (optional, ~1-2 weeks)
-- Tier 3.2-3.4 if a clean compliance milestone is wanted; otherwise rolled into the phases above.
+### Phase E — Global audits (Tier 3.2-3.4) (~1-2 weeks)
 
-Approximate total: ~10-14 days, only if scoped in.
+Create a single closeout task (`H48`) that verifies the full UX system after Phases A-D.
+
+**High-level task:** global accessibility, theme parity, responsive behavior, and verification guardrail closeout across the authenticated researcher workspace, evaluation workspace, admin workspaces/forms, login/error pages, public surfaces, and any remaining legacy route families.
+
+**Subtask list:**
+
+1. **Route and surface inventory.** Build the canonical audit route matrix from controllers/templates/guardrails, classify each route by shell (`workspace`, `evaluation`, `admin`, `public`, `auth/error`, `legacy redirect`), and record which routes need browser verification versus static guardrail coverage.
+2. **Accessibility audit.** Check keyboard-only navigation, skip/focus order, visible focus states, ARIA labels on icon-only controls, landmarks, table semantics, modal/dialog focus handling, live-region announcements, empty/error states, and WCAG AA contrast in both themes. Fix issues in place.
+3. **Theme parity audit.** Verify light, dark, and system theme rendering across shells, shared components, charts, tables, forms, modals, public detail pages, and error/login surfaces. Fix missing tokens, hardcoded colors, invisible states, and chart color regressions.
+4. **Responsive behavior audit.** Verify desktop, tablet, and mobile widths for navigation, sidebars, public header, forms, tables, pagination, filters, charts, cards, and modals. Fix clipping, overlap, hidden actions, unstable dimensions, and broken table overflow.
+5. **Visual regression and browser smoke coverage.** Add or update lightweight browser verification scripts/screenshots for representative route families so the most important global UI contracts are repeatable after the audit.
+6. **Guardrail hardening.** Extend existing static checks (`verify-template-assets`, `verify-route-guardrails`, `verify-ui-guardrails`, docs governance, DataTables opt-in where relevant) to lock the audit findings and prevent regressions.
+7. **Closeout documentation and full verification.** Document the route matrix, fixes, residual risks, and exact verification command set. Run the full agreed closeout suite and archive the task when clean.
+
+Approximate total: ~10-14 days.
 
 ---
 
@@ -246,30 +255,27 @@ Approximate total: ~10-14 days, only if scoped in.
 | 2.5 Error pages (depth open) | ~1-2d | ~2-3d | ~5-7d |
 | **Tier 3 — Infrastructure** | | | |
 | 3.1 Shared fragments (Option C, locked) | **~9-12d** | — | — |
-| 3.2-3.4 Global audits (open) | 0d (in-task) | ~10-14d | — |
+| 3.2-3.4 Global audits (Phase E, locked) | — | **~10-14d** | — |
 
-**Locked-only floor (depth-A on every open item, in-task audits):** ~27-39 days.
-**Default mid path (B on public pages, A on login, B on errors, in-task audits):** ~33-50 days.
-**Maximalist (C on every depth choice, dedicated audit phase):** ~63-90 days.
+**Locked-only floor (depth-A on every open item):** ~37-53 days.
+**Default mid path (B on public pages, A on login, B on errors):** ~43-64 days.
+**Maximalist (C on every depth choice):** ~63-90 days.
 
 ---
 
-## Remaining Open Choices
+## Archive Note
 
-The structural decisions are locked. These are the depth-level choices still pending; each is a self-contained product call.
+This file is now historical rather than forward-looking.
 
-1. **Tier 2.3 Public pages** — A (visual alignment), B (branded public experience), or C (discovery portal)? Default B.
-2. **Tier 2.4 Login** — A, B, or C? Default A unless SSO is near-term.
-3. **Tier 2.5 Error pages** — A, B, or C? Default B.
-4. **Tier 3.2-3.4 Audits** — in-task as Tier 2 surfaces are reworked, or dedicated global audit phase?
+The plan phases represented by `H41` through `H48` were completed and archived in `TASKS-done.md`, including the final global-audits closeout in `H48`.
 
-Tell me the answers when convenient and I'll fold them in and tighten Phase A's effort number accordingly.
+Use `TASKS.md` and the current top-level docs as the source of truth for new work. Use this file only as implementation-history context for the post-Tier-1 redesign decisions.
 
 ---
 
 ## Cross-References
 
-- Original plan: `docs/tasks/active/ux-redesign-plan.md`
+- Original plan: `docs/tasks/closed/h36-ux-redesign-plan.md`
 - UX guide: `docs/ux-design-guide.md`
 - Frontend conventions: `docs/frontend-conventions.md`
 - Tier 1 task entries: `TASKS.md` (H36, H37, H40), `TASKS-done.md` (H39)

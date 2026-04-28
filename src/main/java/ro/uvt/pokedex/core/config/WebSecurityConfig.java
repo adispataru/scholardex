@@ -56,6 +56,7 @@ public class WebSecurityConfig {
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(requestCorrelationFilter(), UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(ahr -> {
+                    ahr.requestMatchers("/api/rankings/wos", "/api/rankings/wos/**").authenticated();
                     ahr.requestMatchers(
                             "/login",
                             "/error",
@@ -71,13 +72,19 @@ public class WebSecurityConfig {
                             "/favicon.ico",
                             "/.well-known/**",
                             "/oauth2/**",
-                            "/login/oauth2/**"
+                            "/login/oauth2/**",
+                            "/",
+                            "/forums/**",
+                            "/core/**",
+                            "/universities/**",
+                            "/events/**",
+                            "/rankings",
+                            "/publications/**",
+                            "/api/rankings/**"
                     ).permitAll();
                     ahr.requestMatchers("/actuator/**").hasAuthority("PLATFORM_ADMIN");
-                    ahr.requestMatchers("/forums/**", "/wos/**", "/core/**", "/universities/**", "/events/**").authenticated();
                     ahr.requestMatchers("/admin/**").hasAuthority("PLATFORM_ADMIN");
                     ahr.requestMatchers("/api/admin/**").hasAuthority("PLATFORM_ADMIN");
-                    ahr.requestMatchers("/api/rankings/core/**", "/api/rankings/urap/**").authenticated();
                     ahr.requestMatchers("/api/entities/forums/**").authenticated();
                     ahr.requestMatchers("/api/entities/authors/**", "/api/entities/affiliations/**").authenticated();
                     ahr.requestMatchers("/researcher/**").hasAuthority("RESEARCHER");

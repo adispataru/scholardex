@@ -1,4 +1,7 @@
 (function () {
+  var chartInstance = null;
+  var themeListenerBound = false;
+
   function numberValue(raw, fallback) {
     var n = Number(raw);
     return Number.isFinite(n) ? n : fallback;
@@ -90,15 +93,22 @@
     if (!canvas || labels.length === 0) {
       return;
     }
+    var theme = window.appChartTheme && window.appChartTheme.getChartTheme
+      ? window.appChartTheme.getChartTheme()
+      : { series: ['#1d4ed8', '#10b981', '#06b6d4', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b', '#0ea5e9'], cardBg: '#ffffff' };
 
-    new window.Chart(canvas, {
+    if (chartInstance) {
+      chartInstance.destroy();
+    }
+
+    chartInstance = new window.Chart(canvas, {
       type: 'doughnut',
       data: {
         labels: labels,
         datasets: [{
           data: values,
-          backgroundColor: ['#1d4ed8', '#10b981', '#06b6d4', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b', '#0ea5e9'],
-          hoverBorderColor: '#ffffff'
+          backgroundColor: theme.series.slice(0, labels.length),
+          hoverBorderColor: theme.cardBg
         }]
       },
       options: {
@@ -139,6 +149,13 @@
 
     buildTypeOptions(rows, typeSelect);
     initChart(root);
+
+    if (!themeListenerBound) {
+      themeListenerBound = true;
+      window.addEventListener('app:themechange', function () {
+        initChart(root);
+      });
+    }
 
     function render() {
       var q = (searchInput.value || '').trim().toLowerCase();

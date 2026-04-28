@@ -66,17 +66,17 @@
                         <div th:id="'allowedValuesContainer'+${fieldIndex}">
                           <div class="input-group mb-2 app-collection__item" th:each="value, valueIndex : ${field.allowedValues}">
                             <input type="text" class="form-control" th:field="*{fields[__${fieldIndex.index}__].allowedValues[__${valueIndex.index}__]}" th:value="${value}" required>
-                            <button class="btn btn-danger remove-allowed-value" type="button">Remove</button>
+                            <button class="btn btn-danger remove-allowed-value" type="button" aria-label="Remove allowed value">Remove</button>
                           </div>
                         </div>
-                        <button class="btn btn-secondary add-allowed-value" type="button" th:attr="data-field-index=|${fieldIndex}|">Add Allowed Value</button>
+                        <button class="btn btn-secondary add-allowed-value" type="button" aria-label="Add allowed value" th:attr="data-field-index=|${fieldIndex}|">Add Allowed Value</button>
                       </div>
-                      <button class="btn btn-danger remove-field" type="button">Remove Field</button>
+                      <button class="btn btn-danger remove-field" type="button" aria-label="Remove field">Remove Field</button>
                     </div>
                   </div>
                 </div>
                 <div class="app-form-actions app-form-actions--inline">
-                  <button id="addField" class="btn btn-primary" type="button">Add Field</button>
+                  <button id="addField" class="btn btn-primary" type="button" aria-label="Add field">Add Field</button>
                 </div>
               </div>
               </th:block>
@@ -98,13 +98,13 @@
                                     th:selected="${ref == field}"></option>
                         </select>
                       </div>
-                      <button class="btn btn-danger remove-ref-field" type="button">Remove Ref Field</button>
+                      <button class="btn btn-danger remove-ref-field" type="button" aria-label="Remove referenced field">Remove Ref Field</button>
                     </div>
                   </div>
                   <!-- Fields will be dynamically added here -->
                 </div>
                 <div class="app-form-actions app-form-actions--inline">
-                  <button id="addReferencedField" class="btn btn-primary" type="button">Add Ref. Field</button>
+                  <button id="addReferencedField" class="btn btn-primary" type="button" aria-label="Add referenced field">Add Ref. Field</button>
                 </div>
               </div>
               </th:block>
@@ -158,9 +158,9 @@
                             <div id="allowedValuesContainer${fieldIndex}">
                                 <!-- This is where allowed values will be dynamically added -->
                             </div>
-                            <button class="btn btn-secondary add-allowed-value" type="button" data-field-index="${fieldIndex}">Add Allowed Value</button>
+                            <button class="btn btn-secondary add-allowed-value" type="button" aria-label="Add allowed value" data-field-index="${fieldIndex}">Add Allowed Value</button>
                         </div>
-                        <button class="btn btn-danger remove-field" type="button">Remove Field</button>
+                        <button class="btn btn-danger remove-field" type="button" aria-label="Remove field">Remove Field</button>
                     </div>
                 </div>`;
       fieldsContainer.append(fieldTemplate);
@@ -173,7 +173,7 @@
       let allowedValueTemplate = `
                 <div class="input-group mb-2 app-collection__item">
                     <input type="text" class="form-control" name="fields[${fieldIndex}].allowedValues[${valueIndex}]" required>
-                    <button class="btn btn-danger remove-allowed-value" type="button">Remove</button>
+                    <button class="btn btn-danger remove-allowed-value" type="button" aria-label="Remove allowed value">Remove</button>
                 </div>`;
       allowedValuesContainer.append(allowedValueTemplate);
     });
@@ -190,7 +190,7 @@
                                 ${options}
                             </select>
                         </div>
-                        <button class="btn btn-danger remove-ref-field" type="button">Remove Field</button>
+                        <button class="btn btn-danger remove-ref-field" type="button" aria-label="Remove referenced field">Remove Field</button>
                     </div>
                 </div>`;
       refFieldsContainer.append(fieldTemplate);

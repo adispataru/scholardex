@@ -16,8 +16,8 @@
                 <div class="app-dashboard">
                     <p class="app-dashboard__intro">Review the identity conflict queue, filter the active backlog, and drive decisions directly from this surface. Resolved and dismissed conflicts are retained for audit.</p>
 
-                    <div th:if="${errorMessage}" class="app-feedback app-feedback--danger" th:text="${errorMessage}"></div>
-                    <div th:if="${successMessage}" class="app-feedback app-feedback--success" th:text="${successMessage}"></div>
+                    <div th:if="${errorMessage}" class="app-feedback app-feedback--danger" role="alert" th:text="${errorMessage}"></div>
+                    <div th:if="${successMessage}" class="app-feedback app-feedback--success" role="status" th:text="${successMessage}"></div>
 
                     <th:block th:replace="~{fragments :: stat-card-grid(${statCards})}"></th:block>
 

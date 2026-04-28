@@ -16,8 +16,8 @@
                 <div class="app-dashboard">
                     <p class="app-dashboard__intro">Run WoS category enrichment and review the latest deterministic run state from one compact operational summary surface.</p>
 
-                    <div th:if="${errorMessage}" class="app-feedback app-feedback--danger" th:text="${errorMessage}"></div>
-                    <div th:if="${successMessage}" class="app-feedback app-feedback--success" th:text="${successMessage}"></div>
+                    <div th:if="${errorMessage}" class="app-feedback app-feedback--danger" role="alert" th:text="${errorMessage}"></div>
+                    <div th:if="${successMessage}" class="app-feedback app-feedback--success" role="status" th:text="${successMessage}"></div>
 
                     <div class="app-summary-grid">
                         <div class="app-summary-card">

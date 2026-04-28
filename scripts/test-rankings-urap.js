@@ -50,7 +50,7 @@ function createHarness(fetchImpl) {
     'urap-loading': createElement('urap-loading'),
     'urap-error': createElement('urap-error', { classes: ['d-none'] }),
     'urap-empty': createElement('urap-empty', { classes: ['d-none'] }),
-    'urap-table': createElement('urap-table', { dataset: { detailBase: '/rankings/urap' } }),
+    'urap-table': createElement('urap-table', { dataset: { detailBase: '/universities' } }),
     'urap-table-body': createElement('urap-table-body'),
     'urap-page-info': createElement('urap-page-info'),
     'urap-total-info': createElement('urap-total-info'),

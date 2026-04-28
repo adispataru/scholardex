@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScholarDex — Research Intelligence Platform</title>
+    <meta name="description" content="Explore academic publications, forums, rankings, universities, and research events in one place.">
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+</head>
+<body class="app-public-page">
+
+<th:block th:replace="~{fragments :: public-shell(null)}"></th:block>
+
+<main class="app-public-content" id="main-content">
+
+    <section class="app-landing__hero" aria-labelledby="hero-title">
+        <div class="app-landing__hero-brand">
+            <img class="app-landing__hero-logo app-logo--light" src="/images/logo-light.webp" width="52" height="52" alt="ScholarDex logo">
+            <img class="app-landing__hero-logo app-logo--dark" src="/images/logo-dark.webp" width="52" height="52" alt="ScholarDex logo">
+            <span class="app-landing__hero-name" id="hero-title">ScholarDex</span>
+        </div>
+        <p class="app-landing__hero-tagline">
+            Explore academic publications, venues, rankings, and institutions — all in one research intelligence platform.
+        </p>
+        <div class="app-landing__hero-actions">
+            <a th:if="${currentUser != null and currentUser.isPresent()}"
+               href="/user/workspace"
+               class="app-landing__hero-primary">
+                <i class="fa-solid fa-gauge" aria-hidden="true"></i>
+                Go to Workspace
+            </a>
+            <a th:unless="${currentUser != null and currentUser.isPresent()}"
+               href="/login"
+               class="app-landing__hero-primary">
+                <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
+                Sign in
+            </a>
+            <a href="/publications" class="app-landing__hero-secondary">
+                Browse Publications
+            </a>
+        </div>
+    </section>
+
+    <section class="app-landing__surfaces" aria-label="Explore research surfaces">
+        <p class="app-landing__surfaces-label">Explore</p>
+        <div class="app-landing__surfaces-grid">
+
+            <a href="/publications" class="app-landing__surface-card">
+                <span class="app-landing__surface-icon" aria-hidden="true">
+                    <i class="fa-solid fa-file-lines"></i>
+                </span>
+                <h2 class="app-landing__surface-title">Publications</h2>
+                <p class="app-landing__surface-desc">Search the indexed publication catalog by title, author, or venue.</p>
+                <span class="app-landing__surface-arrow">Browse <i class="fa-solid fa-arrow-right"></i></span>
+            </a>
+
+            <a href="/forums" class="app-landing__surface-card">
+                <span class="app-landing__surface-icon" aria-hidden="true">
+                    <i class="fa-solid fa-journal-whills"></i>
+                </span>
+                <h2 class="app-landing__surface-title">Forums</h2>
+                <p class="app-landing__surface-desc">Browse journals and conferences with ISSN, eISSN, and WoS indexing details.</p>
+                <span class="app-landing__surface-arrow">Browse <i class="fa-solid fa-arrow-right"></i></span>
+            </a>
+
+            <a href="/rankings" class="app-landing__surface-card">
+                <span class="app-landing__surface-icon" aria-hidden="true">
+                    <i class="fa-solid fa-ranking-star"></i>
+                </span>
+                <h2 class="app-landing__surface-title">Rankings</h2>
+                <p class="app-landing__surface-desc">Explore CORE conference rankings, URAP university rankings, and the artistic events catalog in one place.</p>
+                <span class="app-landing__surface-arrow">Browse <i class="fa-solid fa-arrow-right"></i></span>
+            </a>
+
+        </div>
+    </section>
+
+</main>
+
+<th:block th:replace="~{fragments :: app-footer}"></th:block>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+</body>
+</html>

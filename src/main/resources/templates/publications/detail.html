@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${publication.title + ' — ScholarDex Publication'}">ScholarDex Publication</title>
+    <meta name="description"
+          th:content="${'Profile for ' + publication.title + (detail.year() != null ? ' (' + detail.year() + ')' : '') + ' on ScholarDex.'}">
+    <meta property="og:type" content="article">
+    <meta property="og:title" th:content="${publication.title + ' — ScholarDex Publication'}">
+    <meta property="og:description"
+          th:content="${'Explore the ScholarDex profile for ' + publication.title + '.'}">
+    <meta property="og:url" th:content="@{/publications/{id}(id=${publication.id})}">
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+</head>
+<body class="app-public-page">
+
+<th:block th:replace="~{fragments :: public-shell('publications')}"></th:block>
+
+<main class="app-public-content" id="main-content">
+    <div class="app-page-content app-university-detail">
+        <th:block th:replace="~{fragments :: breadcrumb(${breadcrumbs}, 'default')}"></th:block>
+
+        <section aria-labelledby="publication-summary-title">
+            <div class="app-university-detail__section-header">
+                <div>
+                    <p class="app-university-detail__eyebrow">Publication</p>
+                    <h1 id="publication-summary-title" class="app-university-detail__section-title" th:text="${publication.title}">Publication Title</h1>
+                </div>
+                <a href="/publications" class="btn btn-outline-primary btn-sm">
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                    <span>All publications</span>
+                </a>
+            </div>
+
+            <div class="app-summary-grid">
+                <th:block th:replace="~{fragments :: stat-card(
+                    label='Year',
+                    value=${detail.year() != null ? detail.year() : '—'},
+                    accent='primary',
+                    contextLine='Cover date',
+                    icon='fa-solid fa-calendar')}"></th:block>
+                <th:block th:replace="~{fragments :: stat-card(
+                    label='Citations',
+                    value=${#numbers.formatInteger(publication.citedByCount, 0, 'COMMA')},
+                    accent='success',
+                    contextLine='Times cited',
+                    icon='fa-solid fa-quote-right')}"></th:block>
+                <th:block th:replace="~{fragments :: stat-card(
+                    label='Authors',
+                    value=${#lists.size(detail.authors())},
+                    accent='neutral',
+                    contextLine='Listed contributors',
+                    icon='fa-solid fa-users')}"></th:block>
+                <th:block th:replace="~{fragments :: stat-card(
+                    label='Open Access',
+                    value=${publication.openAccess ? 'Yes' : 'No'},
+                    accent=${publication.openAccess ? 'success' : 'neutral'},
+                    contextLine=${publication.freetoreadLabel != null && !publication.freetoreadLabel.isBlank() ? publication.freetoreadLabel : 'Distribution status'},
+                    icon='fa-solid fa-unlock')}"></th:block>
+            </div>
+        </section>
+
+        <section class="app-university-detail__section" aria-labelledby="publication-forum-title">
+            <div class="app-university-detail__section-header">
+                <div>
+                    <p class="app-university-detail__eyebrow">Source forum</p>
+                    <h2 id="publication-forum-title" class="app-university-detail__section-title">Forum</h2>
+                </div>
+            </div>
+            <dl class="app-university-detail__definition-grid">
+                <div>
+                    <dt>Forum</dt>
+                    <dd th:if="${publication.forumId == null}">—</dd>
+                    <dd th:if="${publication.forumId != null}">
+                        <a th:href="@{/forums/{id}(id=${publication.forumId})}"
+                           th:text="${detail.forumName() != null ? detail.forumName() : publication.forumId}">Forum name</a>
+                    </dd>
+                </div>
+                <div>
+                    <dt>Volume</dt>
+                    <dd th:text="${publication.volume != null && !publication.volume.isBlank() ? publication.volume : '—'}">Volume</dd>
+                </div>
+                <div>
+                    <dt>Issue</dt>
+                    <dd th:text="${publication.issueIdentifier != null && !publication.issueIdentifier.isBlank() ? publication.issueIdentifier : '—'}">Issue</dd>
+                </div>
+                <div>
+                    <dt>Pages</dt>
+                    <dd th:text="${publication.pageRange != null && !publication.pageRange.isBlank() ? publication.pageRange : '—'}">Pages</dd>
+                </div>
+            </dl>
+        </section>
+
+        <section class="app-university-detail__section" aria-labelledby="publication-authors-title">
+            <div class="app-university-detail__section-header">
+                <div>
+                    <p class="app-university-detail__eyebrow">Contributors</p>
+                    <h2 id="publication-authors-title" class="app-university-detail__section-title">Authors</h2>
+                </div>
+            </div>
+            <div th:if="${#lists.isEmpty(detail.authors())}" class="app-table-state app-table-state--warning" role="status">
+                No author records linked to this publication.
+            </div>
+            <ul th:if="${!#lists.isEmpty(detail.authors())}" class="app-publication-detail__author-list">
+                <li th:each="author : ${detail.authors()}" th:text="${author.name()}">Author Name</li>
+            </ul>
+        </section>
+
+        <section class="app-university-detail__section" aria-labelledby="publication-identifiers-title">
+            <div class="app-university-detail__section-header">
+                <div>
+                    <p class="app-university-detail__eyebrow">External references</p>
+                    <h2 id="publication-identifiers-title" class="app-university-detail__section-title">Identifiers</h2>
+                </div>
+            </div>
+            <dl class="app-university-detail__definition-grid">
+                <div>
+                    <dt>DOI</dt>
+                    <dd th:if="${publication.doi == null || publication.doi.isBlank()}">—</dd>
+                    <dd th:if="${publication.doi != null && !publication.doi.isBlank()}">
+                        <a th:href="${'https://doi.org/' + publication.doi}" th:text="${publication.doi}" rel="noopener" target="_blank">DOI</a>
+                    </dd>
+                </div>
+                <div>
+                    <dt>Scopus EID</dt>
+                    <dd th:text="${publication.eid != null && !publication.eid.isBlank() ? publication.eid : '—'}">EID</dd>
+                </div>
+                <div>
+                    <dt>Web of Science ID</dt>
+                    <dd th:text="${publication.wosId != null && !publication.wosId.isBlank() ? publication.wosId : '—'}">WoS ID</dd>
+                </div>
+                <div>
+                    <dt>Google Scholar ID</dt>
+                    <dd th:text="${publication.googleScholarId != null && !publication.googleScholarId.isBlank() ? publication.googleScholarId : '—'}">Scholar ID</dd>
+                </div>
+            </dl>
+        </section>
+    </div>
+</main>
+
+<th:block th:replace="~{fragments :: app-footer}"></th:block>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+
+</body>
+</html>

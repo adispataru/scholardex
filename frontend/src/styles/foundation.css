@@ -24,6 +24,40 @@
   --app-color-success: #059669;
   --app-color-warning: #d97706;
   --app-color-danger: #dc2626;
+  --app-chart-series-1: #4361ee;
+  --app-chart-series-2: #059669;
+  --app-chart-series-3: #0891b2;
+  --app-chart-series-4: #d97706;
+  --app-chart-series-5: #dc2626;
+  --app-chart-series-6: #7c3aed;
+  --app-chart-series-7: #64748b;
+  --app-chart-series-8: #0284c7;
+  --app-chart-grid: #dbe4f0;
+  --app-chart-tooltip-bg: #ffffff;
+  --app-ranking-q1: #dc2626;
+  --app-ranking-q2: #f6c23e;
+  --app-ranking-q3: #cbd5e1;
+  --app-ranking-q4: #94a3b8;
+  --app-ranking-empty: #64748b;
+  --app-ranking-q1-fill: rgba(220, 38, 38, 0.78);
+  --app-ranking-q1-border: #dc2626;
+  --app-ranking-q2-fill: rgba(246, 194, 62, 0.82);
+  --app-ranking-q2-border: #f6c23e;
+  --app-metric-ais: #8b5cf6;
+  --app-metric-ris: #14b8a6;
+  --app-metric-if: #ec4899;
+  --app-ranking-q3-fill: rgba(203, 213, 225, 0.9);
+  --app-ranking-q3-border: #94a3b8;
+  --app-ranking-q4-fill: rgba(148, 163, 184, 0.88);
+  --app-ranking-q4-border: #64748b;
+  --app-ranking-lncs-fill: rgba(56, 189, 248, 0.82);
+  --app-ranking-lncs-border: #0284c7;
+  --app-ranking-book-lncs-fill: rgba(37, 99, 235, 0.82);
+  --app-ranking-book-lncs-border: #2563eb;
+  --app-ranking-scopus-fill: rgba(34, 197, 94, 0.8);
+  --app-ranking-scopus-border: #16a34a;
+  --app-ranking-unranked-fill: rgba(100, 116, 139, 0.88);
+  --app-ranking-unranked-border: #64748b;
   --app-shadow-shell: 0 14px 32px rgba(15, 23, 42, 0.06);
   --app-shadow-card: 0 16px 32px rgba(15, 23, 42, 0.05);
   --app-shadow-float: 0 20px 45px rgba(15, 23, 42, 0.12);
@@ -56,6 +90,40 @@
   --app-color-success: #34d399;
   --app-color-warning: #f59e0b;
   --app-color-danger: #f87171;
+  --app-chart-series-1: #7c93ff;
+  --app-chart-series-2: #34d399;
+  --app-chart-series-3: #22d3ee;
+  --app-chart-series-4: #fbbf24;
+  --app-chart-series-5: #f87171;
+  --app-chart-series-6: #c084fc;
+  --app-chart-series-7: #94a3b8;
+  --app-chart-series-8: #38bdf8;
+  --app-chart-grid: rgba(71, 85, 105, 0.65);
+  --app-chart-tooltip-bg: #0f172a;
+  --app-ranking-q1: #f87171;
+  --app-ranking-q2: #f6c23e;
+  --app-ranking-q3: #60a5fa;
+  --app-ranking-q4: #94a3b8;
+  --app-ranking-empty: #475569;
+  --app-ranking-q1-fill: rgba(248, 113, 113, 0.82);
+  --app-ranking-q1-border: #f87171;
+  --app-ranking-q2-fill: rgba(246, 194, 62, 0.84);
+  --app-ranking-q2-border: #f6c23e;
+  --app-metric-ais: #8b5cf6;
+  --app-metric-ris: #14b8a6;
+  --app-metric-if: #ec4899;
+  --app-ranking-q3-fill: rgba(96, 165, 250, 0.7);
+  --app-ranking-q3-border: #60a5fa;
+  --app-ranking-q4-fill: rgba(148, 163, 184, 0.74);
+  --app-ranking-q4-border: #94a3b8;
+  --app-ranking-lncs-fill: rgba(56, 189, 248, 0.74);
+  --app-ranking-lncs-border: #38bdf8;
+  --app-ranking-book-lncs-fill: rgba(96, 165, 250, 0.74);
+  --app-ranking-book-lncs-border: #60a5fa;
+  --app-ranking-scopus-fill: rgba(52, 211, 153, 0.74);
+  --app-ranking-scopus-border: #34d399;
+  --app-ranking-unranked-fill: rgba(71, 85, 105, 0.82);
+  --app-ranking-unranked-border: #64748b;
   --app-shadow-shell: 0 16px 34px rgba(2, 6, 23, 0.4);
   --app-shadow-card: 0 18px 36px rgba(2, 6, 23, 0.34);
   --app-shadow-float: 0 24px 52px rgba(2, 6, 23, 0.5);
@@ -659,6 +727,21 @@ small {
     max-width: 100%;
   }
 }
+
+/* ── Theme-aware logo utility ── */
+
+/* Light theme default */
+.app-logo--dark { display: none; }
+
+/* OS dark preference (before JS sets data-bs-theme) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-bs-theme='light']) .app-logo--light { display: none; }
+  :root:not([data-bs-theme='light']) .app-logo--dark  { display: inline; }
+}
+
+/* JS-driven dark mode */
+:root[data-bs-theme='dark'] .app-logo--light { display: none; }
+:root[data-bs-theme='dark'] .app-logo--dark  { display: inline; }
 
 @media (min-width: 768px) {
   .d-md-none {

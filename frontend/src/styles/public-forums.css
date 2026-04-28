@@ -1,0 +1,221 @@
+/* Public forum detail */
+
+.app-forum-detail {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.app-forum-detail__section {
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-card);
+  background: var(--app-color-card-bg);
+  box-shadow: var(--app-shadow-card);
+  padding: 1.25rem;
+}
+
+.app-forum-detail__section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.1rem;
+}
+
+.app-forum-detail__eyebrow {
+  margin: 0 0 0.2rem;
+  color: var(--app-color-primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.app-forum-detail__section-title {
+  margin: 0;
+  color: var(--app-color-text-strong);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.app-forum-detail__summary-grid {
+  margin-bottom: 0;
+}
+
+.app-forum-detail__auth-callout {
+  margin: 0;
+  border-radius: var(--app-radius-card);
+}
+
+.app-forum-detail__definition-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+  margin: 0;
+}
+
+.app-forum-detail__definition-grid > div {
+  min-width: 0;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--app-color-border);
+}
+
+.app-forum-detail__definition-grid dt {
+  margin-bottom: 0.25rem;
+  color: var(--app-color-text-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-forum-detail__definition-grid dd {
+  margin: 0;
+  color: var(--app-color-text-strong);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.app-forum-detail__chart-shell {
+  min-height: 18rem;
+  padding: 0.75rem;
+  border: 1px solid var(--app-color-border);
+  border-radius: calc(var(--app-radius-card) - 0.1rem);
+  background: color-mix(in srgb, var(--app-color-card-bg-muted) 56%, transparent);
+}
+
+.app-forum-detail__category-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.app-forum-detail__category {
+  padding-top: 1rem;
+  border-top: 1px solid var(--app-color-border);
+}
+
+.app-forum-detail__category:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.app-forum-detail__category-title {
+  margin: 0 0 0.65rem;
+  font-size: 0.96rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.app-forum-detail__category-title a {
+  color: var(--app-color-primary);
+  text-decoration: none;
+}
+
+.app-forum-detail__category-title a:hover,
+.app-forum-detail__category-title a:focus {
+  color: var(--app-color-primary-strong);
+  text-decoration: underline;
+}
+
+.app-forum-detail__heatmap-target {
+  min-width: 0;
+}
+
+.heatmap-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 0.78rem;
+  color: var(--app-color-text-muted);
+}
+
+.heatmap-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.heatmap-legend-swatch {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--app-color-border);
+  border-radius: 2px;
+}
+
+.gh-heatmap-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gh-heatmap {
+  min-width: fit-content;
+}
+
+.gh-heatmap-row {
+  display: grid;
+  grid-auto-rows: 16px;
+  column-gap: 4px;
+  row-gap: 0;
+  margin-bottom: 6px;
+  align-items: center;
+}
+
+.gh-label {
+  padding-right: 6px;
+  color: var(--app-color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.gh-year {
+  color: var(--app-color-text-muted);
+  font-size: 0.62rem;
+  line-height: 1;
+  text-align: center;
+}
+
+.gh-cell {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--app-color-border);
+  border-radius: 2px;
+  cursor: default;
+}
+
+.gh-q1 {
+  background: var(--app-ranking-q1);
+}
+
+.gh-q2 {
+  background: var(--app-ranking-q2);
+}
+
+.gh-q3 {
+  background: var(--app-ranking-q3);
+}
+
+.gh-q4 {
+  background: var(--app-ranking-q4);
+}
+
+.gh-empty {
+  background: var(--app-ranking-empty);
+}
+
+@media (max-width: 768px) {
+  .app-forum-detail__section {
+    padding: 1rem;
+  }
+
+  .app-forum-detail__section-header {
+    flex-direction: column;
+  }
+
+  .app-forum-detail__definition-grid {
+    grid-template-columns: 1fr;
+  }
+}

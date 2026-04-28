@@ -108,6 +108,16 @@ Use these shared fragments and JS utilities before adding page-local variants. K
 | Bulk select | `initAdminBulkSelect({ tableKey, fingerprint, cbSelector, selectAllSelector, barSelector, countSelector, bulkFormId, inputName })`; CSS: `.app-bulk-select-bar`. | Cross-page admin table selection and bulk forms. | Page-local selected-id tracking on touched admin tables. |
 | Column toggle | `initAdminColumnToggle({ tableId, tableEl, toolbarActionsEl, columns })`. | Optional admin table column visibility controls. | One-off column visibility controls that do not persist consistently. |
 
+## Public Detail Pages
+
+Public-facing entity profiles (`forums/detail`, `universities/detail`, `core/ranking-detail`, `wos/category-detail`) share one above-the-fold structure. New detail templates should follow it:
+
+- **OpenGraph metadata**: every detail template ships `og:type`, `og:title`, `og:description`, and `og:url` (resolved via `@{...}` against the canonical detail URL). Page `<title>` and OG title should match.
+- **Hero section**: a `<section>` with an `aria-labelledby` pointing at a single `<h1>` containing the entity's primary name (conference name, university name, forum publication name, WoS category name). The `<h1>` is preceded by a small eyebrow `<p>` describing the entity class ("Forum profile", "CORE Conference", "WoS category — SCIE", etc.) and followed by a back-link button (`btn btn-outline-primary btn-sm` with `fa-solid fa-arrow-left`).
+- **Stat-card grid**: 3–4 `stat-card` fragments inside `app-summary-grid`, immediately under the hero. Pick the most decision-relevant facts; reserve `accent='primary'` for the headline metric and `accent='neutral'` for context-only labels.
+- **Subsequent sections**: optional but consistent — `dl.app-{namespace}__definition-grid` for structured facts, `app-{namespace}__chart-shell` for charts, and shared empty/state alerts when data is missing. Only one `<h1>` per page; everything below is `<h2>`/`<h3>`.
+- **Active nav section**: detail pages pass the matching public-shell key to `public-shell(activeSection)`. CORE and university details use `'rankings'` (since the hub bundles them); forum details use `'forums'`; WoS category details run on the authenticated shell, not the public shell.
+
 ## Verification
 
 - Use the frontend and route guardrails for template, asset, and canonical-route changes.

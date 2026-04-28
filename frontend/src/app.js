@@ -25,6 +25,9 @@ import './styles/shared-pagination.css';
 import './styles/admin-dashboard.css';
 import './styles/admin-tables.css';
 import './styles/admin-forms.css';
+import './styles/public-shell.css';
+import './styles/public-forums.css';
+import './styles/public-universities.css';
 import { initConfirmationDialog } from './modules/shared/confirmationDialog';
 import { initModalShell } from './modules/shared/modalShell';
 import { initSearchInputs } from './modules/shared/searchInput';
@@ -33,6 +36,9 @@ import { initAdminUsers } from './modules/admin/adminUsers';
 import { initAdminBulkSelect } from './modules/shared/adminBulkSelect';
 import { initAdminColumnToggle } from './modules/shared/adminColumnToggle';
 import { initAdminShortcuts } from './modules/shared/adminShortcuts';
+import { initPublicShell } from './modules/shared/publicShell';
+import { initForumDetailCharts } from './modules/public/forumDetailCharts';
+import { initUniversityDetailCharts } from './modules/public/universityDetailCharts';
 
 window.$ = $;
 window.jQuery = $;
@@ -46,6 +52,7 @@ import { initPublicationSubtypeSync } from './modules/shared/publicationSubtypeS
 import { initSharedSidebarShell } from './modules/shared/sidebarShell';
 import { initSharedDataTables } from './modules/shared/tableEnhancer';
 import { initThemeShell } from './modules/shared/themeShell';
+import { alphaColor, getChartTheme } from './modules/shared/chartTheme';
 import { initErrorPages } from './modules/shared/errorPages';
 import { initWorkspaceTabs } from './modules/shared/workspaceTabs';
 import { initWorkspaceShortcuts } from './modules/shared/workspaceShortcuts';
@@ -58,6 +65,10 @@ import { initWorkspaceActivities } from './modules/workspace/workspaceActivities
 import { initWorkspaceProfile } from './modules/workspace/workspaceProfile';
 
 window.Chart = Chart;
+window.appChartTheme = {
+  alphaColor,
+  getChartTheme
+};
 
 initSharedDomBehaviors();
 initThemeShell();
@@ -84,3 +95,6 @@ initAdminUsers();
 window.initAdminBulkSelect = initAdminBulkSelect;
 window.initAdminColumnToggle = initAdminColumnToggle;
 window.initAdminShortcuts = initAdminShortcuts;
+initPublicShell();
+initForumDetailCharts();
+initUniversityDetailCharts();

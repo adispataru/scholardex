@@ -9,6 +9,9 @@ const templatesRoots = [
 ];
 
 function listHtmlFiles(dir) {
+  if (!fs.existsSync(dir)) {
+    return [];
+  }
   const files = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);

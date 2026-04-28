@@ -60,7 +60,7 @@ function createHarness(fetchImpl) {
     'wos-categories-loading': createElement('wos-categories-loading'),
     'wos-categories-error': createElement('wos-categories-error', { classes: ['d-none'] }),
     'wos-categories-empty': createElement('wos-categories-empty', { classes: ['d-none'] }),
-    'wos-categories-table': createElement('wos-categories-table', { dataset: { detailBase: '/rankings/categories' } }),
+    'wos-categories-table': createElement('wos-categories-table', { dataset: { detailBase: '/wos/categories' } }),
     'wos-categories-table-body': createElement('wos-categories-table-body'),
     'wos-categories-page-info': createElement('wos-categories-page-info'),
     'wos-categories-total-info': createElement('wos-categories-total-info'),
@@ -150,7 +150,7 @@ async function testControlChangesTriggerRequests() {
   });
 
   await wait(10);
-  assert.ok(els['wos-categories-table-body'].innerHTML.includes('/rankings/categories/Computer%20Science%20-%20SCIE'));
+  assert.ok(els['wos-categories-table-body'].innerHTML.includes('/wos/categories/Computer%20Science%20-%20SCIE'));
 
   els['wos-categories-next'].dispatch('click');
   await wait(10);

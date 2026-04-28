@@ -1,5 +1,6 @@
 package ro.uvt.pokedex.core.view;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -13,6 +14,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.model.ArtisticEvent;
+import ro.uvt.pokedex.core.model.CoreConferenceRanking;
+import ro.uvt.pokedex.core.model.URAPUniversityRanking;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.user.User;
@@ -22,6 +25,7 @@ import ro.uvt.pokedex.core.service.application.AdminCatalogFacade;
 import ro.uvt.pokedex.core.service.application.ScholardexForumMvcService;
 import ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService;
 import ro.uvt.pokedex.core.service.application.UrapRankingFacade;
+import ro.uvt.pokedex.core.service.application.ScholardexPublicationMvcService;
 import ro.uvt.pokedex.core.service.application.WosCategoryPageService;
 import ro.uvt.pokedex.core.service.application.WosRankingDetailsReadService;
 import ro.uvt.pokedex.core.service.application.model.ScholardexForumDetailViewModel;
@@ -29,6 +33,7 @@ import ro.uvt.pokedex.core.service.application.model.WosCategoryDetailViewModel;
 import ro.uvt.pokedex.core.service.application.model.WosCategoryJournalViewModel;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -36,6 +41,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -63,6 +69,23 @@ class RankingViewControllerContractTest {
     private ScholardexForumMvcService scholardexForumMvcService;
     @MockitoBean
     private WosCategoryPageService wosCategoryPageService;
+    @MockitoBean
+    private ScholardexPublicationMvcService scholardexPublicationMvcService;
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void landingPageRendersPublicShellForAuthenticatedUsers() throws Exception {
+        mockMvc.perform(get("/").with(authenticatedUser(userWithRoles("u@uvt.ro", Set.of(UserRole.RESEARCHER)))))
+                .andExpect(status().isOk())
+                .andExpect(view().name("landing"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"app-public-header\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/user/workspace\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("href=\"/admin/users\""))));
+    }
 
     @Test
     void forumsPageRendersExpectedTemplateAndClientControls() throws Exception {
@@ -79,16 +102,18 @@ class RankingViewControllerContractTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"scholardex-forums-table-body\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"scholardex-forums-prev\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"scholardex-forums-next\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"app-public-header\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/scholardex-forums.js")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
     }
 
     @Test
-    void sharedForumsRouteUsesAdminSidebarForPlatformAdmin() throws Exception {
+    void sharedForumsRouteServesPublicShellForAllUsers() throws Exception {
+        // /forums is now a public surface — all users including admins see the public shell, not an admin sidebar
         mockMvc.perform(get("/forums").with(authenticatedUser(userWithRoles("admin@uvt.ro", Set.of(UserRole.PLATFORM_ADMIN)))))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/admin/users\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("href=\"/user/profile\""))));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"app-public-header\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("href=\"/admin/users\""))));
     }
 
     @Test
@@ -141,14 +166,55 @@ class RankingViewControllerContractTest {
         );
         when(scholardexForumDetailService.findDetail(eq("w1"))).thenReturn(Optional.of(detail));
 
-        mockMvc.perform(get("/forums/{id}", "w1"))
+        mockMvc.perform(get("/forums/{id}", "w1").with(authenticatedUser(userWithRoles("u@uvt.ro", Set.of(UserRole.RESEARCHER)))))
                 .andExpect(status().isOk())
                 .andExpect(view().name("forums/detail"))
                 .andExpect(model().attributeExists("forum", "detail", "wosRanking", "breadcrumbs"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("property=\"og:title\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("property=\"og:description\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-label=\"Breadcrumb\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"app-breadcrumb app-breadcrumb--default\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("app-summary-card--primary")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"app-forum-detail__definition-grid\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("General Metrics")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Category Rankings")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Category Rankings")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"forum-wos-category-data\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("https://unpkg.com/frappe-charts"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("<style>"))));
+    }
+
+    @Test
+    void anonymousJournalForumWithWosDataHidesMetricBlocks() throws Exception {
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("w1");
+        forum.setPublicationName("Test Journal");
+        forum.setAggregationType("Journal");
+        WoSRanking wosRanking = new WoSRanking();
+        wosRanking.setId("w1");
+        wosRanking.setName("Test Journal");
+        wosRanking.setWebOfScienceCategoryIndex(java.util.Map.of());
+        ScholardexForumDetailViewModel detail = new ScholardexForumDetailViewModel(
+                forum,
+                ScholardexForumDetailViewModel.ForumType.JOURNAL,
+                wosRanking,
+                true,
+                false,
+                false,
+                false
+        );
+        when(scholardexForumDetailService.findDetail(eq("w1"))).thenReturn(Optional.of(detail));
+
+        mockMvc.perform(get("/forums/{id}", "w1"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("forums/detail"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"app-public-header\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Sign in to view Web of Science rankings")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/login\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Log out"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("General Metrics"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Category Rankings"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("frappe-charts"))));
     }
 
     @Test
@@ -168,7 +234,7 @@ class RankingViewControllerContractTest {
         );
         when(scholardexForumDetailService.findDetail(eq("w2"))).thenReturn(Optional.of(detail));
 
-        mockMvc.perform(get("/forums/{id}", "w2"))
+        mockMvc.perform(get("/forums/{id}", "w2").with(authenticatedUser(userWithRoles("u@uvt.ro", Set.of(UserRole.RESEARCHER)))))
                 .andExpect(status().isOk())
                 .andExpect(view().name("forums/detail"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("This journal is not indexed by WoS.")));
@@ -219,95 +285,210 @@ class RankingViewControllerContractTest {
     }
 
     @Test
-    void coreRankingsPageRendersExpectedTemplateAndClientControls() throws Exception {
-        mockMvc.perform(get("/core/rankings"))
+    void publicationDetailRendersCanonicalPublicProfile() throws Exception {
+        ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView pub =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView();
+        pub.setId("pub-1");
+        pub.setTitle("On the Foundations of Adaptive Systems");
+        pub.setDoi("10.1234/example");
+        pub.setEid("2-s2.0-12345");
+        pub.setCoverDate("2024-05-01");
+        pub.setForum("forum-1");
+        pub.setCitedbyCount(42);
+        pub.setOpenAccess(true);
+        ro.uvt.pokedex.core.service.application.model.ScholardexPublicationDetailViewModel detail =
+                new ro.uvt.pokedex.core.service.application.model.ScholardexPublicationDetailViewModel(
+                        pub,
+                        java.util.List.of(new ro.uvt.pokedex.core.service.application.model.ScholardexPublicationDetailViewModel.AuthorRef("a1", "Ada Lovelace")),
+                        "Journal of Examples",
+                        "2024");
+        when(scholardexPublicationMvcService.findDetail(eq("pub-1"))).thenReturn(Optional.of(detail));
+
+        mockMvc.perform(get("/publications/{id}", "pub-1"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("core/rankings"))
-                .andExpect(model().attributeDoesNotExist("confs"))
+                .andExpect(view().name("publications/detail"))
+                .andExpect(model().attributeExists("publication", "detail", "breadcrumbs"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("property=\"og:title\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-label=\"Breadcrumb\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("On the Foundations of Adaptive Systems")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Ada Lovelace")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Journal of Examples")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/forums/forum-1\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("https://doi.org/10.1234/example")));
+    }
+
+    @Test
+    void missingPublicationDetailRendersNotFound() throws Exception {
+        when(scholardexPublicationMvcService.findDetail(eq("missing"))).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/publications/{id}", "missing"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("shared/not-found"));
+    }
+
+    @Test
+    void rankingsHubRendersAllThreeTabsAndClientControls() throws Exception {
+        mockMvc.perform(get("/rankings"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("rankings/hub"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-app-tab-bar")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-tab-id=\"core\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-selected=\"true\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-tab-id=\"universities\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-tab-id=\"events\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("data-tab-id=\"wos\""))))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"core-search\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"app-search-input\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-app-search-clear")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"core-sort\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"core-direction\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"core-size\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"core-table-body\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"core-prev\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"core-next\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/rankings-core.js")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
-    }
-
-    @Test
-    void urapRankingsPageRendersExpectedTemplateAndClientControls() throws Exception {
-        mockMvc.perform(get("/universities"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("universities/list"))
-                .andExpect(model().attributeDoesNotExist("rankings"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<th scope=\"col\">Conference</th>")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"urap-search\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"urap-sort\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"urap-direction\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"urap-size\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"urap-table-body\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"urap-prev\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"urap-next\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<th scope=\"col\">University</th>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"events-search\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"events-table-body\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<th scope=\"col\">Event Name</th>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/rankings-core.js")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/rankings-urap.js")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/events.js")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/rankings-categories.js"))))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"app-public-header\"")));
+    }
+
+    @Test
+    void authenticatedRankingsHubExposesWosTabAndClientControls() throws Exception {
+        mockMvc.perform(get("/rankings").with(authenticatedUser(userWithRoles("u@uvt.ro", Set.of(UserRole.RESEARCHER)))))
+                .andExpect(status().isOk())
+                .andExpect(view().name("rankings/hub"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-tab-id=\"wos\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-search\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-table-body\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<th scope=\"col\">Category</th>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-prev\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-next\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/rankings-categories.js")));
+    }
+
+    @Test
+    void coreRankingsLegacyUrlRedirectsToHub() throws Exception {
+        mockMvc.perform(get("/core/rankings"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/rankings#core"));
+    }
+
+    @Test
+    void universitiesLegacyUrlRedirectsToHub() throws Exception {
+        mockMvc.perform(get("/universities"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/rankings#universities"));
+    }
+
+    @Test
+    void eventsLegacyUrlRedirectsToHub() throws Exception {
+        mockMvc.perform(get("/events"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/rankings#events"));
+    }
+
+    @Test
+    void coreRankingDetailRendersCanonicalPublicProfile() throws Exception {
+        CoreConferenceRanking conf = new CoreConferenceRanking();
+        conf.setId("ICSE-International Conference on Software Engineering");
+        conf.setName("International Conference on Software Engineering");
+        conf.setAcronym("ICSE");
+        conf.setSource("CORE");
+        conf.setSourceId("CORE-ICSE");
+        CoreConferenceRanking.YearlyRanking yr = new CoreConferenceRanking.YearlyRanking();
+        yr.setRank(CoreConferenceRanking.Rank.A_STAR);
+        conf.setYearlyRankings(Map.of(2023, yr));
+        when(adminCatalogFacade.findCoreRankingById(eq("ICSE-International Conference on Software Engineering")))
+                .thenReturn(Optional.of(conf));
+
+        mockMvc.perform(get("/core/rankings/{id}", "ICSE-International Conference on Software Engineering"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("core/ranking-detail"))
+                .andExpect(model().attributeExists("conf", "breadcrumbs", "latestRankLabel", "latestRankAccent"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"app-public-header\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("property=\"og:title\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-label=\"Breadcrumb\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("app-summary-card")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("A*")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"rankingChart\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("cdn.jsdelivr.net"))));
+    }
+
+@Test
+    void urapRankingDetailRendersCanonicalPublicProfile() throws Exception {
+        URAPUniversityRanking ranking = new URAPUniversityRanking();
+        ranking.setName("West University");
+        ranking.setCountry("Romania");
+        ranking.setScores(Map.of(
+                2023, urapScore(212, 90.0, 80.0, 75.0, 1.9, 4.5, 12.0, 301.45),
+                2024, urapScore(189, 95.0, 82.0, 77.0, 2.0, 4.7, 13.0, 318.61)
+        ));
+        when(urapRankingFacade.findRankingDetails(eq("West University"))).thenReturn(Optional.of(ranking));
+
+        mockMvc.perform(get("/universities/{id}", "West University"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("universities/detail"))
+                .andExpect(model().attributeExists("ranking", "fields", "bestRank", "latestYear", "latestScore", "breadcrumbs"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("property=\"og:title\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("property=\"og:description\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-label=\"Breadcrumb\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("app-summary-card--primary")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Overview Trends")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Detailed Indicators")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"urap-score-data\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("https://cdn.jsdelivr.net/npm/chart.js"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/js/demo/datatables-demo.js"))));
     }
 
     @Test
-    void eventsRankingsPageRendersExpectedTemplateAndModel() throws Exception {
-        when(adminCatalogFacade.listArtisticEvents()).thenReturn(List.of(new ArtisticEvent()));
+    void eventsDataEndpointReturnsPagedJson() throws Exception {
+        ArtisticEvent ev = new ArtisticEvent();
+        ev.setName("Test Event");
+        ev.setRank(ArtisticEvent.Rank.INTERNATIONAL_TOP);
+        ev.setDomainId("domain-1");
+        when(adminCatalogFacade.listArtisticEvents()).thenReturn(List.of(ev));
 
-        mockMvc.perform(get("/events"))
+        mockMvc.perform(get("/events/data").param("page", "0").param("size", "25"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("events/list"))
-                .andExpect(model().attributeExists("artisticEvents"));
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].name").value("Test Event"))
+                .andExpect(jsonPath("$.items[0].rankLabel").value("1 — International Top"));
     }
 
     @Test
-    void missingCoreRankingRedirectsToCoreList() throws Exception {
+    void missingCoreRankingRedirectsToHub() throws Exception {
         when(adminCatalogFacade.findCoreRankingById(eq("missing"))).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/core/rankings/{id}", "missing"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/core/rankings"));
+                .andExpect(redirectedUrl("/rankings#core"));
     }
 
     @Test
-    void missingUrapRankingRedirectsToUrapList() throws Exception {
+    void missingUrapRankingRedirectsToHub() throws Exception {
         when(urapRankingFacade.findRankingDetails(eq("missing"))).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/universities/{id}", "missing"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/universities"));
+                .andExpect(redirectedUrl("/rankings#universities"));
     }
 
     @Test
-    void rankingsTemplatesExposeSidebarLinks() throws Exception {
+    void publicShellExposesUnifiedRankingsLink() throws Exception {
         mockMvc.perform(get("/forums"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/forums\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/wos/categories\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/core/rankings\"")));
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("href=\"/wos/categories\""))))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/rankings\"")));
     }
 
     @Test
-    void wosCategoriesPageRendersCanonicalTemplateAndLinks() throws Exception {
+    void wosCategoriesRouteRedirectsToRankingsHubTab() throws Exception {
         mockMvc.perform(get("/wos/categories"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("wos/categories"))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("WoS Categories")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-search\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("class=\"app-search-input\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-app-search-clear")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-sort\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-direction\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-size\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-table-body\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-prev\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"wos-categories-next\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/rankings-categories.js")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/forums\"")));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/rankings#wos"));
     }
 
     @Test
@@ -328,10 +509,10 @@ class RankingViewControllerContractTest {
                 .andExpect(view().name("wos/category-detail"))
                 .andExpect(model().attributeExists("categoryDetail", "breadcrumbs"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-label=\"Breadcrumb\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("WoS Categories")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Rankings")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Journal Coverage")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/forums/j1\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/wos/categories\"")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/rankings#wos\"")));
     }
 
     @Test
@@ -386,5 +567,27 @@ class RankingViewControllerContractTest {
             request.setUserPrincipal(authentication);
             return request;
         };
+    }
+
+    private URAPUniversityRanking.Score urapScore(
+            int rank,
+            double article,
+            double citation,
+            double totalDocument,
+            double ait,
+            double cit,
+            double collaboration,
+            double total
+    ) {
+        URAPUniversityRanking.Score score = new URAPUniversityRanking.Score();
+        score.setRank(rank);
+        score.setArticle(article);
+        score.setCitation(citation);
+        score.setTotalDocument(totalDocument);
+        score.setAIT(ait);
+        score.setCIT(cit);
+        score.setCollaboration(collaboration);
+        score.setTotal(total);
+        return score;
     }
 }

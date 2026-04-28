@@ -1,183 +1,146 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>URAP Ranking Details</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${ranking.name + ' — URAP University Profile'}">URAP University Profile</title>
+    <meta name="description"
+          th:content="${'Explore the URAP profile for ' + ranking.name + ' with country, best rank, latest score, and historical performance charts.'}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" th:content="${ranking.name + ' — URAP University Profile'}">
+    <meta property="og:description"
+          th:content="${'See ranking trends and research indicators for ' + ranking.name + '.'}">
+    <meta property="og:url" th:content="@{/universities/{id}(id=${ranking.name})}">
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body id="page-top">
+<body class="app-public-page">
 
-<div id="wrapper">
-    <!-- Sidebar -->
-    <div th:replace="~{fragments :: sidebar('rankings-urap')}"></div>
+<th:block th:replace="~{fragments :: public-shell('rankings')}"></th:block>
 
-    <!-- Content Wrapper -->
-    <div id="content-wrapper" class="d-flex flex-column">
-        <!-- Main Content -->
-        <div id="content">
-            <div th:replace="~{fragments :: navbar('URAP University Ranking Details')}"></div>
-            <div class="container-fluid app-page-content">
-                <th:block th:replace="~{fragments :: breadcrumb(${breadcrumbs}, 'default')}"></th:block>
-                <p class="mb-4">Detailed information about the selected university ranking.</p>
+<main class="app-public-content" id="main-content">
+    <div class="app-page-content app-university-detail">
+        <th:block th:replace="~{fragments :: breadcrumb(${breadcrumbs}, 'default')}"></th:block>
 
-                <!-- University Details -->
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary" th:text="${ranking.name}">University Name</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <strong>Country:</strong> <span th:text="${ranking.country}">Country</span>
-                            </div>
-                        </div>
-                    </div>
+        <section class="app-university-detail__section" aria-labelledby="university-summary-title">
+            <div class="app-university-detail__section-header">
+                <div>
+                    <p class="app-university-detail__eyebrow">University profile</p>
+                    <h1 id="university-summary-title" class="app-university-detail__section-title" th:text="${ranking.name}">University Name</h1>
                 </div>
-
-                <!-- Graphs -->
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Yearly Total Score</h6>
-                    </div>
-                    <div class="card-body">
-                        <canvas id="totalScoreChart"></canvas>
-                    </div>
-                </div>
-
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Yearly Rank</h6>
-                    </div>
-                    <div class="card-body">
-                        <canvas id="rankChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Add more graphs for other fields -->
-                <div class="card shadow mb-4" th:each="field : ${fields}">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary" th:text="'Yearly ' + ${field}"></h6>
-                    </div>
-                    <div class="card-body">
-                        <canvas th:attr="id=${field + 'Chart'}"></canvas>
-                    </div>
-                </div>
+                <a href="/rankings#universities" class="btn btn-outline-primary btn-sm">
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                    <span>All universities</span>
+                </a>
             </div>
 
-            <div th:replace="~{fragments :: app-footer}"></div>
+            <div class="app-summary-grid app-university-detail__summary-grid">
+                <th:block th:replace="~{fragments :: stat-card(
+                    label='Country',
+                    value=${ranking.country != null && !ranking.country.isBlank() ? ranking.country : 'Unknown'},
+                    accent='primary',
+                    contextLine='Registered institution country',
+                    icon='fa-solid fa-globe')}"></th:block>
+                <th:block th:replace="~{fragments :: stat-card(
+                    label='Best Rank',
+                    value=${bestRank != null ? '#' + bestRank : '—'},
+                    accent='success',
+                    contextLine='Best recorded URAP position',
+                    icon='fa-solid fa-trophy')}"></th:block>
+                <th:block th:replace="~{fragments :: stat-card(
+                    label='Latest Score',
+                    value=${latestScore != null ? #numbers.formatDecimal(latestScore, 1, 2) : '—'},
+                    accent='warning',
+                    contextLine=${latestYear != null ? 'Measured in ' + latestYear : 'No yearly score data'},
+                    icon='fa-solid fa-chart-line')}"></th:block>
+            </div>
+        </section>
+
+        <section class="app-university-detail__section" aria-labelledby="university-details-title">
+            <div class="app-university-detail__section-header">
+                <div>
+                    <p class="app-university-detail__eyebrow">Directory record</p>
+                    <h2 id="university-details-title" class="app-university-detail__section-title">University Details</h2>
+                </div>
+            </div>
+            <dl class="app-university-detail__definition-grid">
+                <div>
+                    <dt>University</dt>
+                    <dd th:text="${ranking.name}">University Name</dd>
+                </div>
+                <div>
+                    <dt>Country</dt>
+                    <dd th:text="${ranking.country != null && !ranking.country.isBlank() ? ranking.country : 'Unknown'}">Country</dd>
+                </div>
+                <div>
+                    <dt>Latest Ranking Year</dt>
+                    <dd th:text="${latestYear != null ? latestYear : '—'}">2024</dd>
+                </div>
+                <div>
+                    <dt>Tracked Indicators</dt>
+                    <dd>Article, Citation, Total Document, AIT, CIT, Collaboration, Total Score</dd>
+                </div>
+            </dl>
+        </section>
+
+        <div th:if="${ranking.scores == null || ranking.scores.isEmpty()}"
+             class="alert alert-secondary app-university-detail__empty-state"
+             role="status">
+            Historical URAP score data is not available for this university yet.
+        </div>
+
+        <div th:if="${ranking.scores != null && !ranking.scores.isEmpty()}" class="app-university-detail__chart-sections">
+            <section class="app-university-detail__section" aria-labelledby="overview-charts-title">
+                <div class="app-university-detail__section-header">
+                    <div>
+                        <p class="app-university-detail__eyebrow">Performance</p>
+                        <h2 id="overview-charts-title" class="app-university-detail__section-title">Overview Trends</h2>
+                    </div>
+                </div>
+                <div class="app-university-detail__chart-grid">
+                    <article class="app-university-detail__chart-card">
+                        <h3 class="app-university-detail__chart-title">Total Score</h3>
+                        <div class="app-university-detail__chart-shell">
+                            <canvas id="urap-total-score-chart"></canvas>
+                        </div>
+                    </article>
+                    <article class="app-university-detail__chart-card">
+                        <h3 class="app-university-detail__chart-title">Rank</h3>
+                        <div class="app-university-detail__chart-shell">
+                            <canvas id="urap-rank-chart"></canvas>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="app-university-detail__section" aria-labelledby="indicator-charts-title">
+                <div class="app-university-detail__section-header">
+                    <div>
+                        <p class="app-university-detail__eyebrow">Indicators</p>
+                        <h2 id="indicator-charts-title" class="app-university-detail__section-title">Detailed Indicators</h2>
+                    </div>
+                </div>
+                <div class="app-university-detail__chart-grid app-university-detail__chart-grid--metrics">
+                    <article th:each="field : ${fields}" class="app-university-detail__chart-card">
+                        <h3 class="app-university-detail__chart-title"
+                            th:text="${field == 'totalDocument' ? 'Total Document' : field}">Metric</h3>
+                        <div class="app-university-detail__chart-shell">
+                            <canvas th:attr="id='urap-field-chart-' + ${field}"></canvas>
+                        </div>
+                    </article>
+                </div>
+            </section>
         </div>
     </div>
+</main>
 
-    <a class="scroll-to-top rounded" href="#page-top">
-        <i class="fa-solid fa-angle-up"></i>
-    </a>
-</div>
-
-<script th:inline="javascript">
-    // Define the years and data
-    var yearlyScores = /*[[${ranking.scores}]]*/ '{}';
-    var labels = Object.keys(yearlyScores);
-
-    // Function to extract data for a specific field
-    function getFieldData(field) {
-        return labels.map(year => yearlyScores[year]?.[field] || 0);
-    }
-
-    // Render the Total Score chart
-    var ctxTotal = document.getElementById('totalScoreChart').getContext('2d');
-    new Chart(ctxTotal, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Total Score',
-                data: getFieldData('total'),
-                backgroundColor: "rgba(78, 115, 223, 0.05)",
-                borderColor: "rgba(78, 115, 223, 1)",
-                pointRadius: 3,
-                pointBackgroundColor: "rgba(78, 115, 223, 1)",
-                pointBorderColor: "rgba(78, 115, 223, 1)",
-                pointHoverRadius: 3,
-                pointHoverBackgroundColor: "rgba(78, 115, 223, 1)",
-                pointHoverBorderColor: "rgba(78, 115, 223, 1)",
-                pointHitRadius: 10,
-                pointBorderWidth: 2
-            }]
-        },
-        options: {
-            maintainAspectRatio: false,
-            scales: {
-                xAxes: [{ ticks: { maxTicksLimit: labels.length } }],
-                yAxes: [{ ticks: { beginAtZero: true } }]
-            }
-        }
-    });
-
-    // Render the Rank chart
-    var ctxRank = document.getElementById('rankChart').getContext('2d');
-    new Chart(ctxRank, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Rank',
-                data: getFieldData('rank'),
-                backgroundColor: "rgba(255, 99, 132, 0.05)",
-                borderColor: "rgba(255, 99, 132, 1)",
-                pointRadius: 3,
-                pointBackgroundColor: "rgba(255, 99, 132, 1)",
-                pointBorderColor: "rgba(255, 99, 132, 1)",
-                pointHoverRadius: 3,
-                pointHoverBackgroundColor: "rgba(255, 99, 132, 1)",
-                pointHoverBorderColor: "rgba(255, 99, 132, 1)",
-                pointHitRadius: 10,
-                pointBorderWidth: 2
-            }]
-        },
-        options: {
-            maintainAspectRatio: false,
-            scales: {
-                xAxes: [{ ticks: { maxTicksLimit: labels.length } }],
-                yAxes: [{ ticks: { beginAtZero: true } }]
-            }
-        }
-    });
-
-    // Render charts for other fields dynamically
-    ['article', 'citation', 'totalDocument', 'AIT', 'CIT', 'collaboration'].forEach(field => {
-        var ctx = document.getElementById(field + 'Chart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: field.charAt(0).toUpperCase() + field.slice(1),
-                    data: getFieldData(field),
-                    backgroundColor: "rgba(54, 162, 235, 0.05)",
-                    borderColor: "rgba(54, 162, 235, 1)",
-                    pointRadius: 3,
-                    pointBackgroundColor: "rgba(54, 162, 235, 1)",
-                    pointBorderColor: "rgba(54, 162, 235, 1)",
-                    pointHoverRadius: 3,
-                    pointHoverBackgroundColor: "rgba(54, 162, 235, 1)",
-                    pointHoverBorderColor: "rgba(54, 162, 235, 1)",
-                    pointHitRadius: 10,
-                    pointBorderWidth: 2
-                }]
-            },
-            options: {
-                maintainAspectRatio: false,
-                scales: {
-                    xAxes: [{ ticks: { maxTicksLimit: labels.length } }],
-                    yAxes: [{ ticks: { beginAtZero: true } }]
-                }
-            }
-        });
-    });
-</script>
+<th:block th:replace="~{fragments :: app-footer}"></th:block>
+<script id="urap-score-data"
+        type="application/json"
+        th:inline="javascript">/*[[${ranking.scores}]]*/ {}</script>
+<script id="urap-fields-data"
+        type="application/json"
+        th:inline="javascript">/*[[${fields}]]*/ []</script>
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
-
 
 </body>
 </html>

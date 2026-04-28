@@ -9,6 +9,7 @@
  */
 
 import { postJsonHeaders } from '../shared/fetchUtils';
+import { getChartTheme } from '../shared/chartTheme';
 
 export function initWorkspaceOverview() {
     const container = document.getElementById('ws-overview-cards');
@@ -64,13 +65,14 @@ function _initCharts() {
     const data = window.wsOverviewChartData;
     if (!data || typeof window.Chart === 'undefined') return;
 
-    const style = getComputedStyle(document.documentElement);
+    const theme = getChartTheme();
     const colors = {
-        primary:  style.getPropertyValue('--app-color-primary').trim()  || '#4e73df',
-        success:  style.getPropertyValue('--app-color-success').trim()  || '#1cc88a',
-        muted:    style.getPropertyValue('--app-color-text-muted').trim() || '#858796',
-        border:   style.getPropertyValue('--app-color-border').trim()   || '#e3e6f0',
-        cardBg:   style.getPropertyValue('--app-color-card-bg').trim()  || '#fff',
+        primary: theme.primary,
+        success: theme.success,
+        muted: theme.textMuted,
+        border: theme.chartGrid,
+        cardBg: theme.chartTooltipBg,
+        palette: theme.series
     };
 
     _renderBarChart(
@@ -144,8 +146,7 @@ function _renderDoughnutChart(canvas, labels, values, colors) {
         return;
     }
     const palette = [
-        '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e',
-        '#e74a3b', '#858796', '#6610f2', '#fd7e14'
+        ...colors.palette
     ];
     new window.Chart(canvas, {
         type: 'doughnut',

@@ -50,7 +50,7 @@ function createHarness(fetchImpl) {
     'core-loading': createElement('core-loading'),
     'core-error': createElement('core-error', { classes: ['d-none'] }),
     'core-empty': createElement('core-empty', { classes: ['d-none'] }),
-    'core-table': createElement('core-table', { dataset: { detailBase: '/rankings/core' } }),
+    'core-table': createElement('core-table', { dataset: { detailBase: '/core/rankings' } }),
     'core-table-body': createElement('core-table-body'),
     'core-page-info': createElement('core-page-info'),
     'core-total-info': createElement('core-total-info'),

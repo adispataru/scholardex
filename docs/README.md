@@ -26,6 +26,7 @@ This directory now separates durable project docs from task-specific history.
 - `docs/doc-governance.md`
 - `docs/release-hygiene.md`
 - `docs/c01-cnfis-rule-spec.md`
+- `docs/test-quality.md`
 
 ## Placement Rules
 

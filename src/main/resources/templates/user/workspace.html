@@ -114,24 +114,24 @@
                                                     <i class="fa-solid fa-user"></i>
                                                 </span>
                                                 <span class="app-onboarding-list__label">Create your researcher profile</span>
-                                                <a class="btn btn-sm btn-outline-primary app-onboarding-list__action"
-                                                   href="#" data-tab-goto="profile">Start</a>
+                                                <button type="button" class="btn btn-sm btn-outline-primary app-onboarding-list__action"
+                                                        data-tab-goto="profile">Start</button>
                                             </li>
                                             <li class="app-onboarding-list__item">
                                                 <span class="app-onboarding-list__icon app-onboarding-list__icon--pending" aria-hidden="true">
                                                     <i class="fa-solid fa-book"></i>
                                                 </span>
                                                 <span class="app-onboarding-list__label">Add your first publication</span>
-                                                <a class="btn btn-sm btn-outline-secondary app-onboarding-list__action"
-                                                   href="#" data-tab-goto="publications">Add</a>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary app-onboarding-list__action"
+                                                        data-tab-goto="publications">Add</button>
                                             </li>
                                             <li class="app-onboarding-list__item">
                                                 <span class="app-onboarding-list__icon app-onboarding-list__icon--pending" aria-hidden="true">
                                                     <i class="fa-solid fa-link"></i>
                                                 </span>
                                                 <span class="app-onboarding-list__label">Link your Scopus ID for automatic citation tracking</span>
-                                                <a class="btn btn-sm btn-outline-secondary app-onboarding-list__action"
-                                                   href="#" data-tab-goto="profile">Link</a>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary app-onboarding-list__action"
+                                                        data-tab-goto="profile">Link</button>
                                             </li>
                                         </ul>
                                     </div>
@@ -160,7 +160,7 @@
                                                 </div>
                                                 <p class="app-attention-panel__body" style="margin-top: 0.5rem; font-size: 0.86rem;">
                                                     Profile <strong th:text="${workspace.profileCompletenessPercent}">0</strong>% complete —
-                                                    <a href="#" data-tab-goto="profile" class="fw-semibold">Go to Profile &amp; Sync</a>
+                                                    <button type="button" data-tab-goto="profile" class="btn btn-link p-0 align-baseline fw-semibold">Go to Profile &amp; Sync</button>
                                                 </p>
                                             </div>
                                             <div class="app-summary-panel app-overview-panel"
@@ -391,6 +391,7 @@
      role="dialog"
      aria-modal="true"
      aria-labelledby="ws-citations-modal-title"
+     aria-describedby="ws-citations-modal-pub ws-citations-modal-total"
      hidden
      aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">

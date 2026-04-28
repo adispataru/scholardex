@@ -56,6 +56,7 @@
                         <div class="app-tab-bar__list" role="tablist" aria-label="Group sections">
                             <button type="button" role="tab"
                                     class="app-tab-bar__tab app-tab-bar__tab--active"
+                                    id="tab-trigger-overview"
                                     data-tab-id="overview"
                                     aria-controls="tab-panel-overview"
                                     aria-selected="true"
@@ -65,6 +66,7 @@
                             </button>
                             <button type="button" role="tab"
                                     class="app-tab-bar__tab"
+                                    id="tab-trigger-publications"
                                     data-tab-id="publications"
                                     aria-controls="tab-panel-publications"
                                     aria-selected="false"
@@ -74,6 +76,7 @@
                             </button>
                             <button type="button" role="tab"
                                     class="app-tab-bar__tab"
+                                    id="tab-trigger-reports"
                                     data-tab-id="reports"
                                     aria-controls="tab-panel-reports"
                                     aria-selected="false"
@@ -155,12 +158,12 @@
                                                 <table class="table app-table" width="100%" cellspacing="0">
                                                     <thead>
                                                     <tr>
-                                                        <th>Title</th>
-                                                        <th>Year</th>
-                                                        <th>Authors</th>
-                                                        <th>Type</th>
-                                                        <th>Venue</th>
-                                                        <th>Citations</th>
+                                                        <th scope="col">Title</th>
+                                                        <th scope="col">Year</th>
+                                                        <th scope="col">Authors</th>
+                                                        <th scope="col">Type</th>
+                                                        <th scope="col">Venue</th>
+                                                        <th scope="col">Citations</th>
                                                     </tr>
                                                     </thead>
                                                     <tbody>
@@ -219,8 +222,8 @@
                                                 <table class="table app-table" width="100%" cellspacing="0">
                                                     <thead>
                                                     <tr>
-                                                        <th>Title</th>
-                                                        <th>Actions</th>
+                                                        <th scope="col">Title</th>
+                                                        <th scope="col">Actions</th>
                                                     </tr>
                                                     </thead>
                                                     <tbody>
@@ -259,12 +262,20 @@
 
 <script th:inline="javascript">
     var _groupChartsInit = false;
+    var _groupPublicationsChart = null;
+    var _groupVenueChart = null;
     var _countData = /*[[${publicationsCountByYear}]]*/ {};
     var _venueClassCountByYear = /*[[${venueClassCountByYear}]]*/ {};
 
     function initGroupCharts() {
-        if (_groupChartsInit) return;
-        _groupChartsInit = true;
+        var themeApi = window.appChartTheme || {};
+        var theme = themeApi.getChartTheme ? themeApi.getChartTheme() : {
+            primary: '#4361ee',
+            textMuted: '#64748b',
+            chartGrid: '#dbe4f0',
+            venueBuckets: {}
+        };
+        var alphaColor = themeApi.alphaColor || function(color) { return color; };
 
         var years = Object.keys(_countData)
             .sort(function(a, b) { return Number(a) - Number(b); })
@@ -272,23 +283,32 @@
         var counts = years.map(function(y) { return _countData[y]; });
 
         var pubCtx = document.getElementById('chart-publications').getContext('2d');
-        new Chart(pubCtx, {
+        if (_groupPublicationsChart) {
+            _groupPublicationsChart.destroy();
+        }
+        _groupPublicationsChart = new Chart(pubCtx, {
             type: 'bar',
             data: {
                 labels: years,
                 datasets: [{
                     label: 'Publications',
                     data: counts,
-                    backgroundColor: 'rgba(78, 115, 223, 0.5)',
-                    borderColor: 'rgba(78, 115, 223, 1)',
+                    backgroundColor: alphaColor(theme.primary, 0.46),
+                    borderColor: theme.primary,
                     borderWidth: 1
                 }]
             },
             options: {
                 aspectRatio: 3,
                 scales: {
-                    xAxes: [{ gridLines: { display: false } }],
-                    yAxes: [{ ticks: { beginAtZero: true, stepSize: 1 } }]
+                    xAxes: [{
+                        gridLines: { display: false },
+                        ticks: { fontColor: theme.textMuted }
+                    }],
+                    yAxes: [{
+                        ticks: { beginAtZero: true, stepSize: 1, fontColor: theme.textMuted },
+                        gridLines: { color: theme.chartGrid, zeroLineColor: theme.chartGrid }
+                    }]
                 },
                 legend: { display: false }
             }
@@ -298,24 +318,7 @@
         var conferenceBuckets = ['A_STAR', 'A', 'B', 'C', 'D', 'SCOPUS', 'LNCS'];
         var bookLncsBuckets = ['BOOK_LNCS'];
         var unrankedBuckets = ['Unranked'];
-        var venueBucketColors = {
-            'Q1': 'rgba(220, 53, 69, 0.82)', 'Q2': 'rgba(255, 193, 7, 0.85)',
-            'Q3': 'rgba(255, 255, 255, 0.96)', 'Q4': 'rgba(233, 236, 239, 0.96)',
-            'A_STAR': 'rgba(220, 53, 69, 0.82)', 'A': 'rgba(220, 53, 69, 0.82)',
-            'B': 'rgba(255, 193, 7, 0.85)', 'C': 'rgba(255, 255, 255, 0.96)',
-            'D': 'rgba(233, 236, 239, 0.96)', 'LNCS': 'rgba(86, 180, 233, 0.88)',
-            'BOOK_LNCS': 'rgba(0, 114, 178, 0.82)', 'SCOPUS': 'rgba(0, 158, 115, 0.82)',
-            'Unranked': 'rgba(90, 90, 90, 0.9)'
-        };
-        var venueBucketBorders = {
-            'Q1': 'rgba(220, 53, 69, 1)', 'Q2': 'rgba(196, 143, 0, 1)',
-            'Q3': 'rgba(173, 181, 189, 1)', 'Q4': 'rgba(173, 181, 189, 1)',
-            'A_STAR': 'rgba(220, 53, 69, 1)', 'A': 'rgba(220, 53, 69, 1)',
-            'B': 'rgba(196, 143, 0, 1)', 'C': 'rgba(173, 181, 189, 1)',
-            'D': 'rgba(173, 181, 189, 1)', 'LNCS': 'rgba(0, 114, 178, 1)',
-            'BOOK_LNCS': 'rgba(0, 78, 128, 1)', 'SCOPUS': 'rgba(0, 115, 85, 1)',
-            'Unranked': 'rgba(60, 60, 60, 1)'
-        };
+        var venueBuckets = theme.venueBuckets || {};
 
         var venueYears = Object.keys(_venueClassCountByYear)
             .sort(function(a, b) { return Number(a) - Number(b); })
@@ -329,8 +332,8 @@
                     data: venueYears.map(function(year) {
                         return (_venueClassCountByYear[year] || {})[bucket] || 0;
                     }),
-                    backgroundColor: venueBucketColors[bucket] || 'rgba(73, 80, 87, 0.9)',
-                    borderColor: venueBucketBorders[bucket] || 'rgba(52, 58, 64, 1)',
+                    backgroundColor: (venueBuckets[bucket] || {}).background || 'rgba(100, 116, 139, 0.88)',
+                    borderColor: (venueBuckets[bucket] || {}).border || '#64748b',
                     borderWidth: 1
                 };
             });
@@ -355,18 +358,36 @@
         var venueSuggestedMax = maxVenueStack > 0 ? Math.ceil(maxVenueStack * 1.1) : 1;
 
         var venueCtx = document.getElementById('chart-venue-quality').getContext('2d');
-        new Chart(venueCtx, {
+        if (_groupVenueChart) {
+            _groupVenueChart.destroy();
+        }
+        _groupVenueChart = new Chart(venueCtx, {
             type: 'bar',
             data: { labels: venueYears, datasets: venueDatasets },
             options: {
                 aspectRatio: 3,
                 scales: {
-                    xAxes: [{ stacked: true, categoryPercentage: 0.7, barPercentage: 0.9, gridLines: { display: false } }],
-                    yAxes: [{ stacked: true, ticks: { beginAtZero: true, stepSize: 1, suggestedMax: venueSuggestedMax } }]
+                    xAxes: [{
+                        stacked: true,
+                        categoryPercentage: 0.7,
+                        barPercentage: 0.9,
+                        gridLines: { display: false },
+                        ticks: { fontColor: theme.textMuted }
+                    }],
+                    yAxes: [{
+                        stacked: true,
+                        ticks: { beginAtZero: true, stepSize: 1, suggestedMax: venueSuggestedMax, fontColor: theme.textMuted },
+                        gridLines: { color: theme.chartGrid, zeroLineColor: theme.chartGrid }
+                    }]
                 },
-                legend: { display: true }
+                legend: {
+                    display: true,
+                    labels: { fontColor: theme.textMuted }
+                }
             }
         });
+
+        _groupChartsInit = true;
     }
 
     window.groupWorkspaceCallbacks = {
@@ -374,6 +395,7 @@
     };
 
     initGroupCharts();
+    window.addEventListener('app:themechange', initGroupCharts);
 </script>
 
 </body>

@@ -1,195 +1,184 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
     <meta charset="UTF-8">
-    <title th:text="${conf.acronym}">Conference Ranking</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${conf.name + ' (' + conf.acronym + ') — CORE Conference Ranking'}">Conference Ranking</title>
+    <meta name="description"
+          th:content="${'Explore the CORE ranking history for ' + conf.name + ' (' + conf.acronym + ').'}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" th:content="${conf.name + ' (' + conf.acronym + ') — CORE Conference Ranking'}">
+    <meta property="og:description"
+          th:content="${'See CORE ranking trends across years for the ' + conf.name + ' conference.'}">
+    <meta property="og:url" th:content="@{/core/rankings/{id}(id=${conf.id})}">
     <th:block th:replace="~{fragments :: core-styles}"></th:block>
-    <style>
-        .card-spacing {
-            margin-bottom: 20px;
-        }
-    </style>
 </head>
-<body id="page-top">
+<body class="app-public-page">
 
-<div id="wrapper">
-    <!-- Sidebar -->
-    <div th:replace="~{fragments :: sidebar('rankings-core')}"></div>
+<th:block th:replace="~{fragments :: public-shell('rankings')}"></th:block>
 
-    <!-- Content Wrapper -->
-    <div id="content-wrapper" class="d-flex flex-column">
-        <!-- Main Content -->
-        <div id="content">
-            <div th:replace="~{fragments :: navbar('URAP University Ranking Details')}"></div>
-            <div class="container-fluid app-page-content">
+<main class="app-public-content" id="main-content">
+    <div class="app-page-content">
+        <th:block th:replace="~{fragments :: breadcrumb(${breadcrumbs}, 'default')}"></th:block>
 
-                <div class="card shadow mb-4 card-spacing">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Description</h6>
-                    </div>
-                    <div class="card-body">
-                        <p>
-                            <span>Source: </span>
-                            <span th:text="${conf.source}">Source</span>
-                        </p>
-                        <p>
-                            <span>Source ID: </span>
-                            <span th:text="${conf.sourceId}">Source ID</span>
-                        </p>
-                        <p>
-                            <span>Acronym: </span>
-                            <span th:text="${conf.acronym}">Acronym</span>
-                        </p>
-                    </div>
+        <section aria-labelledby="conf-summary-title">
+            <div class="app-university-detail__section-header">
+                <div>
+                    <p class="app-university-detail__eyebrow">CORE Conference</p>
+                    <h1 id="conf-summary-title" class="app-university-detail__section-title" th:text="${conf.name}">Conference Name</h1>
                 </div>
-
-                <div class="card shadow mb-4 card-spacing">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Rankings Over the Years</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="chart-area">
-                            <canvas id="rankingChart"></canvas>
-                        </div>
-                    </div>
-                </div>
+                <a href="/rankings#core" class="btn btn-outline-primary btn-sm">
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                    <span>All rankings</span>
+                </a>
             </div>
 
-            <div th:replace="~{fragments :: app-footer}"></div>
-        </div>
-    </div>
+            <div class="app-summary-grid">
+                <th:block th:replace="~{fragments :: stat-card(
+                    label='CORE Rank',
+                    value=${latestRankLabel},
+                    accent=${latestRankAccent},
+                    contextLine='Closest to 2023',
+                    icon='fa-solid fa-ranking-star')}"></th:block>
+                <th:block th:replace="~{fragments :: stat-card(
+                    label='Acronym',
+                    value=${conf.acronym},
+                    accent='neutral',
+                    contextLine=null,
+                    icon='fa-solid fa-tag')}"></th:block>
+                <th:block th:replace="~{fragments :: stat-card(
+                    label='Source',
+                    value=${conf.source},
+                    accent='neutral',
+                    contextLine=${conf.sourceId},
+                    icon='fa-solid fa-database')}"></th:block>
+            </div>
+        </section>
 
-    <a class="scroll-to-top rounded" href="#page-top">
-        <i class="fa-solid fa-angle-up"></i>
-    </a>
-</div>
+        <section class="mt-4" aria-labelledby="conf-chart-title">
+            <h2 id="conf-chart-title" class="app-university-detail__section-title">Rankings Over the Years</h2>
+            <div class="chart-area">
+                <canvas id="rankingChart"></canvas>
+            </div>
+        </section>
+    </div>
+</main>
+
+<th:block th:replace="~{fragments :: app-footer}"></th:block>
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
 
-<script src="/js/demo/datatables-demo.js"></script>
 <script th:inline="javascript">
-    // Define the years to iterate through
-    var years =  [2008, 2010, 2013, 2014, 2017, 2018, 2020, 2021, 2023];
-
-    // Get the data from the server-side model
+    var years = [2008, 2010, 2013, 2014, 2017, 2018, 2020, 2021, 2023];
     var yearlyRankings = /*[[${conf.yearlyRankings}]]*/ '{}';
-
-    // Rank mapping
     var rankMapping = {
-        "A_STAR": 5,
-        "A": 4,
-        "B": 3,
-        "C": 2,
-        "D": 1,
-        "NON_RANK": 0
+        "A_STAR": 5, "A": 4, "B": 3, "C": 2, "D": 1, "NON_RANK": 0
     };
-
-    // Reverse mapping for y-axis labels
     var reverseRankMapping = {
-        5: "A_STAR",
-        4: "A",
-        3: "B",
-        2: "C",
-        1: "D",
-        0: "NON_RANK"
+        5: "A*", 4: "A", 3: "B", 2: "C", 1: "D", 0: "Unranked"
     };
 
-    // Process the data for Chart.js
     var labels = years;
-    var rankData = labels.map(year => {
+    var rankData = labels.map(function(year) {
         if (yearlyRankings[year]) {
-            return rankMapping[yearlyRankings[year].rank] || 0; // Map rank to numerical value or 0 if not found
+            return rankMapping[yearlyRankings[year].rank] !== undefined ? rankMapping[yearlyRankings[year].rank] : null;
         }
         return null;
     });
+    var rankingChart = null;
 
-    var ctx = document.getElementById('rankingChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Rank',
-                data: rankData,
-                backgroundColor: "rgba(28, 200, 138, 0.05)",
-                borderColor: "rgba(28, 200, 138, 1)",
-                pointRadius: 3,
-                pointBackgroundColor: "rgba(28, 200, 138, 1)",
-                pointBorderColor: "rgba(28, 200, 138, 1)",
-                pointHoverRadius: 3,
-                pointHoverBackgroundColor: "rgba(28, 200, 138, 1)",
-                pointHoverBorderColor: "rgba(28, 200, 138, 1)",
-                pointHitRadius: 10,
-                pointBorderWidth: 2
-            }]
-        },
-        options: {
-            maintainAspectRatio: false,
-            layout: {
-                padding: {
-                    left: 10,
-                    right: 25,
-                    top: 25,
-                    bottom: 0
-                }
-            },
-            scales: {
-                xAxes: [{
-                    time: {
-                        unit: 'year'
-                    },
-                    gridLines: {
-                        display: false,
-                        drawBorder: false
-                    },
-                    ticks: {
-                        maxTicksLimit: labels.length
-                    }
-                }],
-                yAxes: [{
-                    ticks: {
-                        callback: function(value) {
-                            return reverseRankMapping[value]; // Use the reverse rank mapping for labels
-                        },
-                        max: 5,
-                        min: 0,
-                        stepSize: 1,
-                        padding: 10
-                    },
-                    gridLines: {
-                        color: "rgb(234, 236, 244)",
-                        zeroLineColor: "rgb(234, 236, 244)",
-                        drawBorder: false,
-                        borderDash: [2],
-                        zeroLineBorderDash: [2]
-                    }
+    function renderRankingChart() {
+        var themeApi = window.appChartTheme || {};
+        var theme = themeApi.getChartTheme ? themeApi.getChartTheme() : {
+            series: ['#22c55e'],
+            text: '#334155',
+            textStrong: '#0f172a',
+            textMuted: '#64748b',
+            border: '#dbe4f0',
+            chartGrid: '#dbe4f0',
+            chartTooltipBg: '#ffffff'
+        };
+        var alphaColor = themeApi.alphaColor || function(color) { return color; };
+        var ctx = document.getElementById('rankingChart').getContext('2d');
+
+        if (rankingChart) {
+            rankingChart.destroy();
+        }
+
+        rankingChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Rank',
+                    data: rankData,
+                    backgroundColor: alphaColor(theme.series[1] || theme.series[0], 0.12),
+                    borderColor: theme.series[1] || theme.series[0],
+                    pointRadius: 3,
+                    pointBackgroundColor: theme.series[1] || theme.series[0],
+                    pointBorderColor: theme.series[1] || theme.series[0],
+                    pointHoverRadius: 3,
+                    pointHoverBackgroundColor: theme.series[1] || theme.series[0],
+                    pointHoverBorderColor: theme.series[1] || theme.series[0],
+                    pointHitRadius: 10,
+                    pointBorderWidth: 2,
+                    spanGaps: true
                 }]
             },
-            legend: {
-                display: true
-            },
-            tooltips: {
-                backgroundColor: "rgb(255,255,255)",
-                bodyFontColor: "#858796",
-                titleMarginBottom: 10,
-                titleFontColor: '#6e707e',
-                titleFontSize: 14,
-                borderColor: '#dddfeb',
-                borderWidth: 1,
-                xPadding: 15,
-                yPadding: 15,
-                displayColors: false,
-                intersect: false,
-                mode: 'index',
-                caretPadding: 10,
-                callbacks: {
-                    label: function(tooltipItem, chart) {
-                        var datasetLabel = chart.datasets[tooltipItem.datasetIndex].label || '';
-                        return datasetLabel + ': ' + reverseRankMapping[tooltipItem.yLabel]; // Show rank label in tooltip
+            options: {
+                maintainAspectRatio: false,
+                layout: { padding: { left: 10, right: 25, top: 25, bottom: 0 } },
+                scales: {
+                    xAxes: [{
+                        gridLines: { display: false, drawBorder: false },
+                        ticks: { maxTicksLimit: labels.length, fontColor: theme.textMuted }
+                    }],
+                    yAxes: [{
+                        ticks: {
+                            callback: function(value) { return reverseRankMapping[value]; },
+                            max: 5, min: 0, stepSize: 1, padding: 10, fontColor: theme.textMuted
+                        },
+                        gridLines: {
+                            color: theme.chartGrid,
+                            zeroLineColor: theme.chartGrid,
+                            drawBorder: false,
+                            borderDash: [2],
+                            zeroLineBorderDash: [2]
+                        }
+                    }]
+                },
+                legend: {
+                    display: true,
+                    labels: {
+                        fontColor: theme.textMuted
+                    }
+                },
+                tooltips: {
+                    backgroundColor: theme.chartTooltipBg,
+                    bodyFontColor: theme.text,
+                    titleMarginBottom: 10,
+                    titleFontColor: theme.textStrong,
+                    titleFontSize: 14,
+                    borderColor: theme.border,
+                    borderWidth: 1,
+                    xPadding: 15,
+                    yPadding: 15,
+                    displayColors: false,
+                    intersect: false,
+                    mode: 'index',
+                    caretPadding: 10,
+                    callbacks: {
+                        label: function(tooltipItem, chart) {
+                            var datasetLabel = chart.datasets[tooltipItem.datasetIndex].label || '';
+                            return datasetLabel + ': ' + (reverseRankMapping[tooltipItem.yLabel] || tooltipItem.yLabel);
+                        }
                     }
                 }
             }
-        }
-    });
+        });
+    }
+
+    renderRankingChart();
+    window.addEventListener('app:themechange', renderRankingChart);
 </script>
 
 </body>

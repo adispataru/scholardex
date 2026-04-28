@@ -20,6 +20,14 @@ const checks = [
     forbidden: ['/rankings/wos/"', '/admin/scopus/', '/rankings/categories/']
   },
   {
+    file: 'src/main/resources/templates/publications/list.html',
+    forbidden: ['/rankings/wos"', '/admin/scopus/', '/rankings/categories"']
+  },
+  {
+    file: 'src/main/resources/templates/rankings/hub.html',
+    forbidden: ['/rankings/wos"', '/admin/scopus/', '/rankings/categories"']
+  },
+  {
     file: 'src/main/resources/templates/admin/scholardex-forums.html',
     forbidden: ['/admin/scopus/', '/admin/rankings/wos"']
   },

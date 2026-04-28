@@ -144,7 +144,7 @@ public class PostgresWosCategoryReadPort {
                 """);
 
         if (normalizedQuery != null) {
-            whereClause.append(" AND (category_name_canonical ILIKE :q OR edition_normalized ILIKE :q)");
+            whereClause.append(" AND (category_name_canonical ILIKE :q OR edition_normalized::text ILIKE :q)");
             params.addValue("q", "%" + normalizedQuery.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%");
         }
 

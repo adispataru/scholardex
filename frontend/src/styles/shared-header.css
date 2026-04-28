@@ -210,13 +210,59 @@
   max-width: 100%;
 }
 
+@media (max-width: 1023.98px) {
+  .app-shell-topbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .app-shell-topbar__spacer {
+    display: none;
+  }
+
+  .app-shell-topbar__utilities {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 959.98px) {
+  .app-shell-workspace-switcher__label,
+  .app-shell-theme-toggle__label,
+  .app-shell-logout__label {
+    display: none;
+  }
+
+  .app-shell-theme-toggle,
+  .app-shell-workspace-switcher__trigger,
+  .app-shell-logout__button {
+    width: 2.75rem;
+    height: 2.75rem;
+    justify-content: center;
+    padding: 0;
+  }
+}
+
 @media (max-width: 767.98px) {
   .app-shell-topbar {
     padding: 0.9rem 1rem 0.4rem;
+    align-items: center;
+    flex-wrap: nowrap;
   }
 
   .app-shell-page-header {
     padding: 0 1rem 0.9rem;
+  }
+
+  .app-shell-topbar__spacer {
+    display: block;
+  }
+
+  .app-shell-topbar__utilities {
+    flex: 0 1 auto;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
   }
 
   .app-shell-workspace-switcher__label {

@@ -65,4 +65,18 @@ class AdminActivityControllerContractTest {
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/activities"));
     }
+
+    @Test
+    void retiredActivityIndicatorsListRedirectsToActivities() throws Exception {
+        mockMvc.perform(get("/admin/activities/activityIndicators"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/activities"));
+    }
+
+    @Test
+    void retiredActivityIndicatorsEditRedirectsToActivities() throws Exception {
+        mockMvc.perform(get("/admin/activities/activityIndicators/edit/{id}", "legacy"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/activities"));
+    }
 }

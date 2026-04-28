@@ -5,6 +5,7 @@
   "scripts": {
     "build": "node scripts/build-assets.js",
     "verify-assets": "node scripts/verify-assets.js",
+    "verify-h48-browser-smoke": "node scripts/verify-h48-browser-smoke.js",
     "verify-template-assets": "node scripts/verify-template-assets.js",
     "verify-ui-guardrails": "node scripts/verify-ui-guardrails.js",
     "verify-route-guardrails": "node scripts/verify-route-guardrails.js",
@@ -24,6 +25,7 @@
     "test-rankings-core": "node scripts/test-rankings-core.js",
     "test-rankings-categories": "node scripts/test-rankings-categories.js",
     "test-rankings-urap": "node scripts/test-rankings-urap.js",
+    "test-h48-guardrails": "node scripts/test-h48-guardrails.js",
     "test-indicator-citations-dashboard": "node scripts/test-indicator-citations-dashboard.js",
     "test-indicator-publications-dashboard": "node scripts/test-indicator-publications-dashboard.js",
     "test-indicator-activities-dashboard": "node scripts/test-indicator-activities-dashboard.js",
@@ -46,6 +48,7 @@
     "chart.js": "2.9.4",
     "datatables.net": "^1.13.11",
     "datatables.net-bs5": "^1.13.11",
+    "frappe-charts": "^1.6.2",
     "jquery": "^3.7.1",
     "jquery.easing": "^1.4.1"
   }

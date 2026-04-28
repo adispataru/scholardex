@@ -101,3 +101,25 @@
   transition: opacity 150ms ease;
   pointer-events: none;
 }
+
+@media (max-width: 1023.98px) {
+  .app-tab-bar__list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow-x: visible;
+  }
+
+  .app-tab-bar__tab {
+    width: 100%;
+    padding: 0.7rem 0.65rem;
+    font-size: 0.8125rem;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.3;
+  }
+
+  .app-tab-bar__tab-icon {
+    display: none;
+  }
+}

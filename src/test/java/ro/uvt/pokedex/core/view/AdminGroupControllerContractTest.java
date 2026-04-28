@@ -30,6 +30,8 @@ import ro.uvt.pokedex.core.service.application.model.GroupWorkbookExportResult;
 import ro.uvt.pokedex.core.service.importing.GroupService;
 
 import java.time.Instant;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -67,6 +69,18 @@ class AdminGroupControllerContractTest {
     private GroupCnfisExportFacade groupCnfisExportFacade;
     @MockitoBean
     private GroupService groupService;
+
+    @Test
+    void groupWorkspaceTemplateUsesValidTabIdsAndTableHeaderScopes() throws Exception {
+        String template = Files.readString(Path.of("src/main/resources/templates/admin/group-workspace.html"));
+
+        assertTrue(template.contains("id=\"tab-trigger-overview\""));
+        assertTrue(template.contains("id=\"tab-trigger-publications\""));
+        assertTrue(template.contains("id=\"tab-trigger-reports\""));
+        assertTrue(template.contains("aria-labelledby=\"tab-trigger-overview\""));
+        assertTrue(template.contains("<th scope=\"col\">Title</th>"));
+        assertTrue(template.contains("<th scope=\"col\">Actions</th>"));
+    }
 
     @Test
     void editGroupRendersSharedAdminFormBaseline() throws Exception {

@@ -62,7 +62,7 @@
                     <div class="app-dashboard__actions">
                         <!-- Compare run picker (hidden until toggled) -->
                         <div class="app-eval-compare-picker" id="eval-compare-picker" hidden>
-                            <select id="eval-compare-select" class="form-control form-control-sm">
+                            <select id="eval-compare-select" class="form-control form-control-sm" aria-label="Select comparison run or snapshot">
                                 <option value="">— select a run or snapshot —</option>
                             </select>
                         </div>
@@ -100,9 +100,9 @@
                 </div>
 
                 <!-- My Snapshots panel -->
-                <div class="app-eval-snapshots-panel" id="eval-snapshots-panel" hidden>
+                <div class="app-eval-snapshots-panel" id="eval-snapshots-panel" hidden role="region" aria-labelledby="eval-snapshots-title">
                     <div class="app-eval-snapshots-panel__header">
-                        <span class="app-eval-snapshots-panel__title">
+                        <span class="app-eval-snapshots-panel__title" id="eval-snapshots-title">
                             <i class="fa-solid fa-layer-group fa-sm" aria-hidden="true"></i> My Snapshots
                         </span>
                         <button type="button" class="app-eval-snapshots-panel__close" id="eval-snapshots-close"
@@ -269,7 +269,7 @@
 
 <!-- ── Citation drilldown modal ──────────────────────────────────────────── -->
 <div class="modal fade app-modal" id="citationDetailModal" tabindex="-1" role="dialog"
-     aria-labelledby="citationDetailModalLabel" aria-hidden="true">
+     aria-labelledby="citationDetailModalLabel" aria-describedby="citationModalPubTitle citationModalTotal" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">

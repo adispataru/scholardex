@@ -18,11 +18,11 @@
                     <th:block th:replace="~{fragments :: stat-card-grid(${statCards})}"></th:block>
 
                     <!-- Bulk operation feedback -->
-                    <div th:if="${bulkSuccess}" class="app-form-state app-form-state--success" th:text="${bulkSuccess}"></div>
-                    <div th:if="${bulkError}" class="app-form-state app-form-state--danger" th:text="${bulkError}"></div>
+                    <div th:if="${bulkSuccess}" class="app-form-state app-form-state--success" role="status" th:text="${bulkSuccess}"></div>
+                    <div th:if="${bulkError}" class="app-form-state app-form-state--danger" role="alert" th:text="${bulkError}"></div>
 
                     <!-- Active filter context banner -->
-                    <div th:if="${filterContextLabel}" class="app-feedback app-feedback--info" style="margin-bottom:0.5rem;">
+                    <div th:if="${filterContextLabel}" class="app-feedback app-feedback--info" role="status" style="margin-bottom:0.5rem;">
                         <i class="fa-solid fa-filter fa-xs"></i>
                         Filtering by <strong th:text="${filterContextLabel}"></strong> —
                         <a th:href="@{/admin/scholardex/publications}">Clear filter</a>

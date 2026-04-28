@@ -1,0 +1,158 @@
+/* Public university detail */
+
+.app-university-detail {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.app-university-detail__section {
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-card);
+  background: var(--app-color-card-bg);
+  box-shadow: var(--app-shadow-card);
+  padding: 1.25rem;
+}
+
+.app-university-detail__section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.1rem;
+}
+
+.app-university-detail__eyebrow {
+  margin: 0 0 0.2rem;
+  color: var(--app-color-primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.app-university-detail__section-title {
+  margin: 0;
+  color: var(--app-color-text-strong);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.app-university-detail__summary-grid {
+  margin-bottom: 0;
+}
+
+.app-university-detail__definition-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+  margin: 0;
+}
+
+.app-university-detail__definition-grid > div {
+  min-width: 0;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--app-color-border);
+}
+
+.app-university-detail__definition-grid dt {
+  margin-bottom: 0.25rem;
+  color: var(--app-color-text-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-university-detail__definition-grid dd {
+  margin: 0;
+  color: var(--app-color-text-strong);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.app-university-detail__empty-state {
+  margin: 0;
+  border-radius: var(--app-radius-card);
+}
+
+.app-publication-detail__author-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.45rem 1rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  color: var(--app-color-text-strong);
+  font-size: 0.95rem;
+}
+
+.app-publication-detail__author-list li {
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--app-color-border);
+  overflow-wrap: anywhere;
+}
+
+.app-university-detail__chart-sections {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.app-university-detail__chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.app-university-detail__chart-grid--metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.app-university-detail__chart-card {
+  min-width: 0;
+}
+
+.app-university-detail__chart-title {
+  margin: 0 0 0.75rem;
+  color: var(--app-color-text-strong);
+  font-size: 0.96rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.app-university-detail__chart-shell {
+  position: relative;
+  min-height: 17rem;
+  padding: 0.75rem;
+  border: 1px solid var(--app-color-border);
+  border-radius: calc(var(--app-radius-card) - 0.1rem);
+  background: color-mix(in srgb, var(--app-color-card-bg-muted) 56%, transparent);
+}
+
+.app-university-detail__chart-shell canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+@media (max-width: 992px) {
+  .app-university-detail__chart-grid--metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .app-university-detail__section {
+    padding: 1rem;
+  }
+
+  .app-university-detail__section-header {
+    flex-direction: column;
+  }
+
+  .app-university-detail__definition-grid,
+  .app-university-detail__chart-grid,
+  .app-university-detail__chart-grid--metrics {
+    grid-template-columns: 1fr;
+  }
+}

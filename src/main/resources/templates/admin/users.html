@@ -17,10 +17,10 @@
             <div class="container-fluid app-page-content">
 
                 <!-- Flash messages -->
-                <div th:if="${errorMessage}" class="app-form-state app-form-state--danger" th:text="${errorMessage}"></div>
-                <div th:if="${successMessage}" class="app-form-state app-form-state--success" th:text="${successMessage}"></div>
-                <div th:if="${bulkSuccess}" class="app-form-state app-form-state--success" th:text="${bulkSuccess}"></div>
-                <div th:if="${bulkError}" class="app-form-state app-form-state--danger" th:text="${bulkError}"></div>
+                <div th:if="${errorMessage}" class="app-form-state app-form-state--danger" role="alert" th:text="${errorMessage}"></div>
+                <div th:if="${successMessage}" class="app-form-state app-form-state--success" role="status" th:text="${successMessage}"></div>
+                <div th:if="${bulkSuccess}" class="app-form-state app-form-state--success" role="status" th:text="${bulkSuccess}"></div>
+                <div th:if="${bulkError}" class="app-form-state app-form-state--danger" role="alert" th:text="${bulkError}"></div>
 
                 <th:block th:replace="~{fragments :: stat-card-grid(${statCards})}"></th:block>
 
@@ -223,7 +223,7 @@
 <!-- ── Create User Modal ── -->
 <div class="modal fade app-modal" id="createUserModal" tabindex="-1"
      role="dialog" aria-modal="true"
-     aria-labelledby="createUserModalLabel" aria-hidden="true">
+     aria-labelledby="createUserModalLabel" aria-describedby="createUserModalDescription" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -237,7 +237,7 @@
                     <div class="app-form-section">
                         <div class="app-form-section__header">
                             <h6 class="app-form-section__title">Identity</h6>
-                            <p class="app-form-section__description">Set the core credentials for the new account before assigning permissions.</p>
+                            <p class="app-form-section__description" id="createUserModalDescription">Set the core credentials for the new account before assigning permissions.</p>
                         </div>
                         <div class="app-form-grid app-form-grid--two-up">
                             <div class="form-group app-form-field">
@@ -360,7 +360,7 @@
                 </div>
 
                 <!-- Inline feedback -->
-                <p id="edit-user-feedback" class="app-form-feedback" hidden></p>
+                <p id="edit-user-feedback" class="app-form-feedback" role="status" aria-live="polite" hidden></p>
 
     </th:block>
     <th:block id="edit-user-modal-footer">

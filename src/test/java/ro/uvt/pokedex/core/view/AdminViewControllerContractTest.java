@@ -352,14 +352,6 @@ class AdminViewControllerContractTest {
     }
 
     @Test
-    void scholardexPublicationSearchTemplateLinksAuthorsToCanonicalDetailView() throws Exception {
-        String template = Files.readString(Path.of("src/main/resources/templates/admin/scholardex-publications-search.html"));
-
-        org.junit.jupiter.api.Assertions.assertTrue(template.contains("/user/authors/view/{id}"));
-        org.junit.jupiter.api.Assertions.assertFalse(template.contains("/admin/scholardex/authors/edit/{id}"));
-    }
-
-    @Test
     void scholardexCitationsTemplateLinksAuthorsToCanonicalDetailView() throws Exception {
         String template = Files.readString(Path.of("src/main/resources/templates/admin/scholardex-citations.html"));
 

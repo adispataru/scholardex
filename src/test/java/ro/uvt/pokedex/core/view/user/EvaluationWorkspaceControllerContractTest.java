@@ -25,6 +25,8 @@ import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
 import ro.uvt.pokedex.core.service.application.model.UserReportsListViewModel;
 
 import java.time.Instant;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -55,6 +57,16 @@ class EvaluationWorkspaceControllerContractTest {
     private UserIndividualReportRunRepository userIndividualReportRunRepository;
     @MockitoBean
     private EvaluationSnapshotRepository evaluationSnapshotRepository;
+
+    @Test
+    void evaluationTemplateExposesSnapshotRegionAndModalDescriptions() throws Exception {
+        String template = Files.readString(Path.of("src/main/resources/templates/user/individual-report-view.html"));
+
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("id=\"eval-compare-select\" class=\"form-control form-control-sm\" aria-label=\"Select comparison run or snapshot\""));
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("id=\"eval-snapshots-panel\" hidden role=\"region\" aria-labelledby=\"eval-snapshots-title\""));
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("id=\"eval-snapshots-title\""));
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("aria-describedby=\"citationModalPubTitle citationModalTotal\""));
+    }
 
     @Test
     void showEvaluationAddsConfirmedPublicationWarningForPublicationBackedReports() throws Exception {

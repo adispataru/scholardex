@@ -113,7 +113,7 @@ class ApiSecurityContractTest {
     }
 
     @Test
-    void unauthenticatedApiRankingsReturns401JsonEnvelope() throws Exception {
+    void unauthenticatedWosRankingsApiReturns401JsonEnvelope() throws Exception {
         mockMvc.perform(get("/api/rankings/wos"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentType("application/json"))
@@ -137,14 +137,13 @@ class ApiSecurityContractTest {
     }
 
     @Test
-    void unauthenticatedCoreRankingsApiReturns401JsonEnvelope() throws Exception {
+    void unauthenticatedCoreRankingsApiIsPubliclyAccessible() throws Exception {
+        when(coreRankingQueryService.search(0, 25, "name", "asc", null))
+                .thenReturn(new CoreRankingPageResponse(Collections.emptyList(), 0, 25, 0, 0));
         mockMvc.perform(get("/api/rankings/core"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(content().contentType("application/json"))
-                .andExpect(jsonPath("$.status").value(401))
-                .andExpect(jsonPath("$.error").value("unauthorized"))
-                .andExpect(jsonPath("$.path").value("/api/rankings/core"))
-                .andExpect(jsonPath("$.timestamp").exists());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray())
+                .andExpect(jsonPath("$.totalItems").value(0));
     }
 
     @Test
@@ -172,14 +171,13 @@ class ApiSecurityContractTest {
     }
 
     @Test
-    void unauthenticatedUrapRankingsApiReturns401JsonEnvelope() throws Exception {
+    void unauthenticatedUrapRankingsApiIsPubliclyAccessible() throws Exception {
+        when(urapRankingQueryService.search(0, 25, "name", "asc", null))
+                .thenReturn(new UrapRankingPageResponse(Collections.emptyList(), 0, 25, 0, 0));
         mockMvc.perform(get("/api/rankings/urap"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(content().contentType("application/json"))
-                .andExpect(jsonPath("$.status").value(401))
-                .andExpect(jsonPath("$.error").value("unauthorized"))
-                .andExpect(jsonPath("$.path").value("/api/rankings/urap"))
-                .andExpect(jsonPath("$.timestamp").exists());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray())
+                .andExpect(jsonPath("$.totalItems").value(0));
     }
 
     @Test

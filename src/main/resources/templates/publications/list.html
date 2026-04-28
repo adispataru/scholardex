@@ -1,31 +1,101 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
-    <title>Publications List</title>
-    <meta charset="UTF-8"/>
-    <!-- Bootstrap CSS -->
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Publications — ScholarDex</title>
+    <meta name="description" content="Search the ScholarDex indexed publication catalog by title, author, or venue.">
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
 </head>
-<body class="container mt-5">
-<h1>Publications</h1>
-<table class="table table-bordered table-hover">
-    <thead class="thead-dark">
-    <tr>
-        <th>Title</th>
-        <th>Year</th>
-        <th>Authors</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr th:each="publication : ${publications}">
-        <td th:text="${publication.title}">Title</td>
-        <td th:text="${publication.year}">Year</td>
-        <td th:text="${#strings.collectionToCommaDelimitedString(publication.authorList)}">Authors</td>
-    </tr>
-    </tbody>
-</table>
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<body class="app-public-page">
+
+<th:block th:replace="~{fragments :: public-shell('publications')}"></th:block>
+
+<main class="app-public-content" id="main-content">
+    <div class="app-page-content">
+        <div class="app-page-intro">
+            <p class="app-page-intro__body">Browse scholarly publications indexed in ScholarDex. Search by title, sort by year or citation count, and explore linked forums and author details.</p>
+        </div>
+        <div class="app-table-filters">
+            <h2 class="app-table-filters__title">Filters</h2>
+            <div class="app-table-filters__grid">
+                <div class="form-group app-table-filters__field app-table-filters__field--span-4">
+                    <label for="publications-search">Search</label>
+                    <th:block th:replace="~{fragments :: search-input(
+                        id='publications-search',
+                        name='q',
+                        placeholder='Title, author, or venue',
+                        value='',
+                        kbdHint=null,
+                        clearable=true)}"></th:block>
+                </div>
+                <div class="form-group app-table-filters__field app-table-filters__field--span-2">
+                    <label for="publications-sort">Sort By</label>
+                    <select id="publications-sort" class="form-control">
+                        <option value="title">Title</option>
+                        <option value="year">Year</option>
+                        <option value="citations">Citations</option>
+                    </select>
+                </div>
+                <div class="form-group app-table-filters__field app-table-filters__field--span-2">
+                    <label for="publications-direction">Direction</label>
+                    <select id="publications-direction" class="form-control">
+                        <option value="asc">Ascending</option>
+                        <option value="desc">Descending</option>
+                    </select>
+                </div>
+                <div class="form-group app-table-filters__field app-table-filters__field--span-2">
+                    <label for="publications-size">Page Size</label>
+                    <select id="publications-size" class="form-control">
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="app-table-section">
+            <div class="app-table-section__surface">
+                <div class="app-table-section__header app-table-toolbar">
+                    <h2 class="app-table-section__title">Publication Catalog</h2>
+                    <span id="publications-total-info" class="app-table-toolbar__meta"></span>
+                </div>
+                <div class="app-table-section__body">
+                    <div id="publications-loading" class="app-table-state app-table-state--info" role="status">Loading publications...</div>
+                    <div id="publications-error" class="app-table-state app-table-state--danger d-none" role="alert"></div>
+                    <div id="publications-empty" class="app-table-state app-table-state--warning d-none" role="status">No publications found for the current filter.</div>
+
+                    <div class="app-table-scroll">
+                        <table class="table table-bordered app-table" id="publications-table" width="100%" cellspacing="0">
+                            <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Year</th>
+                                <th>Forum</th>
+                                <th>Authors</th>
+                                <th class="app-table__cell--numeric">Citations</th>
+                                <th>EID</th>
+                            </tr>
+                            </thead>
+                            <tbody id="publications-table-body"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="app-table-pager">
+                        <button id="publications-prev" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button">Previous</button>
+                        <span id="publications-page-info" class="app-table-pager__info"></span>
+                        <button id="publications-next" class="btn btn-outline-primary btn-sm app-table-pager__button" type="button">Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<th:block th:replace="~{fragments :: app-footer}"></th:block>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+<script src="/js/publications.js"></script>
+
 </body>
 </html>

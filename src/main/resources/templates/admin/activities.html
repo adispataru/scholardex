@@ -23,9 +23,9 @@
         <div class="app-page-toolbar app-workflow">
           <p class="app-workflow__intro">Create activity definitions and manage the fields and references each activity requires.</p>
           <div class="app-workflow__actions">
-          <a href="#" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#createActivityModal">
+          <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#createActivityModal">
             <i class="fa-solid fa-plus fa-sm"></i> Create New Activity
-          </a>
+          </button>
           </div>
         </div>
         <p class="mb-4">This is a list of all Activities currently managed by the system.</p>
@@ -102,11 +102,11 @@
 </div>
 
 <!-- Create Activity Modal-->
-<div class="modal fade app-modal" id="createActivityModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+<div class="modal fade app-modal" id="createActivityModal" tabindex="-1" role="dialog" aria-labelledby="createActivityModalLabel" aria-describedby="createActivityModalDescription" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="exampleModalLabel">Create New Activity</h5>
+        <h5 class="modal-title" id="createActivityModalLabel">Create New Activity</h5>
         <button class="close" type="button" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">×</span>
         </button>
@@ -116,7 +116,7 @@
           <div class="app-form-section">
             <div class="app-form-section__header">
               <h6 class="app-form-section__title">Activity identity</h6>
-              <p class="app-form-section__description">Define the activity first, then build its fields and cross-reference slots below.</p>
+              <p class="app-form-section__description" id="createActivityModalDescription">Define the activity first, then build its fields and cross-reference slots below.</p>
             </div>
             <div class="form-group app-form-field">
               <label for="activityName">Name</label>
