@@ -11,12 +11,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.core.codec.DecodingException;
-import org.springframework.core.io.buffer.DataBufferLimitException;
-import org.springframework.web.reactive.function.client.WebClientRequestException;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
@@ -39,9 +34,7 @@ import ro.uvt.pokedex.core.service.scopus.dto.CitationsByEidResponse;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -58,6 +51,10 @@ public class ScopusUpdateScheduler {
 
     private final WebClient scopusPythonClient;
     private final ObjectMapper mapper = new ObjectMapper();
+    private final ScopusSchedulerRetryPolicy retryPolicy = new ScopusSchedulerRetryPolicy();
+    private final ScopusIntegrationExceptionMapper exceptionMapper = new ScopusIntegrationExceptionMapper();
+    private final ScopusPublicationSyncPlanner publicationPlanner = new ScopusPublicationSyncPlanner();
+    private final ScopusCitationSyncPlanner citationPlanner = new ScopusCitationSyncPlanner(publicationPlanner);
 
 
     @Value("${scopus.update.page-size:100}")
@@ -69,7 +66,6 @@ public class ScopusUpdateScheduler {
     @Value("${scopus.update.retry.max-backoff-seconds:3600}")
     private long maxBackoffSeconds;
 
-    private static final DateTimeFormatter ISO = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final ZoneId Z = ZoneId.systemDefault();
 
 
@@ -118,7 +114,7 @@ public class ScopusUpdateScheduler {
         int processedTasks = 0;
 
         for (ScopusPublicationUpdate t : tasks) {
-            if (!isReadyForAttempt(t.getNextAttemptAt())) {
+            if (!retryPolicy.isReadyForAttempt(t.getNextAttemptAt(), Instant.now())) {
                 continue;
             }
             AutoCloseable taskContext = SchedulerCorrelationSupport.withSchedulerContext(
@@ -156,14 +152,16 @@ public class ScopusUpdateScheduler {
         taskRepo.save(task);
 
         final String authorScopusId = task.getScopusId();
-        String fromDate = resolveFromDate(task, authorScopusId);
+        List<ScholardexPublicationView> authorPublications =
+                scholardexProjectionReadService.findAllPublicationsByAuthorsContaining(authorScopusId);
+        String fromDate = publicationPlanner.resolveFromDate(task, authorPublications);
 
         String cursor = null;
         int imported = 0;
         String batchId = "scheduler-publication-task-" + task.getId() + "-attempt-" + task.getAttemptCount();
 
         do {
-            AuthorWorksRequest req = buildRequest(authorScopusId, fromDate, cursor);
+            AuthorWorksRequest req = publicationPlanner.buildRequest(authorScopusId, fromDate, cursor, pageSize);
             AuthorWorksResponse resp = callPython(req);
 
             if (resp.getItems() != null) {
@@ -224,7 +222,7 @@ public class ScopusUpdateScheduler {
         int processedTasks = 0;
 
         for (ScopusCitationsUpdate t : tasks) {
-            if (!isReadyForAttempt(t.getNextAttemptAt())) {
+            if (!retryPolicy.isReadyForAttempt(t.getNextAttemptAt(), Instant.now())) {
                 continue;
             }
             AutoCloseable taskContext = SchedulerCorrelationSupport.withSchedulerContext(
@@ -263,26 +261,7 @@ public class ScopusUpdateScheduler {
 
         final String authorScopusId = task.getScopusId();
 
-        // 1) compute last citation date per EID **for this author only**
-        String citMode = task.getSyncMode();
-        Map<String, String> eidLastDate;
-        if ("FULL".equals(citMode)) {
-            // Force full re-fetch: pass all known EIDs with no date filter (empty string = no lower bound)
-            eidLastDate = computeEidLastCitationDatesForAuthor(authorScopusId)
-                    .keySet().stream()
-                    .collect(java.util.stream.Collectors.toMap(k -> k, k -> ""));
-        } else if ("PERIOD".equals(citMode) && task.getStartYear() != null) {
-            // Cap each EID's last-date to the requested start year so we never look earlier
-            String periodStart = task.getStartYear() + "-01-01";
-            eidLastDate = computeEidLastCitationDatesForAuthor(authorScopusId)
-                    .entrySet().stream()
-                    .collect(java.util.stream.Collectors.toMap(
-                            Map.Entry::getKey,
-                            e -> e.getValue().compareTo(periodStart) > 0 ? e.getValue() : periodStart
-                    ));
-        } else {
-            eidLastDate = computeEidLastCitationDatesForAuthor(authorScopusId);
-        }
+        Map<String, String> eidLastDate = computeEidLastCitationDatesForTask(task, authorScopusId);
         if (eidLastDate.isEmpty()) {
             task.setStatus(Status.COMPLETED);
             task.setMessage("No publications found for author " + authorScopusId + ", nothing to update.");
@@ -294,12 +273,7 @@ public class ScopusUpdateScheduler {
             return;
         }
 
-        // 2) prepare request
-        CitationsByEidRequest req = new CitationsByEidRequest();
-        req.setRequestId(UUID.randomUUID().toString());
-        req.setEidLastDate(eidLastDate);
-        req.setPageSizePerEid(100);
-        req.setIncludeEnrichment(true);
+        CitationsByEidRequest req = citationPlanner.buildRequest(eidLastDate);
 
         // 3) call Python service
         CitationsByEidResponse resp = callPythonCitations(req);
@@ -377,144 +351,27 @@ public class ScopusUpdateScheduler {
         }
     }
 
-    private Map<String, String> computeEidLastCitationDatesForAuthor(String authorScopusId) {
-        // 1) All publications by this author
-        List<ScholardexPublicationView> authorPubs = scholardexProjectionReadService.findAllPublicationsByAuthorsContaining(authorScopusId);
-        if (authorPubs.isEmpty()) {
+    private Map<String, String> computeEidLastCitationDatesForTask(ScopusCitationsUpdate task, String authorScopusId) {
+        List<ScholardexPublicationView> authorPublications =
+                scholardexProjectionReadService.findAllPublicationsByAuthorsContaining(authorScopusId);
+        if (authorPublications.isEmpty()) {
             return Collections.emptyMap();
         }
 
-        // id -> Publication for author’s publications (for cited side)
-        Map<String, ScholardexPublicationView> byId = new HashMap<>();
-        for (ScholardexPublicationView p : authorPubs) {
-            if (p.getId() != null) {
-                byId.put(p.getId(), p);
-            }
-        }
-
-        // 2) All citations where any of these pubs is the **cited** one
-        List<String> citedIds = authorPubs.stream()
-                .map(ScholardexPublicationView::getId)
-                .filter(Objects::nonNull)
-                .toList();
-
+        List<String> citedIds = citationPlanner.citedPublicationIds(authorPublications);
         List<ScholardexCitationView> citations = scholardexProjectionReadService.findAllCitationsByCitedIdIn(citedIds);
-
-        // 3) Load all citing publications for those citations (more efficient than findAll())
-        Set<String> citingIds = citations.stream()
-                .map(ScholardexCitationView::getCitingId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        List<ScholardexPublicationView> citingPubs = citingIds.isEmpty()
+        List<String> citingIds = citationPlanner.citingPublicationIds(citations);
+        List<ScholardexPublicationView> citingPublications = citingIds.isEmpty()
                 ? Collections.emptyList()
-                : scholardexProjectionReadService.findAllPublicationsByIdIn(new ArrayList<>(citingIds));
+                : scholardexProjectionReadService.findAllPublicationsByIdIn(citingIds);
 
-        Map<String, ScholardexPublicationView> citingById = new HashMap<>();
-        for (ScholardexPublicationView p : citingPubs) {
-            if (p.getId() != null) {
-                citingById.put(p.getId(), p);
-            }
-        }
-
-        // 4) Initialize map with all author EIDs, default last-date = null
-        Map<String, String> lastDateByEid = new HashMap<>();
-        for (ScholardexPublicationView p : authorPubs) {
-            if (p.getEid() != null) {
-                lastDateByEid.put(p.getEid(), null);
-            }
-        }
-
-        // 5) For each citation, update the last citing date for the cited EID
-        for (ScholardexCitationView c : citations) {
-            ScholardexPublicationView cited = byId.get(c.getCitedId());
-            ScholardexPublicationView citing = citingById.get(c.getCitingId());
-            if (cited == null || citing == null) {
-                continue;
-            }
-
-            String citingCover = citing.getCoverDate();
-            if (citingCover == null || citingCover.isBlank()) {
-                continue;
-            }
-
-//            LocalDate citingDate = parseCoverDate(citingCover);
-            Optional<LocalDate> citingDateOpt = parseCoverDate(citingCover);
-            if (citingDateOpt.isEmpty()) {
-                continue;
-            }
-            LocalDate citingDate = citingDateOpt.get();
-            String citedEid = cited.getEid();
-            if (citedEid == null) continue;
-
-            String existing = lastDateByEid.get(citedEid);
-            Optional<LocalDate> existingDate = parseCoverDate(existing);
-            if (existingDate.isEmpty() || existingDate.get().isBefore(citingDate)) {
-                lastDateByEid.put(citedEid, citingDate.format(ISO));
-            }
-        }
-
-        return lastDateByEid;
+        Map<String, String> computedDates = citationPlanner.computeEidLastCitationDates(
+                authorPublications,
+                citations,
+                citingPublications
+        );
+        return citationPlanner.resolveEidLastDates(task, computedDates);
     }
-
-
-
-
-    /**
-     * Resolves the {@code fromDate} for a publication-sync task based on the task's
-     * {@code syncMode} field:
-     * <ul>
-     *   <li>{@code FULL} → {@code null} (no date filter; fetch everything)</li>
-     *   <li>{@code PERIOD} → {@code startYear}-01-01</li>
-     *   <li>{@code SINCE_LAST_UPDATE} (default) → result of {@link #computeFromDate}</li>
-     * </ul>
-     */
-    private String resolveFromDate(ScopusPublicationUpdate task, String authorScopusId) {
-        String mode = task.getSyncMode();
-        if ("FULL".equals(mode)) {
-            return null;
-        }
-        if ("PERIOD".equals(mode) && task.getStartYear() != null) {
-            return task.getStartYear() + "-01-01";
-        }
-        return computeFromDate(authorScopusId);
-    }
-
-    private String computeFromDate(String authorScopusId) {
-        List<ScholardexPublicationView> publications = scholardexProjectionReadService.findAllPublicationsByAuthorsContaining(authorScopusId);
-        LocalDate base = publications.stream()
-                .map(ScholardexPublicationView::getCoverDate)
-                .map(this::parseCoverDate)
-                .flatMap(Optional::stream)
-                .max(LocalDate::compareTo)
-                .orElse(LocalDate.now(Z).minusYears(5));
-        return base.minusYears(1).format(ISO);
-    }
-
-    private Optional<LocalDate> parseCoverDate(String s) {
-        try {
-            if (s == null || s.isBlank()) return Optional.empty();
-            if (s.length() == 10) return Optional.of(LocalDate.parse(s));
-            if (s.length() == 7)  return Optional.of(LocalDate.parse(s + "-01"));
-            if (s.length() == 4)  return Optional.of(LocalDate.parse(s + "-01-01"));
-            return Optional.empty();
-        } catch (Exception e) {
-            return Optional.empty();
-        }
-    }
-
-    private String text(JsonNode node, String field) {
-        if (node == null || field == null) {
-            return null;
-        }
-        JsonNode value = node.path(field);
-        if (value.isMissingNode() || value.isNull()) {
-            return null;
-        }
-        String text = value.asText();
-        return text == null ? null : text.trim();
-    }
-
     private String text(Map<String, Object> map, String field) {
         if (map == null || field == null) {
             return null;
@@ -536,7 +393,7 @@ public class ScopusUpdateScheduler {
                     .retrieve()
                     .bodyToMono(CitationsByEidResponse.class)
                     .onErrorResume(ex -> {
-                        IntegrationException mapped = mapIntegrationException("citationsByEid", ex);
+                        IntegrationException mapped = exceptionMapper.mapIntegrationException("citationsByEid", ex);
                         log.error("Python citations service call failed: code={}, retryable={}, message={}",
                                 mapped.getErrorCode(), mapped.isRetryable(), mapped.getMessage());
                         return Mono.error(mapped);
@@ -561,21 +418,6 @@ public class ScopusUpdateScheduler {
         }
     }
 
-
-    private AuthorWorksRequest buildRequest(String authorId, String fromDate, String cursor) {
-        AuthorWorksRequest req = new AuthorWorksRequest();
-        req.setRequest_id(UUID.randomUUID().toString());
-        req.setAuthor_id(authorId);
-        req.setFrom_date(fromDate);
-        req.setInclude_enrichment(true);
-        req.setFormat("legacy");
-        AuthorWorksRequest.Paging p = new AuthorWorksRequest.Paging();
-        p.setPage_size(pageSize);
-        p.setCursor(cursor);
-        req.setPaging(p);
-        return req;
-    }
-
     private AuthorWorksResponse callPython(AuthorWorksRequest req) {
         Timer.Sample timer = Timer.start(meterRegistry);
         try {
@@ -585,7 +427,7 @@ public class ScopusUpdateScheduler {
                     .retrieve()
                     .bodyToMono(AuthorWorksResponse.class)
                     .onErrorResume(ex -> {
-                        IntegrationException mapped = mapIntegrationException("authorWorks", ex);
+                        IntegrationException mapped = exceptionMapper.mapIntegrationException("authorWorks", ex);
                         log.error("Python service call failed: code={}, retryable={}, message={}",
                                 mapped.getErrorCode(), mapped.isRetryable(), mapped.getMessage());
                         return Mono.error(mapped);
@@ -610,150 +452,52 @@ public class ScopusUpdateScheduler {
         }
     }
 
-    private boolean isReadyForAttempt(String nextAttemptAt) {
-        if (nextAttemptAt == null || nextAttemptAt.isBlank()) {
-            return true;
-        }
-        try {
-            return !Instant.parse(nextAttemptAt).isAfter(Instant.now());
-        } catch (Exception ex) {
-            return true;
-        }
-    }
-
-    private long computeBackoffSeconds(int attemptCount) {
-        long exponent = Math.max(0, attemptCount - 1);
-        long backoff = initialBackoffSeconds * (1L << Math.min(exponent, 10));
-        return Math.min(backoff, maxBackoffSeconds);
-    }
-
     private void handlePublicationTaskFailure(ScopusPublicationUpdate task, Exception exception) {
-        IntegrationException mapped = mapRuntimeException(exception);
-        int maxAttempts = task.getMaxAttempts() > 0 ? task.getMaxAttempts() : defaultMaxAttempts;
-        if (mapped.isRetryable() && task.getAttemptCount() < maxAttempts) {
-            long backoff = computeBackoffSeconds(task.getAttemptCount());
-            task.setStatus(Status.PENDING);
-            task.setNextAttemptAt(Instant.now().plusSeconds(backoff).toString());
-            task.setMessage("RETRY_SCHEDULED: " + mapped.getMessage());
-        } else {
-            task.setStatus(Status.FAILED);
+        IntegrationException mapped = exceptionMapper.mapRuntimeException(exception);
+        ScopusSchedulerRetryPolicy.FailureDecision decision = retryPolicy.decideFailure(
+                mapped,
+                task.getAttemptCount(),
+                task.getMaxAttempts(),
+                defaultMaxAttempts,
+                initialBackoffSeconds,
+                maxBackoffSeconds,
+                Instant.now()
+        );
+        task.setStatus(decision.status());
+        task.setMessage(decision.message());
+        task.setNextAttemptAt(decision.nextAttemptAt());
+        if (decision.terminal()) {
             task.setExecutionDate(LocalDate.now(Z).toString());
-            task.setMessage("FAILED: " + mapped.getMessage());
         }
-        task.setLastErrorCode(mapped.getErrorCode().name());
-        task.setLastErrorMessage(mapped.getMessage());
+        task.setLastErrorCode(decision.lastErrorCode());
+        task.setLastErrorMessage(decision.lastErrorMessage());
         taskRepo.save(task);
         log.error("Publication task {} failed: code={}, retryable={}, attempt={}/{}",
-                task.getId(), mapped.getErrorCode(), mapped.isRetryable(), task.getAttemptCount(), maxAttempts, mapped);
+                task.getId(), mapped.getErrorCode(), mapped.isRetryable(), task.getAttemptCount(), decision.maxAttempts(), mapped);
     }
 
     private void handleCitationTaskFailure(ScopusCitationsUpdate task, Exception exception) {
-        IntegrationException mapped = mapRuntimeException(exception);
-        int maxAttempts = task.getMaxAttempts() > 0 ? task.getMaxAttempts() : defaultMaxAttempts;
-        if (mapped.isRetryable() && task.getAttemptCount() < maxAttempts) {
-            long backoff = computeBackoffSeconds(task.getAttemptCount());
-            task.setStatus(Status.PENDING);
-            task.setNextAttemptAt(Instant.now().plusSeconds(backoff).toString());
-            task.setMessage("RETRY_SCHEDULED: " + mapped.getMessage());
-        } else {
-            task.setStatus(Status.FAILED);
+        IntegrationException mapped = exceptionMapper.mapRuntimeException(exception);
+        ScopusSchedulerRetryPolicy.FailureDecision decision = retryPolicy.decideFailure(
+                mapped,
+                task.getAttemptCount(),
+                task.getMaxAttempts(),
+                defaultMaxAttempts,
+                initialBackoffSeconds,
+                maxBackoffSeconds,
+                Instant.now()
+        );
+        task.setStatus(decision.status());
+        task.setMessage(decision.message());
+        task.setNextAttemptAt(decision.nextAttemptAt());
+        if (decision.terminal()) {
             task.setExecutionDate(LocalDate.now(Z).toString());
-            task.setMessage("FAILED: " + mapped.getMessage());
         }
-        task.setLastErrorCode(mapped.getErrorCode().name());
-        task.setLastErrorMessage(mapped.getMessage());
+        task.setLastErrorCode(decision.lastErrorCode());
+        task.setLastErrorMessage(decision.lastErrorMessage());
         citationsTaskRepo.save(task);
         log.error("Citations task {} failed: code={}, retryable={}, attempt={}/{}",
-                task.getId(), mapped.getErrorCode(), mapped.isRetryable(), task.getAttemptCount(), maxAttempts, mapped);
+                task.getId(), mapped.getErrorCode(), mapped.isRetryable(), task.getAttemptCount(), decision.maxAttempts(), mapped);
     }
 
-    private IntegrationException mapRuntimeException(Throwable exception) {
-        if (exception instanceof IntegrationException ie) {
-            return ie;
-        }
-        return new IntegrationException(
-                IntegrationErrorCode.PERSISTENCE_ERROR,
-                false,
-                exception.getMessage() == null ? "Unexpected failure" : exception.getMessage(),
-                exception
-        );
-    }
-
-    private IntegrationException mapIntegrationException(String operation, Throwable exception) {
-        if (exception instanceof IntegrationException ie) {
-            return ie;
-        }
-        WebClientResponseException responseException = findCause(exception, WebClientResponseException.class);
-        if (responseException != null) {
-            int status = responseException.getStatusCode().value();
-            if (status >= 500) {
-                return new IntegrationException(
-                        IntegrationErrorCode.EXTERNAL_5XX,
-                        true,
-                        operation + " failed with HTTP " + status,
-                        exception
-                );
-            }
-            return new IntegrationException(
-                    IntegrationErrorCode.EXTERNAL_BAD_PAYLOAD,
-                    false,
-                    operation + " failed with HTTP " + status,
-                    exception
-            );
-        }
-        if (findCause(exception, WebClientRequestException.class) != null) {
-            return new IntegrationException(
-                    IntegrationErrorCode.EXTERNAL_TIMEOUT,
-                    true,
-                    operation + " failed to reach external service",
-                    exception
-            );
-        }
-        if (findCause(exception, DataBufferLimitException.class) != null) {
-            return new IntegrationException(
-                    IntegrationErrorCode.EXTERNAL_BAD_PAYLOAD,
-                    false,
-                    operation + " failed because response payload exceeded configured buffer size",
-                    exception
-            );
-        }
-        if (findCause(exception, DecodingException.class) != null) {
-            return new IntegrationException(
-                    IntegrationErrorCode.EXTERNAL_BAD_PAYLOAD,
-                    false,
-                    operation + " failed because response payload could not be decoded",
-                    exception
-            );
-        }
-        Throwable rootCause = rootCause(exception);
-        String details = rootCause.getMessage();
-        String suffix = (details == null || details.isBlank()) ? "" : ": " + details;
-        return new IntegrationException(
-                IntegrationErrorCode.EXTERNAL_BAD_PAYLOAD,
-                false,
-                operation + " failed with unexpected integration error (" + rootCause.getClass().getSimpleName() + ")" + suffix,
-                exception
-        );
-    }
-
-    private Throwable rootCause(Throwable exception) {
-        Throwable current = Exceptions.unwrap(exception);
-        int guard = 0;
-        while (current.getCause() != null && current.getCause() != current && guard++ < 20) {
-            current = current.getCause();
-        }
-        return current;
-    }
-
-    private <T extends Throwable> T findCause(Throwable exception, Class<T> type) {
-        Throwable current = Exceptions.unwrap(exception);
-        int guard = 0;
-        while (current != null && guard++ < 20) {
-            if (type.isInstance(current)) {
-                return type.cast(current);
-            }
-            current = current.getCause();
-        }
-        return null;
-    }
 }
