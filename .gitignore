@@ -24,6 +24,7 @@ hs_err_pid*
 replay_pid*
 
 .idea
+.claude/
 *.iws
 *.iml
 *.ipr
@@ -56,3 +57,5 @@ puncte/*/**
 puncte/*
 scopus-python/__pycache__/**/*
 scopus-python/__pycache__/*
+scopus-python/complete_scopus_with_citing_and_date_verified_sp.json
+arcmutate-licence.txt
