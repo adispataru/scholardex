@@ -526,13 +526,6 @@ public class ScopusDataService {
         return fieldNode.path(String.valueOf(index));
     }
 
-    private String[] splitSemicolon(String value) {
-        if (value == null || value.isBlank()) {
-            return new String[0];
-        }
-        return value.split(";");
-    }
-
     private String normalizeOptionalValue(String value) {
         String normalized = value == null ? "" : value.trim();
         if (normalized.equalsIgnoreCase("null") || normalized.equalsIgnoreCase("n/a")) {

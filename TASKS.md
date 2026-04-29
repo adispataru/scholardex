@@ -163,9 +163,13 @@ Done history moved to `TASKS-done.md`.
     Baseline: line 81% (2129/2623), mutation 39% (587/1517), test strength 48% (587/1227).
     Scope hint: same playbook as `H49.5` — high line coverage, assertion-strengthening work. Slightly better starting point.
 
-  - [ ] `H49.7` **`ro.uvt.pokedex.core.service.importing.wos.model`** — WoS model classes (3 classes).
+  - [x] `H49.7` **`ro.uvt.pokedex.core.service.importing.wos.model`** — WoS model classes (3 classes). *(completed 2026-04-29)*
     Baseline: line 80% (24/30), mutation 33% (5/15), test strength 45% (5/11).
     Scope hint: small surface; review surviving mutants on equality, mapping, and value-object behavior. Likely a single sitting of work.
+    Handover:
+    - Added `WosParserRunSummaryTest`: 11 tests covering counter increments (processed/parsed/skipped/error), sample collection up to cap, null/blank sample rejection, unmodifiable list guard, and negative-maxSamples clamp.
+    - Added `WosParsedEventResultTest`: 4 tests covering all three factory methods (`parsed`/`skipped`/`error`) and `WosIdentitySourceContext.empty()`.
+    - Post-remediation: line 100% (30/30), mutation 100% (15/15), test strength 100%.
 
   - [ ] `H49.8` **`ro.uvt.pokedex.core.service.application`** — largest package (79 classes, 4585 mutations).
     Baseline: line 63% (5193/8253), mutation 30% (1365/4585), test strength 50% (1365/2754).
