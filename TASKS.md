@@ -357,7 +357,15 @@ Done history moved to `TASKS-done.md`.
       Scope: `UserReportFacade`, `GroupReportFacade`, `UserIndicatorResultService`, `ReportScopedIndicatorScoringSupport`, `ReportingComputationSupport`.
       Goal: kill high-volume business-path survivors in report computation/routing and improve confidence on user/group scoring outputs.
       Closeout note: all targeted hotspots improved and high-risk survivors addressed; residual survivors are low-signal conditional/equivalence.
-    - [ ] `H49.8b` Scholardex edge + source-link core (highest ROI).
+    - [x] `H49.8b` Scholardex edge + source-link core (highest ROI). *(completed 2026-04-30)*
+      Handover:
+      - Strengthened the 4-class slice (`PublicationEnrichmentLinkerService`, `ScholardexSourceLinkService`, `ScholardexEdgeWriterService`, `ScholardexEdgeReconciliationService`) with targeted transition/reconcile and edge-write regression assertions.
+      - Added focused source-link policy coverage for transition/reconcile edge cases, including record-id normalization updates, idempotent transition behavior, and reconcile error accounting on persistence failures.
+      - Targeted verification passed:
+        `./gradlew test --tests 'ro.uvt.pokedex.core.service.application.PublicationEnrichmentLinkerServiceTest' --tests 'ro.uvt.pokedex.core.service.application.ScholardexSourceLinkServiceTest' --tests 'ro.uvt.pokedex.core.service.application.ScholardexEdgeWriterServiceTest' --tests 'ro.uvt.pokedex.core.service.application.ScholardexEdgeReconciliationServiceTest' -q`
+      - Scoped PIT verification passed:
+        `./gradlew pitest -PpitTargetClasses='ro.uvt.pokedex.core.service.application.PublicationEnrichmentLinkerService,ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService,ro.uvt.pokedex.core.service.application.ScholardexEdgeWriterService,ro.uvt.pokedex.core.service.application.ScholardexEdgeReconciliationService' -PpitTargetTests='ro.uvt.pokedex.core.service.application.PublicationEnrichmentLinkerServiceTest,ro.uvt.pokedex.core.service.application.ScholardexSourceLinkServiceTest,ro.uvt.pokedex.core.service.application.ScholardexEdgeWriterServiceTest,ro.uvt.pokedex.core.service.application.ScholardexEdgeReconciliationServiceTest' -q`
+      - Final 4-class slice status: line 97% (1108/1141), mutation 79% (548/690), test strength 81%; `ScholardexSourceLinkService` focused rerun reached mutation 80% (196/246), line 97% (309/318). Residual survivors are predominantly low-signal/equivalence and observability-call removals.
       Scope: `ScholardexSourceLinkService`, `ScholardexEdgeWriterService`, `ScholardexEdgeReconciliationService`, `PublicationEnrichmentLinkerService`.
       Goal: raise mutation kill across canonical linking/edge orchestration where branch errors can introduce identity/link regressions.
     - [ ] `H49.8c` Projection read/lookup services (high ROI, coverage lift).

@@ -8,6 +8,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.reporting.CanonicalPublicationConstants;
 import ro.uvt.pokedex.core.model.scopus.canonical.PublicationLinkConflict;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.repository.scopus.canonical.PublicationLinkConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
@@ -17,8 +18,10 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -164,6 +167,147 @@ class PublicationEnrichmentLinkerServiceTest {
         assertEquals("GS:1", saved.getValue().getGoogleScholarId());
         assertEquals("Title", saved.getValue().getTitle());
         assertNotNull(saved.getValue().getUpdatedAt());
+    }
+
+    @Test
+    void linkScholarEnrichmentSkipsWhenScholarIdBlank() {
+        PublicationEnrichmentLinkerService.LinkResult result = service.linkScholarEnrichment(
+                "p1", "2-s2.0-1", "10.1000/abc", "   ", "SCHOLAR", "h17.10", "run-1"
+        );
+
+        assertEquals(PublicationEnrichmentLinkerService.LinkState.SKIPPED, result.state());
+        verify(publicationFactRepository, never()).save(any());
+        verify(conflictRepository, never()).save(any());
+    }
+
+    @Test
+    void linkScholarEnrichmentQuarantinesAmbiguousDoiMatch() {
+        ScholardexPublicationFact p1 = publicationFact("p1", "2-s2.0-1", null);
+        ScholardexPublicationFact p2 = publicationFact("p2", "2-s2.0-2", null);
+        when(publicationFactRepository.findById("p-ignore")).thenReturn(Optional.empty());
+        when(publicationFactRepository.findAllByDoiNormalized("10.1000/abc")).thenReturn(List.of(p1, p2));
+
+        PublicationEnrichmentLinkerService.LinkResult result = service.linkScholarEnrichment(
+                "p-ignore", null, "doi:10.1000/AbC", "GS:1", "SCHOLAR", "h17.10", "run-1"
+        );
+
+        assertEquals(PublicationEnrichmentLinkerService.LinkState.CONFLICT, result.state());
+        verify(publicationFactRepository, never()).save(any());
+        verify(conflictRepository).save(any(PublicationLinkConflict.class));
+    }
+
+    @Test
+    void linkScholarEnrichmentQuarantinesWhenTargetHasDifferentScholarId() {
+        ScholardexPublicationFact target = publicationFact("p1", "2-s2.0-1", null);
+        target.setGoogleScholarId("GS:OLD");
+        when(publicationFactRepository.findById("p1")).thenReturn(Optional.of(target));
+
+        PublicationEnrichmentLinkerService.LinkResult result = service.linkScholarEnrichment(
+                "p1", null, null, "GS:NEW", "SCHOLAR", "h17.10", "run-1"
+        );
+
+        assertEquals(PublicationEnrichmentLinkerService.LinkState.CONFLICT, result.state());
+        assertEquals("p1", result.targetPublicationId());
+        verify(publicationFactRepository, never()).save(any());
+        verify(conflictRepository).save(any(PublicationLinkConflict.class));
+    }
+
+    @Test
+    void linkScholarEnrichmentQuarantinesWhenKeyAlreadyAssignedElsewhere() {
+        ScholardexPublicationFact target = publicationFact("p1", "2-s2.0-1", null);
+        ScholardexPublicationFact other = publicationFact("p2", "2-s2.0-2", null);
+        when(publicationFactRepository.findById("p1")).thenReturn(Optional.of(target));
+        when(publicationFactRepository.findByGoogleScholarId("GS:1")).thenReturn(Optional.of(other));
+
+        PublicationEnrichmentLinkerService.LinkResult result = service.linkScholarEnrichment(
+                "p1", null, null, "GS:1", "SCHOLAR", "h17.10", "run-1"
+        );
+
+        assertEquals(PublicationEnrichmentLinkerService.LinkState.CONFLICT, result.state());
+        verify(publicationFactRepository, never()).save(any());
+        verify(conflictRepository).save(any(PublicationLinkConflict.class));
+    }
+
+    @Test
+    void linkWosEnrichmentQuarantinesWhenTargetHasDifferentWosId() {
+        ScholardexPublicationFact target = publicationFact("p1", "2-s2.0-1", null);
+        target.setWosId("WOS:OLD");
+        when(publicationFactRepository.findById("p1")).thenReturn(Optional.of(target));
+
+        PublicationEnrichmentLinkerService.LinkResult result = service.linkWosEnrichment(
+                "p1", null, null, "WOS:NEW", "WOSEXTRACTOR", "h17.10", "run-1"
+        );
+
+        assertEquals(PublicationEnrichmentLinkerService.LinkState.CONFLICT, result.state());
+        assertEquals("p1", result.targetPublicationId());
+        verify(publicationFactRepository, never()).save(any());
+        verify(conflictRepository).save(any(PublicationLinkConflict.class));
+    }
+
+    @Test
+    void saveGenericConflictUsesFallbackRecordIdAndPersistsCandidateIds() {
+        ScholardexPublicationFact p1 = publicationFact("p1", "2-s2.0-1", null);
+        ScholardexPublicationFact p2 = publicationFact("p2", "2-s2.0-2", null);
+        when(publicationFactRepository.findAllByDoiNormalized("10.2000/x")).thenReturn(List.of(p1, p2));
+        when(identityConflictRepository.findByEntityTypeAndIncomingSourceAndIncomingSourceRecordIdAndReasonCodeAndStatus(
+                any(), eq("SCHOLAR"), eq("10.2000/x"), anyString(), anyString()
+        )).thenReturn(Optional.empty());
+
+        PublicationEnrichmentLinkerService.LinkResult result = service.linkScholarEnrichment(
+                " ", " ", "https://doi.org/10.2000/X", "GS:2", "SCHOLAR", "v1", "run-22"
+        );
+
+        assertEquals(PublicationEnrichmentLinkerService.LinkState.CONFLICT, result.state());
+        ArgumentCaptor<ScholardexIdentityConflict> identityCaptor = ArgumentCaptor.forClass(ScholardexIdentityConflict.class);
+        verify(identityConflictRepository).save(identityCaptor.capture());
+        assertEquals("10.2000/x", identityCaptor.getValue().getIncomingSourceRecordId());
+        assertEquals("OPEN", identityCaptor.getValue().getStatus());
+        assertEquals(2, identityCaptor.getValue().getCandidateCanonicalIds().size());
+    }
+
+    @Test
+    void linkScholarEnrichmentWritesSourceOwnershipFieldsAndUpsertsSourceLink() {
+        ScholardexPublicationFact target = publicationFact("p1", "2-s2.0-1", null);
+        when(publicationFactRepository.findById("p1")).thenReturn(Optional.of(target));
+        when(publicationFactRepository.findByGoogleScholarId("GS:1")).thenReturn(Optional.empty());
+
+        PublicationEnrichmentLinkerService.LinkResult result = service.linkScholarEnrichment(
+                "p1", null, null, "GS:1", "SCHOLAR", "v2", "run-44"
+        );
+
+        assertEquals(PublicationEnrichmentLinkerService.LinkState.LINKED, result.state());
+        ArgumentCaptor<ScholardexPublicationFact> saved = ArgumentCaptor.forClass(ScholardexPublicationFact.class);
+        verify(publicationFactRepository).save(saved.capture());
+        assertEquals("SCHOLAR", saved.getValue().getSource());
+        assertEquals("GS:1", saved.getValue().getSourceRecordId());
+        assertEquals("run-44", saved.getValue().getSourceBatchId());
+        assertEquals("v2", saved.getValue().getSourceCorrelationId());
+        assertNotNull(saved.getValue().getUpdatedAt());
+
+        verify(sourceLinkService).link(any(), eq("SCHOLAR"), eq("GS:1"), eq("p1"), eq("scholar-link"), any(), eq("run-44"), eq("v2"), eq(false));
+    }
+
+    @Test
+    void linkWosEnrichmentReturnsInvalidForNullPublicationRef() {
+        PublicationEnrichmentLinkerService.LinkResult result = service.linkWosEnrichment(
+                null, null, null, "WOS:1", "WOSEXTRACTOR", "v", "run"
+        );
+        assertEquals(PublicationEnrichmentLinkerService.LinkState.INVALID, result.state());
+        assertTrue(result.reason().contains("null-publication"));
+        verify(publicationFactRepository, never()).save(any());
+    }
+
+    @Test
+    void linkWosEnrichmentReturnsUnmatchedWhenNoIdEidOrDoiMatches() {
+        when(publicationFactRepository.findById("p1")).thenReturn(Optional.empty());
+        when(publicationFactRepository.findByEid("eid")).thenReturn(Optional.empty());
+        when(publicationFactRepository.findAllByDoiNormalized("10.1000/x")).thenReturn(List.of());
+
+        PublicationEnrichmentLinkerService.LinkResult result = service.linkWosEnrichment(
+                "p1", "eid", "doi:10.1000/X", "WOS:1", "WOSEXTRACTOR", "v", "run"
+        );
+        assertEquals(PublicationEnrichmentLinkerService.LinkState.UNMATCHED, result.state());
+        assertFalse(result.reason().isBlank());
     }
 
     private ScholardexPublicationFact publicationFact(String id, String eid, String title) {
