@@ -1,3 +1,8 @@
+// Restrict hash names that may be used to look up tab callbacks.
+// Limits dispatch to identifier-like keys (letters, digits, "-", "_"),
+// blocking inherited properties or special names like "__proto__".
+const SAFE_TAB_HASH_PATTERN = /^[A-Za-z][A-Za-z0-9_-]*$/;
+
 function initSingleTabBar(container) {
   const tabList = container.querySelector('[role="tablist"]');
   const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
@@ -100,10 +105,12 @@ function initSingleTabBar(container) {
       const alwaysReload = incomingTab.dataset.tabReload === 'true';
       if (alwaysReload || !loadedTabs.has(hash)) {
         loadedTabs.add(hash);
-        const map = getCallbackMap();
-        const fn = Object.prototype.hasOwnProperty.call(map, hash) ? map[hash] : null;
-        if (typeof fn === 'function') {
-          fn(incomingPanel);
+        if (SAFE_TAB_HASH_PATTERN.test(hash)) {
+          const map = getCallbackMap();
+          const fn = Object.prototype.hasOwnProperty.call(map, hash) ? map[hash] : null;
+          if (typeof fn === 'function') {
+            fn(incomingPanel);
+          }
         }
       }
     }, outgoingPanel ? 150 : 0);
@@ -153,6 +160,7 @@ function initSingleTabBar(container) {
         // (app.js is a synchronous blocking script loaded before that
         // inline block, so getCallbackMap() would return {} here.)
         setTimeout(() => {
+          if (!SAFE_TAB_HASH_PATTERN.test(hash)) return;
           const map = getCallbackMap();
           const fn = Object.prototype.hasOwnProperty.call(map, hash) ? map[hash] : null;
           if (typeof fn === 'function') {
