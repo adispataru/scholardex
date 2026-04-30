@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 
 @Service
 public class GroupService {
-    private static final Pattern SIMPLE_EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+    private static final Pattern SIMPLE_EMAIL_PATTERN = Pattern.compile("^[^\\s@]++@[^\\s@.]++(?:\\.[^\\s@.]++)++$");
 
     private final GroupRepository groupRepository;
     private final InstitutionRepository institutionRepository;

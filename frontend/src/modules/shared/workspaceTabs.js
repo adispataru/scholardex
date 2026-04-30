@@ -100,8 +100,9 @@ function initSingleTabBar(container) {
       const alwaysReload = incomingTab.dataset.tabReload === 'true';
       if (alwaysReload || !loadedTabs.has(hash)) {
         loadedTabs.add(hash);
-        if (typeof getCallbackMap()[hash] === 'function') {
-          getCallbackMap()[hash](incomingPanel);
+        const map = getCallbackMap();
+        if (Object.prototype.hasOwnProperty.call(map, hash) && typeof map[hash] === 'function') {
+          map[hash](incomingPanel);
         }
       }
     }, outgoingPanel ? 150 : 0);
@@ -151,8 +152,9 @@ function initSingleTabBar(container) {
         // (app.js is a synchronous blocking script loaded before that
         // inline block, so getCallbackMap() would return {} here.)
         setTimeout(() => {
-          if (typeof getCallbackMap()[hash] === 'function') {
-            getCallbackMap()[hash](panel);
+          const map = getCallbackMap();
+          if (Object.prototype.hasOwnProperty.call(map, hash) && typeof map[hash] === 'function') {
+            map[hash](panel);
           }
         }, 0);
       }
