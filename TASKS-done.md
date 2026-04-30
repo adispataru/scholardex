@@ -4,7 +4,13 @@ Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
 ## H49 Test Quality Remediation
 
-Archived from `TASKS.md` on 2026-04-30 after closing `H49.10`.
+Archived from `TASKS.md` on 2026-04-30 after full `H49` closeout.
+
+- [x] `H49` Test quality remediation — PIT mutation gaps in `service` + `handlers`. *(completed 2026-04-30)*
+  Closeout:
+  - All planned hubs `H49.1` … `H49.10` were completed, including the largest `service.application` split (`H49.8a` … `H49.8h`).
+  - Package-level and scoped PIT runs were used throughout with targeted test additions and selective production hardening where survivors indicated real bug risk.
+  - Remaining survivors at the end of the campaign are predominantly low-signal conditional/equivalence and observability-side-effect mutations, with high-risk findings remediated.
 
 - [x] `H49.10` **`ro.uvt.pokedex.core.service.reporting`**. *(completed 2026-04-30)*
   Baseline: line 57% (1047/1853), mutation 34% (433/1272), test strength 56% (433/767).

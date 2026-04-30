@@ -23,7 +23,9 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.sql.Array;
+import java.util.ArrayList;
 import java.sql.ResultSet;
+import java.time.Instant;
 import java.util.List;
 import java.util.LinkedHashSet;
 import java.util.Optional;
@@ -335,6 +337,51 @@ class WosScholardexOnboardingServiceTest {
         List<String> parsed = ReflectionTestUtils.invokeMethod(service, "toStringList", sqlArray);
         assertEquals(List.of(), parsed);
         assertEquals(List.of(), ReflectionTestUtils.invokeMethod(service, "toStringList", (Object) null));
+    }
+
+    @Test
+    void mergeForumAppliesScopusPreferredIssnNameAggAndAliases() {
+        WosScholardexOnboardingService service = service();
+        ScholardexForumFact target = new ScholardexForumFact();
+        target.setAliasIssns(new ArrayList<>(List.of("1111-1111")));
+        target.setIssn("1111-1111");
+        target.setEIssn(null);
+        target.setName("Old Name");
+        target.setAggregationType("JOURNAL");
+
+        ScopusForumFact scopusPreferred = new ScopusForumFact();
+        scopusPreferred.setIssn("22223333");
+        scopusPreferred.setEIssn("44445555");
+        scopusPreferred.setPublicationName("Scopus Name");
+        scopusPreferred.setAggregationType("BOOK");
+
+        ReflectionTestUtils.invokeMethod(
+                service,
+                "mergeForum",
+                target,
+                "wos-id-1",
+                new LinkedHashSet<>(List.of("2222-3333", "6666-7777")),
+                "Wos Name",
+                "wos name",
+                "JOURNAL",
+                "journal",
+                List.of(scopusPreferred),
+                Instant.parse("2026-04-30T00:00:00Z"),
+                "batch-1",
+                "corr-1"
+        );
+
+        assertEquals("2222-3333", target.getIssn());
+        assertEquals("4444-5555", target.getEIssn());
+        assertEquals("Scopus Name", target.getName());
+        assertEquals("BOOK", target.getAggregationType());
+        assertTrue(target.getAliasIssns().contains("1111-1111"));
+        assertTrue(target.getAliasIssns().contains("6666-7777"));
+        assertEquals("WOS", target.getSource());
+        assertEquals("wos-id-1", target.getSourceRecordId());
+        assertEquals("batch-1", target.getSourceBatchId());
+        assertEquals("corr-1", target.getSourceCorrelationId());
+        assertEquals(Instant.parse("2026-04-30T00:00:00Z"), target.getUpdatedAt());
     }
 
     @Test

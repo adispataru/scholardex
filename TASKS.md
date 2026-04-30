@@ -15,7 +15,7 @@ Done history moved to `TASKS-done.md`.
   Exit criteria: Scholar imported records from user operations link deterministically and preserve source lineage without mutating non-owned fields; no separate non-user onboarding path is required in this slice.
   Dependency: execute after `H19.9` citation canonicalization so imported Scholar citation edges are canonical-ID compatible at ingest time.
 
-- [ ] `H49` Test quality remediation — PIT mutation gaps in `service` + `handlers`.
+- [x] `H49` Test quality remediation — PIT mutation gaps in `service` + `handlers`. *(completed 2026-04-30)*
   Goal: lift mutation coverage and test strength across `ro.uvt.pokedex.core.service.*` and `.handlers.*` by closing assertion gaps where line coverage already exists and adding tests where coverage is missing entirely.
   Baseline (PIT 1.20.4, 153 classes, 2026-04-28): line 67% (12230/18134), **mutation 31%** (3224/10259), **test strength 47%** (3224/6836). Per-package numbers in each subtask below.
   Reference: `docs/test-quality.md`; reports under `build/reports/pitest/` and `build/reports/jacoco/test/`.
@@ -349,7 +349,7 @@ Done history moved to `TASKS-done.md`.
     - Added `WosParsedEventResultTest`: 4 tests covering all three factory methods (`parsed`/`skipped`/`error`) and `WosIdentitySourceContext.empty()`.
     - Post-remediation: line 100% (30/30), mutation 100% (15/15), test strength 100%.
 
-  - [ ] `H49.8` **`ro.uvt.pokedex.core.service.application`** — largest package (79 classes, 4585 mutations).
+  - [x] `H49.8` **`ro.uvt.pokedex.core.service.application`** — largest package (79 classes, 4585 mutations). *(completed 2026-04-30)*
     Baseline: line 63% (5193/8253), mutation 30% (1365/4585), test strength 50% (1365/2754).
     Scope hint: the absolute mutant count is highest here, so even modest percentage gains move the project number. Break this down by sub-area (per natural grouping inside `application`) when adding subtasks; do not try to attack it as a single sweep.
     Subtasks:
@@ -410,15 +410,28 @@ Done history moved to `TASKS-done.md`.
       - line 94% (631/672), mutation 68% (260/385), test strength 70%, no-coverage 12.
       - Per-class outcome: all six classes reached 90%+ line and 60%+ mutation.
       - Additional hardening pass addressed medium-risk pockets in wizard forum-source identity derivation and conflict date-filter routing.
-    - [ ] `H49.8f` PostgreSQL projection/refresh pipeline (medium ROI).
+    - [x] `H49.8f` PostgreSQL projection/refresh pipeline (medium ROI). *(completed 2026-04-30)*
       Scope: `JdbcPostgresReportingProjectionService`, `JdbcPostgresMaterializedViewRefreshService`, `IndexMaintenanceSupport`, `GeneralInitializationService`.
       Goal: increase kill rate in projection refresh/rebuild paths and operational guard branches.
-    - [ ] `H49.8g` Read-port no-coverage cluster (closure-focused).
+      Closeout (2026-04-30 scoped PIT, 4-class slice):
+      - line 98% (383/389), mutation 68% (108/158), test strength 69%, no-coverage 1.
+      - Per-class outcome:
+        - `JdbcPostgresReportingProjectionService`: line 99% (203/206), mutation 63% (50/79).
+        - `JdbcPostgresMaterializedViewRefreshService`: line 98% (93/95), mutation 76% (26/34).
+        - `IndexMaintenanceSupport`: line 96% (24/25), mutation 71% (5/7).
+        - `GeneralInitializationService`: line 100% (63/63), mutation 71% (27/38).
+    - [x] `H49.8g` Read-port no-coverage cluster (closure-focused). *(completed 2026-04-30)*
       Scope: `PostgresScholardexAdminReadPort`, `PostgresScholardexProjectionReadPort`, `PostgresWosRankingDetailsReadPort`, `PostgresWosCategoryReadPort`, `PostgresReadCutoverGuard`, `RequestYearRangeSupport`, `ResearcherAuthorLookupService`.
       Goal: remove 0%-low coverage outliers via targeted contract/mapper tests and focused PIT slices.
-    - [ ] `H49.8h` Residual sweep + survivor triage.
+      Closeout (2026-04-30 scoped PIT slices):
+      - `PostgresScholardexAdminReadPort` + `PostgresScholardexProjectionReadPort`: line 99% (340/345), mutation 68% (182/267), test strength 69%, no-coverage 2.
+      - `PostgresWosCategoryReadPort` + `PostgresWosRankingDetailsReadPort`: line 97% (214/221), mutation 68% (92/136), no-coverage 2.
+      - `PostgresReadCutoverGuard`, `RequestYearRangeSupport`, `ResearcherAuthorLookupService` were previously lifted above the class targets in the same hub.
+      - Hub outcome: targeted hotspots improved, high-risk survivors addressed; residual survivors are mostly low-signal conditional/equivalence.
+    - [x] `H49.8h` Residual sweep + survivor triage. *(completed 2026-04-30)*
       Scope: package-level survivors remaining after `H49.8a-g`.
       Goal: classify residual mutants into bug-risk vs low-signal/equivalent buckets, address high-ROI remainder, and close `H49.8`.
+      Closeout note: high-risk survivors were addressed in focused passes (source-link transition/reconcile policy, parity/onboarding conflict paths, and linker conflict payload assertions); residual survivors are mostly low-signal conditional/equivalence or observability-side-effect removals.
 
   - [x] `H49.9` **`ro.uvt.pokedex.core.service.application.model`** — application model classes (5 classes). *(completed 2026-04-30)*
     Baseline: line 69% (18/26), mutation 26% (8/31), test strength 44% (8/18).

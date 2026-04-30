@@ -347,6 +347,33 @@ class ScholardexSourceLinkServiceTest {
     }
 
     @Test
+    void batchUpsertDoesNotFallbackLookupWhenDisabled() {
+        ScholardexSourceLinkService service = new ScholardexSourceLinkService(sourceLinkRepository, identityConflictRepository);
+        ScholardexSourceLinkService.BatchWriteResult result = service.batchUpsertWithState(
+                List.of(new ScholardexSourceLinkService.SourceLinkUpsertCommand(
+                        ScholardexEntityType.AUTHOR,
+                        "SCOPUS",
+                        "author-1",
+                        "sauth-1",
+                        "LINKED",
+                        "batch",
+                        null,
+                        "b-1",
+                        "c-1",
+                        false
+                )),
+                Map.of(),
+                false
+        );
+
+        assertEquals(1, result.acceptedCount());
+        verify(sourceLinkRepository, never()).findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
+                any(), anyString(), anyString()
+        );
+        verify(sourceLinkRepository).saveAll(any());
+    }
+
+    @Test
     void batchUpsertReplacesSyntheticPlaceholderWithPersistedRowWhenFallbackIsEnabled() {
         ScholardexSourceLinkService service = new ScholardexSourceLinkService(sourceLinkRepository, identityConflictRepository);
 

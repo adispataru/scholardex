@@ -130,23 +130,30 @@ public class PostgresWosCategoryReadPort {
         String normalizedSort = normalizeSort(sort);
         String normalizedDirection = normalizeDirection(direction);
         String normalizedQuery = normalizeQuery(q);
+        int safeSize = size <= 0 ? 25 : size;
+        MapSqlParameterSource params = new MapSqlParameterSource();
 
-        MapSqlParameterSource params = new MapSqlParameterSource()
-                .addValue("limit", size)
-                .addValue("offset", (long) page * size);
-
-        StringBuilder whereClause = new StringBuilder("""
-                 WHERE edition_normalized IN ('SCIE', 'SSCI')
-                   AND category_name_canonical IS NOT NULL
-                   AND category_name_canonical != ''
-                   AND journal_id IS NOT NULL
-                   AND journal_id != ''
-                """);
+        StringBuilder whereClause = buildSearchWhereClause();
 
         if (normalizedQuery != null) {
             whereClause.append(" AND (category_name_canonical ILIKE :q OR edition_normalized::text ILIKE :q)");
-            params.addValue("q", "%" + normalizedQuery.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%");
+            params.addValue("q", "%" + escapeLikePattern(normalizedQuery) + "%");
         }
+
+        String countSql = """
+                SELECT COUNT(*) FROM (
+                    SELECT 1
+                    FROM reporting_read.wos_category_fact
+                    """ + whereClause + """
+                    GROUP BY category_name_canonical, edition_normalized
+                ) sub
+                """;
+        Long totalItems = namedParameterJdbcTemplate.queryForObject(countSql, params, Long.class);
+        long total = totalItems == null ? 0L : totalItems;
+        int totalPages = (int) Math.ceil(total / (double) safeSize);
+        int safePage = normalizePage(page, totalPages);
+        params.addValue("limit", safeSize);
+        params.addValue("offset", (long) safePage * safeSize);
 
         String aggregateSql = """
                 SELECT category_name_canonical || ' - ' || edition_normalized AS key,
@@ -172,21 +179,7 @@ public class PostgresWosCategoryReadPort {
                         rs.getObject("latest_year", Integer.class)
                 )
         );
-
-        String countSql = """
-                SELECT COUNT(*) FROM (
-                    SELECT 1
-                    FROM reporting_read.wos_category_fact
-                    """ + whereClause + """
-                    GROUP BY category_name_canonical, edition_normalized
-                ) sub
-                """;
-        Long totalItems = namedParameterJdbcTemplate.queryForObject(countSql, params, Long.class);
-        long total = totalItems == null ? 0L : totalItems;
-        int totalPages = (int) Math.ceil(total / (double) size);
-        int safePage = totalPages == 0 ? 0 : Math.min(page, totalPages - 1);
-
-        return new WosCategoryPageResponse(items, safePage, size, total, totalPages);
+        return new WosCategoryPageResponse(items, safePage, safeSize, total, totalPages);
     }
 
     private String normalizeSort(String sort) {
@@ -249,6 +242,24 @@ public class PostgresWosCategoryReadPort {
 
     private String blankToDash(String value) {
         return value == null || value.isBlank() ? "—" : value;
+    }
+
+    private StringBuilder buildSearchWhereClause() {
+        return new StringBuilder("""
+                 WHERE edition_normalized IN ('SCIE', 'SSCI')
+                   AND category_name_canonical IS NOT NULL
+                   AND category_name_canonical != ''
+                   AND journal_id IS NOT NULL
+                   AND journal_id != ''
+                """);
+    }
+
+    private String escapeLikePattern(String raw) {
+        return raw.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    }
+
+    private int normalizePage(int page, int totalPages) {
+        return totalPages == 0 ? 0 : Math.min(page, totalPages - 1);
     }
 
     private record RankingRow(String journalId, String name, String issn, String eIssn) {}

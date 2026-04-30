@@ -11,6 +11,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @Testcontainers
 class PostgresMaterializedViewRefreshServiceIntegrationTest {
@@ -68,6 +69,38 @@ class PostgresMaterializedViewRefreshServiceIntegrationTest {
         assertEquals("SUCCESS", run.status());
         assertEquals(1, run.views().size());
         assertEquals("reporting_read.mv_wos_top_rankings_q1_ais", run.views().getFirst().viewName());
+    }
+
+    @Test
+    void refreshSliceMappingHandlesUnknownAndEmptyInput() {
+        seedReadCoreRows();
+        var skippedProjection = service.refreshForSlices(java.util.Set.of("unknown"), "run-1");
+        assertEquals("SKIPPED", skippedProjection.status());
+
+        var skippedManual = service.refreshManualForSlices(java.util.Set.of("unknown"));
+        assertEquals("SKIPPED", skippedManual.status());
+
+        assertEquals(
+                java.util.Set.of(
+                        "reporting_read.mv_wos_top_rankings_q1_ais",
+                        "reporting_read.mv_scholardex_citation_context"
+                ),
+                JdbcPostgresMaterializedViewRefreshService.mapSlicesToViews(java.util.Set.of(" WOS ", "SCOPUS"))
+        );
+    }
+
+    @Test
+    void refreshFailurePersistsFailedRunAndThrows() {
+        seedReadCoreRows();
+        jdbcTemplate.execute("DROP MATERIALIZED VIEW reporting_read.mv_wos_top_rankings_q1_ais");
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> service.refreshAllManual());
+        assertNotNull(ex.getMessage());
+
+        var latest = service.latestStatus().latestRun();
+        assertNotNull(latest);
+        assertEquals("FAILED", latest.status());
+        assertEquals("MANUAL", latest.triggerMode());
     }
 
     private void seedReadCoreRows() {

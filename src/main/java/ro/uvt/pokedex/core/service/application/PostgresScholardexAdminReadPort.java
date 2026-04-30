@@ -54,13 +54,9 @@ public class PostgresScholardexAdminReadPort {
             String q, String forumId, String authorId, String affiliationId,
             int page, int size, String sort, String direction
     ) {
-        int safeSize = (size == 50 || size == 100) ? size : 25;
-        String safeSort = switch (sort != null ? sort : "") {
-            case "year" -> "cover_date";
-            case "citations" -> "cited_by_count";
-            default -> "title";
-        };
-        String safeDir = "desc".equalsIgnoreCase(direction) ? "DESC" : "ASC";
+        int safeSize = normalizePageSize(size);
+        String safeSort = normalizeSort(sort);
+        String safeDir = normalizeDirection(direction);
 
         List<String> conditions = new ArrayList<>();
         MapSqlParameterSource params = new MapSqlParameterSource();
@@ -86,7 +82,7 @@ public class PostgresScholardexAdminReadPort {
                 "SELECT COUNT(*) FROM reporting_read.scholardex_publication_view " + where, params, Long.class);
         long totalCount = total == null ? 0L : total;
         int totalPages = totalCount == 0 ? 1 : (int) Math.ceil((double) totalCount / safeSize);
-        int safePage = Math.max(0, Math.min(page, totalPages - 1));
+        int safePage = normalizePage(page, totalPages);
 
         params.addValue("limit", safeSize);
         params.addValue("offset", (long) safePage * safeSize);
@@ -98,10 +94,8 @@ public class PostgresScholardexAdminReadPort {
         Set<String> authorKeys = publications.stream().flatMap(p -> p.getAuthors().stream()).collect(Collectors.toCollection(HashSet::new));
         Set<String> forumKeys = publications.stream().map(ScholardexPublicationView::getForum)
                 .filter(f -> f != null && !f.isBlank()).collect(Collectors.toCollection(HashSet::new));
-        Map<String, ScholardexAuthorView> authorMap = findAuthorsByIdIn(authorKeys).stream()
-                .collect(Collectors.toMap(ScholardexAuthorView::getId, a -> a, (a, b) -> a, HashMap::new));
-        Map<String, ScholardexForumView> forumMap = findForumsByIdIn(forumKeys).stream()
-                .collect(Collectors.toMap(ScholardexForumView::getId, f -> f, (a, b) -> a, HashMap::new));
+        Map<String, ScholardexAuthorView> authorMap = toIdMap(findAuthorsByIdIn(authorKeys), ScholardexAuthorView::getId);
+        Map<String, ScholardexForumView> forumMap = toIdMap(findForumsByIdIn(forumKeys), ScholardexForumView::getId);
         Map<String, PublicationAuthorshipDecisionAdminSummary> decisionMap = buildDecisionSummaryByPublicationId(publications);
 
         return new PublicationCatalogPage(publications, authorMap, forumMap, decisionMap, totalCount, safePage, safeSize, totalPages);
@@ -146,13 +140,13 @@ public class PostgresScholardexAdminReadPort {
         }
         ScholardexPublicationView publication = publicationOpt.get();
 
-        int safeSize = (size == 50 || size == 100) ? size : 25;
+        int safeSize = normalizePageSize(size);
         Long totalCount = namedParameterJdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM reporting_read.mv_scholardex_citation_context WHERE cited_publication_id = :citedId",
                 new MapSqlParameterSource("citedId", publication.getId()), Long.class);
         long total = totalCount == null ? 0L : totalCount;
         int totalPages = total == 0 ? 1 : (int) Math.ceil((double) total / safeSize);
-        int safePage = Math.max(0, Math.min(page, totalPages - 1));
+        int safePage = normalizePage(page, totalPages);
 
         List<ScholardexPublicationView> citations = namedParameterJdbcTemplate.query(
                 """
@@ -190,8 +184,7 @@ public class PostgresScholardexAdminReadPort {
 
         Map<String, ScholardexAuthorView> authorMap = findAuthorsByIdIn(authorKeys).stream()
                 .collect(Collectors.toMap(ScholardexAuthorView::getId, author -> author, (left, right) -> left, HashMap::new));
-        Map<String, ScholardexForumView> forumMap = findForumsByIdIn(forumKeys).stream()
-                .collect(Collectors.toMap(ScholardexForumView::getId, forum -> forum, (left, right) -> left, HashMap::new));
+        Map<String, ScholardexForumView> forumMap = toIdMap(findForumsByIdIn(forumKeys), ScholardexForumView::getId);
 
         ScholardexForumView publicationForum = findForumById(publication.getForum()).orElse(null);
 
@@ -387,5 +380,29 @@ public class PostgresScholardexAdminReadPort {
             return new ArrayList<>(List.of(items));
         }
         return List.of();
+    }
+
+    private int normalizePageSize(int size) {
+        return (size == 50 || size == 100) ? size : 25;
+    }
+
+    private String normalizeSort(String sort) {
+        return switch (sort != null ? sort : "") {
+            case "year" -> "cover_date";
+            case "citations" -> "cited_by_count";
+            default -> "title";
+        };
+    }
+
+    private String normalizeDirection(String direction) {
+        return "desc".equalsIgnoreCase(direction) ? "DESC" : "ASC";
+    }
+
+    private int normalizePage(int page, int totalPages) {
+        return Math.max(0, Math.min(page, totalPages - 1));
+    }
+
+    private <T> Map<String, T> toIdMap(Collection<T> values, java.util.function.Function<T, String> idGetter) {
+        return values.stream().collect(Collectors.toMap(idGetter, value -> value, (left, right) -> left, HashMap::new));
     }
 }

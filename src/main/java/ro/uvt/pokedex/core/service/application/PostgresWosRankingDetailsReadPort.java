@@ -55,10 +55,7 @@ public class PostgresWosRankingDetailsReadPort {
                     WosMetricFact fact = new WosMetricFact();
                     fact.setJournalId(rs.getString("journal_id"));
                     fact.setYear(rs.getObject("year", Integer.class));
-                    String metricType = rs.getString("metric_type");
-                    if (metricType != null) {
-                        fact.setMetricType(MetricType.valueOf(metricType));
-                    }
+                    fact.setMetricType(parseEnum(rs.getString("metric_type"), MetricType.class));
                     fact.setValue(rs.getObject("value", Double.class));
                     return fact;
                 }
@@ -77,14 +74,8 @@ public class PostgresWosRankingDetailsReadPort {
                     fact.setJournalId(rs.getString("journal_id"));
                     fact.setYear(rs.getObject("year", Integer.class));
                     fact.setCategoryNameCanonical(rs.getString("category_name_canonical"));
-                    String edition = rs.getString("edition_normalized");
-                    if (edition != null) {
-                        fact.setEditionNormalized(EditionNormalized.valueOf(edition));
-                    }
-                    String metricType = rs.getString("metric_type");
-                    if (metricType != null) {
-                        fact.setMetricType(MetricType.valueOf(metricType));
-                    }
+                    fact.setEditionNormalized(parseEnum(rs.getString("edition_normalized"), EditionNormalized.class));
+                    fact.setMetricType(parseEnum(rs.getString("metric_type"), MetricType.class));
                     fact.setQuarter(rs.getString("quarter"));
                     fact.setQuartileRank(rs.getObject("quartile_rank", Integer.class));
                     fact.setRank(rs.getObject("rank_value", Integer.class));
@@ -124,14 +115,10 @@ public class PostgresWosRankingDetailsReadPort {
 
         WoSRanking.Score score = new WoSRanking.Score();
         for (WosMetricFact metricFact : scoreFacts) {
-            if (metricFact.getYear() == null || metricFact.getValue() == null) {
+            if (metricFact.getYear() == null || metricFact.getValue() == null || metricFact.getMetricType() == null) {
                 continue;
             }
-            switch (metricFact.getMetricType()) {
-                case AIS -> mergeScoreValue(score.getAis(), metricFact.getYear(), metricFact.getValue());
-                case RIS -> mergeScoreValue(score.getRis(), metricFact.getYear(), metricFact.getValue());
-                case IF -> mergeScoreValue(score.getIF(), metricFact.getYear(), metricFact.getValue());
-            }
+            mergeScoreValue(scoreTarget(score, metricFact.getMetricType()), metricFact.getYear(), metricFact.getValue());
         }
         ranking.setScore(score);
 
@@ -193,6 +180,14 @@ public class PostgresWosRankingDetailsReadPort {
         target.merge(year, value, Double::max);
     }
 
+    private Map<Integer, Double> scoreTarget(WoSRanking.Score score, MetricType metricType) {
+        return switch (metricType) {
+            case AIS -> score.getAis();
+            case RIS -> score.getRis();
+            case IF -> score.getIF();
+        };
+    }
+
     private WoSRanking.Quarter parseQuarter(String raw) {
         if (raw == null || raw.isBlank()) {
             return null;
@@ -213,5 +208,12 @@ public class PostgresWosRankingDetailsReadPort {
             return List.of(items);
         }
         return List.of();
+    }
+
+    private <E extends Enum<E>> E parseEnum(String value, Class<E> enumClass) {
+        if (value == null) {
+            return null;
+        }
+        return Enum.valueOf(enumClass, value);
     }
 }

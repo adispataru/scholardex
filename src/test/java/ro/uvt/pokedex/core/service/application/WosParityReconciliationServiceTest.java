@@ -297,6 +297,100 @@ class WosParityReconciliationServiceTest {
     }
 
     @Test
+    void runFullParityAccumulatesAllowlistedMismatchCountDeterministically() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        WosParityReconciliationService service = new WosParityReconciliationService(
+                new DefaultResourceLoader(),
+                mapper,
+                importEventRepository,
+                metricFactRepository,
+                categoryFactRepository,
+                jdbcTemplate
+        );
+
+        Path baseline = Files.createTempFile("wos-parity-allow-", ".json");
+        String json = """
+                {
+                  "allowlistedMismatches": [
+                    "counts.importEvents",
+                    "counts.metricFacts",
+                    "counts.categoryFacts",
+                    "counts.rankingView",
+                    "counts.scoringView"
+                  ],
+                  "counts": {"importEvents": 10, "metricFacts": 20, "categoryFacts": 30, "rankingView": 40, "scoringView": 50},
+                  "editionCounts": {},
+                  "timelineChecks": [],
+                  "categoryChecks": [],
+                  "scoringChecks": [],
+                  "ifMissingChecks": [],
+                  "replayChecks": {}
+                }
+                """;
+        Files.writeString(baseline, json, StandardCharsets.UTF_8);
+        ReflectionTestUtils.setField(service, "baselineLocation", baseline.toUri().toString());
+
+        when(importEventRepository.count()).thenReturn(1L);
+        when(metricFactRepository.count()).thenReturn(2L);
+        when(categoryFactRepository.count()).thenReturn(3L);
+        when(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM reporting_read.wos_ranking_view", Long.class)).thenReturn(4L);
+        when(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM reporting_read.wos_scoring_view", Long.class)).thenReturn(5L);
+        when(metricFactRepository.findAll()).thenReturn(List.of());
+        when(categoryFactRepository.findAll()).thenReturn(List.of());
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class))).thenReturn(List.of());
+        var result = service.runFullParity();
+        assertTrue(result.passed());
+        assertEquals(5, result.allowlistedMismatchCount());
+        assertEquals(0, result.mismatchCount());
+    }
+
+    @Test
+    void checkReplayDeterminismProducesMismatchesWhenExpectedDuplicateCountsDiffer() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        WosParityReconciliationService service = new WosParityReconciliationService(
+                new DefaultResourceLoader(),
+                mapper,
+                importEventRepository,
+                metricFactRepository,
+                categoryFactRepository,
+                jdbcTemplate
+        );
+
+        var m1 = new WosMetricFact();
+        m1.setJournalId("j1");
+        m1.setYear(2024);
+        m1.setMetricType(MetricType.AIS);
+        var m2 = new WosMetricFact();
+        m2.setJournalId("j1");
+        m2.setYear(2024);
+        m2.setMetricType(MetricType.AIS);
+
+        var c1 = new WosCategoryFact();
+        c1.setJournalId("j1");
+        c1.setYear(2024);
+        c1.setCategoryNameCanonical("Cat");
+        c1.setMetricType(MetricType.AIS);
+        c1.setEditionNormalized(EditionNormalized.SCIE);
+        var c2 = new WosCategoryFact();
+        c2.setJournalId("j1");
+        c2.setYear(2024);
+        c2.setCategoryNameCanonical("Cat");
+        c2.setMetricType(MetricType.AIS);
+        c2.setEditionNormalized(EditionNormalized.SCIE);
+
+        JsonNode replayChecks = mapper.readTree("{\"expectedDuplicateImportEventKeys\":0,\"expectedDuplicateMetricFactKeys\":0,\"expectedDuplicateCategoryFactKeys\":0}");
+        List<String> mismatches = new ArrayList<>();
+        int allowlisted = ReflectionTestUtils.invokeMethod(
+                service, "checkReplayDeterminism", replayChecks, List.of(m1, m2), List.of(c1, c2), Set.of(), mismatches
+        );
+
+        assertEquals(0, allowlisted);
+        assertEquals(2, mismatches.size());
+        assertTrue(mismatches.stream().anyMatch(s -> s.startsWith("replay.duplicateMetricFactKeys")));
+        assertTrue(mismatches.stream().anyMatch(s -> s.startsWith("replay.duplicateCategoryFactKeys")));
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void eligibilitySuccessAndRunFullParityExecutesRowMapperPath() throws Exception {
         ObjectMapper mapper = new ObjectMapper();

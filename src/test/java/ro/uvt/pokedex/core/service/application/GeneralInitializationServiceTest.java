@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.service.application;
 
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,9 +22,15 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class GeneralInitializationServiceTest {
@@ -44,6 +51,12 @@ class GeneralInitializationServiceTest {
     private DblpPublicationEnrichmentService dblpPublicationEnrichmentService;
     @Mock
     private DomainRepository domainRepository;
+    @Mock
+    private MeterRegistry meterRegistry;
+    @Mock
+    private StartupReadinessTracker startupReadinessTracker;
+    @Mock
+    private Timer timer;
 
     private GeneralInitializationService service;
 
@@ -58,9 +71,11 @@ class GeneralInitializationServiceTest {
                 senseRankingService,
                 dblpPublicationEnrichmentService,
                 domainRepository,
-                new SimpleMeterRegistry(),
-                new StartupReadinessTracker()
+                meterRegistry,
+                startupReadinessTracker
         );
+        when(meterRegistry.timer(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(timer);
         setField("urapFolderPath", "data/urap-univ");
         setField("cncsisFilePath", "data/cncsis/publisher_list.xlsx");
         setField("coreConferenceFolderPath", "data/core-conf");
@@ -104,7 +119,15 @@ class GeneralInitializationServiceTest {
         GeneralInitializationService.GeneralInitializationStepResult step = service.runSpecialDomainBootstrap();
 
         assertThat(step.success()).isTrue();
-        verify(domainRepository).save(any(Domain.class));
+        org.mockito.ArgumentCaptor<Domain> domainCaptor = org.mockito.ArgumentCaptor.forClass(Domain.class);
+        verify(domainRepository).save(domainCaptor.capture());
+        Domain saved = domainCaptor.getValue();
+        assertThat(saved.getName()).isEqualTo("ALL");
+        assertThat(saved.getDescription()).isEqualTo("Special domain to consider all WoS domains");
+        assertThat(saved.getWosCategories()).containsExactly("*");
+        verify(startupReadinessTracker).phaseStart("domain-bootstrap", true);
+        verify(startupReadinessTracker).phaseSuccess(eq("domain-bootstrap"), anyLong());
+        verify(timer).record(anyLong(), eq(java.util.concurrent.TimeUnit.MILLISECONDS));
     }
 
     @Test
@@ -115,6 +138,32 @@ class GeneralInitializationServiceTest {
 
         assertThat(step.success()).isTrue();
         verify(domainRepository, never()).save(any(Domain.class));
+    }
+
+    @Test
+    void runStepFailureIsReportedAsNonSuccess() {
+        doThrow(new IllegalStateException("boom")).when(cncsisService).importPublisherListFromExcelSync("data/cncsis/publisher_list.xlsx");
+
+        GeneralInitializationService.GeneralInitializationStepResult step = service.runCncsisImport();
+
+        assertThat(step.success()).isFalse();
+        assertThat(step.message()).contains("boom");
+        assertThat(step.durationMs()).isGreaterThanOrEqualTo(0);
+        verify(startupReadinessTracker).phaseStart("cncsis-import", false);
+        verify(startupReadinessTracker).phaseFailure(eq("cncsis-import"), anyLong(), eq("boom"));
+        verify(timer).record(anyLong(), eq(java.util.concurrent.TimeUnit.MILLISECONDS));
+    }
+
+    @Test
+    void runAllCountsFailuresWhenAStepThrows() {
+        when(domainRepository.findById("all")).thenReturn(Optional.of(new Domain()));
+        doThrow(new IllegalStateException("urap fail")).when(urapRankingService).loadRankingsFromFolder("data/urap-univ");
+
+        GeneralInitializationService.GeneralInitializationRunSummary summary = service.runAll();
+
+        assertThat(summary.failureCount()).isEqualTo(1);
+        assertThat(summary.successCount()).isEqualTo(6);
+        verify(startupReadinessTracker, times(7)).phaseStart(anyString(), anyBoolean());
     }
 
     private void setField(String fieldName, String value) throws Exception {

@@ -652,6 +652,7 @@ public class DblpPublicationEnrichmentService {
         private String output = "";
         private int outputIndex = 0;
         private boolean eof;
+        private int consecutiveZeroReads;
 
         NamedEntitySanitizingReader(Reader delegate) {
             this.delegate = delegate;
@@ -663,7 +664,12 @@ public class DblpPublicationEnrichmentService {
                 return 0;
             }
             int written = 0;
+            int loopGuard = 0;
+            int maxLoops = Math.max(64, len * 8);
             while (written < len) {
+                if (loopGuard++ > maxLoops) {
+                    throw new IOException("NamedEntitySanitizingReader exceeded read loop guard");
+                }
                 if (outputIndex < output.length()) {
                     int chunk = Math.min(len - written, output.length() - outputIndex);
                     output.getChars(outputIndex, outputIndex + chunk, cbuf, off + written);
@@ -679,32 +685,52 @@ public class DblpPublicationEnrichmentService {
         }
 
         private boolean fillOutput() throws IOException {
-            if (eof && carry.isEmpty()) {
-                return false;
-            }
-
-            int read = delegate.read(readBuffer);
-            if (read == -1) {
-                eof = true;
-                if (carry.isEmpty()) {
+            int loopGuard = 0;
+            int maxLoops = Math.max(256, readBuffer.length * 2);
+            while (true) {
+                if (loopGuard++ > maxLoops) {
+                    throw new IOException("NamedEntitySanitizingReader exceeded fill loop guard");
+                }
+                if (eof && carry.isEmpty()) {
                     return false;
                 }
-                output = sanitizeNamedEntities(carry.toString());
-                carry.setLength(0);
-                outputIndex = 0;
-                return !output.isEmpty();
-            }
 
-            carry.append(readBuffer, 0, read);
-            int safeLength = computeSafeLength(carry);
-            if (safeLength <= 0) {
-                return fillOutput();
+                int read = delegate.read(readBuffer);
+                if (read == -1) {
+                    eof = true;
+                    if (carry.isEmpty()) {
+                        return false;
+                    }
+                    output = sanitizeNamedEntities(carry.toString());
+                    carry.setLength(0);
+                    outputIndex = 0;
+                    return !output.isEmpty();
+                }
+
+                if (read == 0) {
+                    consecutiveZeroReads++;
+                    // Some Reader implementations can return 0 transiently.
+                    // Avoid recursive/spin behavior under mutation or edge delegates.
+                    if (consecutiveZeroReads >= 2) {
+                        return false;
+                    }
+                    continue;
+                }
+
+                consecutiveZeroReads = 0;
+                carry.append(readBuffer, 0, read);
+                int safeLength = computeSafeLength(carry);
+                if (safeLength <= 0) {
+                    continue;
+                }
+                String chunk = carry.substring(0, safeLength);
+                carry.delete(0, safeLength);
+                output = sanitizeNamedEntities(chunk);
+                outputIndex = 0;
+                if (!output.isEmpty()) {
+                    return true;
+                }
             }
-            String chunk = carry.substring(0, safeLength);
-            carry.delete(0, safeLength);
-            output = sanitizeNamedEntities(chunk);
-            outputIndex = 0;
-            return !output.isEmpty() || fillOutput();
         }
 
         private int computeSafeLength(StringBuilder value) {

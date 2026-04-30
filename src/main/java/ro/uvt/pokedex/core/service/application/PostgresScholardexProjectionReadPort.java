@@ -32,7 +32,7 @@ public class PostgresScholardexProjectionReadPort {
     // --- Publication reads ---
 
     public List<ScholardexPublicationView> findPublicationsByIdIn(Collection<String> ids) {
-        if (ids == null || ids.isEmpty()) return List.of();
+        if (isNullOrEmpty(ids)) return List.of();
         return namedParameterJdbcTemplate.query(
                 "SELECT * FROM reporting_read.scholardex_publication_view WHERE id IN (:ids)",
                 new MapSqlParameterSource("ids", ids),
@@ -41,7 +41,7 @@ public class PostgresScholardexProjectionReadPort {
     }
 
     public List<ScholardexPublicationView> findPublicationsByEidIn(Collection<String> eids) {
-        if (eids == null || eids.isEmpty()) return List.of();
+        if (isNullOrEmpty(eids)) return List.of();
         return namedParameterJdbcTemplate.query(
                 "SELECT * FROM reporting_read.scholardex_publication_view WHERE eid IN (:eids)",
                 new MapSqlParameterSource("eids", eids),
@@ -51,27 +51,25 @@ public class PostgresScholardexProjectionReadPort {
 
     public Optional<ScholardexPublicationView> findPublicationById(String id) {
         if (id == null || id.isBlank()) return Optional.empty();
-        List<ScholardexPublicationView> results = namedParameterJdbcTemplate.query(
+        return queryFirst(
                 "SELECT * FROM reporting_read.scholardex_publication_view WHERE id = :id",
                 new MapSqlParameterSource("id", id),
                 this::mapPublicationView
         );
-        return results.stream().findFirst();
     }
 
     public Optional<ScholardexPublicationView> findPublicationByEid(String eid) {
         if (eid == null || eid.isBlank()) return Optional.empty();
-        List<ScholardexPublicationView> results = namedParameterJdbcTemplate.query(
+        return queryFirst(
                 "SELECT * FROM reporting_read.scholardex_publication_view WHERE eid = :eid",
                 new MapSqlParameterSource("eid", eid),
                 this::mapPublicationView
         );
-        return results.stream().findFirst();
     }
 
     public Optional<ScholardexPublicationView> findPublicationByAnyId(String key) {
         if (key == null || key.isBlank()) return Optional.empty();
-        List<ScholardexPublicationView> results = namedParameterJdbcTemplate.query(
+        return queryFirst(
                 """
                 SELECT *
                 FROM reporting_read.scholardex_publication_view
@@ -82,7 +80,6 @@ public class PostgresScholardexProjectionReadPort {
                 new MapSqlParameterSource("key", key),
                 this::mapPublicationView
         );
-        return results.stream().findFirst();
     }
 
     public List<ScholardexPublicationView> findPublicationsByTitleContainingIgnoreCase(String title) {
@@ -94,7 +91,7 @@ public class PostgresScholardexProjectionReadPort {
     }
 
     public List<ScoringPublicationReadModel> findScoringPublicationsByIdIn(Collection<String> ids) {
-        if (ids == null || ids.isEmpty()) return List.of();
+        if (isNullOrEmpty(ids)) return List.of();
         return namedParameterJdbcTemplate.query(
                 "SELECT * FROM reporting_read.scholardex_publication_view WHERE id IN (:ids)",
                 new MapSqlParameterSource("ids", ids),
@@ -104,16 +101,15 @@ public class PostgresScholardexProjectionReadPort {
 
     public Optional<ScoringPublicationReadModel> findScoringPublicationById(String id) {
         if (id == null || id.isBlank()) return Optional.empty();
-        List<ScoringPublicationReadModel> results = namedParameterJdbcTemplate.query(
+        return queryFirst(
                 "SELECT * FROM reporting_read.scholardex_publication_view WHERE id = :id",
                 new MapSqlParameterSource("id", id),
                 this::mapScoringPublication
         );
-        return results.stream().findFirst();
     }
 
     public Set<String> findExistingPublicationIdsByIdIn(Collection<String> ids) {
-        if (ids == null || ids.isEmpty()) return Set.of();
+        if (isNullOrEmpty(ids)) return Set.of();
         List<String> results = namedParameterJdbcTemplate.query(
                 "SELECT id FROM reporting_read.scholardex_publication_view WHERE id IN (:ids)",
                 new MapSqlParameterSource("ids", ids),
@@ -125,7 +121,7 @@ public class PostgresScholardexProjectionReadPort {
     // --- Authorship / affiliation edge reads ---
 
     public Set<String> findPublicationIdsByAuthorIdIn(Collection<String> authorIds) {
-        if (authorIds == null || authorIds.isEmpty()) return Set.of();
+        if (isNullOrEmpty(authorIds)) return Set.of();
         List<String> results = namedParameterJdbcTemplate.query(
                 "SELECT publication_id FROM reporting_read.scholardex_authorship_fact WHERE author_id IN (:ids)",
                 new MapSqlParameterSource("ids", authorIds),
@@ -151,7 +147,7 @@ public class PostgresScholardexProjectionReadPort {
     // --- Citation reads ---
 
     public List<ScholardexCitationView> findCitationsByCitedPublicationIdIn(Collection<String> ids) {
-        if (ids == null || ids.isEmpty()) return List.of();
+        if (isNullOrEmpty(ids)) return List.of();
         return namedParameterJdbcTemplate.query(
                 "SELECT id, cited_publication_id, citing_publication_id FROM reporting_read.scholardex_citation_fact WHERE cited_publication_id IN (:ids)",
                 new MapSqlParameterSource("ids", ids),
@@ -171,7 +167,7 @@ public class PostgresScholardexProjectionReadPort {
     // --- Forum reads ---
 
     public List<ScholardexForumView> findForumsByIdIn(Collection<String> ids) {
-        if (ids == null || ids.isEmpty()) return List.of();
+        if (isNullOrEmpty(ids)) return List.of();
         return namedParameterJdbcTemplate.query(
                 "SELECT id, publication_name, issn, e_issn, aggregation_type FROM reporting_read.scholardex_forum_view WHERE id IN (:ids)",
                 new MapSqlParameterSource("ids", ids),
@@ -189,7 +185,7 @@ public class PostgresScholardexProjectionReadPort {
     // --- Author reads ---
 
     public List<ScholardexAuthorView> findAuthorsByIdIn(Collection<String> ids) {
-        if (ids == null || ids.isEmpty()) return List.of();
+        if (isNullOrEmpty(ids)) return List.of();
         return namedParameterJdbcTemplate.query(
                 "SELECT id, name, alternative_names, affiliation_ids FROM reporting_read.scholardex_author_view WHERE id IN (:ids)",
                 new MapSqlParameterSource("ids", ids),
@@ -215,7 +211,7 @@ public class PostgresScholardexProjectionReadPort {
     // --- Affiliation reads ---
 
     public List<ScholardexAffiliationView> findAffiliationsByIdIn(Collection<String> ids) {
-        if (ids == null || ids.isEmpty()) return List.of();
+        if (isNullOrEmpty(ids)) return List.of();
         return namedParameterJdbcTemplate.query(
                 "SELECT id, name, city, country FROM reporting_read.scholardex_affiliation_view WHERE id IN (:ids)",
                 new MapSqlParameterSource("ids", ids),
@@ -267,7 +263,7 @@ public class PostgresScholardexProjectionReadPort {
         publication.setVolume(rs.getString("volume"));
         publication.setIssueIdentifier(rs.getString("issue_identifier"));
         publication.setDescription(rs.getString("description"));
-        publication.setAuthorCount(rs.getObject("author_count", Integer.class) == null ? 0 : rs.getObject("author_count", Integer.class));
+        publication.setAuthorCount(readIntOrDefault(rs, "author_count"));
         publication.setCorrespondingAuthors(toStringList(rs.getArray("corresponding_authors")));
         publication.setOpenAccess(Boolean.TRUE.equals(rs.getObject("open_access", Boolean.class)));
         publication.setFreetoread(rs.getString("freetoread"));
@@ -280,8 +276,7 @@ public class PostgresScholardexProjectionReadPort {
         publication.setAffiliations(toStringList(rs.getArray("affiliation_ids")));
         publication.setForum(rs.getString("forum_id"));
         publication.setCitingPublicationIds(new LinkedHashSet<>(toStringList(rs.getArray("citing_publication_ids"))));
-        Integer citedByCount = rs.getObject("cited_by_count", Integer.class);
-        publication.setCitedbyCount(citedByCount == null ? 0 : citedByCount);
+        publication.setCitedbyCount(readIntOrDefault(rs, "cited_by_count"));
         publication.setBuildVersion(rs.getString("build_version"));
         publication.setBuildAt(rs.getTimestamp("build_at") == null ? null : rs.getTimestamp("build_at").toInstant());
         publication.setUpdatedAt(rs.getTimestamp("updated_at") == null ? null : rs.getTimestamp("updated_at").toInstant());
@@ -303,11 +298,11 @@ public class PostgresScholardexProjectionReadPort {
                 rs.getString("subtype"),
                 rs.getString("scopus_subtype"),
                 toStringList(rs.getArray("author_ids")),
-                rs.getObject("author_count", Integer.class) == null ? 0 : rs.getObject("author_count", Integer.class),
+                readIntOrDefault(rs, "author_count"),
                 rs.getString("doi"),
                 rs.getString("wos_id"),
                 rs.getString("title"),
-                rs.getObject("cited_by_count", Integer.class) == null ? 0 : rs.getObject("cited_by_count", Integer.class),
+                readIntOrDefault(rs, "cited_by_count"),
                 new LinkedHashSet<>(toStringList(rs.getArray("citing_publication_ids")))
         );
     }
@@ -366,5 +361,23 @@ public class PostgresScholardexProjectionReadPort {
             return new ArrayList<>(List.of(items));
         }
         return List.of();
+    }
+
+    private <T> Optional<T> queryFirst(
+            String sql,
+            MapSqlParameterSource params,
+            org.springframework.jdbc.core.RowMapper<T> mapper
+    ) {
+        List<T> results = namedParameterJdbcTemplate.query(sql, params, mapper);
+        return results.stream().findFirst();
+    }
+
+    private boolean isNullOrEmpty(Collection<?> values) {
+        return values == null || values.isEmpty();
+    }
+
+    private int readIntOrDefault(ResultSet rs, String column) throws SQLException {
+        Integer value = rs.getObject(column, Integer.class);
+        return value == null ? 0 : value;
     }
 }

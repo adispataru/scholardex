@@ -15,6 +15,8 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFact
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.Reader;
+import java.io.StringReader;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -368,6 +370,75 @@ class DblpPublicationEnrichmentServiceTest {
         assertThat(captor.getValue().getMatchMethod()).isEqualTo("DOI_EXACT");
         assertThat(captor.getValue().getConferenceName())
                 .isEqualTo("Proceedings of the 16th IEEE/ACM International Symposium on Cluster, Cloud and Grid Computing");
+    }
+
+    @Test
+    void namedEntitySanitizingReaderHandlesSplitEntitiesAcrossReads() throws Exception {
+        Reader delegate = new Reader() {
+            private final String[] chunks = new String[]{"M&uuml", ";ller Systems"};
+            private int index;
+
+            @Override
+            public int read(char[] cbuf, int off, int len) {
+                if (index >= chunks.length) {
+                    return -1;
+                }
+                String chunk = chunks[index++];
+                chunk.getChars(0, chunk.length(), cbuf, off);
+                return chunk.length();
+            }
+
+            @Override
+            public void close() {
+            }
+        };
+
+        DblpPublicationEnrichmentService.NamedEntitySanitizingReader reader =
+                new DblpPublicationEnrichmentService.NamedEntitySanitizingReader(delegate);
+        assertThat(readAll(reader)).isEqualTo("Muller Systems");
+    }
+
+    @Test
+    void namedEntitySanitizingReaderStopsOnRepeatedZeroReads() throws Exception {
+        Reader zeroThenEof = new Reader() {
+            private int call;
+
+            @Override
+            public int read(char[] cbuf, int off, int len) {
+                call++;
+                if (call <= 2) {
+                    return 0;
+                }
+                return -1;
+            }
+
+            @Override
+            public void close() {
+            }
+        };
+
+        DblpPublicationEnrichmentService.NamedEntitySanitizingReader reader =
+                new DblpPublicationEnrichmentService.NamedEntitySanitizingReader(zeroThenEof);
+        char[] out = new char[8];
+        assertThat(reader.read(out, 0, out.length)).isEqualTo(-1);
+    }
+
+    @Test
+    void namedEntitySanitizingReaderFlushesCarryAtEof() throws Exception {
+        DblpPublicationEnrichmentService.NamedEntitySanitizingReader reader =
+                new DblpPublicationEnrichmentService.NamedEntitySanitizingReader(
+                        new StringReader("Cloud&unknown;Systems"));
+        assertThat(readAll(reader)).isEqualTo("Cloud Systems");
+    }
+
+    private String readAll(Reader reader) throws IOException {
+        StringBuilder value = new StringBuilder();
+        char[] buffer = new char[8];
+        int read;
+        while ((read = reader.read(buffer, 0, buffer.length)) != -1) {
+            value.append(buffer, 0, read);
+        }
+        return value.toString();
     }
 
     private ScholardexPublicationFact candidatePublication(String id, String doiNormalized, String title, String coverDate, String forumId) {
