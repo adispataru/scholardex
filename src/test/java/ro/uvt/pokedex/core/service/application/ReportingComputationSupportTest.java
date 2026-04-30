@@ -1,0 +1,267 @@
+package ro.uvt.pokedex.core.service.application;
+
+import org.junit.jupiter.api.Test;
+import ro.uvt.pokedex.core.model.reporting.AbstractReport;
+import ro.uvt.pokedex.core.model.reporting.Indicator;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.service.reporting.Score;
+import ro.uvt.pokedex.core.service.reporting.ScientificProductionService;
+
+import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+class ReportingComputationSupportTest {
+
+    @Test
+    void calculatePublicationScoreSupportsMainAndCoauthorFilters() {
+        ScientificProductionService scientificProductionService = mock(ScientificProductionService.class);
+
+        ScholardexAuthorView a1 = new ScholardexAuthorView();
+        a1.setId("a1");
+        ScholardexAuthorView a2 = new ScholardexAuthorView();
+        a2.setId("a2");
+
+        ScholardexPublicationView pMain = new ScholardexPublicationView();
+        pMain.setId("p-main");
+        pMain.setAuthors(List.of("a1", "a2"));
+
+        ScholardexPublicationView pCo = new ScholardexPublicationView();
+        pCo.setId("p-co");
+        pCo.setAuthors(List.of("x", "a1"));
+
+        Indicator main = new Indicator();
+        main.setOutputType(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR);
+        Indicator co = new Indicator();
+        co.setOutputType(Indicator.Type.PUBLICATIONS_COAUTHOR);
+
+        when(scientificProductionService.calculateScientificProductionScore(anyList(), eq(main)))
+                .thenReturn(Map.of("total", totalScore(4.0)));
+        when(scientificProductionService.calculateScientificProductionScore(anyList(), eq(co)))
+                .thenReturn(Map.of("total", totalScore(2.0)));
+
+        double mainScore = ReportingComputationSupport.calculatePublicationScore(
+                main, List.of(a1, a2), List.of(pMain, pCo), scientificProductionService);
+        double coScore = ReportingComputationSupport.calculatePublicationScore(
+                co, List.of(a1, a2), List.of(pMain, pCo), scientificProductionService);
+
+        assertEquals(4.0, mainScore);
+        assertEquals(2.0, coScore);
+    }
+
+    @Test
+    void isCitationIndicatorHandlesNullsAndBothCitationTypes() {
+        Indicator nullOutput = new Indicator();
+        nullOutput.setOutputType(null);
+        Indicator plain = new Indicator();
+        plain.setOutputType(Indicator.Type.PUBLICATIONS);
+        Indicator citations = new Indicator();
+        citations.setOutputType(Indicator.Type.CITATIONS);
+        Indicator citationsExcludeSelf = new Indicator();
+        citationsExcludeSelf.setOutputType(Indicator.Type.CITATIONS_EXCLUDE_SELF);
+
+        assertFalse(ReportingComputationSupport.isCitationIndicator(null));
+        assertFalse(ReportingComputationSupport.isCitationIndicator(nullOutput));
+        assertFalse(ReportingComputationSupport.isCitationIndicator(plain));
+        assertTrue(ReportingComputationSupport.isCitationIndicator(citations));
+        assertTrue(ReportingComputationSupport.isCitationIndicator(citationsExcludeSelf));
+    }
+
+    @Test
+    void applyFinalSelectorKeepsOnlyTop10AndRebuildsTotals() {
+        Indicator indicator = new Indicator();
+        indicator.setSelector(Indicator.Selector.TOP_10);
+
+        Map<String, Score> scoreMap = new LinkedHashMap<>();
+        for (int i = 1; i <= 12; i++) {
+            Score score = new Score();
+            score.setAuthorScore(i);
+            score.setScore(i);
+            scoreMap.put("p" + i, score);
+        }
+        scoreMap.put("total", totalScore(0));
+
+        Map<String, Map<String, Score>> nested = new LinkedHashMap<>();
+        nested.put("root", scoreMap);
+
+        ReportingComputationSupport.applyFinalSelector(indicator, nested);
+
+        Map<String, Score> pruned = nested.get("root");
+        assertEquals(11, pruned.size());
+        assertFalse(pruned.containsKey("p1"));
+        assertFalse(pruned.containsKey("p2"));
+        assertTrue(pruned.containsKey("p12"));
+        assertEquals(75.0, pruned.get("total").getAuthorScore());
+    }
+
+    @Test
+    void applyFinalSelectorDoesNothingWhenSelectorIsNotTop10() {
+        Indicator indicator = new Indicator();
+        indicator.setSelector(Indicator.Selector.ALL);
+        Map<String, Map<String, Score>> nested = new LinkedHashMap<>();
+        Map<String, Score> one = new LinkedHashMap<>();
+        one.put("p1", totalScore(1));
+        one.put("total", totalScore(1));
+        nested.put("root", one);
+
+        ReportingComputationSupport.applyFinalSelector(indicator, nested);
+
+        assertEquals(2, nested.get("root").size());
+        assertTrue(nested.get("root").containsKey("p1"));
+    }
+
+    @Test
+    void applyFinalSelectorDoesNothingWhenSelectorIsNull() {
+        Indicator indicator = new Indicator();
+        indicator.setSelector(null);
+        Map<String, Map<String, Score>> nested = new LinkedHashMap<>();
+        Map<String, Score> one = new LinkedHashMap<>();
+        one.put("p1", totalScore(1));
+        one.put("total", totalScore(1));
+        nested.put("root", one);
+
+        ReportingComputationSupport.applyFinalSelector(indicator, nested);
+
+        assertEquals(2, nested.get("root").size());
+        assertEquals(1.0, nested.get("root").get("total").getScore(), 0.0001);
+    }
+
+    @Test
+    void applyFinalSelectorHandlesDuplicateTitlesAcrossBucketsWithoutDoubleKeeping() {
+        Indicator indicator = new Indicator();
+        indicator.setSelector(Indicator.Selector.TOP_10);
+
+        Map<String, Score> b1 = new LinkedHashMap<>();
+        b1.put("shared", totalScore(10));
+        b1.put("other-a", totalScore(8));
+        b1.put("total", totalScore(18));
+        Map<String, Score> b2 = new LinkedHashMap<>();
+        b2.put("shared", totalScore(9));
+        b2.put("other-b", totalScore(7));
+        b2.put("total", totalScore(16));
+        Map<String, Map<String, Score>> nested = new LinkedHashMap<>();
+        nested.put("b1", b1);
+        nested.put("b2", b2);
+
+        ReportingComputationSupport.applyFinalSelector(indicator, nested);
+
+        int keptShared = 0;
+        if (nested.get("b1").containsKey("shared")) {
+            keptShared++;
+        }
+        if (nested.get("b2").containsKey("shared")) {
+            keptShared++;
+        }
+        assertEquals(1, keptShared);
+        assertTrue(nested.get("b1").containsKey("total"));
+        assertTrue(nested.get("b2").containsKey("total"));
+        assertTrue(nested.get("b1").get("total").getScore() >= 0);
+        assertTrue(nested.get("b2").get("total").getScore() >= 0);
+    }
+
+    @Test
+    void calculatePublicationScoreMainAndCoauthorRespectFirstAuthorConstraint() {
+        ScientificProductionService scientificProductionService = mock(ScientificProductionService.class);
+
+        ScholardexAuthorView a1 = new ScholardexAuthorView();
+        a1.setId("a1");
+
+        ScholardexPublicationView firstAuthorMatches = publication("p-main", List.of("a1", "x"));
+        ScholardexPublicationView coauthorOnly = publication("p-co", List.of("x", "a1"));
+        ScholardexPublicationView foreignFirst = publication("p-foreign", List.of("z", "a1"));
+        ScholardexPublicationView noAuthors = publication("p-empty", List.of());
+        ScholardexPublicationView nullAuthors = publication("p-null", null);
+
+        Indicator main = new Indicator();
+        main.setOutputType(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR);
+        Indicator co = new Indicator();
+        co.setOutputType(Indicator.Type.PUBLICATIONS_COAUTHOR);
+
+        doAnswer(invocation -> Map.of("total", totalScore(((List<ScoringPublicationReadModel>) invocation.getArgument(0)).size())))
+                .when(scientificProductionService).calculateScientificProductionScore(anyList(), eq(main));
+        doAnswer(invocation -> Map.of("total", totalScore(((List<ScoringPublicationReadModel>) invocation.getArgument(0)).size())))
+                .when(scientificProductionService).calculateScientificProductionScore(anyList(), eq(co));
+
+        List<ScholardexPublicationView> publications = List.of(
+                firstAuthorMatches, coauthorOnly, foreignFirst, noAuthors, nullAuthors
+        );
+
+        double mainScore = ReportingComputationSupport.calculatePublicationScore(
+                main, List.of(a1), publications, scientificProductionService
+        );
+        double coScore = ReportingComputationSupport.calculatePublicationScore(
+                co, List.of(a1), publications, scientificProductionService
+        );
+
+        assertEquals(1.0, mainScore);
+        assertEquals(4.0, coScore);
+    }
+
+    @Test
+    void calculatePublicationScoreDoesNotTreatMissingFirstAuthorAsEmptyStringMatch() {
+        ScientificProductionService scientificProductionService = mock(ScientificProductionService.class);
+        ScholardexAuthorView blankAuthor = new ScholardexAuthorView();
+        blankAuthor.setId("");
+
+        ScholardexPublicationView noAuthors = publication("p-empty", List.of());
+        Indicator main = new Indicator();
+        main.setOutputType(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR);
+
+        doAnswer(invocation -> Map.of("total", totalScore(((List<ScoringPublicationReadModel>) invocation.getArgument(0)).size())))
+                .when(scientificProductionService).calculateScientificProductionScore(anyList(), eq(main));
+
+        double score = ReportingComputationSupport.calculatePublicationScore(
+                main, List.of(blankAuthor), List.of(noAuthors), scientificProductionService
+        );
+        assertEquals(0.0, score);
+    }
+
+    @Test
+    void computeCriterionScoresSkipsNullAndOutOfRangeIndices() {
+        Indicator i0 = new Indicator();
+        i0.setId("i0");
+        Indicator i1 = new Indicator();
+        i1.setId("i1");
+        List<Indicator> indicators = List.of(i0, i1);
+
+        AbstractReport.Criterion c0 = new AbstractReport.Criterion();
+        c0.setIndicatorIndices(new ArrayList<>(java.util.Arrays.asList(0, 1, -1, 2, null)));
+        AbstractReport.Criterion c1 = new AbstractReport.Criterion();
+        c1.setIndicatorIndices(null);
+
+        Map<Integer, Double> out = ReportingComputationSupport.computeCriterionScores(
+                List.of(c0, c1),
+                indicators,
+                Map.of("i0", 2.0, "i1", 3.0)
+        );
+
+        assertEquals(5.0, out.get(0), 0.0001);
+        assertEquals(0.0, out.get(1), 0.0001);
+    }
+
+    private static Score totalScore(double value) {
+        Score score = new Score();
+        score.setAuthorScore(value);
+        score.setScore(value);
+        return score;
+    }
+
+    private static ScholardexPublicationView publication(String id, List<String> authorIds) {
+        ScholardexPublicationView publication = new ScholardexPublicationView();
+        publication.setId(id);
+        publication.setAuthors(authorIds);
+        return publication;
+    }
+}

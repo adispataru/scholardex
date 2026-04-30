@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.observability.CanonicalObservabilityMetrics;
+import ro.uvt.pokedex.core.model.scopus.canonical.HasEdgeLineageFields;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
@@ -82,7 +83,7 @@ public class ScholardexEdgeReconciliationService {
                 Optional<ScholardexAuthorshipFact> existing = authorshipFactRepository
                         .findByPublicationIdAndAuthorIdAndSource(publication.getId(), authorId, source);
                 if (existing.isPresent()) {
-                    if (needsAuthorshipRepair(
+                    if (needsEdgeRepair(
                             existing.get(),
                             sourceRecordId,
                             publication.getSourceEventId(),
@@ -163,7 +164,7 @@ public class ScholardexEdgeReconciliationService {
                 Optional<ScholardexAuthorAffiliationFact> existing = authorAffiliationFactRepository
                         .findByAuthorIdAndAffiliationIdAndSource(author.getId(), affiliationId, source);
                 if (existing.isPresent()) {
-                    if (needsAuthorAffiliationRepair(
+                    if (needsEdgeRepair(
                             existing.get(),
                             sourceRecordId,
                             author.getSourceEventId(),
@@ -267,30 +268,8 @@ public class ScholardexEdgeReconciliationService {
         CanonicalObservabilityMetrics.recordConflictCreated(entityType.name(), source, REASON_EDGE_ARRAY_DIVERGENCE_AMBIGUOUS);
     }
 
-    private boolean needsAuthorshipRepair(
-            ScholardexAuthorshipFact edge,
-            String expectedSourceRecordId,
-            String expectedSourceEventId,
-            String expectedSourceBatchId,
-            String expectedSourceCorrelationId
-    ) {
-        if (edge == null) {
-            return false;
-        }
-        return normalize(edge.getId()) == null
-                || normalize(edge.getSourceRecordId()) == null
-                || lineageMismatch(edge.getSourceEventId(), expectedSourceEventId)
-                || lineageMismatch(edge.getSourceBatchId(), expectedSourceBatchId)
-                || lineageMismatch(edge.getSourceCorrelationId(), expectedSourceCorrelationId)
-                || normalize(edge.getLinkState()) == null
-                || normalize(edge.getLinkReason()) == null
-                || edge.getCreatedAt() == null
-                || edge.getUpdatedAt() == null
-                || !expectedSourceRecordId.equals(normalize(edge.getSourceRecordId()));
-    }
-
-    private boolean needsAuthorAffiliationRepair(
-            ScholardexAuthorAffiliationFact edge,
+    private boolean needsEdgeRepair(
+            HasEdgeLineageFields edge,
             String expectedSourceRecordId,
             String expectedSourceEventId,
             String expectedSourceBatchId,

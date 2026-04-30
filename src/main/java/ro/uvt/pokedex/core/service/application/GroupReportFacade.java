@@ -328,35 +328,27 @@ public class GroupReportFacade {
             List<Indicator> indicators = report.getIndicators() == null ? List.of() : report.getIndicators();
             boolean hasActivityIndicators = indicators.stream()
                     .filter(Objects::nonNull)
-                    .anyMatch(indicator -> indicator.getOutputType() != null
-                            && indicator.getOutputType().toString().contains("ACTIVIT"));
+                    .anyMatch(ReportingComputationSupport::isActivityIndicator);
             boolean hasCitationIndicators = indicators.stream()
                     .filter(Objects::nonNull)
-                    .anyMatch(indicator -> Indicator.Type.CITATIONS.equals(indicator.getOutputType())
-                            || Indicator.Type.CITATIONS_EXCLUDE_SELF.equals(indicator.getOutputType()));
+                    .anyMatch(ReportingComputationSupport::isCitationIndicator);
             long activityIndicatorCount = indicators.stream()
                     .filter(Objects::nonNull)
-                    .filter(indicator -> indicator.getOutputType() != null
-                            && indicator.getOutputType().toString().contains("ACTIVIT"))
+                    .filter(ReportingComputationSupport::isActivityIndicator)
                     .count();
             long citationIndicatorCount = indicators.stream()
                     .filter(Objects::nonNull)
-                    .filter(indicator -> Indicator.Type.CITATIONS.equals(indicator.getOutputType())
-                            || Indicator.Type.CITATIONS_EXCLUDE_SELF.equals(indicator.getOutputType()))
+                    .filter(ReportingComputationSupport::isCitationIndicator)
                     .count();
             timings.activityIndicators += activityIndicatorCount;
             timings.citationIndicators += citationIndicatorCount;
 
             long publicationLoadStartNanos = System.nanoTime();
             List<String> authorIds = authors.stream().map(ScholardexAuthorView::getId).toList();
-            List<ScholardexPublicationView> publications = scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds);
-            if (report.getIndividualAffiliation() != null
-                    && !"ANY".equals(report.getIndividualAffiliation().getName())) {
-                publications = publications.stream()
-                        .filter(p -> report.getIndividualAffiliation().getScopusAffiliations().stream()
-                                .anyMatch(aff -> p.getAffiliations().contains(aff.getAfid())))
-                        .collect(Collectors.toList());
-            }
+            List<ScholardexPublicationView> publications = applyAffiliationFilter(
+                    report,
+                    scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds)
+            );
             timings.publicationLoadNanos += (System.nanoTime() - publicationLoadStartNanos);
             timings.publicationsProcessed += publications.size();
             Set<String> researcherAuthorIds = authors.stream()
@@ -371,21 +363,22 @@ public class GroupReportFacade {
                 timings.activityLoadNanos += (System.nanoTime() - activityLoadStartNanos);
             }
 
-            ReportScopedIndicatorScoringSupport.CitationContext citationContext =
-                    ReportScopedIndicatorScoringSupport.CitationContext.empty();
-            Map<Indicator, Map<String, Score>> citationBaseScoresByIndicator = Map.of();
+            CitationPrecomputeBundle citationPrecompute = CitationPrecomputeBundle.empty();
             if (hasCitationIndicators) {
                 long citationLoadStartNanos = System.nanoTime();
-                citationContext = ReportScopedIndicatorScoringSupport.prepareCitationContext(publications, scholardexProjectionReadService);
+                ReportScopedIndicatorScoringSupport.CitationContext citationContext =
+                        ReportScopedIndicatorScoringSupport.prepareCitationContext(publications, scholardexProjectionReadService);
                 timings.citationLoadNanos += (System.nanoTime() - citationLoadStartNanos);
                 timings.citationFacts += citationContext.citationFactsCount();
                 long citationBasePrecomputeStartNanos = System.nanoTime();
-                citationBaseScoresByIndicator = ReportScopedIndicatorScoringSupport.precomputeCitationBaseScoresByIndicator(
+                Map<Indicator, Map<String, Score>> citationBaseScoresByIndicator =
+                        ReportScopedIndicatorScoringSupport.precomputeCitationBaseScoresByIndicator(
                         indicators,
                         citationContext,
                         scientificProductionService
                 );
                 timings.citationBasePrecomputeNanos += (System.nanoTime() - citationBasePrecomputeStartNanos);
+                citationPrecompute = new CitationPrecomputeBundle(citationContext, citationBaseScoresByIndicator);
             }
 
             Map<Indicator, Double> indicatorScores = new HashMap<>();
@@ -398,7 +391,7 @@ public class GroupReportFacade {
 
                 long indicatorScoringStartNanos = System.nanoTime();
                 double indicatorScore = 0;
-                if (indicator.getOutputType().toString().contains("ACTIVIT")) {
+                if (ReportingComputationSupport.isActivityIndicator(indicator)) {
                     List<ActivityInstance> filteredActivities = activities.stream()
                             .filter(act -> act.getActivity().getName().equals(indicator.getActivity().getName()))
                             .toList();
@@ -407,18 +400,17 @@ public class GroupReportFacade {
                             .getAuthorScore();
                     timings.activityScoringNanos += (System.nanoTime() - indicatorScoringStartNanos);
                 }
-                if (indicator.getOutputType().toString().contains("PUBLICATIONS")) {
+                if (ReportingComputationSupport.isPublicationIndicator(indicator)) {
                     indicatorScore = calculatePublicationScore(indicator, authors, publications);
                     timings.publicationScoringNanos += (System.nanoTime() - indicatorScoringStartNanos);
-                } else if (indicator.getOutputType().equals(Indicator.Type.CITATIONS)
-                        || indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF)) {
+                } else if (ReportingComputationSupport.isCitationIndicator(indicator)) {
                     ReportScopedIndicatorScoringSupport.CitationScoreResult citationScoreResult =
                             ReportScopedIndicatorScoringSupport.calculateCitationScore(
                                     indicator,
                                     publications,
                                     researcherAuthorIds,
-                                    citationContext,
-                                    citationBaseScoresByIndicator.getOrDefault(indicator, Map.of()),
+                                    citationPrecompute.citationContext(),
+                                    citationPrecompute.baseScoresByIndicator().getOrDefault(indicator, Map.of()),
                                     scientificProductionService
                             );
                     indicatorScore = citationScoreResult.score();
@@ -430,22 +422,7 @@ public class GroupReportFacade {
                 timings.scoringNanos += (System.nanoTime() - indicatorScoringStartNanos);
             }
 
-            Map<Integer, Double> criterionScores = new HashMap<>();
-            for (int i = 0; i < report.getCriteria().size(); i++) {
-                AbstractReport.Criterion criterion = report.getCriteria().get(i);
-                double criterionScore = 0;
-                for (Integer indicatorIndex : criterion.getIndicatorIndices()) {
-                    if (indicatorIndex == null || indicatorIndex < 0 || indicatorIndex >= report.getIndicators().size()) {
-                        errors.add("Invalid indicator index " + indicatorIndex + " in criterion " + i);
-                        continue;
-                    }
-                    Indicator ind = report.getIndicators().get(indicatorIndex);
-                    if (indicatorScores.containsKey(ind)) {
-                        criterionScore += indicatorScores.get(ind);
-                    }
-                }
-                criterionScores.put(i, criterionScore);
-            }
+            Map<Integer, Double> criterionScores = computeCriterionScores(report, indicators, indicatorScores, errors);
             researcherScores.put(mongoSafeReportKey(user.getEmail()), criterionScores);
         }
 
@@ -495,6 +472,46 @@ public class GroupReportFacade {
 
     private double calculatePublicationScore(Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications) {
         return ReportingComputationSupport.calculatePublicationScore(indicator, authors, publications, scientificProductionService);
+    }
+
+    private Map<Integer, Double> computeCriterionScores(
+            IndividualReport report,
+            List<Indicator> indicators,
+            Map<Indicator, Double> indicatorScores,
+            List<String> errors) {
+        Map<Integer, Double> criterionScores = new HashMap<>();
+        List<AbstractReport.Criterion> criteria = report.getCriteria() == null ? List.of() : report.getCriteria();
+        for (int i = 0; i < criteria.size(); i++) {
+            AbstractReport.Criterion criterion = criteria.get(i);
+            double criterionScore = 0.0;
+            if (criterion.getIndicatorIndices() != null) {
+                for (Integer indicatorIndex : criterion.getIndicatorIndices()) {
+                    if (indicatorIndex == null || indicatorIndex < 0 || indicatorIndex >= indicators.size()) {
+                        errors.add("Invalid indicator index " + indicatorIndex + " in criterion " + i);
+                        continue;
+                    }
+                    Indicator indicator = indicators.get(indicatorIndex);
+                    if (indicatorScores.containsKey(indicator)) {
+                        criterionScore += indicatorScores.get(indicator);
+                    }
+                }
+            }
+            criterionScores.put(i, criterionScore);
+        }
+        return criterionScores;
+    }
+
+    private List<ScholardexPublicationView> applyAffiliationFilter(
+            IndividualReport report,
+            List<ScholardexPublicationView> publications) {
+        if (report.getIndividualAffiliation() == null
+                || "ANY".equals(report.getIndividualAffiliation().getName())) {
+            return publications;
+        }
+        return publications.stream()
+                .filter(p -> report.getIndividualAffiliation().getScopusAffiliations().stream()
+                        .anyMatch(aff -> p.getAffiliations().contains(aff.getAfid())))
+                .toList();
     }
 
     private String memberDisplayName(User user) {
@@ -614,6 +631,18 @@ public class GroupReportFacade {
                     Math.max(0L, citationIndicators),
                     Math.max(0L, activityIndicators),
                     Math.max(0L, thresholdBuildNanos / 1_000_000L)
+            );
+        }
+    }
+
+    private record CitationPrecomputeBundle(
+            ReportScopedIndicatorScoringSupport.CitationContext citationContext,
+            Map<Indicator, Map<String, Score>> baseScoresByIndicator
+    ) {
+        private static CitationPrecomputeBundle empty() {
+            return new CitationPrecomputeBundle(
+                    ReportScopedIndicatorScoringSupport.CitationContext.empty(),
+                    Map.of()
             );
         }
     }

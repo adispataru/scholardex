@@ -254,20 +254,9 @@ public class ScholardexSourceLinkService {
 
         Instant now = Instant.now();
         ScholardexSourceLink target = existing == null ? new ScholardexSourceLink() : existing;
-        target.setEntityType(entityType);
-        target.setSource(normalizedSource);
-        target.setSourceRecordId(normalizedRecordId);
-        target.setCanonicalEntityId(STATE_LINKED.equals(normalizedState) || STATE_UNMATCHED.equals(normalizedState)
-                ? normalizedCanonicalId : null);
-        target.setLinkState(normalizedState);
-        target.setLinkReason(normalize(reason));
-        target.setSourceEventId(normalize(sourceEventId));
-        target.setSourceBatchId(normalize(sourceBatchId));
-        target.setSourceCorrelationId(normalize(sourceCorrelationId));
-        if (target.getLinkedAt() == null) {
-            target.setLinkedAt(now);
-        }
-        target.setUpdatedAt(now);
+        applyAssembly(target, entityType, normalizedSource, normalizedRecordId, normalizedCanonicalId,
+                normalizedState, normalize(reason), normalize(sourceEventId), normalize(sourceBatchId),
+                normalize(sourceCorrelationId), now);
         sourceLinkRepository.save(target);
         CanonicalObservabilityMetrics.recordSourceLinkTransition(entityType.name(), existingState, normalizedState, "accepted");
         return SourceLinkWriteResult.accepted(target);
@@ -355,20 +344,9 @@ public class ScholardexSourceLinkService {
 
             Instant now = Instant.now();
             ScholardexSourceLink target = existing == null ? new ScholardexSourceLink() : existing;
-            target.setEntityType(command.entityType());
-            target.setSource(normalizedSource);
-            target.setSourceRecordId(normalizedRecordId);
-            target.setCanonicalEntityId(STATE_LINKED.equals(normalizedState) || STATE_UNMATCHED.equals(normalizedState)
-                    ? normalizedCanonicalId : null);
-            target.setLinkState(normalizedState);
-            target.setLinkReason(normalize(command.reason()));
-            target.setSourceEventId(normalize(command.sourceEventId()));
-            target.setSourceBatchId(normalize(command.sourceBatchId()));
-            target.setSourceCorrelationId(normalize(command.sourceCorrelationId()));
-            if (target.getLinkedAt() == null) {
-                target.setLinkedAt(now);
-            }
-            target.setUpdatedAt(now);
+            applyAssembly(target, command.entityType(), normalizedSource, normalizedRecordId, normalizedCanonicalId,
+                    normalizedState, normalize(command.reason()), normalize(command.sourceEventId()),
+                    normalize(command.sourceBatchId()), normalize(command.sourceCorrelationId()), now);
             working.put(key, target);
             pendingSaves.put(key, target);
             CanonicalObservabilityMetrics.recordSourceLinkTransition(command.entityType().name(), existingState, normalizedState, "accepted");
@@ -494,6 +472,35 @@ public class ScholardexSourceLinkService {
             return "SCOPUS";
         }
         return SOURCE_ALIASES.getOrDefault(upper, upper);
+    }
+
+    private void applyAssembly(
+            ScholardexSourceLink target,
+            ScholardexEntityType entityType,
+            String normalizedSource,
+            String normalizedRecordId,
+            String normalizedCanonicalId,
+            String normalizedState,
+            String reason,
+            String sourceEventId,
+            String sourceBatchId,
+            String sourceCorrelationId,
+            Instant now
+    ) {
+        target.setEntityType(entityType);
+        target.setSource(normalizedSource);
+        target.setSourceRecordId(normalizedRecordId);
+        target.setCanonicalEntityId(STATE_LINKED.equals(normalizedState) || STATE_UNMATCHED.equals(normalizedState)
+                ? normalizedCanonicalId : null);
+        target.setLinkState(normalizedState);
+        target.setLinkReason(reason);
+        target.setSourceEventId(sourceEventId);
+        target.setSourceBatchId(sourceBatchId);
+        target.setSourceCorrelationId(sourceCorrelationId);
+        if (target.getLinkedAt() == null) {
+            target.setLinkedAt(now);
+        }
+        target.setUpdatedAt(now);
     }
 
     private void mergeNormalizedLink(

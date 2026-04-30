@@ -131,7 +131,12 @@ final class ReportScopedIndicatorScoringSupport {
                     indicator,
                     cachedCitationBaseScoresByCitingPublicationId
             );
-            rawScores.put(pub.getTitle(), citScores);
+            String publicationTitle = pub.getTitle();
+            if (!rawScores.containsKey(publicationTitle)) {
+                rawScores.put(publicationTitle, new LinkedHashMap<>(citScores));
+            } else {
+                mergeCitationScores(rawScores.get(publicationTitle), citScores);
+            }
         }
 
         long selectorStartNanos = System.nanoTime();
@@ -213,6 +218,32 @@ final class ReportScopedIndicatorScoringSupport {
             }
         }
         return histogram;
+    }
+
+    private static void mergeCitationScores(Map<String, Score> target, Map<String, Score> delta) {
+        if (target == null || delta == null) {
+            return;
+        }
+        for (Map.Entry<String, Score> entry : delta.entrySet()) {
+            String key = entry.getKey();
+            Score incoming = entry.getValue();
+            if (incoming == null) {
+                continue;
+            }
+            Score existing = target.get(key);
+            if (existing == null) {
+                target.put(key, incoming);
+                continue;
+            }
+            Score merged = new Score();
+            merged.setAuthorScore(existing.getAuthorScore() + incoming.getAuthorScore());
+            merged.setScore(existing.getScore() + incoming.getScore());
+            merged.setQuarter(existing.getQuarter() != null ? existing.getQuarter() : incoming.getQuarter());
+            merged.setCoreRankingEquivalent(existing.getCoreRankingEquivalent() != null
+                    ? existing.getCoreRankingEquivalent()
+                    : incoming.getCoreRankingEquivalent());
+            target.put(key, merged);
+        }
     }
 
     record CitationContext(

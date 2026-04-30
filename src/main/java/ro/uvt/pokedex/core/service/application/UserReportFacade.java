@@ -97,14 +97,14 @@ public class UserReportFacade {
     }
 
     public Optional<UserIndicatorWorkbookExportViewModel> buildIndicatorWorkbookExport(String userEmail, String indicatorId) throws IOException {
-        Optional<User> userOpt = userService.getUserByEmail(userEmail);
+        Optional<User> userOpt = findUserWithProfile(userEmail);
         if (userOpt.isEmpty()) {
             return Optional.empty();
         }
 
         User user = userOpt.get();
         Optional<Indicator> indicatorOpt = indicatorRepository.findById(indicatorId);
-        if (user.getResearcherProfile() == null || indicatorOpt.isEmpty()) {
+        if (indicatorOpt.isEmpty()) {
             return Optional.empty();
         }
 
@@ -121,9 +121,9 @@ public class UserReportFacade {
                 .collect(Collectors.toMap(ScholardexForumView::getId, forum -> forum));
 
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            if (indicator.getOutputType().toString().contains("PUBLICATIONS")) {
+            if (ReportingComputationSupport.isPublicationIndicator(indicator)) {
                 handlePublicationsWorkbook(workbook, indicator, publications, forumMap);
-            } else if (indicator.getOutputType().equals(Indicator.Type.CITATIONS) || indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF)) {
+            } else if (ReportingComputationSupport.isCitationIndicator(indicator)) {
                 handleCitationsWorkbook(workbook, indicator, authors, publications, forumMap);
             }
 
@@ -255,7 +255,7 @@ public class UserReportFacade {
     }
 
     public UserIndicatorApplyViewModel buildIndicatorApplyView(String userEmail, String indicatorId) {
-        Optional<User> userOpt = userService.getUserByEmail(userEmail);
+        Optional<User> userOpt = findUserWithProfile(userEmail);
         if (userOpt.isEmpty()) {
             return new UserIndicatorApplyViewModel("user/indicators", Map.of());
         }
@@ -263,7 +263,7 @@ public class UserReportFacade {
         User user = userOpt.get();
         Optional<Indicator> indicatorOpt = indicatorRepository.findById(indicatorId);
 
-        if (indicatorOpt.isEmpty() || user.getResearcherProfile() == null) {
+        if (indicatorOpt.isEmpty()) {
             return new UserIndicatorApplyViewModel("user/indicators", Map.of());
         }
 
@@ -272,7 +272,7 @@ public class UserReportFacade {
         Map<String, Object> attrs = new HashMap<>();
         attrs.put("indicator", indicator);
 
-        if (indicator.getOutputType().toString().contains("ACTIVIT")) {
+        if (ReportingComputationSupport.isActivityIndicator(indicator)) {
             List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(user.getEmail());
             activities = activities.stream().filter(act -> act.getActivity().getName().equals(indicator.getActivity().getName())).toList();
             return handleActivities(indicator, activities, attrs);
@@ -283,10 +283,10 @@ public class UserReportFacade {
         if (requiresPublicationScoring(indicator)) {
             attrs.put("confirmedPublicationScoringWarning", publications.isEmpty());
         }
-        if (indicator.getOutputType().toString().contains("PUBLICATIONS")) {
+        if (ReportingComputationSupport.isPublicationIndicator(indicator)) {
             return handlePublications(indicator, authors, publications, attrs);
         }
-        if (indicator.getOutputType().equals(Indicator.Type.CITATIONS) || indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF)) {
+        if (ReportingComputationSupport.isCitationIndicator(indicator)) {
             return handleCitations(indicator, authors, publications, attrs);
         }
 
@@ -314,30 +314,23 @@ public class UserReportFacade {
     }
 
     public Optional<ReportScopedIndividualReportComputation> computeReportScopedIndividualReport(String userEmail, String reportId) {
-        Optional<User> userOpt = userService.getUserByEmail(userEmail);
+        Optional<User> userOpt = findUserWithProfile(userEmail);
         if (userOpt.isEmpty()) {
             return Optional.empty();
         }
-        Optional<IndividualReport> reportOpt = individualReportRepository.findById(reportId);
+        Optional<IndividualReport> reportOpt = findReport(reportId);
         if (reportOpt.isEmpty()) {
             return Optional.empty();
         }
 
         IndividualReport report = reportOpt.get();
         User user = userOpt.get();
-        if (user.getResearcherProfile() == null) {
-            return Optional.empty();
-        }
 
         List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(user.getResearcherProfile()));
-        List<ScholardexPublicationView> publications = findConfirmedPublicationsForScoring(userEmail);
-        if (report.getIndividualAffiliation() != null
-                && !"ANY".equals(report.getIndividualAffiliation().getName())) {
-            publications = publications.stream()
-                    .filter(p -> report.getIndividualAffiliation().getScopusAffiliations().stream()
-                            .anyMatch(aff -> p.getAffiliations().contains(aff.getAfid())))
-                    .collect(Collectors.toList());
-        }
+        List<ScholardexPublicationView> publications = applyAffiliationFilter(
+                report,
+                findConfirmedPublicationsForScoring(userEmail)
+        );
 
         List<Indicator> indicators = report.getIndicators() == null ? List.of() : report.getIndicators();
         Map<Indicator, Double> indicatorScores = new HashMap<>();
@@ -346,19 +339,15 @@ public class UserReportFacade {
 
         boolean hasCitationIndicators = indicators.stream()
                 .filter(Objects::nonNull)
-                .anyMatch(indicator -> Indicator.Type.CITATIONS.equals(indicator.getOutputType())
-                        || Indicator.Type.CITATIONS_EXCLUDE_SELF.equals(indicator.getOutputType()));
+                .anyMatch(ReportingComputationSupport::isCitationIndicator);
         List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(user.getEmail());
         Set<String> researcherAuthorIds = authors.stream()
                 .map(ScholardexAuthorView::getId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        ReportScopedIndicatorScoringSupport.CitationContext citationContext = hasCitationIndicators
-                ? ReportScopedIndicatorScoringSupport.prepareCitationContext(publications, scholardexProjectionReadService)
-                : ReportScopedIndicatorScoringSupport.CitationContext.empty();
-        Map<Indicator, Map<String, Score>> citationBaseScoresByIndicator = hasCitationIndicators
-                ? ReportScopedIndicatorScoringSupport.precomputeCitationBaseScoresByIndicator(indicators, citationContext, scientificProductionService)
-                : Map.of();
+        CitationPrecomputeBundle citationPrecompute = precomputeCitationData(indicators, publications, hasCitationIndicators);
+        ReportScopedIndicatorScoringSupport.CitationContext citationContext = citationPrecompute.citationContext();
+        Map<Indicator, Map<String, Score>> citationBaseScoresByIndicator = citationPrecompute.baseScoresByIndicator();
 
         for (Indicator indicator : indicators) {
             if (indicator == null || indicator.getId() == null) {
@@ -366,7 +355,7 @@ public class UserReportFacade {
             }
 
             double indicatorScore = 0.0;
-            if (indicator.getOutputType().toString().contains("ACTIVIT")) {
+            if (ReportingComputationSupport.isActivityIndicator(indicator)) {
                 List<ActivityInstance> filteredActivities = activities.stream()
                         .filter(act -> act.getActivity().getName().equals(indicator.getActivity().getName()))
                         .toList();
@@ -374,10 +363,9 @@ public class UserReportFacade {
                         .get("total")
                         .getAuthorScore();
             }
-            if (indicator.getOutputType().toString().contains("PUBLICATIONS")) {
+            if (ReportingComputationSupport.isPublicationIndicator(indicator)) {
                 indicatorScore = calculatePublicationScore(indicator, authors, publications);
-            } else if (indicator.getOutputType().equals(Indicator.Type.CITATIONS)
-                    || indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF)) {
+            } else if (ReportingComputationSupport.isCitationIndicator(indicator)) {
                 indicatorScore = ReportScopedIndicatorScoringSupport.calculateCitationScore(
                                 indicator,
                                 publications,
@@ -406,24 +394,12 @@ public class UserReportFacade {
             );
         }
 
-        Map<Integer, Double> criterionScores = new HashMap<>();
         List<AbstractReport.Criterion> criteria = report.getCriteria() == null ? List.of() : report.getCriteria();
-        for (int i = 0; i < criteria.size(); i++) {
-            AbstractReport.Criterion criterion = criteria.get(i);
-            double criterionScore = 0;
-            if (criterion.getIndicatorIndices() != null) {
-                for (Integer indicatorIndex : criterion.getIndicatorIndices()) {
-                    if (indicatorIndex == null || indicatorIndex < 0 || indicatorIndex >= indicators.size()) {
-                        continue;
-                    }
-                    Indicator indicator = indicators.get(indicatorIndex);
-                    if (indicator != null && indicator.getId() != null) {
-                        criterionScore += indicatorScoresByIndicatorId.getOrDefault(indicator.getId(), 0.0);
-                    }
-                }
-            }
-            criterionScores.put(i, criterionScore);
-        }
+        Map<Integer, Double> criterionScores = ReportingComputationSupport.computeCriterionScores(
+                criteria,
+                indicators,
+                indicatorScoresByIndicatorId
+        );
 
         return Optional.of(new ReportScopedIndividualReportComputation(
                 indicatorScores,
@@ -441,10 +417,13 @@ public class UserReportFacade {
      */
     public Optional<IndicatorApplyResultDto> buildReportScopedIndicatorDetail(
             String userEmail, String reportId, String indicatorId) {
-        Optional<User> userOpt = userService.getUserByEmail(userEmail);
+        if (indicatorId == null) {
+            return Optional.empty();
+        }
+        Optional<User> userOpt = findUserWithProfile(userEmail);
         if (userOpt.isEmpty()) return Optional.empty();
 
-        Optional<IndividualReport> reportOpt = individualReportRepository.findById(reportId);
+        Optional<IndividualReport> reportOpt = findReport(reportId);
         if (reportOpt.isEmpty()) return Optional.empty();
         IndividualReport report = reportOpt.get();
 
@@ -462,25 +441,16 @@ public class UserReportFacade {
         final Indicator indicator = foundIndicator;
 
         User user = userOpt.get();
-        if (user.getResearcherProfile() == null) return Optional.empty();
-
         List<ScholardexAuthorView> authors = findAuthorsByIds(researcherAuthorLookupService.resolveAuthorLookupKeys(user.getResearcherProfile()));
-        List<ScholardexPublicationView> publications = findConfirmedPublicationsForScoring(userEmail);
-
-        // Apply the same affiliation filter as computeReportScopedIndividualReport
-        if (report.getIndividualAffiliation() != null
-                && !"ANY".equals(report.getIndividualAffiliation().getName())) {
-            publications = publications.stream()
-                    .filter(p -> report.getIndividualAffiliation().getScopusAffiliations().stream()
-                            .anyMatch(aff -> p.getAffiliations().contains(aff.getAfid())))
-                    .collect(Collectors.toList());
-        }
+        List<ScholardexPublicationView> publications = applyAffiliationFilter(
+                report,
+                findConfirmedPublicationsForScoring(userEmail)
+        );
 
         Map<String, Object> rawGraph = new HashMap<>();
         rawGraph.put("indicator", indicator);
-        String outputType = indicator.getOutputType().toString();
 
-        if (outputType.contains("ACTIVIT")) {
+        if (ReportingComputationSupport.isActivityIndicator(indicator)) {
             List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(user.getEmail());
             final String activityName = indicator.getActivity().getName();
             List<ActivityInstance> filteredActivities = activities.stream()
@@ -501,15 +471,21 @@ public class UserReportFacade {
                     IndicatorApplyResultDto.Source.COMPUTED, null, Instant.now(), 0));
         }
 
-        if (outputType.contains("PUBLICATIONS")) {
+        if (ReportingComputationSupport.isPublicationIndicator(indicator)) {
             List<ScholardexPublicationView> filteredPublications = publications;
             if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR)) {
                 filteredPublications = publications.stream()
-                        .filter(p -> authors.stream().anyMatch(a -> a.getId().equals(p.getAuthors().getFirst())))
+                        .filter(p -> {
+                            String firstAuthorId = firstAuthorId(p);
+                            return firstAuthorId != null && authors.stream().anyMatch(a -> a.getId().equals(firstAuthorId));
+                        })
                         .collect(Collectors.toList());
             } else if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_COAUTHOR)) {
                 filteredPublications = publications.stream()
-                        .filter(p -> authors.stream().noneMatch(a -> a.getId().equals(p.getAuthors().getFirst())))
+                        .filter(p -> {
+                            String firstAuthorId = firstAuthorId(p);
+                            return firstAuthorId == null || authors.stream().noneMatch(a -> a.getId().equals(firstAuthorId));
+                        })
                         .collect(Collectors.toList());
             }
             Map<String, Score> scores = new HashMap<>(scientificProductionService.calculateScientificProductionScore(
@@ -541,15 +517,12 @@ public class UserReportFacade {
                 .map(ScholardexAuthorView::getId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        ReportScopedIndicatorScoringSupport.CitationContext citationContext =
-                ReportScopedIndicatorScoringSupport.prepareCitationContext(publications, scholardexProjectionReadService);
-        Map<Indicator, Map<String, Score>> citationBaseScores =
-                ReportScopedIndicatorScoringSupport.precomputeCitationBaseScoresByIndicator(
-                        List.of(indicator), citationContext, scientificProductionService);
+        CitationPrecomputeBundle citationPrecompute = precomputeCitationData(List.of(indicator), publications, true);
+        ReportScopedIndicatorScoringSupport.CitationContext citationContext = citationPrecompute.citationContext();
         ReportScopedIndicatorScoringSupport.CitationViewComputation citationView =
                 ReportScopedIndicatorScoringSupport.computeCitationView(
                         indicator, publications, researcherAuthorIds, citationContext,
-                        citationBaseScores.getOrDefault(indicator, Map.of()),
+                        citationPrecompute.baseScoresByIndicator().getOrDefault(indicator, Map.of()),
                         scientificProductionService);
         rawGraph.put("total", String.format(Locale.ROOT, "%.2f", citationView.totalScore()));
         rawGraph.put("scores", citationView.displayScores());
@@ -570,9 +543,19 @@ public class UserReportFacade {
     private UserIndicatorApplyViewModel handlePublications(Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications, Map<String, Object> attrs) {
         List<ScholardexPublicationView> filteredPublications = publications;
         if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR)) {
-            filteredPublications = publications.stream().filter(p -> authors.stream().anyMatch(a -> a.getId().equals(p.getAuthors().getFirst()))).collect(Collectors.toList());
+            filteredPublications = publications.stream()
+                    .filter(p -> {
+                        String firstAuthorId = firstAuthorId(p);
+                        return firstAuthorId != null && authors.stream().anyMatch(a -> a.getId().equals(firstAuthorId));
+                    })
+                    .collect(Collectors.toList());
         } else if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_COAUTHOR)) {
-            filteredPublications = publications.stream().filter(p -> authors.stream().noneMatch(a -> a.getId().equals(p.getAuthors().getFirst()))).collect(Collectors.toList());
+            filteredPublications = publications.stream()
+                    .filter(p -> {
+                        String firstAuthorId = firstAuthorId(p);
+                        return firstAuthorId == null || authors.stream().noneMatch(a -> a.getId().equals(firstAuthorId));
+                    })
+                    .collect(Collectors.toList());
         }
         Map<String, Score> scores = scientificProductionService.calculateScientificProductionScore(
                 filteredPublications.stream().map(ScholardexPublicationView::toScoringPublication).toList(),
@@ -924,12 +907,64 @@ public class UserReportFacade {
     }
 
     private boolean requiresPublicationScoring(Indicator indicator) {
-        if (indicator == null || indicator.getOutputType() == null) {
-            return false;
+        return ReportingComputationSupport.isPublicationIndicator(indicator)
+                || ReportingComputationSupport.isCitationIndicator(indicator);
+    }
+
+    private Optional<User> findUserWithProfile(String userEmail) {
+        return userService.getUserByEmail(userEmail)
+                .filter(user -> user.getResearcherProfile() != null);
+    }
+
+    private Optional<IndividualReport> findReport(String reportId) {
+        return individualReportRepository.findById(reportId);
+    }
+
+    private List<ScholardexPublicationView> applyAffiliationFilter(
+            IndividualReport report,
+            List<ScholardexPublicationView> publications) {
+        if (report.getIndividualAffiliation() == null
+                || "ANY".equals(report.getIndividualAffiliation().getName())) {
+            return publications;
         }
-        return indicator.getOutputType().toString().contains("PUBLICATIONS")
-                || indicator.getOutputType().equals(Indicator.Type.CITATIONS)
-                || indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF);
+        return publications.stream()
+                .filter(p -> report.getIndividualAffiliation().getScopusAffiliations().stream()
+                        .anyMatch(aff -> p.getAffiliations().contains(aff.getAfid())))
+                .toList();
+    }
+
+    private CitationPrecomputeBundle precomputeCitationData(
+            List<Indicator> indicators,
+            List<ScholardexPublicationView> publications,
+            boolean enabled) {
+        if (!enabled) {
+            return new CitationPrecomputeBundle(
+                    ReportScopedIndicatorScoringSupport.CitationContext.empty(),
+                    Map.of()
+            );
+        }
+        ReportScopedIndicatorScoringSupport.CitationContext citationContext =
+                ReportScopedIndicatorScoringSupport.prepareCitationContext(publications, scholardexProjectionReadService);
+        Map<Indicator, Map<String, Score>> baseScoresByIndicator =
+                ReportScopedIndicatorScoringSupport.precomputeCitationBaseScoresByIndicator(
+                        indicators,
+                        citationContext,
+                        scientificProductionService
+                );
+        return new CitationPrecomputeBundle(citationContext, baseScoresByIndicator);
+    }
+
+    private record CitationPrecomputeBundle(
+            ReportScopedIndicatorScoringSupport.CitationContext citationContext,
+            Map<Indicator, Map<String, Score>> baseScoresByIndicator
+    ) {
+    }
+
+    private String firstAuthorId(ScholardexPublicationView publication) {
+        if (publication == null || publication.getAuthors() == null || publication.getAuthors().isEmpty()) {
+            return null;
+        }
+        return publication.getAuthors().getFirst();
     }
 
     private List<ScholardexPublicationView> findPublicationsByIds(Collection<String> publicationIds) {

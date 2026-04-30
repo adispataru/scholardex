@@ -47,6 +47,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -791,6 +793,50 @@ class GroupReportFacadeTest {
         assertEquals(75.0, scores.get(0));
     }
 
+    @Test
+    void refreshGroupIndividualReportViewHandlesNullAffiliationFilter() {
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(memberUser("r1", "A", "B", List.of("a1"))));
+        Group group = new Group();
+        group.setId("g1");
+        group.setMemberIds(new ArrayList<>(List.of("r1")));
+
+        Indicator publications = new Indicator();
+        publications.setOutputType(Indicator.Type.PUBLICATIONS);
+
+        AbstractReport.Criterion criterion0 = new AbstractReport.Criterion();
+        criterion0.setIndicatorIndices(List.of(0));
+
+        IndividualReport report = new IndividualReport();
+        report.setId("rep1");
+        report.setCriteria(List.of(criterion0));
+        report.setIndicators(List.of(publications));
+        report.setIndividualAffiliation(null);
+
+        Author author = new Author();
+        author.setId("a1");
+
+        Publication publication = new Publication();
+        publication.setId("p1");
+        publication.setAuthors(List.of("a1"));
+        publication.setTitle("Root Publication");
+
+        when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
+        when(individualReportRepository.findById("rep1")).thenReturn(Optional.of(report));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
+        when(scientificProductionService.calculateScientificProductionScore(anyList(), eq(publications)))
+                .thenReturn(Map.of("total", score(2.0)));
+        when(groupIndividualReportRunRepository.save(any(GroupIndividualReportRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = facade.refreshGroupIndividualReportView("g1", "rep1");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Map<Integer, Double>> researcherScores =
+                (Map<String, Map<Integer, Double>>) result.attributes().get("researcherScores");
+        assertEquals(2.0, researcherScores.get("r1").get(0));
+    }
+
     private static User memberUser(String email, String firstName, String lastName, List<String> scopusIds) {
         User user = new User();
         user.setEmail(email);
@@ -800,5 +846,12 @@ class GroupReportFacadeTest {
         profile.setScopusId(new java.util.ArrayList<>(scopusIds));
         user.setResearcherProfile(profile);
         return user;
+    }
+
+    private static Score score(double value) {
+        Score score = new Score();
+        score.setAuthorScore(value);
+        score.setScore(value);
+        return score;
     }
 }

@@ -7,10 +7,13 @@ public interface HasEdgeLineageFields extends HasLineageFields {
     void setLinkReason(String linkReason);
     void setUpdatedAt(Instant updatedAt);
 
+    String getId();
     String getSourceRecordId();
     String getSourceEventId();
     String getSourceBatchId();
     String getSourceCorrelationId();
     String getLinkState();
     String getLinkReason();
+    Instant getCreatedAt();
+    Instant getUpdatedAt();
 }
