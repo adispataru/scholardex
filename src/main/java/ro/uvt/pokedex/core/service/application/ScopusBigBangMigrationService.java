@@ -38,7 +38,7 @@ import ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicaliza
 import ro.uvt.pokedex.core.service.importing.scopus.ScholardexCanonicalBuildCheckpointService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScholardexCitationCanonicalizationService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScopusFactBuilderService;
-import ro.uvt.pokedex.core.service.importing.scopus.ScopusProjectionBuilderService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScholardexProjectionBuilderService;
 import ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService;
 
 import java.time.Instant;
@@ -56,7 +56,7 @@ public class ScopusBigBangMigrationService {
 
     private final ScopusDataService scopusDataService;
     private final ScopusFactBuilderService scopusFactBuilderService;
-    private final ScopusProjectionBuilderService scopusProjectionBuilderService;
+    private final ScholardexProjectionBuilderService scopusProjectionBuilderService;
     private final ScopusCanonicalIndexMaintenanceService scopusCanonicalIndexMaintenanceService;
     private final ScholardexAffiliationCanonicalizationService affiliationCanonicalizationService;
     private final ScholardexAuthorCanonicalizationService authorCanonicalizationService;

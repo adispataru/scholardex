@@ -25,6 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -38,6 +39,34 @@ class WosImportEventIngestionServiceTest {
         String key1 = WosImportEventIngestionService.buildEventKey(WosSourceType.GOV_AIS_RIS, "AIS_2024.xlsx", "v2024", "12");
         String key2 = WosImportEventIngestionService.buildEventKey(WosSourceType.GOV_AIS_RIS, "AIS_2024.xlsx", "v2024", "12");
         assertEquals(key1, key2);
+    }
+
+    @Test
+    void buildEventKeyUsesNullLiteralForNullSourceType() {
+        // Line 764: sourceType == null ? "null" : sourceType.name()
+        String key = WosImportEventIngestionService.buildEventKey(null, "file.xlsx", "v1", "1");
+        assertEquals("null|file.xlsx|v1|1", key);
+    }
+
+    @Test
+    void buildEventKeyUsesEmptyStringForNullSourceFile() {
+        // Line 765: sourceFile == null ? "" : sourceFile
+        String key = WosImportEventIngestionService.buildEventKey(WosSourceType.GOV_AIS_RIS, null, "v1", "1");
+        assertEquals("GOV_AIS_RIS||v1|1", key);
+    }
+
+    @Test
+    void buildEventKeyUsesEmptyStringForNullSourceVersion() {
+        // Line 766: sourceVersion == null ? "" : sourceVersion
+        String key = WosImportEventIngestionService.buildEventKey(WosSourceType.GOV_AIS_RIS, "file.xlsx", null, "1");
+        assertEquals("GOV_AIS_RIS|file.xlsx||1", key);
+    }
+
+    @Test
+    void buildEventKeyUsesEmptyStringForNullSourceRowItem() {
+        // Line 767: sourceRowItem == null ? "" : sourceRowItem
+        String key = WosImportEventIngestionService.buildEventKey(WosSourceType.GOV_AIS_RIS, "file.xlsx", "v1", null);
+        assertEquals("GOV_AIS_RIS|file.xlsx|v1|", key);
     }
 
     @Test
@@ -59,6 +88,25 @@ class WosImportEventIngestionServiceTest {
         assertEquals(0, result.getErrorCount());
         assertTrue(store.containsSourceType(WosSourceType.GOV_AIS_RIS));
         assertTrue(store.containsSourceType(WosSourceType.OFFICIAL_WOS_EXTRACT));
+
+        WosImportEvent govEvent = store.get(WosSourceType.GOV_AIS_RIS, "AIS_2024.xlsx", "v2024", "1");
+        assertNotNull(govEvent);
+        assertEquals(WosSourceType.GOV_AIS_RIS, govEvent.getSourceType());
+        assertEquals("AIS_2024.xlsx", govEvent.getSourceFile());
+        assertEquals("v2024", govEvent.getSourceVersion());
+        assertEquals("1", govEvent.getSourceRowItem());
+        assertEquals("excel-row", govEvent.getPayloadFormat());
+        assertNotNull(govEvent.getPayload());
+        assertNotNull(govEvent.getChecksum());
+        assertNotNull(govEvent.getIngestedAt());
+
+        WosImportEvent jsonEvent = store.get(WosSourceType.OFFICIAL_WOS_EXTRACT,
+                "wos-json-1997-2019/journals-SCIE-year-2019.json", "v2019", "0");
+        assertNotNull(jsonEvent);
+        assertEquals(WosSourceType.OFFICIAL_WOS_EXTRACT, jsonEvent.getSourceType());
+        assertEquals("json-item", jsonEvent.getPayloadFormat());
+        assertNotNull(jsonEvent.getChecksum());
+        assertNotNull(jsonEvent.getIngestedAt());
     }
 
     @Test
@@ -82,6 +130,10 @@ class WosImportEventIngestionServiceTest {
         assertTrue(second.getSkippedCount() > 0);
         assertEquals(0, second.getErrorCount());
 
+        WosImportEvent eventRef = store.get(WosSourceType.GOV_AIS_RIS, "AIS_2024.xlsx", "batch-1", "1");
+        assertNotNull(eventRef);
+        String checksumBeforeChange = eventRef.getChecksum();
+
         createSampleExcel(ais, 9.9);
         ImportProcessingResult third = service.ingestDirectory(dir.toString(), "batch-1");
 
@@ -90,6 +142,15 @@ class WosImportEventIngestionServiceTest {
         assertEquals(0, third.getImportedCount());
         assertEquals(0, third.getErrorCount());
         assertTrue(first.getImportedCount() > 0);
+
+        WosImportEvent updatedEvent = store.get(WosSourceType.GOV_AIS_RIS, "AIS_2024.xlsx", "batch-1", "1");
+        assertNotNull(updatedEvent);
+        assertEquals("excel-row", updatedEvent.getPayloadFormat());
+        assertNotNull(updatedEvent.getChecksum());
+        assertNotNull(updatedEvent.getIngestedAt());
+        assertNotEquals(checksumBeforeChange, updatedEvent.getChecksum());
+        JsonNode updatedPayload = new ObjectMapper().readTree(updatedEvent.getPayload());
+        assertEquals(9.9, updatedPayload.path("cells").path("c2").asDouble(), 0.001);
     }
 
     @Test
@@ -293,6 +354,152 @@ class WosImportEventIngestionServiceTest {
     }
 
     @Test
+    void ingestDirectoryImportsAis2020RowWithInvalidIssnAndValidEissn() throws Exception {
+        // AIS 2020: govIdentityColumns → {"c1","c2"}; c1=invalid but c2=valid → row imported
+        // Kills L685 lower-bound mutation (year > 2020 instead of year >= 2020):
+        //   mutant puts year=2020 in Set.of("c1") branch → c1 invalid → SKIPPED (wrong)
+        Path dir = Files.createTempDirectory("wos-events-ais2020-lower");
+        createAis2020WithInvalidIssnAndValidEissn(dir.resolve("AIS_2020.xlsx"));
+
+        EventStore store = new EventStore();
+        WosImportEventIngestionService service = newService(repositoryMock(store));
+
+        ImportProcessingResult result = service.ingestDirectory(dir.toString(), null);
+
+        assertEquals(1, result.getProcessedCount());
+        assertEquals(1, result.getImportedCount());
+        assertEquals(0, result.getSkippedCount());
+    }
+
+    @Test
+    void ingestDirectoryImportsAis2023RowWithInvalidIssnAndValidEissn() throws Exception {
+        // AIS 2023: govIdentityColumns → {"c1","c2"}; c1=invalid but c2=valid → row imported
+        // Kills L685 upper-bound mutation (year < 2023 instead of year <= 2023):
+        //   mutant puts year=2023 in Set.of("c1") branch → c1 invalid → SKIPPED (wrong)
+        Path dir = Files.createTempDirectory("wos-events-ais2023-upper");
+        createAis2020WithInvalidIssnAndValidEissn(dir.resolve("AIS_2023.xlsx"));
+
+        EventStore store = new EventStore();
+        WosImportEventIngestionService service = newService(repositoryMock(store));
+
+        ImportProcessingResult result = service.ingestDirectory(dir.toString(), null);
+
+        assertEquals(1, result.getProcessedCount());
+        assertEquals(1, result.getImportedCount());
+        assertEquals(0, result.getSkippedCount());
+    }
+
+    @Test
+    void ingestDirectorySkipsAis2014RowWithOnlyInvalidC2Issn() throws Exception {
+        // AIS 2014: govIdentityColumns → {"c2"}; c1=blank, c2=invalid → SKIPPED
+        // Kills L688 lower-bound mutation (year > 2014 instead of year >= 2014):
+        //   mutant puts year=2014 in Set.of("c1") branch → c1 blank → no token → NOT skipped (wrong)
+        Path dir = Files.createTempDirectory("wos-events-ais2014-lower");
+        createAis2014WithBlankIssnAndInvalidC2(dir.resolve("AIS_2014.xlsx"));
+
+        EventStore store = new EventStore();
+        WosImportEventIngestionService service = newService(repositoryMock(store));
+
+        ImportProcessingResult result = service.ingestDirectory(dir.toString(), null);
+
+        assertEquals(1, result.getProcessedCount());
+        assertEquals(0, result.getImportedCount());
+        assertEquals(1, result.getSkippedCount());
+    }
+
+    @Test
+    void ingestDirectoryImportsRis2020RowWithInvalidIssnAndValidEissn() throws Exception {
+        // RIS 2020: govIdentityColumns → {"c1","c2"}; c1=invalid but c2=valid → row imported
+        // Kills L694 lower-bound mutation (year > 2020 instead of year >= 2020):
+        //   mutant puts year=2020 in Set.of("c1") branch → c1 invalid → SKIPPED (wrong)
+        Path dir = Files.createTempDirectory("wos-events-ris2020-lower");
+        createRis2020WithInvalidIssnAndValidEissn(dir.resolve("RIS_2020.xlsx"));
+
+        EventStore store = new EventStore();
+        WosImportEventIngestionService service = newService(repositoryMock(store));
+
+        ImportProcessingResult result = service.ingestDirectory(dir.toString(), null);
+
+        assertEquals(1, result.getProcessedCount());
+        assertEquals(1, result.getImportedCount());
+        assertEquals(0, result.getSkippedCount());
+    }
+
+    @Test
+    void ingestDirectorySkipsAis2018RowWithInvalidIssn() throws Exception {
+        // AIS 2018 falls into fallback branch: govIdentityColumns → {"c1"}
+        // Kills L691 mutation (fallback returns empty set → no check → row NOT skipped)
+        Path dir = Files.createTempDirectory("wos-events-ais2018-fallback");
+        createSingleRowExcel(dir.resolve("AIS_2018.xlsx"), "Journal X", "N/A", 1.1);
+
+        EventStore store = new EventStore();
+        WosImportEventIngestionService service = newService(repositoryMock(store));
+
+        ImportProcessingResult result = service.ingestDirectory(dir.toString(), null);
+
+        assertEquals(1, result.getProcessedCount());
+        assertEquals(0, result.getImportedCount());
+        assertEquals(1, result.getSkippedCount());
+    }
+
+    @Test
+    void ingestDirectorySkipsRis2019RowWithInvalidIssn() throws Exception {
+        // RIS 2019 falls into fallback branch: govIdentityColumns → {"c1"}
+        // Kills L693 mutation ("RIS" check → false → empty set → no check → row NOT skipped)
+        Path dir = Files.createTempDirectory("wos-events-ris2019-fallback");
+        createSingleRowExcel(dir.resolve("RIS_2019.xlsx"), "Journal Y", "N/A", 2.2);
+
+        EventStore store = new EventStore();
+        WosImportEventIngestionService service = newService(repositoryMock(store));
+
+        ImportProcessingResult result = service.ingestDirectory(dir.toString(), null);
+
+        assertEquals(1, result.getProcessedCount());
+        assertEquals(0, result.getImportedCount());
+        assertEquals(1, result.getSkippedCount());
+    }
+
+    @Test
+    void ingestDirectorySkipsRis2020RowWhenBothIssnsInvalid() throws Exception {
+        // RIS 2020: govIdentityColumns → {"c1","c2"}; both invalid → SKIPPED
+        // Kills L695 mutation (returns empty set → no check → row imported instead)
+        Path dir = Files.createTempDirectory("wos-events-ris2020-both-invalid");
+        createRis2020WithBothIssnsInvalid(dir.resolve("RIS_2020.xlsx"));
+
+        EventStore store = new EventStore();
+        WosImportEventIngestionService service = newService(repositoryMock(store));
+
+        ImportProcessingResult result = service.ingestDirectory(dir.toString(), null);
+
+        assertEquals(1, result.getProcessedCount());
+        assertEquals(0, result.getImportedCount());
+        assertEquals(1, result.getSkippedCount());
+    }
+
+    @Test
+    void ingestDirectoryPreservesNativeNumericAndBooleanCellTypes() throws Exception {
+        // Kills L862 (NUMERIC type check → false) and L865 (BOOLEAN type check → false):
+        // mutations cause both types to fall through to dataFormatter, which returns Strings.
+        // isNumber()/isBoolean() catch the difference; asDouble()/booleanValue() do not.
+        Path dir = Files.createTempDirectory("wos-events-cell-types");
+        createExcelWithNumericAndBooleanCells(dir.resolve("AIS_2024.xlsx"));
+
+        EventStore store = new EventStore();
+        WosImportEventIngestionService service = newService(repositoryMock(store));
+
+        service.ingestDirectory(dir.toString(), null);
+
+        WosImportEvent event = store.get(WosSourceType.GOV_AIS_RIS, "AIS_2024.xlsx", "v2024", "1");
+        assertNotNull(event);
+        JsonNode cells = new ObjectMapper().readTree(event.getPayload()).path("cells");
+
+        assertTrue(cells.path("c2").isNumber());
+        assertEquals(1.5, cells.path("c2").doubleValue(), 0.001);
+        assertTrue(cells.path("c3").isBoolean());
+        assertTrue(cells.path("c3").booleanValue());
+    }
+
+    @Test
     void ingestUploadedGovernmentExcelRejectsUnsupportedMetricFilename() throws Exception {
         Path file = Files.createTempFile("WOS_2024-upload", ".xlsx");
         createSampleExcel(file, 1.1);
@@ -444,6 +651,136 @@ class WosImportEventIngestionServiceTest {
             formulaCell.setCellValue("Journal Cached");
             row1.createCell(1).setCellValue("1234-5678");
             row1.createCell(2).setCellValue(1.1);
+
+            try (FileOutputStream out = new FileOutputStream(file.toFile())) {
+                workbook.write(out);
+            }
+        }
+    }
+
+    private void createSingleRowExcel(Path file, String title, String issn, double value) throws Exception {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Sheet1");
+            Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("Title");
+            header.createCell(1).setCellValue("ISSN");
+            header.createCell(2).setCellValue("Value");
+
+            Row row1 = sheet.createRow(1);
+            row1.createCell(0).setCellValue(title);
+            row1.createCell(1).setCellValue(issn);
+            row1.createCell(2).setCellValue(value);
+
+            try (FileOutputStream out = new FileOutputStream(file.toFile())) {
+                workbook.write(out);
+            }
+        }
+    }
+
+    private void createRis2020WithBothIssnsInvalid(Path file) throws Exception {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Sheet1");
+            Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("Title");
+            header.createCell(1).setCellValue("ISSN");
+            header.createCell(2).setCellValue("eISSN");
+            header.createCell(3).setCellValue("Value");
+
+            Row row1 = sheet.createRow(1);
+            row1.createCell(0).setCellValue("Journal Both Invalid");
+            row1.createCell(1).setCellValue("N/A");        // c1 = invalid
+            row1.createCell(2).setCellValue("********");   // c2 = invalid
+            row1.createCell(3).setCellValue(1.1);
+
+            try (FileOutputStream out = new FileOutputStream(file.toFile())) {
+                workbook.write(out);
+            }
+        }
+    }
+
+    private void createExcelWithNumericAndBooleanCells(Path file) throws Exception {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Sheet1");
+            Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("Title");
+            header.createCell(1).setCellValue("ISSN");
+            header.createCell(2).setCellValue("Score");
+            header.createCell(3).setCellValue("Flag");
+
+            Row row1 = sheet.createRow(1);
+            row1.createCell(0).setCellValue("Journal Types");
+            row1.createCell(1).setCellValue("1234-5678");
+            row1.createCell(2).setCellValue(1.5);   // CellType.NUMERIC
+            row1.createCell(3).setCellValue(true);  // CellType.BOOLEAN
+
+            try (FileOutputStream out = new FileOutputStream(file.toFile())) {
+                workbook.write(out);
+            }
+        }
+    }
+
+    private void createAis2020WithInvalidIssnAndValidEissn(Path file) throws Exception {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Sheet1");
+            Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("Title");
+            header.createCell(1).setCellValue("ISSN");
+            header.createCell(2).setCellValue("eISSN");
+            header.createCell(3).setCellValue("Value");
+            header.createCell(4).setCellValue("Edition");
+            header.createCell(5).setCellValue("Category");
+            header.createCell(6).setCellValue("Quarter");
+
+            Row row1 = sheet.createRow(1);
+            row1.createCell(0).setCellValue("Journal Boundary");
+            row1.createCell(1).setCellValue("N/A");        // c1 = invalid ISSN
+            row1.createCell(2).setCellValue("1234-5678");  // c2 = valid eISSN
+            row1.createCell(3).setCellValue(1.1);
+            row1.createCell(4).setCellValue("SCIE");
+            row1.createCell(5).setCellValue("ACOUSTICS");
+            row1.createCell(6).setCellValue(1.0);
+
+            try (FileOutputStream out = new FileOutputStream(file.toFile())) {
+                workbook.write(out);
+            }
+        }
+    }
+
+    private void createAis2014WithBlankIssnAndInvalidC2(Path file) throws Exception {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Sheet1");
+            Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("Col0");
+            header.createCell(1).setCellValue("Title");
+            header.createCell(2).setCellValue("ISSN");
+            header.createCell(3).setCellValue("Value");
+
+            Row row1 = sheet.createRow(1);
+            row1.createCell(0).setCellValue("SomeValue");
+            row1.createCell(1).setCellValue("");    // c1 = blank (not identity column for AIS 2014)
+            row1.createCell(2).setCellValue("N/A"); // c2 = invalid ISSN (identity column for AIS 2014)
+            row1.createCell(3).setCellValue(1.1);
+
+            try (FileOutputStream out = new FileOutputStream(file.toFile())) {
+                workbook.write(out);
+            }
+        }
+    }
+
+    private void createRis2020WithInvalidIssnAndValidEissn(Path file) throws Exception {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Sheet1");
+            Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("Title");
+            header.createCell(1).setCellValue("ISSN");
+            header.createCell(2).setCellValue("eISSN");
+            header.createCell(3).setCellValue("Value");
+
+            Row row1 = sheet.createRow(1);
+            row1.createCell(0).setCellValue("Journal RIS Boundary");
+            row1.createCell(1).setCellValue("N/A");        // c1 = invalid ISSN
+            row1.createCell(2).setCellValue("1234-5678");  // c2 = valid eISSN
+            row1.createCell(3).setCellValue(1.1);
 
             try (FileOutputStream out = new FileOutputStream(file.toFile())) {
                 workbook.write(out);

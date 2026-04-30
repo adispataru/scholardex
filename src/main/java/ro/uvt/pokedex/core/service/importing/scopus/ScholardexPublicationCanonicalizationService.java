@@ -399,6 +399,9 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
 
         String doiNormalized = normalizeDoi(scopusFact.getDoi());
         ScholardexPublicationFact fact = loadExistingByEidOrDoi(scopusFact.getEid(), doiNormalized, result, context);
+        if (fact == null) {
+            return;
+        }
         boolean created = fact.getId() == null;
 
         Instant now = Instant.now();
@@ -890,7 +893,15 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         if (existingByEid.isPresent()) {
             return existingByEid.get();
         }
-        return findSingleByDoi(doiNormalized, result).orElseGet(ScholardexPublicationFact::new);
+        int skippedBefore = result == null ? -1 : result.getSkippedCount();
+        Optional<ScholardexPublicationFact> existingByDoi = findSingleByDoi(doiNormalized, result);
+        if (existingByDoi.isPresent()) {
+            return existingByDoi.get();
+        }
+        if (result != null && result.getSkippedCount() > skippedBefore) {
+            return null;
+        }
+        return new ScholardexPublicationFact();
     }
 
     private Optional<ScholardexPublicationFact> findSingleByDoi(String doiNormalized, ImportProcessingResult result) {
@@ -904,6 +915,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         byDoi.sort(Comparator.comparing(ScholardexPublicationFact::getId, Comparator.nullsLast(String::compareTo)));
         if (byDoi.size() > 1 && result != null) {
             result.markSkipped("ambiguous-existing-doi:" + doiNormalized);
+            return Optional.empty();
         }
         return Optional.of(byDoi.getFirst());
     }

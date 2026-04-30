@@ -6,7 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.observability.CanonicalObservabilityMetrics;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
-import ro.uvt.pokedex.core.service.importing.scopus.ScopusProjectionBuilderService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScholardexProjectionBuilderService;
 import ro.uvt.pokedex.core.service.importing.scopus.UserDefinedCanonicalizationService;
 import ro.uvt.pokedex.core.service.importing.scopus.UserDefinedFactBuilderService;
 
@@ -21,7 +21,7 @@ public class UserDefinedMaintenanceOrchestrationService {
     private final UserDefinedCanonicalizationService userDefinedCanonicalizationService;
     private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexEdgeReconciliationService edgeReconciliationService;
-    private final ScopusProjectionBuilderService projectionBuilderService;
+    private final ScholardexProjectionBuilderService projectionBuilderService;
 
     public ImportProcessingResult runBuildFactsStep(String batchId) {
         return userDefinedFactBuilderService.buildFactsFromImportEvents(batchId);

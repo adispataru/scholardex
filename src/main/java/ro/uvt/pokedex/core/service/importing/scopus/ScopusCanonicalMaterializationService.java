@@ -25,7 +25,7 @@ public class ScopusCanonicalMaterializationService {
     private final ScholardexCitationCanonicalizationService citationCanonicalizationService;
     private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexEdgeReconciliationService edgeReconciliationService;
-    private final ScopusProjectionBuilderService projectionBuilderService;
+    private final ScholardexProjectionBuilderService projectionBuilderService;
 
     public void rebuildFactsAndViews(String trigger) {
         rebuildFactsAndViews(trigger, null, CanonicalBuildOptions.defaults());

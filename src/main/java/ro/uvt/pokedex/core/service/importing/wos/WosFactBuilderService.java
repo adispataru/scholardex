@@ -34,6 +34,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -1186,17 +1187,17 @@ public class WosFactBuilderService {
     }
 
     private String snapshotCategory(WosCategoryFact fact) {
-        return (fact.getCategoryNameCanonical() == null ? "" : fact.getCategoryNameCanonical())
-                + "|" + (fact.getEditionNormalized() == null ? "" : fact.getEditionNormalized())
-                + "|" + (fact.getQuarter() == null ? "" : fact.getQuarter())
+        return Objects.toString(fact.getCategoryNameCanonical(), "")
+                + "|" + Objects.toString(fact.getEditionNormalized(), "")
+                + "|" + Objects.toString(fact.getQuarter(), "")
                 + "|" + fact.getQuartileRank()
                 + "|" + fact.getRank();
     }
 
     private String snapshotCategory(WosParsedRecord record) {
-        return (record.categoryNameCanonical() == null ? "" : record.categoryNameCanonical())
-                + "|" + (record.editionNormalized() == null ? "" : record.editionNormalized())
-                + "|" + (record.quarter() == null ? "" : record.quarter())
+        return Objects.toString(record.categoryNameCanonical(), "")
+                + "|" + Objects.toString(record.editionNormalized(), "")
+                + "|" + Objects.toString(record.quarter(), "")
                 + "|" + record.quartileRank()
                 + "|" + record.rank();
     }

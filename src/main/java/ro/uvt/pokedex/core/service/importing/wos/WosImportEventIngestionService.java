@@ -174,7 +174,11 @@ public class WosImportEventIngestionService {
             return;
         }
         for (File file : files) {
-            ImportProcessingResult fileResult = new ImportProcessingResult(10);
+            int proc0 = total.getProcessedCount();
+            int imp0 = total.getImportedCount();
+            int upd0 = total.getUpdatedCount();
+            int skp0 = total.getSkippedCount();
+            int err0 = total.getErrorCount();
             String fileName = file.getName();
             String sourceVersion = sourceVersionOverride != null && !sourceVersionOverride.isBlank()
                     ? sourceVersionOverride
@@ -207,7 +211,7 @@ public class WosImportEventIngestionService {
                     payload.put("metricType", metricType);
                     payload.put("year", year);
                     payload.put("cells", extractCells(row, formulaEvaluator, dataFormatter));
-                    if (shouldSkipGovEvent(payload, fileResult, total, fileName, Integer.toString(i))) {
+                    if (shouldSkipGovEvent(payload, total, fileName, Integer.toString(i))) {
                         parseSanitizeNs += System.nanoTime() - parseStartedAtNanos;
                         continue;
                     }
@@ -222,7 +226,6 @@ public class WosImportEventIngestionService {
                             payload,
                             existingByRowItem,
                             toPersist,
-                            fileResult,
                             total
                     );
                     checksumNormalizeNs += System.nanoTime() - processStartedAtNanos;
@@ -231,7 +234,7 @@ public class WosImportEventIngestionService {
                     if (flushDurationNs > 0) {
                         flushCount++;
                     }
-                    maybeLogFileHeartbeat(fileName, fileResult, fileStartedAtNanos, persistBatchNs, flushCount);
+                    maybeLogFileHeartbeat(fileName, total, proc0, imp0, upd0, skp0, err0, fileStartedAtNanos, persistBatchNs, flushCount);
                 }
                 long flushDurationNs = flushBatch(toPersist);
                 persistBatchNs += flushDurationNs;
@@ -239,24 +242,22 @@ public class WosImportEventIngestionService {
                     flushCount++;
                 }
             } catch (Exception e) {
-                fileResult.markError("file=" + fileName + ", error=" + e.getMessage());
                 total.markError("file=" + fileName + ", error=" + e.getMessage());
             }
             long totalNs = System.nanoTime() - fileStartedAtNanos;
-            log.info("WoS import-events GOV file summary for {}: processed={}, imported={}, updated={}, skipped={}, errors={}, sample={}, timingsMs[readExisting={}, parse+sanitize={}, checksum+normalize={}, persistBatch={}, total={}], throughputPerSec={}",
+            log.info("WoS import-events GOV file summary for {}: processed={}, imported={}, updated={}, skipped={}, errors={}, timingsMs[readExisting={}, parse+sanitize={}, checksum+normalize={}, persistBatch={}, total={}], throughputPerSec={}",
                     fileName,
-                    fileResult.getProcessedCount(),
-                    fileResult.getImportedCount(),
-                    fileResult.getUpdatedCount(),
-                    fileResult.getSkippedCount(),
-                    fileResult.getErrorCount(),
-                    fileResult.getErrorsSample(),
+                    total.getProcessedCount() - proc0,
+                    total.getImportedCount() - imp0,
+                    total.getUpdatedCount() - upd0,
+                    total.getSkippedCount() - skp0,
+                    total.getErrorCount() - err0,
                     nanosToMillis(readExistingNs),
                     nanosToMillis(parseSanitizeNs),
                     nanosToMillis(checksumNormalizeNs),
                     nanosToMillis(persistBatchNs),
                     nanosToMillis(totalNs),
-                    eventsPerSecond(fileResult.getProcessedCount(), totalNs));
+                    eventsPerSecond(total.getProcessedCount() - proc0, totalNs));
         }
     }
 
@@ -265,7 +266,6 @@ public class WosImportEventIngestionService {
             String sourceVersion,
             byte[] bytes
     ) {
-        ImportProcessingResult fileResult = new ImportProcessingResult(10);
         ImportProcessingResult total = new ImportProcessingResult(10);
         String metricType = extractGovernmentMetricType(originalFilename);
         String year = extractYear(originalFilename);
@@ -298,7 +298,7 @@ public class WosImportEventIngestionService {
                     payload.put("metricType", metricType);
                     payload.put("year", year);
                     payload.put("cells", extractCells(row, formulaEvaluator, dataFormatter));
-                    if (shouldSkipGovEvent(payload, fileResult, total, originalFilename, Integer.toString(i))) {
+                    if (shouldSkipGovEvent(payload, total, originalFilename, Integer.toString(i))) {
                         parseSanitizeNs += System.nanoTime() - parseStartedAtNanos;
                         continue;
                     }
@@ -313,7 +313,6 @@ public class WosImportEventIngestionService {
                             payload,
                             existingByRowItem,
                             toPersist,
-                            fileResult,
                             total
                     );
                     checksumNormalizeNs += System.nanoTime() - processStartedAtNanos;
@@ -322,7 +321,7 @@ public class WosImportEventIngestionService {
                     if (flushDurationNs > 0) {
                         flushCount++;
                     }
-                    maybeLogFileHeartbeat(originalFilename, fileResult, fileStartedAtNanos, persistBatchNs, flushCount);
+                    maybeLogFileHeartbeat(originalFilename, total, 0, 0, 0, 0, 0, fileStartedAtNanos, persistBatchNs, flushCount);
                 }
                 long flushDurationNs = flushBatch(toPersist);
                 persistBatchNs += flushDurationNs;
@@ -339,18 +338,18 @@ public class WosImportEventIngestionService {
         long totalNs = System.nanoTime() - fileStartedAtNanos;
         log.info("WoS uploaded GOV file summary for {}: processed={}, imported={}, updated={}, skipped={}, errors={}, sample={}, timingsMs[readExisting={}, parse+sanitize={}, checksum+normalize={}, persistBatch={}, total={}], throughputPerSec={}",
                 originalFilename,
-                fileResult.getProcessedCount(),
-                fileResult.getImportedCount(),
-                fileResult.getUpdatedCount(),
-                fileResult.getSkippedCount(),
-                fileResult.getErrorCount(),
-                fileResult.getErrorsSample(),
+                total.getProcessedCount(),
+                total.getImportedCount(),
+                total.getUpdatedCount(),
+                total.getSkippedCount(),
+                total.getErrorCount(),
+                total.getErrorsSample(),
                 nanosToMillis(readExistingNs),
                 nanosToMillis(parseSanitizeNs),
                 nanosToMillis(checksumNormalizeNs),
                 nanosToMillis(persistBatchNs),
                 nanosToMillis(totalNs),
-                eventsPerSecond(fileResult.getProcessedCount(), totalNs));
+                eventsPerSecond(total.getProcessedCount(), totalNs));
         return total;
     }
 
@@ -364,7 +363,11 @@ public class WosImportEventIngestionService {
             return;
         }
         for (File file : files) {
-            ImportProcessingResult fileResult = new ImportProcessingResult(10);
+            int proc0 = total.getProcessedCount();
+            int imp0 = total.getImportedCount();
+            int upd0 = total.getUpdatedCount();
+            int skp0 = total.getSkippedCount();
+            int err0 = total.getErrorCount();
             String fileName = jsonRelativeName(jsonDir, file);
             String sourceVersion = sourceVersionOverride != null && !sourceVersionOverride.isBlank()
                     ? sourceVersionOverride
@@ -386,7 +389,6 @@ public class WosImportEventIngestionService {
                 JsonNode root = objectMapper.readTree(bytes);
                 parseSanitizeNs += System.nanoTime() - parseStartedAtNanos;
                 if (!root.isArray()) {
-                    fileResult.markError("file=" + fileName + ", error=root_not_array");
                     total.markError("file=" + fileName + ", error=root_not_array");
                     continue;
                 }
@@ -398,7 +400,7 @@ public class WosImportEventIngestionService {
                     JsonNode sanitizedItem = sanitizeOfficialJsonIdentity(item);
                     parseSanitizeNs += System.nanoTime() - sanitizeStartedAtNanos;
                     if (sanitizedItem == null) {
-                        markIdentitySkipped(fileResult, total, fileName, Integer.toString(idx));
+                        markIdentitySkipped(total, fileName, Integer.toString(idx));
                         idx++;
                         continue;
                     }
@@ -412,7 +414,6 @@ public class WosImportEventIngestionService {
                             sanitizedItem,
                             existingByRowItem,
                             toPersist,
-                            fileResult,
                             total
                     );
                     checksumNormalizeNs += System.nanoTime() - processStartedAtNanos;
@@ -421,7 +422,7 @@ public class WosImportEventIngestionService {
                     if (flushDurationNs > 0) {
                         flushCount++;
                     }
-                    maybeLogFileHeartbeat(fileName, fileResult, fileStartedAtNanos, persistBatchNs, flushCount);
+                    maybeLogFileHeartbeat(fileName, total, proc0, imp0, upd0, skp0, err0, fileStartedAtNanos, persistBatchNs, flushCount);
                     idx++;
                 }
                 long flushDurationNs = flushBatch(toPersist);
@@ -430,24 +431,22 @@ public class WosImportEventIngestionService {
                     flushCount++;
                 }
             } catch (Exception e) {
-                fileResult.markError("file=" + fileName + ", error=" + e.getMessage());
                 total.markError("file=" + fileName + ", error=" + e.getMessage());
             }
             long totalNs = System.nanoTime() - fileStartedAtNanos;
-            log.info("WoS import-events official JSON summary for {}: processed={}, imported={}, updated={}, skipped={}, errors={}, sample={}, timingsMs[readExisting={}, parse+sanitize={}, checksum+normalize={}, persistBatch={}, total={}], throughputPerSec={}",
+            log.info("WoS import-events official JSON summary for {}: processed={}, imported={}, updated={}, skipped={}, errors={}, timingsMs[readExisting={}, parse+sanitize={}, checksum+normalize={}, persistBatch={}, total={}], throughputPerSec={}",
                     fileName,
-                    fileResult.getProcessedCount(),
-                    fileResult.getImportedCount(),
-                    fileResult.getUpdatedCount(),
-                    fileResult.getSkippedCount(),
-                    fileResult.getErrorCount(),
-                    fileResult.getErrorsSample(),
+                    total.getProcessedCount() - proc0,
+                    total.getImportedCount() - imp0,
+                    total.getUpdatedCount() - upd0,
+                    total.getSkippedCount() - skp0,
+                    total.getErrorCount() - err0,
                     nanosToMillis(readExistingNs),
                     nanosToMillis(parseSanitizeNs),
                     nanosToMillis(checksumNormalizeNs),
                     nanosToMillis(persistBatchNs),
                     nanosToMillis(totalNs),
-                    eventsPerSecond(fileResult.getProcessedCount(), totalNs));
+                    eventsPerSecond(total.getProcessedCount() - proc0, totalNs));
         }
     }
 
@@ -456,7 +455,6 @@ public class WosImportEventIngestionService {
             String sourceVersion,
             byte[] bytes
     ) {
-        ImportProcessingResult fileResult = new ImportProcessingResult(10);
         ImportProcessingResult total = new ImportProcessingResult(10);
         long fileStartedAtNanos = System.nanoTime();
         long readExistingNs = 0L;
@@ -484,7 +482,7 @@ public class WosImportEventIngestionService {
                 JsonNode sanitizedItem = sanitizeOfficialJsonIdentity(item);
                 parseSanitizeNs += System.nanoTime() - sanitizeStartedAtNanos;
                 if (sanitizedItem == null) {
-                    markIdentitySkipped(fileResult, total, originalFilename, Integer.toString(idx));
+                    markIdentitySkipped(total, originalFilename, Integer.toString(idx));
                     idx++;
                     continue;
                 }
@@ -498,7 +496,6 @@ public class WosImportEventIngestionService {
                         sanitizedItem,
                         existingByRowItem,
                         toPersist,
-                        fileResult,
                         total
                 );
                 checksumNormalizeNs += System.nanoTime() - processStartedAtNanos;
@@ -507,7 +504,7 @@ public class WosImportEventIngestionService {
                 if (flushDurationNs > 0) {
                     flushCount++;
                 }
-                maybeLogFileHeartbeat(originalFilename, fileResult, fileStartedAtNanos, persistBatchNs, flushCount);
+                maybeLogFileHeartbeat(originalFilename, total, 0, 0, 0, 0, 0, fileStartedAtNanos, persistBatchNs, flushCount);
                 idx++;
             }
             long flushDurationNs = flushBatch(toPersist);
@@ -522,18 +519,18 @@ public class WosImportEventIngestionService {
         long totalNs = System.nanoTime() - fileStartedAtNanos;
         log.info("WoS uploaded official JSON summary for {}: processed={}, imported={}, updated={}, skipped={}, errors={}, sample={}, timingsMs[readExisting={}, parse+sanitize={}, checksum+normalize={}, persistBatch={}, total={}], throughputPerSec={}",
                 originalFilename,
-                fileResult.getProcessedCount(),
-                fileResult.getImportedCount(),
-                fileResult.getUpdatedCount(),
-                fileResult.getSkippedCount(),
-                fileResult.getErrorCount(),
-                fileResult.getErrorsSample(),
+                total.getProcessedCount(),
+                total.getImportedCount(),
+                total.getUpdatedCount(),
+                total.getSkippedCount(),
+                total.getErrorCount(),
+                total.getErrorsSample(),
                 nanosToMillis(readExistingNs),
                 nanosToMillis(parseSanitizeNs),
                 nanosToMillis(checksumNormalizeNs),
                 nanosToMillis(persistBatchNs),
                 nanosToMillis(totalNs),
-                eventsPerSecond(fileResult.getProcessedCount(), totalNs));
+                eventsPerSecond(total.getProcessedCount(), totalNs));
         return total;
     }
 
@@ -546,10 +543,8 @@ public class WosImportEventIngestionService {
             Object payloadObject,
             Map<String, WosImportEvent> existingByRowItem,
             List<WosImportEvent> toPersist,
-            ImportProcessingResult fileResult,
             ImportProcessingResult total
     ) {
-        fileResult.markProcessed();
         total.markProcessed();
         try {
             String payload = normalizePayload(payloadObject);
@@ -558,7 +553,6 @@ public class WosImportEventIngestionService {
             if (existing != null) {
                 WosImportEvent event = existing;
                 if (checksum.equals(event.getChecksum()) && payload.equals(event.getPayload())) {
-                    fileResult.markSkipped("unchanged=" + sourceFile + "#" + sourceRowItem);
                     total.markSkipped("unchanged=" + sourceFile + "#" + sourceRowItem);
                     return;
                 }
@@ -567,7 +561,6 @@ public class WosImportEventIngestionService {
                 event.setChecksum(checksum);
                 event.setIngestedAt(Instant.now());
                 toPersist.add(event);
-                fileResult.markUpdated();
                 total.markUpdated();
                 return;
             }
@@ -581,10 +574,8 @@ public class WosImportEventIngestionService {
             event.setChecksum(checksum);
             event.setIngestedAt(Instant.now());
             toPersist.add(event);
-            fileResult.markImported();
             total.markImported();
         } catch (Exception e) {
-            fileResult.markError("source=" + sourceFile + "#" + sourceRowItem + ", error=" + e.getMessage());
             total.markError("source=" + sourceFile + "#" + sourceRowItem + ", error=" + e.getMessage());
         }
     }
@@ -592,7 +583,6 @@ public class WosImportEventIngestionService {
     @SuppressWarnings("unchecked")
     private boolean shouldSkipGovEvent(
             Map<String, Object> payload,
-            ImportProcessingResult fileResult,
             ImportProcessingResult total,
             String sourceFile,
             String sourceRowItem
@@ -625,7 +615,7 @@ public class WosImportEventIngestionService {
         }
 
         if (hasAnyToken && !hasValidToken) {
-            markIdentitySkipped(fileResult, total, sourceFile, sourceRowItem);
+            markIdentitySkipped(total, sourceFile, sourceRowItem);
             return true;
         }
         return false;
@@ -658,15 +648,12 @@ public class WosImportEventIngestionService {
     }
 
     private void markIdentitySkipped(
-            ImportProcessingResult fileResult,
             ImportProcessingResult total,
             String sourceFile,
             String sourceRowItem
     ) {
         String message = "invalid-identity-identifiers=" + sourceFile + "#" + sourceRowItem;
-        fileResult.markProcessed();
         total.markProcessed();
-        fileResult.markSkipped(message);
         total.markSkipped(message);
     }
 
@@ -932,13 +919,14 @@ public class WosImportEventIngestionService {
 
     private void maybeLogFileHeartbeat(
             String fileName,
-            ImportProcessingResult fileResult,
+            ImportProcessingResult total,
+            int proc0, int imp0, int upd0, int skp0, int err0,
             long fileStartedAtNanos,
             long persistBatchNs,
             long flushCount
     ) {
         int heartbeatInterval = Math.max(1, optimizationProperties.getTelemetryHeartbeatInterval());
-        int processed = fileResult.getProcessedCount();
+        int processed = total.getProcessedCount() - proc0;
         if (processed == 0 || processed % heartbeatInterval != 0) {
             return;
         }
@@ -947,10 +935,10 @@ public class WosImportEventIngestionService {
         log.info("WoS ingestion heartbeat [{}]: processed={} imported={} updated={} skipped={} errors={} elapsedMs={} throughputPerSec={} avgFlushMs={}",
                 fileName,
                 processed,
-                fileResult.getImportedCount(),
-                fileResult.getUpdatedCount(),
-                fileResult.getSkippedCount(),
-                fileResult.getErrorCount(),
+                total.getImportedCount() - imp0,
+                total.getUpdatedCount() - upd0,
+                total.getSkippedCount() - skp0,
+                total.getErrorCount() - err0,
                 nanosToMillis(elapsedNs),
                 eventsPerSecond(processed, elapsedNs),
                 avgFlushMs);

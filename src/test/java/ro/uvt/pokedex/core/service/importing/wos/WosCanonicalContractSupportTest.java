@@ -96,6 +96,34 @@ class WosCanonicalContractSupportTest {
     }
 
     @Test
+    void selectCanonicalOperationalSourceWithNullMetricTypeReturnsLeft() {
+        WosSourceType result = WosCanonicalContractSupport.selectCanonicalOperationalSource(
+                null, WosSourceType.GOV_AIS_RIS, WosSourceType.OFFICIAL_WOS_EXTRACT);
+        assertEquals(WosSourceType.GOV_AIS_RIS, result);
+    }
+
+    @Test
+    void selectCanonicalOperationalSourceWithIfAndOfficialExtract() {
+        assertEquals(
+                WosSourceType.OFFICIAL_WOS_EXTRACT,
+                WosCanonicalContractSupport.selectCanonicalOperationalSource(
+                        MetricType.IF, WosSourceType.GOV_AIS_RIS, WosSourceType.OFFICIAL_WOS_EXTRACT)
+        );
+        assertEquals(
+                WosSourceType.OFFICIAL_WOS_EXTRACT,
+                WosCanonicalContractSupport.selectCanonicalOperationalSource(
+                        MetricType.IF, WosSourceType.OFFICIAL_WOS_EXTRACT, WosSourceType.GOV_AIS_RIS)
+        );
+    }
+
+    @Test
+    void selectCanonicalSourceFallsBackToLeftWhenNeitherIsGovForAis() {
+        WosSourceType result = WosCanonicalContractSupport.selectCanonicalOperationalSource(
+                MetricType.AIS, WosSourceType.OFFICIAL_WOS_EXTRACT, null);
+        assertEquals(WosSourceType.OFFICIAL_WOS_EXTRACT, result);
+    }
+
+    @Test
     void issnNormalizationIsHyphenInsensitive() {
         assertEquals("12345678", WosCanonicalContractSupport.normalizeIssnToken("1234-5678"));
         assertEquals("12345678", WosCanonicalContractSupport.normalizeIssnToken(" 12345678 "));
@@ -123,5 +151,55 @@ class WosCanonicalContractSupportTest {
                 "revista romana de fizica",
                 WosCanonicalContractSupport.normalizeTitleFingerprint("Revista Romana de Fízică")
         );
+    }
+
+    @Test
+    void normalizeTitleFingerprintReturnsNullForNullInput() {
+        // Line 124: null check — removal causes NPE on null.toLowerCase()
+        assertNull(WosCanonicalContractSupport.normalizeTitleFingerprint(null));
+    }
+
+    @Test
+    void normalizeTitleFingerprintReturnsNullForAllSpecialChars() {
+        // Line 132: isBlank check — removal causes blank string to be returned instead of null
+        assertNull(WosCanonicalContractSupport.normalizeTitleFingerprint("---"));
+    }
+
+    @Test
+    void normalizeMetricValueReturnsNullForNullInput() {
+        // Line 75: null check — removal causes Double.compare(null, ...) → NPE
+        assertNull(WosCanonicalContractSupport.normalizeMetricValue(null));
+    }
+
+    @Test
+    void buildIdentityKeyWithNullTokenSetReturnsNull() {
+        // Line 136: null check on normalizedIssnTokens — removal causes NPE on null.stream()
+        assertNull(WosCanonicalContractSupport.buildIdentityKey(null, "some title", 2024, "SCIE"));
+    }
+
+    @Test
+    void isSourceAllowedReturnsFalseWhenMetricTypeIsNull() {
+        // Line 82: null check on metricType — removal causes NPE on MetricType.IF comparison
+        assertFalse(WosCanonicalContractSupport.isSourceAllowedForMetric(null, WosSourceType.GOV_AIS_RIS));
+    }
+
+    @Test
+    void isSourceAllowedReturnsFalseWhenSourceTypeIsNull() {
+        // Line 82: null check on sourceType — removal causes true to be returned from `return true`
+        assertFalse(WosCanonicalContractSupport.isSourceAllowedForMetric(MetricType.AIS, null));
+    }
+
+    @Test
+    void requiresSplitReturnsFalseForSingleEdition() {
+        // Line 71: size() > 1 mutation to size() >= 1 → any single edition returns true; test kills it
+        assertFalse(WosCanonicalContractSupport.requiresSplitByEdition("SCIE"));
+    }
+
+    @Test
+    void selectCanonicalSourceWithNullLeftAndNullMetricTypeReturnsRight() {
+        // Line 97: left != null ? left : right — removal returns null when left is null
+        WosSourceType result = WosCanonicalContractSupport.selectCanonicalOperationalSource(
+                null, null, WosSourceType.OFFICIAL_WOS_EXTRACT);
+        assertEquals(WosSourceType.OFFICIAL_WOS_EXTRACT, result);
     }
 }

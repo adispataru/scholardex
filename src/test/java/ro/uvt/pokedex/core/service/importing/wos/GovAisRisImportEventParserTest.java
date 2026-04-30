@@ -8,6 +8,7 @@ import ro.uvt.pokedex.core.model.reporting.wos.WosImportEvent;
 import ro.uvt.pokedex.core.model.reporting.wos.WosSourceType;
 import ro.uvt.pokedex.core.service.importing.wos.model.WosParsedEventResult;
 import ro.uvt.pokedex.core.service.importing.wos.model.WosParsedEventStatus;
+import ro.uvt.pokedex.core.service.importing.wos.model.WosParsedRecord;
 
 import java.util.Map;
 
@@ -33,9 +34,14 @@ class GovAisRisImportEventParserTest {
 
         assertEquals(WosParsedEventStatus.PARSED, result.status());
         assertEquals(1, result.records().size());
-        assertEquals(MetricType.AIS, result.records().get(0).metricType());
-        assertEquals(EditionNormalized.SCIE, result.records().get(0).editionNormalized());
-        assertEquals("ACOUSTICS", result.records().get(0).categoryNameCanonical());
+        WosParsedRecord record = result.records().get(0);
+        assertEquals(MetricType.AIS, record.metricType());
+        assertEquals(EditionNormalized.SCIE, record.editionNormalized());
+        assertEquals("ACOUSTICS", record.categoryNameCanonical());
+        assertEquals("ACOUST PHYS+", record.title());
+        assertEquals("10637710", record.issn());
+        assertEquals(2012, record.year());
+        assertEquals(0.112, record.value());
     }
 
     @Test
@@ -52,7 +58,12 @@ class GovAisRisImportEventParserTest {
 
         assertEquals(WosParsedEventStatus.PARSED, result.status());
         assertEquals(1, result.records().size());
-        assertEquals(EditionNormalized.SSCI, result.records().get(0).editionNormalized());
+        WosParsedRecord record = result.records().get(0);
+        assertEquals(EditionNormalized.SSCI, record.editionNormalized());
+        assertEquals("Journal Social", record.title());
+        assertEquals("12345678", record.issn());
+        assertEquals(2013, record.year());
+        assertEquals(0.512, record.value());
     }
 
     @Test
@@ -154,6 +165,153 @@ class GovAisRisImportEventParserTest {
     }
 
     @Test
+    void parsesAis2011WithoutCategoryOrEdition() throws Exception {
+        WosParsedEventResult result = parser.parse(event("AIS", "2011", Map.of(
+                "c0", "Early Journal",
+                "c1", "1234-5678",
+                "c2", 0.321
+        )));
+
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        WosParsedRecord record = result.records().get(0);
+        assertEquals("Early Journal", record.title());
+        assertEquals("12345678", record.issn());
+        assertEquals(2011, record.year());
+        assertEquals(0.321, record.value());
+        assertNull(record.categoryNameCanonical());
+    }
+
+    @Test
+    void parsesAis2014To2017Layout() throws Exception {
+        WosParsedEventResult result2014 = parser.parse(event("AIS", "2014", Map.of(
+                "c0", "skipped-col",
+                "c1", "Journal 2014",
+                "c2", "1234-5678",
+                "c3", 0.777
+        )));
+        WosParsedEventResult result2017 = parser.parse(event("AIS", "2017", Map.of(
+                "c0", "skipped-col",
+                "c1", "Journal 2017",
+                "c2", "8765-4321",
+                "c3", 0.888
+        )));
+
+        assertEquals(WosParsedEventStatus.PARSED, result2014.status());
+        assertEquals("Journal 2014", result2014.records().get(0).title());
+        assertEquals("12345678", result2014.records().get(0).issn());
+        assertEquals(2014, result2014.records().get(0).year());
+        assertEquals(0.777, result2014.records().get(0).value());
+
+        assertEquals(WosParsedEventStatus.PARSED, result2017.status());
+        assertEquals("Journal 2017", result2017.records().get(0).title());
+        assertEquals(0.888, result2017.records().get(0).value());
+    }
+
+    @Test
+    void parsesAis2018WithEditionAndCategory() throws Exception {
+        WosParsedEventResult result = parser.parse(event("AIS", "2018", Map.of(
+                "c0", "Journal 2018",
+                "c1", "1234-5678",
+                "c2", 0.555,
+                "c3", "SCIE",
+                "c4", "CHEMISTRY",
+                "c5", 1.0
+        )));
+
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        WosParsedRecord record = result.records().get(0);
+        assertEquals("Journal 2018", record.title());
+        assertEquals("12345678", record.issn());
+        assertEquals(2018, record.year());
+        assertEquals(0.555, record.value());
+        assertEquals("CHEMISTRY", record.categoryNameCanonical());
+        assertEquals("Q1", record.quarter());
+    }
+
+    @Test
+    void parsesAis2019WithQPrefixedQuarter() throws Exception {
+        WosParsedEventResult result = parser.parse(event("AIS", "2019", Map.of(
+                "c0", "Journal 2019",
+                "c1", "5678-1234",
+                "c2", 0.444,
+                "c3", "SCIE",
+                "c4", "PHYSICS",
+                "c5", "Q3"
+        )));
+
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        WosParsedRecord record = result.records().get(0);
+        assertEquals("Journal 2019", record.title());
+        assertEquals("56781234", record.issn());
+        assertEquals(2019, record.year());
+        assertEquals(0.444, record.value());
+        assertEquals("PHYSICS", record.categoryNameCanonical());
+        assertEquals("Q3", record.quarter());
+    }
+
+    @Test
+    void parsesAis2021WithCategoryEditionCombinedField() throws Exception {
+        WosParsedEventResult result = parser.parse(event("AIS", "2021", Map.of(
+                "c0", "Journal 2021",
+                "c1", "1234-5678",
+                "c2", "8765-4321",
+                "c3", 0.666,
+                "c4", "SCIE",
+                "c5", "PHYSICS - SSCI",
+                "c6", 2.0
+        )));
+
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        WosParsedRecord record = result.records().get(0);
+        assertEquals("Journal 2021", record.title());
+        assertEquals("12345678", record.issn());
+        assertEquals("87654321", record.eIssn());
+        assertEquals(2021, record.year());
+        assertEquals(0.666, record.value());
+        assertEquals("Q2", record.quarter());
+        assertEquals("PHYSICS", record.categoryNameCanonical());
+    }
+
+    @Test
+    void parsesAis2022WithCategoryEditionCombinedField() throws Exception {
+        WosParsedEventResult result = parser.parse(event("AIS", "2022", Map.of(
+                "c0", "Journal 2022",
+                "c1", "2345-6789",
+                "c2", "3456-7890",
+                "c3", "BIOLOGY - SCIE",
+                "c4", 0.999,
+                "c5", 3.0
+        )));
+
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        WosParsedRecord record = result.records().get(0);
+        assertEquals("Journal 2022", record.title());
+        assertEquals("23456789", record.issn());
+        assertEquals("34567890", record.eIssn());
+        assertEquals(2022, record.year());
+        assertEquals(0.999, record.value());
+        assertEquals("BIOLOGY", record.categoryNameCanonical());
+        assertEquals("Q3", record.quarter());
+    }
+
+    @Test
+    void parsesRis2020WithNullMetricValueFallbackWhenBothEissnAndC3AreBlank() throws Exception {
+        WosParsedEventResult result = parser.parse(event("RIS", "2020", Map.of(
+                "c0", "Journal RIS Fallback",
+                "c1", "1234-5678",
+                "c2", "N/A",
+                "c3", 0.555
+        )));
+
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        WosParsedRecord record = result.records().get(0);
+        assertEquals("Journal RIS Fallback", record.title());
+        assertEquals("12345678", record.issn());
+        assertNull(record.eIssn());
+        assertEquals(0.555, record.value());
+    }
+
+    @Test
     void handlesSentinelMetricAsMissing() throws Exception {
         WosImportEvent event = event("AIS", "2023", Map.of(
                 "c0", "Journal Z",
@@ -169,6 +327,124 @@ class GovAisRisImportEventParserTest {
         assertEquals(WosParsedEventStatus.PARSED, result.status());
         assertNull(result.records().get(0).value());
         assertEquals(EditionNormalized.AHCI, result.records().get(0).editionNormalized());
+    }
+
+    @Test
+    void parsesYearGivenAsDecimalString() throws Exception {
+        WosParsedEventResult result = parser.parse(event("AIS", "2024.0", Map.of(
+                "c0", "Decimal Year Journal",
+                "c1", "1234-5678",
+                "c2", "8765-4321",
+                "c3", "ACOUSTICS",
+                "c4", "SCIE",
+                "c5", "0.512"
+        )));
+
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        assertEquals(2024, result.records().get(0).year());
+    }
+
+    @Test
+    void parsesMetricValueWithCommaDecimalSeparator() throws Exception {
+        WosParsedEventResult result = parser.parse(event("AIS", "2024", Map.of(
+                "c0", "Comma Decimal Journal",
+                "c1", "1234-5678",
+                "c2", "8765-4321",
+                "c3", "ACOUSTICS",
+                "c4", "SCIE",
+                "c5", "1,512"
+        )));
+
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        assertEquals(1.512, result.records().get(0).value(), 0.001);
+    }
+
+    @Test
+    void parseUnsupportedPayloadFormatReturnsSkipped() {
+        WosImportEvent event = new WosImportEvent();
+        event.setId("ev-unsupported");
+        event.setSourceType(WosSourceType.GOV_AIS_RIS);
+        event.setSourceFile("AIS_2024.xlsx");
+        event.setSourceVersion("v2024");
+        event.setSourceRowItem("1");
+        event.setPayloadFormat("json-item");
+        event.setPayload("{}");
+
+        WosParsedEventResult result = parser.parse(event);
+
+        assertEquals(WosParsedEventStatus.SKIPPED, result.status());
+    }
+
+    @Test
+    void parseReturnsSkippedWhenAllIdentityFieldsBlank() throws Exception {
+        WosParsedEventResult result = parser.parse(event("AIS", "2012", Map.of(
+                "c0", "",
+                "c1", "",
+                "c2", 0.5,
+                "c3", "ACOUSTICS",
+                "c4", "SCIE"
+        )));
+
+        assertEquals(WosParsedEventStatus.SKIPPED, result.status());
+    }
+
+    @Test
+    void parseRis2024FallbackMetricValueFromC2WhenEIssnNullAndC4NotParseable() throws Exception {
+        WosParsedEventResult result = parser.parse(event("RIS", "2024", Map.of(
+                "c0", "Journal RIS 2024 Fallback",
+                "c1", "1234-5678",
+                "c2", "0.77",
+                "c3", "SCIE",
+                "c4", "N/A"
+        )));
+
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        assertEquals(0.77, result.records().get(0).value(), 0.001);
+    }
+
+    @Test
+    void parseRis2020MetricFallbackFromC2WhenC3NotParseableAndEIssnNull() throws Exception {
+        WosParsedEventResult result = parser.parse(event("RIS", "2020", Map.of(
+                "c0", "Journal RIS 2020 Fallback",
+                "c1", "1234-5678",
+                "c2", "0.88",
+                "c3", "N/A"
+        )));
+
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        assertEquals(0.88, result.records().get(0).value(), 0.001);
+    }
+
+    @Test
+    void parseAis2021PreservesEditionFromParsedCategoryField() throws Exception {
+        WosParsedEventResult result = parser.parse(event("AIS", "2021", Map.of(
+                "c0", "Journal 2021 Edition",
+                "c1", "1234-5678",
+                "c2", "8765-4321",
+                "c3", 0.5,
+                "c4", "SSCI",
+                "c5", "PHYSICS - SCIE",
+                "c6", 1.0
+        )));
+
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        assertEquals(EditionNormalized.SCIE, result.records().get(0).editionNormalized());
+        assertEquals("PHYSICS", result.records().get(0).categoryNameCanonical());
+    }
+
+    @Test
+    void parseAis2020ReturnsNullQuarterWhenC6Absent() throws Exception {
+        WosParsedEventResult result = parser.parse(event("AIS", "2020", Map.of(
+                "c0", "Journal Quarter Blank",
+                "c1", "1234-5678",
+                "c2", "8765-4321",
+                "c3", 0.5,
+                "c4", "SCIE",
+                "c5", "ACOUSTICS"
+        )));
+
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        assertNull(result.records().get(0).quarter());
     }
 
     private WosImportEvent event(String metricType, String year, Map<String, Object> cells) throws Exception {

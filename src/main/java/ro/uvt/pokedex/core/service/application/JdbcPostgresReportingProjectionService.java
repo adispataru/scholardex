@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
-import ro.uvt.pokedex.core.service.importing.scopus.ScopusProjectionBuilderService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScholardexProjectionBuilderService;
 import ro.uvt.pokedex.core.service.importing.wos.WosProjectionBuilderService;
 
 import java.nio.charset.StandardCharsets;
@@ -56,7 +56,7 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
     private final PostgresReportingProjectionProperties properties;
     private final PostgresMaterializedViewRefreshService materializedViewRefreshService;
     private final WosProjectionBuilderService wosProjectionBuilderService;
-    private final ScopusProjectionBuilderService scopusProjectionBuilderService;
+    private final ScholardexProjectionBuilderService scopusProjectionBuilderService;
 
     public JdbcPostgresReportingProjectionService(
             MongoTemplate mongoTemplate,
@@ -65,7 +65,7 @@ public class JdbcPostgresReportingProjectionService implements PostgresReporting
             PostgresReportingProjectionProperties properties,
             PostgresMaterializedViewRefreshService materializedViewRefreshService,
             WosProjectionBuilderService wosProjectionBuilderService,
-            ScopusProjectionBuilderService scopusProjectionBuilderService
+            ScholardexProjectionBuilderService scopusProjectionBuilderService
     ) {
         this.mongoTemplate = mongoTemplate;
         this.jdbcTemplate = jdbcTemplate;

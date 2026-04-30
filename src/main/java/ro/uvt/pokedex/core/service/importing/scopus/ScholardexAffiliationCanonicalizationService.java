@@ -213,21 +213,28 @@ public class ScholardexAffiliationCanonicalizationService extends AbstractCanoni
                 ? Optional.empty()
                 : Optional.ofNullable(context.preloadedSourceLinks.get(sourceLinkKey));
         ScholardexAffiliationFact existingBySource = context.affiliationBySourceId.get(sourceRecordId);
-        String canonicalId = existingSourceLink.map(ScholardexSourceLink::getCanonicalEntityId)
-                .or(() -> Optional.ofNullable(existingBySource).map(ScholardexAffiliationFact::getId))
-                .orElseGet(() -> buildCanonicalAffiliationId(sourceRecordId, sourceFact.getName(), sourceFact.getCity(), sourceFact.getCountry()));
+        Optional<String> sourceLinkCanonicalId = existingSourceLink
+                .map(ScholardexSourceLink::getCanonicalEntityId)
+                .filter(id -> !isBlank(id));
+        Optional<String> existingCanonicalId = Optional.ofNullable(existingBySource)
+                .map(ScholardexAffiliationFact::getId)
+                .filter(id -> !isBlank(id));
 
-        if (existingSourceLink.isPresent() && existingSourceLink.get().getCanonicalEntityId() != null
-                && !existingSourceLink.get().getCanonicalEntityId().equals(canonicalId)) {
+        if (sourceLinkCanonicalId.isPresent() && existingCanonicalId.isPresent()
+                && !sourceLinkCanonicalId.get().equals(existingCanonicalId.get())) {
             context.pendingConflicts.add(buildConflict(
                     sourceFact.getSource(), sourceRecordId, CONFLICT_SOURCE_ID_COLLISION,
-                    List.of(existingSourceLink.get().getCanonicalEntityId(), canonicalId),
+                    List.of(sourceLinkCanonicalId.get(), existingCanonicalId.get()),
                     sourceFact.getSourceEventId(), sourceFact.getSourceBatchId(), sourceFact.getSourceCorrelationId()));
             if (result != null) {
                 result.markSkipped("affiliation-source-id-collision:" + sourceRecordId);
             }
             return;
         }
+
+        String canonicalId = sourceLinkCanonicalId
+                .or(() -> existingCanonicalId)
+                .orElseGet(() -> buildCanonicalAffiliationId(sourceRecordId, sourceFact.getName(), sourceFact.getCity(), sourceFact.getCountry()));
 
         ScholardexAffiliationFact target = context.pendingAffiliationSaves.get(canonicalId);
         if (target == null) {
@@ -328,7 +335,7 @@ public class ScholardexAffiliationCanonicalizationService extends AbstractCanoni
             context.affiliationByCanonicalId.put(recovered.getId(), recovered);
             if (sourceRecordId != null) {
                 context.affiliationBySourceId.put(sourceRecordId, recovered);
-                rewritePendingSourceLinkCommandCanonicalId(sourceRecordId, recovered.getId(), context);
+                rewritePendingSourceLinkCommandCanonicalId(recovered.getSource(), sourceRecordId, recovered.getId(), context);
             }
         }
     }
@@ -357,11 +364,13 @@ public class ScholardexAffiliationCanonicalizationService extends AbstractCanoni
     }
 
     private void rewritePendingSourceLinkCommandCanonicalId(
+            String source,
             String sourceRecordId,
             String canonicalId,
             ChunkContext context
     ) {
-        if (sourceRecordId == null || canonicalId == null) {
+        String normalizedSource = normalizeBlank(source);
+        if (normalizedSource == null || sourceRecordId == null || canonicalId == null) {
             return;
         }
         context.pendingSourceLinkCommands.replaceAll((key, command) -> {
@@ -369,6 +378,9 @@ public class ScholardexAffiliationCanonicalizationService extends AbstractCanoni
                 return command;
             }
             if (key.entityType() != ScholardexEntityType.AFFILIATION) {
+                return command;
+            }
+            if (!normalizedSource.equals(normalizeBlank(key.source()))) {
                 return command;
             }
             if (!sourceRecordId.equals(normalizeBlank(key.sourceRecordId()))) {

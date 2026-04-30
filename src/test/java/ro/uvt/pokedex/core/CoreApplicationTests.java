@@ -16,7 +16,7 @@ import ro.uvt.pokedex.core.service.CacheService;
 import ro.uvt.pokedex.core.service.application.JdbcPostgresMaterializedViewRefreshService;
 import ro.uvt.pokedex.core.service.application.JdbcPostgresReportingProjectionService;
 import ro.uvt.pokedex.core.service.application.PostgresReadCutoverGuard;
-import ro.uvt.pokedex.core.service.importing.scopus.ScopusProjectionBuilderService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScholardexProjectionBuilderService;
 import ro.uvt.pokedex.core.service.importing.wos.WosProjectionBuilderService;
 import ro.uvt.pokedex.core.service.application.PostgresReportingLookupFacade;
 import ro.uvt.pokedex.core.service.application.PostgresScholardexAdminReadPort;
@@ -76,7 +76,7 @@ class CoreApplicationTests {
     @MockitoBean
     private WosProjectionBuilderService wosProjectionBuilderService;
     @MockitoBean
-    private ScopusProjectionBuilderService scopusProjectionBuilderService;
+    private ScholardexProjectionBuilderService scopusProjectionBuilderService;
 
     @Autowired
     private ApplicationContext applicationContext;

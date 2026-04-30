@@ -98,18 +98,25 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
         Optional<ScholardexSourceLink> existingSourceLink = sourceLinkService
                 .findByKey(ScholardexEntityType.AUTHOR, sourceFact.getSource(), sourceRecordId);
         Optional<ScholardexAuthorFact> existingBySource = scholardexAuthorFactRepository.findByScopusAuthorIdsContains(sourceRecordId);
-        String canonicalId = existingSourceLink.map(ScholardexSourceLink::getCanonicalEntityId)
-                .or(() -> existingBySource.map(ScholardexAuthorFact::getId))
-                .orElseGet(() -> buildCanonicalAuthorId(sourceRecordId, sourceFact.getName()));
+        Optional<String> sourceLinkCanonicalId = existingSourceLink
+                .map(ScholardexSourceLink::getCanonicalEntityId)
+                .filter(id -> !isBlank(id));
+        Optional<String> existingCanonicalId = existingBySource
+                .map(ScholardexAuthorFact::getId)
+                .filter(id -> !isBlank(id));
 
-        if (existingSourceLink.isPresent() && existingSourceLink.get().getCanonicalEntityId() != null
-                && !existingSourceLink.get().getCanonicalEntityId().equals(canonicalId)) {
-            saveConflict(sourceFact, sourceRecordId, CONFLICT_SOURCE_ID_COLLISION, List.of(existingSourceLink.get().getCanonicalEntityId(), canonicalId));
+        if (sourceLinkCanonicalId.isPresent() && existingCanonicalId.isPresent()
+                && !sourceLinkCanonicalId.get().equals(existingCanonicalId.get())) {
+            saveConflict(sourceFact, sourceRecordId, CONFLICT_SOURCE_ID_COLLISION, List.of(sourceLinkCanonicalId.get(), existingCanonicalId.get()));
             if (result != null) {
                 result.markSkipped("author-source-id-collision:" + sourceRecordId);
             }
             return;
         }
+
+        String canonicalId = sourceLinkCanonicalId
+                .or(() -> existingCanonicalId)
+                .orElseGet(() -> buildCanonicalAuthorId(sourceRecordId, sourceFact.getName()));
 
         // For single-record upsert, use a local context for affiliation bridging
         ChunkContext localContext = new ChunkContext();
@@ -303,12 +310,15 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
                 context
         );
         Optional<ScholardexAuthorFact> existingBySource = Optional.ofNullable(context.authorBySourceId.get(sourceRecordId));
-        String canonicalId = existingSourceLink.map(ScholardexSourceLink::getCanonicalEntityId)
-                .or(() -> existingBySource.map(ScholardexAuthorFact::getId))
-                .orElseGet(() -> buildCanonicalAuthorId(sourceRecordId, sourceFact.getName()));
+        Optional<String> sourceLinkCanonicalId = existingSourceLink
+                .map(ScholardexSourceLink::getCanonicalEntityId)
+                .filter(id -> !isBlank(id));
+        Optional<String> existingCanonicalId = existingBySource
+                .map(ScholardexAuthorFact::getId)
+                .filter(id -> !isBlank(id));
 
-        if (existingSourceLink.isPresent() && existingSourceLink.get().getCanonicalEntityId() != null
-                && !existingSourceLink.get().getCanonicalEntityId().equals(canonicalId)) {
+        if (sourceLinkCanonicalId.isPresent() && existingCanonicalId.isPresent()
+                && !sourceLinkCanonicalId.get().equals(existingCanonicalId.get())) {
             upsertConflictInContext(
                     sourceFact.getSource(),
                     sourceRecordId,
@@ -316,12 +326,16 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
                     sourceFact.getSourceBatchId(),
                     sourceFact.getSourceCorrelationId(),
                     CONFLICT_SOURCE_ID_COLLISION,
-                    List.of(existingSourceLink.get().getCanonicalEntityId(), canonicalId),
+                    List.of(sourceLinkCanonicalId.get(), existingCanonicalId.get()),
                     context
             );
             result.markSkipped("author-source-id-collision:" + sourceRecordId);
             return;
         }
+
+        String canonicalId = sourceLinkCanonicalId
+                .or(() -> existingCanonicalId)
+                .orElseGet(() -> buildCanonicalAuthorId(sourceRecordId, sourceFact.getName()));
 
         AffiliationBridgeResult affiliationBridge = bridgeAffiliationIds(sourceFact.getAffiliationIds(), sourceFact.getSource(), context);
         ScholardexAuthorFact existingTarget = context.authorByCanonicalId.get(canonicalId);

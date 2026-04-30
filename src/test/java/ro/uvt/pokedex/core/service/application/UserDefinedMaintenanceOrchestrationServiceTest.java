@@ -6,7 +6,7 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
-import ro.uvt.pokedex.core.service.importing.scopus.ScopusProjectionBuilderService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScholardexProjectionBuilderService;
 import ro.uvt.pokedex.core.service.importing.scopus.UserDefinedCanonicalizationService;
 import ro.uvt.pokedex.core.service.importing.scopus.UserDefinedFactBuilderService;
 
@@ -28,7 +28,7 @@ class UserDefinedMaintenanceOrchestrationServiceTest {
     @Mock
     private ScholardexEdgeReconciliationService edgeReconciliationService;
     @Mock
-    private ScopusProjectionBuilderService projectionBuilderService;
+    private ScholardexProjectionBuilderService projectionBuilderService;
 
     @Test
     void runAllExecutesStepsInOrderWithAllOptionsEnabled() {

@@ -155,13 +155,191 @@ Done history moved to `TASKS-done.md`.
     - Added `SenseRankingServiceTest`: 4 tests for IO error, valid ranking, invalid ranking (no setRanking), null row skip.
     - Full package PIT (all 8 classes): line 90% (679/753), mutation 68% (212/314), test strength 77% (212/275).
 
-  - [ ] `H49.5` **`ro.uvt.pokedex.core.service.importing.scopus`** — high coverage masking weak assertions (15 classes).
+  - [x] `H49.5` **`ro.uvt.pokedex.core.service.importing.scopus`** — high coverage masking weak assertions (15 classes). *(completed 2026-04-29)*
     Baseline: line 81% (3127/3872), mutation 33% (705/2149), test strength 40% (705/1754).
     Scope hint: looks well-tested by line coverage but isn't. Focus exclusively on adding assertions to existing tests; very little new test scaffolding needed. Walk the surviving-mutants list class by class.
+    Current narrowed slice (10 touched classes, 2026-04-29): line 82% (2895/3547), mutation 45% (867/1914), test strength 55% (867/1583). This is not the full package yet; it reflects the current assertion-strengthening pass around projection building, canonicalization, and fact/materialization flows.
 
-  - [ ] `H49.6` **`ro.uvt.pokedex.core.service.importing.wos`** — same shape as scopus importing (10 classes).
+    - [x] `H49.5a` **Projection builder rename + regression carryover.** *(completed 2026-04-29)*
+      Scope: preserve and re-anchor projection builder coverage after the `ScopusProjectionBuilderService` -> `ScholardexProjectionBuilderService` rename.
+      Handover:
+      - Updated production wiring to inject `ScholardexProjectionBuilderService` from canonical materialization and application-layer callers.
+      - Renamed the large projection-builder test suite to `ScholardexProjectionBuilderServiceTest` and kept the existing behavioral regression coverage attached to the renamed service.
+      - Targeted verification passed as part of the `ro.uvt.pokedex.core.service.importing.scopus.*` test slice.
+
+    - [x] `H49.5b` **Canonicalization assertion strengthening.** *(completed 2026-04-29)*
+      Scope: tighten observable assertions in existing canonicalization tests instead of adding new scaffolding.
+      Handover:
+      - Strengthened `ScholardexAffiliationCanonicalizationServiceTest`, `ScholardexAuthorCanonicalizationServiceTest`, `ScholardexCitationCanonicalizationServiceTest`, and `ScholardexPublicationCanonicalizationServiceTest`.
+      - Added stronger assertions around duplicate recovery, normalized fields, alias handling, source-link projection, and valid-edge retention so previously covered but weakly asserted branches now fail on behavioral drift.
+      - Targeted verification passed as part of the `ro.uvt.pokedex.core.service.importing.scopus.*` test slice.
+
+    - [x] `H49.5c` **Fact/materialization assertion strengthening.** *(completed 2026-04-29)*
+      Scope: tighten facts, ingestion, and canonical materialization tests around saved state rather than broad new fixtures.
+      Handover:
+      - Strengthened `ScopusFactBuilderServiceTest`, `ScopusImportEventIngestionServiceTest`, `ScopusCanonicalMaterializationServiceTest`, `UserDefinedCanonicalizationServiceTest`, and `UserDefinedFactBuilderServiceTest`.
+      - Added concrete assertions for persisted field values, normalized values, source batch/correlation metadata, forum/publication linkage, and downstream rebuild invocation.
+      - Targeted verification passed as part of the `ro.uvt.pokedex.core.service.importing.scopus.*` test slice.
+
+    - [x] `H49.5d` **Remaining survivor sweep.** *(completed 2026-04-29)*
+      Scope: use the narrowed PIT survivor list to continue class-by-class assertion hardening before running the full package slice.
+      Current evidence:
+      - Focused tests passed: `./gradlew test --tests 'ro.uvt.pokedex.core.service.importing.scopus.*' -q`.
+      - Narrowed scoped PIT passed: `./gradlew pitest -PpitTargetClasses='ro.uvt.pokedex.core.service.importing.scopus.ScholardexAffiliationCanonicalizationService,ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationService,ro.uvt.pokedex.core.service.importing.scopus.ScholardexCitationCanonicalizationService,ro.uvt.pokedex.core.service.importing.scopus.ScholardexProjectionBuilderService,ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService,ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService,ro.uvt.pokedex.core.service.importing.scopus.ScopusFactBuilderService,ro.uvt.pokedex.core.service.importing.scopus.ScopusImportEventIngestionService,ro.uvt.pokedex.core.service.importing.scopus.UserDefinedCanonicalizationService,ro.uvt.pokedex.core.service.importing.scopus.UserDefinedFactBuilderService' -PpitTargetTests='ro.uvt.pokedex.core.service.importing.scopus.ScholardexAffiliationCanonicalizationServiceTest,ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationServiceBatchScopeTest,ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationServiceTest,ro.uvt.pokedex.core.service.importing.scopus.ScholardexCitationCanonicalizationServiceTest,ro.uvt.pokedex.core.service.importing.scopus.ScholardexProjectionBuilderServiceTest,ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationServiceTest,ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationServiceTest,ro.uvt.pokedex.core.service.importing.scopus.ScopusFactBuilderServiceTest,ro.uvt.pokedex.core.service.importing.scopus.ScopusImportEventIngestionServiceTest,ro.uvt.pokedex.core.service.importing.scopus.UserDefinedCanonicalizationServiceTest,ro.uvt.pokedex.core.service.importing.scopus.UserDefinedFactBuilderServiceTest' -q`.
+      - Narrowed PIT result: line 80% (2834/3547), mutation 34% (653/1914), test strength 43% (653/1531), 383 no-coverage mutations. Remaining gap is still broad; likely next ROI is in `ScholardexProjectionBuilderService` and `ScopusFactBuilderService`, with secondary cleanup in user-defined and citation/publication canonicalization paths.
+      - Focused follow-up for `ScholardexProjectionBuilderService` + `ScopusFactBuilderService` added SQL-row and backfill/merge assertions, then passed:
+        `./gradlew test --tests 'ro.uvt.pokedex.core.service.importing.scopus.ScholardexProjectionBuilderServiceTest' --tests 'ro.uvt.pokedex.core.service.importing.scopus.ScopusFactBuilderServiceTest' -q`
+      - Two-class PIT passed:
+        `./gradlew pitest -PpitTargetClasses='ro.uvt.pokedex.core.service.importing.scopus.ScholardexProjectionBuilderService,ro.uvt.pokedex.core.service.importing.scopus.ScopusFactBuilderService' -PpitTargetTests='ro.uvt.pokedex.core.service.importing.scopus.ScholardexProjectionBuilderServiceTest,ro.uvt.pokedex.core.service.importing.scopus.ScopusFactBuilderServiceTest' -q`
+      - Initial two-class PIT result: line 93% (1027/1105), mutation 45% (287/639), test strength 49% (287/583), 56 no-coverage mutations.
+      - Projection-builder-heavy follow-up added forum/author/affiliation/publication SQL-row assertions plus full-replacement and batch-refresh write-path coverage. `ScholardexProjectionBuilderService` alone improved to line 97% (474/489), mutation 50% (144/289), test strength 51% (144/283), 6 no-coverage mutations.
+      - Updated two-class PIT result after the projection-builder pass: line 95% (1055/1105), mutation 53% (340/639), test strength 55% (340/614), 25 no-coverage mutations. This is a meaningful move, but `H49.5d` remains open because the survivor set is still broad in both helpers and control-flow utilities.
+      - Second projection-builder helper pass tightened remaining survivors around fully populated publication rows, WoS-only forum merge fields, and batch refresh delete/reinsert helpers. `ScholardexProjectionBuilderService` alone improved again to line 97% (474/489), mutation 59% (170/289), test strength 60% (170/283), with 6 no-coverage mutations unchanged.
+      - Updated two-class PIT result after the second projection-builder pass: line 95% (1055/1105), mutation 57% (366/639), test strength 60% (366/614), 25 no-coverage mutations. The hotspot is substantially healthier now, but `H49.5d` is still open because the remaining survivors are concentrated in helper/control-flow logic rather than the main write pipeline.
+      - Third projection-builder surgical pass added coverage for sorted/derived citation maps, WoS merge ordering/skip behavior, and empty-collection author/affiliation view projection. `ScholardexProjectionBuilderService` alone improved to line 97% (475/489), mutation 65% (188/289), test strength 66% (188/283), with 6 no-coverage mutations still concentrated in lower-value helpers.
+      - Updated two-class PIT result after the third projection-builder pass: line 96% (1056/1105), mutation 60% (384/639), test strength 63% (384/614), 25 no-coverage mutations. This narrowed hotspot now clears the H49 threshold, though the full `H49.5` package is still open pending broader class coverage.
+      - Fact-builder follow-up added stronger persisted-state assertions for publication/forum/funding/citation/author/affiliation materialization plus targeted helper coverage around `boolValue`, `intValue`, `hashKey`, and funding-key normalization. `ScopusFactBuilderService` alone improved to line 95% (583/616), mutation 65% (229/350), test strength 69% (229/333), with 17 no-coverage mutations.
+      - Updated two-class PIT result after broadening the fact-builder sweep: line 96% (1058/1105), mutation 65% (417/639), test strength 68% (417/616), 23 no-coverage mutations. Remaining survivors are now concentrated more heavily in control-flow/chunking math and lower-value helper paths than in saved-state assertions.
+      - Next fact-builder ROI pass added publication field assertions for DOI/access/funding/article metadata and explicit two-chunk publication/citation logging coverage at 1001 events. `ScopusFactBuilderService` alone improved to line 95% (583/616), mutation 71% (248/350), test strength 74% (248/333), with 17 no-coverage mutations unchanged.
+      - Updated two-class PIT result after the chunk-boundary pass: line 96% (1058/1105), mutation 68% (436/639), test strength 71% (436/616), 23 no-coverage mutations. Remaining survivors are increasingly concentrated in replay/skip branches, helper equivalence, and lower-value timing/math paths rather than core write behavior.
+      - Replay/unchanged-branch follow-up tightened `buildFactsFromImportEvents` replay assertions for publication/forum/funding/citation paths, including normalized forum hashes, unchanged business fields, lineage refresh, and preserved materialization timestamps. `ScopusFactBuilderService` alone improved to line 96% (589/616), mutation 74% (259/350), test strength 77% (259/336), with no-coverage down to 14.
+      - Updated two-class PIT result after the replay-branch pass: line 96% (1064/1105), mutation 70% (447/639), test strength 72% (447/619), 20 no-coverage mutations. Remaining survivors are now mostly helper-equivalence and lower-signal control-flow/timing paths, with less remaining pressure in the main replay/write branches.
+      - Helper/skip-path cleanup pass added direct assertions for unsupported entity skip handling, missing publication/citation edge skips, `text`, `arrayValue`, `distinctNonBlank`, `normalizeForNameMerge`, `hashKey`, `sample`, and `nanosToMillis`. `ScopusFactBuilderService` alone improved to line 98% (603/616), mutation 77% (271/350), test strength 79% (271/344), with no-coverage down to 6.
+      - Updated two-class PIT result after the helper/skip cleanup: line 98% (1078/1105), mutation 72% (459/639), test strength 73% (459/627), 12 no-coverage mutations. Remaining survivors are now concentrated in a smaller set of low-signal conditionals and math/timing helpers rather than untested business branches.
+      - Final surgical helper cleanup added direct coverage for missing-field boolean handling, blank `splitDash`, `mapByKey` duplicate/blank-key filtering, case-insensitive `isUserDefinedSource`, and stricter `hashKey` shape assertions. `ScopusFactBuilderService` alone improved again to line 98% (603/616), mutation 78% (274/350), test strength 80% (274/344), with no-coverage unchanged at 6.
+      - Updated two-class PIT result after the final surgical pass: line 98% (1078/1105), mutation 72% (462/639), test strength 74% (462/627), 12 no-coverage mutations. What remains is mostly stubborn low-value timing/control-flow/helper-equivalence fallout rather than meaningful importer behavior gaps.
+      - High-ROI projection-builder follow-up added direct reflection-based assertions for `toForumView`, `toAuthorView`, `toPublicationView`, explicit `buildCitingMapForPublications` expectations, and stronger batch-refresh orchestration verification across the reporting write paths. `ScholardexProjectionBuilderService` alone improved to line 97% (476/489), mutation 73% (210/289), test strength 74% (210/283), with 6 no-coverage mutations unchanged.
+      - Updated two-class PIT result after the projection-builder ROI pass: line 98% (1079/1105), mutation 76% (484/639), test strength 77% (484/627), 12 no-coverage mutations. Remaining projection survivors are now concentrated mostly in timing math, sort/order control-flow, and lower-value helper/lambda behavior rather than missed field mapping or write-path assertions.
+      - Re-ran the broader narrowed 10-class `H49.5` slice after the hotspot remediation passes. Current narrowed result moved from line 80% / mutation 34% / strength 43% to line 82% (2895/3547), mutation 45% (867/1914), test strength 55% (867/1583), with no-coverage down to 331. PIT reported two timed-out mutants during this broader run, so this is useful breadth evidence but not yet a clean final closeout number.
+
+    - [x] `H49.5e` **Canonical breadth refinement.** *(completed 2026-04-29)*
+      Scope: finish the remaining non-hotspot survivor cleanup in the canonicalization classes after the projection/fact hotspots.
+      Target classes:
+      - `ScholardexAffiliationCanonicalizationService`
+      - `ScholardexAuthorCanonicalizationService`
+      - `ScholardexCitationCanonicalizationService`
+      - `ScholardexPublicationCanonicalizationService`
+      Focus:
+      - remaining duplicate-recovery and replay/idempotence assertions
+      - source-link / lineage / normalized-field invariants
+      - surviving branch coverage that is currently masked by broad happy-path tests
+      Progress:
+      - Added direct metadata-contract coverage for all four canonical services, asserting pipeline key, entity type label, entity type, default chunk size, default source version, and heartbeat wiring.
+      - Added targeted helper coverage in `ScholardexAffiliationCanonicalizationServiceTest` for normalized alias composition and deterministic fallback canonical-id generation.
+      - Added targeted helper coverage in `ScholardexPublicationCanonicalizationServiceTest` for bridge-fact field copying plus deterministic fallback author/authorship helper behavior.
+      - Targeted verification passed:
+        `./gradlew test --tests 'ro.uvt.pokedex.core.service.importing.scopus.ScholardexAffiliationCanonicalizationServiceTest' --tests 'ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationServiceTest' --tests 'ro.uvt.pokedex.core.service.importing.scopus.ScholardexCitationCanonicalizationServiceTest' --tests 'ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationServiceTest' -q`
+      - Scoped canonical PIT completed with timeout caveat:
+        `./gradlew pitest -PpitTargetClasses='ro.uvt.pokedex.core.service.importing.scopus.ScholardexAffiliationCanonicalizationService,ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationService,ro.uvt.pokedex.core.service.importing.scopus.ScholardexCitationCanonicalizationService,ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService' -PpitTargetTests='ro.uvt.pokedex.core.service.importing.scopus.ScholardexAffiliationCanonicalizationServiceTest,ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationServiceTest,ro.uvt.pokedex.core.service.importing.scopus.ScholardexCitationCanonicalizationServiceTest,ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationServiceTest' -q`
+      - Initial four-class canonical slice result after the helper/contract pass: line 77% (1275/1659), mutation 38% (314/835), test strength 47% (314/662), with 173 no-coverage mutations and 2 timed-out mutants.
+      - Follow-up replay/wrapper pass added update-path coverage for affiliation replay, source-link rewrite edge handling, publication `applyCanonicalPublicationFields(...)` idempotence assertions, and default-wrapper / ordered-processing coverage on the canonical rebuild entry points.
+      - Updated four-class canonical slice result: line 79% (1312/1659), mutation 41% (341/835), test strength 50% (341/684), with no-coverage down to 151 and the same 2 timed-out mutants. This is a meaningful breadth move, though the remaining gap is still broader pipeline/control-flow behavior rather than cheap helper surface.
+      - Next ROI pass deepened the direct publication field-application assertions and added reachable affiliation skip/wrapper coverage, including null-corresponding-author handling, distinct affiliation resolution, and fuller replay field-state checks.
+      - Updated four-class canonical slice result again: line 79% (1318/1659), mutation 44% (371/835), test strength 54% (371/687), with no-coverage down to 148 and the same 2 timed-out mutants. This confirms the remaining publication-field survivor cluster was real and largely test-killable without production changes.
+      - Combined author/publication ROI pass added direct coverage for publication canonical-id fallback branches, publication author-bridge fallback queuing, author skip/fallback/conflict helper behavior, and stronger author metadata/edge assertions on single-record upsert.
+      - Targeted author/publication verification passed:
+        `./gradlew test --tests 'ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationServiceTest' --tests 'ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationServiceBatchScopeTest' --tests 'ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationServiceTest' -q`
+      - Current two-class author/publication slice result: line 82% (973/1189), mutation 46% (274/594), test strength 54% (274/508), with 86 no-coverage mutations and 1 timed-out mutant. This improved the two dominant canonical classes together, but the remaining gap is still broad enough that one more publication/author pass or a switch to `H49.5f` is a judgment call rather than an obvious next step.
+      - Follow-up bridge/flush/recovery pass added direct coverage for author fallback bridge dedupe, author recovery rewrite, publication DOI ambiguity handling, publication source-link caching, and publication edge/conflict queuing.
+      - Updated two-class author/publication slice result: line 82% (976/1189), mutation 48% (288/594), test strength 56% (288/510), with no-coverage down to 84 and the same 1 timed-out mutant. This is still moving, but gains are now incremental rather than dramatic.
+      - Publication-focused `P3 + P4` pass added direct assertions for deduped publication-author-affiliation edge queuing, conflict metadata materialization, duplicate-key recovery replay into DOI matches, and `flushPublicationFacts(...)` fallback behavior for both insert and update duplicate paths.
+      - Targeted publication verification passed:
+        `./gradlew test --tests 'ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationServiceTest' -q`
+      - Publication-only PIT improved to: line 92% (651/706), mutation 61% (217/357), test strength 65% (217/336), with 21 no-coverage mutations and 1 timed-out mutant.
+      - Updated two-class author/publication slice result after the publication `P3 + P4` pass: line 85% (1010/1189), mutation 51% (304/594), test strength 58% (304/521), with no-coverage down to 73 and the same 1 timed-out mutant. This is a better breadth move than the prior incremental passes and confirms the recovery/flush surface was still materially under-tested.
+      - Timeout cleanup pass added a pagination-specific `loadSourceFacts(...)` test with explicit page-by-page stubbing so unexpected extra page fetches fail fast instead of looping indefinitely under mutation.
+      - Updated publication-only PIT result after the timeout cleanup: line 92% (653/706), mutation 61% (218/357), test strength 65% (218/337), with no-coverage down to 20 and timed-out mutants reduced to 0.
+      - Updated two-class author/publication slice result after the timeout cleanup: line 85% (1012/1189), mutation 51% (305/594), test strength 58% (305/522), with no-coverage down to 72 and timed-out mutants reduced to 0.
+      - Author `A2 + A4` pass added direct coverage for synthetic fallback source-link caching, mixed linked/unmatched affiliation bridge behavior, queued author-affiliation edge state/reason shaping, and `flushPendingWrites(...)` recovery/counter behavior across linked/unmatched/conflict/skipped source-link results plus edge-conflict accumulation.
+      - Targeted author verification passed:
+        `./gradlew test --tests 'ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationServiceTest' --tests 'ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationServiceBatchScopeTest' -q`
+      - Updated two-class author/publication slice result after `A2 + A4`: line 88% (1047/1189), mutation 56% (334/594), test strength 62% (334/538), with no-coverage down to 56 and timed-out mutants remaining at 0. This is the strongest `H49.5e` breadth move so far and confirms the author bridge/flush surface was still materially under-tested.
+      - Author `A3` pass strengthened direct conflict/recovery assertions for `saveConflict(...)`, `upsertConflictInContext(...)`, and `recoverAuthorWrite(...)`, including full conflict metadata, existing-conflict reuse, detected-at preservation, candidate list handling, and recovered-author lineage/state propagation.
+      - Updated two-class author/publication slice result after `A3`: line 90% (1070/1189), mutation 60% (357/594), test strength 65% (357/553), with no-coverage down to 41 and timed-out mutants still at 0. This is another substantial breadth move and materially reduces the remaining author canonicalization survivor mass.
+      - Final publication `P2` bridge cleanup added direct coverage for null/empty author-bridge input, direct-vs-fallback author source-link resolution, and remembered-miss / blank-key `findSourceLink(...)` behavior.
+      - Updated two-class author/publication slice result after `P2`: line 90% (1070/1189), mutation 60% (359/594), test strength 65% (359/553), with no-coverage unchanged at 41 and timed-out mutants still at 0. This is a small but real cleanup step; most of the remaining `H49.5e` survivors are now lower-yield helper/control-flow fallout rather than missing core canonicalization scenarios.
+      - Production bugfix pass addressed a real author canonicalization defect: both single-record and batch flows now detect divergent canonical ids between an existing author source link and an existing author fact before choosing a canonical target, instead of silently trusting the source link and making the `SOURCE_ID_COLLISION` path unreachable.
+      - Added focused regression tests for both collision paths in `ScholardexAuthorCanonicalizationServiceTest`, including the chunk-context cached-link variant used by batch rebuilds.
+      - Re-validated the narrowed author/publication slice after the bugfix:
+        `./gradlew test --tests 'ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationServiceTest' --tests 'ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationServiceBatchScopeTest' -q`
+        `./gradlew pitest -PpitTargetClasses='ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationService,ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService' -PpitTargetTests='ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationServiceTest,ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationServiceBatchScopeTest,ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationServiceTest' -q`
+      - Updated two-class author/publication slice result after the collision bugfix: line 91% (1097/1201), mutation 62% (375/602), test strength 66% (375/571), with no-coverage down to 31 and timed-out mutants still at 0. This keeps the narrowed `H49.5e` author/publication slice above the H49 threshold while correcting a real data-integrity risk.
+      - Follow-up production bugfix pass addressed two additional correctness risks: ambiguous DOI resolution in publication canonicalization now stops reuse instead of merging into an arbitrary sorted match, and affiliation pending source-link rewrite now scopes by both source and `sourceRecordId` so recovery cannot rewrite commands from another source that happen to share the same record id.
+      - Added focused regression coverage in `ScholardexPublicationCanonicalizationServiceTest` and `ScholardexAffiliationCanonicalizationServiceTest` for both behaviors, then revalidated touched canonical tests:
+        `./gradlew test --tests 'ro.uvt.pokedex.core.service.importing.scopus.ScholardexAffiliationCanonicalizationServiceTest' --tests 'ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationServiceTest' -q`
+      - Re-ran the four-class canonical slice after the DOI/source-rewrite fixes:
+        `./gradlew pitest -PpitTargetClasses='ro.uvt.pokedex.core.service.importing.scopus.ScholardexAffiliationCanonicalizationService,ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationService,ro.uvt.pokedex.core.service.importing.scopus.ScholardexCitationCanonicalizationService,ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService' -PpitTargetTests='ro.uvt.pokedex.core.service.importing.scopus.ScholardexAffiliationCanonicalizationServiceTest,ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationServiceTest,ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationServiceBatchScopeTest,ro.uvt.pokedex.core.service.importing.scopus.ScholardexCitationCanonicalizationServiceTest,ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationServiceTest' -q`
+      - Updated four-class canonical slice result after the DOI/source-rewrite bugfixes: line 89% (1490/1683), mutation 58% (497/853), test strength 64% (497/781), with 72 no-coverage mutations and 1 timed-out mutant remaining. The requested bugfixes are now protected by tests; the remaining timeout was concentrated in `ScholardexCitationCanonicalizationService.loadSourceFacts(...)`.
+      - Citation pagination cleanup added a dedicated `loadSourceFacts(...)` full-rescan test with explicit page-0/page-1 stubbing and a hard failure on any unexpected page-2 fetch. This eliminates the last timed-out canonical mutant by turning the pagination contract into an asserted behavior instead of relying on permissive one-page mocks.
+      - Revalidated citation tests and reran the four-class canonical slice:
+        `./gradlew test --tests 'ro.uvt.pokedex.core.service.importing.scopus.ScholardexCitationCanonicalizationServiceTest' -q`
+        `./gradlew pitest -PpitTargetClasses='ro.uvt.pokedex.core.service.importing.scopus.ScholardexAffiliationCanonicalizationService,ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationService,ro.uvt.pokedex.core.service.importing.scopus.ScholardexCitationCanonicalizationService,ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationService' -PpitTargetTests='ro.uvt.pokedex.core.service.importing.scopus.ScholardexAffiliationCanonicalizationServiceTest,ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationServiceTest,ro.uvt.pokedex.core.service.importing.scopus.ScholardexAuthorCanonicalizationServiceBatchScopeTest,ro.uvt.pokedex.core.service.importing.scopus.ScholardexCitationCanonicalizationServiceTest,ro.uvt.pokedex.core.service.importing.scopus.ScholardexPublicationCanonicalizationServiceTest' -q`
+      - Updated four-class canonical slice result after the citation timeout cleanup: line 89% (1492/1683), mutation 58% (498/853), test strength 64% (498/782), with no-coverage down to 71 and timed-out mutants reduced to 0. The slice is now clean from a PIT stability perspective, even though it still sits just below the H49 threshold on rounded mutation/strength numbers.
+      - Final citation breadth pass added direct preload/process helper coverage for fallback source-record ids, cached source-link replay, unresolved citing-publication conflicts, source-record collisions, already-known-edge reuse, and `lastRecordKey(...)` fallback behavior.
+      - Final four-class canonical slice result: line 92% (1559/1689), mutation 66% (568/857), test strength 70%, with no-coverage down to 41 and timed-out mutants at 0. `H49.5e` now clears the H49 bar on the narrowed canonical slice.
+      - Production fixes carried by this hub:
+        - author canonicalization now detects source-link / canonical-author divergence in both single-record and batch flows instead of silently trusting the source link
+        - publication canonicalization no longer reuses an arbitrary canonical publication when DOI resolution is ambiguous
+        - affiliation recovery rewrites pending source-link commands by both `source` and `sourceRecordId`, preventing cross-source contamination
+
+    - [x] `H49.5f` **Materialization and ingestion breadth refinement.** *(completed 2026-04-29)*
+      Scope: finish the remaining non-hotspot cleanup in the batch-scoped orchestration classes that feed or invoke the canonical/projection pipeline.
+      Target classes:
+      - `ScopusCanonicalMaterializationService`
+      - `ScopusImportEventIngestionService`
+      Focus:
+      - batch-scoped orchestration assertions
+      - replay / duplicate / skip / error-path behavior
+      - downstream invocation contracts and batch-boundary invariants
+      Handover:
+      - Expanded `ScopusImportEventIngestionServiceTest` to cover `ingestBatch(...)` end to end for null/empty inputs, non-Mongo fallback mode, Mongo prepared-document writes, serialization-error-only batches, and Mongo bulk-write partial-failure handling.
+      - Added deterministic helper assertions for payload normalization, SHA-256 hashing, and nanos-to-millis conversion.
+      - Expanded `ScopusCanonicalMaterializationServiceTest` with direct orchestration-helper coverage for incremental-option derivation, incremental detection, batch-scoped edge reconciliation, null-options full-maintenance behavior, and failure-outcome observability metrics emission.
+      - Targeted verification passed:
+        `./gradlew test --tests 'ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationServiceTest' --tests 'ro.uvt.pokedex.core.service.importing.scopus.ScopusImportEventIngestionServiceTest' -q`
+      - Narrowed two-class PIT passed:
+        `./gradlew pitest -PpitTargetClasses='ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationService,ro.uvt.pokedex.core.service.importing.scopus.ScopusImportEventIngestionService' -PpitTargetTests='ro.uvt.pokedex.core.service.importing.scopus.ScopusCanonicalMaterializationServiceTest,ro.uvt.pokedex.core.service.importing.scopus.ScopusImportEventIngestionServiceTest' -q`
+      - Final `H49.5f` slice result: line 99% (215/217), mutation 75% (63/84), test strength 75%, no-coverage 0. Remaining survivors are concentrated in low-signal arithmetic and conditional math around aggregate outcome/timing calculations.
+
+    - [x] `H49.5g` **User-defined and package closeout refinement.** *(completed 2026-04-29)*
+      Scope: finish the remaining non-hotspot cleanup in the user-defined branch, then re-measure the narrowed slice and decide whether `H49.5` is ready for full-package PIT.
+      Target classes:
+      - `UserDefinedCanonicalizationService`
+      - `UserDefinedFactBuilderService`
+      Focus:
+      - assertion strengthening around USER_DEFINED lineage, normalized keys, and replay behavior
+      - close the residual breadth gap outside the Scopus hotspot pair
+      - rerun narrowed-slice PIT after `H49.5e`/`H49.5f`/`H49.5g` progress before attempting full-package PIT
+      - `H49.5g` user-defined slice final result: line 97% (548/566), mutation 82% (291/356), test strength 84%, no-coverage 10.
+
+    - [x] `H49.5h` **Core utility closeout (`ScholardexCanonicalBuildCheckpointService` + `CanonicalizationSupport` + `AbstractCanonicalizationService` + `CanonicalBuildOptions`).** *(completed 2026-04-29)*
+      Scope: close the lowest-support classes and utility/base abstractions with direct unit coverage and scoped PIT.
+      Handover:
+      - Added direct tests for checkpoint lifecycle, canonical build option defaults, canonicalization helper utilities, and abstract rebuild/conflict orchestration harness behavior.
+      - Targeted verification passed:
+        `./gradlew test --tests 'ro.uvt.pokedex.core.service.importing.scopus.AbstractCanonicalizationServiceTest' --tests 'ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSupportTest' --tests 'ro.uvt.pokedex.core.service.importing.scopus.ScholardexCanonicalBuildCheckpointServiceTest' --tests 'ro.uvt.pokedex.core.service.importing.scopus.CanonicalBuildOptionsTest' -q`
+      - Scoped PIT passed:
+        `./gradlew pitest -PpitTargetClasses='ro.uvt.pokedex.core.service.importing.scopus.AbstractCanonicalizationService,ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSupport,ro.uvt.pokedex.core.service.importing.scopus.ScholardexCanonicalBuildCheckpointService,ro.uvt.pokedex.core.service.importing.scopus.CanonicalBuildOptions' -PpitTargetTests='ro.uvt.pokedex.core.service.importing.scopus.AbstractCanonicalizationServiceTest,ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSupportTest,ro.uvt.pokedex.core.service.importing.scopus.ScholardexCanonicalBuildCheckpointServiceTest,ro.uvt.pokedex.core.service.importing.scopus.CanonicalBuildOptionsTest' -q`
+      - Result: line 94% (175/187), mutation 76% (93/123), test strength 79%, no-coverage 5. Remaining survivors are concentrated in lower-signal heartbeat/logging/timing math and branch-shape mutations in the abstract base.
+
+    - Final full-package closeout (all 15 classes):
+      - `./gradlew pitest -PpitTargetClasses='ro.uvt.pokedex.core.service.importing.scopus.*' -q`
+      - Result: line 94% (3686/3902), mutation 71% (1546/2171), test strength 74% (1546/2081).
+      - `H49.5` exit threshold is met at package level; remaining survivors are documented as lower-yield utility/control-flow fallout.
+
+  - [x] `H49.6` **`ro.uvt.pokedex.core.service.importing.wos`** — same shape as scopus importing (10 classes). *(completed 2026-04-30)*
     Baseline: line 81% (2129/2623), mutation 39% (587/1517), test strength 48% (587/1227).
     Scope hint: same playbook as `H49.5` — high line coverage, assertion-strengthening work. Slightly better starting point.
+    Handover:
+    - Removed `fileResult` dual-tracking from `WosImportEventIngestionService`: eliminated the per-file `ImportProcessingResult` parameter from `processEventFast`, `markIdentitySkipped`, and `shouldSkipGovEvent`; multi-file ingestion methods (`ingestGovernmentAisRisExcel`, `ingestOfficialWosJson`) now capture pre-file snapshots and compute deltas for heartbeat logging; single-file methods use `total` directly.
+    - Added targeted parser tests in `GovAisRisImportEventParserTest`: unsupported payload format skip, all-blank identity skip, RIS 2024 metric fallback from c2, RIS 2020 metric fallback from c2, AIS 2021 edition-preservation from parsed category field, AIS 2020 null-quarter handling.
+    - Added targeted parser tests in `OfficialWosJsonImportEventParserTest`: unsupported payload format skip, `abbrJournal` fallback when title blank, `journalImpactFactor` key present with null value.
+    - Added `rebuildWosProjectionsForJournals` tests in `WosProjectionBuilderServiceTest`: inserts rows and reports no errors (with `atLeast(4)` batch-update verify to kill VoidMethodCallMutator survivors at L386-389), null/empty journal-id early-return paths.
+    - Added targeted `WosIdentityResolutionServiceTest` tests: `maybeUpdateAliasesUpdatesUpdatedAtWhenTitleChanges` (kills L251), `multiCandidateBestMatchCallsMaybeUpdateAliasesOnWinner` (kills L165), plus earlier tests for null-sourceContext, non-blank journalId, setIdentityKey on create/single/multi-candidate paths, null title, unchanged-match updatedAt, primaryIssn/eIssn/aliasIssn propagation, blank-title handling.
+    - Added 8 targeted `WosCanonicalContractSupportTest` tests: `normalizeTitleFingerprint` null and all-special-char inputs, `normalizeMetricValue` null input, `buildIdentityKey` null token set, `isSourceAllowedForMetric` with null metric/source type, `requiresSplitByEdition` false for single edition, `selectCanonicalOperationalSource` with null left and null metric type.
+    - Focused test verification passed: `./gradlew test --tests 'ro.uvt.pokedex.core.service.importing.wos.*' -q`.
+    - Final scoped PIT passed: 847/1416 mutations killed (60%), test strength 68%. Both H49 thresholds met.
+    - Remaining survivors are classified as low-value or equivalent: logging/heartbeat arithmetic mutations in `WosImportEventIngestionService`; hash-material string-constant and join-delimiter mutations in `WosCanonicalContractSupport`; no-coverage mutations concentrated in lower-value helper paths and the unreachable `sha256Hex` catch block; `setAliasIssns`/`setAlternativeNames` VoidMethodCallMutator mutations in `createIdentity` that are shielded by the test's `persistIdentity` mock always initializing null collections.
 
   - [x] `H49.7` **`ro.uvt.pokedex.core.service.importing.wos.model`** — WoS model classes (3 classes). *(completed 2026-04-29)*
     Baseline: line 80% (24/30), mutation 33% (5/15), test strength 45% (5/11).

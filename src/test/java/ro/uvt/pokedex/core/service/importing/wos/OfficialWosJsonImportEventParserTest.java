@@ -8,10 +8,12 @@ import ro.uvt.pokedex.core.model.reporting.wos.WosImportEvent;
 import ro.uvt.pokedex.core.model.reporting.wos.WosSourceType;
 import ro.uvt.pokedex.core.service.importing.wos.model.WosParsedEventResult;
 import ro.uvt.pokedex.core.service.importing.wos.model.WosParsedEventStatus;
+import ro.uvt.pokedex.core.service.importing.wos.model.WosParsedRecord;
 
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OfficialWosJsonImportEventParserTest {
@@ -40,6 +42,14 @@ class OfficialWosJsonImportEventParserTest {
         assertTrue(result.records().stream().anyMatch(r -> r.metricType() == MetricType.IF));
         assertTrue(result.records().stream().allMatch(r -> r.editionNormalized() == EditionNormalized.ESCI));
         assertTrue(result.records().stream().allMatch(r -> r.quartileRank() == null));
+
+        WosParsedRecord aisRecord = result.records().stream()
+                .filter(r -> r.metricType() == MetricType.AIS).findFirst().orElseThrow();
+        assertEquals("Acoustics", aisRecord.title());
+        assertEquals(2023, aisRecord.year());
+        assertNull(aisRecord.issn());
+        assertEquals("2624599X", aisRecord.eIssn());
+        assertEquals("ESCI", aisRecord.editionRaw());
     }
 
     @Test
@@ -61,6 +71,13 @@ class OfficialWosJsonImportEventParserTest {
         assertEquals(2, result.records().size());
         assertTrue(result.records().stream().allMatch(r -> r.editionNormalized() == EditionNormalized.SCIE));
         assertTrue(result.records().stream().anyMatch(r -> r.metricType() == MetricType.AIS && r.value() == null));
+
+        WosParsedRecord ifRecord = result.records().stream()
+                .filter(r -> r.metricType() == MetricType.IF).findFirst().orElseThrow();
+        assertEquals("Journal T", ifRecord.title());
+        assertEquals(2019, ifRecord.year());
+        assertEquals("12345678", ifRecord.issn());
+        assertEquals(0.85, ifRecord.value());
     }
 
     @Test
@@ -98,6 +115,87 @@ class OfficialWosJsonImportEventParserTest {
         assertTrue(result.records().stream().anyMatch(r -> r.editionNormalized() == EditionNormalized.SCIE));
         assertTrue(result.records().stream().anyMatch(r -> r.editionNormalized() == EditionNormalized.SSCI));
         assertTrue(result.records().stream().allMatch(r -> r.metricType() == MetricType.AIS));
+    }
+
+    @Test
+    void parsesEIssnFromCamelCaseKeyWhenLowercaseKeyMissing() throws Exception {
+        WosImportEvent event = event(Map.of(
+                "journalTitle", "Camel Journal",
+                "year", 2021,
+                "edition", "SCIE",
+                "issn", "8888-9999",
+                "eIssn", "7777-6666",
+                "journalImpactFactor", 2.5,
+                "categoryName", "CHEMISTRY",
+                "rank", 1
+        ));
+
+        WosParsedEventResult result = parser.parse(event);
+
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        WosParsedRecord ifRecord = result.records().stream()
+                .filter(r -> r.metricType() == MetricType.IF).findFirst().orElseThrow();
+        assertEquals("77776666", ifRecord.eIssn());
+        assertEquals("88889999", ifRecord.issn());
+        assertEquals("Camel Journal", ifRecord.title());
+    }
+
+    @Test
+    void parseUnsupportedPayloadFormatReturnsSkipped() {
+        WosImportEvent event = new WosImportEvent();
+        event.setId("ev-unsupported");
+        event.setSourceType(WosSourceType.OFFICIAL_WOS_EXTRACT);
+        event.setSourceFile("file.json");
+        event.setSourceVersion("v2019");
+        event.setSourceRowItem("0");
+        event.setPayloadFormat("excel-row");
+        event.setPayload("{}");
+
+        WosParsedEventResult result = parser.parse(event);
+
+        assertEquals(WosParsedEventStatus.SKIPPED, result.status());
+    }
+
+    @Test
+    void parseFallsBackToAbbrJournalWhenJournalTitleBlank() throws Exception {
+        WosImportEvent event = event(new java.util.HashMap<>(java.util.Map.of(
+                "year", 2020,
+                "edition", "SCIE",
+                "issn", "1234-5678",
+                "abbrJournal", "Abbr J",
+                "articleInfluenceScore", 0.5,
+                "categoryName", "CHEMISTRY",
+                "rank", 2
+        )));
+
+        WosParsedEventResult result = parser.parse(event);
+
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        assertEquals("Abbr J", result.records().get(0).title());
+    }
+
+    @Test
+    void parsedIfRecordWhenIfValueNullButKeyPresent() throws Exception {
+        java.util.Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("journalTitle", "Journal IF Key");
+        payload.put("year", 2022);
+        payload.put("edition", "SCIE");
+        payload.put("issn", "1234-5678");
+        payload.put("journalImpactFactor", null);
+        WosImportEvent event = new WosImportEvent();
+        event.setId("ev-json");
+        event.setSourceType(WosSourceType.OFFICIAL_WOS_EXTRACT);
+        event.setSourceFile("wos-json-1997-2019/journals-SCIE-year-2019.json");
+        event.setSourceVersion("v2019");
+        event.setSourceRowItem("0");
+        event.setPayloadFormat("json-item");
+        event.setPayload(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(payload));
+
+        WosParsedEventResult result = parser.parse(event);
+
+        assertEquals(WosParsedEventStatus.PARSED, result.status());
+        assertTrue(result.records().stream().anyMatch(r -> r.metricType() == MetricType.IF));
+        assertNull(result.records().stream().filter(r -> r.metricType() == MetricType.IF).findFirst().orElseThrow().value());
     }
 
     private WosImportEvent event(Map<String, Object> payload) throws Exception {

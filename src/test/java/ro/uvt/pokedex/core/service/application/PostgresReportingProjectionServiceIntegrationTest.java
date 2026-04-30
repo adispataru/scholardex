@@ -39,7 +39,7 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRep
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
-import ro.uvt.pokedex.core.service.importing.scopus.ScopusProjectionBuilderService;
+import ro.uvt.pokedex.core.service.importing.scopus.ScholardexProjectionBuilderService;
 import ro.uvt.pokedex.core.service.application.WosIndexMaintenanceService;
 import ro.uvt.pokedex.core.service.importing.wos.WosOptimizationProperties;
 import ro.uvt.pokedex.core.service.importing.wos.WosProjectionBuilderService;
@@ -115,7 +115,7 @@ class PostgresReportingProjectionServiceIntegrationTest {
                 txManager
         );
 
-        ScopusProjectionBuilderService scopusBuilder = new ScopusProjectionBuilderService(
+        ScholardexProjectionBuilderService scopusBuilder = new ScholardexProjectionBuilderService(
                 scopusForumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
@@ -274,7 +274,7 @@ class PostgresReportingProjectionServiceIntegrationTest {
         categoryFact.setCreatedAt(now);
         mongoTemplate.save(categoryFact);
 
-        // Scopus forum fact — used by ScopusProjectionBuilderService (scopus.forum_facts)
+        // Scopus forum fact — used by ScholardexProjectionBuilderService (scopus.forum_facts)
         ScopusForumFact forumFact = new ScopusForumFact();
         forumFact.setId("forum-1");
         forumFact.setSourceId("scopus-forum-1");
@@ -284,7 +284,7 @@ class PostgresReportingProjectionServiceIntegrationTest {
         forumFact.setUpdatedAt(now);
         mongoTemplate.save(forumFact);
 
-        // Scholardex author fact — used by ScopusProjectionBuilderService (scholardex.author_facts)
+        // Scholardex author fact — used by ScholardexProjectionBuilderService (scholardex.author_facts)
         ScholardexAuthorFact authorFact = new ScholardexAuthorFact();
         authorFact.setId("author-1");
         authorFact.setDisplayName("Author One");
@@ -292,7 +292,7 @@ class PostgresReportingProjectionServiceIntegrationTest {
         authorFact.setUpdatedAt(now);
         mongoTemplate.save(authorFact);
 
-        // Scholardex affiliation fact — used by ScopusProjectionBuilderService (scholardex.affiliation_facts)
+        // Scholardex affiliation fact — used by ScholardexProjectionBuilderService (scholardex.affiliation_facts)
         ScholardexAffiliationFact affiliationFact = new ScholardexAffiliationFact();
         affiliationFact.setId("aff-1");
         affiliationFact.setName("Affiliation One");
@@ -301,7 +301,7 @@ class PostgresReportingProjectionServiceIntegrationTest {
         affiliationFact.setUpdatedAt(now);
         mongoTemplate.save(affiliationFact);
 
-        // Scholardex publication fact — used by ScopusProjectionBuilderService and Scopus fingerprint
+        // Scholardex publication fact — used by ScholardexProjectionBuilderService and Scopus fingerprint
         ScholardexPublicationFact pubFact = new ScholardexPublicationFact();
         pubFact.setId("pub-fact-1");
         pubFact.setTitle("Projection Test Publication");
@@ -313,7 +313,7 @@ class PostgresReportingProjectionServiceIntegrationTest {
         pubFact.setUpdatedAt(now);
         mongoTemplate.save(pubFact);
 
-        // Scholardex citation fact — used by ScopusProjectionBuilderService (scholardex.citation_facts)
+        // Scholardex citation fact — used by ScholardexProjectionBuilderService (scholardex.citation_facts)
         ScholardexCitationFact citation = new ScholardexCitationFact();
         citation.setId("cit-1");
         citation.setCitedPublicationId("pub-fact-1");

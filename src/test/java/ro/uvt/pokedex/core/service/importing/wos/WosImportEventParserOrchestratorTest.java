@@ -20,6 +20,64 @@ class WosImportEventParserOrchestratorTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
+    void parseSourceLineageDelegatesToRepositoryAndParsesEvents() throws Exception {
+        WosImportEventRepository repository = mock(WosImportEventRepository.class);
+        GovAisRisImportEventParser govParser = new GovAisRisImportEventParser(objectMapper);
+        WosImportEventParserOrchestrator orchestrator =
+                new WosImportEventParserOrchestrator(repository, List.of(govParser));
+
+        WosImportEvent govEvent = govEvent("AIS", "2024", "1", Map.of(
+                "c0", "Journal Source",
+                "c1", "1234-5678",
+                "c2", "8765-4321",
+                "c3", "ACOUSTICS",
+                "c4", "SCIE",
+                "c5", "0.9"
+        ));
+        when(repository.findAllBySourceTypeAndSourceFileAndSourceVersion(
+                WosSourceType.GOV_AIS_RIS, "AIS_2024.xlsx", "v2024"))
+                .thenReturn(List.of(govEvent));
+
+        WosParserRunResult result = orchestrator.parseSourceLineage(
+                WosSourceType.GOV_AIS_RIS, "AIS_2024.xlsx", "v2024");
+
+        assertEquals(1, result.summary().getProcessedCount());
+        assertEquals(1, result.summary().getParsedCount());
+        assertEquals(0, result.summary().getSkippedCount());
+        assertEquals(0, result.summary().getErrorCount());
+        assertEquals(1, result.records().size());
+        assertEquals("AIS_2024.xlsx", result.records().get(0).sourceFile());
+    }
+
+    @Test
+    void errorEventIsCountedInSummaryAndNotAddedToRecords() throws Exception {
+        WosImportEventRepository repository = mock(WosImportEventRepository.class);
+        GovAisRisImportEventParser govParser = new GovAisRisImportEventParser(objectMapper);
+        WosImportEventParserOrchestrator orchestrator =
+                new WosImportEventParserOrchestrator(repository, List.of(govParser));
+
+        WosImportEvent badEvent = new WosImportEvent();
+        badEvent.setId("ev-bad");
+        badEvent.setSourceType(WosSourceType.GOV_AIS_RIS);
+        badEvent.setSourceFile("AIS_2024.xlsx");
+        badEvent.setSourceVersion("v2024");
+        badEvent.setSourceRowItem("1");
+        badEvent.setPayloadFormat("excel-row");
+        badEvent.setPayload("not-json{{{");
+
+        when(repository.findAll(any(org.springframework.data.domain.Sort.class)))
+                .thenReturn(List.of(badEvent));
+
+        WosParserRunResult result = orchestrator.parseAllEvents();
+
+        assertEquals(1, result.summary().getProcessedCount());
+        assertEquals(0, result.summary().getParsedCount());
+        assertEquals(0, result.summary().getSkippedCount());
+        assertEquals(1, result.summary().getErrorCount());
+        assertTrue(result.records().isEmpty());
+    }
+
+    @Test
     void parsesMixedEventsWithDeterministicSummary() throws Exception {
         WosImportEventRepository repository = mock(WosImportEventRepository.class);
         GovAisRisImportEventParser govParser = new GovAisRisImportEventParser(objectMapper);

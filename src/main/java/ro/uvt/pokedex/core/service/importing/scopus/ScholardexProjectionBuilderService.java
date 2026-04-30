@@ -53,9 +53,9 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
-public class ScopusProjectionBuilderService {
+public class ScholardexProjectionBuilderService {
 
-    private static final Logger log = LoggerFactory.getLogger(ScopusProjectionBuilderService.class);
+    private static final Logger log = LoggerFactory.getLogger(ScholardexProjectionBuilderService.class);
     private static final Pattern DOI_URL_PREFIX = Pattern.compile("^https?://(dx\\.)?doi\\.org/", Pattern.CASE_INSENSITIVE);
     private static final Pattern DOI_PREFIX = Pattern.compile("^doi:", Pattern.CASE_INSENSITIVE);
     private static final int JDBC_BATCH_SIZE = 500;
@@ -72,7 +72,7 @@ public class ScopusProjectionBuilderService {
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactionTemplate;
 
-    public ScopusProjectionBuilderService(
+    public ScholardexProjectionBuilderService(
             ScopusForumFactRepository forumFactRepository,
             ScholardexForumFactRepository canonicalForumFactRepository,
             ScholardexAuthorFactRepository authorFactRepository,
