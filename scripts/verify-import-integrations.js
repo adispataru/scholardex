@@ -48,6 +48,8 @@ function runRg(pattern, paths) {
 
 const schedulerPath =
   'src/main/java/ro/uvt/pokedex/core/service/scopus/ScopusUpdateScheduler.java';
+const schedulerRetryPolicyPath =
+  'src/main/java/ro/uvt/pokedex/core/service/scopus/ScopusSchedulerRetryPolicy.java';
 const scopusDataServicePath =
   'src/main/java/ro/uvt/pokedex/core/service/importing/ScopusDataService.java';
 const taskModelPath =
@@ -58,6 +60,8 @@ const rankingImporterPaths = [
 ];
 
 const schedulerContent = readFile(schedulerPath);
+const schedulerRetryContent = readFile(schedulerRetryPolicyPath);
+const schedulerCombined = schedulerContent + '\n' + schedulerRetryContent;
 const scopusDataServiceContent = readFile(scopusDataServicePath);
 const taskContent = readFile(taskModelPath);
 
@@ -89,8 +93,8 @@ const schedulerPatterns = [
   'mapIntegrationException'
 ];
 for (const pattern of schedulerPatterns) {
-  if (!schedulerContent.includes(pattern)) {
-    errors.push(`${schedulerPath}: missing expected retry/integration pattern '${pattern}'.`);
+  if (!schedulerCombined.includes(pattern)) {
+    errors.push(`${schedulerPath} (or ${schedulerRetryPolicyPath}): missing expected retry/integration pattern '${pattern}'.`);
   }
 }
 

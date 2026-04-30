@@ -112,7 +112,7 @@ emitAllowlistShrinkHint(printStackTraceFiles, allowlistedPrintStackTraceFiles, '
 emitAllowlistShrinkHint(riskyYearParseFiles, allowlistedYearParseFiles, 'year-parse');
 
 const userControllerPath = 'src/main/java/ro/uvt/pokedex/core/controller/UserController.java';
-const adminResearcherControllerPath = 'src/main/java/ro/uvt/pokedex/core/controller/AdminResearcherController.java';
+const adminResearcherControllerPath = 'src/main/java/ro/uvt/pokedex/core/controller/AdminResearcherProfileController.java';
 const requestBodyWithoutValidMatches = runRg(
   '@RequestBody',
   [userControllerPath, adminResearcherControllerPath]

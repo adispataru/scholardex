@@ -94,7 +94,7 @@ if (userCnfisMethod == null) {
 
 const groupFilterMethod = extractMethodSlice(
   groupCnfisContent,
-  'private List<Publication> filterPublicationsByYear(',
+  'private List<ScholardexPublicationView> filterPublicationsByYear(',
   ['private List<CNFISReport2025> generateReports(']
 );
 if (groupFilterMethod == null) {
@@ -129,7 +129,7 @@ assertNotContains(
 );
 const findForEditMethod = extractMethodSlice(
   userPublicationFacadeContent,
-  'public Optional<Publication> findPublicationForEdit(',
+  'public Optional<ScholardexPublicationView> findPublicationForEdit(',
   ['public void updatePublicationMetadata(']
 );
 if (findForEditMethod == null) {
