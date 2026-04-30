@@ -1,15 +1,14 @@
+// Strict whitelist for fallback hrefs: must be a relative path consisting of
+// a leading "/" followed by safe path characters only (letters, digits, -, _,
+// ., /). Disallows protocol-relative ("//"), schemes (javascript:, data:),
+// query strings, and fragments. Returns "/" for anything that doesn't match.
+const SAFE_PATH_PATTERN = /^\/[A-Za-z0-9_\-./]*$/;
+
 function safeFallbackHref(raw) {
-  // Reconstruct a same-origin path via URL parsing; URL.pathname/search/hash
-  // produce fresh strings, so javascript:, data:, and cross-origin URLs are
-  // dropped. Returns '/' for any input that isn't a same-origin URL.
   if (typeof raw !== 'string' || raw.length === 0) return '/';
-  try {
-    const url = new URL(raw, window.location.origin);
-    if (url.origin !== window.location.origin) return '/';
-    return url.pathname + url.search + url.hash;
-  } catch (_e) {
-    return '/';
-  }
+  if (raw.startsWith('//')) return '/';
+  if (!SAFE_PATH_PATTERN.test(raw)) return '/';
+  return raw;
 }
 
 export function initErrorPages() {
