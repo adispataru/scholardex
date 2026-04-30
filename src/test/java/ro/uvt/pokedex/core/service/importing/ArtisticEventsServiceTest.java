@@ -1,6 +1,6 @@
 package ro.uvt.pokedex.core.service.importing;
 
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -9,6 +9,11 @@ import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.repository.ArtisticEventRepository;
 import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
 
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -19,6 +24,21 @@ class ArtisticEventsServiceTest {
 
     @Mock ArtisticEventRepository artisticEventRepository;
     @Mock DomainRepository domainRepository;
+
+    @BeforeAll
+    static void stageFixture() throws Exception {
+        Path target = Paths.get("data/arts/event_rankings.json");
+        Files.createDirectories(target.getParent());
+        if (!Files.exists(target)) {
+            try (InputStream in = ArtisticEventsServiceTest.class
+                    .getResourceAsStream("/fixtures/arts/event_rankings.json")) {
+                if (in == null) {
+                    throw new IllegalStateException("Missing classpath fixture: /fixtures/arts/event_rankings.json");
+                }
+                Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+        }
+    }
 
     private ArtisticEventsService service() {
         return new ArtisticEventsService(artisticEventRepository, domainRepository);

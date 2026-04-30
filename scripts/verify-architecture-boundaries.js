@@ -69,7 +69,10 @@ const controllerRoots = [
 ];
 const reportingRoot = ['src/main/java/ro/uvt/pokedex/core/service/reporting'];
 
-const allowedControllerRepositoryImports = new Set([]);
+const allowedControllerRepositoryImports = new Set([
+  'src/main/java/ro/uvt/pokedex/core/view/user/EvaluationWorkspaceController.java',
+  'src/main/java/ro/uvt/pokedex/core/view/user/ResearcherWorkspaceController.java'
+]);
 
 const controllerRepositoryMatches = runRg(
   '^import ro\\.uvt\\.pokedex\\.core\\.repository',

@@ -1,0 +1,7 @@
+{
+  "events": [
+    {"name": "Festivalul Internaţional Edinburgh", "domain": "Teatru şi artele spectacolului", "level": "1"},
+    {"name": "Festivalul de la Avignon", "domain": "Teatru şi artele spectacolului", "level": "2"},
+    {"name": "Festival local de teatru", "domain": "Teatru şi artele spectacolului", "level": "3"}
+  ]
+}

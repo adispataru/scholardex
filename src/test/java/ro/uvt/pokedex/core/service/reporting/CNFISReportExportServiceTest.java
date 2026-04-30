@@ -10,6 +10,7 @@ import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.CreationHelper;
 import org.apache.poi.ss.usermodel.Drawing;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
 import ro.uvt.pokedex.core.model.reporting.CanonicalPublicationConstants;
@@ -19,6 +20,11 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Map;
 
@@ -31,6 +37,26 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class CNFISReportExportServiceTest {
+
+    @BeforeAll
+    static void stageTemplates() throws Exception {
+        stage("AC2025_Anexa5-Fisa_articole_brevete-2025.xlsx");
+        stage("AC2025_Anexa6-Tabel_institutional_articole_brevete-2025.xlsx");
+    }
+
+    private static void stage(String filename) throws Exception {
+        Path target = Paths.get("data/templates", filename);
+        Files.createDirectories(target.getParent());
+        if (!Files.exists(target)) {
+            try (InputStream in = CNFISReportExportServiceTest.class
+                    .getResourceAsStream("/fixtures/templates/" + filename)) {
+                if (in == null) {
+                    throw new IllegalStateException("Missing classpath fixture: /fixtures/templates/" + filename);
+                }
+                Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+        }
+    }
 
     @Test
     void generateWorkbookFillsExpectedCellsForQ1GroupFalse() throws Exception {
