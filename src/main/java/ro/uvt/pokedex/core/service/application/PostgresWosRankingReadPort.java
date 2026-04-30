@@ -108,7 +108,7 @@ public class PostgresWosRankingReadPort implements WosRankingReadPort {
     }
 
     private String normalizeDirection(String direction) {
-        return QueryNormalizationSupport.normalizeDirection(direction).toUpperCase(java.util.Locale.ROOT);
+        return QueryNormalizationSupport.normalizeDirectionUpper(direction);
     }
 
     private String normalizeQuery(String q) {

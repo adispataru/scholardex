@@ -26,10 +26,21 @@ public final class QueryNormalizationSupport {
      */
     public static String normalizeDirection(String direction) {
         String normalized = direction == null ? "" : direction.trim().toLowerCase(Locale.ROOT);
-        if (!normalized.equals("asc") && !normalized.equals("desc")) {
-            throw new IllegalArgumentException("Invalid direction parameter. Allowed: asc, desc.");
-        }
-        return normalized;
+        return switch (normalized) {
+            case "asc" -> "asc";
+            case "desc" -> "desc";
+            default -> throw new IllegalArgumentException("Invalid direction parameter. Allowed: asc, desc.");
+        };
+    }
+
+    /** Validated direction in upper case ("ASC" or "DESC"); safe to splice into ORDER BY. */
+    public static String normalizeDirectionUpper(String direction) {
+        String normalized = direction == null ? "" : direction.trim().toLowerCase(Locale.ROOT);
+        return switch (normalized) {
+            case "asc" -> "ASC";
+            case "desc" -> "DESC";
+            default -> throw new IllegalArgumentException("Invalid direction parameter. Allowed: asc, desc.");
+        };
     }
 
     /** Trims afid; returns null if absent or blank. */

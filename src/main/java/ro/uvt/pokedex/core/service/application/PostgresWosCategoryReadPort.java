@@ -194,11 +194,7 @@ public class PostgresWosCategoryReadPort {
     }
 
     private String normalizeDirection(String direction) {
-        String normalized = direction == null ? "" : direction.trim().toLowerCase(Locale.ROOT);
-        if (!normalized.equals("asc") && !normalized.equals("desc")) {
-            throw new IllegalArgumentException("Invalid direction parameter. Allowed: asc, desc.");
-        }
-        return normalized.toUpperCase(Locale.ROOT);
+        return QueryNormalizationSupport.normalizeDirectionUpper(direction);
     }
 
     private String normalizeQuery(String q) {
