@@ -6,6 +6,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.WoSRanking;
+import ro.uvt.pokedex.core.model.activities.Activity;
+import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublication;
@@ -34,7 +36,6 @@ class ImpactFactorJournalScoringServiceTest {
 
         when(lookupPort.getForum("forum-1")).thenReturn(forum);
         when(lookupPort.getRankingsByIssn("1234-5678")).thenReturn(List.of());
-        when(lookupPort.getRankingsByIssn(null)).thenReturn(List.of());
 
         Score score = service.getScore(publication, indicator);
 
@@ -66,6 +67,42 @@ class ImpactFactorJournalScoringServiceTest {
         assertEquals(1.0, meterRegistry.get("pokedex.reporting.if.requests").counter().count());
         assertEquals(0.0, meterRegistry.get("pokedex.reporting.if.missing").counter().count());
         assertEquals(1.0, meterRegistry.get("pokedex.reporting.if.success").counter().count());
+    }
+
+    @Test
+    void activityPathUsesForumReferenceAndCounters() {
+        SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+        ImpactFactorJournalScoringService service = new ImpactFactorJournalScoringService(lookupPort, meterRegistry);
+        Indicator indicator = indicatorForAllDomain();
+        indicator.setScoreYearRange("IY");
+        ActivityInstance activity = new ActivityInstance();
+        activity.setId("act-1");
+        activity.setDate("2022-09-10");
+        activity.setReferenceFields(Map.of(Activity.ReferenceField.FORUM_ISSN, "7777-7777"));
+
+        WoSRanking ranking = rankingWithIf("ECONOMICS - SCIE", 2022, 4.2, WoSRanking.Quarter.Q3);
+        when(lookupPort.getRankingsByIssn("7777-7777")).thenReturn(List.of(ranking));
+
+        Score score = service.getScore(activity, indicator);
+
+        assertEquals(4.2, score.getScore());
+        assertEquals("Q3", score.getQuarter());
+        assertEquals(1.0, meterRegistry.get("pokedex.reporting.if.requests").counter().count());
+        assertEquals(1.0, meterRegistry.get("pokedex.reporting.if.success").counter().count());
+    }
+
+    @Test
+    void nonArticlePublicationReturnsMissingCountersOnly() {
+        SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+        ImpactFactorJournalScoringService service = new ImpactFactorJournalScoringService(lookupPort, meterRegistry);
+        Indicator indicator = indicatorForAllDomain();
+        ScoringPublication publication = publication("forum-1", "cp", "2023-01-01");
+        ScholardexForumView forum = forum("1234-5678", null);
+
+        when(lookupPort.getForum("forum-1")).thenReturn(forum);
+        Score score = service.getScore(publication, indicator);
+        assertEquals(0.0, score.getScore());
+        assertEquals(1.0, meterRegistry.get("pokedex.reporting.if.missing").counter().count());
     }
 
     private Indicator indicatorForAllDomain() {

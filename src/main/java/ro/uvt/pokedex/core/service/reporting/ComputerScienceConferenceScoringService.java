@@ -552,12 +552,6 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
                     registerCandidate(candidates, normalized, source);
                 }
             }
-            if (tokens.length > 0) {
-                String leading = normalizeAcronymToken(tokens[0]);
-                if (isLikelyAcronymToken(tokens[0], leading)) {
-                    registerCandidate(candidates, leading, source);
-                }
-            }
         }
         registerWorkshopAcronymCandidates(candidates, publicationName);
         registerTrailingTitleCasedAcronymCandidate(candidates, publicationName);
@@ -616,7 +610,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
             if (normalized.isBlank()) {
                 continue;
             }
-            if (normalized.chars().allMatch(Character::isDigit) || ORDINAL_TOKEN.matcher(normalized).matches()) {
+            if (isIgnorableAcronymTailToken(normalized)) {
                 foundIgnorableSuffix = true;
                 continue;
             }
@@ -634,10 +628,10 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
             if (normalized.isBlank()) {
                 continue;
             }
-            if (normalized.chars().allMatch(Character::isDigit)) {
+            if (isIgnorableAcronymTailToken(normalized)) {
                 continue;
             }
-            if (ORDINAL_TOKEN.matcher(normalized).matches()) {
+            if (isIgnorableAcronymSuffixToken(normalized.toLowerCase(Locale.ROOT))) {
                 continue;
             }
             return index;
@@ -646,13 +640,12 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     }
 
     private boolean isTitleCasedAcronymLikeToken(String originalToken, String normalizedToken) {
-        if (normalizedToken == null || normalizedToken.length() < 3 || normalizedToken.length() > 10) {
-            return false;
-        }
-        if (ACRONYM_STOPWORDS.contains(normalizedToken)) {
-            return false;
-        }
-        if (originalToken == null || originalToken.isBlank()) {
+        if (normalizedToken == null
+                || normalizedToken.length() < 3
+                || normalizedToken.length() > 10
+                || ACRONYM_STOPWORDS.contains(normalizedToken)
+                || originalToken == null
+                || originalToken.isBlank()) {
             return false;
         }
         String stripped = originalToken.replaceAll("^[^A-Za-z0-9]+|[^A-Za-z0-9]+$", "");
@@ -662,21 +655,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         if (stripped.contains("-")) {
             return isHyphenatedTitleCasedToken(stripped);
         }
-        boolean hasLowercase = stripped.chars().anyMatch(Character::isLowerCase);
-        boolean hasUppercase = stripped.chars().anyMatch(Character::isUpperCase);
-        if (!hasUppercase || !hasLowercase) {
-            return false;
-        }
-        if (!Character.isUpperCase(stripped.charAt(0))) {
-            return false;
-        }
-        for (int i = 1; i < stripped.length(); i++) {
-            char ch = stripped.charAt(i);
-            if (Character.isLetter(ch) && !Character.isLowerCase(ch)) {
-                return false;
-            }
-        }
-        return true;
+        return isStrictTitleCaseWord(stripped);
     }
 
     private boolean isHyphenatedTitleCasedToken(String stripped) {
@@ -685,20 +664,35 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
             return false;
         }
         for (String part : parts) {
-            if (part.isBlank()) {
+            if (!isStrictTitleCaseWord(part)) {
                 return false;
-            }
-            if (!Character.isUpperCase(part.charAt(0))) {
-                return false;
-            }
-            for (int i = 1; i < part.length(); i++) {
-                char ch = part.charAt(i);
-                if (Character.isLetter(ch) && !Character.isLowerCase(ch)) {
-                    return false;
-                }
             }
         }
         return true;
+    }
+
+    private boolean isStrictTitleCaseWord(String word) {
+        if (word == null || word.isBlank() || !Character.isUpperCase(word.charAt(0))) {
+            return false;
+        }
+        boolean hasUppercase = false;
+        boolean hasLowercase = false;
+        for (int i = 0; i < word.length(); i++) {
+            char ch = word.charAt(i);
+            if (Character.isUpperCase(ch)) {
+                hasUppercase = true;
+                if (i > 0) {
+                    return false;
+                }
+            }
+            if (Character.isLowerCase(ch)) {
+                hasLowercase = true;
+            }
+            if (i > 0 && Character.isLetter(ch) && !Character.isLowerCase(ch)) {
+                return false;
+            }
+        }
+        return hasUppercase && hasLowercase;
     }
 
     private boolean matchesInitialsPattern(String[] tokens, int trailingIndex, String normalizedTrailingToken) {
@@ -765,22 +759,14 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     }
 
     private boolean isLikelyAcronymToken(String originalToken, String normalizedToken) {
-        if (normalizedToken == null || normalizedToken.length() < 2) {
-            return false;
-        }
-        if (normalizedToken.chars().allMatch(Character::isDigit)) {
-            return false;
-        }
-        if (ORDINAL_TOKEN.matcher(normalizedToken).matches()) {
-            return false;
-        }
-        if (ACRONYM_STOPWORDS.contains(normalizedToken)) {
-            return false;
-        }
-        if (normalizedToken.length() > 10) {
-            return false;
-        }
-        if (originalToken == null || originalToken.isBlank()) {
+        if (normalizedToken == null
+                || normalizedToken.length() < 2
+                || normalizedToken.length() > 10
+                || normalizedToken.chars().allMatch(Character::isDigit)
+                || ORDINAL_TOKEN.matcher(normalizedToken).matches()
+                || ACRONYM_STOPWORDS.contains(normalizedToken)
+                || originalToken == null
+                || originalToken.isBlank()) {
             return false;
         }
         boolean hasLowercase = originalToken.chars().anyMatch(Character::isLowerCase);
@@ -800,16 +786,15 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         if (rankingName.isBlank()) {
             return MatchConfidence.NONE;
         }
-        if (isExactAcronymMatch(acronymCandidate, ranking)
-                && normalizedPublicationName.equals(acronymCandidate.toLowerCase(Locale.ROOT))) {
+        boolean exactAcronymMatch = isExactAcronymMatch(acronymCandidate, ranking);
+        if (exactAcronymMatch && normalizedPublicationName.equals(acronymCandidate.toLowerCase(Locale.ROOT))) {
             return MatchConfidence.EXACT_ACRONYM_ONLY;
         }
-        if (isExactAcronymMatch(acronymCandidate, ranking)
-                && isDecoratedAcronymOnlyTitle(normalizedPublicationName, acronymCandidate)) {
-            return MatchConfidence.EXACT_ACRONYM_DECORATED;
-        }
-        if (isExactAcronymMatch(acronymCandidate, ranking)
-                && isSplitDecoratedAcronymOnlyTitle(normalizedPublicationName, acronymCandidate)) {
+        boolean exactDecoratedAcronymMatch = exactAcronymMatch && (
+                isDecoratedAcronymOnlyTitle(normalizedPublicationName, acronymCandidate)
+                        || isSplitDecoratedAcronymOnlyTitle(normalizedPublicationName, acronymCandidate)
+        );
+        if (exactDecoratedAcronymMatch) {
             return MatchConfidence.EXACT_ACRONYM_DECORATED;
         }
         if (normalizedPublicationName.equals(rankingName)) {
@@ -834,8 +819,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         if (!publicationTokens.isEmpty() && !rankingTokens.isEmpty() && publicationTokens.containsAll(rankingTokens)) {
             return MatchConfidence.TOKEN_SUPERSET;
         }
-        if (isExactAcronymMatch(acronymCandidate, ranking)
-                && hasStrongTokenOverlap(publicationTokens, rankingTokens)) {
+        if (exactAcronymMatch && hasStrongTokenOverlap(publicationTokens, rankingTokens)) {
             return MatchConfidence.EXACT_ACRONYM_STRONG_TOKEN_OVERLAP;
         }
         return MatchConfidence.NONE;
@@ -885,31 +869,25 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
             return false;
         }
         String normalizedAcronym = acronymCandidate.toLowerCase(Locale.ROOT);
-        StringBuilder joined = new StringBuilder();
-        int splitEnd = -1;
-        for (int i = 0; i < tokens.length; i++) {
-            String token = tokens[i];
+        StringBuilder mergedAcronym = new StringBuilder();
+        boolean suffixSection = false;
+        for (String token : tokens) {
             if (isIgnorableAcronymSuffixToken(token)) {
-                break;
+                suffixSection = true;
+                continue;
             }
-            joined.append(token);
-            if (normalizedAcronym.equals(joined.toString())) {
-                splitEnd = i;
-                break;
+            if (suffixSection) {
+                return false;
             }
-            if (!normalizedAcronym.startsWith(joined.toString())) {
+            mergedAcronym.append(token);
+            if (!normalizedAcronym.startsWith(mergedAcronym.toString())) {
                 return false;
             }
         }
-        if (splitEnd < 0) {
+        if (!suffixSection) {
             return false;
         }
-        for (int i = splitEnd + 1; i < tokens.length; i++) {
-            if (!isIgnorableAcronymSuffixToken(tokens[i])) {
-                return false;
-            }
-        }
-        return true;
+        return normalizedAcronym.equals(mergedAcronym.toString());
     }
 
     private boolean isIgnorableAcronymSuffixToken(String token) {
@@ -988,22 +966,30 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         if (normalized.endsWith("ies") && normalized.length() > 4) {
             return normalized.substring(0, normalized.length() - 3) + "y";
         }
-        if (normalized.endsWith("es")
-                && normalized.length() > 4
-                && !normalized.endsWith("ses")
-                && !normalized.endsWith("xes")
-                && !normalized.endsWith("zes")
-                && !normalized.endsWith("ches")
-                && !normalized.endsWith("shes")) {
-            return normalized.substring(0, normalized.length() - 2);
-        }
         if (normalized.endsWith("s")
+                && normalized.length() > 4
                 && !normalized.endsWith("ss")
                 && !normalized.endsWith("us")
                 && !normalized.endsWith("is")) {
+            if (normalized.endsWith("es") && isDroppableEsPlural(normalized)) {
+                return normalized.substring(0, normalized.length() - 2);
+            }
             return normalized.substring(0, normalized.length() - 1);
         }
         return normalized;
+    }
+
+    private boolean isDroppableEsPlural(String normalized) {
+        return !normalized.endsWith("ses")
+                && !normalized.endsWith("xes")
+                && !normalized.endsWith("zes")
+                && !normalized.endsWith("ches")
+                && !normalized.endsWith("shes");
+    }
+
+    private boolean isIgnorableAcronymTailToken(String normalized) {
+        return normalized.chars().allMatch(Character::isDigit)
+                || ORDINAL_TOKEN.matcher(normalized).matches();
     }
 
     private void logTrace(ConferenceScoreTrace trace, Double points, Integer year, CoreConferenceRanking.Rank category, WoSRanking.Quarter quarter) {

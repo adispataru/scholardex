@@ -13,7 +13,6 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Scoring service that evaluates Computer Science journals based on WoS quartiles.
@@ -82,7 +81,7 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
             if(score.getExtra().containsKey("M") && scoreResult.extra.get("M") != null) {
                 return (int) score.getExtra().get("M") > (int) scoreResult.extra.get("M");
             } else {
-                return true;
+                return false;
             }
         } else {
             return score.getScore() > scoreResult.bestPoints.get();
@@ -121,7 +120,6 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
     private Optional<Score> computeEconomicsScore(WoSRanking ranking, int year, String category, WoSRanking.Rank rank) {
 
         Score returnScore = new Score();
-        AtomicInteger multiplier = new AtomicInteger(0);
         if( ranking.getScore() == null || ranking.getScore().getAis() == null || ranking.getScore().getAis().get(year) == null) {
             return Optional.empty();
         }
@@ -129,22 +127,29 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
 
         String cat = ScoringCategorySupport.extractCategoryName(category);
         String index = ScoringCategorySupport.extractCategoryIndex(category);
+        int multiplier = resolveMultiplier(cat, index);
         WoSRanking.Quarter qAis = rank.getQAis() != null ? rank.getQAis().get(year) : null;
         String quarterStr = qAis != null ? qAis.toString() : null;
-        if(CORE_ECONOMICS.contains(cat)) {
-            multiplier.getAndSet(CORE_ECONOMICS_MULTIPLIER);
-            returnScore.setQuarter(quarterStr);
-        } else if (INFOECONOMICS.contains(cat) && multiplier.get() < INFOECONOMICS_MULTIPLIER) {
-            multiplier.getAndSet(INFOECONOMICS_MULTIPLIER);
-            returnScore.setQuarter(quarterStr);
-        } else if (othersIndices.contains(index) && multiplier.get() < OTHER_ECONOMICS_MULTIPLIER) {
-            multiplier.getAndSet(OTHER_ECONOMICS_MULTIPLIER);
+        if(multiplier > 0) {
             returnScore.setQuarter(quarterStr);
         }
 
-        returnScore.getExtra().put("M", multiplier.get());
+        returnScore.getExtra().put("M", multiplier);
 
         return Optional.of(returnScore);
+    }
+
+    private int resolveMultiplier(String categoryName, String categoryIndex) {
+        if(CORE_ECONOMICS.contains(categoryName)) {
+            return CORE_ECONOMICS_MULTIPLIER;
+        }
+        if (INFOECONOMICS.contains(categoryName)) {
+            return INFOECONOMICS_MULTIPLIER;
+        }
+        if (othersIndices.contains(categoryIndex)) {
+            return OTHER_ECONOMICS_MULTIPLIER;
+        }
+        return 0;
     }
 
     /* ------------------------------------------------------------------ */

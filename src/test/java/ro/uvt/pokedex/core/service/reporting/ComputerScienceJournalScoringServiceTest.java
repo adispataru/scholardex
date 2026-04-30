@@ -5,6 +5,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.WoSRanking;
+import ro.uvt.pokedex.core.model.activities.Activity;
+import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublication;
@@ -14,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -94,6 +97,84 @@ class ComputerScienceJournalScoringServiceTest {
         assertEquals("SCOPUS+WOS", score.getScoringSource());
     }
 
+    @Test
+    void activityJournalFallsBackToScopusWhenNoWosMatch() {
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort) {
+            @Override
+            protected ScholardexForumView getForumFromActivity(ActivityInstance activity) {
+                ScholardexForumView forum = super.getForumFromActivity(activity);
+                forum.setAggregationType("Journal");
+                return forum;
+            }
+        };
+        Indicator indicator = indicator("IY");
+        when(lookupPort.getRankingsByIssn("1111-2222")).thenReturn(List.of());
+
+        ActivityInstance activity = new ActivityInstance();
+        activity.setDate("2023-01-01");
+        activity.setReferenceFields(Map.of(
+                Activity.ReferenceField.FORUM_NAME, "Journal of No Matches",
+                Activity.ReferenceField.FORUM_ISSN, "1111-2222"
+        ));
+
+        Score score = service.getScore(activity, indicator);
+
+        assertEquals(2.0, score.getScore());
+        assertEquals("C", score.getCoreRankingEquivalent());
+        assertEquals("SCOPUS", score.getScoringSource());
+        assertNotNull(score.getScoringInfo());
+        assertEquals("SCOPUS", score.getScoringInfo().get("matchSource"));
+    }
+
+    @Test
+    void descriptionIsNonEmpty() {
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+        assertNotNull(service.getDescription());
+        assertEquals(false, service.getDescription().isBlank());
+    }
+
+    @Test
+    void publicationJournalWithoutWosFallsBackToScopus() {
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+        Indicator indicator = indicator("IY");
+        ScoringPublication publication = publication("forum-1", "2023-06-01", "ar", "ar");
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setAggregationType("Journal");
+        forum.setIssn("1000-1000");
+        when(lookupPort.getForum("forum-1")).thenReturn(forum);
+        when(lookupPort.getRankingsByIssn("1000-1000")).thenReturn(List.of());
+
+        Score score = service.getScore(publication, indicator);
+
+        assertEquals(2.0, score.getScore());
+        assertEquals("SCOPUS", score.getScoringSource());
+        assertEquals("SCOPUS", score.getScoringInfo().get("matchSource"));
+    }
+
+    @Test
+    void q1AtTopThresholdUsesNonTopBranch() {
+        ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
+        Indicator indicator = indicator("IY");
+        ScoringPublication publication = publication("forum-1", "2023-06-01", "ar", "ar");
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setAggregationType("Journal");
+        forum.setIssn("1000-1000");
+        when(lookupPort.getForum("forum-1")).thenReturn(forum);
+
+        WoSRanking.Rank rank = new WoSRanking.Rank();
+        rank.setQAis(Map.of(2023, WoSRanking.Quarter.Q1));
+        rank.setRankAis(Map.of(2023, 20)); // numTop when top=100
+        WoSRanking ranking = new WoSRanking();
+        ranking.setWebOfScienceCategoryIndex(Map.of("C1-SCIE", rank));
+        when(lookupPort.getRankingsByIssn("1000-1000")).thenReturn(List.of(ranking));
+        when(lookupPort.getTopRankings("C1-SCIE", 2023)).thenReturn(100);
+
+        Score score = service.getScore(publication, indicator);
+        assertEquals(8.0, score.getScore());
+    }
+
     private ScoringPublication publication(String forumId, String coverDate, String subtype, String scopusSubtype) {
         return new ScoringPublication(
                 "pub-1",
@@ -110,5 +191,14 @@ class ComputerScienceJournalScoringServiceTest {
                 0,
                 java.util.Set.of()
         );
+    }
+
+    private Indicator indicator(String yearRange) {
+        Domain domain = new Domain();
+        domain.setName("ALL");
+        Indicator indicator = new Indicator();
+        indicator.setDomain(domain);
+        indicator.setScoreYearRange(yearRange);
+        return indicator;
     }
 }

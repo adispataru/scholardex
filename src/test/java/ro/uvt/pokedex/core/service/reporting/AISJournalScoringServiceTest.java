@@ -5,6 +5,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.WoSRanking;
+import ro.uvt.pokedex.core.model.activities.Activity;
+import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublication;
@@ -38,6 +40,41 @@ class AISJournalScoringServiceTest {
         assertEquals(1.9, score.getScore());
         assertEquals(2023, score.getYear());
         assertEquals("Q1", score.getQuarter());
+    }
+
+    @Test
+    void nonArticleSubtypeDoesNotScore() {
+        AISJournalScoringService service = new AISJournalScoringService(lookupPort);
+        Indicator indicator = indicatorForAllDomain();
+        ScoringPublication publication = publication("forum-1", "2023-01-01");
+        ScholardexForumView forum = forum("1234-5678");
+        when(lookupPort.getForum("forum-1")).thenReturn(forum);
+
+        Score score = service.getScore(new ScoringPublication(
+                publication.id(), publication.eid(), publication.forumId(), publication.coverDate(),
+                "cp", null, publication.authorIds(), publication.authorCount(), publication.doi(),
+                publication.wosId(), publication.title(), publication.citedByCount(), publication.citingPublicationIds()
+        ), indicator);
+
+        assertEquals(0.0, score.getScore());
+    }
+
+    @Test
+    void activityPathUsesReferenceIssnAndYearRange() {
+        AISJournalScoringService service = new AISJournalScoringService(lookupPort);
+        Indicator indicator = indicatorForAllDomain();
+        indicator.setScoreYearRange("IY");
+        WoSRanking ranking = rankingWithAis("ECONOMICS - SCIE", 2024, 1.7, WoSRanking.Quarter.Q2);
+        when(lookupPort.getRankingsByIssn("9999-9999")).thenReturn(List.of(ranking));
+
+        ActivityInstance activity = new ActivityInstance();
+        activity.setDate("2024-05-20");
+        activity.setReferenceFields(Map.of(Activity.ReferenceField.FORUM_ISSN, "9999-9999"));
+
+        Score score = service.getScore(activity, indicator);
+        assertEquals(1.7, score.getScore());
+        assertEquals("Q2", score.getQuarter());
+        assertEquals(2024, score.getYear());
     }
 
     private Indicator indicatorForAllDomain() {

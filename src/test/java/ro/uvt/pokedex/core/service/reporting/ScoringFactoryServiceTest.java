@@ -41,6 +41,19 @@ class ScoringFactoryServiceTest {
     }
 
     @Test
+    void returnsConfiguredServiceForAllSupportedStrategies() {
+        assertSame(csConferenceService, factory.getScoringService(Indicator.Strategy.CS_CONFERENCE));
+        assertSame(csJournalService, factory.getScoringService(Indicator.Strategy.CS_JOURNAL));
+        assertSame(risService, factory.getScoringService(Indicator.Strategy.RIS));
+        assertSame(aisService, factory.getScoringService(Indicator.Strategy.AIS));
+        assertSame(uniService, factory.getScoringService(Indicator.Strategy.UNI_RANKING));
+        assertSame(cncsisService, factory.getScoringService(Indicator.Strategy.CNCSIS));
+        assertSame(artService, factory.getScoringService(Indicator.Strategy.ART_EVENT));
+        assertSame(ifService, factory.getScoringService(Indicator.Strategy.IMPACT_FACTOR));
+        assertSame(econService, factory.getScoringService(Indicator.Strategy.ECONOMICS_JOURNAL_AIS));
+    }
+
+    @Test
     void throwsForUnmappedStrategy() {
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,

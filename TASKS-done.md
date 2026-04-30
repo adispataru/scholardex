@@ -2,6 +2,17 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H49 Test Quality Remediation
+
+Archived from `TASKS.md` on 2026-04-30 after closing `H49.10`.
+
+- [x] `H49.10` **`ro.uvt.pokedex.core.service.reporting`**. *(completed 2026-04-30)*
+  Baseline: line 57% (1047/1853), mutation 34% (433/1272), test strength 56% (433/767).
+  Closeout:
+  - Package-level PIT verification passed with `./gradlew pitest -PpitTargetClasses='ro.uvt.pokedex.core.service.reporting.*' -q`.
+  - Final package metrics: line 93% (1668/1795), mutation 74% (911/1224), test strength 77% (911/1190), no-coverage mutants 34.
+  - High-risk hotspot hardening on `ComputerScienceConferenceScoringService` finished at line 93% (591/637), mutation 72% (353/488), with targeted routing/boundary assertions added.
+
 ## H48 Phase E Global Audits
 
 Archived from `TASKS.md` on 2026-04-28 after Phase E closeout.

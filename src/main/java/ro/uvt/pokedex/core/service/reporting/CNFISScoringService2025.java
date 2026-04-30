@@ -56,21 +56,21 @@ public class CNFISScoringService2025 {
                 for (Map.Entry<String, WoSRanking.Rank> entry : ranking.getWebOfScienceCategoryIndex().entrySet()) {
                     String category = entry.getKey();
                     String catIndex = extractCategoryIndex(category);
+                    CategoryIndexBucket catBucket = classifyCategoryIndex(catIndex);
                     WoSRanking.Rank score = entry.getValue();
 
                     if (!"ALL".equals(domain.getName()) && !domain.getWosCategories().contains(category)) {
                         continue;
                     }
 
-                    int year = !allowedYears.isEmpty() ? allowedYears.removeFirst() : LAST_YEAR;
-                    if(year > LAST_YEAR)
-                        year = LAST_YEAR;
-                    while (year <= LAST_YEAR) {
+                    List<Integer> yearCandidates = allowedYears.isEmpty() ? List.of(LAST_YEAR) : List.copyOf(allowedYears);
+                    for (int candidateYear : yearCandidates) {
+                        int year = Math.min(candidateYear, LAST_YEAR);
 
                         if (score.getQAis().get(year) != null) {
 
 
-                            if(catIndex.contains("SCIE") || catIndex.contains("SSCI")) {
+                            if(catBucket == CategoryIndexBucket.SCIE_OR_SSCI) {
 
                                 switch (score.getQAis().get(year)) {
                                     case Q1 -> {
@@ -87,18 +87,13 @@ public class CNFISScoringService2025 {
                                     }
                                 }
                             }
-                            if(catIndex.contains("ESCI")) {
+                            if(catBucket == CategoryIndexBucket.ESCI) {
                                 report.setIsiEmergingSourcesCitationIndex(true);
-                            }else if (catIndex.contains("AHCI")) {
+                            }else if (catBucket == CategoryIndexBucket.AHCI) {
                                 report.setIsiArtsHumanities(true);
                             }else {
                                 report.setErihPlus(true);
                             }
-                            break;
-                        }
-                        if(!allowedYears.isEmpty()) {
-                            year = allowedYears.removeFirst();
-                        }else{
                             break;
                         }
                     }
@@ -138,6 +133,29 @@ public class CNFISScoringService2025 {
             return normalized;
         }
         return normalized.substring(delimiterPos + 1).trim();
+    }
+
+    private CategoryIndexBucket classifyCategoryIndex(String categoryIndex) {
+        if (categoryIndex == null) {
+            return CategoryIndexBucket.OTHER;
+        }
+        if (categoryIndex.contains("SCIE") || categoryIndex.contains("SSCI")) {
+            return CategoryIndexBucket.SCIE_OR_SSCI;
+        }
+        if (categoryIndex.contains("ESCI")) {
+            return CategoryIndexBucket.ESCI;
+        }
+        if (categoryIndex.contains("AHCI")) {
+            return CategoryIndexBucket.AHCI;
+        }
+        return CategoryIndexBucket.OTHER;
+    }
+
+    private enum CategoryIndexBucket {
+        SCIE_OR_SSCI,
+        ESCI,
+        AHCI,
+        OTHER
     }
 
 }

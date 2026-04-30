@@ -45,79 +45,9 @@ public class CNFISReportExportService {
                 sheet = workbook.getSheetAt(0);
             }
 
-            int rowNum = 9;
-            int sampleRowNum = 8;
-            if(!group) {
-                rowNum = 17;
-                sampleRowNum = 16;
-            }
-
-            for (int i = 0; i < publications.size(); i++) {
-                ScoringPublicationReadModel publication = publications.get(i);
-                Row row = copyRow(workbook, sheet, sampleRowNum, rowNum);
-                // If the copied row does not contain enough cells, adjust row numbers and skip row
-                if (row.getLastCellNum() < 25) {
-                    rowNum++;
-                    sampleRowNum++;
-                    i--;
-                    continue;
-                }
-                String year = PersistenceYearSupport.extractYearString(publication.getCoverDate(), publication.getId(), log);
-                String title = publication.getTitle() != null ? publication.getTitle() : "";
-                String doi = publication.getDoi() != null ? publication.getDoi() : "";
-                String wosCode = publication.getWosId() != null && !publication.getWosId().equals(CanonicalPublicationConstants.NON_WOS_ID)
-                        ? publication.getWosId() : "";
-                // Skip publication if both doi and wosCode are empty
-                if ((doi.isEmpty() || doi.equals("null")) && wosCode.isEmpty()){
-                    continue;
-                }
-                String brevetCode = "";
-                String forumName = forumMap.getOrDefault(publication.getForumId(), new ScholardexForumView()).getPublicationName();
-                String issnOnline = forumMap.getOrDefault(publication.getForumId(), new ScholardexForumView()).getEIssn();
-                if(issnOnline.contains("null"))
-                    issnOnline = "";
-                String issnPrint = forumMap.getOrDefault(publication.getForumId(), new ScholardexForumView()).getIssn();
-                if(issnPrint.contains("null"))
-                    issnPrint = "";
-                String isbn = "";
-                int totalAuthors = publication.getAuthorCount();
-
-                // Set cell values similar to the original logic
-                row.getCell(1).setCellValue(year);
-                row.getCell(2).setCellValue(title);
-                row.getCell(3).setCellValue(doi);
-                row.getCell(4).setCellValue(wosCode);
-                row.getCell(5).setCellValue(brevetCode);
-                row.getCell(6).setCellValue(forumName);
-                row.getCell(7).setCellValue(issnOnline);
-                row.getCell(8).setCellValue(issnPrint);
-                row.getCell(9).setCellValue(isbn);
-                CNFISReport2025 cnfisReport = cnfisReports.get(i);
-
-                long universityAuthors = cnfisReport.getNumarAutoriUniversitate();
-                if (cnfisReport.isIsiQ1()){
-                    row.getCell(12).setCellValue(1);
-                } else if (cnfisReport.isIsiQ2()) {
-                    row.getCell(13).setCellValue(1);
-                } else if (cnfisReport.isIsiQ3()) {
-                    row.getCell(14).setCellValue(1);
-                } else if (cnfisReport.isIsiQ4()) {
-                    row.getCell(15).setCellValue(1);
-                } else if (cnfisReport.isIsiArtsHumanities()) {
-                    row.getCell(16).setCellValue(1);
-                } else if(cnfisReport.isIsiEmergingSourcesCitationIndex()){
-                    row.getCell(17).setCellValue(1);
-                } else if (cnfisReport.isErihPlus()) {
-                    row.getCell(18).setCellValue(1);
-                } else if (cnfisReport.isIsiProceedings()) {
-                    row.getCell(19).setCellValue(1);
-                } else if (cnfisReport.isIeeeProceedings()) {
-                    row.getCell(20).setCellValue(1);
-                }
-                row.getCell(25).setCellValue(totalAuthors);
-                row.getCell(26).setCellValue(universityAuthors);
-                rowNum++;
-            }
+            int rowNum = group ? 9 : 17;
+            int sampleRowNum = group ? 8 : 16;
+            populateSheet(workbook, sheet, publications, cnfisReports, forumMap, rowNum, sampleRowNum);
 
             workbook.setForceFormulaRecalculation(true);
             response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -126,7 +56,7 @@ public class CNFISReportExportService {
         }
     }
 
-    private static Row copyRow(Workbook workbook, Sheet worksheet, int sourceRowNum, int destinationRowNum) {
+    static Row copyRow(Workbook workbook, Sheet worksheet, int sourceRowNum, int destinationRowNum) {
         Row newRow = worksheet.getRow(destinationRowNum);
         Row sourceRow = worksheet.getRow(sourceRowNum);
 
@@ -152,7 +82,6 @@ public class CNFISReportExportService {
             if (oldCell.getHyperlink() != null) {
                 newCell.setHyperlink(oldCell.getHyperlink());
             }
-            newCell.setCellType(oldCell.getCellType());
             switch (oldCell.getCellType()) {
                 case BLANK:
                     newCell.setCellValue(oldCell.getStringCellValue());
@@ -201,73 +130,93 @@ public class CNFISReportExportService {
             int rowNum = group ? 9 : 17;
             int sampleRowNum = group ? 8 : 16;
 
-            for (int i = 0; i < publications.size(); i++) {
-                ScoringPublicationReadModel publication = publications.get(i);
-                Row row = copyRow(workbook, sheet, sampleRowNum, rowNum);
-                if (row.getLastCellNum() < 25) {
-                    rowNum++;
-                    sampleRowNum++;
-                    i--;
-                    continue;
-                }
-                String year = PersistenceYearSupport.extractYearString(publication.getCoverDate(), publication.getId(), log);
-                String title = publication.getTitle() != null ? publication.getTitle() : "";
-                String doi = publication.getDoi() != null ? publication.getDoi() : "";
-                String wosCode = publication.getWosId() != null && !publication.getWosId().equals(CanonicalPublicationConstants.NON_WOS_ID)
-                        ? publication.getWosId() : "";
-                if ((doi.isEmpty() || doi.equals("null")) && wosCode.isEmpty()){
-                    continue;
-                }
-                String brevetCode = "";
-                String forumName = forumMap.getOrDefault(publication.getForumId(), new ScholardexForumView()).getPublicationName();
-                String issnOnline = forumMap.getOrDefault(publication.getForumId(), new ScholardexForumView()).getEIssn();
-                if(issnOnline.contains("null"))
-                    issnOnline = "";
-                String issnPrint = forumMap.getOrDefault(publication.getForumId(), new ScholardexForumView()).getIssn();
-                if(issnPrint.contains("null"))
-                    issnPrint = "";
-                String isbn = "";
-                int totalAuthors = publication.getAuthorCount();
-
-                row.getCell(1).setCellValue(year);
-                row.getCell(2).setCellValue(title);
-                row.getCell(3).setCellValue(doi);
-                row.getCell(4).setCellValue(wosCode);
-                row.getCell(5).setCellValue(brevetCode);
-                row.getCell(6).setCellValue(forumName);
-                row.getCell(7).setCellValue(issnOnline);
-                row.getCell(8).setCellValue(issnPrint);
-                row.getCell(9).setCellValue(isbn);
-                CNFISReport2025 cnfisReport = cnfisReports.get(i);
-                long universityAuthors = cnfisReport.getNumarAutoriUniversitate();
-                if (cnfisReport.isIsiQ1()){
-                    row.getCell(12).setCellValue(1);
-                } else if (cnfisReport.isIsiQ2()) {
-                    row.getCell(13).setCellValue(1);
-                } else if (cnfisReport.isIsiQ3()) {
-                    row.getCell(14).setCellValue(1);
-                } else if (cnfisReport.isIsiQ4()) {
-                    row.getCell(15).setCellValue(1);
-                } else if (cnfisReport.isIsiArtsHumanities()) {
-                    row.getCell(16).setCellValue(1);
-                } else if(cnfisReport.isIsiEmergingSourcesCitationIndex()){
-                    row.getCell(17).setCellValue(1);
-                } else if (cnfisReport.isErihPlus()) {
-                    row.getCell(18).setCellValue(1);
-                } else if (cnfisReport.isIsiProceedings()) {
-                    row.getCell(19).setCellValue(1);
-                } else if (cnfisReport.isIeeeProceedings()) {
-                    row.getCell(20).setCellValue(1);
-                }
-                row.getCell(25).setCellValue(totalAuthors);
-                row.getCell(26).setCellValue(universityAuthors);
-                rowNum++;
-            }
+            populateSheet(workbook, sheet, publications, cnfisReports, forumMap, rowNum, sampleRowNum);
 
             workbook.setForceFormulaRecalculation(true);
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             workbook.write(bos);
             return bos.toByteArray();
         }
+    }
+
+    void populateSheet(Workbook workbook,
+                       Sheet sheet,
+                       List<? extends ScoringPublicationReadModel> publications,
+                       List<CNFISReport2025> cnfisReports,
+                       Map<String, ScholardexForumView> forumMap,
+                       int rowNum,
+                       int sampleRowNum) {
+        for (int i = 0; i < publications.size(); i++) {
+            ScoringPublicationReadModel publication = publications.get(i);
+            int usableTemplateRow = findNextUsableTemplateRow(sheet, sampleRowNum);
+            if (usableTemplateRow < 0) {
+                throw new IllegalStateException("No suitable template row available for CNFIS export population.");
+            }
+            sampleRowNum = usableTemplateRow;
+            Row row = copyRow(workbook, sheet, sampleRowNum, rowNum);
+            String year = PersistenceYearSupport.extractYearString(publication.getCoverDate(), publication.getId(), log);
+            String title = publication.getTitle() != null ? publication.getTitle() : "";
+            String doi = publication.getDoi() != null ? publication.getDoi() : "";
+            String wosCode = publication.getWosId() != null && !publication.getWosId().equals(CanonicalPublicationConstants.NON_WOS_ID)
+                    ? publication.getWosId() : "";
+            if ((doi.isEmpty() || doi.equals("null")) && wosCode.isEmpty()){
+                continue;
+            }
+            String brevetCode = "";
+            ScholardexForumView forum = forumMap.getOrDefault(publication.getForumId(), new ScholardexForumView());
+            String forumName = forum.getPublicationName();
+            String issnOnline = forum.getEIssn();
+            if(issnOnline.contains("null"))
+                issnOnline = "";
+            String issnPrint = forum.getIssn();
+            if(issnPrint.contains("null"))
+                issnPrint = "";
+            String isbn = "";
+            int totalAuthors = publication.getAuthorCount();
+
+            row.getCell(1).setCellValue(year);
+            row.getCell(2).setCellValue(title);
+            row.getCell(3).setCellValue(doi);
+            row.getCell(4).setCellValue(wosCode);
+            row.getCell(5).setCellValue(brevetCode);
+            row.getCell(6).setCellValue(forumName);
+            row.getCell(7).setCellValue(issnOnline);
+            row.getCell(8).setCellValue(issnPrint);
+            row.getCell(9).setCellValue(isbn);
+            CNFISReport2025 cnfisReport = cnfisReports.get(i);
+            long universityAuthors = cnfisReport.getNumarAutoriUniversitate();
+            if (cnfisReport.isIsiQ1()){
+                row.getCell(12).setCellValue(1);
+            } else if (cnfisReport.isIsiQ2()) {
+                row.getCell(13).setCellValue(1);
+            } else if (cnfisReport.isIsiQ3()) {
+                row.getCell(14).setCellValue(1);
+            } else if (cnfisReport.isIsiQ4()) {
+                row.getCell(15).setCellValue(1);
+            } else if (cnfisReport.isIsiArtsHumanities()) {
+                row.getCell(16).setCellValue(1);
+            } else if(cnfisReport.isIsiEmergingSourcesCitationIndex()){
+                row.getCell(17).setCellValue(1);
+            } else if (cnfisReport.isErihPlus()) {
+                row.getCell(18).setCellValue(1);
+            } else if (cnfisReport.isIsiProceedings()) {
+                row.getCell(19).setCellValue(1);
+            } else if (cnfisReport.isIeeeProceedings()) {
+                row.getCell(20).setCellValue(1);
+            }
+            row.getCell(25).setCellValue(totalAuthors);
+            row.getCell(26).setCellValue(universityAuthors);
+            rowNum++;
+        }
+    }
+
+    private int findNextUsableTemplateRow(Sheet sheet, int startRowNum) {
+        for (int rowNum = Math.max(0, startRowNum); rowNum <= sheet.getLastRowNum(); rowNum++) {
+            Row candidate = sheet.getRow(rowNum);
+            if (candidate != null && candidate.getLastCellNum() >= 25) {
+                return rowNum;
+            }
+        }
+        return -1;
     }
 }

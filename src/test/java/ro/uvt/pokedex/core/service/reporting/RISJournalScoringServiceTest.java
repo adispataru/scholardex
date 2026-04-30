@@ -5,6 +5,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.WoSRanking;
+import ro.uvt.pokedex.core.model.activities.Activity;
+import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublication;
@@ -38,6 +40,49 @@ class RISJournalScoringServiceTest {
         assertEquals(0.72, score.getScore());
         assertEquals(2023, score.getYear());
         assertEquals("Q2", score.getQuarter());
+    }
+
+    @Test
+    void activityPathReturnsRisScore() {
+        RISJournalScoringService service = new RISJournalScoringService(lookupPort);
+        Indicator indicator = indicatorForAllDomain();
+        indicator.setScoreYearRange("IY");
+        WoSRanking ranking = rankingWithRis("ECONOMICS - SCIE", 2022, 3.4, WoSRanking.Quarter.Q4);
+        when(lookupPort.getRankingsByIssn("4444-4444")).thenReturn(List.of(ranking));
+
+        ActivityInstance activity = new ActivityInstance();
+        activity.setDate("2022-09-01");
+        activity.setReferenceFields(Map.of(Activity.ReferenceField.FORUM_ISSN, "4444-4444"));
+
+        Score score = service.getScore(activity, indicator);
+        assertEquals(3.4, score.getScore());
+        assertEquals("Q4", score.getQuarter());
+    }
+
+    @Test
+    void nonArticleSubtypeReturnsZero() {
+        RISJournalScoringService service = new RISJournalScoringService(lookupPort);
+        Indicator indicator = indicatorForAllDomain();
+        ScoringPublication publication = new ScoringPublication(
+                "pub-2",
+                "eid-2",
+                "forum-1",
+                "2023-01-01",
+                "cp",
+                null,
+                List.of("a1"),
+                1,
+                "10.1000/pub-2",
+                null,
+                "RIS Conference",
+                0,
+                java.util.Set.of()
+        );
+        ScholardexForumView forum = forum("1234-5678");
+        when(lookupPort.getForum("forum-1")).thenReturn(forum);
+
+        Score score = service.getScore(publication, indicator);
+        assertEquals(0.0, score.getScore());
     }
 
     private Indicator indicatorForAllDomain() {

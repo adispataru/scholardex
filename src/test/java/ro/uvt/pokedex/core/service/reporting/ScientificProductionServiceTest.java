@@ -15,12 +15,24 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationDblp
 
 import java.util.List;
 import java.util.Map;
+import java.lang.reflect.Method;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.IntStream;
+import java.util.Arrays;
+import java.util.HashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,6 +48,43 @@ class ScientificProductionServiceTest {
 
     @InjectMocks
     private ScientificProductionService scientificProductionService;
+
+    @Test
+    void productionScoreGenericCountAssignsOnePerPublicationAndTotalSize() {
+        Indicator indicator = indicator(Indicator.Type.PUBLICATIONS, "S");
+        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        List<ScoringPublicationReadModel> publications = List.of(
+                publication("p1", null, null, null, null, "Paper 1", List.of("a1")),
+                publication("p2", null, null, null, null, "Paper 2", List.of("a1", "a2"))
+        );
+
+        Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(publications, indicator);
+
+        assertEquals(1.0, result.get("Paper 1").getScore(), 0.0001);
+        assertEquals(1.0, result.get("Paper 1").getAuthorScore(), 0.0001);
+        assertEquals(1.0, result.get("Paper 2").getScore(), 0.0001);
+        assertEquals(1.0, result.get("Paper 2").getAuthorScore(), 0.0001);
+        assertEquals(2.0, result.get("total").getAuthorScore(), 0.0001);
+        verify(scoringFactoryService, never()).getScoringService(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void impactScoreGenericCountAssignsOnePerPublicationAndTotalSize() {
+        Indicator indicator = indicator(Indicator.Type.CITATIONS, "S");
+        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        ScoringPublication cited = publication("cited", null, null, null, null, "Cited", List.of("a1"));
+        List<ScoringPublicationReadModel> citingPublications = List.of(
+                publication("cp1", null, null, null, null, "Citing 1", List.of("b1")),
+                publication("cp2", null, null, null, null, "Citing 2", List.of("b2"))
+        );
+
+        Map<String, Score> result = scientificProductionService.calculateScientificImpactScore(cited, citingPublications, indicator);
+
+        assertEquals(1.0, result.get("Citing 1").getScore(), 0.0001);
+        assertEquals(1.0, result.get("Citing 2").getAuthorScore(), 0.0001);
+        assertEquals(2.0, result.get("total").getAuthorScore(), 0.0001);
+        verify(scoringFactoryService, never()).getScoringService(org.mockito.ArgumentMatchers.any());
+    }
 
     @Test
     void cachedBasePathMatchesLegacyPathForCitationsAndExcludeSelf() {
@@ -403,6 +452,351 @@ class ScientificProductionServiceTest {
         ComputerScienceConferenceScoringService.ConferenceScoreTrace trace = conferenceScoringService.getLastTraceForTests();
         assertEquals(ComputerScienceConferenceScoringService.ResolutionSource.DBLP, trace.resolvedSource());
         assertEquals("AINA (6)", trace.dblpConferenceTitle());
+    }
+
+    @Test
+    void productionScoreTop10SelectorSortsAndLimitsByAuthorScore() {
+        Indicator indicator = indicator(Indicator.Type.PUBLICATIONS, "S");
+        indicator.setSelector(Indicator.Selector.TOP_10);
+        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+
+        List<ScoringPublicationReadModel> publications = IntStream.range(0, 11)
+                .mapToObj(i -> publication("p" + i, null, null, null, null, "Paper " + i, List.of("a1")))
+                .map(ScoringPublicationReadModel.class::cast)
+                .toList();
+
+        for (int i = 0; i < 11; i++) {
+            Score score = new Score();
+            score.setScore(i == 0 ? 0.0 : (double) i);
+            score.setAuthorScore(i == 0 ? 0.0 : (double) i);
+            when(scoringService.getScore(publications.get(i), indicator)).thenReturn(score);
+        }
+
+        Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(publications, indicator);
+
+        assertEquals(10, result.size() - 1);
+        assertTrue(result.containsKey("Paper 10"));
+        assertTrue(result.containsKey("Paper 1"));
+        assertTrue(!result.containsKey("Paper 0"));
+        assertEquals(55.0, result.get("total").getAuthorScore(), 0.0001);
+    }
+
+    @Test
+    void precomputeCitationBaseScoresReturnsEmptyForGuardPathsAndSkipsDuplicateIds() {
+        Indicator genericIndicator = indicator(Indicator.Type.CITATIONS, "S");
+        genericIndicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        Indicator nullStrategyIndicator = indicator(Indicator.Type.CITATIONS, "S");
+        nullStrategyIndicator.setScoringStrategy(null);
+
+        assertTrue(scientificProductionService.precomputeCitationBaseScores(null, genericIndicator).isEmpty());
+        assertTrue(scientificProductionService.precomputeCitationBaseScores(List.of(), genericIndicator).isEmpty());
+        assertTrue(scientificProductionService.precomputeCitationBaseScores(
+                List.of(publication("p1", null, null, null, null, "P1", List.of("a1"))), null).isEmpty());
+        assertTrue(scientificProductionService.precomputeCitationBaseScores(
+                List.of(publication("p1", null, null, null, null, "P1", List.of("a1"))), nullStrategyIndicator).isEmpty());
+        assertTrue(scientificProductionService.precomputeCitationBaseScores(
+                List.of(publication("p1", null, null, null, null, "P1", List.of("a1"))), genericIndicator).isEmpty());
+
+        Indicator indicator = indicator(Indicator.Type.CITATIONS, "S");
+        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+        ScoringPublication duplicateA = publication("dup", null, null, null, null, "A", List.of("a1"));
+        ScoringPublication duplicateB = publication("dup", null, null, null, null, "B", List.of("a1"));
+        ScoringPublication noId = new ScoringPublication(
+                null,
+                "eid-null",
+                null,
+                null,
+                null,
+                null,
+                List.of("a1"),
+                1,
+                null,
+                null,
+                "NoId",
+                0,
+                Set.of()
+        );
+        Score baseScore = score(2.5);
+        baseScore.setAuthorScore(9.0);
+        when(scoringService.getScore(duplicateA, indicator)).thenReturn(baseScore);
+
+        Map<String, Score> cached = scientificProductionService.precomputeCitationBaseScores(
+                Arrays.asList(duplicateA, duplicateB, noId, null), indicator
+        );
+
+        assertEquals(1, cached.size());
+        assertTrue(cached.containsKey("dup"));
+        assertEquals(2.5, cached.get("dup").getScore(), 0.0001);
+        assertEquals(9.0, cached.get("dup").getAuthorScore(), 0.0001);
+        verify(scoringService, times(1)).getScore(duplicateA, indicator);
+    }
+
+    @Test
+    void impactScoreAccumulatesTotalScoreAndAuthorScoreOnPositiveMatches() {
+        Indicator indicator = indicator(Indicator.Type.CITATIONS, "S * N");
+        ScoringPublication cited = publication("cited", null, null, null, null, "Cited", List.of("a1", "a2"));
+        ScoringPublication citingA = publication("ca", null, null, null, null, "Citing A", List.of("b1"));
+        ScoringPublication citingB = publication("cb", null, null, null, null, "Citing B", List.of("b2"));
+        List<ScoringPublicationReadModel> citingPublications = List.of(citingA, citingB);
+
+        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+        Score scoreA = new Score();
+        scoreA.setScore(2.0);
+        scoreA.setAuthorScore(0.0);
+        Score scoreB = new Score();
+        scoreB.setScore(3.0);
+        scoreB.setAuthorScore(0.0);
+        when(scoringService.getScore(citingA, indicator)).thenReturn(scoreA);
+        when(scoringService.getScore(citingB, indicator)).thenReturn(scoreB);
+
+        Map<String, Score> result = scientificProductionService.calculateScientificImpactScore(cited, citingPublications, indicator);
+
+        assertEquals(4.0, result.get("Citing A").getAuthorScore(), 0.0001);
+        assertEquals(6.0, result.get("Citing B").getAuthorScore(), 0.0001);
+        assertEquals(10.0, result.get("total").getAuthorScore(), 0.0001);
+        assertEquals(5.0, result.get("total").getScore(), 0.0001);
+    }
+
+    @Test
+    void impactScoreUsesCachedBaseByCitingPublicationIdWithoutServiceLookup() {
+        Indicator indicator = indicator(Indicator.Type.CITATIONS, "S");
+        ScoringPublication cited = publication("cited", null, null, null, null, "Cited", List.of("a1"));
+        ScoringPublication citing = publication("cp-cache", null, null, null, null, "Cached", List.of("b1"));
+
+        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+        Score cachedBase = new Score();
+        cachedBase.setScore(7.0);
+        cachedBase.setAuthorScore(13.0);
+        cachedBase.setDetails("cached-details");
+        cachedBase.setErrors(new HashMap<>(Map.of("e", "1")));
+        cachedBase.setExtra(new HashMap<>(Map.of("x", 2)));
+        cachedBase.setScoringInfo(new HashMap<>(Map.of("info", "cached")));
+        Map<String, Score> cached = new HashMap<>();
+        cached.put("cp-cache", cachedBase);
+
+        Map<String, Score> result = scientificProductionService.calculateScientificImpactScore(
+                cited,
+                List.of(citing),
+                indicator,
+                cached
+        );
+
+        verify(scoringService, never()).getScore(citing, indicator);
+        assertEquals(7.0, result.get("Cached").getScore(), 0.0001);
+        assertEquals(7.0, result.get("Cached").getAuthorScore(), 0.0001);
+        assertEquals(7.0, result.get("total").getScore(), 0.0001);
+        assertEquals(7.0, result.get("total").getAuthorScore(), 0.0001);
+        assertEquals(13.0, cachedBase.getAuthorScore(), 0.0001);
+        assertEquals("cached-details", cachedBase.getDetails());
+        assertEquals("1", cachedBase.getErrors().get("e"));
+        assertEquals(2, cachedBase.getExtra().get("x"));
+        assertEquals("cached", cachedBase.getScoringInfo().get("info"));
+    }
+
+    @Test
+    void precomputeCitationBaseScoresCopiesAllRelevantScoreFieldsAndDetachesMaps() {
+        Indicator indicator = indicator(Indicator.Type.CITATIONS, "S");
+        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+        ScoringPublication citing = publication("cp-copy", null, null, null, null, "Copy", List.of("a1"));
+
+        Score base = new Score();
+        base.setScore(9.0);
+        base.setAuthorScore(4.5);
+        base.setYear(2024);
+        base.setCoreRankingEquivalent("A");
+        base.setQuarter("Q1");
+        base.setScoringSource("SOURCE");
+        base.setDetails("details");
+        base.setScoringInfo(new HashMap<>(Map.of("k1", "v1")));
+        base.setErrors(new HashMap<>(Map.of("err", "2")));
+        base.setExtra(new HashMap<>(Map.of("ex", 3)));
+        when(scoringService.getScore(citing, indicator)).thenReturn(base);
+
+        Map<String, Score> cached = scientificProductionService.precomputeCitationBaseScores(List.of(citing), indicator);
+        Score copy = cached.get("cp-copy");
+
+        assertNotNull(copy);
+        assertNotSame(base, copy);
+        assertEquals(9.0, copy.getScore(), 0.0001);
+        assertEquals(4.5, copy.getAuthorScore(), 0.0001);
+        assertEquals(2024, copy.getYear());
+        assertEquals("A", copy.getCoreRankingEquivalent());
+        assertEquals("Q1", copy.getQuarter());
+        assertEquals("SOURCE", copy.getScoringSource());
+        assertEquals("details", copy.getDetails());
+        assertEquals("v1", copy.getScoringInfo().get("k1"));
+        assertEquals("2", copy.getErrors().get("err"));
+        assertEquals(3, copy.getExtra().get("ex"));
+        assertNotSame(base.getScoringInfo(), copy.getScoringInfo());
+        assertNotSame(base.getErrors(), copy.getErrors());
+        assertNotSame(base.getExtra(), copy.getExtra());
+
+        copy.setAuthorScore(1.0);
+        copy.getScoringInfo().put("k1", "mutated");
+        copy.getErrors().put("err", "9");
+        copy.getExtra().put("ex", 11);
+
+        assertEquals(4.5, base.getAuthorScore(), 0.0001);
+        assertEquals("v1", base.getScoringInfo().get("k1"));
+        assertEquals("2", base.getErrors().get("err"));
+        assertEquals(3, base.getExtra().get("ex"));
+        assertFalse(base.getScoringInfo().containsValue("mutated"));
+    }
+
+    @Test
+    void productionScoreWithSelectorAllKeepsInterResultAndSkipsZeroScores() {
+        Indicator indicator = indicator(Indicator.Type.PUBLICATIONS, "S");
+        indicator.setSelector(Indicator.Selector.ALL);
+        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+
+        ScoringPublicationReadModel p1 = publication("all-1", null, null, null, null, "All 1", List.of("a1"));
+        ScoringPublicationReadModel p2 = publication("all-2", null, null, null, null, "All 2", List.of("a1"));
+        ScoringPublicationReadModel p3 = publication("all-3", null, null, null, null, "All 3", List.of("a1"));
+
+        Score s1 = new Score();
+        s1.setScore(2.0);
+        s1.setAuthorScore(2.0);
+        Score s2 = new Score();
+        s2.setScore(0.0);
+        s2.setAuthorScore(0.0);
+        Score s3 = new Score();
+        s3.setScore(1.0);
+        s3.setAuthorScore(1.0);
+
+        when(scoringService.getScore(p1, indicator)).thenReturn(s1);
+        when(scoringService.getScore(p2, indicator)).thenReturn(s2);
+        when(scoringService.getScore(p3, indicator)).thenReturn(s3);
+
+        Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(p1, p2, p3), indicator);
+
+        assertTrue(result.containsKey("All 1"));
+        assertFalse(result.containsKey("All 2"));
+        assertTrue(result.containsKey("All 3"));
+        assertEquals(3.0, result.get("total").getAuthorScore(), 0.0001);
+    }
+
+    @Test
+    void productionScoreTop10SelectorWithAtMostTenEntriesKeepsAllPositiveWithoutSortingBranch() {
+        Indicator indicator = indicator(Indicator.Type.PUBLICATIONS, "S");
+        indicator.setSelector(Indicator.Selector.TOP_10);
+        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+
+        List<ScoringPublicationReadModel> publications = IntStream.rangeClosed(1, 3)
+                .mapToObj(i -> publication("t" + i, null, null, null, null, "Top " + i, List.of("a1")))
+                .map(ScoringPublicationReadModel.class::cast)
+                .toList();
+
+        for (int i = 0; i < publications.size(); i++) {
+            Score score = new Score();
+            score.setScore(i + 1.0);
+            score.setAuthorScore(i + 1.0);
+            when(scoringService.getScore(publications.get(i), indicator)).thenReturn(score);
+        }
+
+        Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(publications, indicator);
+
+        assertEquals(3, result.size() - 1);
+        assertEquals(6.0, result.get("total").getAuthorScore(), 0.0001);
+    }
+
+    @Test
+    void productionScoreTop10SelectorSortsAndKeepsBestTenWhenMoreThanTenPublications() {
+        Indicator indicator = indicator(Indicator.Type.PUBLICATIONS, "S");
+        indicator.setSelector(Indicator.Selector.TOP_10);
+        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+
+        List<ScoringPublicationReadModel> publications = IntStream.rangeClosed(1, 12)
+                .mapToObj(i -> publication("mx-" + i, null, null, null, null, "Max " + i, List.of("a1")))
+                .map(ScoringPublicationReadModel.class::cast)
+                .toList();
+
+        for (int i = 0; i < publications.size(); i++) {
+            Score score = new Score();
+            score.setScore(i + 1.0);
+            score.setAuthorScore(i + 1.0);
+            when(scoringService.getScore(publications.get(i), indicator)).thenReturn(score);
+        }
+
+        Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(publications, indicator);
+
+        assertEquals(10, result.size() - 1);
+        assertEquals(75.0, result.get("total").getAuthorScore(), 0.0001); // 12+...+3
+        assertTrue(result.containsKey("Max 12"));
+        assertFalse(result.containsKey("Max 1"));
+    }
+
+    @Test
+    void precomputeCitationBaseScoresGuardPathsDoNotTouchFactoryOrScoringService() {
+        Indicator genericIndicator = indicator(Indicator.Type.CITATIONS, "S");
+        genericIndicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        Indicator nullStrategyIndicator = indicator(Indicator.Type.CITATIONS, "S");
+        nullStrategyIndicator.setScoringStrategy(null);
+        List<ScoringPublicationReadModel> nonEmpty = List.of(
+                publication("guard", null, null, null, null, "Guard", List.of("a1"))
+        );
+
+        scientificProductionService.precomputeCitationBaseScores(null, genericIndicator);
+        scientificProductionService.precomputeCitationBaseScores(List.of(), genericIndicator);
+        scientificProductionService.precomputeCitationBaseScores(nonEmpty, null);
+        scientificProductionService.precomputeCitationBaseScores(nonEmpty, nullStrategyIndicator);
+        scientificProductionService.precomputeCitationBaseScores(nonEmpty, genericIndicator);
+
+        verifyNoInteractions(scoringFactoryService);
+        verifyNoInteractions(scoringService);
+    }
+
+    @Test
+    void precomputeCitationBaseScoresDeduplicatesIdsAndReturnsIndependentCopies() {
+        Indicator indicator = indicator(Indicator.Type.CITATIONS, "S");
+        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+
+        ScoringPublicationReadModel p1 = publication("dup", null, null, null, null, "Dup A", List.of("a1"));
+        ScoringPublicationReadModel p2 = publication("dup", null, null, null, null, "Dup B", List.of("a1"));
+        Score base = score(2.0);
+        when(scoringService.getScore(p1, indicator)).thenReturn(base);
+
+        Map<String, Score> cached = scientificProductionService.precomputeCitationBaseScores(List.of(p1, p2), indicator);
+
+        assertEquals(1, cached.size());
+        assertEquals(2.0, cached.get("dup").getScore(), 0.0001);
+        assertNotSame(base, cached.get("dup"));
+        verify(scoringService, times(1)).getScore(p1, indicator);
+    }
+
+    @Test
+    void nanosToMillisUsesFloorAndNeverReturnsNegative() throws Exception {
+        Method m = ScientificProductionService.class.getDeclaredMethod("nanosToMillis", long.class);
+        m.setAccessible(true);
+
+        assertEquals(0L, m.invoke(scientificProductionService, -1L));
+        assertEquals(0L, m.invoke(scientificProductionService, 999_999L));
+        assertEquals(1L, m.invoke(scientificProductionService, 1_000_000L));
+        assertEquals(2L, m.invoke(scientificProductionService, 2_999_999L));
+    }
+
+    @Test
+    void reflectivePrivateHelpersCoverLegacyCitationAndNullCopyBranches() throws Exception {
+        Indicator indicator = indicator(Indicator.Type.CITATIONS, "S");
+        ScoringPublication cited = publication("c-1", null, null, null, null, "Cited", List.of("a1"));
+        ScoringPublication citing = publication("x-1", null, null, null, null, "Citing", List.of("b1"));
+        when(scoringService.getScore(citing, indicator)).thenReturn(score(3.0));
+
+        Method legacyCitation = ScientificProductionService.class.getDeclaredMethod(
+                "calculateCitationScore",
+                ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel.class,
+                ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel.class,
+                Indicator.class,
+                ScoringService.class
+        );
+        legacyCitation.setAccessible(true);
+        Score legacy = (Score) legacyCitation.invoke(scientificProductionService, cited, citing, indicator, scoringService);
+        assertEquals(3.0, legacy.getScore(), 0.0001);
+
+        Method copyScore = ScientificProductionService.class.getDeclaredMethod("copyScore", Score.class);
+        copyScore.setAccessible(true);
+        Score copiedFromNull = (Score) copyScore.invoke(scientificProductionService, new Object[]{null});
+        assertNotNull(copiedFromNull);
+        assertEquals(0.0, copiedFromNull.getScore(), 0.0001);
     }
 
     private Indicator indicator(Indicator.Type type, String formula) {

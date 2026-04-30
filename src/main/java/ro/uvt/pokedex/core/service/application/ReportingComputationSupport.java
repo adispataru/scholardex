@@ -1,6 +1,7 @@
 package ro.uvt.pokedex.core.service.application;
 
 import ro.uvt.pokedex.core.model.reporting.Indicator;
+import ro.uvt.pokedex.core.model.reporting.AbstractReport;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.service.reporting.Score;
@@ -24,16 +25,21 @@ public final class ReportingComputationSupport {
             List<ScholardexPublicationView> publications,
             ScientificProductionService scientificProductionService) {
 
-        List<ScholardexPublicationView> filtered = publications;
-        if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR)) {
-            filtered = publications.stream()
-                    .filter(p -> authors.stream().anyMatch(a -> a.getId().equals(p.getAuthors().get(0))))
+        List<ScholardexPublicationView> filtered = switch (indicator.getOutputType()) {
+            case PUBLICATIONS_MAIN_AUTHOR -> publications.stream()
+                    .filter(p -> {
+                        String firstAuthorId = firstAuthorId(p);
+                        return firstAuthorId != null && authors.stream().anyMatch(a -> a.getId().equals(firstAuthorId));
+                    })
                     .collect(Collectors.toList());
-        } else if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_COAUTHOR)) {
-            filtered = publications.stream()
-                    .filter(p -> authors.stream().noneMatch(a -> a.getId().equals(p.getAuthors().get(0))))
+            case PUBLICATIONS_COAUTHOR -> publications.stream()
+                    .filter(p -> {
+                        String firstAuthorId = firstAuthorId(p);
+                        return firstAuthorId == null || authors.stream().noneMatch(a -> a.getId().equals(firstAuthorId));
+                    })
                     .collect(Collectors.toList());
-        }
+            default -> publications;
+        };
         Map<String, Score> scores = scientificProductionService.calculateScientificProductionScore(
                 filtered.stream().map(ScholardexPublicationView::toScoringPublication).toList(),
                 indicator
@@ -50,8 +56,7 @@ public final class ReportingComputationSupport {
             Indicator indicator,
             Map<String, Map<String, Score>> scores) {
 
-        if (indicator.getSelector() == null
-                || !indicator.getSelector().equals(Indicator.Selector.TOP_10)) {
+        if (indicator.getSelector() != Indicator.Selector.TOP_10) {
             return;
         }
 
@@ -72,8 +77,8 @@ public final class ReportingComputationSupport {
         }
         boolean[] used = new boolean[top10.size()];
 
-        for (String key : scores.keySet()) {
-            Iterator<String> it = scores.get(key).keySet().iterator();
+        for (Map<String, Score> scoreMap : scores.values()) {
+            Iterator<String> it = scoreMap.keySet().iterator();
             while (it.hasNext()) {
                 String title = it.next();
                 if (title.equals("total")) {
@@ -89,15 +94,68 @@ public final class ReportingComputationSupport {
             }
             double totalA = 0.0;
             double totalF = 0.0;
-            scores.get(key).remove("total");
-            for (Score s : scores.get(key).values()) {
+            scoreMap.remove("total");
+            for (Score s : scoreMap.values()) {
                 totalA += s.getAuthorScore();
                 totalF += s.getScore();
             }
             Score total = new Score();
             total.setScore(totalF);
             total.setAuthorScore(totalA);
-            scores.get(key).put("total", total);
+            scoreMap.put("total", total);
         }
+    }
+
+    public static boolean isActivityIndicator(Indicator indicator) {
+        return indicator != null
+                && indicator.getOutputType() != null
+                && indicator.getOutputType().toString().contains("ACTIVIT");
+    }
+
+    public static boolean isPublicationIndicator(Indicator indicator) {
+        return indicator != null
+                && indicator.getOutputType() != null
+                && indicator.getOutputType().toString().contains("PUBLICATIONS");
+    }
+
+    public static boolean isCitationIndicator(Indicator indicator) {
+        if (indicator == null || indicator.getOutputType() == null) {
+            return false;
+        }
+        return indicator.getOutputType().equals(Indicator.Type.CITATIONS)
+                || indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF);
+    }
+
+    public static Map<Integer, Double> computeCriterionScores(
+            List<AbstractReport.Criterion> criteria,
+            List<Indicator> indicators,
+            Map<String, Double> indicatorScoresByIndicatorId) {
+        Map<Integer, Double> criterionScores = new HashMap<>();
+        for (int i = 0; i < criteria.size(); i++) {
+            AbstractReport.Criterion criterion = criteria.get(i);
+            double criterionScore = 0.0;
+            if (criterion.getIndicatorIndices() == null) {
+                criterionScores.put(i, criterionScore);
+                continue;
+            }
+            for (Integer indicatorIndex : criterion.getIndicatorIndices()) {
+                if (indicatorIndex == null || indicatorIndex < 0 || indicatorIndex >= indicators.size()) {
+                    continue;
+                }
+                Indicator indicator = indicators.get(indicatorIndex);
+                if (indicator != null && indicator.getId() != null) {
+                    criterionScore += indicatorScoresByIndicatorId.getOrDefault(indicator.getId(), 0.0);
+                }
+            }
+            criterionScores.put(i, criterionScore);
+        }
+        return criterionScores;
+    }
+
+    private static String firstAuthorId(ScholardexPublicationView publication) {
+        if (publication == null || publication.getAuthors() == null || publication.getAuthors().isEmpty()) {
+            return null;
+        }
+        return publication.getAuthors().getFirst();
     }
 }

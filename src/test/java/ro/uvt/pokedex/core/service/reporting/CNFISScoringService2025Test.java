@@ -234,6 +234,84 @@ class CNFISScoringService2025Test {
         assertEquals(first.isIsiProceedings(), second.isIsiProceedings());
     }
 
+    @Test
+    void categoryEvaluationDoesNotConsumePublicationYearAcrossCategories() {
+        ScoringPublication publication = publication("ar", null, "2022-01-15", null);
+
+        ScholardexForumView forum = baseForum("Journal of Testing");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
+        when(cacheService.getRankingsByIssn("1234-5678")).thenReturn(List.of(
+                rankingWithCategoryYears("FIRST-SCIE", Map.of(2023, WoSRanking.Quarter.Q1)),
+                rankingWithCategoryYears("SECOND-SCIE", Map.of(2022, WoSRanking.Quarter.Q2))
+        ));
+
+        CNFISReport2025 report = service.getReport(publication, allDomain);
+
+        assertTrue(report.isIsiQ2(), "second category should still evaluate against 2022 publication year");
+        assertFalse(report.isIsiQ1(), "category should not silently drift to LAST_YEAR after first category");
+    }
+
+    @Test
+    void setsQ3ForScieCategory() {
+        ScoringPublication publication = publication("ar", null, "2023-01-15", null);
+        ScholardexForumView forum = baseForum("Journal of Testing");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
+        when(cacheService.getRankingsByIssn("1234-5678")).thenReturn(List.of(ranking("X-SCIE", WoSRanking.Quarter.Q3)));
+
+        CNFISReport2025 report = service.getReport(publication, allDomain);
+        assertTrue(report.isIsiQ3());
+        assertFalse(report.isIsiQ4());
+    }
+
+    @Test
+    void setsQ4ForScieCategory() {
+        ScoringPublication publication = publication("ar", null, "2023-01-15", null);
+        ScholardexForumView forum = baseForum("Journal of Testing");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
+        when(cacheService.getRankingsByIssn("1234-5678")).thenReturn(List.of(ranking("X-SCIE", WoSRanking.Quarter.Q4)));
+
+        CNFISReport2025 report = service.getReport(publication, allDomain);
+        assertTrue(report.isIsiQ4());
+        assertFalse(report.isIsiQ3());
+    }
+
+    @Test
+    void setsEsciFlagWhenCategoryIndexContainsEsci() {
+        ScoringPublication publication = publication("ar", null, "2023-01-15", null);
+        ScholardexForumView forum = baseForum("Journal of Testing");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
+        when(cacheService.getRankingsByIssn("1234-5678")).thenReturn(List.of(ranking("TOPIC-ESCI", WoSRanking.Quarter.Q1)));
+
+        CNFISReport2025 report = service.getReport(publication, allDomain);
+        assertTrue(report.isIsiEmergingSourcesCitationIndex());
+        assertFalse(report.isIsiArtsHumanities());
+    }
+
+    @Test
+    void setsAhciFlagWhenCategoryIndexContainsAhci() {
+        ScoringPublication publication = publication("ar", null, "2023-01-15", null);
+        ScholardexForumView forum = baseForum("Journal of Testing");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
+        when(cacheService.getRankingsByIssn("1234-5678")).thenReturn(List.of(ranking("TOPIC-AHCI", WoSRanking.Quarter.Q1)));
+
+        CNFISReport2025 report = service.getReport(publication, allDomain);
+        assertTrue(report.isIsiArtsHumanities());
+        assertFalse(report.isIsiEmergingSourcesCitationIndex());
+    }
+
+    @Test
+    void yearCandidatesAdvanceWhenFirstCandidateHasNoQuarter() {
+        ScoringPublication publication = publication("ar", null, "2022-01-15", null);
+        ScholardexForumView forum = baseForum("Journal of Testing");
+        when(cacheService.getForum(publication.getForumId())).thenReturn(forum);
+        when(cacheService.getRankingsByIssn("1234-5678")).thenReturn(List.of(
+                rankingWithCategoryYears("ADV-SCIE", Map.of(2022, WoSRanking.Quarter.Q2))
+        ));
+
+        CNFISReport2025 report = service.getReport(publication, allDomain);
+        assertTrue(report.isIsiQ2());
+    }
+
     private ScoringPublication publication(String scopusSubtype, String subtype, String coverDate, String wosId) {
         return new ScoringPublication(
                 "pub-1",
@@ -265,9 +343,13 @@ class CNFISScoringService2025Test {
     }
 
     private WoSRanking rankingWithNullableCategory(String category, WoSRanking.Quarter quarter) {
+        return rankingWithCategoryYears(category, Map.of(2023, quarter));
+    }
+
+    private WoSRanking rankingWithCategoryYears(String category, Map<Integer, WoSRanking.Quarter> years) {
         WoSRanking ranking = new WoSRanking();
         WoSRanking.Rank rank = new WoSRanking.Rank();
-        rank.setQAis(Map.of(2023, quarter));
+        rank.setQAis(years);
         Map<String, WoSRanking.Rank> categories = new HashMap<>();
         categories.put(category, rank);
         ranking.setWebOfScienceCategoryIndex(categories);

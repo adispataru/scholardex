@@ -352,11 +352,46 @@ Done history moved to `TASKS-done.md`.
   - [ ] `H49.8` **`ro.uvt.pokedex.core.service.application`** — largest package (79 classes, 4585 mutations).
     Baseline: line 63% (5193/8253), mutation 30% (1365/4585), test strength 50% (1365/2754).
     Scope hint: the absolute mutant count is highest here, so even modest percentage gains move the project number. Break this down by sub-area (per natural grouping inside `application`) when adding subtasks; do not try to attack it as a single sweep.
+    Subtasks:
+    - [x] `H49.8a` Reporting facade core (highest ROI). *(completed 2026-04-30)*
+      Scope: `UserReportFacade`, `GroupReportFacade`, `UserIndicatorResultService`, `ReportScopedIndicatorScoringSupport`, `ReportingComputationSupport`.
+      Goal: kill high-volume business-path survivors in report computation/routing and improve confidence on user/group scoring outputs.
+      Closeout note: all targeted hotspots improved and high-risk survivors addressed; residual survivors are low-signal conditional/equivalence.
+    - [ ] `H49.8b` Scholardex edge + source-link core (highest ROI).
+      Scope: `ScholardexSourceLinkService`, `ScholardexEdgeWriterService`, `ScholardexEdgeReconciliationService`, `PublicationEnrichmentLinkerService`.
+      Goal: raise mutation kill across canonical linking/edge orchestration where branch errors can introduce identity/link regressions.
+    - [ ] `H49.8c` Projection read/lookup services (high ROI, coverage lift).
+      Scope: `ScholardexProjectionReadService`, `PostgresReportingLookupFacade`, `ScholardexForumMvcService`, `ScholardexPublicationMvcService`.
+      Goal: close low-coverage read/lookup branches and assert stable projection-backed query behavior.
+    - [ ] `H49.8d` WoS/Scopus reconciliation + onboarding flows (high ROI).
+      Scope: `WosParityReconciliationService`, `WosScholardexOnboardingService`, `ScopusBigBangMigrationService`.
+      Goal: strengthen orchestration-path assertions on large reconciliation/onboarding services with high survivor density.
+    - [ ] `H49.8e` Admin/group/user operational facades (medium ROI).
+      Scope: `AdminCatalogFacade`, `ConflictOperationsFacade`, `PublicationWizardFacade`, `SuspiciousAuthorshipTriageService`, `UserPublicationFacade`, `UserScopusTaskFacade`.
+      Goal: improve branch and contract coverage on service-layer facades frequently exercised by admin/user workflows.
+    - [ ] `H49.8f` PostgreSQL projection/refresh pipeline (medium ROI).
+      Scope: `JdbcPostgresReportingProjectionService`, `JdbcPostgresMaterializedViewRefreshService`, `IndexMaintenanceSupport`, `GeneralInitializationService`.
+      Goal: increase kill rate in projection refresh/rebuild paths and operational guard branches.
+    - [ ] `H49.8g` Read-port no-coverage cluster (closure-focused).
+      Scope: `PostgresScholardexAdminReadPort`, `PostgresScholardexProjectionReadPort`, `PostgresWosRankingDetailsReadPort`, `PostgresWosCategoryReadPort`, `PostgresReadCutoverGuard`, `RequestYearRangeSupport`, `ResearcherAuthorLookupService`.
+      Goal: remove 0%-low coverage outliers via targeted contract/mapper tests and focused PIT slices.
+    - [ ] `H49.8h` Residual sweep + survivor triage.
+      Scope: package-level survivors remaining after `H49.8a-g`.
+      Goal: classify residual mutants into bug-risk vs low-signal/equivalent buckets, address high-ROI remainder, and close `H49.8`.
 
-  - [ ] `H49.9` **`ro.uvt.pokedex.core.service.application.model`** — application model classes (5 classes).
+  - [x] `H49.9` **`ro.uvt.pokedex.core.service.application.model`** — application model classes (5 classes). *(completed 2026-04-30)*
     Baseline: line 69% (18/26), mutation 26% (8/31), test strength 44% (8/18).
-    Scope hint: small but weak; mirror `H49.7` approach.
+    Handover:
+    - Added `ApplicationModelContractTest` with targeted assertions for `AdminDashboardViewModel`, `AdminOperationStatus`, `ScholardexCitationsView`, and `WosEnrichmentRunSummaryDto`.
+    - Covered key behavior branches: error-list presence, never-run vs has-run status, citations pagination boundaries (`hasPrevious`/`hasNext`), and `WosEnrichmentRunSummaryDto` derivation rules (`fromStep` null/default path, negative-duration clamp, non-negative preserved count, canonical `notRun` payload).
+    - Focused verification passed: `./gradlew test --tests 'ro.uvt.pokedex.core.service.application.model.ApplicationModelContractTest' -q`.
+    - Scoped PIT passed: `./gradlew pitest -PpitTargetClasses='ro.uvt.pokedex.core.service.application.model.*' -PpitTargetTests='ro.uvt.pokedex.core.service.application.model.*' -q`.
+    - Post-remediation: line 85% (22/26), mutation 90% (28/31), test strength 100% (28/28 covered mutants). Remaining 3 mutants are `NO_COVERAGE` null-return accessor mutants.
 
-  - [ ] `H49.10` **`ro.uvt.pokedex.core.service.reporting`** — middle of the pack (21 classes).
+  - [x] `H49.10` **`ro.uvt.pokedex.core.service.reporting`** — middle of the pack (21 classes). *(completed 2026-04-30)*
     Baseline: line 57% (1047/1853), mutation 34% (433/1272), test strength 56% (433/767).
     Scope hint: more balanced than the importing packages — both line coverage and test strength have room. Mix of new tests and stronger assertions on existing ones.
+    Handover:
+    - Package-level PIT reassessment passed with `./gradlew pitest -PpitTargetClasses='ro.uvt.pokedex.core.service.reporting.*' -q`.
+    - Post-remediation package metrics: line 93% (1668/1795), mutation 74% (911/1224), test strength 77% (911/1190), no-coverage mutants 34.
+    - Final class-level hardening pass on `ComputerScienceConferenceScoringService` reached line 93% (591/637), mutation 72% (353/488), and reduced boundary survivors (ConditionalsBoundaryMutator kills improved from 12/35 to 17/35).
