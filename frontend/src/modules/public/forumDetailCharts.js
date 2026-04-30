@@ -1,5 +1,6 @@
 import { Chart as FrappeChart } from 'frappe-charts';
 import { getChartTheme } from '../shared/chartTheme';
+import { escapeHtml } from '../shared/htmlEscape';
 
 let themeListenerBound = false;
 
@@ -100,9 +101,9 @@ function renderCategoryHeatmap(container, entry, years) {
   ];
 
   const columnTemplate = `80px ${years.map(() => '14px').join(' ')}`;
-  const headerRow = `<div class="gh-heatmap-row" style="grid-template-columns:${columnTemplate};">
+  const headerRow = `<div class="gh-heatmap-row" style="grid-template-columns:${escapeHtml(columnTemplate)};">
     <div class="gh-label"></div>
-    ${years.map((year) => `<div class="gh-year" title="${year}">${String(year).slice(-2)}</div>`).join('')}
+    ${years.map((year) => `<div class="gh-year" title="${escapeHtml(year)}">${escapeHtml(String(year).slice(-2))}</div>`).join('')}
   </div>`;
 
   const rowsHtml = metricDefs.map((metric) => {
@@ -114,11 +115,11 @@ function renderCategoryHeatmap(container, entry, years) {
       if (quartileRank != null) {
         title += ` (quartile rank: #${quartileRank})`;
       }
-      return `<div class="gh-cell ${quarterCssClass(quarter)}" title="${title}"></div>`;
+      return `<div class="gh-cell ${escapeHtml(quarterCssClass(quarter))}" title="${escapeHtml(title)}"></div>`;
     }).join('');
 
-    return `<div class="gh-heatmap-row" style="grid-template-columns:${columnTemplate};">
-      <div class="gh-label">${metric.label}</div>${rowCells}
+    return `<div class="gh-heatmap-row" style="grid-template-columns:${escapeHtml(columnTemplate)};">
+      <div class="gh-label">${escapeHtml(metric.label)}</div>${rowCells}
     </div>`;
   }).join('');
 
