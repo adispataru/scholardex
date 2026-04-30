@@ -32,20 +32,16 @@ public class UserScopusTaskFacade {
     }
 
     public ScopusPublicationUpdate createPublicationTask(String userEmail, ScopusPublicationUpdate draft) {
-        draft.setInitiator(userEmail);
-        draft.setStatus(Status.PENDING);
-        draft.setInitiatedDate(LocalDate.now().toString());
-        if (draft.getMaxAttempts() <= 0) {
-            draft.setMaxAttempts(3);
-        }
-        draft.setAttemptCount(0);
-        draft.setNextAttemptAt(null);
-        draft.setLastErrorCode(null);
-        draft.setLastErrorMessage(null);
+        initializeDraft(draft, userEmail);
         return scopusPublicationUpdateRepository.save(draft);
     }
 
     public ScopusCitationsUpdate createCitationTask(String userEmail, ScopusCitationsUpdate draft) {
+        initializeDraft(draft, userEmail);
+        return scopusCitationUpdateRepository.save(draft);
+    }
+
+    private void initializeDraft(ScopusPublicationUpdate draft, String userEmail) {
         draft.setInitiator(userEmail);
         draft.setStatus(Status.PENDING);
         draft.setInitiatedDate(LocalDate.now().toString());
@@ -56,6 +52,18 @@ public class UserScopusTaskFacade {
         draft.setNextAttemptAt(null);
         draft.setLastErrorCode(null);
         draft.setLastErrorMessage(null);
-        return scopusCitationUpdateRepository.save(draft);
+    }
+
+    private void initializeDraft(ScopusCitationsUpdate draft, String userEmail) {
+        draft.setInitiator(userEmail);
+        draft.setStatus(Status.PENDING);
+        draft.setInitiatedDate(LocalDate.now().toString());
+        if (draft.getMaxAttempts() <= 0) {
+            draft.setMaxAttempts(3);
+        }
+        draft.setAttemptCount(0);
+        draft.setNextAttemptAt(null);
+        draft.setLastErrorCode(null);
+        draft.setLastErrorMessage(null);
     }
 }

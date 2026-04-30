@@ -21,7 +21,9 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -40,6 +42,18 @@ class PublicationWizardFacadeTest {
 
     @InjectMocks
     private PublicationWizardFacade facade;
+
+    @Test
+    void listForumsAndFindAuthorsForAffiliation() {
+        ScholardexForumView forum = new ScholardexForumView();
+        ScholardexAuthorView author = new ScholardexAuthorView();
+        when(scholardexProjectionReadService.findAllForums()).thenReturn(List.of(forum));
+        when(scholardexProjectionReadService.findAuthorsByAffiliationId("aff1")).thenReturn(List.of(author));
+
+        assertEquals(1, facade.listForums().size());
+        assertTrue(facade.findAuthorsForAffiliation(" ").isEmpty());
+        assertEquals(1, facade.findAuthorsForAffiliation("aff1").size());
+    }
 
     @Test
     void resolveForumIdUsesSelectedExistingForum() {
@@ -170,6 +184,228 @@ class PublicationWizardFacadeTest {
 
         assertFalse(result.imported());
         verify(canonicalMaterializationService).rebuildFactsAndViews(eq("wizard-publication-submit"), any());
+    }
+
+    @Test
+    void buildPublicationDraftUsesWizardDraftWhenProvided() {
+        ScholardexForumView draftForum = new ScholardexForumView();
+        draftForum.setPublicationName(" Forum Name ");
+        draftForum.setIssn("12345678");
+        draftForum.setEIssn("87654321");
+        draftForum.setIsbn(" isbn ");
+        draftForum.setAggregationType(" Journal ");
+        draftForum.setPublisher(" Pub ");
+
+        WizardPublicationCommand command = facade.buildPublicationDraft("f1", "a1,a2", "creator", draftForum);
+        assertEquals("Forum Name", command.getWizardForumPublicationName());
+        assertEquals("1234-5678", command.getWizardForumIssn());
+        assertEquals("8765-4321", command.getWizardForumEIssn());
+        assertEquals("isbn", command.getWizardForumIsbn());
+        assertEquals("Journal", command.getWizardForumAggregationType());
+        assertEquals("Pub", command.getWizardForumPublisher());
+        assertEquals(List.of("a1", "a2"), command.getAuthorIds());
+        assertEquals("f1", command.getForum());
+        assertEquals("creator", command.getCreator());
+        assertEquals("a1,a2", command.getAuthorIdsCsv());
+    }
+
+    @Test
+    void buildPublicationDraftLoadsExistingForumWhenNoWizardDraft() {
+        ScholardexForumView existing = new ScholardexForumView();
+        existing.setPublicationName("Loaded");
+        existing.setIssn("11112222");
+        existing.setEIssn("33334444");
+        existing.setAggregationType("Conference");
+        when(scholardexProjectionReadService.findForumById("f1")).thenReturn(Optional.of(existing));
+
+        WizardPublicationCommand command = facade.buildPublicationDraft("f1", "a1", "creator", null);
+        assertEquals("Loaded", command.getWizardForumPublicationName());
+        assertEquals("1111-2222", command.getWizardForumIssn());
+        assertEquals("3333-4444", command.getWizardForumEIssn());
+        assertEquals("Conference", command.getWizardForumAggregationType());
+    }
+
+    @Test
+    void submitPublicationValidationAndErrorPaths() {
+        WizardPublicationCommand invalid = new WizardPublicationCommand();
+        invalid.setCreator("c");
+        invalid.setSubtypeDescription("Article");
+        invalid.setCoverDate("2026-01-01");
+        invalid.setWizardForumAggregationType("Journal");
+        invalid.setWizardForumPublicationName("J");
+        assertThrows(IllegalArgumentException.class, () -> facade.submitPublication(invalid, new User()));
+
+        WizardPublicationCommand badDate = buildCommand();
+        badDate.setCoverDate("06/01/2026");
+        assertThrows(IllegalArgumentException.class, () -> facade.submitPublication(badDate, new User()));
+
+        WizardPublicationCommand command = buildCommand();
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of());
+        when(importEventIngestionService.ingest(
+                eq(ScopusImportEntityType.PUBLICATION),
+                eq(UserDefinedWizardOnboardingContract.SOURCE),
+                any(),
+                any(),
+                any(),
+                eq(PublicationWizardFacade.PAYLOAD_FORMAT_JSON_OBJECT),
+                any())
+        ).thenReturn(ScopusImportEventIngestionService.EventIngestionOutcome.error("boom"));
+
+        assertThrows(IllegalStateException.class, () -> facade.submitPublication(command, new User()));
+    }
+
+    @Test
+    void submitPublicationValidatesAllRequiredFields() {
+        WizardPublicationCommand missingCreator = buildCommand();
+        missingCreator.setCreator("  ");
+        assertThrows(IllegalArgumentException.class, () -> facade.submitPublication(missingCreator, new User()));
+
+        WizardPublicationCommand missingType = buildCommand();
+        missingType.setSubtypeDescription(" ");
+        assertThrows(IllegalArgumentException.class, () -> facade.submitPublication(missingType, new User()));
+
+        WizardPublicationCommand missingForum = buildCommand();
+        missingForum.setForum(" ");
+        missingForum.setWizardForumPublicationName(" ");
+        assertThrows(IllegalArgumentException.class, () -> facade.submitPublication(missingForum, new User()));
+
+        WizardPublicationCommand missingForumType = buildCommand();
+        missingForumType.setWizardForumAggregationType(" ");
+        assertThrows(IllegalArgumentException.class, () -> facade.submitPublication(missingForumType, new User()));
+    }
+
+    @Test
+    void submitPublicationBuildsSubtypeAndForumSourceFromDraftFields() {
+        WizardPublicationCommand command = buildCommand();
+        command.setForum(" ");
+        command.setSubtype(" ");
+        command.setSubtypeDescription("Review");
+        command.setWizardForumPublicationName("Journal X");
+        command.setWizardForumIssn("1111-2222");
+        command.setWizardForumEIssn("3333-4444");
+        command.setWizardForumAggregationType("Journal");
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of());
+        when(importEventIngestionService.ingest(
+                eq(ScopusImportEntityType.PUBLICATION),
+                eq(UserDefinedWizardOnboardingContract.SOURCE),
+                any(),
+                any(),
+                any(),
+                eq(PublicationWizardFacade.PAYLOAD_FORMAT_JSON_OBJECT),
+                any())
+        ).thenReturn(ScopusImportEventIngestionService.EventIngestionOutcome.imported("ev-3"));
+
+        ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
+        PublicationWizardFacade.SubmissionResult result = facade.submitPublication(command, null);
+        verify(importEventIngestionService).ingest(
+                eq(ScopusImportEntityType.PUBLICATION),
+                eq(UserDefinedWizardOnboardingContract.SOURCE),
+                any(),
+                any(),
+                any(),
+                eq(PublicationWizardFacade.PAYLOAD_FORMAT_JSON_OBJECT),
+                payloadCaptor.capture()
+        );
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> payload = (Map<String, Object>) payloadCaptor.getValue();
+        assertEquals("re", payload.get("subtype"));
+        assertEquals(result.forumSourceId(), payload.get("source_id"));
+        assertEquals("", payload.get("wizardSubmitterEmail"));
+        assertEquals("", payload.get("wizardSubmitterResearcherId"));
+    }
+
+    @Test
+    void submitPublicationForumSourceIdChangesWhenDraftIdentityFieldsChange() {
+        WizardPublicationCommand commandA = buildCommand();
+        commandA.setForum(" ");
+        commandA.setWizardForumPublicationName("Journal X");
+        commandA.setWizardForumIssn("1111-2222");
+        commandA.setWizardForumEIssn("3333-4444");
+        commandA.setWizardForumAggregationType("Journal");
+
+        WizardPublicationCommand commandB = buildCommand();
+        commandB.setForum(" ");
+        commandB.setWizardForumPublicationName("Journal X");
+        commandB.setWizardForumIssn("9999-2222");
+        commandB.setWizardForumEIssn("3333-4444");
+        commandB.setWizardForumAggregationType("Journal");
+
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of());
+        when(importEventIngestionService.ingest(
+                eq(ScopusImportEntityType.PUBLICATION),
+                eq(UserDefinedWizardOnboardingContract.SOURCE),
+                any(),
+                any(),
+                any(),
+                eq(PublicationWizardFacade.PAYLOAD_FORMAT_JSON_OBJECT),
+                any())
+        ).thenReturn(ScopusImportEventIngestionService.EventIngestionOutcome.imported("ev-4"));
+
+        PublicationWizardFacade.SubmissionResult r1 = facade.submitPublication(commandA, new User());
+        PublicationWizardFacade.SubmissionResult r2 = facade.submitPublication(commandB, new User());
+
+        assertTrue(r1.forumSourceId().startsWith(UserDefinedWizardOnboardingContract.FORUM_SOURCE_RECORD_PREFIX));
+        assertTrue(r2.forumSourceId().startsWith(UserDefinedWizardOnboardingContract.FORUM_SOURCE_RECORD_PREFIX));
+        assertFalse(r1.forumSourceId().equals(r2.forumSourceId()));
+    }
+
+    @Test
+    void submitPublicationNormalizesForumIdentityFieldsBeforeSourceIdGeneration() {
+        WizardPublicationCommand commandA = buildCommand();
+        commandA.setForum(" ");
+        commandA.setWizardForumPublicationName(" Journal X ");
+        commandA.setWizardForumIssn("11112222");
+        commandA.setWizardForumEIssn("33334444");
+        commandA.setWizardForumAggregationType(" Journal ");
+
+        WizardPublicationCommand commandB = buildCommand();
+        commandB.setForum(" ");
+        commandB.setWizardForumPublicationName("Journal X");
+        commandB.setWizardForumIssn("1111-2222");
+        commandB.setWizardForumEIssn("3333-4444");
+        commandB.setWizardForumAggregationType("Journal");
+
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of());
+        when(importEventIngestionService.ingest(
+                eq(ScopusImportEntityType.PUBLICATION),
+                eq(UserDefinedWizardOnboardingContract.SOURCE),
+                any(),
+                any(),
+                any(),
+                eq(PublicationWizardFacade.PAYLOAD_FORMAT_JSON_OBJECT),
+                any())
+        ).thenReturn(ScopusImportEventIngestionService.EventIngestionOutcome.imported("ev-6"));
+
+        PublicationWizardFacade.SubmissionResult r1 = facade.submitPublication(commandA, new User());
+        PublicationWizardFacade.SubmissionResult r2 = facade.submitPublication(commandB, new User());
+        assertEquals(r1.forumSourceId(), r2.forumSourceId());
+    }
+
+    @Test
+    void submitPublicationEidSuffixMatchesSourceRecordSuffix() {
+        WizardPublicationCommand command = buildCommand();
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of());
+        when(importEventIngestionService.ingest(
+                eq(ScopusImportEntityType.PUBLICATION),
+                eq(UserDefinedWizardOnboardingContract.SOURCE),
+                any(),
+                any(),
+                any(),
+                eq(PublicationWizardFacade.PAYLOAD_FORMAT_JSON_OBJECT),
+                any())
+        ).thenReturn(ScopusImportEventIngestionService.EventIngestionOutcome.imported("ev-5"));
+
+        PublicationWizardFacade.SubmissionResult result = facade.submitPublication(command, new User());
+        String sourceSuffix = result.sourceRecordId().substring(result.sourceRecordId().lastIndexOf(':') + 1);
+        assertEquals("USER_DEFINED:EID:" + sourceSuffix, result.eid());
+    }
+
+    @Test
+    void buildPublicationDraftWithoutForumKeepsForumFieldsEmpty() {
+        WizardPublicationCommand command = facade.buildPublicationDraft("missing", "a1", "creator", null);
+        assertEquals(List.of("a1"), command.getAuthorIds());
+        assertNull(command.getWizardForumPublicationName());
     }
 
     private WizardPublicationCommand buildCommand() {

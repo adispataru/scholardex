@@ -21,6 +21,8 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -81,6 +83,9 @@ class ConflictOperationsFacadeTest {
         long updated = facade.updateConflictStatus("c1", "RESOLVED", "admin@uvt.ro");
 
         assertEquals(1L, updated);
+        assertEquals("RESOLVED", conflict.getStatus());
+        assertEquals("admin@uvt.ro", conflict.getResolvedBy());
+        assertNotNull(conflict.getResolvedAt());
         verify(scholardexIdentityConflictRepository).save(any(ScholardexIdentityConflict.class));
     }
 
@@ -116,6 +121,60 @@ class ConflictOperationsFacadeTest {
         assertEquals(2L, summary.resolved());
         assertEquals(1L, summary.dismissed());
         assertEquals(10L, summary.total());
+    }
+
+    @Test
+    void findIdentityConflictsWithoutEntityTypeUsesGenericQuery() {
+        when(scholardexIdentityConflictRepository
+                .findAllByIncomingSourceContainingIgnoreCaseAndReasonCodeContainingIgnoreCaseAndStatusContainingIgnoreCaseAndDetectedAtBetween(
+                        any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        var page = facade.findIdentityConflicts(2, 10, "invalid", " src ", " reason ", " resolved ", Instant.EPOCH, Instant.now());
+        assertNotNull(page);
+        assertTrue(page.isEmpty());
+
+        verify(scholardexIdentityConflictRepository)
+                .findAllByIncomingSourceContainingIgnoreCaseAndReasonCodeContainingIgnoreCaseAndStatusContainingIgnoreCaseAndDetectedAtBetween(
+                        eq("src"), eq("reason"), eq("resolved"), any(), any(), any());
+    }
+
+    @Test
+    void findIdentityConflictsSwapsDateBoundsWhenProvidedInReverseOrder() {
+        when(scholardexIdentityConflictRepository
+                .findAllByIncomingSourceContainingIgnoreCaseAndReasonCodeContainingIgnoreCaseAndStatusContainingIgnoreCaseAndDetectedAtBetween(
+                        any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        Instant from = Instant.parse("2026-05-01T00:00:00Z");
+        Instant to = Instant.parse("2026-04-01T00:00:00Z");
+        facade.findIdentityConflicts(0, 20, "", "", "", "", from, to);
+
+        verify(scholardexIdentityConflictRepository)
+                .findAllByIncomingSourceContainingIgnoreCaseAndReasonCodeContainingIgnoreCaseAndStatusContainingIgnoreCaseAndDetectedAtBetween(
+                        eq(""), eq(""), eq(""),
+                        eq(to), eq(from), any(Pageable.class));
+    }
+
+    @Test
+    void bulkUpdateConflictStatusAggregatesAndRejectsInvalidRequests() {
+        ScholardexIdentityConflict c1 = conflict("c1", "OPEN");
+        ScholardexIdentityConflict c2 = conflict("c2", "OPEN");
+        when(scholardexIdentityConflictRepository.findByIdAndStatus("c1", "OPEN")).thenReturn(Optional.of(c1));
+        when(scholardexIdentityConflictRepository.findByIdAndStatus("c2", "OPEN")).thenReturn(Optional.of(c2));
+
+        assertEquals(2L, facade.bulkUpdateConflictStatus(List.of("c1", "c2"), "investigated", "admin"));
+        assertEquals(0L, facade.bulkUpdateConflictStatus(List.of("c1"), "open", "admin"));
+        assertEquals(0L, facade.bulkUpdateConflictStatus(List.of(), "resolved", "admin"));
+        verify(scholardexIdentityConflictRepository).save(c1);
+        verify(scholardexIdentityConflictRepository).save(c2);
+        assertEquals("INVESTIGATED", c1.getStatus());
+    }
+
+    @Test
+    void clearOpenIdentityConflictsReturnsZeroWhenNoneOpen() {
+        when(scholardexIdentityConflictRepository.findAll()).thenReturn(List.of(conflict("1", "resolved")));
+        assertEquals(0L, facade.clearOpenIdentityConflicts());
     }
 
     private ScholardexIdentityConflict conflict(String id, String status) {

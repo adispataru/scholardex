@@ -49,6 +49,11 @@ public class ConflictOperationsFacade {
         String statusFilter = normalizeFilter(status);
         Instant from = detectedFrom == null ? Instant.EPOCH : detectedFrom;
         Instant to = detectedTo == null ? Instant.parse("9999-12-31T23:59:59Z") : detectedTo;
+        if (from.isAfter(to)) {
+            Instant swap = from;
+            from = to;
+            to = swap;
+        }
         ScholardexEntityType entity = parseEntityType(entityType);
         if (entity == null) {
             return scholardexIdentityConflictRepository
@@ -64,18 +69,7 @@ public class ConflictOperationsFacade {
 
     public long updateConflictStatus(String id, String requestedStatus, String resolvedBy) {
         String nextStatus = normalizeStatus(requestedStatus);
-        if (nextStatus == null || id == null || id.isBlank()) {
-            return 0L;
-        }
-        return scholardexIdentityConflictRepository.findByIdAndStatus(id.trim(), STATUS_OPEN)
-                .map(conflict -> {
-                    conflict.setStatus(nextStatus);
-                    conflict.setResolvedAt(Instant.now());
-                    conflict.setResolvedBy(normalizeFilter(resolvedBy));
-                    scholardexIdentityConflictRepository.save(conflict);
-                    return 1L;
-                })
-                .orElse(0L);
+        return updateConflictStatusNormalized(id, nextStatus, resolvedBy);
     }
 
     public long bulkUpdateConflictStatus(List<String> ids, String requestedStatus, String resolvedBy) {
@@ -85,24 +79,21 @@ public class ConflictOperationsFacade {
         }
         long updated = 0L;
         for (String id : ids) {
-            updated += updateConflictStatus(id, nextStatus, resolvedBy);
+            updated += updateConflictStatusNormalized(id, nextStatus, resolvedBy);
         }
         return updated;
     }
 
     public long clearOpenIdentityConflicts() {
         List<ScholardexIdentityConflict> all = scholardexIdentityConflictRepository.findAll();
-        long deleted = all.stream()
-                .filter(c -> STATUS_OPEN.equalsIgnoreCase(normalizeFilter(c.getStatus())))
-                .count();
-        if (deleted == 0L) {
-            return 0L;
-        }
         List<ScholardexIdentityConflict> toDelete = all.stream()
                 .filter(c -> STATUS_OPEN.equalsIgnoreCase(normalizeFilter(c.getStatus())))
                 .toList();
+        if (toDelete.isEmpty()) {
+            return 0L;
+        }
         scholardexIdentityConflictRepository.deleteAll(toDelete);
-        return deleted;
+        return toDelete.size();
     }
 
     public ConflictSummary summarizeIdentityConflicts() {
@@ -170,6 +161,21 @@ public class ConflictOperationsFacade {
             return token;
         }
         return null;
+    }
+
+    private long updateConflictStatusNormalized(String id, String normalizedStatus, String resolvedBy) {
+        if (normalizedStatus == null || id == null || id.isBlank()) {
+            return 0L;
+        }
+        return scholardexIdentityConflictRepository.findByIdAndStatus(id.trim(), STATUS_OPEN)
+                .map(conflict -> {
+                    conflict.setStatus(normalizedStatus);
+                    conflict.setResolvedAt(Instant.now());
+                    conflict.setResolvedBy(normalizeFilter(resolvedBy));
+                    scholardexIdentityConflictRepository.save(conflict);
+                    return 1L;
+                })
+                .orElse(0L);
     }
 
     public record ConflictSummary(long open, long resolved, long dismissed, long investigated) {

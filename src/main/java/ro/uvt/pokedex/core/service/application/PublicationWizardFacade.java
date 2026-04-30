@@ -41,11 +41,9 @@ public class PublicationWizardFacade {
 
     public Optional<String> resolveForumId(ScholardexForumView newForum, String selectedId) {
         if (selectedId != null && !selectedId.isEmpty()) {
-            ScholardexForumView existingForum = scholardexProjectionReadService.findForumById(selectedId).orElse(null);
-            if (existingForum != null) {
-                return Optional.of(existingForum.getId());
-            }
-        } else if (newForum != null && !isBlank(newForum.getPublicationName())) {
+            return scholardexProjectionReadService.findForumById(selectedId).map(ScholardexForumView::getId);
+        }
+        if (newForum != null && !isBlank(newForum.getPublicationName())) {
             return Optional.of(generateForumSourceId(newForum));
         }
         return Optional.empty();
@@ -71,23 +69,11 @@ public class PublicationWizardFacade {
         command.setAuthorIds(parseCsvList(authors));
 
         if (wizardForumDraft != null && !isBlank(wizardForumDraft.getPublicationName())) {
-            command.setWizardForumPublicationName(trim(wizardForumDraft.getPublicationName()));
-            command.setWizardForumIssn(normalizeIssnOrBlank(wizardForumDraft.getIssn()));
-            command.setWizardForumEIssn(normalizeIssnOrBlank(wizardForumDraft.getEIssn()));
-            command.setWizardForumIsbn(trim(wizardForumDraft.getIsbn()));
-            command.setWizardForumAggregationType(trim(wizardForumDraft.getAggregationType()));
-            command.setWizardForumPublisher(trim(wizardForumDraft.getPublisher()));
+            applyForumDraft(command, wizardForumDraft);
             return command;
         }
 
-        scholardexProjectionReadService.findForumById(forumId).ifPresent(forum -> {
-            command.setWizardForumPublicationName(trim(forum.getPublicationName()));
-            command.setWizardForumIssn(normalizeIssnOrBlank(forum.getIssn()));
-            command.setWizardForumEIssn(normalizeIssnOrBlank(forum.getEIssn()));
-            command.setWizardForumIsbn(trim(forum.getIsbn()));
-            command.setWizardForumAggregationType(trim(forum.getAggregationType()));
-            command.setWizardForumPublisher(trim(forum.getPublisher()));
-        });
+        scholardexProjectionReadService.findForumById(forumId).ifPresent(forum -> applyForumDraft(command, forum));
         return command;
     }
 
@@ -221,10 +207,10 @@ public class PublicationWizardFacade {
             return forumId;
         }
         ScholardexForumView draft = new ScholardexForumView();
-        draft.setPublicationName(command.getWizardForumPublicationName());
-        draft.setIssn(command.getWizardForumIssn());
-        draft.setEIssn(command.getWizardForumEIssn());
-        draft.setAggregationType(command.getWizardForumAggregationType());
+        draft.setPublicationName(trim(command.getWizardForumPublicationName()));
+        draft.setIssn(normalizeIssnOrBlank(command.getWizardForumIssn()));
+        draft.setEIssn(normalizeIssnOrBlank(command.getWizardForumEIssn()));
+        draft.setAggregationType(trim(command.getWizardForumAggregationType()));
         return generateForumSourceId(draft);
     }
 
@@ -363,8 +349,13 @@ public class PublicationWizardFacade {
         return value.substring(0, 4) + "-" + value.substring(4);
     }
 
-    private String normalizeToken(String raw) {
-        return trim(raw).toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+    private void applyForumDraft(WizardPublicationCommand command, ScholardexForumView forum) {
+        command.setWizardForumPublicationName(trim(forum.getPublicationName()));
+        command.setWizardForumIssn(normalizeIssnOrBlank(forum.getIssn()));
+        command.setWizardForumEIssn(normalizeIssnOrBlank(forum.getEIssn()));
+        command.setWizardForumIsbn(trim(forum.getIsbn()));
+        command.setWizardForumAggregationType(trim(forum.getAggregationType()));
+        command.setWizardForumPublisher(trim(forum.getPublisher()));
     }
 
     private String sourceRecordSuffix(String sourceRecordId) {

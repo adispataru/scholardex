@@ -220,6 +220,12 @@ class UserPublicationFacadeTest {
     }
 
     @Test
+    void buildAuthorPublicationsViewReturnsEmptyWhenAuthorMissing() {
+        when(scholardexProjectionReadService.findAuthorById("missing")).thenReturn(Optional.empty());
+        assertTrue(facade.buildAuthorPublicationsView("missing").isEmpty());
+    }
+
+    @Test
     void buildCitationsViewSortsCitationsDeterministically() {
         ScholardexPublicationView publication = publication("p1", "Main", "2023-01-01", 0, "f1", List.of("a1"));
         ScholardexPublicationView c1 = publication("c1", "Zulu", "bad-date", 0, "f2", List.of("a2"));
@@ -253,6 +259,18 @@ class UserPublicationFacadeTest {
         var vmOpt = facade.buildCitationsView("user@uvt.ro", "p1");
 
         assertTrue(vmOpt.isEmpty());
+    }
+
+    @Test
+    void buildCitationsViewReturnsEmptyWhenForumMissing() {
+        ScholardexPublicationView publication = publication("p1", "Main", "2023-01-01", 0, "f1", List.of("a1"));
+        when(scholardexProjectionReadService.findPublicationByAnyId("p1")).thenReturn(Optional.of(publication));
+        when(effectiveAuthorshipReadService.userEffectivelyOwnsPublication("user@uvt.ro", "p1")).thenReturn(true);
+        when(scholardexProjectionReadService.findAllCitationsByCitedId("p1")).thenReturn(List.of());
+        when(scholardexProjectionReadService.findAllPublicationsByIdIn(List.of())).thenReturn(List.of());
+        when(scholardexProjectionReadService.findForumById("f1")).thenReturn(Optional.empty());
+
+        assertTrue(facade.buildCitationsView("user@uvt.ro", "p1").isEmpty());
     }
 
     @Test

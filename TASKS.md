@@ -403,9 +403,13 @@ Done history moved to `TASKS-done.md`.
         - `ScopusBigBangMigrationService`: line/high branch paths stabilized; 123/154 killed.
         - `WosParityReconciliationService`: orchestration + helper branches expanded; 154/253 killed.
         - `WosScholardexOnboardingService`: onboarding routing/state/failure-idempotence + helper branches expanded; 109/173 killed.
-    - [ ] `H49.8e` Admin/group/user operational facades (medium ROI).
+    - [x] `H49.8e` Admin/group/user operational facades (medium ROI). *(completed 2026-04-30)*
       Scope: `AdminCatalogFacade`, `ConflictOperationsFacade`, `PublicationWizardFacade`, `SuspiciousAuthorshipTriageService`, `UserPublicationFacade`, `UserScopusTaskFacade`.
       Goal: improve branch and contract coverage on service-layer facades frequently exercised by admin/user workflows.
+      Closeout (2026-04-30 scoped PIT, 6-class slice):
+      - line 94% (631/672), mutation 68% (260/385), test strength 70%, no-coverage 12.
+      - Per-class outcome: all six classes reached 90%+ line and 60%+ mutation.
+      - Additional hardening pass addressed medium-risk pockets in wizard forum-source identity derivation and conflict date-filter routing.
     - [ ] `H49.8f` PostgreSQL projection/refresh pipeline (medium ROI).
       Scope: `JdbcPostgresReportingProjectionService`, `JdbcPostgresMaterializedViewRefreshService`, `IndexMaintenanceSupport`, `GeneralInitializationService`.
       Goal: increase kill rate in projection refresh/rebuild paths and operational guard branches.

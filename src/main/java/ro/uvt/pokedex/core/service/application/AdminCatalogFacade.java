@@ -22,6 +22,7 @@ import ro.uvt.pokedex.core.repository.reporting.DomainRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndicatorRepository;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -44,15 +45,11 @@ public class AdminCatalogFacade {
     }
 
     public List<ScholardexAffiliationView> listAffiliationsByNameContains(String afname) {
-        List<ScholardexAffiliationView> affiliations = new ArrayList<>(scholardexProjectionReadService.findAffiliationsByNameContains(afname));
-        affiliations.sort(java.util.Comparator.comparing(ScholardexAffiliationView::getName));
-        return affiliations;
+        return sortAffiliationsByName(scholardexProjectionReadService.findAffiliationsByNameContains(afname));
     }
 
     public List<ScholardexAffiliationView> listAffiliationsByCountry(String country) {
-        List<ScholardexAffiliationView> affiliations = new ArrayList<>(scholardexProjectionReadService.findAffiliationsByCountry(country));
-        affiliations.sort(java.util.Comparator.comparing(ScholardexAffiliationView::getName));
-        return affiliations;
+        return sortAffiliationsByName(scholardexProjectionReadService.findAffiliationsByCountry(country));
     }
 
     public Optional<Institution> findInstitutionById(String id) {
@@ -180,6 +177,12 @@ public class AdminCatalogFacade {
 
     public Optional<CoreConferenceRanking> findCoreRankingById(String id) {
         return coreConferenceRankingRepository.findById(id);
+    }
+
+    private List<ScholardexAffiliationView> sortAffiliationsByName(List<ScholardexAffiliationView> affiliations) {
+        List<ScholardexAffiliationView> sorted = new ArrayList<>(affiliations);
+        sorted.sort(Comparator.comparing(ScholardexAffiliationView::getName));
+        return sorted;
     }
 
 }
