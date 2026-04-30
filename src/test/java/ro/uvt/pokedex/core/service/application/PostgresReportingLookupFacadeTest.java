@@ -8,15 +8,26 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import ro.uvt.pokedex.core.model.CoreConferenceRanking;
+import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.service.CacheService;
 
+import java.sql.Array;
+import java.sql.ResultSet;
+import java.lang.reflect.Method;
+import java.util.Set;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
@@ -167,5 +178,211 @@ class PostgresReportingLookupFacadeTest {
         assertTrue(facade.getRankingsByIssn("1234-5678").isEmpty());
         verify(namedParameterJdbcTemplate, times(6))
                 .query(any(String.class), any(MapSqlParameterSource.class), any(org.springframework.jdbc.core.RowMapper.class));
+    }
+
+    @Test
+    void delegateLookupsReturnCachedValues() {
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("sforum_1");
+        when(cacheService.getCachedForums("sforum_1")).thenReturn(forum);
+
+        CoreConferenceRanking ranking = new CoreConferenceRanking();
+        ranking.setAcronym("ICSE");
+        when(cacheService.getCachedConfRankings("ICSE")).thenReturn(List.of(ranking));
+        when(cacheService.getCachedConfRankingsByNormalizedTitle("international conference on software engineering"))
+                .thenReturn(List.of(ranking));
+        when(cacheService.getUniversityAuthorIds()).thenReturn(Set.of("sauth_1", "sauth_2"));
+
+        assertEquals("sforum_1", facade.getForum("sforum_1").getId());
+        assertEquals(1, facade.getConferenceRankings("ICSE").size());
+        assertEquals(1, facade.getConferenceRankingsByNormalizedTitle("international conference on software engineering").size());
+        assertEquals(Set.of("sauth_1", "sauth_2"), facade.getUniversityAuthorIds());
+    }
+
+    @Test
+    void getTopRankingsReturnsZeroWhenJdbcReturnsNullAndHandlesCategoryShapes() {
+        when(namedParameterJdbcTemplate.queryForObject(any(String.class), any(MapSqlParameterSource.class), eq(Integer.class)))
+                .thenReturn(null);
+
+        assertEquals(0, facade.getTopRankings("ECONOMICS", 2024));
+        assertEquals(0, facade.getTopRankings("  - SCIE", 2024));
+        assertEquals(0, facade.getTopRankings("   ", 2024));
+        assertEquals(0, facade.getTopRankings(null, 2024));
+    }
+
+    @Test
+    void getTopRankingsReturnsZeroWhenParsedCategoryCanonicalNameBlank() {
+        assertEquals(0, facade.getTopRankings(" - SSCI", 2024));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getRankingsByIssnBuildsLegacyRankingFromMetricAndCategoryFacts() throws Exception {
+        Array altIssnArray = mock(Array.class);
+        when(altIssnArray.getArray()).thenReturn(new String[]{"1111-2222", "3333-4444"});
+        Array altNameArray = mock(Array.class);
+        when(altNameArray.getArray()).thenReturn(new String[]{"Alt Journal"});
+
+        ResultSet rankingRs = mock(ResultSet.class);
+        when(rankingRs.getString("journal_id")).thenReturn("j1");
+        when(rankingRs.getString("name")).thenReturn("Journal One");
+        when(rankingRs.getString("issn")).thenReturn("1234-5678");
+        when(rankingRs.getString("e_issn")).thenReturn("8765-4321");
+        when(rankingRs.getArray("alternative_issns")).thenReturn(altIssnArray);
+        when(rankingRs.getArray("alternative_names")).thenReturn(altNameArray);
+
+        ResultSet metricRsAis = mock(ResultSet.class);
+        when(metricRsAis.getString("journal_id")).thenReturn("j1");
+        when(metricRsAis.getObject("year", Integer.class)).thenReturn(2023);
+        when(metricRsAis.getString("metric_type")).thenReturn("AIS");
+        when(metricRsAis.getObject("value", Double.class)).thenReturn(2.5d);
+
+        ResultSet metricRsRis = mock(ResultSet.class);
+        when(metricRsRis.getString("journal_id")).thenReturn("j1");
+        when(metricRsRis.getObject("year", Integer.class)).thenReturn(2023);
+        when(metricRsRis.getString("metric_type")).thenReturn("RIS");
+        when(metricRsRis.getObject("value", Double.class)).thenReturn(1.5d);
+
+        ResultSet metricRsIf = mock(ResultSet.class);
+        when(metricRsIf.getString("journal_id")).thenReturn("j1");
+        when(metricRsIf.getObject("year", Integer.class)).thenReturn(2023);
+        when(metricRsIf.getString("metric_type")).thenReturn("IF");
+        when(metricRsIf.getObject("value", Double.class)).thenReturn(4.0d);
+
+        ResultSet metricRsInvalid = mock(ResultSet.class);
+        when(metricRsInvalid.getString("journal_id")).thenReturn("j1");
+        when(metricRsInvalid.getObject("year", Integer.class)).thenReturn(null);
+        when(metricRsInvalid.getString("metric_type")).thenReturn("AIS");
+        when(metricRsInvalid.getObject("value", Double.class)).thenReturn(99.0d);
+
+        ResultSet categoryRsAis = mock(ResultSet.class);
+        when(categoryRsAis.getString("journal_id")).thenReturn("j1");
+        when(categoryRsAis.getObject("year", Integer.class)).thenReturn(2023);
+        when(categoryRsAis.getString("category_name_canonical")).thenReturn("ECONOMICS");
+        when(categoryRsAis.getString("edition_normalized")).thenReturn("SCIE");
+        when(categoryRsAis.getString("metric_type")).thenReturn("AIS");
+        when(categoryRsAis.getString("quarter")).thenReturn("Q1");
+        when(categoryRsAis.getObject("quartile_rank", Integer.class)).thenReturn(2);
+        when(categoryRsAis.getObject("rank_value", Integer.class)).thenReturn(7);
+
+        ResultSet categoryRsRis = mock(ResultSet.class);
+        when(categoryRsRis.getString("journal_id")).thenReturn("j1");
+        when(categoryRsRis.getObject("year", Integer.class)).thenReturn(2023);
+        when(categoryRsRis.getString("category_name_canonical")).thenReturn("ECONOMICS");
+        when(categoryRsRis.getString("edition_normalized")).thenReturn("SCIE");
+        when(categoryRsRis.getString("metric_type")).thenReturn("RIS");
+        when(categoryRsRis.getString("quarter")).thenReturn("BAD");
+        when(categoryRsRis.getObject("quartile_rank", Integer.class)).thenReturn(3);
+        when(categoryRsRis.getObject("rank_value", Integer.class)).thenReturn(11);
+
+        ResultSet categoryRsIf = mock(ResultSet.class);
+        when(categoryRsIf.getString("journal_id")).thenReturn("j1");
+        when(categoryRsIf.getObject("year", Integer.class)).thenReturn(2023);
+        when(categoryRsIf.getString("category_name_canonical")).thenReturn("ECONOMICS");
+        when(categoryRsIf.getString("edition_normalized")).thenReturn("SCIE");
+        when(categoryRsIf.getString("metric_type")).thenReturn("IF");
+        when(categoryRsIf.getString("quarter")).thenReturn(null);
+        when(categoryRsIf.getObject("quartile_rank", Integer.class)).thenReturn(4);
+        when(categoryRsIf.getObject("rank_value", Integer.class)).thenReturn(15);
+
+        when(namedParameterJdbcTemplate.query(any(String.class), any(MapSqlParameterSource.class), any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenAnswer(invocation -> {
+                    String sql = invocation.getArgument(0, String.class);
+                    org.springframework.jdbc.core.RowMapper<Object> mapper = invocation.getArgument(2);
+                    if (sql.contains("FROM reporting_read.wos_ranking_view")) {
+                        return List.of(mapper.mapRow(rankingRs, 0));
+                    }
+                    if (sql.contains("FROM reporting_read.wos_metric_fact")) {
+                        return List.of(
+                                mapper.mapRow(metricRsAis, 0),
+                                mapper.mapRow(metricRsRis, 1),
+                                mapper.mapRow(metricRsIf, 2),
+                                mapper.mapRow(metricRsInvalid, 3)
+                        );
+                    }
+                    return List.of(
+                            mapper.mapRow(categoryRsAis, 0),
+                            mapper.mapRow(categoryRsRis, 1),
+                            mapper.mapRow(categoryRsIf, 2)
+                    );
+                });
+
+        List<WoSRanking> rankings = facade.getRankingsByIssn("1234-5678");
+
+        assertEquals(1, rankings.size());
+        WoSRanking ranking = rankings.getFirst();
+        assertEquals("j1", ranking.getId());
+        assertEquals("Journal One", ranking.getName());
+        assertEquals("1234-5678", ranking.getIssn());
+        assertEquals("8765-4321", ranking.getEIssn());
+        assertEquals(2.5d, ranking.getScore().getAis().get(2023));
+        assertEquals(1.5d, ranking.getScore().getRis().get(2023));
+        assertEquals(4.0d, ranking.getScore().getIF().get(2023));
+
+        WoSRanking.Rank category = ranking.getWebOfScienceCategoryIndex().get("ECONOMICS - SCIE");
+        assertNotNull(category);
+        assertEquals(WoSRanking.Quarter.Q1, category.getQAis().get(2023));
+        assertEquals(WoSRanking.Quarter.NOT_FOUND, category.getQRis().get(2023));
+        assertFalse(category.getQIF().containsKey(2023));
+        assertEquals(2, category.getQuartileRankAis().get(2023));
+        assertEquals(3, category.getQuartileRankRis().get(2023));
+        assertEquals(4, category.getQuartileRankIF().get(2023));
+        assertEquals(7, category.getRankAis().get(2023));
+        assertEquals(11, category.getRankRis().get(2023));
+        assertEquals(15, category.getRankIF().get(2023));
+
+        verify(namedParameterJdbcTemplate, atLeast(3))
+                .query(any(String.class), any(MapSqlParameterSource.class), any(org.springframework.jdbc.core.RowMapper.class));
+    }
+
+    @Test
+    void getRankingsByIssnReturnsEmptyForNullInput() {
+        assertTrue(facade.getRankingsByIssn(null).isEmpty());
+    }
+
+    @Test
+    void privateHelpersParseAndMapAsExpected() throws Exception {
+        Method parseQuarter = PostgresReportingLookupFacade.class.getDeclaredMethod("parseQuarter", String.class);
+        parseQuarter.setAccessible(true);
+        assertEquals(null, parseQuarter.invoke(facade, ""));
+        assertEquals(WoSRanking.Quarter.NOT_FOUND, parseQuarter.invoke(facade, "QX"));
+        assertEquals(WoSRanking.Quarter.Q2, parseQuarter.invoke(facade, " q2 "));
+
+        Method parseEdition = PostgresReportingLookupFacade.class.getDeclaredMethod("parseEdition", String.class);
+        parseEdition.setAccessible(true);
+        assertEquals(null, parseEdition.invoke(facade, "abc"));
+        assertEquals("SCIE", ((Enum<?>) parseEdition.invoke(facade, " scie ")).name());
+        assertEquals("SSCI", ((Enum<?>) parseEdition.invoke(facade, "ssci")).name());
+
+        Method nanosToMillis = PostgresReportingLookupFacade.class.getDeclaredMethod("nanosToMillis", long.class);
+        nanosToMillis.setAccessible(true);
+        assertEquals(2L, nanosToMillis.invoke(facade, 2_999_999L));
+        assertEquals(0L, nanosToMillis.invoke(facade, 999_999L));
+
+        Method toStringList = PostgresReportingLookupFacade.class.getDeclaredMethod("toStringList", Array.class);
+        toStringList.setAccessible(true);
+        Array array = mock(Array.class);
+        when(array.getArray()).thenReturn(new Object[]{"x"});
+        @SuppressWarnings("unchecked")
+        List<String> emptyForNonStringArray = (List<String>) toStringList.invoke(facade, array);
+        assertTrue(emptyForNonStringArray.isEmpty());
+
+        Method mapRankingView = PostgresReportingLookupFacade.class
+                .getDeclaredMethod("mapRankingView", ResultSet.class, int.class);
+        mapRankingView.setAccessible(true);
+        ResultSet rs = mock(ResultSet.class);
+        Array altIssnArray = mock(Array.class);
+        Array altNameArray = mock(Array.class);
+        when(altIssnArray.getArray()).thenReturn(new String[]{"issn-a"});
+        when(altNameArray.getArray()).thenReturn(new String[]{"name-a"});
+        when(rs.getString("journal_id")).thenReturn("jid");
+        when(rs.getString("name")).thenReturn("jname");
+        when(rs.getString("issn")).thenReturn("i1");
+        when(rs.getString("e_issn")).thenReturn("i2");
+        when(rs.getArray("alternative_issns")).thenReturn(altIssnArray);
+        when(rs.getArray("alternative_names")).thenReturn(altNameArray);
+        WosRankingView mapped = (WosRankingView) mapRankingView.invoke(facade, rs, 0);
+        assertEquals(List.of("issn-a"), mapped.getAlternativeIssns());
+        assertEquals(List.of("name-a"), mapped.getAlternativeNames());
     }
 }

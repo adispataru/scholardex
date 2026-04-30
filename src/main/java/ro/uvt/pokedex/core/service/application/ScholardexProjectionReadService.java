@@ -409,13 +409,10 @@ public class ScholardexProjectionReadService {
             return Optional.empty();
         }
         List<ScholardexSourceLink> mapped = sourceLinkService.findByEntityTypeAndSourceRecordId(entityType, candidate);
-        if (mapped != null) {
-            return mapped.stream()
-                    .map(ScholardexSourceLink::getCanonicalEntityId)
-                    .filter(id -> id != null && !id.isBlank())
-                    .findFirst();
-        }
-        return Optional.empty();
+        return mapped.stream()
+                .map(ScholardexSourceLink::getCanonicalEntityId)
+                .filter(id -> id != null && !id.isBlank())
+                .findFirst();
     }
 
     private List<String> resolveCanonicalIds(ScholardexEntityType entityType, Collection<String> candidateIds) {
@@ -434,12 +431,10 @@ public class ScholardexProjectionReadService {
         }
         LinkedHashSet<String> resolved = new LinkedHashSet<>(normalizedCandidates);
         List<ScholardexSourceLink> mapped = sourceLinkService.findByEntityTypeAndSourceRecordIds(entityType, normalizedCandidates);
-        if (mapped != null && !mapped.isEmpty()) {
-            mapped.stream()
-                    .map(ScholardexSourceLink::getCanonicalEntityId)
-                    .filter(candidate -> candidate != null && !candidate.isBlank())
-                    .forEach(resolved::add);
-        }
+        mapped.stream()
+                .map(ScholardexSourceLink::getCanonicalEntityId)
+                .filter(candidate -> candidate != null && !candidate.isBlank())
+                .forEach(resolved::add);
         return new ArrayList<>(resolved);
     }
 

@@ -99,11 +99,7 @@ public class ScholardexPublicationMvcService {
                     .orElse(null);
         }
 
-        String year = pub.getCoverDate() != null && pub.getCoverDate().length() >= 4
-                ? pub.getCoverDate().substring(0, 4)
-                : pub.getCoverDate();
-
-        return Optional.of(new ScholardexPublicationDetailViewModel(pub, authors, forumName, year));
+        return Optional.of(new ScholardexPublicationDetailViewModel(pub, authors, forumName, publicationYear(pub.getCoverDate())));
     }
 
     private PublicationTableItemResponse toItem(
@@ -116,14 +112,10 @@ public class ScholardexPublicationMvcService {
                 .map(id -> authorNameById.getOrDefault(id, id))
                 .toList();
 
-        String year = pub.getCoverDate() != null && pub.getCoverDate().length() >= 4
-                ? pub.getCoverDate().substring(0, 4)
-                : pub.getCoverDate();
-
         return new PublicationTableItemResponse(
                 pub.getId(),
                 pub.getTitle(),
-                year,
+                publicationYear(pub.getCoverDate()),
                 pub.getForum(),
                 pub.getForum() != null ? forumNameById.getOrDefault(pub.getForum(), "") : "",
                 authorNames,
@@ -139,9 +131,16 @@ public class ScholardexPublicationMvcService {
         pub.setTitle(rs.getString("title"));
         pub.setCoverDate(rs.getString("cover_date"));
         pub.setForum(rs.getString("forum_id"));
-        pub.setCitedbyCount(rs.getObject("cited_by_count", Integer.class) == null ? 0 : rs.getObject("cited_by_count", Integer.class));
+        Integer citedByCount = rs.getObject("cited_by_count", Integer.class);
+        pub.setCitedbyCount(citedByCount == null ? 0 : citedByCount);
         pub.setAuthors(toStringList(rs.getArray("author_ids")));
         return pub;
+    }
+
+    private String publicationYear(String coverDate) {
+        return coverDate != null && coverDate.length() >= 4
+                ? coverDate.substring(0, 4)
+                : coverDate;
     }
 
     private List<String> toStringList(java.sql.Array array) throws java.sql.SQLException {

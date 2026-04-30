@@ -370,17 +370,20 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
             return new ParsedCategory(normalized, null);
         }
         String categoryName = normalized.substring(0, delimiter).trim();
-        String editionToken = normalized.substring(delimiter + 1).trim().toUpperCase(Locale.ROOT);
-        EditionNormalized edition = null;
-        if ("SCIE".equals(editionToken)) {
-            edition = EditionNormalized.SCIE;
-        } else if ("SSCI".equals(editionToken)) {
-            edition = EditionNormalized.SSCI;
-        }
+        EditionNormalized edition = parseEdition(normalized.substring(delimiter + 1));
         if (categoryName.isBlank()) {
             return new ParsedCategory("", edition);
         }
         return new ParsedCategory(categoryName, edition);
+    }
+
+    private EditionNormalized parseEdition(String token) {
+        String editionToken = token == null ? "" : token.trim().toUpperCase(Locale.ROOT);
+        return switch (editionToken) {
+            case "SCIE" -> EditionNormalized.SCIE;
+            case "SSCI" -> EditionNormalized.SSCI;
+            default -> null;
+        };
     }
 
     private record ParsedCategory(String categoryNameCanonical, EditionNormalized editionNormalized) {

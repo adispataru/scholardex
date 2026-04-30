@@ -16,6 +16,7 @@ import java.util.Locale;
 public class ScholardexForumMvcService {
 
     private static final int MAX_QUERY_LENGTH = 100;
+    private static final int DEFAULT_PAGE_SIZE = 25;
 
     private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final WosForumResolutionService wosForumResolutionService;
@@ -25,6 +26,7 @@ public class ScholardexForumMvcService {
         boolean ascending = normalizeDirection(direction);
         String normalizedQuery = normalizeQuery(q);
         String normalizedWosFilter = normalizeWosFilter(wos);
+        int safeSize = size > 0 ? size : DEFAULT_PAGE_SIZE;
         WosForumResolutionService.ResolutionIndex resolutionIndex = wosForumResolutionService.buildResolutionIndex();
 
         List<ScholardexForumTableListItemResponse> rows = scholardexProjectionReadService.findAllForums().stream()
@@ -35,15 +37,15 @@ public class ScholardexForumMvcService {
                 .toList();
 
         long totalItems = rows.size();
-        int totalPages = (int) Math.ceil(totalItems / (double) size);
+        int totalPages = (int) Math.ceil(totalItems / (double) safeSize);
         int safePage = Math.max(0, page);
-        int fromIndex = Math.min(safePage * size, rows.size());
-        int toIndex = Math.min(fromIndex + size, rows.size());
+        int fromIndex = Math.min(safePage * safeSize, rows.size());
+        int toIndex = Math.min(fromIndex + safeSize, rows.size());
         List<ScholardexForumTableListItemResponse> items = fromIndex >= toIndex
                 ? List.of()
                 : new ArrayList<>(rows.subList(fromIndex, toIndex));
 
-        return new ScholardexForumTablePageResponse(items, safePage, size, totalItems, totalPages);
+        return new ScholardexForumTablePageResponse(items, safePage, safeSize, totalItems, totalPages);
     }
 
     private ScholardexForumTableListItemResponse toListItem(ScholardexForumView forum, WosForumResolutionService.ResolutionIndex resolutionIndex) {
@@ -150,9 +152,5 @@ public class ScholardexForumMvcService {
             case "not_applicable" -> "Not applicable";
             default -> status;
         };
-    }
-
-    private boolean notBlank(String value) {
-        return value != null && !value.isBlank();
     }
 }

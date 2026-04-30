@@ -368,12 +368,41 @@ Done history moved to `TASKS-done.md`.
       - Final 4-class slice status: line 97% (1108/1141), mutation 79% (548/690), test strength 81%; `ScholardexSourceLinkService` focused rerun reached mutation 80% (196/246), line 97% (309/318). Residual survivors are predominantly low-signal/equivalence and observability-call removals.
       Scope: `ScholardexSourceLinkService`, `ScholardexEdgeWriterService`, `ScholardexEdgeReconciliationService`, `PublicationEnrichmentLinkerService`.
       Goal: raise mutation kill across canonical linking/edge orchestration where branch errors can introduce identity/link regressions.
-    - [ ] `H49.8c` Projection read/lookup services (high ROI, coverage lift).
+    - [x] `H49.8c` Projection read/lookup services (high ROI, coverage lift). *(completed 2026-04-30)*
       Scope: `ScholardexProjectionReadService`, `PostgresReportingLookupFacade`, `ScholardexForumMvcService`, `ScholardexPublicationMvcService`.
       Goal: close low-coverage read/lookup branches and assert stable projection-backed query behavior.
-    - [ ] `H49.8d` WoS/Scopus reconciliation + onboarding flows (high ROI).
+      Handover:
+      - Expanded targeted tests across all 4 classes, including deep projection row mapping assertions, fallback/guard routing, source-link side-effect assertions, and forum query/filter/sort/paging/error-guard scenarios.
+      - Focused micro-pass on `ScholardexForumMvcService` removed its prior no-coverage hotspots in normalization/filter branches and improved conditional kill rate.
+      - Final scoped PIT verification passed:
+        `./gradlew pitest -PpitTargetClasses='ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService,ro.uvt.pokedex.core.service.application.PostgresReportingLookupFacade,ro.uvt.pokedex.core.service.application.ScholardexForumMvcService,ro.uvt.pokedex.core.service.application.ScholardexPublicationMvcService' -PpitTargetTests='ro.uvt.pokedex.core.service.application.ScholardexProjectionReadServiceEdgeTraversalTest,ro.uvt.pokedex.core.service.application.PostgresReportingLookupFacadeTest,ro.uvt.pokedex.core.service.application.ScholardexForumMvcServiceTest,ro.uvt.pokedex.core.service.application.ScholardexPublicationMvcServiceTest' -q`
+      - Final 4-class slice status: line 96% (650/675), mutation 81% (337/416), test strength 82%, no-coverage 4. Residual survivors are mainly low-signal conditional/math/equivalence toggles.
+    - [x] `H49.8d` WoS/Scopus reconciliation + onboarding flows (high ROI). *(completed 2026-04-30)*
       Scope: `WosParityReconciliationService`, `WosScholardexOnboardingService`, `ScopusBigBangMigrationService`.
       Goal: strengthen orchestration-path assertions on large reconciliation/onboarding services with high survivor density.
+      Baseline (2026-04-30 scoped PIT):
+      - line 56% (575/1035), mutation 15% (89/580), test strength 26%, no-coverage 239.
+      - `WosParityReconciliationService`: killed 47, survived 132, no-coverage 74.
+      - `WosScholardexOnboardingService`: killed 31, survived 77, no-coverage 65.
+      - `ScopusBigBangMigrationService`: killed 11, survived 43, no-coverage 100.
+      Subtasks:
+      - [x] `H49.8d-a` Scopus big-bang migration flow coverage hub.
+        Scope: `ScopusBigBangMigrationService`.
+        Goal: collapse no-coverage-heavy orchestration branches (step routing, guard paths, run/summary transitions) and establish deterministic migration-flow assertions.
+      - [x] `H49.8d-b` WoS parity reconciliation orchestration hub.
+        Scope: `WosParityReconciliationService`.
+        Goal: cover parity pass/fail/retry/report branches, reconciliation-state transitions, and conflict-path side effects.
+      - [x] `H49.8d-c` WoS Scholardex onboarding orchestration hub.
+        Scope: `WosScholardexOnboardingService`.
+        Goal: harden onboarding decision/routing logic, onboarding state transitions, and failure/skip/idempotence behavior.
+      - [x] `H49.8d-d` Combined survivor sweep + closeout.
+        Scope: residual survivors across `H49.8d-a/b/c`.
+        Goal: triage high-risk vs low-signal survivors, address best-ROI remainder, and close `H49.8d`.
+        Closeout (2026-04-30 scoped PIT, 3-class slice):
+        - line 96% (991/1035), mutation 67% (386/580), test strength 68%, no-coverage 16.
+        - `ScopusBigBangMigrationService`: line/high branch paths stabilized; 123/154 killed.
+        - `WosParityReconciliationService`: orchestration + helper branches expanded; 154/253 killed.
+        - `WosScholardexOnboardingService`: onboarding routing/state/failure-idempotence + helper branches expanded; 109/173 killed.
     - [ ] `H49.8e` Admin/group/user operational facades (medium ROI).
       Scope: `AdminCatalogFacade`, `ConflictOperationsFacade`, `PublicationWizardFacade`, `SuspiciousAuthorshipTriageService`, `UserPublicationFacade`, `UserScopusTaskFacade`.
       Goal: improve branch and contract coverage on service-layer facades frequently exercised by admin/user workflows.
