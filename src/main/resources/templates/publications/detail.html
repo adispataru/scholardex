@@ -103,7 +103,12 @@
                 No author records linked to this publication.
             </div>
             <ul th:if="${!#lists.isEmpty(detail.authors())}" class="app-publication-detail__author-list">
-                <li th:each="author : ${detail.authors()}" th:text="${author.name()}">Author Name</li>
+                <li th:each="author : ${detail.authors()}">
+                    <a th:if="${author.id() != null}"
+                       th:href="@{/authors/view/{id}(id=${author.id()})}"
+                       th:text="${author.name()}">Author Name</a>
+                    <span th:if="${author.id() == null}" th:text="${author.name()}">Author Name</span>
+                </li>
             </ul>
         </section>
 
