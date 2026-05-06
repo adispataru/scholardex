@@ -109,11 +109,11 @@
                         </td>
                         <td th:text="${publication.coverDate}">Year</td>
                         <td>
-                            <span th:each="author, iterStat : ${publication.authors}">
-                                <a th:if="${authorMap[author] != null}"
+                            <span th:each="author, iterStat : ${publication.authors}" th:with="authorView=${authorMap.get(author)}">
+                                <a th:if="${authorView != null}"
                                    th:href="@{/authors/view/{id}(id=${author})}"
-                                   th:text="${authorMap[author].name + (iterStat.last ? '' : '; ')}">Author</a>
-                                <span th:if="${authorMap[author] == null}" th:text="${author + (iterStat.last ? '' : '; ')}"></span>
+                                   th:text="${authorView.name + (iterStat.last ? '' : '; ')}">Author</a>
+                                <span th:if="${authorView == null}" th:text="${author + (iterStat.last ? '' : '; ')}"></span>
                             </span>
                         </td>
                         <td th:text="${publication.subtypeDescription}">Type</td>

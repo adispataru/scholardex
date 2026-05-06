@@ -8,8 +8,10 @@ import ro.uvt.pokedex.core.model.scopus.canonical.PublicationAuthorshipDecision;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.service.application.model.PublicationAuthorshipReviewState;
 import ro.uvt.pokedex.core.service.application.model.PublicationMetadataPatch;
 import ro.uvt.pokedex.core.service.application.model.SuspiciousAuthorshipState;
@@ -28,6 +30,7 @@ public class UserPublicationFacade {
     private final EffectiveAuthorshipReadService effectiveAuthorshipReadService;
     private final PublicationAuthorshipDecisionService publicationAuthorshipDecisionService;
     private final SuspiciousAuthorshipTriageService suspiciousAuthorshipTriageService;
+    private final ScholardexSourceLinkService scholardexSourceLinkService;
 
     public Optional<UserPublicationsViewModel> buildUserPublicationsView(String userEmail) {
         long startedAtNanos = System.nanoTime();
@@ -174,6 +177,25 @@ public class UserPublicationFacade {
         });
     }
 
+    private void aliasAuthorsBySourceIds(Map<String, ScholardexAuthorView> authorMap, Collection<String> referencedIds) {
+        if (authorMap.isEmpty() || referencedIds == null || referencedIds.isEmpty()) {
+            return;
+        }
+        List<ScholardexSourceLink> links = scholardexSourceLinkService.findByEntityTypeAndSourceRecordIds(
+                ScholardexEntityType.AUTHOR, referencedIds);
+        for (ScholardexSourceLink link : links) {
+            String sourceId = link.getSourceRecordId();
+            String canonicalId = link.getCanonicalEntityId();
+            if (sourceId == null || canonicalId == null || authorMap.containsKey(sourceId)) {
+                continue;
+            }
+            ScholardexAuthorView resolved = authorMap.get(canonicalId);
+            if (resolved != null) {
+                authorMap.put(sourceId, resolved);
+            }
+        }
+    }
+
     private int computeHIndex(List<ScholardexPublicationView> publications) {
         int n = publications.size();
         int[] citationCounts = new int[n + 1];
@@ -226,6 +248,7 @@ public class UserPublicationFacade {
         List<ScholardexAuthorView> byIdIn = scholardexProjectionReadService.findAuthorsByIdIn(authorKeys);
         Map<String, ScholardexAuthorView> authorMap = new HashMap<>();
         byIdIn.forEach(a -> authorMap.put(a.getId(), a));
+        aliasAuthorsBySourceIds(authorMap, authorKeys);
 
         Map<String, ScholardexForumView> forumMap = new HashMap<>();
         List<ScholardexForumView> forums = scholardexProjectionReadService.findForumsByIdIn(forumKeys);
