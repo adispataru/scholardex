@@ -996,6 +996,10 @@
                class="app-public-header__nav-link"
                th:classappend="${activeSection == 'forums'} ? ' is-active' : ''"
                th:attr="aria-current=${activeSection == 'forums'} ? 'page' : null">Forums</a>
+            <a href="/authors"
+               class="app-public-header__nav-link"
+               th:classappend="${activeSection == 'authors'} ? ' is-active' : ''"
+               th:attr="aria-current=${activeSection == 'authors'} ? 'page' : null">Authors</a>
             <a href="/rankings"
                class="app-public-header__nav-link"
                th:classappend="${activeSection == 'rankings'} ? ' is-active' : ''"

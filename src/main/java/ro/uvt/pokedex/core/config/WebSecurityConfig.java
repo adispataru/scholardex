@@ -80,13 +80,17 @@ public class WebSecurityConfig {
                             "/events/**",
                             "/rankings",
                             "/publications/**",
+                            "/authors",
+                            "/authors/**",
+                            "/api/entities/authors",
+                            "/api/entities/authors/**",
                             "/api/rankings/**"
                     ).permitAll();
                     ahr.requestMatchers("/actuator/**").hasAuthority("PLATFORM_ADMIN");
                     ahr.requestMatchers("/admin/**").hasAuthority("PLATFORM_ADMIN");
                     ahr.requestMatchers("/api/admin/**").hasAuthority("PLATFORM_ADMIN");
                     ahr.requestMatchers("/api/entities/forums/**").authenticated();
-                    ahr.requestMatchers("/api/entities/authors/**", "/api/entities/affiliations/**").authenticated();
+                    ahr.requestMatchers("/api/entities/affiliations/**").authenticated();
                     ahr.requestMatchers("/researcher/**").hasAuthority("RESEARCHER");
                     ahr.requestMatchers("/api/supervisor/**").hasAuthority("SUPERVISOR");
                     ahr.anyRequest().authenticated();

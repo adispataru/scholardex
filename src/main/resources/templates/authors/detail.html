@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${displayName + ' — ScholarDex Author'}">ScholarDex Author</title>
+    <meta name="description" th:content="${'ScholarDex profile for ' + displayName + '.'}">
+    <meta property="og:type" content="profile">
+    <meta property="og:title" th:content="${displayName + ' — ScholarDex Author'}">
+    <meta property="og:url" th:content="@{/authors/view/{id}(id=${profileAuthor != null ? profileAuthor.id : ''})}">
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+</head>
+<body class="app-public-page">
+
+<th:block th:replace="~{fragments :: public-shell('authors')}"></th:block>
+
+<main class="app-public-content" id="main-content">
+    <div class="app-page-content app-university-detail">
+        <th:block th:replace="~{fragments :: breadcrumb(${breadcrumbs}, 'default')}"></th:block>
+
+        <section aria-labelledby="author-summary-title">
+            <div class="app-university-detail__section-header">
+                <div>
+                    <p class="app-university-detail__eyebrow">Author</p>
+                    <h1 id="author-summary-title" class="app-university-detail__section-title" th:text="${displayName}">Author Name</h1>
+                </div>
+                <a href="/authors" class="btn btn-outline-primary btn-sm">
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                    <span>All authors</span>
+                </a>
+            </div>
+
+            <div class="app-summary-grid">
+                <th:block th:replace="~{fragments :: stat-card(
+                    label='Publications',
+                    value=${publications.size()},
+                    accent='primary',
+                    contextLine='Indexed records',
+                    icon='fa-solid fa-file-lines')}"></th:block>
+                <th:block th:replace="~{fragments :: stat-card(
+                    label='Citations',
+                    value=${#numbers.formatInteger(numCitations, 0, 'COMMA')},
+                    accent='success',
+                    contextLine='Total citations',
+                    icon='fa-solid fa-quote-right')}"></th:block>
+                <th:block th:replace="~{fragments :: stat-card(
+                    label='H-Index',
+                    value=${hIndex},
+                    accent='warning',
+                    contextLine='Computed across listed publications',
+                    icon='fa-solid fa-chart-line')}"></th:block>
+                <th:block th:replace="~{fragments :: stat-card(
+                    label='Affiliations',
+                    value=${affiliations != null ? affiliations.size() : 0},
+                    accent='neutral',
+                    contextLine='Listed institutions',
+                    icon='fa-solid fa-building-columns')}"></th:block>
+            </div>
+        </section>
+
+        <section class="app-university-detail__section" aria-labelledby="author-affiliations-title">
+            <div class="app-university-detail__section-header">
+                <div>
+                    <p class="app-university-detail__eyebrow">Affiliations</p>
+                    <h2 id="author-affiliations-title" class="app-university-detail__section-title">Institutions</h2>
+                </div>
+            </div>
+            <div th:if="${affiliations == null or affiliations.isEmpty()}" class="app-table-state app-table-state--warning" role="status">
+                No affiliations listed for this author.
+            </div>
+            <dl th:if="${affiliations != null and !affiliations.isEmpty()}" class="app-university-detail__definition-grid">
+                <div th:each="aff : ${affiliations}">
+                    <dt th:text="${aff.name}">Affiliation Name</dt>
+                    <dd>
+                        <span th:if="${aff.city != null}" th:text="${aff.city}"></span><span th:if="${aff.city != null and aff.country != null}">, </span><span th:if="${aff.country != null}" th:text="${aff.country}"></span>
+                        <span th:if="${aff.city == null and aff.country == null}">—</span>
+                    </dd>
+                </div>
+            </dl>
+        </section>
+
+        <section class="app-university-detail__section" aria-labelledby="author-publications-title">
+            <div class="app-university-detail__section-header">
+                <div>
+                    <p class="app-university-detail__eyebrow">Output</p>
+                    <h2 id="author-publications-title" class="app-university-detail__section-title">Publications</h2>
+                </div>
+            </div>
+            <div th:if="${#lists.isEmpty(publications)}" class="app-table-state app-table-state--warning" role="status">
+                No publications linked to this author.
+            </div>
+            <div th:if="${!#lists.isEmpty(publications)}" class="app-table-scroll">
+                <table class="table table-bordered app-table" width="100%" cellspacing="0">
+                    <caption class="app-table-caption app-table-caption--sr-only">Publications attributed to this author.</caption>
+                    <thead>
+                    <tr>
+                        <th scope="col">Title</th>
+                        <th scope="col">Year</th>
+                        <th scope="col">Authors</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Venue</th>
+                        <th scope="col" class="app-table__cell--numeric">Citations</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="publication : ${publications}">
+                        <td>
+                            <a th:href="@{/publications/{id}(id=${publication.id})}" th:text="${publication.title}">Publication Title</a>
+                        </td>
+                        <td th:text="${publication.coverDate}">Year</td>
+                        <td>
+                            <span th:each="author, iterStat : ${publication.authors}">
+                                <a th:if="${authorMap[author] != null}"
+                                   th:href="@{/authors/view/{id}(id=${author})}"
+                                   th:text="${authorMap[author].name + (iterStat.last ? '' : '; ')}">Author</a>
+                                <span th:if="${authorMap[author] == null}" th:text="${author + (iterStat.last ? '' : '; ')}"></span>
+                            </span>
+                        </td>
+                        <td th:text="${publication.subtypeDescription}">Type</td>
+                        <td>
+                            <a th:if="${forumMap[publication.forum] != null}"
+                               th:href="@{/forums/{id}(id=${publication.forum})}"
+                               th:text="${forumMap[publication.forum].publicationName}">Venue</a>
+                            <span th:if="${forumMap[publication.forum] == null}" th:text="${publication.forum}">Venue</span>
+                        </td>
+                        <td class="app-table__cell--numeric" th:text="${publication.citedbyCount}">0</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</main>
+
+<th:block th:replace="~{fragments :: app-footer}"></th:block>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+
+</body>
+</html>
