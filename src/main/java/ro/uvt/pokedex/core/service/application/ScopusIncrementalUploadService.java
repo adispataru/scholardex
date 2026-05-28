@@ -49,6 +49,53 @@ public class ScopusIncrementalUploadService {
         );
     }
 
+    public ScopusUploadRunResult runPublisherCsv(UploadedPayload file) {
+        String uploadBatchId = scopusDataService.createUploadBatchId(file.originalFilename());
+        ImportProcessingResult ingest =
+                scopusDataService.importUploadedPublisherCsvSync(file.originalFilename(), uploadBatchId, file.bytes());
+        ScopusBigBangMigrationService.ScopusBigBangMigrationResult buildFactsRun =
+                scopusBigBangMigrationService.runIncrementalUploadBuildStep(uploadBatchId, null);
+        MigrationStepResult ingestStep = singleImportResultToStep("ingest-publisher-csv", ingest);
+        MigrationStepResult buildFacts = buildFactsRun.buildFacts();
+        log.info(
+                "Publisher CSV incremental upload completed: fileName={}, ingestProcessed={}, ingestErrors={}, buildFactsProcessed={}, buildFactsErrors={}",
+                file.originalFilename(),
+                ingestStep.processed(),
+                ingestStep.errors(),
+                buildFacts == null ? 0 : buildFacts.processed(),
+                buildFacts == null ? 0 : buildFacts.errors()
+        );
+        return new ScopusUploadRunResult(
+                file.originalFilename(),
+                uploadBatchId,
+                ingest,
+                new ImportProcessingResult(0),
+                ingestStep,
+                buildFacts,
+                H29_3_NOTE
+        );
+    }
+
+    private MigrationStepResult singleImportResultToStep(String stepName, ImportProcessingResult result) {
+        return new MigrationStepResult(
+                stepName,
+                true,
+                result.getProcessedCount(),
+                result.getImportedCount(),
+                result.getUpdatedCount(),
+                result.getSkippedCount(),
+                result.getErrorCount(),
+                null,
+                new java.util.ArrayList<>(result.getErrorsSample()),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+    }
+
     public MigrationStepResult rebuildProjections(String uploadBatchId) {
         return scopusBigBangMigrationService.runIncrementalUploadProjectionStep(uploadBatchId).buildProjections();
     }

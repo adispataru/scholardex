@@ -1,0 +1,128 @@
+{
+  "reportTypeKey": "informatica-2016",
+  "templateResource": "classpath:report-templates/informatica-2016/template.xlsx",
+  "schemaVersion": 1,
+  "ignoredKeyValues": ["Titlu articol", "Titlu lucrare", "Titlu articol care citeaza"],
+  "scalarCells": [
+    { "cell": "Centralizator!D25", "policy": "MANUAL", "note": "Hirsch (WoS)" },
+    { "cell": "Centralizator!D26", "policy": "MANUAL", "note": "Hirsch (Scopus)" },
+    { "cell": "Centralizator!D27", "policy": "MANUAL", "note": "Hirsch (Google Scholar)" }
+  ],
+  "roles": [
+    {
+      "roleKey": "journal-publications",
+      "kind": "FIXED_TABLE",
+      "sheet": "B-Reviste",
+      "firstDataRow": 8,
+      "maxRows": 8,
+      "keyColumn": "C",
+      "scoreColumn": "J",
+      "categoryColumn": "H",
+      "authorCountColumn": "I",
+      "columns": {
+        "C": { "policy": "WRITE", "source": "publication.title" },
+        "D": { "policy": "WRITE", "source": "publication.authors" },
+        "E": { "policy": "WRITE", "source": "publication.forumName" },
+        "F": { "policy": "WRITE", "source": "publication.volumeInfo" },
+        "G": { "policy": "WRITE", "source": "publication.year" },
+        "H": { "policy": "WRITE", "source": "publication.forumCategoryLetter" },
+        "I": { "policy": "WRITE", "source": "publication.authorCount" },
+        "J": { "policy": "SKIP_FORMULA" },
+        "K": { "policy": "MANUAL" },
+        "L": { "policy": "MANUAL" },
+        "M": { "policy": "SKIP_FORMULA" }
+      }
+    },
+    {
+      "roleKey": "conference-publications",
+      "kind": "FIXED_TABLE",
+      "sheet": "B-Conferinte",
+      "firstDataRow": 8,
+      "maxRows": 10,
+      "keyColumn": "C",
+      "scoreColumn": "K",
+      "categoryColumn": "H",
+      "authorCountColumn": "I",
+      "columns": {
+        "C": { "policy": "WRITE", "source": "publication.title" },
+        "D": { "policy": "WRITE", "source": "publication.authors" },
+        "E": { "policy": "WRITE", "source": "publication.forumName" },
+        "F": { "policy": "WRITE", "source": "publication.volumeInfo" },
+        "G": { "policy": "WRITE", "source": "publication.year" },
+        "H": { "policy": "WRITE", "source": "publication.forumCategoryLetter" },
+        "I": { "policy": "WRITE", "source": "publication.authorCount" },
+        "J": { "policy": "WRITE", "source": "publication.isWorkshopDaNu" },
+        "K": { "policy": "SKIP_FORMULA" },
+        "L": { "policy": "MANUAL" },
+        "M": { "policy": "MANUAL" },
+        "N": { "policy": "SKIP_FORMULA" }
+      }
+    },
+    {
+      "roleKey": "citations-per-publication",
+      "kind": "TILED_SHEETS",
+      "templateSheet": "C-Citari-TPL",
+      "summarySheet": "C-Citari-centralizare",
+      "perTileTitleCell": "C5",
+      "perTileTitleTemplate": "B2. CITĂRI PENTRU LUCRAREA: {publication.title} ({publication.forumName}, {publication.year})",
+      "perTileScalar": { "J21": "publication.authorCount" },
+      "innerTableFirstDataRow": 8,
+      "innerTableMaxRows": 12,
+      "innerScoreColumn": "J",
+      "tileTotalLabel": "TOTAL",
+      "innerColumns": {
+        "C": { "policy": "WRITE", "source": "citation.title" },
+        "D": { "policy": "WRITE", "source": "citation.authors" },
+        "E": { "policy": "WRITE", "source": "citation.forumName" },
+        "F": { "policy": "WRITE", "source": "citation.volumeInfo" },
+        "G": { "policy": "WRITE", "source": "citation.year" },
+        "H": { "policy": "WRITE", "source": "citation.isWorkshopDaNu" },
+        "I": { "policy": "WRITE", "source": "citation.forumCategoryLetter" },
+        "J": { "policy": "SKIP_FORMULA" }
+      },
+      "sheetNameTemplate": "Citari-{index:02d}",
+      "summaryFormulas": [
+        { "cell": "I7",  "rule": "SUM_OVER_TILES", "tileCell": "I22" },
+        { "cell": "I8",  "rule": "SUM_OVER_TILES", "tileCell": "I23" },
+        { "cell": "I9",  "rule": "SUM_OVER_TILES", "tileCell": "I24" },
+        { "cell": "I10", "rule": "SUM_OVER_TILES", "tileCell": "I25" },
+        { "cell": "I11", "rule": "SUM_OVER_TILES", "tileCell": "I26" },
+        { "cell": "J7",  "rule": "SUM_OVER_TILES", "tileCell": "J22" },
+        { "cell": "J8",  "rule": "SUM_OVER_TILES", "tileCell": "J23" },
+        { "cell": "J9",  "rule": "SUM_OVER_TILES", "tileCell": "J24" },
+        { "cell": "J10", "rule": "SUM_OVER_TILES", "tileCell": "J25" },
+        { "cell": "J11", "rule": "SUM_OVER_TILES", "tileCell": "J26" }
+      ]
+    },
+    {
+      "roleKey": "activities-perspectiva-d",
+      "kind": "STACKED_BLOCKS",
+      "sheet": "Indicatorul I",
+      "activityMatch": "BY_ACTIVITY_NAME",
+      "groupingKey": "activity.activityName",
+      "blockHeaderMarker": "Justificări pentru indicatorul",
+      "blocks": [
+        { "activityName": "Carti/Capitole",             "headerRow": 7,  "firstDataRow": 10, "totalRow": 11 },
+        { "activityName": "Editor proceedings",         "headerRow": 13, "firstDataRow": 16, "totalRow": 17 },
+        { "activityName": "Curs in format electronic",  "headerRow": 19, "firstDataRow": 22, "totalRow": 23 },
+        { "activityName": "Director/editor revista",    "headerRow": 25, "firstDataRow": 28, "totalRow": 29 },
+        { "activityName": "Granturi",                   "headerRow": 31, "firstDataRow": 34, "totalRow": 35 },
+        { "activityName": "Membru comitet stiintific",  "headerRow": 37, "firstDataRow": 40, "totalRow": 41 },
+        { "activityName": "Organizare evenimente",      "headerRow": 43, "firstDataRow": 46, "totalRow": 47 },
+        { "activityName": "Keynote/invited speaker",    "headerRow": 49, "firstDataRow": 52, "totalRow": 53 },
+        { "activityName": "Consolidarea de echipe",     "headerRow": 55, "firstDataRow": 58, "totalRow": 59 },
+        { "activityName": "Comisii doctorat",           "headerRow": 61, "firstDataRow": 64, "totalRow": 65 },
+        { "activityName": "Pozitii de conducere",       "headerRow": 67, "firstDataRow": 70, "totalRow": 71 },
+        { "activityName": "Premii",                     "headerRow": 73, "firstDataRow": 76, "totalRow": 77 }
+      ],
+      "blockColumns": {
+        "C": { "policy": "WRITE",       "source": "activity.description" },
+        "H": { "policy": "WRITE",       "source": "activity.category" },
+        "K": { "policy": "WRITE_SCORE", "source": "activity.score" }
+      },
+      "totalRowColumns": {
+        "K": { "policy": "SKIP_FORMULA" }
+      }
+    }
+  ]
+}

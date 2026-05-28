@@ -58,6 +58,38 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     }
 
     @Test
+    void directConferenceStrategyDoesNotApplyScopusFallbackToArticleSubtype() {
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+
+        ScoringPublication publication = new ScoringPublication(
+                "spub_d7b93a16fa805380cf901fef",
+                null,
+                "forum-journal",
+                "2025-01-01",
+                "ar",
+                "ar",
+                List.of(),
+                0,
+                null,
+                null,
+                "Development of a Job Satisfaction Index Based on Employees' Online Reviews of Their Employers: A Large Language Model Approach",
+                0,
+                Set.of()
+        );
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("European Journal of Psychological Assessment");
+        forum.setAggregationType("Journal");
+        when(cacheService.getForum("forum-journal")).thenReturn(forum);
+
+        Score score = service.getScore(publication, new Indicator());
+
+        assertEquals(0.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCoreRankingEquivalent());
+        assertEquals(WoSRanking.Quarter.NOT_FOUND.toString(), score.getQuarter());
+        assertNull(score.getScoringSource());
+    }
+
+    @Test
     void resolvesConferenceWhenNormalizedNameMatches() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 
@@ -857,9 +889,9 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
 
         Score score = service.getScore(publication, indicator("IY"));
 
-        assertEquals(1.0, score.getScore());
-        assertEquals(CoreConferenceRanking.Rank.D.toString(), score.getCoreRankingEquivalent());
-        assertEquals("SCOPUS", score.getScoringSource());
+        assertEquals(0.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCoreRankingEquivalent());
+        assertNull(score.getScoringSource());
         ComputerScienceConferenceScoringService.ConferenceScoreTrace trace = service.getLastTraceForTests();
         assertEquals(false, trace.dblpConsulted());
         verifyNoInteractions(dblpEvidenceRepository);

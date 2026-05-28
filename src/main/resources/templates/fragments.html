@@ -117,6 +117,26 @@
                 <i class="fa-solid fa-bars" aria-hidden="true"></i>
             </button>
 
+            <nav class="app-shell-topbar__nav" aria-label="Browse research surfaces"
+                 th:with="reqUri=${requestUri}">
+                <a href="/publications"
+                   class="app-shell-topbar__nav-link"
+                   th:classappend="${#strings.startsWith(reqUri, '/publications')} ? ' is-active' : ''"
+                   th:attr="aria-current=${#strings.startsWith(reqUri, '/publications')} ? 'page' : null">Publications</a>
+                <a href="/forums"
+                   class="app-shell-topbar__nav-link"
+                   th:classappend="${#strings.startsWith(reqUri, '/forums')} ? ' is-active' : ''"
+                   th:attr="aria-current=${#strings.startsWith(reqUri, '/forums')} ? 'page' : null">Forums</a>
+                <a href="/authors"
+                   class="app-shell-topbar__nav-link"
+                   th:classappend="${#strings.startsWith(reqUri, '/authors')} ? ' is-active' : ''"
+                   th:attr="aria-current=${#strings.startsWith(reqUri, '/authors')} ? 'page' : null">Authors</a>
+                <a href="/rankings"
+                   class="app-shell-topbar__nav-link"
+                   th:classappend="${#strings.startsWith(reqUri, '/rankings') or #strings.startsWith(reqUri, '/core/') or reqUri == '/core' or #strings.startsWith(reqUri, '/universities') or #strings.startsWith(reqUri, '/events') or #strings.startsWith(reqUri, '/wos/')} ? ' is-active' : ''"
+                   th:attr="aria-current=${#strings.startsWith(reqUri, '/rankings') or #strings.startsWith(reqUri, '/core/') or reqUri == '/core' or #strings.startsWith(reqUri, '/universities') or #strings.startsWith(reqUri, '/events') or #strings.startsWith(reqUri, '/wos/')} ? 'page' : null">Rankings</a>
+            </nav>
+
             <div class="app-shell-topbar__spacer"></div>
 
             <div class="app-shell-topbar__utilities">
@@ -428,42 +448,6 @@
                     <a class="app-shell-sidebar__link" th:href="@{/user/workspace}">
                         <i class="fa-solid fa-fw fa-house-user"></i>
                         <span>My Workspace</span>
-                    </a>
-                </li>
-            </ul>
-        </section>
-
-        <section class="app-shell-sidebar__section">
-            <p class="app-shell-sidebar__section-label">Rankings</p>
-            <ul class="app-shell-sidebar__section-list">
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection == 'scholardex-forums'} ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/forums}">
-                        <i class="fa-solid fa-fw fa-medal"></i>
-                        <span>Forums</span>
-                    </a>
-                </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection == 'rankings' or activeSection == 'rankings-categories'} ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/rankings}">
-                        <i class="fa-solid fa-fw fa-ranking-star"></i>
-                        <span>Rankings Hub</span>
-                    </a>
-                </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'rankings-core' ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/core/rankings}">
-                        <i class="fa-solid fa-fw fa-atom"></i>
-                        <span>CORE</span>
-                    </a>
-                </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'rankings-urap' ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/universities}">
-                        <i class="fa-solid fa-fw fa-university"></i>
-                        <span>URAP</span>
-                    </a>
-                </li>
-                <li class="app-shell-sidebar__item" th:classappend="${activeSection} == 'rankings-events' ? ' active' : ''">
-                    <a class="app-shell-sidebar__link" th:href="@{/events}">
-                        <i class="fa-solid fa-fw fa-theater-masks"></i>
-                        <span>Events</span>
                     </a>
                 </li>
             </ul>
@@ -1017,12 +1001,47 @@
                 <span class="app-shell-theme-toggle__label">Dark</span>
             </button>
 
-            <a th:if="${currentUser != null and currentUser.isPresent()}"
-               href="/user/workspace"
-               class="app-public-header__cta app-public-header__cta--workspace">
-                <i class="fa-solid fa-gauge" aria-hidden="true"></i>
-                <span>Workspace</span>
-            </a>
+            <div th:if="${currentUser != null and currentUser.isPresent()}"
+                 class="app-shell-workspace-switcher" data-app-workspace-switcher>
+                <button
+                    type="button"
+                    class="app-shell-workspace-switcher__trigger"
+                    data-app-workspace-trigger
+                    aria-haspopup="menu"
+                    aria-expanded="false"
+                    aria-controls="public-workspace-menu">
+                    <span class="app-shell-workspace-switcher__label">Workspace</span>
+                    <i class="fa-solid fa-gauge" aria-hidden="true"></i>
+                </button>
+                <div
+                    id="public-workspace-menu"
+                    class="app-shell-workspace-switcher__menu"
+                    data-app-workspace-menu
+                    role="menu"
+                    hidden>
+                    <a class="app-shell-workspace-switcher__item" th:if="${user.hasRole('PLATFORM_ADMIN')}" href="/admin" role="menuitem">
+                        <i class="fa-solid fa-user-shield" aria-hidden="true"></i>
+                        <span>Admin Panel</span>
+                    </a>
+                    <a class="app-shell-workspace-switcher__item" th:if="${user.hasRole('SUPERVISOR')}" href="/supervisor" role="menuitem">
+                        <i class="fa-solid fa-user-tie" aria-hidden="true"></i>
+                        <span>Supervisor Panel</span>
+                    </a>
+                    <a class="app-shell-workspace-switcher__item" href="/user/workspace" role="menuitem">
+                        <i class="fa-solid fa-user" aria-hidden="true"></i>
+                        <span>User Panel</span>
+                    </a>
+                </div>
+            </div>
+
+            <form th:if="${currentUser != null and currentUser.isPresent()}"
+                  class="app-shell-logout" th:action="@{/logout}" method="post">
+                <button type="submit" class="app-shell-logout__button" aria-label="Log out">
+                    <span class="app-shell-logout__label">Log out</span>
+                    <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+                </button>
+            </form>
+
             <a th:unless="${currentUser != null and currentUser.isPresent()}"
                href="/login"
                class="app-public-header__cta app-public-header__cta--signin">
@@ -1041,6 +1060,99 @@
         </div>
     </div>
 </header>
+</th:block>
+
+<th:block th:fragment="core-ranking-chart(ranking)">
+    <div class="chart-area">
+        <canvas id="rankingChart"></canvas>
+    </div>
+    <script th:inline="javascript">
+        document.addEventListener('DOMContentLoaded', function () {
+            var years = [2008, 2010, 2013, 2014, 2017, 2018, 2020, 2021, 2023];
+            var yearlyRankings = /*[[${ranking.yearlyRankings}]]*/ {};
+            var rankMapping = { "A_STAR": 5, "A": 4, "B": 3, "C": 2, "D": 1, "NON_RANK": 0 };
+            var reverseRankMapping = { 5: "A*", 4: "A", 3: "B", 2: "C", 1: "D", 0: "Unranked" };
+
+            var labels = years;
+            var rankData = labels.map(function (year) {
+                if (yearlyRankings[year]) {
+                    return rankMapping[yearlyRankings[year].rank] !== undefined ? rankMapping[yearlyRankings[year].rank] : null;
+                }
+                return null;
+            });
+            var rankingChart = null;
+
+            function renderRankingChart() {
+                var themeApi = window.appChartTheme || {};
+                var theme = themeApi.getChartTheme ? themeApi.getChartTheme() : {
+                    series: ['#22c55e'], text: '#334155', textStrong: '#0f172a', textMuted: '#64748b',
+                    border: '#dbe4f0', chartGrid: '#dbe4f0', chartTooltipBg: '#ffffff'
+                };
+                var alphaColor = themeApi.alphaColor || function (color) { return color; };
+                var canvas = document.getElementById('rankingChart');
+                if (!canvas) return;
+                var ctx = canvas.getContext('2d');
+                if (rankingChart) { rankingChart.destroy(); }
+                rankingChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Rank',
+                            data: rankData,
+                            backgroundColor: alphaColor(theme.series[1] || theme.series[0], 0.12),
+                            borderColor: theme.series[1] || theme.series[0],
+                            pointRadius: 3,
+                            pointBackgroundColor: theme.series[1] || theme.series[0],
+                            pointBorderColor: theme.series[1] || theme.series[0],
+                            pointHoverRadius: 3,
+                            pointHoverBackgroundColor: theme.series[1] || theme.series[0],
+                            pointHoverBorderColor: theme.series[1] || theme.series[0],
+                            pointHitRadius: 10,
+                            pointBorderWidth: 2,
+                            spanGaps: true
+                        }]
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        layout: { padding: { left: 10, right: 25, top: 25, bottom: 0 } },
+                        scales: {
+                            xAxes: [{
+                                gridLines: { display: false, drawBorder: false },
+                                ticks: { maxTicksLimit: labels.length, fontColor: theme.textMuted }
+                            }],
+                            yAxes: [{
+                                ticks: {
+                                    callback: function (value) { return reverseRankMapping[value]; },
+                                    max: 5, min: 0, stepSize: 1, padding: 10, fontColor: theme.textMuted
+                                },
+                                gridLines: {
+                                    color: theme.chartGrid, zeroLineColor: theme.chartGrid,
+                                    drawBorder: false, borderDash: [2], zeroLineBorderDash: [2]
+                                }
+                            }]
+                        },
+                        legend: { display: true, labels: { fontColor: theme.textMuted } },
+                        tooltips: {
+                            backgroundColor: theme.chartTooltipBg, bodyFontColor: theme.text,
+                            titleMarginBottom: 10, titleFontColor: theme.textStrong, titleFontSize: 14,
+                            borderColor: theme.border, borderWidth: 1, xPadding: 15, yPadding: 15,
+                            displayColors: false, intersect: false, mode: 'index', caretPadding: 10,
+                            callbacks: {
+                                label: function (tooltipItem, chart) {
+                                    var datasetLabel = chart.datasets[tooltipItem.datasetIndex].label || '';
+                                    return datasetLabel + ': ' + (reverseRankMapping[tooltipItem.yLabel] || tooltipItem.yLabel);
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            renderRankingChart();
+            window.addEventListener('app:themechange', renderRankingChart);
+        });
+    </script>
 </th:block>
 
 </body>

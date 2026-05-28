@@ -150,6 +150,19 @@
                                         <button type="submit" class="btn btn-primary btn-sm">Submit Scopus Upload</button>
                                     </div>
                                 </form>
+
+                                <form th:action="@{/admin/incremental-updates/scopus/publisher-csv}" method="post" enctype="multipart/form-data" class="app-form-section">
+                                    <div class="app-form-grid">
+                                        <div class="form-group app-form-field">
+                                            <label for="scopus-publisher-csv">Publisher CSV (forum publisher / ISBN enrichment)</label>
+                                            <input id="scopus-publisher-csv" type="file" name="file" class="form-control-file" accept=".csv" required>
+                                            <p class="app-form-help-inline">Expected columns: <code>Publication Name</code>, <code>ISSN</code>, <code>sourceId</code>, <code>Aggregation Type</code>, <code>Publisher</code>, <code>ISBN</code>. Emits FORUM events that update existing forum facts; the build step rebuilds canonical facts.</p>
+                                        </div>
+                                    </div>
+                                    <div class="app-form-actions">
+                                        <button type="submit" class="btn btn-outline-primary btn-sm">Submit Publisher CSV</button>
+                                    </div>
+                                </form>
                             </div>
                         </section>
 

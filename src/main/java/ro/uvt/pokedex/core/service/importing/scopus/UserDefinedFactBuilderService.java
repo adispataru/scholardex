@@ -94,6 +94,8 @@ public class UserDefinedFactBuilderService {
         fact.setForumSourceRecordId(text(payload, "source_id"));
         fact.setEid(text(payload, "eid"));
         fact.setDoi(text(payload, "doi"));
+        fact.setPii(text(payload, "pii"));
+        fact.setPubmedId(text(payload, "pubmed_id"));
         fact.setTitle(text(payload, "title"));
         fact.setSubtype(text(payload, "subtype"));
         fact.setSubtypeDescription(text(payload, "subtypeDescription"));
@@ -108,6 +110,7 @@ public class UserDefinedFactBuilderService {
         fact.setCoverDate(text(payload, "coverDate"));
         fact.setCoverDisplayDate(text(payload, "coverDisplayDate"));
         fact.setDescription(text(payload, "description"));
+        fact.setAuthKeywords(splitAuthKeywords(text(payload, "authkeywords")));
         fact.setCitedByCount(intValue(payload, "citedby_count"));
         fact.setOpenAccess(boolValue(payload, "openaccess"));
         fact.setFreetoread(text(payload, "freetoread"));
@@ -150,7 +153,9 @@ public class UserDefinedFactBuilderService {
         fact.setPublicationName(text(payload, "publicationName"));
         fact.setIssn(normalizeIssnOrBlank(text(payload, "issn")));
         fact.setEIssn(normalizeIssnOrBlank(text(payload, "eIssn")));
+        fact.setIsbn(text(payload, "isbn"));
         fact.setAggregationType(text(payload, "aggregationType"));
+        fact.setPublisher(text(payload, "publisher"));
         fact.setApproved(boolValue(payload, "approved"));
         applyReviewFields(fact, payload, now);
         fact.setLastPayloadHash(event.getPayloadHash());
@@ -252,6 +257,20 @@ public class UserDefinedFactBuilderService {
         }
         List<String> out = new ArrayList<>();
         for (String token : value.split(";")) {
+            String normalized = normalize(token);
+            if (normalized != null) {
+                out.add(normalized);
+            }
+        }
+        return out;
+    }
+
+    private List<String> splitAuthKeywords(String value) {
+        if (isBlank(value)) {
+            return List.of();
+        }
+        List<String> out = new ArrayList<>();
+        for (String token : value.split("\\|")) {
             String normalized = normalize(token);
             if (normalized != null) {
                 out.add(normalized);

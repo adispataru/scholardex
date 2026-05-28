@@ -12,6 +12,7 @@ import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.repository.reporting.SenseRankingRepository;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +27,6 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
     private static final Logger logger = LoggerFactory.getLogger(ComputerScienceBookService.class);
     private static final int LAST_SENSE_YEAR = 2023;
     private final SenseRankingRepository senseRankingRepository;
-    private final ConcurrentMap<String, List<SenseBookRanking>> rankingCache = new ConcurrentHashMap<>();
 
     @Autowired
     public ComputerScienceBookService(SenseRankingRepository senseRankingRepository, ReportingLookupPort lookupPort) {
@@ -120,7 +120,7 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
             }
             default -> {
                 score.setScore(1.0);
-                score.setCoreRankingEquivalent("Unlisted");
+                score.setCoreRankingEquivalent("NON_RANK");
             }
         }
         Map<String, Object> scoringInfo = new LinkedHashMap<>();
@@ -134,17 +134,89 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
     }
 
 
-    private List<SenseBookRanking> getBookRankings(ScholardexForumView forum) {
-        String publisher = forum.getPublisher();
-        if (publisher == null || publisher.isEmpty()) {
-            return List.of();
+    public Optional<SenseBookRanking> matchByPublisher(String publisher) {
+        if (publisher == null || publisher.isBlank()) {
+            return Optional.empty();
         }
-
-        return getCachedRankings(publisher);
+        return resolvePublisher(publisher);
     }
 
-    private List<SenseBookRanking> getCachedRankings(String name) {
-        return rankingCache.computeIfAbsent(name, senseRankingRepository::findAllByNameIgnoreCase);
+    private final ConcurrentMap<String, Optional<SenseBookRanking>> resolutionCache = new ConcurrentHashMap<>();
+    private volatile List<SenseBookRanking> allRankingsSnapshot;
+
+    private Optional<SenseBookRanking> resolvePublisher(String publisher) {
+        return resolutionCache.computeIfAbsent(publisher, this::resolvePublisherUncached);
+    }
+
+    private Optional<SenseBookRanking> resolvePublisherUncached(String publisher) {
+        List<SenseBookRanking> exact = senseRankingRepository.findAllByNameIgnoreCase(publisher);
+        if (!exact.isEmpty()) {
+            return Optional.of(pickBestRank(exact));
+        }
+        String normalizedPublisher = normalizePublisherName(publisher);
+        if (normalizedPublisher.isBlank()) {
+            return Optional.empty();
+        }
+        List<SenseBookRanking> hits = new ArrayList<>();
+        for (SenseBookRanking ranking : allRankings()) {
+            String senseNorm = normalizePublisherName(ranking.getName());
+            if (senseNorm.isBlank()) {
+                continue;
+            }
+            if (senseNorm.equals(normalizedPublisher)
+                    || normalizedPublisher.contains(senseNorm)
+                    || senseNorm.contains(normalizedPublisher)) {
+                hits.add(ranking);
+            }
+        }
+        if (hits.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(pickBestRank(hits));
+    }
+
+    private List<SenseBookRanking> allRankings() {
+        List<SenseBookRanking> snapshot = allRankingsSnapshot;
+        if (snapshot == null) {
+            synchronized (this) {
+                snapshot = allRankingsSnapshot;
+                if (snapshot == null) {
+                    snapshot = senseRankingRepository.findAll();
+                    allRankingsSnapshot = snapshot;
+                }
+            }
+        }
+        return snapshot;
+    }
+
+    private static String normalizePublisherName(String name) {
+        if (name == null) {
+            return "";
+        }
+        String lowered = name.toLowerCase(java.util.Locale.ROOT);
+        String stripped = lowered
+                .replaceAll("[,.&]", " ")
+                .replaceAll("\\b(inc|ltd|llc|gmbh|ag|sa|co|company|corp|corporation|publications?|publishers?|publishing|press|group|international|verlag|edizioni|editorial|editions|the|usa|uk|de|nv|bv)\\b", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        return stripped;
+    }
+
+    private static SenseBookRanking pickBestRank(List<SenseBookRanking> rankings) {
+        return rankings.stream()
+                .min(java.util.Comparator.comparingInt(r -> r.getRanking() == null ? Integer.MAX_VALUE : r.getRanking().ordinal()))
+                .orElse(rankings.getFirst());
+    }
+
+    private List<SenseBookRanking> getBookRankings(ScholardexForumView forum) {
+        if (forum == null) {
+            return List.of();
+        }
+        String publisher = forum.getPublisher();
+        if (publisher == null || publisher.isBlank()) {
+            return List.of();
+        }
+        return resolvePublisher(publisher).map(List::of).orElseGet(List::of);
     }
 
     @Override

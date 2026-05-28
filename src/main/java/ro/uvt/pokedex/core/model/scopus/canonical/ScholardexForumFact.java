@@ -26,9 +26,11 @@ public class ScholardexForumFact {
     private String nameNormalized;
     private String issn;
     private String eIssn;
+    private String isbn;
     private List<String> aliasIssns = new ArrayList<>();
     private String aggregationType;
     private String aggregationTypeNormalized;
+    private String publisher;
     private String reviewState;
     private String reviewReason;
     private Instant reviewStateUpdatedAt;

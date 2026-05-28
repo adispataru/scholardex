@@ -35,6 +35,7 @@ public class ErrorPageModelFactory {
         model.addAttribute("errorIcon", content.icon());
         model.addAttribute("errorTone", content.tone());
         model.addAttribute("errorPath", path);
+        model.addAttribute("requestUri", path);
         model.addAttribute("errorTimestamp", TIMESTAMP_FORMAT.format(Instant.now()));
         model.addAttribute("errorRequestId", requestId());
         model.addAttribute("errorShowRetry", statusCode >= 500);

@@ -295,7 +295,9 @@ public class ScholardexProjectionBuilderService {
         view.setPublicationName(fact.getPublicationName());
         view.setIssn(fact.getIssn());
         view.setEIssn(fact.getEIssn());
+        view.setIsbn(fact.getIsbn());
         view.setAggregationType(fact.getAggregationType());
+        view.setPublisher(fact.getPublisher());
         view.setBuildVersion(buildVersion);
         view.setBuildAt(buildAt);
         view.setUpdatedAt(buildAt);
@@ -322,7 +324,9 @@ public class ScholardexProjectionBuilderService {
             wosView.setPublicationName(canonicalForum.getName());
             wosView.setIssn(canonicalForum.getIssn());
             wosView.setEIssn(canonicalForum.getEIssn());
+            wosView.setIsbn(canonicalForum.getIsbn());
             wosView.setAggregationType(canonicalForum.getAggregationType());
+            wosView.setPublisher(canonicalForum.getPublisher());
             wosView.setBuildVersion(buildVersion);
             wosView.setBuildAt(buildAt);
             wosView.setUpdatedAt(buildAt);
@@ -369,6 +373,8 @@ public class ScholardexProjectionBuilderService {
         view.setDoi(fact.getDoi());
         view.setDoiNormalized(normalizeDoi(fact.getDoi()));
         view.setEid(fact.getEid());
+        view.setPii(fact.getPii());
+        view.setPubmedId(fact.getPubmedId());
         view.setTitle(fact.getTitle());
         view.setSubtype(fact.getSubtype());
         view.setSubtypeDescription(fact.getSubtypeDescription());
@@ -380,6 +386,7 @@ public class ScholardexProjectionBuilderService {
         view.setVolume(fact.getVolume());
         view.setIssueIdentifier(fact.getIssueIdentifier());
         view.setDescription(fact.getDescription());
+        view.setAuthKeywords(fact.getAuthKeywords() == null ? List.of() : new ArrayList<>(fact.getAuthKeywords()));
         view.setCorrespondingAuthors(fact.getCorrespondingAuthors() == null ? List.of() : new ArrayList<>(fact.getCorrespondingAuthors()));
         view.setOpenAccess(Boolean.TRUE.equals(fact.getOpenAccess()));
         view.setFreetoread(fact.getFreetoread());
@@ -458,8 +465,8 @@ public class ScholardexProjectionBuilderService {
     private void insertForumRows(List<ScholardexForumView> rows) {
         String sql = """
                 INSERT INTO reporting_read.scholardex_forum_view
-                    (id, publication_name, issn, e_issn, aggregation_type, build_version, build_at, updated_at, source_event_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (id, publication_name, issn, e_issn, isbn, aggregation_type, publisher, build_version, build_at, updated_at, source_event_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         writeForumRows(rows, sql);
     }
@@ -467,13 +474,15 @@ public class ScholardexProjectionBuilderService {
     private void upsertForumRows(List<ScholardexForumView> rows) {
         String sql = """
                 INSERT INTO reporting_read.scholardex_forum_view
-                    (id, publication_name, issn, e_issn, aggregation_type, build_version, build_at, updated_at, source_event_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (id, publication_name, issn, e_issn, isbn, aggregation_type, publisher, build_version, build_at, updated_at, source_event_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (id) DO UPDATE SET
                     publication_name = EXCLUDED.publication_name,
                     issn = EXCLUDED.issn,
                     e_issn = EXCLUDED.e_issn,
+                    isbn = EXCLUDED.isbn,
                     aggregation_type = EXCLUDED.aggregation_type,
+                    publisher = EXCLUDED.publisher,
                     build_version = EXCLUDED.build_version,
                     build_at = EXCLUDED.build_at,
                     updated_at = EXCLUDED.updated_at,
@@ -491,11 +500,13 @@ public class ScholardexProjectionBuilderService {
                 ps.setString(2, row.getPublicationName());
                 ps.setString(3, row.getIssn());
                 ps.setString(4, row.getEIssn());
-                ps.setString(5, row.getAggregationType());
-                ps.setString(6, row.getBuildVersion());
-                setInstant(ps, 7, row.getBuildAt());
-                setInstant(ps, 8, row.getUpdatedAt());
-                ps.setString(9, row.getSourceEventId());
+                ps.setString(5, row.getIsbn());
+                ps.setString(6, row.getAggregationType());
+                ps.setString(7, row.getPublisher());
+                ps.setString(8, row.getBuildVersion());
+                setInstant(ps, 9, row.getBuildAt());
+                setInstant(ps, 10, row.getUpdatedAt());
+                ps.setString(11, row.getSourceEventId());
             }
 
             @Override
@@ -610,8 +621,9 @@ public class ScholardexProjectionBuilderService {
                     open_access, freetoread, freetoread_label, funding_id, article_number, page_range,
                     approved, author_ids, affiliation_ids, forum_id, citing_publication_ids, cited_by_count,
                     wos_id, google_scholar_id, build_version, build_at, updated_at,
-                    scopus_lineage, wos_lineage, scholar_lineage, linker_version, linker_run_id, linked_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    scopus_lineage, wos_lineage, scholar_lineage, linker_version, linker_run_id, linked_at,
+                    pii, pubmed_id, auth_keywords
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         writePublicationRows(rows, sql);
     }
@@ -625,8 +637,9 @@ public class ScholardexProjectionBuilderService {
                     open_access, freetoread, freetoread_label, funding_id, article_number, page_range,
                     approved, author_ids, affiliation_ids, forum_id, citing_publication_ids, cited_by_count,
                     wos_id, google_scholar_id, build_version, build_at, updated_at,
-                    scopus_lineage, wos_lineage, scholar_lineage, linker_version, linker_run_id, linked_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    scopus_lineage, wos_lineage, scholar_lineage, linker_version, linker_run_id, linked_at,
+                    pii, pubmed_id, auth_keywords
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (id) DO UPDATE SET
                     doi = EXCLUDED.doi,
                     doi_normalized = EXCLUDED.doi_normalized,
@@ -666,7 +679,10 @@ public class ScholardexProjectionBuilderService {
                     scholar_lineage = EXCLUDED.scholar_lineage,
                     linker_version = EXCLUDED.linker_version,
                     linker_run_id = EXCLUDED.linker_run_id,
-                    linked_at = EXCLUDED.linked_at
+                    linked_at = EXCLUDED.linked_at,
+                    pii = EXCLUDED.pii,
+                    pubmed_id = EXCLUDED.pubmed_id,
+                    auth_keywords = EXCLUDED.auth_keywords
                 """;
         writePublicationRows(rows, sql);
     }
@@ -716,6 +732,9 @@ public class ScholardexProjectionBuilderService {
                 ps.setString(38, row.getLinkerVersion());
                 ps.setString(39, row.getLinkerRunId());
                 setInstant(ps, 40, row.getLinkedAt());
+                ps.setString(41, row.getPii());
+                ps.setString(42, row.getPubmedId());
+                ps.setArray(43, textArray(ps.getConnection(), row.getAuthKeywords()));
             }
 
             @Override

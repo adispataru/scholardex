@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import ro.uvt.pokedex.core.controller.dto.AdminUserResponse;
 import ro.uvt.pokedex.core.controller.dto.AdminUserUpsertRequest;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.service.UserService;
@@ -27,30 +28,34 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<User> createUser(@Valid @RequestBody AdminUserUpsertRequest request) {
+    public ResponseEntity<AdminUserResponse> createUser(@Valid @RequestBody AdminUserUpsertRequest request) {
         if (request.password() == null || request.password().isBlank()) {
             return ResponseEntity.badRequest().build();
         }
         return userService.createUser(request.email(), request.password(), request.roles())
+                .map(AdminUserResponse::from)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.CONFLICT).build());
     }
 
     @GetMapping
-    public ResponseEntity<List<User>> getAllUsers() {
-        List<User> users = userService.getAllUsers();
+    public ResponseEntity<List<AdminUserResponse>> getAllUsers() {
+        List<AdminUserResponse> users = userService.getAllUsers().stream()
+                .map(AdminUserResponse::from)
+                .toList();
         return ResponseEntity.ok(users);
     }
 
     @GetMapping("/{email}")
-    public ResponseEntity<User> getUserByEmail(@PathVariable String email) {
+    public ResponseEntity<AdminUserResponse> getUserByEmail(@PathVariable String email) {
         return userService.getUserByEmail(email)
+                .map(AdminUserResponse::from)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/{email}")
-    public ResponseEntity<User> updateUser(@PathVariable String email, @Valid @RequestBody AdminUserUpsertRequest request) {
+    public ResponseEntity<AdminUserResponse> updateUser(@PathVariable String email, @Valid @RequestBody AdminUserUpsertRequest request) {
         Optional<User> existingOpt = userService.getUserByEmail(email);
         if (existingOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -64,6 +69,7 @@ public class UserController {
         updated.setRoles(userService.parseRoles(request.roles()));
 
         return userService.updateUser(email, updated)
+                .map(AdminUserResponse::from)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

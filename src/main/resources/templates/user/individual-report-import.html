@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Verify Report from File</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+    <link href="/css/individual-report-dashboard.css" rel="stylesheet">
+</head>
+<body id="page-top">
+<div id="wrapper">
+    <div th:replace="~{fragments :: sidebar('individual-reports')}"></div>
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar('Verify Report from File')}"></div>
+            <main class="container-fluid app-page-content">
+
+                <!-- Toolbar -->
+                <div class="app-page-toolbar">
+                    <a th:href="@{/user/evaluation(report=${reportId})}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fa-solid fa-arrow-left fa-sm" aria-hidden="true"></i> Back to evaluation
+                    </a>
+                </div>
+
+                <p class="app-workflow__intro">
+                    Upload your filled Excel file to compare its computed scores against the platform's latest scores.
+                    This is a read-only check — nothing is imported or changed.
+                </p>
+
+                <div th:if="${errorMessage != null}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
+
+                <!-- Upload form -->
+                <form th:action="@{/user/evaluation/import}" method="post" enctype="multipart/form-data"
+                      class="app-form-field mb-4" style="max-width:640px" id="import-form">
+                    <input type="hidden" name="report" th:value="${reportId}">
+                    <label class="app-dropzone" id="import-dropzone">
+                        <input type="file" id="import-file" name="file" accept=".xlsx" required
+                               class="app-dropzone__input" aria-describedby="import-file-help">
+                        <i class="fa-solid fa-file-arrow-up app-dropzone__icon" aria-hidden="true"></i>
+                        <span class="app-dropzone__primary">
+                            Drag your Excel file here, or <span class="app-dropzone__browse">browse</span>
+                        </span>
+                        <span class="app-dropzone__filename" id="import-filename" hidden></span>
+                        <span id="import-file-help" class="app-dropzone__hint">.xlsx exported from this report</span>
+                    </label>
+                    <button type="submit" class="btn btn-primary mt-3">
+                        <i class="fa-solid fa-circle-check fa-sm" aria-hidden="true"></i> Verify
+                    </button>
+                </form>
+
+                <!-- ── Comparison results ─────────────────────────────────────── -->
+                <th:block th:if="${comparison != null}">
+
+                    <!-- Summary metrics -->
+                    <div class="app-eval-aggregate mb-3">
+                        <div class="app-eval-aggregate__cell">
+                            <span class="app-eval-aggregate__label">Correct Points</span>
+                            <span class="app-eval-aggregate__value"
+                                  th:text="${#numbers.formatDecimal(comparison.correctPoints(), 1, 2)}">0.00</span>
+                        </div>
+                        <div class="app-eval-aggregate__cell">
+                            <span class="app-eval-aggregate__label">Platform Total</span>
+                            <span class="app-eval-aggregate__value app-eval-aggregate__value--sm"
+                                  th:text="${#numbers.formatDecimal(comparison.platformTotal(), 1, 2)}">0.00</span>
+                        </div>
+                        <div class="app-eval-aggregate__cell">
+                            <span class="app-eval-aggregate__label">File Total</span>
+                            <span class="app-eval-aggregate__value app-eval-aggregate__value--sm"
+                                  th:text="${#numbers.formatDecimal(comparison.fileTotal(), 1, 2)}">0.00</span>
+                        </div>
+                        <div class="app-eval-aggregate__cell">
+                            <span class="app-eval-aggregate__label">Matching / Differing</span>
+                            <span class="app-eval-aggregate__value app-eval-aggregate__value--sm">
+                                <span th:text="${comparison.matchingCount()}">0</span>
+                                <span aria-hidden="true"> / </span>
+                                <span th:text="${comparison.differingCount()}">0</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Empty state -->
+                    <div th:if="${comparison.rows().isEmpty()}" class="app-empty-state">
+                        <i class="fa-solid fa-scale-balanced fa-2x app-empty-state__icon" aria-hidden="true"></i>
+                        <p class="app-empty-state__title">Nothing to compare</p>
+                        <p class="app-empty-state__body">No scored rows were found in the uploaded file.</p>
+                    </div>
+
+                    <!-- Per-publication comparison table -->
+                    <div th:unless="${comparison.rows().isEmpty()}" class="app-table-section">
+                      <div class="app-table-section__surface">
+                        <div class="app-table-section__header app-table-toolbar">
+                            <h2 class="app-table-section__title">Per-publication comparison</h2>
+                        </div>
+                        <div class="app-table-section__body">
+                          <div class="app-table-scroll">
+                            <table class="table table-bordered app-table mb-0">
+                                <thead>
+                                <tr>
+                                    <th scope="col" rowspan="2" style="width:2.5rem"><span class="sr-only">Expand</span></th>
+                                    <th scope="col" rowspan="2">Title</th>
+                                    <th scope="col" colspan="2" class="text-center">Publication points</th>
+                                    <th scope="col" colspan="2" class="text-center">Citation points</th>
+                                </tr>
+                                <tr>
+                                    <th scope="col" class="app-table__cell--numeric">Platform</th>
+                                    <th scope="col" class="app-table__cell--numeric">File</th>
+                                    <th scope="col" class="app-table__cell--numeric">Platform</th>
+                                    <th scope="col" class="app-table__cell--numeric">File</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <th:block th:each="row, it : ${comparison.rows()}">
+                                    <tr>
+                                        <td>
+                                            <button type="button"
+                                                    th:if="${row.hasDetail()}"
+                                                    class="btn btn-sm btn-link p-0 app-row-toggle"
+                                                    th:attr="data-target=${'detail-' + it.index},aria-controls=${'detail-' + it.index}"
+                                                    aria-expanded="false"
+                                                    th:aria-label="'Show details for ' + ${row.title()}">
+                                                <i class="fa-solid fa-chevron-right fa-xs app-row-toggle__icon" aria-hidden="true"></i>
+                                            </button>
+                                        </td>
+                                        <td>
+                                            <span th:text="${row.title()}">title</span>
+                                            <span th:if="${row.rowMatches()}" class="app-chip app-chip--match ms-2">
+                                                <i class="fa-solid fa-check fa-xs" aria-hidden="true"></i> Match
+                                            </span>
+                                            <span th:unless="${row.rowMatches()}" class="app-chip app-chip--differs ms-2">
+                                                <i class="fa-solid fa-triangle-exclamation fa-xs" aria-hidden="true"></i> Differs
+                                            </span>
+                                        </td>
+                                        <!-- Publication points -->
+                                        <td class="app-table__cell--numeric" th:with="p=${row.publication()}">
+                                            <th:block th:if="${p != null and p.platform() != null}">
+                                                <span th:text="${#numbers.formatDecimal(p.platform(), 1, 2)}">0</span><span
+                                                      th:if="${p.delta() != null and p.delta() != 0.0}"
+                                                      th:class="${p.delta() > 0 ? 'app-delta app-delta--pos' : 'app-delta app-delta--neg'}"
+                                                      th:text="|(${p.delta() > 0 ? '+' : ''}${#numbers.formatDecimal(p.delta(), 1, 2)})|">(+0)</span>
+                                            </th:block>
+                                            <th:block th:unless="${p != null and p.platform() != null}">—</th:block>
+                                        </td>
+                                        <td class="app-table__cell--numeric"
+                                            th:text="${row.publication() != null and row.publication().file() != null
+                                                       ? #numbers.formatDecimal(row.publication().file(), 1, 2) : '—'}">—</td>
+                                        <!-- Citation points -->
+                                        <td class="app-table__cell--numeric" th:with="c=${row.citation()}">
+                                            <th:block th:if="${c != null and c.platform() != null}">
+                                                <span th:text="${#numbers.formatDecimal(c.platform(), 1, 2)}">0</span><span
+                                                      th:if="${c.delta() != null and c.delta() != 0.0}"
+                                                      th:class="${c.delta() > 0 ? 'app-delta app-delta--pos' : 'app-delta app-delta--neg'}"
+                                                      th:text="|(${c.delta() > 0 ? '+' : ''}${#numbers.formatDecimal(c.delta(), 1, 2)})|">(+0)</span>
+                                            </th:block>
+                                            <th:block th:unless="${c != null and c.platform() != null}">—</th:block>
+                                        </td>
+                                        <td class="app-table__cell--numeric"
+                                            th:text="${row.citation() != null and row.citation().file() != null
+                                                       ? #numbers.formatDecimal(row.citation().file(), 1, 2) : '—'}">—</td>
+                                    </tr>
+                                    <tr th:if="${row.hasDetail()}" class="app-row-detail is-collapsed"
+                                        th:attr="id=${'detail-' + it.index}" hidden>
+                                        <td></td>
+                                        <td colspan="5">
+                                            <dl class="app-detail-grid mb-0">
+                                                <div><dt>Role</dt><dd th:text="${row.roleKey()}">—</dd></div>
+                                                <div th:if="${row.platformCategory() != null}">
+                                                    <dt>Platform category</dt><dd th:text="${row.platformCategory()}">—</dd>
+                                                </div>
+                                                <div th:if="${row.platformForumName() != null}">
+                                                    <dt>Forum</dt><dd th:text="${row.platformForumName()}">—</dd>
+                                                </div>
+                                                <div th:if="${row.platformAuthorCount() != null}">
+                                                    <dt>Authors</dt><dd th:text="${row.platformAuthorCount()}">—</dd>
+                                                </div>
+                                                <div th:if="${row.platformYear() != null}">
+                                                    <dt>Year</dt><dd th:text="${row.platformYear()}">—</dd>
+                                                </div>
+                                            </dl>
+
+                                            <!-- Highlighted "what differs" explanations -->
+                                            <div th:if="${row.publication() != null and row.publication().status().name() == 'DIFFERS'}"
+                                                 class="app-diff-callout mt-3">
+                                                <div class="app-diff-callout__title">
+                                                    <i class="fa-solid fa-circle-info fa-sm" aria-hidden="true"></i>
+                                                    Why publication points differ
+                                                </div>
+                                                <div>
+                                                    Platform <strong th:text="${#numbers.formatDecimal(row.publication().platform(), 1, 2)}">0</strong>
+                                                    vs file <strong th:text="${#numbers.formatDecimal(row.publication().file(), 1, 2)}">0</strong>.
+                                                    <ul class="app-diff-list">
+                                                        <li th:if="${row.categoryDiffers()}">
+                                                            Category: platform <strong th:text="${row.platformCategory()}">A</strong>,
+                                                            file <strong th:text="${row.fileCategory()}">C</strong>
+                                                        </li>
+                                                        <li th:if="${row.authorCountDiffers()}">
+                                                            Authors: platform <strong th:text="${row.platformAuthorCount()}">7</strong>,
+                                                            file <strong th:text="${row.fileAuthorCount()}">3</strong>
+                                                        </li>
+                                                        <li th:if="${!row.categoryDiffers() and !row.authorCountDiffers()}">
+                                                            Category and author count match — the difference is in another field
+                                                            (workshop flag, citations, or rounding).
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                            <div th:if="${row.citation() != null and row.citation().status().name() == 'DIFFERS'}"
+                                                 class="app-diff-callout mt-3">
+                                                <div class="app-diff-callout__title">
+                                                    <i class="fa-solid fa-circle-info fa-sm" aria-hidden="true"></i>
+                                                    Why citation points differ
+                                                </div>
+                                                <div>
+                                                    Platform <strong th:text="${#numbers.formatDecimal(row.citation().platform(), 1, 2)}">0</strong>
+                                                    vs file <strong th:text="${#numbers.formatDecimal(row.citation().file(), 1, 2)}">0</strong>.
+                                                    <ul class="app-diff-list">
+                                                        <li th:if="${row.citationsOnlyInFile() > 0}">
+                                                            <strong th:text="${row.citationsOnlyInFile()}">0</strong>
+                                                            citation(s) only in your file
+                                                        </li>
+                                                        <li th:if="${row.citationsOnlyInPlatform() > 0}">
+                                                            <strong th:text="${row.citationsOnlyInPlatform()}">0</strong>
+                                                            citation(s) only in the platform
+                                                        </li>
+                                                        <li th:if="${row.citationsDiffering() > 0}">
+                                                            <strong th:text="${row.citationsDiffering()}">0</strong>
+                                                            citation(s) with a different score
+                                                        </li>
+                                                    </ul>
+                                                    See the per-citation breakdown below.
+                                                </div>
+                                            </div>
+
+                                            <!-- Per-citation breakdown -->
+                                            <div th:if="${row.citationBreakdown() != null and !row.citationBreakdown().isEmpty()}"
+                                                 class="mt-3">
+                                                <div class="app-detail-grid__heading">Individual citations</div>
+                                                <table class="table table-sm app-subtable mb-0">
+                                                    <thead>
+                                                    <tr>
+                                                        <th scope="col">Citing publication</th>
+                                                        <th scope="col" class="app-table__cell--numeric">Platform</th>
+                                                        <th scope="col" class="app-table__cell--numeric">File</th>
+                                                    </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                    <tr th:each="cit : ${row.citationBreakdown()}"
+                                                        th:classappend="${cit.status().name() != 'MATCH' ? 'app-subtable__row--diff' : ''}">
+                                                        <td th:text="${cit.citingTitle()}">citing</td>
+                                                        <td class="app-table__cell--numeric">
+                                                            <th:block th:if="${cit.platform() != null}">
+                                                                <span th:text="${#numbers.formatDecimal(cit.platform(), 1, 2)}">0</span><span
+                                                                      th:if="${cit.delta() != null and cit.delta() != 0.0}"
+                                                                      th:class="${cit.delta() > 0 ? 'app-delta app-delta--pos' : 'app-delta app-delta--neg'}"
+                                                                      th:text="|(${cit.delta() > 0 ? '+' : ''}${#numbers.formatDecimal(cit.delta(), 1, 2)})|">(+0)</span>
+                                                            </th:block>
+                                                            <th:block th:unless="${cit.platform() != null}">—</th:block>
+                                                        </td>
+                                                        <td class="app-table__cell--numeric"
+                                                            th:text="${cit.file() != null ? #numbers.formatDecimal(cit.file(), 1, 2) : '—'}">—</td>
+                                                    </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <!-- Citations found in duplicate sheets for this title -->
+                                            <div th:if="${row.duplicateCitationGroups() != null and !row.duplicateCitationGroups().isEmpty()}"
+                                                 class="mt-3"
+                                                 th:each="dup, dupIdx : ${row.duplicateCitationGroups()}">
+                                                <div class="app-dup-warning">
+                                                    <i class="fa-solid fa-triangle-exclamation fa-sm" aria-hidden="true"></i>
+                                                    <span>
+                                                        Found in an additional citation sheet that re-used this title
+                                                        (<span th:text="${#numbers.formatDecimal(dup.totalFileScore(), 1, 2)}">0</span> pts).
+                                                        <th:block th:if="${dup.suggestedActualTitle() != null}">
+                                                            These likely belong to:
+                                                            <strong th:text="${dup.suggestedActualTitle()}">paper</strong>
+                                                            (<span th:text="${dup.suggestionOverlap()}">0</span> matching citations) — is this correct?
+                                                        </th:block>
+                                                        <th:block th:unless="${dup.suggestedActualTitle() != null}">
+                                                            Could not match these to another paper automatically.
+                                                        </th:block>
+                                                    </span>
+                                                </div>
+                                                <table class="table table-sm app-subtable mb-0">
+                                                    <thead>
+                                                    <tr>
+                                                        <th scope="col">Citing publication</th>
+                                                        <th scope="col" class="app-table__cell--numeric">File</th>
+                                                    </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                    <tr th:each="cit : ${dup.citations()}">
+                                                        <td th:text="${cit.citingTitle()}">citing</td>
+                                                        <td class="app-table__cell--numeric"
+                                                            th:text="${cit.file() != null ? #numbers.formatDecimal(cit.file(), 1, 2) : '—'}">—</td>
+                                                    </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </th:block>
+                                </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Perspectiva D activities -->
+                    <div th:if="${comparison.activityBlocks() != null and !comparison.activityBlocks().isEmpty()}"
+                         class="app-table-section mt-4">
+                      <div class="app-table-section__surface">
+                        <div class="app-table-section__header app-table-toolbar">
+                            <h2 class="app-table-section__title">Perspectiva D activities</h2>
+                        </div>
+                        <div class="app-table-section__body">
+                          <div class="app-table-scroll">
+                            <table class="table table-bordered app-table mb-0">
+                                <thead>
+                                <tr>
+                                    <th scope="col" style="width:2.5rem"><span class="sr-only">Expand</span></th>
+                                    <th scope="col">Block</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col" class="app-table__cell--numeric">Platform</th>
+                                    <th scope="col" class="app-table__cell--numeric">File</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <th:block th:each="block, bi : ${comparison.activityBlocks()}">
+                                    <tr>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-link p-0 app-row-toggle"
+                                                    th:attr="data-target=${'act-detail-' + bi.index},aria-controls=${'act-detail-' + bi.index}"
+                                                    aria-expanded="false"
+                                                    th:aria-label="'Show details for ' + ${block.blockName()}">
+                                                <i class="fa-solid fa-chevron-right fa-xs app-row-toggle__icon" aria-hidden="true"></i>
+                                            </button>
+                                        </td>
+                                        <td>
+                                            <span th:text="${block.blockName()}">block</span>
+                                            <span th:if="${block.hasImportable()}" class="app-chip app-chip--differs ms-2">
+                                                <i class="fa-solid fa-circle-plus fa-xs" aria-hidden="true"></i>
+                                                <span th:text="${#lists.size(block.importable())}">0</span> importable
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span th:if="${block.rowMatches()}" class="app-chip app-chip--match">
+                                                <i class="fa-solid fa-check fa-xs" aria-hidden="true"></i> Match
+                                            </span>
+                                            <span th:unless="${block.rowMatches()}" class="app-chip app-chip--differs">
+                                                <i class="fa-solid fa-triangle-exclamation fa-xs" aria-hidden="true"></i> Differs
+                                            </span>
+                                        </td>
+                                        <td class="app-table__cell--numeric">
+                                            <span th:text="${#numbers.formatDecimal(block.platformTotal(), 1, 2)}">0</span><span
+                                                  th:if="${block.delta() != null and block.delta() != 0.0}"
+                                                  th:class="${block.delta() > 0 ? 'app-delta app-delta--pos' : 'app-delta app-delta--neg'}"
+                                                  th:text="|(${block.delta() > 0 ? '+' : ''}${#numbers.formatDecimal(block.delta(), 1, 2)})|">(+0)</span>
+                                        </td>
+                                        <td class="app-table__cell--numeric"
+                                            th:text="${#numbers.formatDecimal(block.fileTotal(), 1, 2)}">0</td>
+                                    </tr>
+                                    <tr class="app-row-detail is-collapsed" th:attr="id=${'act-detail-' + bi.index}" hidden>
+                                        <td></td>
+                                        <td colspan="4">
+                                            <!-- Matched activities -->
+                                            <th:block th:if="${!block.matched().isEmpty()}">
+                                                <div class="app-detail-grid__heading">Matched activities</div>
+                                                <table class="table table-sm app-subtable mb-2">
+                                                    <thead><tr>
+                                                        <th scope="col">Activity</th>
+                                                        <th scope="col" class="app-table__cell--numeric">Platform</th>
+                                                        <th scope="col" class="app-table__cell--numeric">File</th>
+                                                    </tr></thead>
+                                                    <tbody>
+                                                    <tr th:each="m : ${block.matched()}"
+                                                        th:classappend="${m.status().name() != 'MATCH' ? 'app-subtable__row--diff' : ''}">
+                                                        <td th:text="${m.description()}">desc</td>
+                                                        <td class="app-table__cell--numeric"
+                                                            th:text="${m.platform() != null ? #numbers.formatDecimal(m.platform(), 1, 2) : '—'}">—</td>
+                                                        <td class="app-table__cell--numeric"
+                                                            th:text="${m.file() != null ? #numbers.formatDecimal(m.file(), 1, 2) : '—'}">—</td>
+                                                    </tr>
+                                                    </tbody>
+                                                </table>
+                                            </th:block>
+
+                                            <!-- Importable (file-only) activities -->
+                                            <div th:if="${block.hasImportable()}" class="app-diff-callout mb-2">
+                                                <div class="app-diff-callout__title">
+                                                    <i class="fa-solid fa-circle-plus fa-sm" aria-hidden="true"></i>
+                                                    Activities in your file not found in the platform
+                                                </div>
+                                                <div th:each="imp, ii : ${block.importable()}" class="app-importable">
+                                                    <div class="app-importable__row">
+                                                        <span class="app-importable__desc" th:text="${imp.description()}">desc</span>
+                                                        <span class="app-importable__meta">
+                                                            <span th:if="${imp.category() != null}" th:text="${imp.category()}">cat</span>
+                                                            ·
+                                                            <span th:text="${imp.file() != null ? #numbers.formatDecimal(imp.file(), 1, 2) : '—'}">0</span> pts
+                                                        </span>
+                                                        <button type="button" class="btn btn-sm btn-outline-primary imp-toggle"
+                                                                th:if="${!block.activityOptions().isEmpty()}"
+                                                                th:attr="data-target=${'imp-form-' + bi.index + '-' + ii.index}">
+                                                            <i class="fa-solid fa-plus fa-xs" aria-hidden="true"></i> Add to platform
+                                                        </button>
+                                                        <span th:unless="${!block.activityOptions().isEmpty()}" class="app-importable__meta">
+                                                            (no activity type bound — add via the workspace)
+                                                        </span>
+                                                    </div>
+                                                    <div class="imp-form" th:attr="id=${'imp-form-' + bi.index + '-' + ii.index}" hidden>
+                                                        <div th:if="${#lists.size(block.activityOptions()) > 1}" class="app-form-field mb-2">
+                                                            <label>Activity type</label>
+                                                            <select class="form-control form-control-sm imp-activity-select">
+                                                                <option th:each="opt : ${block.activityOptions()}"
+                                                                        th:value="${opt.activityId()}" th:text="${opt.activityName()}"></option>
+                                                            </select>
+                                                        </div>
+                                                        <input type="hidden" class="imp-activity-single"
+                                                               th:value="${block.activityOptions()[0].activityId()}">
+                                                        <th:block th:each="opt, oi : ${block.activityOptions()}">
+                                                            <div class="imp-fields" th:attr="data-activity-id=${opt.activityId()}"
+                                                                 th:style="${oi.index == 0 ? null : 'display:none'}"
+                                                                 th:with="def=${activityDefs != null ? activityDefs.get(opt.activityId()) : null}">
+                                                                <div class="app-form-grid app-form-grid--two-up">
+                                                                    <div class="app-form-field">
+                                                                        <label>Name</label>
+                                                                        <input type="text" class="form-control form-control-sm imp-name"
+                                                                               th:value="${imp.description()}">
+                                                                    </div>
+                                                                    <div class="app-form-field">
+                                                                        <label>Date</label>
+                                                                        <input type="text" class="form-control form-control-sm imp-date"
+                                                                               placeholder="YYYY-MM-DD">
+                                                                    </div>
+                                                                    <div class="app-form-field"
+                                                                         th:if="${def != null and def.fields != null}" th:each="f : ${def.fields}">
+                                                                        <label th:text="${f.name}">field</label>
+                                                                        <select th:if="${f.allowedValues != null and !f.allowedValues.isEmpty()}"
+                                                                                class="form-control form-control-sm imp-field"
+                                                                                th:attr="data-field-name=${f.name}">
+                                                                            <option value=""></option>
+                                                                            <option th:each="v : ${f.allowedValues}" th:value="${v}" th:text="${v}"></option>
+                                                                        </select>
+                                                                        <input th:unless="${f.allowedValues != null and !f.allowedValues.isEmpty()}"
+                                                                               class="form-control form-control-sm imp-field"
+                                                                               th:attr="data-field-name=${f.name},type=${f.number ? 'number' : 'text'}">
+                                                                    </div>
+                                                                    <div class="app-form-field"
+                                                                         th:if="${def != null and def.referenceFields != null}" th:each="rf : ${def.referenceFields}">
+                                                                        <label th:text="${rf}">ref</label>
+                                                                        <input type="text" class="form-control form-control-sm imp-ref"
+                                                                               th:attr="data-ref-field=${rf}">
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </th:block>
+                                                        <div class="app-form-actions app-form-actions--inline">
+                                                            <button type="button" class="btn btn-sm btn-primary imp-submit">
+                                                                <i class="fa-solid fa-circle-check fa-xs" aria-hidden="true"></i> Add to platform
+                                                            </button>
+                                                            <span class="imp-status app-importable__meta"></span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Only in platform -->
+                                            <th:block th:if="${!block.onlyInPlatform().isEmpty()}">
+                                                <div class="app-detail-grid__heading">Only in platform (not in your file)</div>
+                                                <table class="table table-sm app-subtable mb-0">
+                                                    <tbody>
+                                                    <tr th:each="op : ${block.onlyInPlatform()}">
+                                                        <td th:text="${op.description()}">desc</td>
+                                                        <td class="app-table__cell--numeric"
+                                                            th:text="${op.platform() != null ? #numbers.formatDecimal(op.platform(), 1, 2) : '—'}">—</td>
+                                                    </tr>
+                                                    </tbody>
+                                                </table>
+                                            </th:block>
+                                        </td>
+                                    </tr>
+                                </th:block>
+                                </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                </th:block>
+
+            </main>
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+</div>
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+<script>
+    // Expandable comparison rows.
+    document.addEventListener('click', function (e) {
+        const toggle = e.target.closest('.app-row-toggle');
+        if (!toggle) return;
+        const id = toggle.getAttribute('data-target');
+        const detail = document.getElementById(id);
+        if (!detail) return;
+        const expanded = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.setAttribute('aria-expanded', String(!expanded));
+        detail.hidden = expanded;
+        detail.classList.toggle('is-collapsed', expanded);
+        toggle.querySelector('.app-row-toggle__icon')
+            ?.classList.toggle('fa-rotate-90', !expanded);
+    });
+
+    // Dropzone: filename display + drag/drop.
+    (function () {
+        const dz = document.getElementById('import-dropzone');
+        const input = document.getElementById('import-file');
+        const filename = document.getElementById('import-filename');
+        if (!dz || !input) return;
+
+        function showName() {
+            if (input.files && input.files.length) {
+                filename.textContent = input.files[0].name;
+                filename.hidden = false;
+                dz.classList.add('has-file');
+            } else {
+                filename.hidden = true;
+                dz.classList.remove('has-file');
+            }
+        }
+        input.addEventListener('change', showName);
+
+        ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => {
+            e.preventDefault();
+            dz.classList.add('is-dragover');
+        }));
+        ['dragleave', 'dragend', 'drop'].forEach(ev => dz.addEventListener(ev, e => {
+            e.preventDefault();
+            dz.classList.remove('is-dragover');
+        }));
+        dz.addEventListener('drop', e => {
+            if (e.dataTransfer && e.dataTransfer.files.length) {
+                input.files = e.dataTransfer.files;
+                showName();
+            }
+        });
+    })();
+
+    // Build POST headers including the CSRF token from the page meta tags (Spring enforces CSRF
+    // for non-/api/** endpoints, including /user/workspace/activities/create).
+    function csrfHeaders() {
+        const headerMeta = document.querySelector('meta[name="_csrf_header"]');
+        const tokenMeta = document.querySelector('meta[name="_csrf"]');
+        const headers = { 'Content-Type': 'application/json' };
+        if (headerMeta && tokenMeta && headerMeta.content && tokenMeta.content) {
+            headers[headerMeta.content] = tokenMeta.content;
+        }
+        return headers;
+    }
+
+    // ── Importable activity inline add-form ──────────────────────────────────
+    (function () {
+        // Toggle a form open/closed; pre-fill the date from a year in the description if found.
+        document.addEventListener('click', function (e) {
+            const t = e.target.closest('.imp-toggle');
+            if (!t) return;
+            const form = document.getElementById(t.getAttribute('data-target'));
+            if (!form) return;
+            form.hidden = !form.hidden;
+            if (!form.hidden) {
+                const nameInput = form.querySelector('.imp-fields:not([style*="none"]) .imp-name');
+                const dateInput = form.querySelector('.imp-fields:not([style*="none"]) .imp-date');
+                if (nameInput && dateInput && !dateInput.value) {
+                    const m = (nameInput.value || '').match(/\b(19|20)\d{2}\b/);
+                    if (m) dateInput.value = m[0];
+                }
+            }
+        });
+
+        // Clear the invalid highlight as soon as the user types into a flagged field.
+        document.addEventListener('input', function (e) {
+            const i = e.target.closest('.imp-name, .imp-date, .imp-field, .imp-ref');
+            if (i && i.value && i.value.trim()) i.classList.remove('is-invalid');
+        });
+
+        // Switch field group when the activity type changes.
+        document.addEventListener('change', function (e) {
+            const sel = e.target.closest('.imp-activity-select');
+            if (!sel) return;
+            const form = sel.closest('.imp-form');
+            form.querySelectorAll('.imp-fields').forEach(g => {
+                g.style.display = g.getAttribute('data-activity-id') === sel.value ? '' : 'none';
+            });
+        });
+
+        // Submit → create the activity instance via the existing workspace endpoint.
+        document.addEventListener('click', function (e) {
+            const btn = e.target.closest('.imp-submit');
+            if (!btn) return;
+            const form = btn.closest('.imp-form');
+            const sel = form.querySelector('.imp-activity-select');
+            const activityId = sel ? sel.value : form.querySelector('.imp-activity-single').value;
+            const group = Array.from(form.querySelectorAll('.imp-fields'))
+                .find(g => g.getAttribute('data-activity-id') === activityId);
+            if (!group) return;
+            const status = form.querySelector('.imp-status');
+
+            // Validate: every field in the chosen activity group must be filled.
+            const inputs = group.querySelectorAll('.imp-name, .imp-date, .imp-field, .imp-ref');
+            let firstInvalid = null;
+            inputs.forEach(i => {
+                const empty = !i.value || !i.value.trim();
+                i.classList.toggle('is-invalid', empty);
+                if (empty && !firstInvalid) firstInvalid = i;
+            });
+            if (firstInvalid) {
+                status.textContent = 'Please fill in all fields.';
+                status.classList.remove('app-delta--pos');
+                status.classList.add('app-delta--neg');
+                firstInvalid.focus();
+                return;
+            }
+
+            const fields = {};
+            group.querySelectorAll('.imp-field').forEach(i => {
+                if (i.value) fields[i.getAttribute('data-field-name')] = i.value;
+            });
+            const referenceFields = {};
+            group.querySelectorAll('.imp-ref').forEach(i => {
+                if (i.value) referenceFields[i.getAttribute('data-ref-field')] = i.value;
+            });
+            const payload = {
+                activityId: activityId,
+                name: group.querySelector('.imp-name').value,
+                date: group.querySelector('.imp-date').value,
+                fields: fields,
+                referenceFields: referenceFields
+            };
+            btn.disabled = true;
+            status.classList.remove('app-delta--pos', 'app-delta--neg');
+            status.textContent = 'Adding…';
+            fetch('/user/workspace/activities/create', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: csrfHeaders(),
+                body: JSON.stringify(payload)
+            }).then(r => {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            }).then(created => {
+                if (!created || !created.id) throw new Error('not saved');
+                status.textContent = 'Added ✓ — refresh the report to see it counted.';
+                status.classList.add('app-delta--pos');
+            }).catch(err => {
+                btn.disabled = false;
+                status.textContent = 'Could not add — please try again (' + err.message + ').';
+                status.classList.add('app-delta--neg');
+            });
+        });
+    })();
+</script>
+</body>
+</html>

@@ -640,3 +640,200 @@
   padding-bottom: 0.2rem;
   height: auto;
 }
+
+/* ── Import score-verification: expandable comparison rows (H50.3) ──────── */
+.app-row-toggle {
+  border: none;
+  background: transparent;
+  color: var(--app-text-muted, #6b7280);
+  line-height: 1;
+  cursor: pointer;
+}
+.app-row-toggle:hover { color: var(--app-primary, #2563eb); }
+.app-row-toggle__icon { transition: transform 150ms ease-in-out; }
+.app-row-toggle__icon.fa-rotate-90 { transform: rotate(90deg); }
+
+.app-row-detail.is-collapsed { display: none; }
+
+.app-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.5rem 1.5rem;
+}
+.app-detail-grid dt {
+  font-size: 0.72rem;
+  font-weight: 500;
+  text-transform: none;
+  color: var(--app-text-muted, #6b7280);
+  margin: 0;
+}
+.app-detail-grid dd {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+/* ── Import dropzone (H50.3) ────────────────────────────────────────────── */
+.app-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 2rem 1.5rem;
+  border: 2px dashed var(--app-border, #d1d5db);
+  border-radius: 0.75rem;
+  background: var(--app-surface-muted, #f9fafb);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease;
+  margin: 0;
+}
+.app-dropzone:hover { border-color: var(--app-primary, #2563eb); }
+.app-dropzone:focus-within {
+  border-color: var(--app-primary, #2563eb);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+  outline: none;
+}
+.app-dropzone.is-dragover {
+  border-color: var(--app-primary, #2563eb);
+  background: rgba(37, 99, 235, 0.06);
+}
+.app-dropzone.has-file { border-style: solid; }
+
+/* Visually hidden but focusable native input. */
+.app-dropzone__input {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0);
+  white-space: nowrap; border: 0;
+}
+.app-dropzone__icon {
+  font-size: 1.75rem;
+  color: var(--app-text-muted, #6b7280);
+}
+.app-dropzone.is-dragover .app-dropzone__icon,
+.app-dropzone:hover .app-dropzone__icon { color: var(--app-primary, #2563eb); }
+.app-dropzone__primary { font-size: 0.95rem; }
+.app-dropzone__browse { color: var(--app-primary, #2563eb); font-weight: 500; }
+.app-dropzone__filename {
+  font-size: 0.9rem;
+  font-weight: 600;
+  word-break: break-all;
+}
+.app-dropzone__hint { font-size: 0.78rem; color: var(--app-text-muted, #6b7280); }
+
+/* ── Import: per-citation breakdown sub-table (H50.3) ───────────────────── */
+.app-detail-grid__heading {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--app-text-muted, #6b7280);
+  margin-bottom: 0.35rem;
+}
+.app-subtable {
+  font-size: 0.85rem;
+  background: var(--app-surface, #fff);
+}
+.app-subtable th {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--app-text-muted, #6b7280);
+}
+.app-subtable__row--diff {
+  background: rgba(245, 158, 11, 0.08);
+}
+
+/* ── Import: inline score delta next to the platform value (H50.3) ──────── */
+.app-delta {
+  font-size: 0.8em;
+  margin-left: 0.2rem;
+  white-space: nowrap;
+}
+.app-delta--pos { color: var(--app-success, #16a34a); }
+.app-delta--neg { color: var(--app-danger, #dc2626); }
+
+/* ── Import: duplicate-citation-sheet warning (H50.3) ───────────────────── */
+.app-dup-warning {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+  border-radius: 0.5rem;
+  background: rgba(245, 158, 11, 0.10);
+  color: var(--app-warning-emphasis, #92400e);
+  font-size: 0.85rem;
+}
+.app-dup-warning i { margin-top: 0.15rem; }
+
+/* ── Import: status chips + diff list (H50.3) ───────────────────────────── */
+.app-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.app-chip--match {
+  background: rgba(22, 163, 74, 0.12);
+  color: var(--app-success-emphasis, #15803d);
+}
+.app-chip--differs {
+  background: rgba(245, 158, 11, 0.16);
+  color: var(--app-warning-emphasis, #92400e);
+}
+.app-diff-list {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+}
+.app-diff-list li { margin-bottom: 0.15rem; }
+
+/* ── Import: highlighted "why it differs" callout (H50.3) ───────────────── */
+.app-diff-callout {
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.5rem;
+  border-left: 3px solid var(--app-warning, #f59e0b);
+  background: rgba(245, 158, 11, 0.10);
+  font-size: 0.88rem;
+}
+.app-diff-callout__title {
+  font-weight: 600;
+  color: var(--app-warning-emphasis, #92400e);
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* ── Import: importable activity add-form (H50.3.e) ─────────────────────── */
+.app-importable {
+  padding: 0.4rem 0;
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+.app-importable:first-of-type { border-top: none; }
+.app-importable__row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.app-importable__desc { font-weight: 500; }
+.app-importable__meta { font-size: 0.8rem; color: var(--app-text-muted, #6b7280); }
+.imp-form {
+  margin-top: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--app-surface, #fff);
+  border: 1px solid var(--app-border, #e5e7eb);
+}
+
+/* ── Import: inline add-form validation (H50.3.e) ───────────────────────── */
+.imp-form .is-invalid {
+  border-color: var(--app-danger, #dc2626);
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.18);
+}

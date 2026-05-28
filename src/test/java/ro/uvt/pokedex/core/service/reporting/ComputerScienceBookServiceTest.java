@@ -57,6 +57,40 @@ class ComputerScienceBookServiceTest {
     }
 
     @Test
+    void chapterFuzzyMatchesPalgraveMacmillanLtdToPalgraveAndScoresB() {
+        ComputerScienceBookService service = new ComputerScienceBookService(senseRankingRepository, lookupPort);
+        when(lookupPort.getForum("forum-1")).thenReturn(forumWithPublisher("Palgrave Macmillan Ltd."));
+        when(senseRankingRepository.findAllByNameIgnoreCase("Palgrave Macmillan Ltd.")).thenReturn(List.of());
+        SenseBookRanking palgrave = new SenseBookRanking();
+        palgrave.setName("Palgrave");
+        palgrave.setRanking(SenseBookRanking.Rank.B);
+        SenseBookRanking distractor = new SenseBookRanking();
+        distractor.setName("Some Other Press");
+        distractor.setRanking(SenseBookRanking.Rank.D);
+        when(senseRankingRepository.findAll()).thenReturn(List.of(distractor, palgrave));
+
+        Score score = service.getScore(publication("ch", "ch"), indicator());
+
+        assertEquals(4.0, score.getScore());
+        assertEquals("SCOPUS+SENSE", score.getScoringSource());
+        assertEquals("B", score.getCoreRankingEquivalent());
+    }
+
+    @Test
+    void unlistedSenseRankingUsesEnumSafeNonRankCategory() {
+        ComputerScienceBookService service = new ComputerScienceBookService(senseRankingRepository, lookupPort);
+        when(lookupPort.getForum("forum-1")).thenReturn(forumWithPublisher("Unlisted Publisher"));
+        when(senseRankingRepository.findAllByNameIgnoreCase("Unlisted Publisher")).thenReturn(List.of(ranking(SenseBookRanking.Rank.D)));
+
+        Score score = service.getScore(publication("bk", null), indicator());
+
+        assertEquals(1.0, score.getScore());
+        assertEquals("NON_RANK", score.getCoreRankingEquivalent());
+        assertEquals("SCOPUS+SENSE", score.getScoringSource());
+        assertEquals("D", score.getScoringInfo().get("resolvedRank"));
+    }
+
+    @Test
     void activityWithoutPublisherDoesNotScore() {
         ComputerScienceBookService service = new ComputerScienceBookService(senseRankingRepository, lookupPort);
         ActivityInstance activity = new ActivityInstance();

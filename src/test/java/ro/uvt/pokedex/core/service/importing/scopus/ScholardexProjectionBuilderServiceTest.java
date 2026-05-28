@@ -353,8 +353,10 @@ class ScholardexProjectionBuilderServiceTest {
         verify(ps).setString(2, "Wizard Forum A");
         verify(ps).setString(3, "1111-2222");
         verify(ps).setString(4, "3333-4444");
-        verify(ps).setString(5, "Conference");
-        verify(ps).setString(9, "ev-a");
+        verify(ps).setString(5, null);
+        verify(ps).setString(6, "Conference");
+        verify(ps).setString(7, null);
+        verify(ps).setString(11, "ev-a");
         verify(ps, times(2)).setTimestamp(anyInt(), any(Timestamp.class));
     }
 

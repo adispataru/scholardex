@@ -188,6 +188,7 @@ public class PublicationWizardFacade {
         payload.put("eIssn", normalizeIssnOrBlank(command.getWizardForumEIssn()));
         payload.put("isbn", trim(command.getWizardForumIsbn()));
         payload.put("aggregationType", trim(command.getWizardForumAggregationType()));
+        payload.put("publisher", trim(command.getWizardForumPublisher()));
 
         payload.put("fund_acr", "");
         payload.put("fund_no", "");

@@ -45,6 +45,42 @@
   flex: 1 1 auto;
 }
 
+.app-shell-topbar__nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.app-shell-topbar__nav-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.85rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--app-color-text-muted, var(--app-color-text-strong));
+  text-decoration: none;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.app-shell-topbar__nav-link:hover,
+.app-shell-topbar__nav-link:focus {
+  background: color-mix(in srgb, var(--app-color-text-strong) 8%, transparent);
+  color: var(--app-color-text-strong);
+  text-decoration: none;
+}
+
+.app-shell-topbar__nav-link:focus-visible {
+  outline: 2px solid var(--app-color-focus);
+  outline-offset: 2px;
+}
+
+.app-shell-topbar__nav-link.is-active {
+  background: color-mix(in srgb, var(--app-color-accent, var(--app-color-text-strong)) 14%, transparent);
+  color: var(--app-color-text-strong);
+}
+
 .app-shell-topbar__utilities {
   display: flex;
   align-items: center;
@@ -218,6 +254,12 @@
 
   .app-shell-topbar__spacer {
     display: none;
+  }
+
+  .app-shell-topbar__nav {
+    flex: 1 1 100%;
+    order: 3;
+    margin-top: 0.5rem;
   }
 
   .app-shell-topbar__utilities {

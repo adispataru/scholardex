@@ -499,6 +499,8 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         fact.setTitle(scopusFact.getTitle());
         fact.setTitleNormalized(titleNormalized);
         fact.setEid(scopusFact.getEid());
+        fact.setPii(scopusFact.getPii());
+        fact.setPubmedId(scopusFact.getPubmedId());
         fact.setSubtype(scopusFact.getSubtype());
         fact.setSubtypeDescription(scopusFact.getSubtypeDescription());
         fact.setScopusSubtype(scopusFact.getScopusSubtype());
@@ -515,6 +517,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         fact.setCoverDate(scopusFact.getCoverDate());
         fact.setCoverDisplayDate(scopusFact.getCoverDisplayDate());
         fact.setDescription(scopusFact.getDescription());
+        fact.setAuthKeywords(scopusFact.getAuthKeywords() == null ? List.of() : new ArrayList<>(scopusFact.getAuthKeywords()));
         fact.setCitedByCount(scopusFact.getCitedByCount());
         fact.setOpenAccess(scopusFact.getOpenAccess());
         fact.setFreetoread(scopusFact.getFreetoread());
@@ -1183,6 +1186,8 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
     private ScopusPublicationFact toScopusBridgeFact(ScholardexPublicationFact fact) {
         ScopusPublicationFact bridge = new ScopusPublicationFact();
         bridge.setEid(fact.getEid());
+        bridge.setPii(fact.getPii());
+        bridge.setPubmedId(fact.getPubmedId());
         bridge.setDoi(fact.getDoi());
         bridge.setTitle(fact.getTitle());
         bridge.setSubtype(fact.getSubtype());
@@ -1199,6 +1204,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         bridge.setCoverDate(fact.getCoverDate());
         bridge.setCoverDisplayDate(fact.getCoverDisplayDate());
         bridge.setDescription(fact.getDescription());
+        bridge.setAuthKeywords(fact.getAuthKeywords());
         bridge.setCitedByCount(fact.getCitedByCount());
         bridge.setOpenAccess(fact.getOpenAccess());
         bridge.setFreetoread(fact.getFreetoread());

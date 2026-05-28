@@ -64,6 +64,23 @@
       .replaceAll("'", '&#39;');
   }
 
+  function displayText(value, fallback) {
+    if (value == null || String(value).trim() === '') {
+      return fallback;
+    }
+    return String(value).trim();
+  }
+
+  function displayTitle(value, fallback) {
+    return displayText(value, fallback)
+      .replace(/<\s*sup\s*>(.*?)<\s*\/\s*sup\s*>/gi, '^$1')
+      .replace(/<\s*sub\s*>(.*?)<\s*\/\s*sub\s*>/gi, '_$1')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/\s+([\^_])/g, '$1')
+      .trim();
+  }
+
   function renderRows(items) {
     if (!items || items.length === 0) {
       els.tableBody.innerHTML = '';
@@ -73,15 +90,17 @@
     els.tableBody.innerHTML = items.map(function (item) {
       const forumHref = item.forumId ? '/forums/' + encodeURIComponent(item.forumId) : null;
       const publicationHref = item.id ? '/publications/' + encodeURIComponent(item.id) : null;
+      const titleLabel = displayTitle(item.title, 'Untitled publication ' + (item.id || ''));
+      const forumLabel = displayText(item.forumName, item.forumId ? 'Untitled forum ' + item.forumId : '');
 
       const titleCell = publicationHref
-        ? '<a href="' + publicationHref + '">' + escapeHtml(item.title || '—') + '</a>'
-        : escapeHtml(item.title || '—');
+        ? '<a href="' + publicationHref + '">' + escapeHtml(titleLabel) + '</a>'
+        : escapeHtml(titleLabel);
 
-      const forumCell = item.forumName
+      const forumCell = forumLabel
         ? (forumHref
-            ? '<a href="' + forumHref + '">' + escapeHtml(item.forumName) + '</a>'
-            : escapeHtml(item.forumName))
+            ? '<a href="' + forumHref + '">' + escapeHtml(forumLabel) + '</a>'
+            : escapeHtml(forumLabel))
         : '<span class="app-table__cell--muted">—</span>';
 
       const authors = Array.isArray(item.authorNames) && item.authorNames.length > 0

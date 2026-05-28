@@ -76,6 +76,7 @@ public class ScopusFactBuilderService {
 
         List<PublicationWorkItem> publicationEvents = new ArrayList<>();
         List<CitationWorkItem> citationEvents = new ArrayList<>();
+        List<ForumWorkItem> forumEvents = new ArrayList<>();
 
         for (ScopusImportEvent event : events) {
             result.markProcessed();
@@ -98,6 +99,10 @@ public class ScopusFactBuilderService {
                     citationEvents.add(new CitationWorkItem(event, payload));
                     continue;
                 }
+                if (event.getEntityType() == ScopusImportEntityType.FORUM) {
+                    forumEvents.add(new ForumWorkItem(event, payload));
+                    continue;
+                }
                 result.markSkipped(sample(event, "entity type not supported in H17.4: " + event.getEntityType()));
             } catch (Exception e) {
                 result.markError(sample(event, e.getMessage()));
@@ -106,15 +111,17 @@ public class ScopusFactBuilderService {
             }
         }
 
-        log.info("Scopus fact-builder start: scope={}, totalEvents={}, publications={}, citations={}, chunkSize={}",
+        log.info("Scopus fact-builder start: scope={}, totalEvents={}, publications={}, citations={}, forums={}, chunkSize={}",
                 isBlank(batchId) ? "all-events" : "batch=" + batchId,
                 events.size(),
                 publicationEvents.size(),
                 citationEvents.size(),
+                forumEvents.size(),
                 FACT_BUILD_CHUNK_SIZE);
 
         processPublicationChunks(publicationEvents, result);
         processCitationChunks(citationEvents, result);
+        processForumChunks(forumEvents, result);
 
         log.info("Scopus fact-builder summary: processed={}, imported={}, updated={}, skipped={}, errors={}, sample={}",
                 result.getProcessedCount(), result.getImportedCount(), result.getUpdatedCount(),
@@ -184,6 +191,75 @@ public class ScopusFactBuilderService {
                     timings.saveMs,
                     timings.totalMs);
         }
+    }
+
+    private void processForumChunks(List<ForumWorkItem> forumEvents, ImportProcessingResult result) {
+        int total = forumEvents.size();
+        int totalBatches = total == 0 ? 0 : ((total - 1) / FACT_BUILD_CHUNK_SIZE) + 1;
+
+        int chunkNo = 0;
+        for (int from = 0; from < total; from += FACT_BUILD_CHUNK_SIZE) {
+            chunkNo++;
+            int to = Math.min(total, from + FACT_BUILD_CHUNK_SIZE);
+            int batchIndex = from / FACT_BUILD_CHUNK_SIZE;
+            int importedBefore = result.getImportedCount();
+            int updatedBefore = result.getUpdatedCount();
+            int skippedBefore = result.getSkippedCount();
+            int errorsBefore = result.getErrorCount();
+
+            ChunkTimings timings = upsertForumItems(forumEvents.subList(from, to), result);
+
+            log.info("Scopus fact-builder forum chunk {} complete [batch={} / totalBatches={}]: events={} imported={} updated={} skipped={} errors={} timingsMs[preload={}, process={}, save={}, total={}]",
+                    chunkNo,
+                    batchIndex,
+                    totalBatches,
+                    to - from,
+                    result.getImportedCount() - importedBefore,
+                    result.getUpdatedCount() - updatedBefore,
+                    result.getSkippedCount() - skippedBefore,
+                    result.getErrorCount() - errorsBefore,
+                    timings.preloadMs,
+                    timings.processMs,
+                    timings.saveMs,
+                    timings.totalMs);
+        }
+    }
+
+    private ChunkTimings upsertForumItems(List<ForumWorkItem> items, ImportProcessingResult result) {
+        long startedAtNanos = System.nanoTime();
+
+        Set<String> sourceIds = new LinkedHashSet<>();
+        for (ForumWorkItem item : items) {
+            String sourceId = text(item.payload, "source_id");
+            if (!isBlank(sourceId)) {
+                sourceIds.add(sourceId);
+            }
+        }
+        PublicationChunkState state = new PublicationChunkState(
+                Map.of(),
+                mapByKey(forumFactRepository.findBySourceIdIn(sourceIds), ScopusForumFact::getSourceId),
+                Map.of(),
+                Map.of(),
+                Map.of()
+        );
+        long preloadFinishedAtNanos = System.nanoTime();
+
+        for (ForumWorkItem item : items) {
+            upsertForumFact(item.event, item.payload, result, state);
+        }
+        long processFinishedAtNanos = System.nanoTime();
+
+        if (!state.pendingForumSaves.isEmpty()) {
+            forumFactRepository.saveAll(state.pendingForumSaves.values());
+        }
+        long saveFinishedAtNanos = System.nanoTime();
+
+        return new ChunkTimings(
+                nanosToMillis(preloadFinishedAtNanos - startedAtNanos),
+                nanosToMillis(processFinishedAtNanos - preloadFinishedAtNanos),
+                nanosToMillis(saveFinishedAtNanos - processFinishedAtNanos),
+                nanosToMillis(saveFinishedAtNanos - startedAtNanos)
+        );
     }
 
     private ChunkTimings upsertPublicationItems(List<PublicationWorkItem> items, ImportProcessingResult result) {
@@ -380,6 +456,8 @@ public class ScopusFactBuilderService {
         String fundingKey = normalizeFundingKey(text(payload, "fund_acr"), text(payload, "fund_no"), text(payload, "fund_sponsor"));
         fact.setDoi(text(payload, "doi"));
         fact.setEid(eid);
+        fact.setPii(text(payload, "pii"));
+        fact.setPubmedId(text(payload, "pubmed_id"));
         fact.setTitle(text(payload, "title"));
         fact.setSubtype(subtype);
         fact.setSubtypeDescription(subtypeDescription);
@@ -397,6 +475,7 @@ public class ScopusFactBuilderService {
         fact.setCoverDate(text(payload, "coverDate"));
         fact.setCoverDisplayDate(text(payload, "coverDisplayDate"));
         fact.setDescription(text(payload, "description"));
+        fact.setAuthKeywords(splitAuthKeywords(text(payload, "authkeywords")));
         fact.setCitedByCount(intValue(payload, "citedby_count"));
         fact.setOpenAccess(boolValue(payload, "openaccess"));
         fact.setFreetoread(text(payload, "freetoread"));
@@ -484,12 +563,22 @@ public class ScopusFactBuilderService {
             fact = new ScopusForumFact();
             state.forumBySourceId.put(sourceId, fact);
         }
+        String incomingIsbnForHash = text(payload, "isbn");
+        String effectiveIsbnForHash = (incomingIsbnForHash != null && !incomingIsbnForHash.isBlank())
+                ? incomingIsbnForHash
+                : fact.getIsbn();
+        String incomingPublisherForHash = text(payload, "publisher");
+        String effectivePublisherForHash = (incomingPublisherForHash != null && !incomingPublisherForHash.isBlank())
+                ? incomingPublisherForHash
+                : fact.getPublisher();
         String payloadHash = hashKey("forum",
                 sourceId,
                 text(payload, "publicationName"),
                 normalizeIssn(text(payload, "issn")),
                 normalizeIssn(text(payload, "eIssn")),
-                text(payload, "aggregationType"));
+                effectiveIsbnForHash,
+                text(payload, "aggregationType"),
+                effectivePublisherForHash);
         if (!created && samePayloadHash(fact.getLastPayloadHash(), payloadHash)) {
             refreshLineageForReplay(fact, event);
             state.pendingForumSaves.put(sourceId, fact);
@@ -504,7 +593,21 @@ public class ScopusFactBuilderService {
         fact.setPublicationName(text(payload, "publicationName"));
         fact.setIssn(normalizeIssn(text(payload, "issn")));
         fact.setEIssn(normalizeIssn(text(payload, "eIssn")));
+        // For enrichment fields not always supplied by Scopus bulk search (publisher, isbn),
+        // never overwrite a previously-stored non-blank value with a blank from a new payload.
+        String incomingIsbn = text(payload, "isbn");
+        if (incomingIsbn != null && !incomingIsbn.isBlank()) {
+            fact.setIsbn(incomingIsbn);
+        } else if (fact.getIsbn() == null) {
+            fact.setIsbn(incomingIsbn);
+        }
         fact.setAggregationType(text(payload, "aggregationType"));
+        String incomingPublisher = text(payload, "publisher");
+        if (incomingPublisher != null && !incomingPublisher.isBlank()) {
+            fact.setPublisher(incomingPublisher);
+        } else if (fact.getPublisher() == null) {
+            fact.setPublisher(incomingPublisher);
+        }
         applyLineage(fact, event);
         fact.setLastPayloadHash(payloadHash);
         fact.setLastMaterializedAt(now);
@@ -752,6 +855,21 @@ public class ScopusFactBuilderService {
         return splitSemicolon(decodeHtmlEntities(value));
     }
 
+    private List<String> splitAuthKeywords(String value) {
+        if (isBlank(value)) {
+            return List.of();
+        }
+        String[] raw = value.split("\\|", -1);
+        List<String> out = new ArrayList<>(raw.length);
+        for (String part : raw) {
+            String trimmed = trim(part);
+            if (!isBlank(trimmed)) {
+                out.add(trimmed);
+            }
+        }
+        return out;
+    }
+
     private List<String> splitDash(String value) {
         if (isBlank(value)) {
             return List.of();
@@ -969,6 +1087,9 @@ public class ScopusFactBuilderService {
     }
 
     private record PublicationWorkItem(ScopusImportEvent event, JsonNode payload) {
+    }
+
+    private record ForumWorkItem(ScopusImportEvent event, JsonNode payload) {
     }
 
     private record CitationWorkItem(ScopusImportEvent event, JsonNode payload) {

@@ -1,5 +1,7 @@
 package ro.uvt.pokedex.core.service.application.model;
 
+import ro.uvt.pokedex.core.model.CoreConferenceRanking;
+import ro.uvt.pokedex.core.model.SenseBookRanking;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
@@ -8,6 +10,8 @@ public record ScholardexForumDetailViewModel(
         ForumType forumType,
         WoSRanking wosRanking,
         boolean wosIndexed,
+        CoreConferenceRanking coreRanking,
+        SenseBookRanking senseBookRanking,
         boolean showCorePlaceholder,
         boolean showBookPlaceholder,
         boolean showGenericPlaceholder

@@ -21,6 +21,10 @@ import ro.uvt.pokedex.core.service.application.UserIndicatorResultService;
 import ro.uvt.pokedex.core.service.application.UserReportFacade;
 import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
 import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
+import ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade;
+import ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat;
+import org.springframework.http.MediaType;
+import org.springframework.core.io.ByteArrayResource;
 
 import java.time.Instant;
 import java.util.*;
@@ -39,6 +43,9 @@ public class EvaluationWorkspaceController {
     private final UserIndicatorResultService userIndicatorResultService;
     private final UserIndividualReportRunRepository userIndividualReportRunRepository;
     private final EvaluationSnapshotRepository evaluationSnapshotRepository;
+    private final ReportExportFacade reportExportFacade;
+    private final ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade reportImportVerificationFacade;
+    private final ro.uvt.pokedex.core.service.application.UserActivityInstanceFacade userActivityInstanceFacade;
 
     // ── MVC: main evaluation page ────────────────────────────────────────────
 
@@ -153,6 +160,7 @@ public class EvaluationWorkspaceController {
         model.addAttribute("runMetaSource", run.source());
         model.addAttribute("priorRuns", priorRuns);
         model.addAttribute("user", currentUser);
+        model.addAttribute("importAvailable", reportImportVerificationFacade.isImportAvailable(resolvedReportId));
         return "user/individual-report-view";
     }
 
@@ -179,6 +187,84 @@ public class EvaluationWorkspaceController {
         }
         userIndividualReportRunService.refreshRun(currentUser.getEmail(), reportId != null ? reportId : "");
         return "redirect:/user/evaluation" + (reportId != null && !reportId.isBlank() ? "?report=" + reportId : "");
+    }
+
+    // ── Export: render the run into the report's bound template ───────────────
+
+    @GetMapping("/export")
+    public ResponseEntity<ByteArrayResource> exportReport(
+            @RequestParam("report") String reportId,
+            @RequestParam(name = "format", defaultValue = "XLSX") ReportFormat format,
+            @RequestParam(name = "refresh", defaultValue = "false") boolean refresh,
+            Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return reportExportFacade.exportRun(currentUser.getEmail(), reportId, format, refresh)
+                .<ResponseEntity<ByteArrayResource>>map(exported -> ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(exported.contentType()))
+                        .header("Content-Disposition", "attachment; filename=\"" + exported.filename() + "\"")
+                        .body(new ByteArrayResource(exported.bytes())))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // ── Import: read-only score verification against an uploaded file ─────────
+
+    @GetMapping("/import")
+    public String showImportForm(@RequestParam("report") String reportId, Model model, Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
+            return "redirect:/login";
+        }
+        if (!reportImportVerificationFacade.isImportAvailable(reportId)) {
+            return "redirect:/user/evaluation?report=" + reportId;
+        }
+        model.addAttribute("user", currentUser);
+        model.addAttribute("reportId", reportId);
+        return "user/individual-report-import";
+    }
+
+    @PostMapping("/import")
+    public String handleImport(@RequestParam("report") String reportId,
+                               @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+                               Model model,
+                               Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
+            return "redirect:/login";
+        }
+        model.addAttribute("user", currentUser);
+        model.addAttribute("reportId", reportId);
+        if (file == null || file.isEmpty()) {
+            model.addAttribute("errorMessage", "Please choose a file to upload.");
+            return "user/individual-report-import";
+        }
+        try {
+            reportImportVerificationFacade.verify(currentUser.getEmail(), reportId, ReportFormat.XLSX, file.getInputStream())
+                    .ifPresentOrElse(
+                            comparison -> {
+                                model.addAttribute("comparison", comparison);
+                                model.addAttribute("activityDefs", loadActivityDefs(comparison));
+                            },
+                            () -> model.addAttribute("errorMessage", "Import is not available for this report."));
+        } catch (Exception ex) {
+            model.addAttribute("errorMessage", "Could not read the uploaded file: " + ex.getMessage());
+        }
+        return "user/individual-report-import";
+    }
+
+    /** Activity definitions (with their field schema) keyed by id, for rendering the inline add-form. */
+    private Map<String, ro.uvt.pokedex.core.model.activities.Activity> loadActivityDefs(
+            ro.uvt.pokedex.core.service.reporting.transfer.compare.ReportScoreComparison comparison) {
+        Map<String, ro.uvt.pokedex.core.model.activities.Activity> defs = new HashMap<>();
+        if (comparison.activityBlocks() == null) return defs;
+        comparison.activityBlocks().forEach(block -> {
+            if (block.activityOptions() == null) return;
+            block.activityOptions().forEach(opt -> {
+                if (opt.activityId() != null && !defs.containsKey(opt.activityId())) {
+                    userActivityInstanceFacade.findActivity(opt.activityId()).ifPresent(a -> defs.put(opt.activityId(), a));
+                }
+            });
+        });
+        return defs;
     }
 
     // ── JSON: indicator detail (for inline criterion expansion in H37.3) ─────

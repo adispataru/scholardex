@@ -260,7 +260,7 @@ public class PostgresScholardexAdminReadPort {
             return List.of();
         }
         return namedParameterJdbcTemplate.query(
-                "SELECT id, publication_name, issn, e_issn, aggregation_type FROM reporting_read.scholardex_forum_view WHERE id IN (:ids)",
+                "SELECT id, publication_name, issn, e_issn, isbn, aggregation_type, publisher FROM reporting_read.scholardex_forum_view WHERE id IN (:ids)",
                 new MapSqlParameterSource("ids", forumIds),
                 this::mapForum
         );
@@ -271,7 +271,7 @@ public class PostgresScholardexAdminReadPort {
             return Optional.empty();
         }
         List<ScholardexForumView> forums = namedParameterJdbcTemplate.query(
-                "SELECT id, publication_name, issn, e_issn, aggregation_type FROM reporting_read.scholardex_forum_view WHERE id = :id",
+                "SELECT id, publication_name, issn, e_issn, isbn, aggregation_type, publisher FROM reporting_read.scholardex_forum_view WHERE id = :id",
                 new MapSqlParameterSource("id", forumId),
                 this::mapForum
         );
@@ -283,6 +283,8 @@ public class PostgresScholardexAdminReadPort {
         publication.setId(rs.getString("id"));
         publication.setDoi(rs.getString("doi"));
         publication.setEid(rs.getString("eid"));
+        publication.setPii(rs.getString("pii"));
+        publication.setPubmedId(rs.getString("pubmed_id"));
         publication.setWosId(rs.getString("wos_id"));
         publication.setTitle(rs.getString("title"));
         publication.setSubtype(rs.getString("subtype"));
@@ -295,6 +297,7 @@ public class PostgresScholardexAdminReadPort {
         publication.setVolume(rs.getString("volume"));
         publication.setIssueIdentifier(rs.getString("issue_identifier"));
         publication.setDescription(rs.getString("description"));
+        publication.setAuthKeywords(toStringList(rs.getArray("auth_keywords")));
         publication.setAuthorCount(rs.getObject("author_count", Integer.class) == null ? 0 : rs.getObject("author_count", Integer.class));
         publication.setCorrespondingAuthors(toStringList(rs.getArray("corresponding_authors")));
         publication.setOpenAccess(Boolean.TRUE.equals(rs.getObject("open_access", Boolean.class)));
@@ -319,7 +322,9 @@ public class PostgresScholardexAdminReadPort {
         forum.setPublicationName(rs.getString("publication_name"));
         forum.setIssn(rs.getString("issn"));
         forum.setEIssn(rs.getString("e_issn"));
+        forum.setIsbn(rs.getString("isbn"));
         forum.setAggregationType(rs.getString("aggregation_type"));
+        forum.setPublisher(rs.getString("publisher"));
         return forum;
     }
 

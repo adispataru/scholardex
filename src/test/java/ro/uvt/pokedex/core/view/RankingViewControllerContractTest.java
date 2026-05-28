@@ -160,6 +160,8 @@ class RankingViewControllerContractTest {
                 ScholardexForumDetailViewModel.ForumType.JOURNAL,
                 wosRanking,
                 true,
+                null,
+                null,
                 false,
                 false,
                 false
@@ -199,6 +201,8 @@ class RankingViewControllerContractTest {
                 ScholardexForumDetailViewModel.ForumType.JOURNAL,
                 wosRanking,
                 true,
+                null,
+                null,
                 false,
                 false,
                 false
@@ -228,6 +232,8 @@ class RankingViewControllerContractTest {
                 ScholardexForumDetailViewModel.ForumType.JOURNAL,
                 null,
                 false,
+                null,
+                null,
                 false,
                 false,
                 false
@@ -241,7 +247,7 @@ class RankingViewControllerContractTest {
     }
 
     @Test
-    void conferenceForumRendersCorePlaceholder() throws Exception {
+    void conferenceForumRendersCorePlaceholderWhenUnmatched() throws Exception {
         ScholardexForumView forum = new ScholardexForumView();
         forum.setId("c1");
         forum.setPublicationName("Conference One");
@@ -251,6 +257,8 @@ class RankingViewControllerContractTest {
                 ScholardexForumDetailViewModel.ForumType.CONFERENCE,
                 null,
                 false,
+                null,
+                null,
                 true,
                 false,
                 false
@@ -259,11 +267,44 @@ class RankingViewControllerContractTest {
 
         mockMvc.perform(get("/forums/{id}", "c1"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("CORE conference ranking rendering is reserved for a later H23 update.")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("No CORE conference ranking is currently linked to this forum.")));
     }
 
     @Test
-    void bookForumRendersBookPlaceholder() throws Exception {
+    void conferenceForumRendersCoreRankingWhenMatched() throws Exception {
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("c2");
+        forum.setPublicationName("International Conference on Software Engineering (ICSE)");
+        forum.setAggregationType("Conference Proceeding");
+        ro.uvt.pokedex.core.model.CoreConferenceRanking ranking = new ro.uvt.pokedex.core.model.CoreConferenceRanking();
+        ranking.setId("ICSE-International Conference on Software Engineering");
+        ranking.setName("International Conference on Software Engineering");
+        ranking.setAcronym("ICSE");
+        ro.uvt.pokedex.core.model.CoreConferenceRanking.YearlyRanking yr = new ro.uvt.pokedex.core.model.CoreConferenceRanking.YearlyRanking();
+        yr.setRank(ro.uvt.pokedex.core.model.CoreConferenceRanking.Rank.A_STAR);
+        ranking.setYearlyRankings(java.util.Map.of(2023, yr));
+        ScholardexForumDetailViewModel detail = new ScholardexForumDetailViewModel(
+                forum,
+                ScholardexForumDetailViewModel.ForumType.CONFERENCE,
+                null,
+                false,
+                ranking,
+                null,
+                false,
+                false,
+                false
+        );
+        when(scholardexForumDetailService.findDetail(eq("c2"))).thenReturn(Optional.of(detail));
+
+        mockMvc.perform(get("/forums/{id}", "c2"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("International Conference on Software Engineering (ICSE)")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/core/rankings/ICSE-International%20Conference%20on%20Software%20Engineering")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"rankingChart\"")));
+    }
+
+    @Test
+    void bookForumWithoutMatchRendersPlaceholder() throws Exception {
         ScholardexForumView forum = new ScholardexForumView();
         forum.setId("b1");
         forum.setPublicationName("Book One");
@@ -273,6 +314,8 @@ class RankingViewControllerContractTest {
                 ScholardexForumDetailViewModel.ForumType.BOOK,
                 null,
                 false,
+                null,
+                null,
                 false,
                 true,
                 false
@@ -281,7 +324,38 @@ class RankingViewControllerContractTest {
 
         mockMvc.perform(get("/forums/{id}", "b1"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Book ranking rendering is reserved for a later H23 update.")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("No SENSE publisher ranking is currently linked to this forum.")));
+    }
+
+    @Test
+    void bookForumWithMatchExposesSenseRanking() throws Exception {
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("b2");
+        forum.setPublicationName("Book Two");
+        forum.setAggregationType("Book Series");
+        forum.setPublisher("Springer");
+        ro.uvt.pokedex.core.model.SenseBookRanking ranking = new ro.uvt.pokedex.core.model.SenseBookRanking();
+        ranking.setId("springer");
+        ranking.setName("Springer");
+        ranking.setRanking(ro.uvt.pokedex.core.model.SenseBookRanking.Rank.A);
+        ScholardexForumDetailViewModel detail = new ScholardexForumDetailViewModel(
+                forum,
+                ScholardexForumDetailViewModel.ForumType.BOOK,
+                null,
+                false,
+                null,
+                ranking,
+                false,
+                false,
+                false
+        );
+        when(scholardexForumDetailService.findDetail(eq("b2"))).thenReturn(Optional.of(detail));
+
+        mockMvc.perform(get("/forums/{id}", "b2"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("SENSE Publisher Ranking")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Springer")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Matched SENSE publisher: Springer")));
     }
 
     @Test

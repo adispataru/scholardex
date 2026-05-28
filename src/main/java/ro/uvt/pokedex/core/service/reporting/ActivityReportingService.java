@@ -28,7 +28,10 @@ public class ActivityReportingService {
         for (ActivityInstance act : activities) {
 
             Score score = calculateActivityScore(act, indicator);
-            if(score.getScore() + score.getAuthorScore() > 0.0) {
+            boolean hasScore = indicator.getScoringStrategy().equals(Indicator.Strategy.GENERIC_ACTIVITY)
+                    ? score.getAuthorScore() > 0.0
+                    : score.getScore() + score.getAuthorScore() > 0.0;
+            if(hasScore) {
                 totalScore += score.getAuthorScore();
                 result.put(act.getId(), score);
             }
@@ -57,26 +60,29 @@ public class ActivityReportingService {
             }
         }
         final String rawformula = indicator.getFormula();
-        if(!indicator.getScoringStrategy().equals(Indicator.Strategy.GENERIC_ACTIVITY)) {
-            if(!indicator.getScoringStrategy().equals(Indicator.Strategy.GENERIC_COUNT)) {
-                ScoringService scoringService = scoringFactoryService.getScoringService(indicator.getScoringStrategy());
-                Score score = scoringService.getScore(activity, indicator);
-                result.setCoreRankingEquivalent(score.getCoreRankingEquivalent());
-                result.setQuarter(score.getQuarter());
-                result.setYear(score.getYear());
-                result.setScore(score.getScore());
-                result.setScoringSource(score.getScoringSource());
-                result.setScoringInfo(new HashMap<>(score.getScoringInfo() == null ? Map.of() : score.getScoringInfo()));
-                result.setExtra(score.getExtra());
-                variables.put("S", score.getScore());
-                for(String key: score.getExtra().keySet()){
-                    variables.put(key, result.getExtra().get(key));
-                }
-            }else{
-                result.setCoreRankingEquivalent("Generic Count");
-                result.setYear(activity.getYear());
-                result.setScore(1.0);
-                variables.put("S", 1.0);
+        if(indicator.getScoringStrategy().equals(Indicator.Strategy.GENERIC_ACTIVITY)) {
+            result.setCoreRankingEquivalent("Generic Activity");
+            result.setYear(activity.getYear());
+            result.setScore(1.0);
+            variables.put("S", 1.0);
+        } else if(indicator.getScoringStrategy().equals(Indicator.Strategy.GENERIC_COUNT)) {
+            result.setCoreRankingEquivalent("Generic Count");
+            result.setYear(activity.getYear());
+            result.setScore(1.0);
+            variables.put("S", 1.0);
+        } else {
+            ScoringService scoringService = scoringFactoryService.getScoringService(indicator.getScoringStrategy());
+            Score score = scoringService.getScore(activity, indicator);
+            result.setCoreRankingEquivalent(score.getCoreRankingEquivalent());
+            result.setQuarter(score.getQuarter());
+            result.setYear(score.getYear());
+            result.setScore(score.getScore());
+            result.setScoringSource(score.getScoringSource());
+            result.setScoringInfo(new HashMap<>(score.getScoringInfo() == null ? Map.of() : score.getScoringInfo()));
+            result.setExtra(score.getExtra());
+            variables.put("S", score.getScore());
+            for(String key: score.getExtra().keySet()){
+                variables.put(key, result.getExtra().get(key));
             }
         }
         if(result.getScore() > 0.0) {

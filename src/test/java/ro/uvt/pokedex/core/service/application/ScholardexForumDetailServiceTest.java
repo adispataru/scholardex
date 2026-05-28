@@ -5,9 +5,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ro.uvt.pokedex.core.model.CoreConferenceRanking;
+import ro.uvt.pokedex.core.model.SenseBookRanking;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.service.application.model.ScholardexForumDetailViewModel;
+import ro.uvt.pokedex.core.service.reporting.ComputerScienceBookService;
+import ro.uvt.pokedex.core.service.reporting.ComputerScienceConferenceScoringService;
 
 import java.util.Optional;
 
@@ -27,12 +31,16 @@ class ScholardexForumDetailServiceTest {
     private WosRankingDetailsReadService wosRankingDetailsReadService;
     @Mock
     private WosForumResolutionService wosForumResolutionService;
+    @Mock
+    private ComputerScienceConferenceScoringService computerScienceConferenceScoringService;
+    @Mock
+    private ComputerScienceBookService computerScienceBookService;
 
     private ScholardexForumDetailService service;
 
     @BeforeEach
     void setUp() {
-        service = new ScholardexForumDetailService(scholardexProjectionReadService, wosRankingDetailsReadService, wosForumResolutionService);
+        service = new ScholardexForumDetailService(scholardexProjectionReadService, wosRankingDetailsReadService, wosForumResolutionService, computerScienceConferenceScoringService, computerScienceBookService);
     }
 
     @Test
@@ -59,9 +67,10 @@ class ScholardexForumDetailServiceTest {
     }
 
     @Test
-    void conferenceUsesCorePlaceholderAndSkipsWosLookup() {
+    void conferenceWithoutMatchUsesCorePlaceholder() {
         ScholardexForumView forum = forum("c1", "Conference Proceeding");
         when(scholardexProjectionReadService.findForumById("c1")).thenReturn(Optional.of(forum));
+        when(computerScienceConferenceScoringService.matchByForumName(forum.getPublicationName())).thenReturn(Optional.empty());
 
         ScholardexForumDetailViewModel detail = service.findDetail("c1").orElseThrow();
 
@@ -72,9 +81,26 @@ class ScholardexForumDetailServiceTest {
     }
 
     @Test
-    void bookSeriesUsesBookPlaceholderAndSkipsWosLookup() {
+    void conferenceWithMatchExposesCoreRanking() {
+        ScholardexForumView forum = forum("c2", "Conference Proceeding");
+        CoreConferenceRanking ranking = new CoreConferenceRanking();
+        ranking.setId("ICSE-International Conference on Software Engineering");
+        ranking.setAcronym("ICSE");
+        ranking.setName("International Conference on Software Engineering");
+        when(scholardexProjectionReadService.findForumById("c2")).thenReturn(Optional.of(forum));
+        when(computerScienceConferenceScoringService.matchByForumName(forum.getPublicationName())).thenReturn(Optional.of(ranking));
+
+        ScholardexForumDetailViewModel detail = service.findDetail("c2").orElseThrow();
+
+        assertEquals(ranking, detail.coreRanking());
+        assertFalse(detail.showCorePlaceholder());
+    }
+
+    @Test
+    void bookSeriesWithoutMatchUsesBookPlaceholder() {
         ScholardexForumView forum = forum("b1", "Book Series");
         when(scholardexProjectionReadService.findForumById("b1")).thenReturn(Optional.of(forum));
+        when(computerScienceBookService.matchByPublisher(forum.getPublisher())).thenReturn(Optional.empty());
 
         ScholardexForumDetailViewModel detail = service.findDetail("b1").orElseThrow();
 
@@ -82,6 +108,23 @@ class ScholardexForumDetailServiceTest {
         assertTrue(detail.showBookPlaceholder());
         assertFalse(detail.wosIndexed());
         verify(wosRankingDetailsReadService, never()).findByJournalId("b1");
+    }
+
+    @Test
+    void bookSeriesWithMatchExposesSenseRanking() {
+        ScholardexForumView forum = forum("b2", "Book Series");
+        forum.setPublisher("Springer");
+        SenseBookRanking ranking = new SenseBookRanking();
+        ranking.setId("springer");
+        ranking.setName("Springer");
+        ranking.setRanking(SenseBookRanking.Rank.A);
+        when(scholardexProjectionReadService.findForumById("b2")).thenReturn(Optional.of(forum));
+        when(computerScienceBookService.matchByPublisher("Springer")).thenReturn(Optional.of(ranking));
+
+        ScholardexForumDetailViewModel detail = service.findDetail("b2").orElseThrow();
+
+        assertEquals(ranking, detail.senseBookRanking());
+        assertFalse(detail.showBookPlaceholder());
     }
 
     @Test

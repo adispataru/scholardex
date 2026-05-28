@@ -3,6 +3,8 @@ package ro.uvt.pokedex.core.service.importing;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
+import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import lombok.RequiredArgsConstructor;
@@ -17,8 +19,11 @@ import ro.uvt.pokedex.core.service.importing.scopus.ScopusImportEventIngestionSe
 import ro.uvt.pokedex.core.service.integration.IntegrationErrorCode;
 import ro.uvt.pokedex.core.service.integration.IntegrationException;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Service
@@ -30,6 +35,7 @@ public class ScopusDataService {
     private static final String PAYLOAD_FORMAT_JSON_OBJECT = "json-object";
     private static final String SOURCE_SCOPUS_JSON_BOOTSTRAP = "SCOPUS_JSON_BOOTSTRAP";
     private static final String SOURCE_SCOPUS_JSON_UPLOAD = "SCOPUS_JSON_UPLOAD";
+    private static final String SOURCE_SCOPUS_PUBLISHER_CSV_UPLOAD = "SCOPUS_PUBLISHER_CSV_UPLOAD";
     private static final int INGEST_HEARTBEAT = 5_000;
     private static final int CITATION_INGEST_BATCH_SIZE = 1_000;
     private static final CanonicalBuildOptions BOOTSTRAP_FULL_RESCAN_OPTIONS =
@@ -141,6 +147,98 @@ public class ScopusDataService {
             logger.error("Error reading uploaded Scopus citation JSON file: {}", originalFilename, e);
             throw new IllegalArgumentException("Failed to parse uploaded Scopus JSON file.", e);
         }
+    }
+
+    public ImportProcessingResult importUploadedPublisherCsvSync(String originalFilename, String batchId, byte[] csvBytes) {
+        ImportProcessingResult result = new ImportProcessingResult(DEFAULT_ERROR_SAMPLE_SIZE);
+        long startedAtNanos = System.nanoTime();
+        try (CSVReader reader = new CSVReader(new InputStreamReader(new ByteArrayInputStream(csvBytes), StandardCharsets.UTF_8))) {
+            List<String[]> rows = reader.readAll();
+            if (rows.isEmpty()) {
+                logger.warn("Publisher CSV is empty: file={}", originalFilename);
+                return result;
+            }
+            String[] header = rows.get(0);
+            Map<String, Integer> headerIndex = new HashMap<>();
+            for (int i = 0; i < header.length; i++) {
+                if (header[i] != null) {
+                    headerIndex.put(header[i].trim(), i);
+                }
+            }
+            Integer sourceIdCol = headerIndex.get("sourceId");
+            Integer publisherCol = headerIndex.get("Publisher");
+            Integer isbnCol = headerIndex.get("ISBN");
+            Integer publicationNameCol = headerIndex.get("Publication Name");
+            Integer issnCol = headerIndex.get("ISSN");
+            Integer aggregationTypeCol = headerIndex.get("Aggregation Type");
+            if (sourceIdCol == null || publisherCol == null) {
+                throw new IllegalArgumentException("Publisher CSV missing required columns sourceId / Publisher");
+            }
+            int rowCount = rows.size() - 1;
+            logger.info("Processing {} rows from publisher CSV: file={}", rowCount, originalFilename);
+            for (int i = 1; i < rows.size(); i++) {
+                result.markProcessed();
+                String[] row = rows.get(i);
+                String sourceId = safeColumn(row, sourceIdCol);
+                if (sourceId == null || sourceId.isBlank()) {
+                    result.markSkipped("publisher-csv-row=" + i + " missing sourceId");
+                    continue;
+                }
+                Map<String, Object> payload = new LinkedHashMap<>();
+                payload.put("source_id", sourceId);
+                payload.put("publicationName", safeColumn(row, publicationNameCol));
+                payload.put("issn", safeColumn(row, issnCol));
+                payload.put("eIssn", null);
+                payload.put("isbn", normalizeBlankCsvValue(safeColumn(row, isbnCol)));
+                payload.put("aggregationType", safeColumn(row, aggregationTypeCol));
+                payload.put("publisher", normalizeBlankCsvValue(safeColumn(row, publisherCol)));
+                ScopusImportEventIngestionService.EventIngestionOutcome outcome = importEventIngestionService.ingest(
+                        ScopusImportEntityType.FORUM,
+                        SOURCE_SCOPUS_PUBLISHER_CSV_UPLOAD,
+                        sourceId,
+                        batchId,
+                        "upload-publisher-csv-" + i,
+                        PAYLOAD_FORMAT_JSON_OBJECT,
+                        payload
+                );
+                applyIngestionOutcome(result, outcome, "publisher-csv row=" + i + " sourceId=" + sourceId);
+                if (result.getProcessedCount() % INGEST_HEARTBEAT == 0) {
+                    logger.info("Publisher CSV ingest heartbeat: processed={} imported={} skipped={} errors={}",
+                            result.getProcessedCount(), result.getImportedCount(), result.getSkippedCount(), result.getErrorCount());
+                }
+            }
+        } catch (IOException | CsvException e) {
+            logger.error("Error reading uploaded publisher CSV file: {}", originalFilename, e);
+            throw new IllegalArgumentException("Failed to parse uploaded publisher CSV file.", e);
+        }
+        long elapsedMs = (System.nanoTime() - startedAtNanos) / 1_000_000L;
+        logger.info("Publisher CSV ingest finished: file={} processed={} imported={} skipped={} errors={} elapsedMs={} sample={}",
+                originalFilename,
+                result.getProcessedCount(),
+                result.getImportedCount(),
+                result.getSkippedCount(),
+                result.getErrorCount(),
+                elapsedMs,
+                result.getErrorsSample());
+        return result;
+    }
+
+    private static String safeColumn(String[] row, Integer col) {
+        if (col == null || col < 0 || col >= row.length) {
+            return null;
+        }
+        return row[col];
+    }
+
+    private static String normalizeBlankCsvValue(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty() || "null-".equalsIgnoreCase(trimmed) || "Not found".equalsIgnoreCase(trimmed)) {
+            return null;
+        }
+        return trimmed;
     }
 
     public String createUploadBatchId(String originalFilename) {
@@ -418,6 +516,8 @@ public class ScopusDataService {
         payload.put("creator", readOptionalIndexedText(rootNode, "creator", i));
         payload.put("author_count", readIndexedInt(rootNode, "author_count", i));
         payload.put("description", readOptionalIndexedText(rootNode, "description", i));
+        payload.put("authkeywords", readOptionalIndexedText(rootNode, "authkeywords", i));
+        payload.put("correspondingAuthors", readOptionalIndexedText(rootNode, "correspondingAuthors", i));
         payload.put("citedby_count", readIndexedInt(rootNode, "citedby_count", i));
         payload.put("openaccess", readIndexedInt(rootNode, "openaccess", i));
         payload.put("freetoread", readOptionalIndexedText(rootNode, "freetoread", i));
@@ -441,6 +541,7 @@ public class ScopusDataService {
         payload.put("eIssn", readOptionalIndexedText(rootNode, "eIssn", i));
         payload.put("isbn", readOptionalIndexedText(rootNode, "isbn", i));
         payload.put("aggregationType", readOptionalIndexedText(rootNode, "aggregationType", i));
+        payload.put("publisher", readOptionalIndexedText(rootNode, "publisher", i));
         payload.put("fund_acr", readOptionalIndexedText(rootNode, "fund_acr", i));
         payload.put("fund_no", readOptionalIndexedText(rootNode, "fund_no", i));
         payload.put("fund_sponsor", readOptionalIndexedText(rootNode, "fund_sponsor", i));

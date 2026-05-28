@@ -22,7 +22,9 @@ public class UserDefinedForumFact implements HasLineageFields, HasReviewFields {
     private String publicationName;
     private String issn;
     private String eIssn;
+    private String isbn;
     private String aggregationType;
+    private String publisher;
 
     private Boolean approved;
     private String reviewState;

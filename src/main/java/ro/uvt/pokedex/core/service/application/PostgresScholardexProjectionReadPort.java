@@ -169,7 +169,7 @@ public class PostgresScholardexProjectionReadPort {
     public List<ScholardexForumView> findForumsByIdIn(Collection<String> ids) {
         if (isNullOrEmpty(ids)) return List.of();
         return namedParameterJdbcTemplate.query(
-                "SELECT id, publication_name, issn, e_issn, aggregation_type FROM reporting_read.scholardex_forum_view WHERE id IN (:ids)",
+                "SELECT id, publication_name, issn, e_issn, isbn, aggregation_type, publisher FROM reporting_read.scholardex_forum_view WHERE id IN (:ids)",
                 new MapSqlParameterSource("ids", ids),
                 this::mapForum
         );
@@ -177,7 +177,7 @@ public class PostgresScholardexProjectionReadPort {
 
     public List<ScholardexForumView> findAllForums() {
         return namedParameterJdbcTemplate.query(
-                "SELECT id, publication_name, issn, e_issn, aggregation_type FROM reporting_read.scholardex_forum_view",
+                "SELECT id, publication_name, issn, e_issn, isbn, aggregation_type, publisher FROM reporting_read.scholardex_forum_view",
                 this::mapForum
         );
     }
@@ -250,6 +250,8 @@ public class PostgresScholardexProjectionReadPort {
         publication.setDoi(rs.getString("doi"));
         publication.setDoiNormalized(rs.getString("doi_normalized"));
         publication.setEid(rs.getString("eid"));
+        publication.setPii(rs.getString("pii"));
+        publication.setPubmedId(rs.getString("pubmed_id"));
         publication.setWosId(rs.getString("wos_id"));
         publication.setGoogleScholarId(rs.getString("google_scholar_id"));
         publication.setTitle(rs.getString("title"));
@@ -263,6 +265,7 @@ public class PostgresScholardexProjectionReadPort {
         publication.setVolume(rs.getString("volume"));
         publication.setIssueIdentifier(rs.getString("issue_identifier"));
         publication.setDescription(rs.getString("description"));
+        publication.setAuthKeywords(toStringList(rs.getArray("auth_keywords")));
         publication.setAuthorCount(readIntOrDefault(rs, "author_count"));
         publication.setCorrespondingAuthors(toStringList(rs.getArray("corresponding_authors")));
         publication.setOpenAccess(Boolean.TRUE.equals(rs.getObject("open_access", Boolean.class)));
@@ -313,7 +316,9 @@ public class PostgresScholardexProjectionReadPort {
         forum.setPublicationName(rs.getString("publication_name"));
         forum.setIssn(rs.getString("issn"));
         forum.setEIssn(rs.getString("e_issn"));
+        forum.setIsbn(rs.getString("isbn"));
         forum.setAggregationType(rs.getString("aggregation_type"));
+        forum.setPublisher(rs.getString("publisher"));
         forum.setScopusId(rs.getString("id"));
         return forum;
     }

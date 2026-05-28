@@ -24,6 +24,8 @@ public class ScholardexPublicationFact {
     private String titleNormalized;
 
     private String eid;
+    private String pii;
+    private String pubmedId;
     private String wosId;
     private String googleScholarId;
     private String userSourceId;
@@ -44,6 +46,7 @@ public class ScholardexPublicationFact {
     private String coverDate;
     private String coverDisplayDate;
     private String description;
+    private List<String> authKeywords = new ArrayList<>();
     private Integer citedByCount;
     private Boolean openAccess;
     private String freetoread;

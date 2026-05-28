@@ -33,6 +33,8 @@ class UserPublicationFacadeTest {
     private PublicationAuthorshipDecisionService publicationAuthorshipDecisionService;
     @Mock
     private SuspiciousAuthorshipTriageService suspiciousAuthorshipTriageService;
+    @Mock
+    private ScholardexSourceLinkService scholardexSourceLinkService;
 
     @InjectMocks
     private UserPublicationFacade facade;

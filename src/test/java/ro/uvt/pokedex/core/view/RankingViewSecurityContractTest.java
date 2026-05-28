@@ -184,6 +184,8 @@ class RankingViewSecurityContractTest {
                 ScholardexForumDetailViewModel.ForumType.JOURNAL,
                 wosRanking,
                 true,
+                null,
+                null,
                 false,
                 false,
                 false

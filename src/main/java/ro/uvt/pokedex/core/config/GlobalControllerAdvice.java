@@ -25,6 +25,12 @@ public class GlobalControllerAdvice {
         return currentUser().orElseGet(User::new);
     }
 
+    @ModelAttribute("requestUri")
+    public String requestUri(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path == null ? "" : path;
+    }
+
     @ModelAttribute("sidebarContext")
     public String sidebarContext(HttpServletRequest request) {
         String path = request.getRequestURI();

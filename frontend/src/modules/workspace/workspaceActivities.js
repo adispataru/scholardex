@@ -416,6 +416,7 @@ function _saveInst(id, detailTr) {
 
     fetch('/user/workspace/activities/update', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: postJsonHeaders(),
         body: JSON.stringify({ id, fields, referenceFields: refFields }),
     })
@@ -444,7 +445,11 @@ function _deleteInst(id, detailTr) {
     const deleteBtn = detailTr.querySelector('[data-delete-inst]');
     if (deleteBtn) deleteBtn.disabled = true;
 
-    fetch(`/user/workspace/activities/delete/${encodeURIComponent(id)}`, { method: 'POST', headers: postJsonHeaders() })
+    fetch(`/user/workspace/activities/delete/${encodeURIComponent(id)}`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: postJsonHeaders(),
+    })
         .then(r => { if (!r.ok) throw new Error(); })
         .then(() => {
             // Remove from in-memory list
@@ -621,6 +626,7 @@ function _submitCreate(placeholder) {
 
     fetch('/user/workspace/activities/create', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: postJsonHeaders(),
         body: JSON.stringify({ activityId, name, date, fields, referenceFields: refFields }),
     })

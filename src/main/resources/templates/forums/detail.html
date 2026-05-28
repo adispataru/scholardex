@@ -54,9 +54,9 @@
                             icon='fa-solid fa-fingerprint')}"></th:block>
                         <th:block th:replace="~{fragments :: stat-card(
                             label='Ranking Source',
-                            value=${detail.forumType().name() == 'JOURNAL' ? (detail.wosIndexed() ? 'Web of Science' : 'Not indexed') : (detail.forumType().name() == 'CONFERENCE' ? 'CORE' : (detail.forumType().name() == 'BOOK' ? 'Book ranking' : 'Not available'))},
-                            accent=${detail.wosIndexed() ? 'success' : 'warning'},
-                            contextLine=${detail.wosIndexed() ? 'Authenticated ranking detail available' : 'No public metric detail'},
+                            value=${detail.forumType().name() == 'JOURNAL' ? (detail.wosIndexed() ? 'Web of Science' : 'Not indexed') : (detail.forumType().name() == 'CONFERENCE' ? 'CORE' : (detail.forumType().name() == 'BOOK' ? 'SENSE' : 'Not available'))},
+                            accent=${detail.wosIndexed() or detail.coreRanking() != null or detail.senseBookRanking() != null ? 'success' : 'warning'},
+                            contextLine=${detail.wosIndexed() ? 'Authenticated ranking detail available' : (detail.coreRanking() != null ? 'Matched CORE entry: ' + detail.coreRanking().acronym : (detail.senseBookRanking() != null ? 'Matched SENSE publisher: ' + detail.senseBookRanking().name : 'No public metric detail'))},
                             icon='fa-solid fa-ranking-star')}"></th:block>
                     </div>
                 </section>
@@ -152,16 +152,59 @@
                     This journal is not indexed by WoS.
                 </div>
 
+                <section th:if="${detail.coreRanking() != null}"
+                         class="app-forum-detail__category-list"
+                         aria-labelledby="forum-core-title">
+                    <div class="app-university-detail__section-header">
+                        <div>
+                            <p class="app-university-detail__eyebrow">CORE Conference Ranking</p>
+                            <h2 id="forum-core-title" class="app-university-detail__section-title"
+                                th:text="${detail.coreRanking().name + ' (' + detail.coreRanking().acronym + ')'}">Conference</h2>
+                        </div>
+                        <a th:href="@{/core/rankings/{id}(id=${detail.coreRanking().id})}" class="btn btn-outline-primary btn-sm">
+                            <span>View on CORE</span>
+                        </a>
+                    </div>
+                    <div th:if="${detail.coreRanking().yearlyRankings == null or detail.coreRanking().yearlyRankings.isEmpty()}"
+                         class="alert alert-secondary mb-0">
+                        No yearly CORE ranking data is available for this conference.
+                    </div>
+                    <th:block th:if="${detail.coreRanking().yearlyRankings != null and !detail.coreRanking().yearlyRankings.isEmpty()}"
+                              th:replace="~{fragments :: core-ranking-chart(${detail.coreRanking()})}"></th:block>
+                </section>
+
                 <div th:if="${detail.showCorePlaceholder()}"
                      class="alert alert-info app-forum-detail__auth-callout"
                      role="status">
-                    CORE conference ranking rendering is reserved for a later H23 update. This forum detail page is the canonical place where that ranking will appear.
+                    No CORE conference ranking is currently linked to this forum.
                 </div>
+
+                <section th:if="${detail.senseBookRanking() != null}"
+                         class="app-forum-detail__category-list"
+                         aria-labelledby="forum-sense-title">
+                    <div class="app-university-detail__section-header">
+                        <div>
+                            <p class="app-university-detail__eyebrow">SENSE Publisher Ranking</p>
+                            <h2 id="forum-sense-title" class="app-university-detail__section-title"
+                                th:text="${detail.senseBookRanking().name}">Publisher</h2>
+                        </div>
+                    </div>
+                    <dl class="app-university-detail__definition-grid">
+                        <div>
+                            <dt>Publisher</dt>
+                            <dd th:text="${detail.senseBookRanking().name}">Publisher</dd>
+                        </div>
+                        <div>
+                            <dt>SENSE Rank</dt>
+                            <dd th:text="${detail.senseBookRanking().ranking}">Rank</dd>
+                        </div>
+                    </dl>
+                </section>
 
                 <div th:if="${detail.showBookPlaceholder()}"
                      class="alert alert-info app-forum-detail__auth-callout"
                      role="status">
-                    Book ranking rendering is reserved for a later H23 update. This forum detail page is the canonical place where that ranking will appear.
+                    No SENSE publisher ranking is currently linked to this forum.
                 </div>
 
                 <div th:if="${detail.showGenericPlaceholder()}"

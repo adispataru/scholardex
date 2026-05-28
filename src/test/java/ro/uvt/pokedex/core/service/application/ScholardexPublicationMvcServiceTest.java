@@ -163,6 +163,57 @@ class ScholardexPublicationMvcServiceTest {
     }
 
     @Test
+    void searchProvidesFallbackNamesForUntitledPublicationAndForum() {
+        ScholardexPublicationView pub = new ScholardexPublicationView();
+        pub.setId("spub_blank");
+        pub.setTitle(" ");
+        pub.setCoverDate("2024-01-01");
+        pub.setForum("sforum_blank");
+        pub.setAuthors(List.of());
+        pub.setCitedbyCount(0);
+        pub.setEid("2-s2.0-blank");
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("sforum_blank");
+        forum.setPublicationName(" ");
+
+        when(namedParameterJdbcTemplate.queryForObject(anyString(), any(MapSqlParameterSource.class), eq(Long.class)))
+                .thenReturn(1L);
+        when(namedParameterJdbcTemplate.query(anyString(), any(MapSqlParameterSource.class), any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenReturn(List.of(pub));
+        when(projectionReadPort.findAuthorsByIdIn(Set.of())).thenReturn(List.of());
+        when(projectionReadPort.findForumsByIdIn(Set.of("sforum_blank"))).thenReturn(List.of(forum));
+
+        PublicationTablePageResponse result = service.search(0, 25, "title", "asc", null);
+
+        assertEquals("Untitled publication spub_blank", result.items().getFirst().title());
+        assertEquals("Untitled forum sforum_blank", result.items().getFirst().forumName());
+    }
+
+    @Test
+    void searchConvertsMarkupInPublicationTitlesToPlainText() {
+        ScholardexPublicationView pub = new ScholardexPublicationView();
+        pub.setId("spub_markup");
+        pub.setTitle("Tau at a rate of 10 <sup>14</sup> decays and H<sub>2</sub>O");
+        pub.setCoverDate("2020-01-01");
+        pub.setForum(null);
+        pub.setAuthors(List.of());
+        pub.setCitedbyCount(0);
+        pub.setEid("2-s2.0-markup");
+
+        when(namedParameterJdbcTemplate.queryForObject(anyString(), any(MapSqlParameterSource.class), eq(Long.class)))
+                .thenReturn(1L);
+        when(namedParameterJdbcTemplate.query(anyString(), any(MapSqlParameterSource.class), any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenReturn(List.of(pub));
+        when(projectionReadPort.findAuthorsByIdIn(Set.of())).thenReturn(List.of());
+        when(projectionReadPort.findForumsByIdIn(Set.of())).thenReturn(List.of());
+
+        PublicationTablePageResponse result = service.search(0, 25, "title", "asc", null);
+
+        assertEquals("Tau at a rate of 10^14 decays and H_2O", result.items().getFirst().title());
+    }
+
+    @Test
     void searchUsesCitationSortAndDescDirectionAndIgnoresTooLongQuery() {
         when(namedParameterJdbcTemplate.queryForObject(anyString(), any(MapSqlParameterSource.class), eq(Long.class)))
                 .thenReturn(0L);

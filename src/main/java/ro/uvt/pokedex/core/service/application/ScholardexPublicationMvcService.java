@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,6 +26,11 @@ import java.util.stream.Collectors;
 public class ScholardexPublicationMvcService {
 
     private static final int MAX_AUTHOR_NAMES = 5;
+    private static final Pattern SUP_TAG_PATTERN = Pattern.compile("(?i)<\\s*sup\\s*>(.*?)<\\s*/\\s*sup\\s*>");
+    private static final Pattern SUB_TAG_PATTERN = Pattern.compile("(?i)<\\s*sub\\s*>(.*?)<\\s*/\\s*sub\\s*>");
+    private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]+>");
+    private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
+    private static final Pattern SCRIPT_MARKER_SPACING_PATTERN = Pattern.compile("\\s+([\\^_])");
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     private final PostgresScholardexProjectionReadPort projectionReadPort;
@@ -114,10 +120,10 @@ public class ScholardexPublicationMvcService {
 
         return new PublicationTableItemResponse(
                 pub.getId(),
-                pub.getTitle(),
+                displayTitle(pub.getTitle(), "Untitled publication " + pub.getId()),
                 publicationYear(pub.getCoverDate()),
                 pub.getForum(),
-                pub.getForum() != null ? forumNameById.getOrDefault(pub.getForum(), "") : "",
+                displayForumName(pub.getForum(), forumNameById),
                 authorNames,
                 pub.getCitedbyCount(),
                 pub.getEid()
@@ -141,6 +147,26 @@ public class ScholardexPublicationMvcService {
         return coverDate != null && coverDate.length() >= 4
                 ? coverDate.substring(0, 4)
                 : coverDate;
+    }
+
+    private String displayForumName(String forumId, Map<String, String> forumNameById) {
+        if (forumId == null || forumId.isBlank()) {
+            return "";
+        }
+        return displayName(forumNameById.get(forumId), "Untitled forum " + forumId);
+    }
+
+    private String displayTitle(String value, String fallback) {
+        String text = displayName(value, fallback);
+        text = SUP_TAG_PATTERN.matcher(text).replaceAll("^$1");
+        text = SUB_TAG_PATTERN.matcher(text).replaceAll("_$1");
+        text = HTML_TAG_PATTERN.matcher(text).replaceAll(" ");
+        text = WHITESPACE_PATTERN.matcher(text).replaceAll(" ").trim();
+        return SCRIPT_MARKER_SPACING_PATTERN.matcher(text).replaceAll("$1");
+    }
+
+    private String displayName(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value.trim();
     }
 
     private List<String> toStringList(java.sql.Array array) throws java.sql.SQLException {

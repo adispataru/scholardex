@@ -24,6 +24,8 @@ public class UserDefinedPublicationFact implements HasLineageFields, HasReviewFi
     private String forumSourceRecordId;
     private String eid;
     private String doi;
+    private String pii;
+    private String pubmedId;
     private String title;
     private String subtype;
     private String subtypeDescription;
@@ -38,6 +40,7 @@ public class UserDefinedPublicationFact implements HasLineageFields, HasReviewFi
     private String coverDate;
     private String coverDisplayDate;
     private String description;
+    private List<String> authKeywords = new ArrayList<>();
     private Integer citedByCount;
     private Boolean openAccess;
     private String freetoread;

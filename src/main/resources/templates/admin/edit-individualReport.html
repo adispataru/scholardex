@@ -84,6 +84,88 @@
                                 </div>
                             </th:block>
 
+                            <th:block th:replace="~{fragments :: admin-form-section(
+                                title='Export binding',
+                                helperText='Bind this report to a template (xlsx export) and map each indicator to a binding role. Leave empty to disable export.',
+                                body=~{::#report-export-binding-fields})}">
+                                <div id="report-export-binding-fields" class="app-form-grid app-form-grid--two-up">
+                                    <div class="form-group app-form-field">
+                                        <label for="reportTypeKey">Report type key</label>
+                                        <input type="text" class="form-control" id="reportTypeKey"
+                                               th:field="*{reportTypeKey}"
+                                               list="reportTypeKeyOptions"
+                                               placeholder="e.g. informatica-2016">
+                                        <datalist id="reportTypeKeyOptions">
+                                            <option th:each="k : ${registeredReportTypeKeys}" th:value="${k}"></option>
+                                        </datalist>
+                                        <small class="form-text text-muted">
+                                            Registered: <span th:text="${#strings.listJoin(registeredReportTypeKeys, ', ')}">—</span>
+                                        </small>
+                                    </div>
+                                    <div class="form-group app-form-field">
+                                        <div class="form-check mt-4">
+                                            <input type="checkbox" class="form-check-input" id="importEnabled" th:field="*{importEnabled}">
+                                            <label class="form-check-label" for="importEnabled">Enable "Verify from file" import (read-only score check)</label>
+                                        </div>
+                                    </div>
+                                    <div class="form-group app-form-field app-form-grid--full"
+                                         th:if="${!declaredRoles.isEmpty() and !reportIndicators.isEmpty()}">
+                                        <label>Indicator → binding role</label>
+                                        <div class="app-collection">
+                                            <div class="input-group mb-2 app-collection__item"
+                                                 th:each="indicator : ${reportIndicators}">
+                                                <span class="input-group-text" style="min-width:14rem"
+                                                      th:text="${indicator.name}">Indicator name</span>
+                                                <select class="form-control"
+                                                        th:name="|indicatorRolesByIndicatorId[${indicator.id}]|"
+                                                        th:with="currentRole=${individualReport.indicatorRolesByIndicatorId != null ? individualReport.indicatorRolesByIndicatorId.get(indicator.id) : null}">
+                                                    <option value=""
+                                                            th:selected="${currentRole == null or #strings.isEmpty(currentRole)}">
+                                                        — none —
+                                                    </option>
+                                                    <option th:each="role : ${declaredRoles}"
+                                                            th:value="${role}"
+                                                            th:text="${role}"
+                                                            th:selected="${currentRole != null and #strings.equals(role, currentRole)}">
+                                                    </option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <small class="form-text text-muted">Save and reload after changing the report type key to refresh available roles.</small>
+                                    </div>
+                                </div>
+                            </th:block>
+
+                            <th:block th:if="${declaredBlocks != null and !declaredBlocks.isEmpty() and !reportIndicators.isEmpty()}"
+                                      th:replace="~{fragments :: admin-form-section(
+                                title='Indicator → Indicatorul I block',
+                                helperText='Pick which Indicatorul I sub-block each indicator feeds. Multiple indicators can feed the same block (e.g. several committee indicators into Comisii doctorat).',
+                                body=~{::#report-block-sources-fields})}">
+                                <div id="report-block-sources-fields" class="app-form-field">
+                                    <div class="app-collection">
+                                        <div class="input-group mb-2 app-collection__item"
+                                             th:each="indicator : ${reportIndicators}">
+                                            <span class="input-group-text" style="min-width:18rem"
+                                                  th:text="${indicator.name}">Indicator name</span>
+                                            <select class="form-control"
+                                                    th:name="|blockByIndicatorId[${indicator.id}]|"
+                                                    th:with="currentBlock=${individualReport.blockByIndicatorId != null ? individualReport.blockByIndicatorId.get(indicator.id) : null}">
+                                                <option value=""
+                                                        th:selected="${currentBlock == null or #strings.isEmpty(currentBlock)}">
+                                                    — none —
+                                                </option>
+                                                <option th:each="blockName : ${declaredBlocks}"
+                                                        th:value="${blockName}"
+                                                        th:text="${blockName}"
+                                                        th:selected="${currentBlock != null and #strings.equals(blockName, currentBlock)}">
+                                                </option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <small class="form-text text-muted">Indicators left at "— none —" fall back to legacy auto-match by their Activity name.</small>
+                                </div>
+                            </th:block>
+
                             <!-- Criteria Section -->
                             <th:block th:replace="~{fragments :: admin-form-section(
                                 title='Criteria builder',

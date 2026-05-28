@@ -41,14 +41,33 @@ public class UserIndividualReportRunService {
     }
 
     public Optional<IndividualReportRunDto> refreshRun(String userEmail, String reportDefinitionId) {
+        refreshLatestForReportIndicators(userEmail, reportDefinitionId);
         return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT, Map.of());
     }
 
     public Optional<IndividualReportRunDto> refreshRunWithAllIndicators(String userEmail, String reportDefinitionId) {
-        // Delegate directly to buildAndSaveRun which recomputes all indicator and criterion scores
-        // from source data via computeReportScopedIndividualReport. No pre-pass over LATEST
-        // UserIndicatorResult records is needed — those records are not used by the evaluation page.
+        refreshLatestForReportIndicators(userEmail, reportDefinitionId);
         return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT, Map.of());
+    }
+
+    /**
+     * Bypass the LATEST indicator-result cache for every indicator on the report. The cache uses
+     * an indicator-definition fingerprint, so a scoring-service code change does not invalidate
+     * persisted LATEST entries on its own. Without this pre-pass, the per-indicator detail panel
+     * and the H50 report exporter would keep serving stale {@code coreRankingEquivalent} /
+     * {@code authorScore} values until each indicator was refreshed individually — which means
+     * the downloaded export could diverge from what the user sees on the dashboard after clicking
+     * Refresh.
+     */
+    private void refreshLatestForReportIndicators(String userEmail, String reportDefinitionId) {
+        individualReportRepository.findById(reportDefinitionId).ifPresent(report -> {
+            if (report.getIndicators() == null) return;
+            for (Indicator indicator : report.getIndicators()) {
+                if (indicator != null && indicator.getId() != null) {
+                    userIndicatorResultService.refreshLatest(userEmail, indicator.getId());
+                }
+            }
+        });
     }
 
     public long invalidateLatestRuns(String userEmail) {

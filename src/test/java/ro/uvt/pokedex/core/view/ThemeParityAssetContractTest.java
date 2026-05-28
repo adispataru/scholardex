@@ -31,7 +31,8 @@ class ThemeParityAssetContractTest {
     @Test
     void representativeChartTemplatesAndDashboardsUseSharedThemeApi() throws Exception {
         String appBundle = Files.readString(Path.of("frontend/src/app.js"));
-        String coreDetail = Files.readString(Path.of("src/main/resources/templates/core/ranking-detail.html"));
+        String coreDetail = Files.readString(Path.of("src/main/resources/templates/core/ranking-detail.html"))
+                + Files.readString(Path.of("src/main/resources/templates/fragments.html"));
         String groupWorkspace = Files.readString(Path.of("src/main/resources/templates/admin/group-workspace.html"));
         String publicationsDashboard = Files.readString(Path.of("src/main/resources/static/js/indicator-publications-dashboard.js"));
         String citationsDashboard = Files.readString(Path.of("src/main/resources/static/js/indicator-citations-dashboard.js"));

@@ -16,6 +16,8 @@ public class ScholardexPublicationView {
     private String doi;
     private String doiNormalized;
     private String eid;
+    private String pii;
+    private String pubmedId;
     private String title;
     private String subtype;
     private String subtypeDescription;
@@ -27,6 +29,7 @@ public class ScholardexPublicationView {
     private String volume;
     private String issueIdentifier;
     private String description;
+    private List<String> authKeywords = new ArrayList<>();
     private int authorCount;
     private List<String> correspondingAuthors = new ArrayList<>();
     private boolean openAccess;

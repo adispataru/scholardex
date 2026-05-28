@@ -228,6 +228,38 @@ public class AdminIncrementalUpdatesController {
         return "redirect:/admin/incremental-updates";
     }
 
+    @PostMapping("/scopus/publisher-csv")
+    public String uploadScopusPublisherCsv(
+            @RequestParam("file") MultipartFile file,
+            RedirectAttributes redirectAttributes,
+            HttpSession session
+    ) {
+        if (rejectMissingOrOversizedFile(file, redirectAttributes)) {
+            return "redirect:/admin/incremental-updates";
+        }
+        String fileName = file.getOriginalFilename();
+        if (fileName == null || !fileName.toLowerCase(Locale.ROOT).endsWith(".csv")) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Publisher uploads require a .csv file.");
+            return "redirect:/admin/incremental-updates";
+        }
+        try {
+            UploadedPayload payload = readPayload(file);
+            ScopusUploadRunResult result = incrementalUpdateUploadFacade.acceptScopusPublisherCsvUpload(payload);
+            storeScopusFollowUpContext(session, result);
+            redirectAttributes.addFlashAttribute("successMessage", formatScopusSuccessMessage(result));
+        } catch (IOException e) {
+            log.error("Publisher CSV upload read failed: fileName={}, size={}", file.getOriginalFilename(), file.getSize(), e);
+            redirectAttributes.addFlashAttribute("errorMessage", "Failed to read the uploaded publisher CSV file.");
+        } catch (IllegalArgumentException e) {
+            log.error("Publisher CSV upload validation failed: fileName={}", file.getOriginalFilename(), e);
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        } catch (RuntimeException e) {
+            log.error("Publisher CSV upload orchestration failed: fileName={}", file.getOriginalFilename(), e);
+            redirectAttributes.addFlashAttribute("errorMessage", "Publisher CSV upload failed: " + e.getMessage());
+        }
+        return "redirect:/admin/incremental-updates";
+    }
+
     @PostMapping("/scopus/buildProjections")
     public String rebuildScopusUploadProjections(
             RedirectAttributes redirectAttributes,

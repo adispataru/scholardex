@@ -68,6 +68,21 @@
       .replaceAll("'", '&#39;');
   }
 
+  function displayText(value, fallback) {
+    if (value == null || String(value).trim() === '') {
+      return fallback;
+    }
+    return String(value).trim();
+  }
+
+  function displayIdentifier(value) {
+    if (value == null || String(value).trim() === '') {
+      return '—';
+    }
+    const text = String(value).trim();
+    return text.toLowerCase().includes('null') ? '—' : text;
+  }
+
   function labelWosStatus(status) {
     switch (status) {
       case 'indexed':
@@ -104,10 +119,14 @@
 
     els.tableBody.innerHTML = items.map(function (item) {
       const id = encodeURIComponent(item.id || '');
+      const forumLabel = displayText(item.publicationName, 'Untitled forum ' + (item.id || ''));
+      const forumCell = item.id
+        ? '<a href="/forums/' + id + '">' + escapeHtml(forumLabel) + '</a>'
+        : escapeHtml(forumLabel);
       return '<tr>' +
-        '<td><a href="/forums/' + id + '">' + escapeHtml(item.publicationName) + '</a></td>' +
-        '<td class="app-table__cell--identifier">' + escapeHtml(item.issn || '—') + '</td>' +
-        '<td class="app-table__cell--identifier">' + escapeHtml(item.eIssn || '—') + '</td>' +
+        '<td>' + forumCell + '</td>' +
+        '<td class="app-table__cell--identifier">' + escapeHtml(displayIdentifier(item.issn)) + '</td>' +
+        '<td class="app-table__cell--identifier">' + escapeHtml(displayIdentifier(item.eIssn)) + '</td>' +
         '<td>' + escapeHtml(item.aggregationType) + '</td>' +
         '<td>' + renderWosBadge(item.wosStatus) + '</td>' +
         '</tr>';

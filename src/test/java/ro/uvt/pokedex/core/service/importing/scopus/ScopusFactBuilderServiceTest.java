@@ -483,10 +483,10 @@ class ScopusFactBuilderServiceTest {
     @Test
     void buildFactsFromImportEventsSkipsUnsupportedEntityTypeWithSample() throws Exception {
         ScopusImportEvent unsupportedEvent = new ScopusImportEvent();
-        unsupportedEvent.setEntityType(ScopusImportEntityType.FORUM);
+        unsupportedEvent.setEntityType(ScopusImportEntityType.AUTHOR);
         unsupportedEvent.setSource("SCOPUS_JSON_BOOTSTRAP");
-        unsupportedEvent.setSourceRecordId("forum-row-1");
-        unsupportedEvent.setPayload(mapper.writeValueAsString(java.util.Map.of("source_id", "f1")));
+        unsupportedEvent.setSourceRecordId("author-row-1");
+        unsupportedEvent.setPayload(mapper.writeValueAsString(java.util.Map.of("author_id", "a1")));
 
         when(importEventRepository.findAll()).thenReturn(List.of(unsupportedEvent));
 
@@ -498,6 +498,39 @@ class ScopusFactBuilderServiceTest {
         assertTrue(result.getErrorsSample().isEmpty());
         verify(publicationFactRepository, never()).saveAll(anyCollection());
         verify(citationFactRepository, never()).saveAll(anyCollection());
+    }
+
+    @Test
+    void buildFactsFromImportEventsImportsForumEventFromCsv() throws Exception {
+        ScopusImportEvent forumEvent = new ScopusImportEvent();
+        forumEvent.setEntityType(ScopusImportEntityType.FORUM);
+        forumEvent.setSource("SCOPUS_PUBLISHER_CSV_UPLOAD");
+        forumEvent.setSourceRecordId("forum-1");
+        forumEvent.setPayload(mapper.writeValueAsString(new java.util.LinkedHashMap<String, Object>() {{
+            put("source_id", "forum-1");
+            put("publicationName", "Forum Name");
+            put("issn", "1234-5678");
+            put("aggregationType", "Book");
+            put("publisher", "Springer");
+            put("isbn", "978-3-16-148410-0");
+        }}));
+
+        when(importEventRepository.findAll()).thenReturn(List.of(forumEvent));
+        when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
+
+        ImportProcessingResult result = service.buildFactsFromImportEvents();
+
+        assertEquals(1, result.getProcessedCount());
+        assertEquals(1, result.getImportedCount());
+        ArgumentCaptor<java.util.Collection<ScopusForumFact>> captor =
+                ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(forumFactRepository).saveAll(captor.capture());
+        ScopusForumFact saved = captor.getValue().iterator().next();
+        assertEquals("forum-1", saved.getSourceId());
+        assertEquals("Springer", saved.getPublisher());
+        assertEquals("978-3-16-148410-0", saved.getIsbn());
+        assertEquals("Forum Name", saved.getPublicationName());
+        assertEquals("Book", saved.getAggregationType());
     }
 
     @Test
@@ -773,7 +806,7 @@ class ScopusFactBuilderServiceTest {
         existingForum.setIssn("1234-5678");
         existingForum.setEIssn("8765-4321");
         existingForum.setAggregationType("Journal");
-        existingForum.setLastPayloadHash(hashKey("forum", "forum-1", "Forum 1", "1234-5678", "8765-4321", "Journal"));
+        existingForum.setLastPayloadHash(hashKey("forum", "forum-1", "Forum 1", "1234-5678", "8765-4321", null, "Journal", null));
         existingForum.setSourceBatchId("b-old");
         existingForum.setSourceCorrelationId("corr-old");
         existingForum.setCreatedAt(java.time.Instant.parse("2025-01-02T00:00:00Z"));
@@ -851,7 +884,7 @@ class ScopusFactBuilderServiceTest {
         assertEquals("Forum 1", replayedForum.getPublicationName());
         assertEquals("1234-5678", replayedForum.getIssn());
         assertEquals("8765-4321", replayedForum.getEIssn());
-        assertEquals(hashKey("forum", "forum-1", "Forum 1", "1234-5678", "8765-4321", "Journal"), replayedForum.getLastPayloadHash());
+        assertEquals(hashKey("forum", "forum-1", "Forum 1", "1234-5678", "8765-4321", null, "Journal", null), replayedForum.getLastPayloadHash());
         assertEquals(java.time.Instant.parse("2025-01-02T00:00:00Z"), replayedForum.getLastMaterializedAt());
         assertEquals(java.time.Instant.parse("2025-01-02T00:00:00Z"), replayedForum.getUpdatedAt());
 

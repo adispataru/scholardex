@@ -2,9 +2,13 @@ package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import ro.uvt.pokedex.core.model.CoreConferenceRanking;
+import ro.uvt.pokedex.core.model.SenseBookRanking;
 import ro.uvt.pokedex.core.model.WoSRanking;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.service.application.model.ScholardexForumDetailViewModel;
+import ro.uvt.pokedex.core.service.reporting.ComputerScienceBookService;
+import ro.uvt.pokedex.core.service.reporting.ComputerScienceConferenceScoringService;
 
 import java.util.Locale;
 import java.util.Optional;
@@ -16,6 +20,8 @@ public class ScholardexForumDetailService {
     private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final WosRankingDetailsReadService wosRankingDetailsReadService;
     private final WosForumResolutionService wosForumResolutionService;
+    private final ComputerScienceConferenceScoringService computerScienceConferenceScoringService;
+    private final ComputerScienceBookService computerScienceBookService;
 
     public Optional<ScholardexForumDetailViewModel> findDetail(String forumId) {
         return scholardexProjectionReadService.findForumById(forumId)
@@ -31,13 +37,27 @@ public class ScholardexForumDetailService {
                 wosRanking = wosRankingDetailsReadService.findByJournalId(wosJournalId).orElse(null);
             }
         }
+        CoreConferenceRanking coreRanking = null;
+        if (forumType == ScholardexForumDetailViewModel.ForumType.CONFERENCE) {
+            coreRanking = computerScienceConferenceScoringService
+                    .matchByForumName(forum.getPublicationName())
+                    .orElse(null);
+        }
+        SenseBookRanking senseBookRanking = null;
+        if (forumType == ScholardexForumDetailViewModel.ForumType.BOOK) {
+            senseBookRanking = computerScienceBookService
+                    .matchByPublisher(forum.getPublisher())
+                    .orElse(null);
+        }
         return new ScholardexForumDetailViewModel(
                 forum,
                 forumType,
                 wosRanking,
                 wosRanking != null,
-                forumType == ScholardexForumDetailViewModel.ForumType.CONFERENCE,
-                forumType == ScholardexForumDetailViewModel.ForumType.BOOK,
+                coreRanking,
+                senseBookRanking,
+                forumType == ScholardexForumDetailViewModel.ForumType.CONFERENCE && coreRanking == null,
+                forumType == ScholardexForumDetailViewModel.ForumType.BOOK && senseBookRanking == null,
                 forumType == ScholardexForumDetailViewModel.ForumType.OTHER
         );
     }

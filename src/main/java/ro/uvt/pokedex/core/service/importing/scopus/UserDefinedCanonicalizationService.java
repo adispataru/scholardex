@@ -117,8 +117,10 @@ public class UserDefinedCanonicalizationService {
             target.setNameNormalized(normalizeName(sourceForum.getPublicationName()));
             target.setIssn(normalizeIssn(sourceForum.getIssn()));
             target.setEIssn(normalizeIssn(sourceForum.getEIssn()));
+            target.setIsbn(sourceForum.getIsbn());
             target.setAggregationType(sourceForum.getAggregationType());
             target.setAggregationTypeNormalized(normalizeToken(sourceForum.getAggregationType()));
+            target.setPublisher(sourceForum.getPublisher());
             target.setSourceEventId(sourceForum.getSourceEventId());
             target.setSource(SOURCE_USER_DEFINED);
             target.setSourceRecordId(sourceForum.getSourceRecordId());
@@ -202,6 +204,8 @@ public class UserDefinedCanonicalizationService {
             target.setTitle(sourcePublication.getTitle());
             target.setTitleNormalized(ScholardexPublicationCanonicalizationService.normalizeTitle(sourcePublication.getTitle()));
             target.setEid(sourcePublication.getEid());
+            target.setPii(sourcePublication.getPii());
+            target.setPubmedId(sourcePublication.getPubmedId());
             target.setUserSourceId(sourcePublication.getSourceRecordId());
             target.setSubtype(sourcePublication.getSubtype());
             target.setSubtypeDescription(sourcePublication.getSubtypeDescription());
@@ -217,6 +221,7 @@ public class UserDefinedCanonicalizationService {
             target.setCoverDate(sourcePublication.getCoverDate());
             target.setCoverDisplayDate(sourcePublication.getCoverDisplayDate());
             target.setDescription(sourcePublication.getDescription());
+            target.setAuthKeywords(new ArrayList<>(safeList(sourcePublication.getAuthKeywords())));
             target.setCitedByCount(sourcePublication.getCitedByCount());
             target.setOpenAccess(sourcePublication.getOpenAccess());
             target.setFreetoread(sourcePublication.getFreetoread());

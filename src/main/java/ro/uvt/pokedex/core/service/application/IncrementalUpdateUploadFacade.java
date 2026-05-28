@@ -29,6 +29,10 @@ public class IncrementalUpdateUploadFacade {
         return scopusIncrementalUploadService.run(file);
     }
 
+    public ScopusUploadRunResult acceptScopusPublisherCsvUpload(UploadedPayload file) {
+        return scopusIncrementalUploadService.runPublisherCsv(file);
+    }
+
     public ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult enrichWosUploadCategoryRankings(
             WosUploadSourceType sourceType,
             String sourceFile,

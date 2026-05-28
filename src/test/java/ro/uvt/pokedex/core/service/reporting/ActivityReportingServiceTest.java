@@ -51,6 +51,28 @@ class ActivityReportingServiceTest {
     }
 
     @Test
+    void genericActivityEvaluatesFormulaWithActivityFields() {
+        ActivityReportingService service = new ActivityReportingService(scoringFactoryService);
+        Indicator indicator = indicator(
+                Indicator.Strategy.GENERIC_ACTIVITY,
+                "B = Buget; X = B < 50000 ? 1 : B < 100000 ? 2 : B < 200000 ? 3 : B < 400000 ? 4 : 5; Rol == 'Membru' ? X : X * 2"
+        );
+        ActivityInstance activity = grantActivity("grant-1", Map.of(
+                "Buget", "270000",
+                "Rol", "Membru",
+                "Nume Proiect", "SERRANO"
+        ));
+
+        Score score = service.calculateActivityScores(List.of(activity), indicator).get("grant-1");
+
+        assertEquals(1.0, score.getScore());
+        assertEquals(4.0, score.getAuthorScore());
+        assertEquals("Generic Activity", score.getCoreRankingEquivalent());
+        assertTrue(score.getDetails().contains("Buget: 270000.0"));
+        assertTrue(score.getDetails().contains("Rol: Membru"));
+    }
+
+    @Test
     void delegatedScoringUsesScoringServiceMetadataAndExtrasInFormula() {
         ActivityReportingService service = new ActivityReportingService(scoringFactoryService);
         Indicator indicator = indicator(Indicator.Strategy.CS_JOURNAL, "S * M");
@@ -131,6 +153,29 @@ class ActivityReportingServiceTest {
         ActivityInstance instance = new ActivityInstance();
         instance.setId(id);
         instance.setDate("2024-01-01");
+        instance.setActivity(activity);
+        instance.setFields(fields);
+        instance.setReferenceFields(Map.of());
+        return instance;
+    }
+
+    private ActivityInstance grantActivity(String id, Map<String, String> fields) {
+        Activity.Field budget = new Activity.Field();
+        budget.setName("Buget");
+        budget.setNumber(true);
+        Activity.Field role = new Activity.Field();
+        role.setName("Rol");
+        role.setNumber(false);
+        Activity.Field project = new Activity.Field();
+        project.setName("Nume Proiect");
+        project.setNumber(false);
+
+        Activity activity = new Activity();
+        activity.setFields(List.of(budget, role, project));
+
+        ActivityInstance instance = new ActivityInstance();
+        instance.setId(id);
+        instance.setDate("2024-09-01");
         instance.setActivity(activity);
         instance.setFields(fields);
         instance.setReferenceFields(Map.of());

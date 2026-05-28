@@ -81,7 +81,8 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         );
 
         boolean lncsBookSeriesCandidate = isLncsBookSeriesCandidate(publication, forum);
-        if (PublicationSubtypeSupport.isSubtype(publication, "cp") || lncsBookSeriesCandidate) {
+        boolean conferenceCandidate = PublicationSubtypeSupport.isSubtype(publication, "cp") || lncsBookSeriesCandidate;
+        if (conferenceCandidate) {
             Score resolvedScore = null;
             for (int year : allowedYears) {
                 ConferenceScoreResolution resolution = resolveConferenceScore(publication, forum, year, trace);
@@ -111,7 +112,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         }
 
         // Default scoring for SCOPUS-indexed conferences
-        if (scoreResult.bestPoints.get() == 0 && forum != null) {
+        if (scoreResult.bestPoints.get() == 0 && forum != null && conferenceCandidate) {
             scoreResult.bestPoints.set(1.0);
             scoreResult.bestCategory.set(CoreConferenceRanking.Rank.D);
             scoreResult.bestQuarter.set(WoSRanking.Quarter.SCOPUS);
@@ -205,6 +206,15 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         ConferenceScoreTrace trace = ConferenceScoreTrace.forPublication(null, null, null,
                 forum == null ? null : forum.getPublicationName(), List.of(year));
         return resolveConferenceScore(publication, forum, year, trace).score();
+    }
+
+    public Optional<CoreConferenceRanking> matchByForumName(String publicationName) {
+        if (publicationName == null || publicationName.isBlank()) {
+            return Optional.empty();
+        }
+        ConferenceScoreTrace trace = ConferenceScoreTrace.forPublication(null, null, null, publicationName, List.of());
+        ConferenceMatch match = resolveConferenceMatch(publicationName, trace);
+        return match.resolved() ? Optional.ofNullable(match.ranking()) : Optional.empty();
     }
 
     ConferenceScoreTrace diagnoseConferenceMatch(String publicationName, int year) {

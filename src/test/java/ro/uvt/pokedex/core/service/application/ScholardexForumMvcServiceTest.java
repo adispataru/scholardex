@@ -98,6 +98,23 @@ class ScholardexForumMvcServiceTest {
     }
 
     @Test
+    void searchNormalizesMissingIssnsAndProvidesForumNameFallback() {
+        ScholardexForumView forum = forum("f1", " ", "null-", " null ", "Book");
+        WosForumResolutionService.ResolutionIndex resolutionIndex =
+                new WosForumResolutionService.ResolutionIndex(java.util.Map.of(), java.util.Map.of());
+
+        when(scholardexProjectionReadService.findAllForums()).thenReturn(List.of(forum));
+        when(wosForumResolutionService.buildResolutionIndex()).thenReturn(resolutionIndex);
+        when(wosForumResolutionService.resolveJournalId(forum, resolutionIndex)).thenReturn(null);
+
+        ScholardexForumTablePageResponse result = service.search(0, 25, "publicationName", "asc", null, "all");
+
+        assertEquals("Untitled forum f1", result.items().getFirst().publicationName());
+        assertEquals("", result.items().getFirst().issn());
+        assertEquals("", result.items().getFirst().eIssn());
+    }
+
+    @Test
     void searchSupportsAllSortKeysAndDescDirection() {
         ScholardexForumView a = forum("f1", "A Journal", "1000-0000", "9000-0000", "Journal");
         ScholardexForumView b = forum("f2", "B Journal", "2000-0000", "8000-0000", "Journal");

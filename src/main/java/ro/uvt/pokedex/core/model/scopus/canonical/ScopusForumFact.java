@@ -17,7 +17,9 @@ public class ScopusForumFact implements HasLineageFields {
     private String publicationName;
     private String issn;
     private String eIssn;
+    private String isbn;
     private String aggregationType;
+    private String publisher;
     private String sourceEventId;
     private String source;
     private String sourceRecordId;

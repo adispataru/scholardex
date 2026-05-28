@@ -52,9 +52,9 @@ public class ScholardexForumMvcService {
         String wosJournalId = wosForumResolutionService.resolveJournalId(forum, resolutionIndex);
         return new ScholardexForumTableListItemResponse(
                 forum.getId(),
-                forum.getPublicationName(),
-                forum.getIssn(),
-                forum.getEIssn(),
+                displayName(forum.getPublicationName(), "Untitled forum " + forum.getId()),
+                cleanIdentifier(forum.getIssn()),
+                cleanIdentifier(forum.getEIssn()),
                 forum.getAggregationType(),
                 resolveWosStatus(forum, wosJournalId),
                 wosJournalId
@@ -143,6 +143,18 @@ public class ScholardexForumMvcService {
 
     private String normalize(String value) {
         return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String displayName(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value.trim();
+    }
+
+    private String cleanIdentifier(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        String trimmed = value.trim();
+        return trimmed.toLowerCase(Locale.ROOT).contains("null") ? "" : trimmed;
     }
 
     private String displayWosStatus(String status) {
