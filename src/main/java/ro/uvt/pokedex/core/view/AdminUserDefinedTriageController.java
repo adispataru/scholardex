@@ -29,7 +29,7 @@ public class AdminUserDefinedTriageController {
             Model model
     ) {
         model.addAttribute("snapshot", userDefinedTriageFacade.snapshot(50, 50));
-        model.addAttribute("triageQueue", conflictOperationsFacade.findIdentityConflicts(
+        model.addAttribute("triageQueue", conflictOperationsFacade.findNeedsReviewIdentityConflicts(
                 triagePage, triageSize, null, "USER_DEFINED", null, "OPEN", null, null
         ));
         model.addAttribute("triagePage", triagePage == null ? 0 : triagePage);

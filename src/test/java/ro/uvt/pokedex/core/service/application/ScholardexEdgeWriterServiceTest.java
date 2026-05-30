@@ -34,6 +34,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -366,6 +367,24 @@ class ScholardexEdgeWriterServiceTest {
     }
 
     @Test
+    void upsertAuthorshipEdgeDoesNotOpenConflictWhenSourceLinkKeptByPrecedence() {
+        when(authorshipFactRepository.findByPublicationIdAndAuthorIdAndSource("p3", "a3", "SCOPUS_JSON_BOOTSTRAP"))
+                .thenReturn(Optional.empty());
+        when(sourceLinkService.link(any(), any(), any(), any(), any(), any(), any(), any(), anyBoolean()))
+                .thenReturn(ScholardexSourceLinkService.SourceLinkWriteResult.rejected("linked-canonical-id-kept-by-precedence"));
+
+        ScholardexEdgeWriterService.EdgeWriteResult result = service.upsertAuthorshipEdge(
+                new ScholardexEdgeWriterService.EdgeWriteCommand(
+                        "p3", "a3", "SCOPUS_JSON_BOOTSTRAP", "rec-relink", "evt", "b1", "c1",
+                        ScholardexSourceLinkService.STATE_LINKED, "bridge", false
+                )
+        );
+
+        assertTrue(result.accepted());
+        verify(identityConflictRepository, never()).save(any(ScholardexIdentityConflict.class));
+    }
+
+    @Test
     void upsertAuthorAffiliationEdgeOpensRelinkConflictWhenSourceLinkRejected() {
         when(authorAffiliationFactRepository.findByAuthorIdAndAffiliationIdAndSource("a5", "f5", "SCOPUS"))
                 .thenReturn(Optional.empty());
@@ -383,6 +402,46 @@ class ScholardexEdgeWriterServiceTest {
 
         assertTrue(result.accepted());
         verify(identityConflictRepository).save(any(ScholardexIdentityConflict.class));
+    }
+
+    @Test
+    void batchUpsertAuthorAffiliationEdgesDoesNotCountPrecedenceKeptSourceLinkAsConflict() {
+        ScholardexEdgeWriterService.EdgeWriteCommand command = new ScholardexEdgeWriterService.EdgeWriteCommand(
+                "a5", "f5", "SCOPUS_JSON_BOOTSTRAP", "rec-aa-relink", "evt", "b1", "c1",
+                ScholardexSourceLinkService.STATE_LINKED, "bridge", false
+        );
+        when(sourceLinkService.batchUpsertWithState(any(), any(), anyBoolean()))
+                .thenReturn(new ScholardexSourceLinkService.BatchWriteResult(List.of(
+                        new ScholardexSourceLinkService.SourceLinkBatchItemResult(
+                                new ScholardexSourceLinkService.SourceLinkUpsertCommand(
+                                        ScholardexEntityType.AUTHOR_AFFILIATION,
+                                        "SCOPUS_JSON_BOOTSTRAP",
+                                        "rec-aa-relink",
+                                        "saae_old",
+                                        ScholardexSourceLinkService.STATE_LINKED,
+                                        "bridge",
+                                        "evt",
+                                        "b1",
+                                        "c1",
+                                        false
+                                ),
+                                false,
+                                "linked-canonical-id-kept-by-precedence",
+                                null
+                        )
+                )));
+
+        ScholardexEdgeWriterService.BatchEdgeWriteResult result = service.batchUpsertAuthorAffiliationEdges(
+                List.of(command),
+                Map.of(),
+                Map.of(),
+                false
+        );
+
+        assertEquals(1, result.accepted());
+        assertEquals(0, result.rejected());
+        assertEquals(0, result.conflicts());
+        verify(identityConflictRepository, never()).save(any(ScholardexIdentityConflict.class));
     }
 
     // -------------------------------------------------------------------------

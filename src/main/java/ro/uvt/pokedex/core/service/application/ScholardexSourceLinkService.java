@@ -1,8 +1,8 @@
 package ro.uvt.pokedex.core.service.application;
 
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 public class ScholardexSourceLinkService {
 
     private static final Logger log = LoggerFactory.getLogger(ScholardexSourceLinkService.class);
@@ -50,6 +49,48 @@ public class ScholardexSourceLinkService {
 
     private final ScholardexSourceLinkRepository sourceLinkRepository;
     private final ScholardexIdentityConflictRepository identityConflictRepository;
+    private final ImportSourcePrecedencePolicy importSourcePrecedencePolicy;
+    private final ImportRunMetricService importRunMetricService;
+    private final ScholardexProjectionDirtyService projectionDirtyService;
+
+    @Autowired
+    public ScholardexSourceLinkService(
+            ScholardexSourceLinkRepository sourceLinkRepository,
+            ScholardexIdentityConflictRepository identityConflictRepository,
+            ImportSourcePrecedencePolicy importSourcePrecedencePolicy,
+            ImportRunMetricService importRunMetricService,
+            ScholardexProjectionDirtyService projectionDirtyService
+    ) {
+        this.sourceLinkRepository = sourceLinkRepository;
+        this.identityConflictRepository = identityConflictRepository;
+        this.importSourcePrecedencePolicy = importSourcePrecedencePolicy;
+        this.importRunMetricService = importRunMetricService;
+        this.projectionDirtyService = projectionDirtyService;
+    }
+
+    public ScholardexSourceLinkService(
+            ScholardexSourceLinkRepository sourceLinkRepository,
+            ScholardexIdentityConflictRepository identityConflictRepository,
+            ImportSourcePrecedencePolicy importSourcePrecedencePolicy,
+            ImportRunMetricService importRunMetricService
+    ) {
+        this(sourceLinkRepository, identityConflictRepository, importSourcePrecedencePolicy, importRunMetricService, null);
+    }
+
+    public ScholardexSourceLinkService(
+            ScholardexSourceLinkRepository sourceLinkRepository,
+            ScholardexIdentityConflictRepository identityConflictRepository
+    ) {
+        this(sourceLinkRepository, identityConflictRepository, new ImportSourcePrecedencePolicy(), null, null);
+    }
+
+    ScholardexSourceLinkService(
+            ScholardexSourceLinkRepository sourceLinkRepository,
+            ScholardexIdentityConflictRepository identityConflictRepository,
+            ImportSourcePrecedencePolicy importSourcePrecedencePolicy
+    ) {
+        this(sourceLinkRepository, identityConflictRepository, importSourcePrecedencePolicy, null, null);
+    }
 
     public Optional<ScholardexSourceLink> findByKey(ScholardexEntityType entityType, String source, String sourceRecordId) {
         String normalizedRecordId = normalize(sourceRecordId);
@@ -244,15 +285,37 @@ public class ScholardexSourceLinkService {
             CanonicalObservabilityMetrics.recordSourceLinkTransition(entityType.name(), existingState, normalizedState, "rejected");
             return SourceLinkWriteResult.rejected("invalid-state-transition:" + existingState + "->" + normalizedState);
         }
+        Instant now = Instant.now();
         if (STATE_LINKED.equals(existingState) && STATE_LINKED.equals(normalizedState)
                 && existingCanonicalId != null && normalizedCanonicalId != null
                 && !existingCanonicalId.equals(normalizedCanonicalId)) {
+            ImportSourcePrecedencePolicy.Decision decision = importSourcePrecedencePolicy.decide(
+                    existing.getSource(),
+                    existingImportTimestamp(existing),
+                    source,
+                    importEventTimestamp(sourceEventId)
+            );
+            if (decision == ImportSourcePrecedencePolicy.Decision.APPLY_INCOMING) {
+                applyAssembly(existing, entityType, normalizedSource, normalizedRecordId, normalizedCanonicalId,
+                        normalizedState, normalize(reason), normalize(sourceEventId), normalize(sourceBatchId),
+                        normalize(sourceCorrelationId), now);
+                sourceLinkRepository.save(existing);
+                recordRelinkMetric(entityType, source, sourceBatchId, sourceCorrelationId, sourceEventId, true);
+                markIdentityRelinkProjectionsDirty(entityType, existingCanonicalId, normalizedCanonicalId,
+                        sourceBatchId, sourceEventId, sourceCorrelationId);
+                CanonicalObservabilityMetrics.recordSourceLinkTransition(entityType.name(), existingState, normalizedState, "accepted");
+                return SourceLinkWriteResult.accepted(existing);
+            }
+            if (decision == ImportSourcePrecedencePolicy.Decision.KEEP_EXISTING) {
+                recordRelinkMetric(entityType, source, sourceBatchId, sourceCorrelationId, sourceEventId, false);
+                CanonicalObservabilityMetrics.recordSourceLinkTransition(entityType.name(), existingState, normalizedState, "rejected");
+                return SourceLinkWriteResult.rejected("linked-canonical-id-kept-by-precedence");
+            }
             openRelinkConflict(entityType, normalizedSource, normalizedRecordId, sourceEventId, sourceBatchId, sourceCorrelationId, existingCanonicalId, normalizedCanonicalId);
             CanonicalObservabilityMetrics.recordSourceLinkTransition(entityType.name(), existingState, normalizedState, "rejected");
             return SourceLinkWriteResult.rejected("linked-canonical-id-immutable");
         }
 
-        Instant now = Instant.now();
         ScholardexSourceLink target = existing == null ? new ScholardexSourceLink() : existing;
         applyAssembly(target, entityType, normalizedSource, normalizedRecordId, normalizedCanonicalId,
                 normalizedState, normalize(reason), normalize(sourceEventId), normalize(sourceBatchId),
@@ -282,6 +345,7 @@ public class ScholardexSourceLinkService {
             working.putAll(preloadedByKey);
         }
         Map<SourceLinkKey, ScholardexSourceLink> pendingSaves = new LinkedHashMap<>();
+        List<ProjectionDirtyCommand> pendingDirtyMarks = new ArrayList<>();
         List<SourceLinkBatchItemResult> results = new ArrayList<>();
 
         for (SourceLinkUpsertCommand command : commands) {
@@ -327,6 +391,40 @@ public class ScholardexSourceLinkService {
             if (STATE_LINKED.equals(existingState) && STATE_LINKED.equals(normalizedState)
                     && existingCanonicalId != null && normalizedCanonicalId != null
                     && !existingCanonicalId.equals(normalizedCanonicalId)) {
+                Instant now = Instant.now();
+                ImportSourcePrecedencePolicy.Decision decision = importSourcePrecedencePolicy.decide(
+                        existing.getSource(),
+                        existingImportTimestamp(existing),
+                        command.source(),
+                        importEventTimestamp(command.sourceEventId())
+                );
+                if (decision == ImportSourcePrecedencePolicy.Decision.APPLY_INCOMING) {
+                    applyAssembly(existing, command.entityType(), normalizedSource, normalizedRecordId, normalizedCanonicalId,
+                            normalizedState, normalize(command.reason()), normalize(command.sourceEventId()),
+                            normalize(command.sourceBatchId()), normalize(command.sourceCorrelationId()), now);
+                    working.put(key, existing);
+                    pendingSaves.put(key, existing);
+                    recordRelinkMetric(command.entityType(), command.source(), command.sourceBatchId(),
+                            command.sourceCorrelationId(), command.sourceEventId(), true);
+                    pendingDirtyMarks.addAll(projectionDirtyCommands(
+                            command.entityType(),
+                            existingCanonicalId,
+                            normalizedCanonicalId,
+                            command.sourceBatchId(),
+                            command.sourceEventId(),
+                            command.sourceCorrelationId()
+                    ));
+                    CanonicalObservabilityMetrics.recordSourceLinkTransition(command.entityType().name(), existingState, normalizedState, "accepted");
+                    results.add(new SourceLinkBatchItemResult(command, true, null, existing));
+                    continue;
+                }
+                if (decision == ImportSourcePrecedencePolicy.Decision.KEEP_EXISTING) {
+                    recordRelinkMetric(command.entityType(), command.source(), command.sourceBatchId(),
+                            command.sourceCorrelationId(), command.sourceEventId(), false);
+                    CanonicalObservabilityMetrics.recordSourceLinkTransition(command.entityType().name(), existingState, normalizedState, "rejected");
+                    results.add(new SourceLinkBatchItemResult(command, false, "linked-canonical-id-kept-by-precedence", null));
+                    continue;
+                }
                 openRelinkConflict(
                         command.entityType(),
                         normalizedSource,
@@ -356,6 +454,7 @@ public class ScholardexSourceLinkService {
         if (!pendingSaves.isEmpty()) {
             sourceLinkRepository.saveAll(pendingSaves.values());
         }
+        markIdentityRelinkProjectionsDirty(pendingDirtyMarks);
         return new BatchWriteResult(results);
     }
 
@@ -534,6 +633,34 @@ public class ScholardexSourceLinkService {
         }
     }
 
+    private Instant existingImportTimestamp(ScholardexSourceLink existing) {
+        if (existing == null) {
+            return null;
+        }
+        return existing.getUpdatedAt() == null ? existing.getLinkedAt() : existing.getUpdatedAt();
+    }
+
+    private Instant importEventTimestamp(String sourceEventId) {
+        String normalized = normalize(sourceEventId);
+        if (normalized == null || normalized.length() != 24) {
+            return null;
+        }
+        for (int i = 0; i < 8; i++) {
+            char c = normalized.charAt(i);
+            boolean hex = (c >= '0' && c <= '9')
+                    || (c >= 'a' && c <= 'f')
+                    || (c >= 'A' && c <= 'F');
+            if (!hex) {
+                return null;
+            }
+        }
+        try {
+            return Instant.ofEpochSecond(Long.parseLong(normalized.substring(0, 8), 16));
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
     private boolean isTransitionAllowed(String current, String next, boolean explicitReplayAttempt) {
         if (current == null || current.equals(next)) {
             return true;
@@ -592,6 +719,118 @@ public class ScholardexSourceLinkService {
         }
         identityConflictRepository.save(conflict);
         CanonicalObservabilityMetrics.recordConflictCreated(entityType.name(), source, REASON_RELINK_REJECTED);
+    }
+
+    private void recordRelinkMetric(ScholardexEntityType entityType,
+                                    String source,
+                                    String sourceBatchId,
+                                    String sourceCorrelationId,
+                                    String sourceEventId,
+                                    boolean appliedIncoming) {
+        if (importRunMetricService == null) {
+            return;
+        }
+        importRunMetricService.record(
+                firstPresent(sourceBatchId, sourceCorrelationId, sourceEventId),
+                normalize(source),
+                entityType == null ? null : entityType.name(),
+                relinkMetricReason(entityType, appliedIncoming),
+                1
+        );
+    }
+
+    private void markIdentityRelinkProjectionsDirty(ScholardexEntityType entityType,
+                                                    String existingCanonicalId,
+                                                    String nextCanonicalId,
+                                                    String sourceBatchId,
+                                                    String sourceEventId,
+                                                    String sourceCorrelationId) {
+        markIdentityRelinkProjectionsDirty(projectionDirtyCommands(
+                entityType,
+                existingCanonicalId,
+                nextCanonicalId,
+                sourceBatchId,
+                sourceEventId,
+                sourceCorrelationId
+        ));
+    }
+
+    private List<ProjectionDirtyCommand> projectionDirtyCommands(ScholardexEntityType entityType,
+                                                                 String existingCanonicalId,
+                                                                 String nextCanonicalId,
+                                                                 String sourceBatchId,
+                                                                 String sourceEventId,
+                                                                 String sourceCorrelationId) {
+        if (projectionDirtyService == null || isEdgeEntityType(entityType)) {
+            return List.of();
+        }
+        String oldCanonical = normalize(existingCanonicalId);
+        String newCanonical = normalize(nextCanonicalId);
+        if (oldCanonical == null && newCanonical == null) {
+            return List.of();
+        }
+        List<ProjectionDirtyCommand> commands = new ArrayList<>();
+        if (oldCanonical != null) {
+            commands.add(new ProjectionDirtyCommand(entityType, oldCanonical, sourceBatchId, sourceEventId, sourceCorrelationId));
+        }
+        if (newCanonical != null && !newCanonical.equals(oldCanonical)) {
+            commands.add(new ProjectionDirtyCommand(entityType, newCanonical, sourceBatchId, sourceEventId, sourceCorrelationId));
+        }
+        return commands;
+    }
+
+    private void markIdentityRelinkProjectionsDirty(List<ProjectionDirtyCommand> commands) {
+        if (projectionDirtyService == null || commands == null || commands.isEmpty()) {
+            return;
+        }
+        for (ProjectionDirtyCommand command : commands) {
+            try {
+                projectionDirtyService.markDirty(
+                        command.entityType(),
+                        command.canonicalEntityId(),
+                        command.sourceBatchId(),
+                        command.sourceEventId(),
+                        command.sourceCorrelationId(),
+                        "auto-relinked-identity-link"
+                );
+            } catch (RuntimeException ex) {
+                log.warn("Projection dirty marking failed: entityType={} canonicalEntityId={} sourceBatchId={}",
+                        command.entityType(),
+                        command.canonicalEntityId(),
+                        command.sourceBatchId(),
+                        ex);
+            }
+        }
+    }
+
+    private String relinkMetricReason(ScholardexEntityType entityType, boolean appliedIncoming) {
+        if (isEdgeEntityType(entityType)) {
+            return appliedIncoming
+                    ? "auto-relinked-edge-evidence"
+                    : "skipped-duplicate-lower-precedence-edge-evidence";
+        }
+        return appliedIncoming
+                ? "auto-relinked-identity-link"
+                : "skipped-lower-precedence-identity-link";
+    }
+
+    private boolean isEdgeEntityType(ScholardexEntityType entityType) {
+        return entityType == ScholardexEntityType.AUTHORSHIP
+                || entityType == ScholardexEntityType.AUTHOR_AFFILIATION
+                || entityType == ScholardexEntityType.PUBLICATION_AUTHOR_AFFILIATION
+                || entityType == ScholardexEntityType.CITATION;
+    }
+
+    private String firstPresent(String first, String second, String third) {
+        String normalized = normalize(first);
+        if (normalized != null) {
+            return normalized;
+        }
+        normalized = normalize(second);
+        if (normalized != null) {
+            return normalized;
+        }
+        return normalize(third);
     }
 
     private ScholardexEntityType parseEntityType(String value) {
@@ -662,6 +901,15 @@ public class ScholardexSourceLinkService {
     }
 
     public record ImportRepairSummary(long updated, long skipped, long errors) {
+    }
+
+    private record ProjectionDirtyCommand(
+            ScholardexEntityType entityType,
+            String canonicalEntityId,
+            String sourceBatchId,
+            String sourceEventId,
+            String sourceCorrelationId
+    ) {
     }
 
     public record SourceLinkKey(ScholardexEntityType entityType, String source, String sourceRecordId) {

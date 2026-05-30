@@ -11,10 +11,10 @@
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            <div th:replace="~{fragments :: navbar('Canonical Identity Conflicts')}"></div>
+            <div th:replace="~{fragments :: navbar('Import Conflict Triage')}"></div>
             <div class="container-fluid app-page-content">
                 <div class="app-dashboard">
-                    <p class="app-dashboard__intro">Review the identity conflict queue, filter the active backlog, and drive decisions directly from this surface. Resolved and dismissed conflicts are retained for audit.</p>
+                    <p class="app-dashboard__intro">Review ambiguous identity matches in Needs Review. Deterministic import outcomes are visible in Audit Only without adding manual queue work.</p>
 
                     <div th:if="${errorMessage}" class="app-feedback app-feedback--danger" role="alert" th:text="${errorMessage}"></div>
                     <div th:if="${successMessage}" class="app-feedback app-feedback--success" role="status" th:text="${successMessage}"></div>
@@ -33,7 +33,7 @@
                         <div class="app-table-section__surface">
                             <div class="app-table-section__header app-table-toolbar">
                                 <h6 class="app-table-section__title">
-                                    Identity Conflict Queue
+                                    Needs Review
                                     <span class="text-muted" style="font-weight:400; font-size:0.82rem;"
                                           th:text="'— page ' + (${identityPageData.number} + 1) + ' of ' + ${identityPageData.totalPages} + ' (' + ${identityPageData.totalElements} + ' records)'"></span>
                                 </h6>
@@ -162,6 +162,61 @@
                     <!-- Hidden bulk form — checkboxes in the table rows use form="conflicts-bulk-form" -->
                     <form id="conflicts-bulk-form" method="post" th:action="@{/admin/conflicts/bulkStatus}"></form>
 
+                    <!-- ── Audit-only summary ── -->
+                    <div class="app-summary-panel mt-4">
+                        <div class="app-summary-panel__header">
+                            <h2 class="app-summary-panel__title">Audit Only</h2>
+                        </div>
+                        <div class="app-summary-panel__body">
+                            <p class="app-dashboard-copy">Deterministic relinks, skipped evidence, and WoS fact winner decisions are summarized here for operations and debugging. They are not manual-review items.</p>
+                            <div class="app-summary-list">
+                                <div class="app-summary-list__item">
+                                    <span>Import run metrics</span>
+                                    <strong th:text="${auditOnlySummary.importRunMetricAggregates()}">0</strong>
+                                </div>
+                                <div class="app-summary-list__item">
+                                    <span>Scholardex deterministic identity audit rows</span>
+                                    <strong th:text="${auditOnlySummary.scholardexDeterministicIdentityConflictRows()}">0</strong>
+                                </div>
+                                <div class="app-summary-list__item">
+                                    <span>WoS fact conflict audit rows</span>
+                                    <strong th:text="${auditOnlySummary.wosFactConflictRows()}">0</strong>
+                                </div>
+                                <div class="app-summary-list__item">
+                                    <span>Scopus publication link audit rows</span>
+                                    <strong th:text="${auditOnlySummary.scopusPublicationLinkConflictRows()}">0</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="app-summary-panel mt-4">
+                        <div class="app-summary-panel__header">
+                            <h2 class="app-summary-panel__title">Projection Rebuild</h2>
+                        </div>
+                        <div class="app-summary-panel__body">
+                            <p class="app-dashboard-copy">Automatic identity relinks mark affected read projections dirty. Rebuild failures stay retryable here and do not roll back completed imports.</p>
+                            <div class="app-summary-list">
+                                <div class="app-summary-list__item">
+                                    <span>Dirty projections</span>
+                                    <strong th:text="${projectionDirtySummary.dirty()}">0</strong>
+                                </div>
+                                <div class="app-summary-list__item">
+                                    <span>Failed rebuilds</span>
+                                    <strong th:text="${projectionDirtySummary.rebuildFailed()}">0</strong>
+                                </div>
+                            </div>
+                            <form th:action="@{/admin/conflicts/projections/rebuildDirty}" method="post" class="app-dashboard-form app-dashboard-form--inline">
+                                <div class="app-dashboard-form__actions">
+                                    <button type="submit" class="btn btn-primary btn-sm"
+                                            th:disabled="${projectionDirtySummary.totalOutstanding() == 0}">
+                                        <i class="fa-solid fa-rotate fa-xs"></i> Rebuild dirty projections
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
                     <!-- ── Maintenance panel ── -->
                     <div class="app-attention-panel mt-4">
                         <h2 class="app-attention-panel__title">High-impact maintenance</h2>
@@ -182,6 +237,24 @@
                                 <button type="submit" class="btn btn-danger btn-sm">Clear all OPEN identity conflicts</button>
                             </div>
                         </form>
+                        </div>
+                    </div>
+
+                    <div class="app-summary-panel">
+                        <div class="app-summary-panel__header">
+                            <h2 class="app-summary-panel__title">Legacy Cleanup</h2>
+                        </div>
+                        <div class="app-summary-panel__body">
+                            <p class="app-dashboard-copy">Summarize deterministic legacy Scholardex identity conflicts into import-run metrics, delete those legacy rows, and keep ambiguous multi-candidate identity conflicts for review.</p>
+                            <form th:action="@{/admin/conflicts/legacy/cleanupDeterministic}" method="post" class="app-dashboard-form app-dashboard-form--inline">
+                                <div class="app-dashboard-form__field">
+                                    <label>Confirmation</label>
+                                    <input type="text" name="confirmation" class="form-control" placeholder="Type RESET">
+                                </div>
+                                <div class="app-dashboard-form__actions">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">Cleanup deterministic conflicts</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
 

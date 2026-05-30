@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ro.uvt.pokedex.core.service.application.ConflictOperationsFacade;
+import ro.uvt.pokedex.core.service.application.ScholardexProjectionDirtyService;
 import ro.uvt.pokedex.core.service.application.model.FilterFieldDef;
 import ro.uvt.pokedex.core.service.application.model.FilterOptionDef;
 import ro.uvt.pokedex.core.service.application.model.StatCardDef;
@@ -40,11 +41,13 @@ public class AdminConflictController {
     ) {
         Instant from = parseDateStart(detectedFrom);
         Instant to = parseDateEnd(detectedTo);
-        ConflictOperationsFacade.ConflictSummary summary = conflictOperationsFacade.summarizeIdentityConflicts();
-        model.addAttribute("identityPageData", conflictOperationsFacade.findIdentityConflicts(
+        ConflictOperationsFacade.ConflictSummary summary = conflictOperationsFacade.summarizeNeedsReviewIdentityConflicts();
+        model.addAttribute("identityPageData", conflictOperationsFacade.findNeedsReviewIdentityConflicts(
                 page, size, entityType, incomingSource, reasonCode, status, from, to
         ));
         model.addAttribute("summary", summary);
+        model.addAttribute("auditOnlySummary", conflictOperationsFacade.summarizeAuditOnlyConflicts());
+        model.addAttribute("projectionDirtySummary", safeProjectionDirtySummary(conflictOperationsFacade.summarizeDirtyProjections()));
         model.addAttribute("statCards", buildStatCards(summary));
         model.addAttribute("entityType", normalize(entityType));
         model.addAttribute("incomingSource", normalize(incomingSource));
@@ -55,6 +58,51 @@ public class AdminConflictController {
         model.addAttribute("filterFields", buildFilterFields(entityType, incomingSource, reasonCode, status, detectedFrom, detectedTo, size));
 
         return "admin/conflicts";
+    }
+
+    @PostMapping("/projections/rebuildDirty")
+    public String rebuildDirtyProjections(RedirectAttributes redirectAttributes) {
+        ScholardexProjectionDirtyService.ProjectionRebuildResult result = conflictOperationsFacade.rebuildDirtyProjections();
+        if (result.hasFailures()) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    "Projection rebuild completed with retryable failures. requested=" + result.requestedMarkers()
+                            + ", rebuilt=" + result.rebuiltMarkers()
+                            + ", failed=" + result.failedMarkers()
+                            + ", batchesFailed=" + result.batchRebuildsFailed()
+                            + ".");
+        } else {
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Projection rebuild complete. requested=" + result.requestedMarkers()
+                            + ", rebuilt=" + result.rebuiltMarkers()
+                            + ", batches=" + result.batchRebuildsAttempted()
+                            + ", fullRebuilds=" + result.fullRebuildsAttempted()
+                            + ".");
+        }
+        return "redirect:/admin/conflicts";
+    }
+
+    @PostMapping("/legacy/cleanupDeterministic")
+    public String cleanupDeterministicLegacyConflicts(
+            @RequestParam(name = "confirmation", required = false) String confirmation,
+            RedirectAttributes redirectAttributes
+    ) {
+        if (!isResetConfirmation(confirmation)) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    "Deterministic legacy conflict cleanup aborted. Type RESET in the confirmation field to proceed.");
+            return "redirect:/admin/conflicts";
+        }
+        ConflictOperationsFacade.LegacyConflictCleanupSummary summary =
+                conflictOperationsFacade.cleanupDeterministicLegacyConflicts();
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Deterministic legacy conflict cleanup complete. deleted="
+                        + summary.deletedDeterministicIdentityConflicts()
+                        + ", retainedNeedsReview=" + summary.retainedNeedsReviewIdentityConflicts()
+                        + ", metricAggregates=" + summary.metricAggregatesRecorded()
+                        + ", preservedAuditRows[wosFacts=" + summary.wosFactConflictRowsPreserved()
+                        + ", wosIdentity=" + summary.wosIdentityConflictRowsPreserved()
+                        + ", scopusLinks=" + summary.scopusPublicationLinkConflictRowsPreserved()
+                        + "].");
+        return "redirect:/admin/conflicts";
     }
 
     @PostMapping("/resolve")
@@ -200,6 +248,12 @@ public class AdminConflictController {
 
     private boolean isResetConfirmation(String confirmation) {
         return "RESET".equals(confirmation == null ? null : confirmation.trim());
+    }
+
+    private ScholardexProjectionDirtyService.ProjectionDirtySummary safeProjectionDirtySummary(
+            ScholardexProjectionDirtyService.ProjectionDirtySummary summary
+    ) {
+        return summary == null ? new ScholardexProjectionDirtyService.ProjectionDirtySummary(0, 0) : summary;
     }
 
     private String normalize(String value) {

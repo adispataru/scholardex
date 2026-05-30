@@ -42,6 +42,10 @@ class ScholardexSourceLinkServiceTest {
     private ScholardexSourceLinkRepository sourceLinkRepository;
     @Mock
     private ScholardexIdentityConflictRepository identityConflictRepository;
+    @Mock
+    private ImportRunMetricService importRunMetricService;
+    @Mock
+    private ScholardexProjectionDirtyService projectionDirtyService;
 
     private ScholardexSourceLinkService service;
 
@@ -240,6 +244,360 @@ class ScholardexSourceLinkServiceTest {
     }
 
     @Test
+    void higherPrecedenceSourceRelinksLinkedCanonicalIdWithoutOpeningConflict() {
+        ScholardexSourceLink existing = new ScholardexSourceLink();
+        existing.setEntityType(ScholardexEntityType.PUBLICATION);
+        existing.setSource("SCOPUS");
+        existing.setSourceRecordId("2-s2.0-1");
+        existing.setCanonicalEntityId("spub_old");
+        existing.setLinkState("LINKED");
+        existing.setUpdatedAt(Instant.parse("2026-05-07T14:31:06Z"));
+        when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
+                ScholardexEntityType.PUBLICATION, "SCOPUS", "2-s2.0-1")).thenReturn(Optional.of(existing));
+
+        ScholardexSourceLinkService.SourceLinkWriteResult result = service.link(
+                ScholardexEntityType.PUBLICATION,
+                "SCOPUS_JSON_BOOTSTRAP",
+                "2-s2.0-1",
+                "spub_new",
+                "bootstrap-relink",
+                "event-new",
+                "batch-new",
+                "corr-new",
+                false
+        );
+
+        assertTrue(result.accepted());
+        ArgumentCaptor<ScholardexSourceLink> captor = ArgumentCaptor.forClass(ScholardexSourceLink.class);
+        verify(sourceLinkRepository).save(captor.capture());
+        assertEquals("spub_new", captor.getValue().getCanonicalEntityId());
+        assertEquals("event-new", captor.getValue().getSourceEventId());
+        verify(identityConflictRepository, never()).save(any(ScholardexIdentityConflict.class));
+    }
+
+    @Test
+    void higherPrecedenceSourceRelinkRecordsAggregateMetric() {
+        ScholardexSourceLinkService service = new ScholardexSourceLinkService(
+                sourceLinkRepository,
+                identityConflictRepository,
+                new ImportSourcePrecedencePolicy(),
+                importRunMetricService
+        );
+        ScholardexSourceLink existing = new ScholardexSourceLink();
+        existing.setEntityType(ScholardexEntityType.PUBLICATION);
+        existing.setSource("SCOPUS");
+        existing.setSourceRecordId("2-s2.0-1");
+        existing.setCanonicalEntityId("spub_old");
+        existing.setLinkState("LINKED");
+        existing.setUpdatedAt(Instant.parse("2026-05-07T14:31:06Z"));
+        when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
+                ScholardexEntityType.PUBLICATION, "SCOPUS", "2-s2.0-1")).thenReturn(Optional.of(existing));
+
+        ScholardexSourceLinkService.SourceLinkWriteResult result = service.link(
+                ScholardexEntityType.PUBLICATION,
+                "SCOPUS_JSON_BOOTSTRAP",
+                "2-s2.0-1",
+                "spub_new",
+                "bootstrap-relink",
+                "event-new",
+                "batch-new",
+                "corr-new",
+                false
+        );
+
+        assertTrue(result.accepted());
+        verify(importRunMetricService).record(
+                "batch-new",
+                "SCOPUS_JSON_BOOTSTRAP",
+                "PUBLICATION",
+                "auto-relinked-identity-link",
+                1
+        );
+    }
+
+    @Test
+    void higherPrecedenceIdentityRelinkMarksOldAndNewCanonicalProjectionsDirty() {
+        ScholardexSourceLinkService service = new ScholardexSourceLinkService(
+                sourceLinkRepository,
+                identityConflictRepository,
+                new ImportSourcePrecedencePolicy(),
+                importRunMetricService,
+                projectionDirtyService
+        );
+        ScholardexSourceLink existing = new ScholardexSourceLink();
+        existing.setEntityType(ScholardexEntityType.AUTHOR);
+        existing.setSource("SCOPUS");
+        existing.setSourceRecordId("14027901400");
+        existing.setCanonicalEntityId("sauth_old");
+        existing.setLinkState("LINKED");
+        existing.setUpdatedAt(Instant.parse("2026-05-07T14:31:06Z"));
+        when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
+                ScholardexEntityType.AUTHOR, "SCOPUS", "14027901400")).thenReturn(Optional.of(existing));
+
+        ScholardexSourceLinkService.SourceLinkWriteResult result = service.link(
+                ScholardexEntityType.AUTHOR,
+                "SCOPUS_JSON_BOOTSTRAP",
+                "14027901400",
+                "sauth_new",
+                "bootstrap-relink",
+                "event-new",
+                "batch-new",
+                "corr-new",
+                false
+        );
+
+        assertTrue(result.accepted());
+        verify(projectionDirtyService).markDirty(
+                ScholardexEntityType.AUTHOR,
+                "sauth_old",
+                "batch-new",
+                "event-new",
+                "corr-new",
+                "auto-relinked-identity-link"
+        );
+        verify(projectionDirtyService).markDirty(
+                ScholardexEntityType.AUTHOR,
+                "sauth_new",
+                "batch-new",
+                "event-new",
+                "corr-new",
+                "auto-relinked-identity-link"
+        );
+    }
+
+    @Test
+    void higherPrecedenceEdgeRelinkDoesNotMarkIdentityProjectionsDirty() {
+        ScholardexSourceLinkService service = new ScholardexSourceLinkService(
+                sourceLinkRepository,
+                identityConflictRepository,
+                new ImportSourcePrecedencePolicy(),
+                importRunMetricService,
+                projectionDirtyService
+        );
+        ScholardexSourceLink existing = new ScholardexSourceLink();
+        existing.setEntityType(ScholardexEntityType.AUTHORSHIP);
+        existing.setSource("SCOPUS");
+        existing.setSourceRecordId("authorship-2");
+        existing.setCanonicalEntityId("spub_old::sauth_old::SCOPUS");
+        existing.setLinkState("LINKED");
+        existing.setUpdatedAt(Instant.parse("2026-05-07T14:31:06Z"));
+        when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
+                ScholardexEntityType.AUTHORSHIP, "SCOPUS", "authorship-2")).thenReturn(Optional.of(existing));
+
+        ScholardexSourceLinkService.SourceLinkWriteResult result = service.link(
+                ScholardexEntityType.AUTHORSHIP,
+                "SCOPUS_JSON_BOOTSTRAP",
+                "authorship-2",
+                "spub_new::sauth_new::SCOPUS",
+                "bootstrap-edge",
+                "event-edge",
+                "batch-edge",
+                "corr-edge",
+                false
+        );
+
+        assertTrue(result.accepted());
+        verify(projectionDirtyService, never()).markDirty(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void batchHigherPrecedenceIdentityRelinkMarksOldAndNewCanonicalProjectionsDirty() {
+        ScholardexSourceLinkService service = new ScholardexSourceLinkService(
+                sourceLinkRepository,
+                identityConflictRepository,
+                new ImportSourcePrecedencePolicy(),
+                importRunMetricService,
+                projectionDirtyService
+        );
+        ScholardexSourceLink existing = new ScholardexSourceLink();
+        existing.setEntityType(ScholardexEntityType.AUTHOR);
+        existing.setSource("SCOPUS");
+        existing.setSourceRecordId("14027901400");
+        existing.setCanonicalEntityId("sauth_old");
+        existing.setLinkState("LINKED");
+        existing.setUpdatedAt(Instant.parse("2026-05-07T14:31:06Z"));
+        ScholardexSourceLinkService.SourceLinkKey key =
+                ScholardexSourceLinkService.SourceLinkKey.of(ScholardexEntityType.AUTHOR, "SCOPUS", "14027901400");
+
+        ScholardexSourceLinkService.BatchWriteResult result = service.batchUpsertWithState(
+                List.of(new ScholardexSourceLinkService.SourceLinkUpsertCommand(
+                        ScholardexEntityType.AUTHOR,
+                        "SCOPUS_JSON_BOOTSTRAP",
+                        "14027901400",
+                        "sauth_new",
+                        "LINKED",
+                        "bootstrap-relink",
+                        "event-new",
+                        "batch-new",
+                        "corr-new",
+                        false
+                )),
+                Map.of(key, existing),
+                false
+        );
+
+        assertEquals(1, result.acceptedCount());
+        verify(sourceLinkRepository).saveAll(any());
+        verify(projectionDirtyService).markDirty(
+                ScholardexEntityType.AUTHOR,
+                "sauth_old",
+                "batch-new",
+                "event-new",
+                "corr-new",
+                "auto-relinked-identity-link"
+        );
+        verify(projectionDirtyService).markDirty(
+                ScholardexEntityType.AUTHOR,
+                "sauth_new",
+                "batch-new",
+                "event-new",
+                "corr-new",
+                "auto-relinked-identity-link"
+        );
+    }
+
+    @Test
+    void lowerPrecedenceSourceSkipsLinkedCanonicalIdRelinkWithoutOpeningConflict() {
+        ScholardexSourceLink existing = new ScholardexSourceLink();
+        existing.setEntityType(ScholardexEntityType.PUBLICATION);
+        existing.setSource("SCOPUS_PYTHON_AUTHOR_WORKS");
+        existing.setSourceRecordId("2-s2.0-2");
+        existing.setCanonicalEntityId("spub_high");
+        existing.setLinkState("LINKED");
+        existing.setUpdatedAt(Instant.parse("2026-05-08T19:50:47Z"));
+        when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
+                ScholardexEntityType.PUBLICATION, "SCOPUS", "2-s2.0-2")).thenReturn(Optional.of(existing));
+
+        ScholardexSourceLinkService.SourceLinkWriteResult result = service.link(
+                ScholardexEntityType.PUBLICATION,
+                "SCOPUS_JSON_BOOTSTRAP",
+                "2-s2.0-2",
+                "spub_low",
+                "bootstrap-relink",
+                "event-low",
+                "batch-low",
+                "corr-low",
+                false
+        );
+
+        assertFalse(result.accepted());
+        assertEquals("linked-canonical-id-kept-by-precedence", result.reason());
+        verify(sourceLinkRepository, never()).save(any(ScholardexSourceLink.class));
+        verify(identityConflictRepository, never()).save(any(ScholardexIdentityConflict.class));
+    }
+
+    @Test
+    void lowerPrecedenceSourceSkipRecordsAggregateMetric() {
+        ScholardexSourceLinkService service = new ScholardexSourceLinkService(
+                sourceLinkRepository,
+                identityConflictRepository,
+                new ImportSourcePrecedencePolicy(),
+                importRunMetricService
+        );
+        ScholardexSourceLink existing = new ScholardexSourceLink();
+        existing.setEntityType(ScholardexEntityType.PUBLICATION);
+        existing.setSource("SCOPUS_PYTHON_AUTHOR_WORKS");
+        existing.setSourceRecordId("2-s2.0-2");
+        existing.setCanonicalEntityId("spub_high");
+        existing.setLinkState("LINKED");
+        existing.setUpdatedAt(Instant.parse("2026-05-08T19:50:47Z"));
+        when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
+                ScholardexEntityType.PUBLICATION, "SCOPUS", "2-s2.0-2")).thenReturn(Optional.of(existing));
+
+        ScholardexSourceLinkService.SourceLinkWriteResult result = service.link(
+                ScholardexEntityType.PUBLICATION,
+                "SCOPUS_JSON_BOOTSTRAP",
+                "2-s2.0-2",
+                "spub_low",
+                "bootstrap-relink",
+                "event-low",
+                "batch-low",
+                "corr-low",
+                false
+        );
+
+        assertFalse(result.accepted());
+        verify(importRunMetricService).record(
+                "batch-low",
+                "SCOPUS_JSON_BOOTSTRAP",
+                "PUBLICATION",
+                "skipped-lower-precedence-identity-link",
+                1
+        );
+    }
+
+    @Test
+    void lowerPrecedenceEdgeSourceLinkSkipRecordsEdgeEvidenceMetric() {
+        ScholardexSourceLinkService service = new ScholardexSourceLinkService(
+                sourceLinkRepository,
+                identityConflictRepository,
+                new ImportSourcePrecedencePolicy(),
+                importRunMetricService
+        );
+        ScholardexSourceLink existing = new ScholardexSourceLink();
+        existing.setEntityType(ScholardexEntityType.AUTHORSHIP);
+        existing.setSource("SCOPUS_PYTHON_AUTHOR_WORKS");
+        existing.setSourceRecordId("authorship-1");
+        existing.setCanonicalEntityId("spub_1::sauth_high::SCOPUS");
+        existing.setLinkState("LINKED");
+        existing.setUpdatedAt(Instant.parse("2026-05-08T19:50:47Z"));
+        when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
+                ScholardexEntityType.AUTHORSHIP, "SCOPUS", "authorship-1")).thenReturn(Optional.of(existing));
+
+        ScholardexSourceLinkService.SourceLinkWriteResult result = service.link(
+                ScholardexEntityType.AUTHORSHIP,
+                "SCOPUS_JSON_BOOTSTRAP",
+                "authorship-1",
+                "spub_1::sauth_low::SCOPUS",
+                "bootstrap-edge",
+                "event-edge",
+                "batch-edge",
+                "corr-edge",
+                false
+        );
+
+        assertFalse(result.accepted());
+        verify(importRunMetricService).record(
+                "batch-edge",
+                "SCOPUS_JSON_BOOTSTRAP",
+                "AUTHORSHIP",
+                "skipped-duplicate-lower-precedence-edge-evidence",
+                1
+        );
+    }
+
+    @Test
+    void equalPrecedenceNewerSourceRelinksLinkedCanonicalIdWithoutOpeningConflict() {
+        ScholardexSourceLink existing = new ScholardexSourceLink();
+        existing.setEntityType(ScholardexEntityType.PUBLICATION);
+        existing.setSource("SCOPUS_PYTHON_AUTHOR_WORKS");
+        existing.setSourceRecordId("2-s2.0-3");
+        existing.setCanonicalEntityId("spub_author_works");
+        existing.setLinkState("LINKED");
+        existing.setUpdatedAt(Instant.parse("2026-05-08T19:50:47Z"));
+        when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
+                ScholardexEntityType.PUBLICATION, "SCOPUS", "2-s2.0-3")).thenReturn(Optional.of(existing));
+
+        ScholardexSourceLinkService.SourceLinkWriteResult result = service.link(
+                ScholardexEntityType.PUBLICATION,
+                "SCOPUS_PYTHON_CITATIONS_PUBLICATION",
+                "2-s2.0-3",
+                "spub_citations",
+                "citations-relink",
+                "69fe3edecf213f08bd33119e",
+                "batch-citations",
+                "corr-citations",
+                false
+        );
+
+        assertTrue(result.accepted());
+        ArgumentCaptor<ScholardexSourceLink> captor = ArgumentCaptor.forClass(ScholardexSourceLink.class);
+        verify(sourceLinkRepository).save(captor.capture());
+        assertEquals("spub_citations", captor.getValue().getCanonicalEntityId());
+        verify(identityConflictRepository, never()).save(any(ScholardexIdentityConflict.class));
+    }
+
+    @Test
     void skippedToLinkedRequiresExplicitReplayAttempt() {
         ScholardexSourceLinkService service = new ScholardexSourceLinkService(sourceLinkRepository, identityConflictRepository);
         ScholardexSourceLink existing = new ScholardexSourceLink();
@@ -292,7 +650,7 @@ class ScholardexSourceLinkServiceTest {
         assertEquals(1, result.acceptedCount());
         assertEquals(1, result.rejectedCount());
         verify(sourceLinkRepository).saveAll(any());
-        verify(identityConflictRepository).save(any(ScholardexIdentityConflict.class));
+        verify(identityConflictRepository, never()).save(any(ScholardexIdentityConflict.class));
     }
 
     @Test
@@ -538,18 +896,18 @@ class ScholardexSourceLinkServiceTest {
         // Kills L574-591 VoidMethodCall survivors — all identity conflict field setters
         ScholardexSourceLink existing = new ScholardexSourceLink();
         existing.setEntityType(ScholardexEntityType.PUBLICATION);
-        existing.setSource("SCOPUS");
+        existing.setSource("WOS");
         existing.setSourceRecordId("pub-relink");
         existing.setCanonicalEntityId("spub_old");
         existing.setLinkState("LINKED");
         when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
-                ScholardexEntityType.PUBLICATION, "SCOPUS", "pub-relink")).thenReturn(Optional.of(existing));
+                ScholardexEntityType.PUBLICATION, "WOS", "pub-relink")).thenReturn(Optional.of(existing));
         when(identityConflictRepository.findByEntityTypeAndIncomingSourceAndIncomingSourceRecordIdAndReasonCodeAndStatus(
-                eq(ScholardexEntityType.PUBLICATION), eq("SCOPUS"), eq("pub-relink"),
+                eq(ScholardexEntityType.PUBLICATION), eq("WOS"), eq("pub-relink"),
                 eq("SOURCE_LINK_RELINK_REJECTED"), eq("OPEN")
         )).thenReturn(Optional.empty());
 
-        service.link(ScholardexEntityType.PUBLICATION, "SCOPUS", "pub-relink", "spub_new",
+        service.link(ScholardexEntityType.PUBLICATION, "WOS", "pub-relink", "spub_new",
                 "relink-reason", "evt-relink", "b-relink", "c-relink", true);
 
         ArgumentCaptor<ScholardexIdentityConflict> captor =
@@ -557,7 +915,7 @@ class ScholardexSourceLinkServiceTest {
         verify(identityConflictRepository).save(captor.capture());
         ScholardexIdentityConflict conflict = captor.getValue();
         assertEquals(ScholardexEntityType.PUBLICATION, conflict.getEntityType());
-        assertEquals("SCOPUS", conflict.getIncomingSource());
+        assertEquals("WOS", conflict.getIncomingSource());
         assertEquals("pub-relink", conflict.getIncomingSourceRecordId());
         assertEquals("SOURCE_LINK_RELINK_REJECTED", conflict.getReasonCode());
         assertEquals("OPEN", conflict.getStatus());

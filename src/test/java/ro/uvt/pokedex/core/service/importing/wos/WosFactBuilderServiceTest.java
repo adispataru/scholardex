@@ -17,6 +17,7 @@ import ro.uvt.pokedex.core.model.reporting.wos.WosSourceType;
 import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosFactConflictRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
+import ro.uvt.pokedex.core.service.application.ImportRunMetricService;
 import ro.uvt.pokedex.core.service.application.WosIndexMaintenanceService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.wos.model.IdentityResolutionResult;
@@ -56,6 +57,7 @@ class WosFactBuilderServiceTest {
     @Mock private MongoTemplate mongoTemplate;
     @Mock private WosFactBuildCheckpointService checkpointService;
     @Mock private WosIndexMaintenanceService wosIndexMaintenanceService;
+    @Mock private ImportRunMetricService importRunMetricService;
 
     private final List<WosMetricFact> metricStore = new ArrayList<>();
     private final List<WosCategoryFact> categoryStore = new ArrayList<>();
@@ -346,6 +348,69 @@ class WosFactBuilderServiceTest {
         assertEquals("ev-old", conflict.getLoserSourceEventId());
         assertEquals("old-file.xlsx", conflict.getLoserSourceFile());
         assertNotNull(conflict.getDetectedAt());
+    }
+
+    @Test
+    void latestLineageWinnerRecordsAuditOnlyMetric() {
+        service = serviceWithImportRunMetrics();
+        WosMetricFact existing = new WosMetricFact();
+        existing.setId("m-existing");
+        existing.setJournalId("jid-1");
+        existing.setYear(2023);
+        existing.setMetricType(MetricType.AIS);
+        existing.setValue(0.8);
+        existing.setSourceType(WosSourceType.GOV_AIS_RIS);
+        existing.setSourceEventId("ev-old");
+        existing.setSourceFile("old-file.xlsx");
+        existing.setSourceVersion("v2022");
+        existing.setSourceRowItem("1");
+        metricStore.add(existing);
+
+        WosParsedRecord incoming = record(MetricType.AIS, WosSourceType.GOV_AIS_RIS, 1.1, "v2023", "2",
+                "ACOUSTICS", EditionNormalized.SCIE, "Q1", 2);
+        when(parserOrchestrator.parseAllEvents()).thenReturn(runOf(List.of(incoming)));
+
+        service.buildFactsFromImportEventsWithCheckpoint(null, false, "wos-run-1", null);
+
+        verify(importRunMetricService).record(
+                "wos-run-1",
+                "GOV_AIS_RIS",
+                "METRIC_SCORE",
+                "deterministic-wos-fact-winner-latest-lineage",
+                1
+        );
+    }
+
+    @Test
+    void sourcePrecedenceWinnerRecordsAuditMetricWithoutFactConflictRow() {
+        service = serviceWithImportRunMetrics();
+        WosMetricFact existing = new WosMetricFact();
+        existing.setId("m-existing");
+        existing.setJournalId("jid-1");
+        existing.setYear(2023);
+        existing.setMetricType(MetricType.AIS);
+        existing.setValue(0.8);
+        existing.setSourceType(WosSourceType.OFFICIAL_WOS_EXTRACT);
+        existing.setSourceEventId("ev-official");
+        existing.setSourceFile("official.json");
+        existing.setSourceVersion("v2024");
+        existing.setSourceRowItem("1");
+        metricStore.add(existing);
+
+        WosParsedRecord incoming = record(MetricType.AIS, WosSourceType.GOV_AIS_RIS, 1.1, "v2023", "2",
+                "ACOUSTICS", EditionNormalized.SCIE, "Q1", 2);
+        when(parserOrchestrator.parseAllEvents()).thenReturn(runOf(List.of(incoming)));
+
+        service.buildFactsFromImportEvents();
+
+        verify(importRunMetricService).record(
+                "v2023",
+                "GOV_AIS_RIS",
+                "METRIC_SCORE",
+                "deterministic-wos-fact-winner-source-precedence",
+                1
+        );
+        verify(factConflictRepository, never()).saveAll(any());
     }
 
     @Test
@@ -1046,6 +1111,22 @@ class WosFactBuilderServiceTest {
                 "file.xlsx",
                 sourceVersion,
                 sourceRowItem
+        );
+    }
+
+    private WosFactBuilderService serviceWithImportRunMetrics() {
+        return new WosFactBuilderService(
+                parserOrchestrator,
+                identityResolutionService,
+                metricFactRepository,
+                categoryFactRepository,
+                factConflictRepository,
+                mongoTemplate,
+                checkpointService,
+                wosIndexMaintenanceService,
+                new WosOptimizationProperties(),
+                meterRegistry,
+                importRunMetricService
         );
     }
 

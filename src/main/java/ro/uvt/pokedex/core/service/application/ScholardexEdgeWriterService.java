@@ -82,7 +82,7 @@ public class ScholardexEdgeWriterService {
                 command,
                 edge.getId()
         );
-        if (!sourceLinkResult.accepted()) {
+        if (!sourceLinkResult.accepted() && !isPrecedenceKeptSourceLinkRejection(sourceLinkResult.reason())) {
             openEdgeConflict(
                     ScholardexEntityType.AUTHORSHIP,
                     command.source(),
@@ -217,11 +217,16 @@ public class ScholardexEdgeWriterService {
 
         ScholardexSourceLinkService.BatchWriteResult sourceLinkResults =
                 sourceLinkService.batchUpsertWithState(linkCommands, preloadedSourceLinks, allowFallbackLookup);
+        int sourceLinkRejected = 0;
         if (sourceLinkResults.rejectedCount() > 0) {
             for (ScholardexSourceLinkService.SourceLinkBatchItemResult item : sourceLinkResults.results()) {
                 if (item.accepted()) {
                     continue;
                 }
+                if (isPrecedenceKeptSourceLinkRejection(item.reason())) {
+                    continue;
+                }
+                sourceLinkRejected++;
                 openEdgeConflict(
                         ScholardexEntityType.AUTHORSHIP,
                         item.command().source(),
@@ -238,7 +243,7 @@ public class ScholardexEdgeWriterService {
 
         return new BatchEdgeWriteResult(
                 accepted,
-                rejected + (int) sourceLinkResults.rejectedCount(),
+                rejected + sourceLinkRejected,
                 createdCount,
                 updatedCount,
                 conflicts
@@ -283,7 +288,7 @@ public class ScholardexEdgeWriterService {
                 command,
                 edge.getId()
         );
-        if (!sourceLinkResult.accepted()) {
+        if (!sourceLinkResult.accepted() && !isPrecedenceKeptSourceLinkRejection(sourceLinkResult.reason())) {
             openEdgeConflict(
                     ScholardexEntityType.AUTHOR_AFFILIATION,
                     command.source(),
@@ -347,7 +352,7 @@ public class ScholardexEdgeWriterService {
                 command,
                 edge.getId()
         );
-        if (!sourceLinkResult.accepted()) {
+        if (!sourceLinkResult.accepted() && !isPrecedenceKeptSourceLinkRejection(sourceLinkResult.reason())) {
             openEdgeConflict(
                     ScholardexEntityType.PUBLICATION_AUTHOR_AFFILIATION,
                     command.source(),
@@ -465,11 +470,16 @@ public class ScholardexEdgeWriterService {
 
         ScholardexSourceLinkService.BatchWriteResult sourceLinkResults =
                 sourceLinkService.batchUpsertWithState(linkCommands, preloadedSourceLinks, allowFallbackLookup);
+        int sourceLinkRejected = 0;
         if (sourceLinkResults.rejectedCount() > 0) {
             for (ScholardexSourceLinkService.SourceLinkBatchItemResult item : sourceLinkResults.results()) {
                 if (item.accepted()) {
                     continue;
                 }
+                if (isPrecedenceKeptSourceLinkRejection(item.reason())) {
+                    continue;
+                }
+                sourceLinkRejected++;
                 openEdgeConflict(
                         ScholardexEntityType.AUTHOR_AFFILIATION,
                         item.command().source(),
@@ -486,7 +496,7 @@ public class ScholardexEdgeWriterService {
 
         return new BatchEdgeWriteResult(
                 accepted,
-                rejected + (int) sourceLinkResults.rejectedCount(),
+                rejected + sourceLinkRejected,
                 createdCount,
                 updatedCount,
                 conflicts
@@ -630,11 +640,16 @@ public class ScholardexEdgeWriterService {
         }
         ScholardexSourceLinkService.BatchWriteResult sourceLinkResults =
                 sourceLinkService.batchUpsertWithState(linkCommands, preloadedSourceLinks, allowFallbackLookup);
+        int sourceLinkRejected = 0;
         if (sourceLinkResults.rejectedCount() > 0) {
             for (ScholardexSourceLinkService.SourceLinkBatchItemResult item : sourceLinkResults.results()) {
                 if (item.accepted()) {
                     continue;
                 }
+                if (isPrecedenceKeptSourceLinkRejection(item.reason())) {
+                    continue;
+                }
+                sourceLinkRejected++;
                 openEdgeConflict(
                         ScholardexEntityType.PUBLICATION_AUTHOR_AFFILIATION,
                         item.command().source(),
@@ -650,7 +665,7 @@ public class ScholardexEdgeWriterService {
         }
         return new BatchEdgeWriteResult(
                 accepted,
-                rejected + (int) sourceLinkResults.rejectedCount(),
+                rejected + sourceLinkRejected,
                 createdCount,
                 updatedCount,
                 conflicts
@@ -742,6 +757,10 @@ public class ScholardexEdgeWriterService {
                 || !Objects.equals(edge.getSourceCorrelationId(), command.sourceCorrelationId())
                 || !Objects.equals(edge.getLinkState(), command.linkState())
                 || !Objects.equals(edge.getLinkReason(), command.linkReason());
+    }
+
+    private boolean isPrecedenceKeptSourceLinkRejection(String reason) {
+        return "linked-canonical-id-kept-by-precedence".equals(reason);
     }
 
     private void openEdgeConflict(

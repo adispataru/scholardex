@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -19,6 +20,7 @@ import ro.uvt.pokedex.core.model.reporting.wos.WosSourceType;
 import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosFactConflictRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
+import ro.uvt.pokedex.core.service.application.ImportRunMetricService;
 import ro.uvt.pokedex.core.service.application.WosIndexMaintenanceService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.wos.model.IdentityResolutionResult;
@@ -55,6 +57,34 @@ public class WosFactBuilderService {
     private final WosIndexMaintenanceService wosIndexMaintenanceService;
     private final WosOptimizationProperties optimizationProperties;
     private final Counter ifSourcePolicySkipCounter;
+    private final ImportRunMetricService importRunMetricService;
+
+    @Autowired
+    public WosFactBuilderService(
+            WosImportEventParserOrchestrator parserOrchestrator,
+            WosIdentityResolutionService identityResolutionService,
+            WosMetricFactRepository metricFactRepository,
+            WosCategoryFactRepository categoryFactRepository,
+            WosFactConflictRepository factConflictRepository,
+            MongoTemplate mongoTemplate,
+            WosFactBuildCheckpointService checkpointService,
+            WosIndexMaintenanceService wosIndexMaintenanceService,
+            WosOptimizationProperties optimizationProperties,
+            MeterRegistry meterRegistry,
+            ImportRunMetricService importRunMetricService
+    ) {
+        this.parserOrchestrator = parserOrchestrator;
+        this.identityResolutionService = identityResolutionService;
+        this.metricFactRepository = metricFactRepository;
+        this.categoryFactRepository = categoryFactRepository;
+        this.factConflictRepository = factConflictRepository;
+        this.mongoTemplate = mongoTemplate;
+        this.checkpointService = checkpointService;
+        this.wosIndexMaintenanceService = wosIndexMaintenanceService;
+        this.optimizationProperties = optimizationProperties;
+        this.ifSourcePolicySkipCounter = meterRegistry.counter("pokedex.wos.if.source_policy.skips");
+        this.importRunMetricService = importRunMetricService;
+    }
 
     public WosFactBuilderService(
             WosImportEventParserOrchestrator parserOrchestrator,
@@ -68,16 +98,19 @@ public class WosFactBuilderService {
             WosOptimizationProperties optimizationProperties,
             MeterRegistry meterRegistry
     ) {
-        this.parserOrchestrator = parserOrchestrator;
-        this.identityResolutionService = identityResolutionService;
-        this.metricFactRepository = metricFactRepository;
-        this.categoryFactRepository = categoryFactRepository;
-        this.factConflictRepository = factConflictRepository;
-        this.mongoTemplate = mongoTemplate;
-        this.checkpointService = checkpointService;
-        this.wosIndexMaintenanceService = wosIndexMaintenanceService;
-        this.optimizationProperties = optimizationProperties;
-        this.ifSourcePolicySkipCounter = meterRegistry.counter("pokedex.wos.if.source_policy.skips");
+        this(
+                parserOrchestrator,
+                identityResolutionService,
+                metricFactRepository,
+                categoryFactRepository,
+                factConflictRepository,
+                mongoTemplate,
+                checkpointService,
+                wosIndexMaintenanceService,
+                optimizationProperties,
+                meterRegistry,
+                null
+        );
     }
 
     public ImportProcessingResult buildFactsFromImportEvents() {
@@ -141,7 +174,8 @@ public class WosFactBuilderService {
         for (int from = startBatch * chunkSize; from < total; from += chunkSize) {
             int to = Math.min(total, from + chunkSize);
             int batchIndex = from / chunkSize;
-            processChunk(records.subList(from, to), result, identityCache, tokenSetResolutionCache, batchIndex + 1, batchIndex, totalBatches);
+            processChunk(records.subList(from, to), result, identityCache, tokenSetResolutionCache,
+                    batchIndex + 1, batchIndex, totalBatches, runId);
             batchesProcessed++;
             endBatch = batchIndex;
             if (useCheckpoint) {
@@ -371,7 +405,8 @@ public class WosFactBuilderService {
             Map<String, String> tokenSetResolutionCache,
             int chunkNo,
             int batchIndex,
-            int totalBatches
+            int totalBatches,
+            String runId
     ) {
         long chunkStartedAtNanos = System.nanoTime();
         long normalizeStartedAtNanos = System.nanoTime();
@@ -445,8 +480,8 @@ public class WosFactBuilderService {
         List<WosFactConflict> pendingConflicts = new ArrayList<>();
 
         for (ResolvedRecord resolvedRecord : resolved) {
-            upsertMetricFact(resolvedRecord, result, existingMetrics, pendingMetricSaves, pendingConflicts);
-            upsertCategoryFact(resolvedRecord, result, existingCategories, pendingCategorySaves, pendingConflicts);
+            upsertMetricFact(resolvedRecord, result, existingMetrics, pendingMetricSaves, pendingConflicts, runId);
+            upsertCategoryFact(resolvedRecord, result, existingCategories, pendingCategorySaves, pendingConflicts, runId);
         }
 
         long saveStartedAtNanos = System.nanoTime();
@@ -775,7 +810,8 @@ public class WosFactBuilderService {
             ImportProcessingResult result,
             Map<MetricFactKey, WosMetricFact> existingMetrics,
             Map<MetricFactKey, WosMetricFact> pendingMetricSaves,
-            List<WosFactConflict> pendingConflicts
+            List<WosFactConflict> pendingConflicts,
+            String runId
     ) {
         WosParsedRecord record = resolved.record();
         MetricFactKey key = metricKey(resolved.journalId(), record);
@@ -813,6 +849,7 @@ public class WosFactBuilderService {
         }
 
         WinnerDecision<WosMetricFact> decision = decideMetricWinner(existing, record);
+        recordWosWinnerMetric("METRIC_SCORE", record, runId, decision.reason());
         if (decision.incomingWins()) {
             WosMetricFact loserSnapshot = copyMetric(existing);
             WosMetricFact updated = applyMetricRecord(existing, record);
@@ -844,7 +881,8 @@ public class WosFactBuilderService {
             ImportProcessingResult result,
             Map<CategoryFactKey, WosCategoryFact> existingCategories,
             Map<CategoryFactKey, WosCategoryFact> pendingCategorySaves,
-            List<WosFactConflict> pendingConflicts
+            List<WosFactConflict> pendingConflicts,
+            String runId
     ) {
         WosParsedRecord record = resolved.record();
         CategoryFactKey key = categoryKey(resolved.journalId(), record);
@@ -875,6 +913,7 @@ public class WosFactBuilderService {
         }
 
         WinnerDecision<WosCategoryFact> decision = decideCategoryWinner(existing, record);
+        recordWosWinnerMetric("CATEGORY_RANKING", record, runId, decision.reason());
         if (decision.incomingWins()) {
             WosCategoryFact loserSnapshot = copyCategory(existing);
             WosCategoryFact updated = applyCategoryRecord(existing, record);
@@ -1020,6 +1059,32 @@ public class WosFactBuilderService {
 
     private boolean shouldEmitConflict(String reason) {
         return !"source-precedence".equals(reason) && !"duplicate-source-file".equals(reason);
+    }
+
+    private void recordWosWinnerMetric(String factType, WosParsedRecord record, String runId, String reason) {
+        if (importRunMetricService == null || record == null) {
+            return;
+        }
+        importRunMetricService.record(
+                firstPresent(runId, record.sourceVersion(), record.sourceEventId()),
+                record.sourceType() == null ? null : record.sourceType().name(),
+                factType,
+                "deterministic-wos-fact-winner-" + reason,
+                1
+        );
+    }
+
+    private String firstPresent(String first, String second, String third) {
+        if (first != null && !first.isBlank()) {
+            return first.trim();
+        }
+        if (second != null && !second.isBlank()) {
+            return second.trim();
+        }
+        if (third != null && !third.isBlank()) {
+            return third.trim();
+        }
+        return null;
     }
 
     private boolean isSameCategoryRanking(WosCategoryFact fact, WosParsedRecord record) {

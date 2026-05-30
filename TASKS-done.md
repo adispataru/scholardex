@@ -2,6 +2,22 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H53 Import Conflict Triage Policy And Deterministic Relink Handling
+
+Archived from `TASKS.md` on 2026-05-30 after completing H53.1-H53.10. Closed task doc: `docs/tasks/closed/h53-import-conflict-triage.md`.
+
+- [x] `H53` Import conflict triage policy and deterministic relink handling. *(completed 2026-05-30)*
+  Goal: reduce future import conflict noise by reserving human review for ambiguous canonical identity matches while handling source-link relinks, edge evidence, and WoS fact conflicts deterministically.
+  Deliverable: source-precedence policy for true identity/source links; accumulator-style handling for authorship, affiliation, publication-author-affiliation, and citation edges; per-run aggregate import metrics; admin conflict UI split into `Needs Review` and `Audit Only`; dirty-projection marking with quick rebuild action.
+  Exit criteria: lower-precedence identity relinks skip without review; higher-precedence or newer equal-precedence identity relinks apply automatically and mark affected projections dirty; only ambiguous multi-candidate identity cases enter human triage; zero-candidate misses are counted only in import metrics; WoS fact conflicts never enter human triage.
+  Handover:
+  - Added shared source precedence handling for `SCOPUS < SCOPUS_JSON_BOOTSTRAP < SCOPUS_PYTHON_AUTHOR_WORKS = SCOPUS_PYTHON_CITATIONS_PUBLICATION`.
+  - Deterministic identity relinks now auto-apply or skip by precedence/timestamp, emit aggregate import-run metrics, and mark affected projections dirty.
+  - Edge source-link evidence now behaves as accumulator-style audit/metric noise rather than manual review work.
+  - Needs Review is scoped to ambiguous multi-candidate identity conflicts; Audit Only summarizes deterministic metrics and legacy audit rows.
+  - WoS fact winner decisions emit aggregate audit metrics and stay out of human triage.
+  - Added retryable dirty-projection rebuild and idempotent legacy deterministic-conflict cleanup actions in the admin conflict surface.
+
 ## H49 Test Quality Remediation
 
 Archived from `TASKS.md` on 2026-04-30 after full `H49` closeout.

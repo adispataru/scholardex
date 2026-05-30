@@ -12,6 +12,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
 import ro.uvt.pokedex.core.repository.reporting.WosFactConflictRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosIdentityConflictRepository;
+import ro.uvt.pokedex.core.repository.importing.ImportRunMetricRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.PublicationLinkConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 
@@ -24,7 +25,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -39,6 +43,12 @@ class ConflictOperationsFacadeTest {
     private WosFactConflictRepository wosFactConflictRepository;
     @Mock
     private PublicationLinkConflictRepository publicationLinkConflictRepository;
+    @Mock
+    private ImportRunMetricRepository importRunMetricRepository;
+    @Mock
+    private ImportRunMetricService importRunMetricService;
+    @Mock
+    private ScholardexProjectionDirtyService projectionDirtyService;
 
     private ConflictOperationsFacade facade;
 
@@ -48,7 +58,10 @@ class ConflictOperationsFacadeTest {
                 scholardexIdentityConflictRepository,
                 wosIdentityConflictRepository,
                 wosFactConflictRepository,
-                publicationLinkConflictRepository
+                publicationLinkConflictRepository,
+                importRunMetricRepository,
+                importRunMetricService,
+                projectionDirtyService
         );
     }
 
@@ -69,6 +82,67 @@ class ConflictOperationsFacadeTest {
         assertEquals(0, pageable.getPageNumber());
         assertEquals(200, pageable.getPageSize());
         assertTrue(pageable.getSort().getOrderFor("detectedAt").isDescending());
+    }
+
+    @Test
+    void findNeedsReviewIdentityConflictsUsesAmbiguousCandidateQuery() {
+        when(scholardexIdentityConflictRepository
+                .findNeedsReviewByEntityTypeAndFilters(
+                        any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(ambiguousConflict())));
+
+        var page = facade.findNeedsReviewIdentityConflicts(
+                -1,
+                999,
+                " publication ",
+                " SCOPUS ",
+                " AMBIGUOUS_MATCH ",
+                " OPEN ",
+                null,
+                null
+        );
+
+        assertEquals(1, page.getTotalElements());
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(scholardexIdentityConflictRepository).findNeedsReviewByEntityTypeAndFilters(
+                eq(ScholardexEntityType.PUBLICATION),
+                eq("SCOPUS"),
+                eq("AMBIGUOUS_MATCH"),
+                eq("OPEN"),
+                any(),
+                any(),
+                pageableCaptor.capture()
+        );
+        assertEquals(0, pageableCaptor.getValue().getPageNumber());
+        assertEquals(200, pageableCaptor.getValue().getPageSize());
+    }
+
+    @Test
+    void findNeedsReviewIdentityConflictsWithoutEntityTypeUsesGenericAmbiguousCandidateQuery() {
+        when(scholardexIdentityConflictRepository
+                .findNeedsReviewByFilters(any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        var page = facade.findNeedsReviewIdentityConflicts(
+                1,
+                25,
+                "invalid",
+                " src ",
+                " reason ",
+                " open ",
+                Instant.parse("2026-05-01T00:00:00Z"),
+                Instant.parse("2026-05-31T23:59:59Z")
+        );
+
+        assertTrue(page.isEmpty());
+        verify(scholardexIdentityConflictRepository).findNeedsReviewByFilters(
+                eq("src"),
+                eq("reason"),
+                eq("open"),
+                eq(Instant.parse("2026-05-01T00:00:00Z")),
+                eq(Instant.parse("2026-05-31T23:59:59Z")),
+                any(Pageable.class)
+        );
     }
 
     @Test
@@ -121,6 +195,118 @@ class ConflictOperationsFacadeTest {
         assertEquals(2L, summary.resolved());
         assertEquals(1L, summary.dismissed());
         assertEquals(10L, summary.total());
+    }
+
+    @Test
+    void summarizeNeedsReviewUsesOnlyAmbiguousCandidateCounts() {
+        when(scholardexIdentityConflictRepository.countNeedsReviewByStatus("OPEN")).thenReturn(4L);
+        when(scholardexIdentityConflictRepository.countNeedsReviewByStatus("RESOLVED")).thenReturn(3L);
+        when(scholardexIdentityConflictRepository.countNeedsReviewByStatus("DISMISSED")).thenReturn(2L);
+        when(scholardexIdentityConflictRepository.countNeedsReviewByStatus("INVESTIGATED")).thenReturn(1L);
+
+        ConflictOperationsFacade.ConflictSummary summary = facade.summarizeNeedsReviewIdentityConflicts();
+
+        assertEquals(4L, summary.open());
+        assertEquals(3L, summary.resolved());
+        assertEquals(2L, summary.dismissed());
+        assertEquals(1L, summary.investigated());
+        assertEquals(10L, summary.total());
+    }
+
+    @Test
+    void summarizeAuditOnlyConflictsUsesAggregateAndDeterministicStores() {
+        when(importRunMetricRepository.count()).thenReturn(11L);
+        when(scholardexIdentityConflictRepository.countAuditOnlyDeterministic()).thenReturn(12L);
+        when(wosFactConflictRepository.count()).thenReturn(22L);
+        when(publicationLinkConflictRepository.count()).thenReturn(33L);
+
+        ConflictOperationsFacade.AuditOnlySummary summary = facade.summarizeAuditOnlyConflicts();
+
+        assertEquals(11L, summary.importRunMetricAggregates());
+        assertEquals(12L, summary.scholardexDeterministicIdentityConflictRows());
+        assertEquals(22L, summary.wosFactConflictRows());
+        assertEquals(33L, summary.scopusPublicationLinkConflictRows());
+        assertEquals(78L, summary.total());
+    }
+
+    @Test
+    void projectionDirtyOperationsDelegateToProjectionDirtyService() {
+        when(projectionDirtyService.summarizeDirtyProjections())
+                .thenReturn(new ScholardexProjectionDirtyService.ProjectionDirtySummary(2, 1));
+        when(projectionDirtyService.rebuildDirtyProjections())
+                .thenReturn(new ScholardexProjectionDirtyService.ProjectionRebuildResult(3, 2, 1, 2, 1, 0, List.of("batch-2 failed")));
+
+        ScholardexProjectionDirtyService.ProjectionDirtySummary summary = facade.summarizeDirtyProjections();
+        ScholardexProjectionDirtyService.ProjectionRebuildResult rebuild = facade.rebuildDirtyProjections();
+
+        assertEquals(2L, summary.dirty());
+        assertEquals(1L, summary.rebuildFailed());
+        assertEquals(3L, summary.totalOutstanding());
+        assertEquals(1L, rebuild.failedMarkers());
+        assertFalse(rebuild.errors().isEmpty());
+    }
+
+    @Test
+    void cleanupDeterministicLegacyConflictsDeletesOnlyNonAmbiguousRowsAndRecordsMetrics() {
+        ScholardexIdentityConflict deterministicRelink = conflict("det-1", "OPEN");
+        deterministicRelink.setEntityType(ScholardexEntityType.PUBLICATION);
+        deterministicRelink.setIncomingSource("SCOPUS_JSON_BOOTSTRAP");
+        deterministicRelink.setReasonCode("SOURCE_LINK_RELINK_REJECTED");
+        deterministicRelink.setCandidateCanonicalIds(List.of("spub_1"));
+        ScholardexIdentityConflict zeroCandidate = conflict("det-2", "OPEN");
+        zeroCandidate.setEntityType(ScholardexEntityType.AUTHOR);
+        zeroCandidate.setIncomingSource("SCOPUS");
+        zeroCandidate.setReasonCode("NO_CANONICAL_CANDIDATE");
+        zeroCandidate.setCandidateCanonicalIds(List.of());
+        ScholardexIdentityConflict ambiguous = ambiguousConflict();
+        when(scholardexIdentityConflictRepository.findAll())
+                .thenReturn(List.of(deterministicRelink, zeroCandidate, ambiguous));
+        when(wosFactConflictRepository.count()).thenReturn(22L);
+        when(wosIdentityConflictRepository.count()).thenReturn(1L);
+        when(publicationLinkConflictRepository.count()).thenReturn(3L);
+
+        ConflictOperationsFacade.LegacyConflictCleanupSummary summary = facade.cleanupDeterministicLegacyConflicts();
+
+        assertEquals(2L, summary.deletedDeterministicIdentityConflicts());
+        assertEquals(1L, summary.retainedNeedsReviewIdentityConflicts());
+        assertEquals(2L, summary.metricAggregatesRecorded());
+        assertEquals(22L, summary.wosFactConflictRowsPreserved());
+        assertEquals(1L, summary.wosIdentityConflictRowsPreserved());
+        assertEquals(3L, summary.scopusPublicationLinkConflictRowsPreserved());
+        verify(scholardexIdentityConflictRepository).deleteAll(argThat(deleted ->
+                deleted instanceof List<?> rows
+                        && rows.size() == 2
+                        && rows.contains(deterministicRelink)
+                        && rows.contains(zeroCandidate)
+                        && !rows.contains(ambiguous)
+        ));
+        verify(importRunMetricService).record(
+                "legacy-conflict-cleanup",
+                "SCOPUS_JSON_BOOTSTRAP",
+                "PUBLICATION",
+                "legacy-deterministic-identity-conflict:SOURCE_LINK_RELINK_REJECTED",
+                1
+        );
+        verify(importRunMetricService).record(
+                "legacy-conflict-cleanup",
+                "SCOPUS",
+                "AUTHOR",
+                "legacy-deterministic-identity-conflict:NO_CANONICAL_CANDIDATE",
+                1
+        );
+    }
+
+    @Test
+    void cleanupDeterministicLegacyConflictsIsIdempotentWhenOnlyAmbiguousRowsRemain() {
+        when(scholardexIdentityConflictRepository.findAll()).thenReturn(List.of(ambiguousConflict()));
+
+        ConflictOperationsFacade.LegacyConflictCleanupSummary summary = facade.cleanupDeterministicLegacyConflicts();
+
+        assertEquals(0L, summary.deletedDeterministicIdentityConflicts());
+        assertEquals(1L, summary.retainedNeedsReviewIdentityConflicts());
+        assertEquals(0L, summary.metricAggregatesRecorded());
+        verify(scholardexIdentityConflictRepository, never()).deleteAll(any(List.class));
+        verify(importRunMetricService, never()).record(any(), any(), any(), any(), anyLong());
     }
 
     @Test
@@ -182,6 +368,12 @@ class ConflictOperationsFacadeTest {
         conflict.setId(id);
         conflict.setStatus(status);
         conflict.setDetectedAt(Instant.now());
+        return conflict;
+    }
+
+    private ScholardexIdentityConflict ambiguousConflict() {
+        ScholardexIdentityConflict conflict = conflict("ambiguous", "OPEN");
+        conflict.setCandidateCanonicalIds(List.of("candidate-1", "candidate-2"));
         return conflict;
     }
 }

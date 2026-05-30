@@ -10,6 +10,8 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.IndexField;
 import org.springframework.data.mongodb.core.index.IndexInfo;
 import org.springframework.data.mongodb.core.index.IndexOperations;
+import ro.uvt.pokedex.core.model.importing.ImportRunMetric;
+import ro.uvt.pokedex.core.model.importing.ScholardexProjectionDirtyMarker;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
@@ -71,6 +73,10 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
     @Mock
     private IndexOperations identityConflictOps;
     @Mock
+    private IndexOperations importRunMetricOps;
+    @Mock
+    private IndexOperations projectionDirtyMarkerOps;
+    @Mock
     private IndexOperations authorshipFactOps;
     @Mock
     private IndexOperations canonicalCitationFactOps;
@@ -99,6 +105,8 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         when(mongoTemplate.indexOps(ScholardexPublicationAuthorAffiliationFact.class)).thenReturn(publicationAuthorAffiliationFactOps);
         when(mongoTemplate.indexOps(ScholardexSourceLink.class)).thenReturn(sourceLinkOps);
         when(mongoTemplate.indexOps(ScholardexIdentityConflict.class)).thenReturn(identityConflictOps);
+        when(mongoTemplate.indexOps(ImportRunMetric.class)).thenReturn(importRunMetricOps);
+        when(mongoTemplate.indexOps(ScholardexProjectionDirtyMarker.class)).thenReturn(projectionDirtyMarkerOps);
     }
 
     @Test
@@ -120,10 +128,12 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         when(publicationAuthorAffiliationFactOps.getIndexInfo()).thenReturn(List.of());
         when(sourceLinkOps.getIndexInfo()).thenReturn(List.of());
         when(identityConflictOps.getIndexInfo()).thenReturn(List.of());
+        when(importRunMetricOps.getIndexInfo()).thenReturn(List.of());
+        when(projectionDirtyMarkerOps.getIndexInfo()).thenReturn(List.of());
 
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult result = service.ensureIndexes();
 
-        assertEquals(68, result.created().size());
+        assertEquals(70, result.created().size());
         assertTrue(result.present().isEmpty());
         assertTrue(result.invalid().isEmpty());
         assertTrue(result.errors().isEmpty());
@@ -234,10 +244,18 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
                         "entityType", "incomingSource", "incomingSourceRecordId", "reasonCode", "status"),
                 info(ScopusCanonicalIndexMaintenanceService.IDX_IDENTITY_CONFLICT_STATUS, false, "status", "entityType")
         ));
+        when(importRunMetricOps.getIndexInfo()).thenReturn(List.of(
+                info(ScopusCanonicalIndexMaintenanceService.IDX_IMPORT_RUN_METRIC_KEY, false,
+                        "runId", "source", "entityType", "reason")
+        ));
+        when(projectionDirtyMarkerOps.getIndexInfo()).thenReturn(List.of(
+                info(ScopusCanonicalIndexMaintenanceService.IDX_PROJECTION_DIRTY_STATUS_KEY, false,
+                        "status", "entityType", "canonicalEntityId", "sourceBatchId")
+        ));
 
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult result = service.ensureIndexes();
 
-        assertEquals(68, result.present().size());
+        assertEquals(70, result.present().size());
         assertTrue(result.created().isEmpty());
         assertTrue(result.invalid().isEmpty());
         assertTrue(result.errors().isEmpty());
@@ -258,6 +276,8 @@ class ScopusCanonicalIndexMaintenanceServiceTest {
         verify(publicationAuthorAffiliationFactOps, never()).createIndex(any());
         verify(sourceLinkOps, never()).createIndex(any());
         verify(identityConflictOps, never()).createIndex(any());
+        verify(importRunMetricOps, never()).createIndex(any());
+        verify(projectionDirtyMarkerOps, never()).createIndex(any());
     }
 
     private IndexInfo info(String name, boolean unique, String... keys) {

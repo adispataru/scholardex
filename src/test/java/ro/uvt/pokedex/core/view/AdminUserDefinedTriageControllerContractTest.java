@@ -45,7 +45,7 @@ class AdminUserDefinedTriageControllerContractTest {
                 List.of(),
                 List.of()
         ));
-        when(conflictOperationsFacade.findIdentityConflicts(null, null, null, "USER_DEFINED", null, "OPEN", null, null))
+        when(conflictOperationsFacade.findNeedsReviewIdentityConflicts(null, null, null, "USER_DEFINED", null, "OPEN", null, null))
                 .thenReturn(new PageImpl<>(List.of()));
 
         mockMvc.perform(get("/admin/user-defined-triage"))

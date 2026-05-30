@@ -8,13 +8,17 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
+import ro.uvt.pokedex.core.repository.importing.ImportRunMetricRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosFactConflictRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.PublicationLinkConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +36,9 @@ public class ConflictOperationsFacade {
     private final WosIdentityConflictRepository wosIdentityConflictRepository;
     private final WosFactConflictRepository wosFactConflictRepository;
     private final PublicationLinkConflictRepository publicationLinkConflictRepository;
+    private final ImportRunMetricRepository importRunMetricRepository;
+    private final ImportRunMetricService importRunMetricService;
+    private final ScholardexProjectionDirtyService projectionDirtyService;
 
     public Page<ScholardexIdentityConflict> findIdentityConflicts(
             Integer page,
@@ -65,6 +72,36 @@ public class ConflictOperationsFacade {
                 .findAllByEntityTypeAndIncomingSourceContainingIgnoreCaseAndReasonCodeContainingIgnoreCaseAndStatusContainingIgnoreCaseAndDetectedAtBetween(
                         entity, sourceFilter, reasonFilter, statusFilter, from, to, pageable
                 );
+    }
+
+    public Page<ScholardexIdentityConflict> findNeedsReviewIdentityConflicts(
+            Integer page,
+            Integer size,
+            String entityType,
+            String incomingSource,
+            String reasonCode,
+            String status,
+            Instant detectedFrom,
+            Instant detectedTo
+    ) {
+        Pageable pageable = PageRequest.of(normalizePage(page), normalizeSize(size), Sort.by(Sort.Direction.DESC, "detectedAt"));
+        String sourceFilter = normalizeFilter(incomingSource);
+        String reasonFilter = normalizeFilter(reasonCode);
+        String statusFilter = normalizeFilter(status);
+        Instant from = detectedFrom == null ? Instant.EPOCH : detectedFrom;
+        Instant to = detectedTo == null ? Instant.parse("9999-12-31T23:59:59Z") : detectedTo;
+        if (from.isAfter(to)) {
+            Instant swap = from;
+            from = to;
+            to = swap;
+        }
+        ScholardexEntityType entity = parseEntityType(entityType);
+        if (entity == null) {
+            return scholardexIdentityConflictRepository
+                    .findNeedsReviewByFilters(sourceFilter, reasonFilter, statusFilter, from, to, pageable);
+        }
+        return scholardexIdentityConflictRepository
+                .findNeedsReviewByEntityTypeAndFilters(entity, sourceFilter, reasonFilter, statusFilter, from, to, pageable);
     }
 
     public long updateConflictStatus(String id, String requestedStatus, String resolvedBy) {
@@ -102,6 +139,71 @@ public class ConflictOperationsFacade {
         long dismissed = scholardexIdentityConflictRepository.countByStatus(STATUS_DISMISSED);
         long investigated = scholardexIdentityConflictRepository.countByStatus(STATUS_INVESTIGATED);
         return new ConflictSummary(open, resolved, dismissed, investigated);
+    }
+
+    public ConflictSummary summarizeNeedsReviewIdentityConflicts() {
+        long open = scholardexIdentityConflictRepository.countNeedsReviewByStatus(STATUS_OPEN);
+        long resolved = scholardexIdentityConflictRepository.countNeedsReviewByStatus(STATUS_RESOLVED);
+        long dismissed = scholardexIdentityConflictRepository.countNeedsReviewByStatus(STATUS_DISMISSED);
+        long investigated = scholardexIdentityConflictRepository.countNeedsReviewByStatus(STATUS_INVESTIGATED);
+        return new ConflictSummary(open, resolved, dismissed, investigated);
+    }
+
+    public AuditOnlySummary summarizeAuditOnlyConflicts() {
+        return new AuditOnlySummary(
+                importRunMetricRepository.count(),
+                scholardexIdentityConflictRepository.countAuditOnlyDeterministic(),
+                wosFactConflictRepository.count(),
+                publicationLinkConflictRepository.count()
+        );
+    }
+
+    public ScholardexProjectionDirtyService.ProjectionDirtySummary summarizeDirtyProjections() {
+        return projectionDirtyService.summarizeDirtyProjections();
+    }
+
+    public ScholardexProjectionDirtyService.ProjectionRebuildResult rebuildDirtyProjections() {
+        return projectionDirtyService.rebuildDirtyProjections();
+    }
+
+    public LegacyConflictCleanupSummary cleanupDeterministicLegacyConflicts() {
+        List<ScholardexIdentityConflict> all = scholardexIdentityConflictRepository.findAll();
+        List<ScholardexIdentityConflict> deterministic = new ArrayList<>();
+        Map<CleanupMetricKey, Long> metricCounts = new LinkedHashMap<>();
+        long retainedNeedsReview = 0L;
+
+        for (ScholardexIdentityConflict conflict : all) {
+            if (isNeedsReview(conflict)) {
+                retainedNeedsReview++;
+                continue;
+            }
+            deterministic.add(conflict);
+            CleanupMetricKey key = cleanupMetricKey(conflict);
+            metricCounts.merge(key, 1L, Long::sum);
+        }
+
+        if (!deterministic.isEmpty()) {
+            for (Map.Entry<CleanupMetricKey, Long> entry : metricCounts.entrySet()) {
+                CleanupMetricKey key = entry.getKey();
+                importRunMetricService.record(
+                        "legacy-conflict-cleanup",
+                        key.source(),
+                        key.entityType(),
+                        key.reason(),
+                        entry.getValue()
+                );
+            }
+            scholardexIdentityConflictRepository.deleteAll(deterministic);
+        }
+
+        return new LegacyConflictCleanupSummary(
+                deterministic.size(),
+                retainedNeedsReview,
+                metricCounts.size(),
+                wosFactConflictRepository.count(),
+                wosIdentityConflictRepository.count(),
+                publicationLinkConflictRepository.count()
+        );
     }
 
     public long clearWosIdentityConflicts() {
@@ -178,9 +280,58 @@ public class ConflictOperationsFacade {
                 .orElse(0L);
     }
 
+    private boolean isNeedsReview(ScholardexIdentityConflict conflict) {
+        return conflict != null
+                && conflict.getCandidateCanonicalIds() != null
+                && conflict.getCandidateCanonicalIds().size() > 1;
+    }
+
+    private CleanupMetricKey cleanupMetricKey(ScholardexIdentityConflict conflict) {
+        return new CleanupMetricKey(
+                normalizeMetricValue(conflict == null ? null : conflict.getIncomingSource(), "UNKNOWN_SOURCE"),
+                conflict == null || conflict.getEntityType() == null ? "UNKNOWN_ENTITY" : conflict.getEntityType().name(),
+                "legacy-deterministic-identity-conflict:" + normalizeMetricValue(
+                        conflict == null ? null : conflict.getReasonCode(),
+                        "UNKNOWN_REASON"
+                )
+        );
+    }
+
+    private String normalizeMetricValue(String value, String fallback) {
+        String normalized = normalizeFilter(value);
+        return normalized.isBlank() ? fallback : normalized;
+    }
+
     public record ConflictSummary(long open, long resolved, long dismissed, long investigated) {
         public long total() {
             return open + resolved + dismissed + investigated;
         }
+    }
+
+    public record AuditOnlySummary(
+            long importRunMetricAggregates,
+            long scholardexDeterministicIdentityConflictRows,
+            long wosFactConflictRows,
+            long scopusPublicationLinkConflictRows
+    ) {
+        public long total() {
+            return importRunMetricAggregates
+                    + scholardexDeterministicIdentityConflictRows
+                    + wosFactConflictRows
+                    + scopusPublicationLinkConflictRows;
+        }
+    }
+
+    public record LegacyConflictCleanupSummary(
+            long deletedDeterministicIdentityConflicts,
+            long retainedNeedsReviewIdentityConflicts,
+            long metricAggregatesRecorded,
+            long wosFactConflictRowsPreserved,
+            long wosIdentityConflictRowsPreserved,
+            long scopusPublicationLinkConflictRowsPreserved
+    ) {
+    }
+
+    private record CleanupMetricKey(String source, String entityType, String reason) {
     }
 }

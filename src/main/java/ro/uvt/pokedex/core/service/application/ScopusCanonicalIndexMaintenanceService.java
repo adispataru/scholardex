@@ -7,6 +7,8 @@ import org.springframework.data.mongodb.core.index.IndexField;
 import org.springframework.data.mongodb.core.index.IndexOperations;
 import org.springframework.stereotype.Service;
 import static ro.uvt.pokedex.core.service.application.IndexMaintenanceSupport.IndexDefinition;
+import ro.uvt.pokedex.core.model.importing.ImportRunMetric;
+import ro.uvt.pokedex.core.model.importing.ScholardexProjectionDirtyMarker;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
@@ -116,6 +118,8 @@ public class ScopusCanonicalIndexMaintenanceService {
 
     static final String IDX_IDENTITY_CONFLICT_OPEN = "uniq_scholardex_open_identity_conflict";
     static final String IDX_IDENTITY_CONFLICT_STATUS = "idx_scholardex_identity_conflict_status";
+    static final String IDX_IMPORT_RUN_METRIC_KEY = "idx_import_run_metric_key";
+    static final String IDX_PROJECTION_DIRTY_STATUS_KEY = "idx_scholardex_projection_dirty_status_key";
 
     private final MongoTemplate mongoTemplate;
 
@@ -146,6 +150,8 @@ public class ScopusCanonicalIndexMaintenanceService {
         ensurePublicationAuthorAffiliationIndexes(created, present, invalid, errors);
         ensureSourceLinkIndexes(created, present, invalid, errors);
         ensureIdentityConflictIndexes(created, present, invalid, errors);
+        ensureImportRunMetricIndexes(created, present, invalid, errors);
+        ensureProjectionDirtyMarkerIndexes(created, present, invalid, errors);
 
         ScopusCanonicalIndexEnsureResult result = new ScopusCanonicalIndexEnsureResult(created, present, invalid, errors);
         log.info("Scopus canonical index ensure summary: created={}, present={}, invalid={}, errors={}",
@@ -361,6 +367,20 @@ public class ScopusCanonicalIndexMaintenanceService {
                         List.of(field("entityType"), field("incomingSource"), field("incomingSourceRecordId"), field("reasonCode"), field("status"))),
                 created, present, invalid, errors);
         ensureNamedIndex(ops, new IndexDefinition(IDX_IDENTITY_CONFLICT_STATUS, false, List.of(field("status"), field("entityType"))),
+                created, present, invalid, errors);
+    }
+
+    private void ensureImportRunMetricIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ImportRunMetric.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_IMPORT_RUN_METRIC_KEY, false,
+                        List.of(field("runId"), field("source"), field("entityType"), field("reason"))),
+                created, present, invalid, errors);
+    }
+
+    private void ensureProjectionDirtyMarkerIndexes(List<String> created, List<String> present, List<String> invalid, List<String> errors) {
+        IndexOperations ops = mongoTemplate.indexOps(ScholardexProjectionDirtyMarker.class);
+        ensureNamedIndex(ops, new IndexDefinition(IDX_PROJECTION_DIRTY_STATUS_KEY, false,
+                        List.of(field("status"), field("entityType"), field("canonicalEntityId"), field("sourceBatchId"))),
                 created, present, invalid, errors);
     }
 

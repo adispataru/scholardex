@@ -11,6 +11,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.service.application.ConflictOperationsFacade;
+import ro.uvt.pokedex.core.service.application.ScholardexProjectionDirtyService;
 
 import java.util.List;
 
@@ -38,14 +39,29 @@ class AdminConflictControllerContractTest {
 
     @Test
     void conflictsPageRendersTemplateAndEndpoints() throws Exception {
-        when(conflictOperationsFacade.findIdentityConflicts(any(), any(), any(), any(), any(), any(), any(), any()))
+        when(conflictOperationsFacade.findNeedsReviewIdentityConflicts(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
-        when(conflictOperationsFacade.summarizeIdentityConflicts())
+        when(conflictOperationsFacade.summarizeNeedsReviewIdentityConflicts())
                 .thenReturn(new ConflictOperationsFacade.ConflictSummary(0, 0, 0, 0));
+        when(conflictOperationsFacade.summarizeAuditOnlyConflicts())
+                .thenReturn(new ConflictOperationsFacade.AuditOnlySummary(3, 4, 5, 6));
+        when(conflictOperationsFacade.summarizeDirtyProjections())
+                .thenReturn(new ScholardexProjectionDirtyService.ProjectionDirtySummary(2, 1));
 
         mockMvc.perform(get("/admin/conflicts"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/conflicts"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Needs Review")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Audit Only")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Import run metrics")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Scholardex deterministic identity audit rows")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("WoS fact conflict audit rows")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Projection Rebuild")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/conflicts/projections/rebuildDirty")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Legacy Cleanup")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/admin/conflicts/legacy/cleanupDeterministic")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Dirty projections")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Failed rebuilds")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("app-summary-card--danger")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Conflicts that still require operator action.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"conflict-filter-form\"")))
@@ -59,10 +75,14 @@ class AdminConflictControllerContractTest {
 
     @Test
     void conflictsPageAcceptsFilterAndPaginationParams() throws Exception {
-        when(conflictOperationsFacade.findIdentityConflicts(any(), any(), any(), any(), any(), any(), any(), any()))
+        when(conflictOperationsFacade.findNeedsReviewIdentityConflicts(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
-        when(conflictOperationsFacade.summarizeIdentityConflicts())
+        when(conflictOperationsFacade.summarizeNeedsReviewIdentityConflicts())
                 .thenReturn(new ConflictOperationsFacade.ConflictSummary(1, 2, 3, 0));
+        when(conflictOperationsFacade.summarizeAuditOnlyConflicts())
+                .thenReturn(new ConflictOperationsFacade.AuditOnlySummary(0, 0, 0, 0));
+        when(conflictOperationsFacade.summarizeDirtyProjections())
+                .thenReturn(new ScholardexProjectionDirtyService.ProjectionDirtySummary(0, 0));
 
         mockMvc.perform(get("/admin/conflicts")
                         .param("page", "2")
@@ -76,7 +96,50 @@ class AdminConflictControllerContractTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/conflicts"));
 
-        verify(conflictOperationsFacade).findIdentityConflicts(eq(2), eq(25), eq("PUBLICATION"), eq("USER_DEFINED"), eq("SOURCE_ID_COLLISION"), eq("OPEN"), any(), any());
+        verify(conflictOperationsFacade).findNeedsReviewIdentityConflicts(eq(2), eq(25), eq("PUBLICATION"), eq("USER_DEFINED"), eq("SOURCE_ID_COLLISION"), eq("OPEN"), any(), any());
+    }
+
+    @Test
+    void rebuildDirtyProjectionEndpointRedirectsAndDelegates() throws Exception {
+        when(conflictOperationsFacade.rebuildDirtyProjections())
+                .thenReturn(new ScholardexProjectionDirtyService.ProjectionRebuildResult(3, 3, 0, 2, 0, 0, List.of()));
+
+        mockMvc.perform(post("/admin/conflicts/projections/rebuildDirty"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/conflicts"));
+
+        verify(conflictOperationsFacade).rebuildDirtyProjections();
+    }
+
+    @Test
+    void rebuildDirtyProjectionEndpointReportsRetryableFailures() throws Exception {
+        when(conflictOperationsFacade.rebuildDirtyProjections())
+                .thenReturn(new ScholardexProjectionDirtyService.ProjectionRebuildResult(3, 1, 2, 2, 1, 0, List.of("batch-2 failed")));
+
+        mockMvc.perform(post("/admin/conflicts/projections/rebuildDirty"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/conflicts"));
+
+        verify(conflictOperationsFacade).rebuildDirtyProjections();
+    }
+
+    @Test
+    void cleanupDeterministicLegacyConflictsRequiresResetConfirmation() throws Exception {
+        mockMvc.perform(post("/admin/conflicts/legacy/cleanupDeterministic").param("confirmation", "nope"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/conflicts"));
+    }
+
+    @Test
+    void cleanupDeterministicLegacyConflictsRedirectsAndDelegatesWhenConfirmed() throws Exception {
+        when(conflictOperationsFacade.cleanupDeterministicLegacyConflicts())
+                .thenReturn(new ConflictOperationsFacade.LegacyConflictCleanupSummary(7, 2, 3, 20, 1, 4));
+
+        mockMvc.perform(post("/admin/conflicts/legacy/cleanupDeterministic").param("confirmation", "RESET"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/conflicts"));
+
+        verify(conflictOperationsFacade).cleanupDeterministicLegacyConflicts();
     }
 
     @Test
