@@ -16,12 +16,12 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.Set;
 
-final class ReportScopedIndicatorScoringSupport {
+public final class ReportScopedIndicatorScoringSupport {
 
     private ReportScopedIndicatorScoringSupport() {
     }
 
-    static CitationContext prepareCitationContext(List<ScholardexPublicationView> publications,
+    public static CitationContext prepareCitationContext(List<ScholardexPublicationView> publications,
                                                   ScholardexProjectionReadService scholardexProjectionReadService) {
         List<String> pubIds = publications.stream().map(ScholardexPublicationView::getId).toList();
         List<ScholardexCitationView> allCitations = scholardexProjectionReadService.findAllCitationsByCitedIdIn(pubIds);
@@ -49,7 +49,7 @@ final class ReportScopedIndicatorScoringSupport {
         return new CitationContext(citingPublicationsById, citingPublicationsByCitedPublicationId, allCitations.size());
     }
 
-    static Map<Indicator, Map<String, Score>> precomputeCitationBaseScoresByIndicator(List<Indicator> indicators,
+    public static Map<Indicator, Map<String, Score>> precomputeCitationBaseScoresByIndicator(List<Indicator> indicators,
                                                                                       CitationContext citationContext,
                                                                                       ScientificProductionService scientificProductionService) {
         if (indicators == null || indicators.isEmpty()) {
@@ -75,7 +75,7 @@ final class ReportScopedIndicatorScoringSupport {
         return cached;
     }
 
-    static CitationScoreResult calculateCitationScore(Indicator indicator,
+    public static CitationScoreResult calculateCitationScore(Indicator indicator,
                                                       List<ScholardexPublicationView> publications,
                                                       Set<String> researcherAuthorIds,
                                                       CitationContext citationContext,
@@ -246,17 +246,17 @@ final class ReportScopedIndicatorScoringSupport {
         }
     }
 
-    record CitationContext(
+    public record CitationContext(
             Map<String, ScholardexPublicationView> citingPublicationsById,
             Map<String, List<ScholardexPublicationView>> citingPublicationsByCitedPublicationId,
             int citationFactsCount
     ) {
-        static CitationContext empty() {
+        public static CitationContext empty() {
             return new CitationContext(Map.of(), Map.of(), 0);
         }
     }
 
-    record CitationScoreResult(
+    public record CitationScoreResult(
             double score,
             long selectorNanos
     ) {

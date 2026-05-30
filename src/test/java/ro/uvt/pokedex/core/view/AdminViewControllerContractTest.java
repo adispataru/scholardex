@@ -205,7 +205,7 @@ class AdminViewControllerContractTest {
     void usersPageRendersSharedStatCardGrid() throws Exception {
         when(userService.getAllUsers()).thenReturn(List.of());
         when(groupManagementFacade.buildGroupListView())
-                .thenReturn(new GroupListViewModel(List.of(), List.of(), List.of(), List.of(), null));
+                .thenReturn(new GroupListViewModel(List.of(), List.of(), List.of(), List.of(), List.of(), java.util.Map.of(), java.util.Map.of(), java.util.Map.of(), null));
 
         mockMvc.perform(get("/admin/users").with(csrf()))
                 .andExpect(status().isOk())
@@ -529,6 +529,7 @@ class AdminViewControllerContractTest {
     @Test
     void domainsPageRendersSharedEditModal() throws Exception {
         Domain domain = new Domain();
+        domain.setId("CS");
         domain.setName("CS");
         domain.setDescription("Computer Science");
         domain.setWosCategories(List.of("COMPUTER SCIENCE - SCIE"));
@@ -569,6 +570,7 @@ class AdminViewControllerContractTest {
     @Test
     void institutionsPageRendersSharedEditModal() throws Exception {
         Institution institution = new Institution();
+        institution.setId("UVT");
         institution.setName("UVT");
         institution.setDescription("University");
         ScholardexAffiliationView affiliation = new ScholardexAffiliationView();
@@ -776,6 +778,134 @@ class AdminViewControllerContractTest {
         publication.setCoverDate(coverDate);
         publication.setAuthors(List.of("a1"));
         return publication;
+    }
+
+    // --- /admin/divisions and /admin/departments coverage ---
+
+    @org.junit.jupiter.api.Test
+    void divisionsPageRendersListAndModelAttributes() throws Exception {
+        ro.uvt.pokedex.core.model.org.OrgDivision fmi = new ro.uvt.pokedex.core.model.org.OrgDivision();
+        fmi.setId("div-fmi");
+        fmi.setName("FMI");
+        fmi.setType(ro.uvt.pokedex.core.model.org.DivisionType.FACULTY);
+        fmi.setHeadUserIds(java.util.List.of("ana@uvt.ro"));
+        when(adminCatalogFacade.listOrgDivisions()).thenReturn(java.util.List.of(fmi));
+        when(adminCatalogFacade.listInstitutions()).thenReturn(java.util.List.of());
+        when(userService.findUsersWithResearcherProfile()).thenReturn(java.util.List.of());
+        when(userService.findDisplayLabels(any())).thenReturn(java.util.Map.of("ana@uvt.ro", "Ana Popescu <ana@uvt.ro>"));
+
+        mockMvc.perform(get("/admin/divisions"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin/divisions"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("FMI")))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("Ana Popescu &lt;ana@uvt.ro&gt;")));
+    }
+
+    @org.junit.jupiter.api.Test
+    void createDivisionDelegatesAndRedirects() throws Exception {
+        mockMvc.perform(post("/admin/divisions/create")
+                        .param("name", "New Faculty")
+                        .param("shortName", "NF")
+                        .param("type", "FACULTY")
+                        .param("institutionId", "inst-uvt"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/divisions"));
+
+        ArgumentCaptor<ro.uvt.pokedex.core.model.org.OrgDivision> captor =
+                ArgumentCaptor.forClass(ro.uvt.pokedex.core.model.org.OrgDivision.class);
+        verify(adminCatalogFacade).saveOrgDivision(captor.capture());
+        org.junit.jupiter.api.Assertions.assertEquals("New Faculty", captor.getValue().getName());
+    }
+
+    @org.junit.jupiter.api.Test
+    void createDivisionFlashesErrorWhenFacadeThrowsValidationError() throws Exception {
+        org.mockito.Mockito.doThrow(new IllegalArgumentException("Division heads include unknown users: [ghost@uvt.ro]"))
+                .when(adminCatalogFacade).saveOrgDivision(any());
+
+        mockMvc.perform(post("/admin/divisions/create")
+                        .param("name", "X")
+                        .param("type", "FACULTY")
+                        .param("institutionId", "inst-uvt")
+                        .param("headUserIds[0]", "ghost@uvt.ro"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/divisions"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash()
+                        .attributeExists("errorMessage"));
+    }
+
+    @org.junit.jupiter.api.Test
+    void divisionEditDataReturnsJsonWhenFound() throws Exception {
+        ro.uvt.pokedex.core.model.org.OrgDivision fmi = new ro.uvt.pokedex.core.model.org.OrgDivision();
+        fmi.setId("div-fmi");
+        fmi.setName("FMI");
+        when(adminCatalogFacade.findOrgDivisionById("div-fmi")).thenReturn(java.util.Optional.of(fmi));
+
+        mockMvc.perform(get("/admin/divisions/div-fmi/edit-data"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.id").value("div-fmi"));
+    }
+
+    @org.junit.jupiter.api.Test
+    void divisionEditDataReturns404WhenMissing() throws Exception {
+        when(adminCatalogFacade.findOrgDivisionById("nope")).thenReturn(java.util.Optional.empty());
+
+        mockMvc.perform(get("/admin/divisions/nope/edit-data"))
+                .andExpect(status().isNotFound());
+    }
+
+    @org.junit.jupiter.api.Test
+    void deleteDivisionWithDescendantsFlashesError() throws Exception {
+        org.mockito.Mockito.doThrow(new IllegalStateException("Cannot delete division: it still has departments."))
+                .when(adminCatalogFacade).deleteOrgDivision("div-fmi");
+
+        mockMvc.perform(post("/admin/divisions/delete/div-fmi"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/divisions"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash()
+                        .attributeExists("errorMessage"));
+    }
+
+    @org.junit.jupiter.api.Test
+    void departmentsPageRendersListAndModelAttributes() throws Exception {
+        ro.uvt.pokedex.core.model.org.Department cs = new ro.uvt.pokedex.core.model.org.Department();
+        cs.setId("dept-cs");
+        cs.setName("Computer Science");
+        cs.setDivisionId("div-fmi");
+        cs.setInstitutionId("inst-uvt");
+        when(adminCatalogFacade.listDepartments()).thenReturn(java.util.List.of(cs));
+        when(adminCatalogFacade.listOrgDivisions()).thenReturn(java.util.List.of());
+        when(userService.findUsersWithResearcherProfile()).thenReturn(java.util.List.of());
+        when(userService.findDisplayLabels(any())).thenReturn(java.util.Map.of());
+
+        mockMvc.perform(get("/admin/departments"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin/departments"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("Computer Science")));
+    }
+
+    @org.junit.jupiter.api.Test
+    void createDepartmentRedirectsAndDelegates() throws Exception {
+        mockMvc.perform(post("/admin/departments/create")
+                        .param("name", "Astrophysics")
+                        .param("divisionId", "div-fmi"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/departments"));
+
+        verify(adminCatalogFacade).saveDepartment(any());
+    }
+
+    @org.junit.jupiter.api.Test
+    void createDepartmentSurfaceFacadeValidationAsFlashError() throws Exception {
+        org.mockito.Mockito.doThrow(new IllegalArgumentException("Parent division not found: missing"))
+                .when(adminCatalogFacade).saveDepartment(any());
+
+        mockMvc.perform(post("/admin/departments/create")
+                        .param("name", "Astrophysics")
+                        .param("divisionId", "missing"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/departments"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash()
+                        .attributeExists("errorMessage"));
     }
 
     private static User adminUser(String email) {

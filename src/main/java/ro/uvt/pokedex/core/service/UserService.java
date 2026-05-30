@@ -1,11 +1,13 @@
 package ro.uvt.pokedex.core.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.model.user.UserRole;
 import ro.uvt.pokedex.core.repository.UserRepository;
+import ro.uvt.pokedex.core.service.user.UserDeactivatedEvent;
 import ro.uvt.pokedex.core.utils.StringUtils;
 
 import java.util.ArrayList;
@@ -19,11 +21,14 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Autowired
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
+                       ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.eventPublisher = eventPublisher;
     }
 
     public Optional<User> createUser(User user) {
@@ -41,19 +46,43 @@ public class UserService {
         return userRepository.findById(email);
     }
 
+    /**
+     * Resolves emails to "Full Name &lt;email&gt;" labels for display in admin lists. Unknown
+     * emails are returned as-is so callers can show the raw value as a fallback hint that
+     * the underlying user is missing.
+     */
+    public java.util.Map<String, String> findDisplayLabels(java.util.Collection<String> emails) {
+        if (emails == null || emails.isEmpty()) return java.util.Map.of();
+        java.util.LinkedHashSet<String> clean = new java.util.LinkedHashSet<>();
+        for (String e : emails) if (e != null && !e.isBlank()) clean.add(e);
+        if (clean.isEmpty()) return java.util.Map.of();
+        java.util.Map<String, String> labels = new java.util.HashMap<>();
+        for (User u : userRepository.findAllById(clean)) {
+            User.ResearcherProfile p = u.getResearcherProfile();
+            String name = (p == null || p.getName() == null) ? "" : p.getName().trim();
+            labels.put(u.getEmail(), name.isEmpty() ? u.getEmail() : name + " <" + u.getEmail() + ">");
+        }
+        // Pass-through for emails that don't resolve so the caller can flag them.
+        for (String e : clean) labels.putIfAbsent(e, e);
+        return labels;
+    }
+
     public Optional<User> updateUser(String email, User updatedUser) {
         return userRepository.findById(email)
                 .map(user -> userRepository.save(updatedUser));
     }
 
     public void deleteUser(String email) {
+        if (email == null || email.isBlank()) return;
         userRepository.deleteById(email);
+        eventPublisher.publishEvent(new UserDeactivatedEvent(email, "deleted"));
     }
 
     public void lockUser(String email) {
         userRepository.findById(email).ifPresent(user -> {
             user.setLocked(true);
             userRepository.save(user);
+            eventPublisher.publishEvent(new UserDeactivatedEvent(email, "locked"));
         });
     }
 

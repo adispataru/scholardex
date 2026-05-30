@@ -60,9 +60,9 @@
                                         <div class="app-admin-actions">
                                         <button type="button"
                                                 class="btn btn-outline-secondary btn-sm"
-                                                th:attr="data-edit-domain-id=${domain.name}"
+                                                th:attr="data-edit-domain-id=${domain.id}"
                                                 aria-label="Edit domain">Edit</button>
-                                        <form th:action="@{/admin/domains/delete/{name}(name=${domain.name})}" method="post" style="display:inline;">
+                                        <form th:action="@{/admin/domains/delete/{id}(id=${domain.id})}" method="post" style="display:inline;">
                                             <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                                         </form>
                                         </div>

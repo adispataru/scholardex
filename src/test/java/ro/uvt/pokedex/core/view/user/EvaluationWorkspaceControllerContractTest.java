@@ -57,6 +57,12 @@ class EvaluationWorkspaceControllerContractTest {
     private UserIndividualReportRunRepository userIndividualReportRunRepository;
     @MockitoBean
     private EvaluationSnapshotRepository evaluationSnapshotRepository;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade reportExportFacade;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade reportImportVerificationFacade;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.application.UserActivityInstanceFacade userActivityInstanceFacade;
 
     @Test
     void evaluationTemplateExposesSnapshotRegionAndModalDescriptions() throws Exception {

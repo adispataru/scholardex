@@ -34,10 +34,12 @@ class UserServiceTest {
     private UserRepository userRepository;
     @Mock
     private PasswordEncoder passwordEncoder;
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Test
     void createUserObjectSavesWhenEmailIsNew() {
-        UserService service = new UserService(userRepository, passwordEncoder);
+        UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
         User user = user("new@uvt.ro");
         when(userRepository.findById("new@uvt.ro")).thenReturn(Optional.empty());
         when(userRepository.save(user)).thenReturn(user);
@@ -51,7 +53,7 @@ class UserServiceTest {
 
     @Test
     void createUserObjectReturnsEmptyWhenEmailExists() {
-        UserService service = new UserService(userRepository, passwordEncoder);
+        UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
         User user = user("existing@uvt.ro");
         when(userRepository.findById("existing@uvt.ro")).thenReturn(Optional.of(user));
 
@@ -61,7 +63,7 @@ class UserServiceTest {
 
     @Test
     void getAndDeleteOperationsDelegateToRepository() {
-        UserService service = new UserService(userRepository, passwordEncoder);
+        UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
         User user = user("researcher@uvt.ro");
         when(userRepository.findAll()).thenReturn(List.of(user));
         when(userRepository.findById("researcher@uvt.ro")).thenReturn(Optional.of(user));
@@ -76,7 +78,7 @@ class UserServiceTest {
 
     @Test
     void updateUserSavesReplacementOnlyWhenUserExists() {
-        UserService service = new UserService(userRepository, passwordEncoder);
+        UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
         User existing = user("old@uvt.ro");
         User replacement = user("new@uvt.ro");
         when(userRepository.findById("old@uvt.ro")).thenReturn(Optional.of(existing));
@@ -90,7 +92,7 @@ class UserServiceTest {
 
     @Test
     void lockUserMarksUserLockedAndSavesIt() {
-        UserService service = new UserService(userRepository, passwordEncoder);
+        UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
         User user = user("researcher@uvt.ro");
         when(userRepository.findById("researcher@uvt.ro")).thenReturn(Optional.of(user));
 
@@ -102,7 +104,7 @@ class UserServiceTest {
 
     @Test
     void updateUserRolesReplacesRemovedRolesAndAddsNewRoles() {
-        UserService service = new UserService(userRepository, passwordEncoder);
+        UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
         User user = user("researcher@uvt.ro");
         user.setRoles(new HashSet<>(Set.of(UserRole.RESEARCHER, UserRole.SUPERVISOR)));
         when(userRepository.findById("researcher@uvt.ro")).thenReturn(Optional.of(user));
@@ -115,7 +117,7 @@ class UserServiceTest {
 
     @Test
     void updateUserRolesIgnoresNullRoleList() {
-        UserService service = new UserService(userRepository, passwordEncoder);
+        UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
         User user = user("researcher@uvt.ro");
         user.setRoles(Set.of(UserRole.RESEARCHER));
         when(userRepository.findById("researcher@uvt.ro")).thenReturn(Optional.of(user));
@@ -128,7 +130,7 @@ class UserServiceTest {
 
     @Test
     void createUserFromFieldsEncodesPasswordAndPersistsRoles() {
-        UserService service = new UserService(userRepository, passwordEncoder);
+        UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
         when(userRepository.findById("new@uvt.ro")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("secret")).thenReturn("encoded-secret");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -143,7 +145,7 @@ class UserServiceTest {
 
     @Test
     void createUserFromFieldsReturnsEmptyWhenEmailExists() {
-        UserService service = new UserService(userRepository, passwordEncoder);
+        UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
         when(userRepository.findById("existing@uvt.ro")).thenReturn(Optional.of(user("existing@uvt.ro")));
 
         assertTrue(service.createUser("existing@uvt.ro", "secret", List.of("RESEARCHER")).isEmpty());
@@ -153,7 +155,7 @@ class UserServiceTest {
 
     @Test
     void roleHelpersValidateAndParseKnownRoleNames() {
-        UserService service = new UserService(userRepository, passwordEncoder);
+        UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
 
         assertFalse(service.areValidRoleNames(null));
         assertFalse(service.areValidRoleNames(List.of()));
@@ -167,7 +169,7 @@ class UserServiceTest {
 
     @Test
     void userExistsReflectsRepositoryLookup() {
-        UserService service = new UserService(userRepository, passwordEncoder);
+        UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
         when(userRepository.findById("present@uvt.ro")).thenReturn(Optional.of(user("present@uvt.ro")));
         when(userRepository.findById("missing@uvt.ro")).thenReturn(Optional.empty());
 
@@ -177,7 +179,7 @@ class UserServiceTest {
 
     @Test
     void researcherProfileOperationsApplyAndClearProfileFields() {
-        UserService service = new UserService(userRepository, passwordEncoder);
+        UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
         User user = user("researcher@uvt.ro");
         User.ResearcherProfile profile = profile("Ada", "Lovelace");
         profile.setScholarId("scholar-1");
@@ -212,7 +214,7 @@ class UserServiceTest {
 
     @Test
     void saveResearcherProfilePreservesExistingAffiliationsWhenIncomingListsAreEmpty() {
-        UserService service = new UserService(userRepository, passwordEncoder);
+        UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
         User user = user("researcher@uvt.ro");
         User.ResearcherProfile existing = profile("Old", "Name");
         existing.setCurrentAffiliationIds(List.of("current-existing"));
@@ -234,7 +236,7 @@ class UserServiceTest {
 
     @Test
     void saveResearcherProfileInitializesEmptyAffiliationListsWhenBothSidesAreMissing() {
-        UserService service = new UserService(userRepository, passwordEncoder);
+        UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
         User user = user("researcher@uvt.ro");
         User.ResearcherProfile existing = profile("Old", "Name");
         existing.setCurrentAffiliationIds(null);
@@ -254,7 +256,7 @@ class UserServiceTest {
 
     @Test
     void saveResearcherProfileThrowsWhenUserIsMissing() {
-        UserService service = new UserService(userRepository, passwordEncoder);
+        UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
         when(userRepository.findById("missing@uvt.ro")).thenReturn(Optional.empty());
 
         IllegalArgumentException exception = assertThrows(
@@ -267,7 +269,7 @@ class UserServiceTest {
 
     @Test
     void findAndMatchResearchersUseNormalizedFirstAndLastName() {
-        UserService service = new UserService(userRepository, passwordEncoder);
+        UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
         User matching = user("ada@uvt.ro");
         matching.setResearcherProfile(profile("Ada", "Lovelace"));
         User nonMatching = user("grace@uvt.ro");
@@ -282,7 +284,7 @@ class UserServiceTest {
 
     @Test
     void deleteResearcherProfileDoesNothingWhenUserIsMissing() {
-        UserService service = new UserService(userRepository, passwordEncoder);
+        UserService service = new UserService(userRepository, passwordEncoder, eventPublisher);
         when(userRepository.findById("missing@uvt.ro")).thenReturn(Optional.empty());
 
         service.deleteResearcherProfile("missing@uvt.ro");

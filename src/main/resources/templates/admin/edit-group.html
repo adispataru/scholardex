@@ -53,8 +53,8 @@
                             <div id="group-domain-fields" class="app-form-field">
                                 <label for="groupDomains">Domains</label>
                                 <div id="domainsContainer" class="app-collection">
-                                    <div class="input-group mb-2 app-collection__item" th:each="domain, iterStat : *{domains}">
-                                        <select class="form-control" th:field="*{domains[__${iterStat.index}__]}" th:selected="${domain}">
+                                    <div class="input-group mb-2 app-collection__item" th:each="domainId, iterStat : *{domainIds}">
+                                        <select class="form-control" th:field="*{domainIds[__${iterStat.index}__]}">
                                             <option th:each="domain : ${allDomains}" th:value="${domain.id}" th:text="${domain.name}"></option>
                                         </select>
                                         <button class="btn btn-danger remove-domain" type="button">Remove</button>
@@ -66,26 +66,59 @@
                             </div>
                             </th:block>
                             <th:block th:replace="~{fragments :: admin-form-section(
-                                title='Institution',
-                                helperText='Choose the institution represented by this group.',
-                                body=~{::#group-institution-fields})}">
-                            <div id="group-institution-fields" class="form-group app-form-field">
-                                <label for="groupAffiliation">Institution</label>
-                                <select class="form-control" id="groupAffiliation" th:field="*{institution}">
-                                    <option th:each="affiliation : ${affiliations}" th:value="${affiliation.name}" th:text="${affiliation.name}"></option>
-                                </select>
+                                title='Departments',
+                                helperText='Pick one or more departments. Joint labs span multiple departments; all must belong to the same institution. The institution is derived automatically.',
+                                body=~{::#group-department-fields})}">
+                            <div id="group-department-fields" class="app-form-field">
+                                <label for="groupDepartments">Departments</label>
+                                <div id="departmentsContainer" class="app-collection">
+                                    <div class="input-group mb-2 app-collection__item" th:each="departmentId, iterStat : *{departmentIds}">
+                                        <select class="form-control" th:field="*{departmentIds[__${iterStat.index}__]}">
+                                            <option th:each="opt : ${departmentOptions}" th:value="${opt.id}" th:text="${opt.label}"></option>
+                                        </select>
+                                        <button class="btn btn-danger remove-department" type="button">Remove</button>
+                                    </div>
+                                </div>
+                                <div class="app-form-actions app-form-actions--inline">
+                                    <button id="addDepartment" class="btn btn-primary" type="button">Add Department</button>
+                                </div>
+                            </div>
+                            </th:block>
+                            <th:block th:replace="~{fragments :: admin-form-section(
+                                title='Supervisors',
+                                helperText='Group-level supervisors. Department/Division heads are implicit supervisors too — list only the people who need direct access without being a head upstream.',
+                                body=~{::#group-supervisor-fields})}">
+                            <div id="group-supervisor-fields" class="app-form-field">
+                                <label>Supervisors</label>
+                                <div id="supervisorsContainer" class="app-collection">
+                                    <div class="input-group mb-2 app-collection__item" th:each="supervisorId, iterStat : *{supervisorUserIds}">
+                                        <select class="form-control" th:field="*{supervisorUserIds[__${iterStat.index}__]}">
+                                            <option value="">— pick a researcher —</option>
+                                            <option th:each="researcher : ${allResearchers}"
+                                                    th:value="${researcher.email}"
+                                                    th:text="${researcher.researcherProfile?.name} + ' &lt;' + ${researcher.email} + '&gt;'"></option>
+                                        </select>
+                                        <button class="btn btn-danger remove-supervisor" type="button">Remove</button>
+                                    </div>
+                                </div>
+                                <div class="app-form-actions app-form-actions--inline">
+                                    <button id="addSupervisor" class="btn btn-primary" type="button">Add supervisor</button>
+                                </div>
                             </div>
                             </th:block>
                             <th:block th:replace="~{fragments :: admin-form-section(
                                 title='Researchers',
-                                helperText='Manage the researcher accounts assigned to this group.',
+                                helperText='Manage the researcher accounts assigned to this group. Changes are synced through the membership log.',
                                 body=~{::#group-researcher-fields})}">
                             <div id="group-researcher-fields" class="app-form-field">
                                 <label for="groupResearchers">Researchers</label>
                                 <div id="researchersContainer" class="app-collection">
-                                    <div class="input-group mb-2 app-collection__item" th:each="memberId, iterStat : *{memberIds}">
-                                        <select class="form-control" th:field="*{memberIds[__${iterStat.index}__]}" th:selected="${memberId}">
-                                            <option th:each="researcher : ${allResearchers}" th:value="${researcher.email}" th:text="${researcher.researcherProfile?.name}"></option>
+                                    <div class="input-group mb-2 app-collection__item" th:each="memberId, iterStat : ${currentMemberUserIds}">
+                                        <select class="form-control" th:name="'userIds[' + ${iterStat.index} + ']'">
+                                            <option th:each="researcher : ${allResearchers}"
+                                                    th:value="${researcher.email}"
+                                                    th:text="${researcher.researcherProfile?.name}"
+                                                    th:selected="${researcher.email == memberId}"></option>
                                         </select>
                                         <button class="btn btn-danger remove-researcher" type="button">Remove</button>
                                     </div>
@@ -113,46 +146,80 @@
     $(document).ready(function() {
         let allDomains = /*[[${allDomains}]]*/ [];
         let domainsContainer = $('#domainsContainer');
+        let departmentOptions = /*[[${departmentOptions}]]*/ [];
+        let departmentsContainer = $('#departmentsContainer');
         let allResearchers = /*[[${allResearchers}]]*/ [];
         let researchersContainer = $('#researchersContainer');
 
         $('#addDomain').click(function() {
             let index = domainsContainer.children().length;
-            let domainTemplate = `
+            domainsContainer.append(`
                 <div class="input-group mb-2 app-collection__item">
-                    <select class="form-control" name="domains[${index}]">
+                    <select class="form-control" name="domainIds[${index}]">
                         ${allDomains.map(domain => `<option value="${domain.id}">${domain.name}</option>`).join('')}
                     </select>
                     <button class="btn btn-danger remove-domain" type="button">Remove</button>
-                </div>`;
-            domainsContainer.append(domainTemplate);
+                </div>`);
         });
-
         domainsContainer.on('click', '.remove-domain', function() {
             $(this).closest('.input-group').remove();
-            // Optionally, update the indices of the remaining elements
             domainsContainer.children().each(function(index, element) {
-                $(element).find('select').attr('name', `domains[${index}]`);
+                $(element).find('select').attr('name', `domainIds[${index}]`);
+            });
+        });
+
+        $('#addDepartment').click(function() {
+            let index = departmentsContainer.children().length;
+            departmentsContainer.append(`
+                <div class="input-group mb-2 app-collection__item">
+                    <select class="form-control" name="departmentIds[${index}]">
+                        ${departmentOptions.map(opt => `<option value="${opt.id}">${opt.label}</option>`).join('')}
+                    </select>
+                    <button class="btn btn-danger remove-department" type="button">Remove</button>
+                </div>`);
+        });
+        departmentsContainer.on('click', '.remove-department', function() {
+            $(this).closest('.input-group').remove();
+            departmentsContainer.children().each(function(index, element) {
+                $(element).find('select').attr('name', `departmentIds[${index}]`);
+            });
+        });
+
+        let supervisorsContainer = $('#supervisorsContainer');
+        const researcherOption = r =>
+            `<option value="${r.email}">${(r.researcherProfile && r.researcherProfile.name) ? r.researcherProfile.name : ''} &lt;${r.email}&gt;</option>`;
+        $('#addSupervisor').click(function() {
+            let index = supervisorsContainer.children().length;
+            supervisorsContainer.append(`
+                <div class="input-group mb-2 app-collection__item">
+                    <select class="form-control" name="supervisorUserIds[${index}]">
+                        <option value="">— pick a researcher —</option>
+                        ${allResearchers.map(researcherOption).join('')}
+                    </select>
+                    <button class="btn btn-danger remove-supervisor" type="button">Remove</button>
+                </div>`);
+        });
+        supervisorsContainer.on('click', '.remove-supervisor', function() {
+            $(this).closest('.input-group').remove();
+            supervisorsContainer.children().each(function(index, element) {
+                $(element).find('select').attr('name', `supervisorUserIds[${index}]`);
             });
         });
 
         $('#addResearcher').click(function() {
             let index = researchersContainer.children().length;
-            let researcherTemplate = `
+            researchersContainer.append(`
                 <div class="input-group mb-2 app-collection__item">
-                    <select class="form-control" name="memberIds[${index}]">
+                    <select class="form-control" name="userIds[${index}]">
                         ${allResearchers.map(researcher => `<option value="${researcher.email}">${researcher.researcherProfile?.name ?? ''}</option>`).join('')}
                     </select>
                     <button class="btn btn-danger remove-researcher" type="button">Remove</button>
-                </div>`;
-            researchersContainer.append(researcherTemplate);
+                </div>`);
         });
-
         researchersContainer.on('click', '.remove-researcher', function() {
             $(this).closest('.input-group').remove();
-            // Optionally, update the indices of the remaining elements
             researchersContainer.children().each(function(index, element) {
-                $(element).find('select').attr('name', `memberIds[${index}]`);
+                $(element).find('select').attr('name', `userIds[${index}]`);
             });
         });
     });

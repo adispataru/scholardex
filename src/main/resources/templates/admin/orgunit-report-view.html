@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${vm.unitName} + ' — ' + ${vm.report.title}">Report</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <div th:replace="~{fragments :: sidebar(${unitType} + 's')}"></div>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar(${vm.unitName} + ' — ' + ${vm.report.title})}"></div>
+            <div class="container-fluid app-page-content">
+                <div class="app-page-toolbar app-workflow">
+                    <p class="app-workflow__intro">
+                        Roll-up for
+                        <strong th:text="${vm.unitName}">unit</strong>:
+                        report <strong th:text="${vm.report.title}">name</strong>,
+                        <span th:text="${#lists.size(vm.researchers)}">0</span> researcher(s)
+                        currently affiliated.
+                    </p>
+                    <div class="app-workflow__actions">
+                        <a th:href="${backHref}" class="btn btn-outline-secondary btn-sm">← All reports</a>
+                    </div>
+                </div>
+
+                <div th:if="${!vm.buildErrors.isEmpty()}" class="alert alert-warning">
+                    <strong>Compute warnings:</strong>
+                    <ul class="mb-0">
+                        <li th:each="err : ${vm.buildErrors}" th:text="${err}"></li>
+                    </ul>
+                </div>
+
+                <div class="app-table-section">
+                    <div class="app-table-section__surface">
+                        <div class="app-table-section__body">
+                            <div class="app-table-scroll">
+                                <table class="table app-table">
+                                    <thead>
+                                    <tr>
+                                        <th>Researcher</th>
+                                        <th>Position</th>
+                                        <th th:if="${unitType == 'division'}">Department</th>
+                                        <th th:each="crit, stat : ${vm.report.criteria}"
+                                            th:text="${crit.name != null and !#strings.isEmpty(#strings.trim(crit.name)) ? crit.name : 'Criterion ' + (stat.index + 1)}">Criterion</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="researcher : ${vm.researchers}"
+                                        th:with="scored=${vm.researcherScores[researcher.email] != null}">
+                                        <td th:text="${researcher.researcherProfile?.name}">Name</td>
+                                        <td th:text="${researcher.researcherProfile?.position}"></td>
+                                        <td th:if="${unitType == 'division'}"
+                                            th:text="${vm.departmentLabelByResearcher.getOrDefault(researcher.email, '—')}"></td>
+                                        <td th:each="crit, stat : ${vm.report.criteria}">
+                                            <th:block th:if="${scored}">
+                                                <span th:text="${#numbers.formatDecimal(vm.researcherScores[researcher.email][stat.index], 1, 2)}">0</span>
+                                                <i th:if="${researcher.researcherProfile?.position != null
+                                                           and !researcher.researcherProfile.position.toString().equals('OTHER')
+                                                           and vm.criteriaThresholds[stat.index] != null
+                                                           and vm.criteriaThresholds[stat.index][researcher.researcherProfile.position.toString()] != null
+                                                           and vm.researcherScores[researcher.email][stat.index] >= vm.criteriaThresholds[stat.index][researcher.researcherProfile.position.toString()]}"
+                                                   class="fa-solid fa-check text-success ml-1"></i>
+                                            </th:block>
+                                            <th:block th:unless="${scored}">
+                                                <span class="text-muted" title="No score — see compute warnings above">—</span>
+                                            </th:block>
+                                        </td>
+                                    </tr>
+                                    <tr th:if="${vm.researchers.isEmpty()}" class="app-admin-empty-row">
+                                        <td th:colspan="${unitType == 'division' ? #lists.size(vm.report.criteria) + 3 : #lists.size(vm.report.criteria) + 2}">
+                                            <th:block th:replace="~{fragments :: admin-empty-state(
+                                                'fa-solid fa-people-line',
+                                                'No researchers affiliated',
+                                                'Assign at least one researcher via the Department admin page or the CSV import.',
+                                                '', '')}"></th:block>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+</body>
+</html>

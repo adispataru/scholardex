@@ -2,10 +2,10 @@ package ro.uvt.pokedex.core.model.reporting;
 
 import lombok.Data;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
-import ro.uvt.pokedex.core.model.Institution;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,11 +16,19 @@ public class Group {
     private String id;
     private String name;
     private String description;
-    @DBRef
-    private List<Domain> domains = new ArrayList<>();
-    @DBRef
-    private Institution institution;
 
-    /** User emails of group members. */
-    private List<String> memberIds = new ArrayList<>();
+    /** Departments this group belongs to. ≥1 required for new groups; joint labs span multiple. */
+    private List<String> departmentIds = new ArrayList<>();
+
+    /** Denormalized from the parent {@code Department}s — must be a single institution. Rebuilt on write. */
+    @Indexed
+    private String institutionId;
+
+    private List<String> domainIds = new ArrayList<>();
+
+    /** Group-level supervisors. Implicit supervision also comes from Department.headUserIds and OrgDivision.headUserIds. */
+    private List<String> supervisorUserIds = new ArrayList<>();
+
+    private Instant createdAt;
+    private Instant updatedAt;
 }

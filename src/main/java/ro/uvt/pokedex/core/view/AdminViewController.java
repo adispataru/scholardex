@@ -15,6 +15,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ro.uvt.pokedex.core.model.Institution;
 import ro.uvt.pokedex.core.model.activities.Activity;
+import ro.uvt.pokedex.core.model.org.Department;
+import ro.uvt.pokedex.core.model.org.DivisionType;
+import ro.uvt.pokedex.core.model.org.OrgDivision;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
@@ -389,16 +392,129 @@ public class AdminViewController {
         return "redirect:/admin/domains";
     }
 
-    @PostMapping("/domains/delete/{name}")
-    public String deleteDomain(@PathVariable String name) {
-        adminCatalogFacade.deleteDomain(name);
+    @PostMapping("/domains/delete/{id}")
+    public String deleteDomain(@PathVariable String id) {
+        adminCatalogFacade.deleteDomain(id);
         return "redirect:/admin/domains";
     }
 
-    @PostMapping("/institutions/delete/{name}")
-    public String deleteInstitution(@PathVariable String name) {
-        adminCatalogFacade.deleteInstitution(name);
+    @PostMapping("/institutions/delete/{id}")
+    public String deleteInstitution(@PathVariable String id) {
+        adminCatalogFacade.deleteInstitution(id);
         return "redirect:/admin/institutions";
+    }
+
+    // -------- Org Divisions --------
+
+    @GetMapping("/divisions")
+    public String showDivisionsPage(Model model) {
+        List<OrgDivision> divisions = adminCatalogFacade.listOrgDivisions();
+        java.util.LinkedHashSet<String> headEmails = new java.util.LinkedHashSet<>();
+        for (OrgDivision d : divisions) {
+            if (d.getHeadUserIds() != null) headEmails.addAll(d.getHeadUserIds());
+        }
+        model.addAttribute("divisions", divisions);
+        model.addAttribute("institutions", adminCatalogFacade.listInstitutions());
+        model.addAttribute("divisionTypes", DivisionType.values());
+        model.addAttribute("division", new OrgDivision());
+        model.addAttribute("allResearchers", userService.findUsersWithResearcherProfile());
+        model.addAttribute("headLabels", userService.findDisplayLabels(headEmails));
+        return "admin/divisions";
+    }
+
+    @PostMapping("/divisions/create")
+    public String createDivision(@ModelAttribute OrgDivision division, RedirectAttributes redirectAttributes) {
+        try {
+            adminCatalogFacade.saveOrgDivision(division);
+            redirectAttributes.addFlashAttribute("successMessage", "Division created successfully.");
+        } catch (IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return "redirect:/admin/divisions";
+    }
+
+    @PostMapping("/divisions/update")
+    public String updateDivision(@ModelAttribute OrgDivision division, RedirectAttributes redirectAttributes) {
+        try {
+            adminCatalogFacade.saveOrgDivision(division);
+            redirectAttributes.addFlashAttribute("successMessage", "Division updated successfully.");
+        } catch (IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return "redirect:/admin/divisions";
+    }
+
+    @GetMapping("/divisions/{id}/edit-data")
+    @ResponseBody
+    public ResponseEntity<OrgDivision> getDivisionEditData(@PathVariable String id) {
+        return adminCatalogFacade.findOrgDivisionById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/divisions/delete/{id}")
+    public String deleteDivision(@PathVariable String id, RedirectAttributes redirectAttributes) {
+        try {
+            adminCatalogFacade.deleteOrgDivision(id);
+            redirectAttributes.addFlashAttribute("successMessage", "Division deleted.");
+        } catch (IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return "redirect:/admin/divisions";
+    }
+
+    // -------- Departments --------
+
+    @GetMapping("/departments")
+    public String showDepartmentsPage(Model model) {
+        List<Department> departments = adminCatalogFacade.listDepartments();
+        java.util.LinkedHashSet<String> headEmails = new java.util.LinkedHashSet<>();
+        for (Department d : departments) {
+            if (d.getHeadUserIds() != null) headEmails.addAll(d.getHeadUserIds());
+        }
+        model.addAttribute("departments", departments);
+        model.addAttribute("divisions", adminCatalogFacade.listOrgDivisions());
+        model.addAttribute("department", new Department());
+        model.addAttribute("allResearchers", userService.findUsersWithResearcherProfile());
+        model.addAttribute("headLabels", userService.findDisplayLabels(headEmails));
+        return "admin/departments";
+    }
+
+    @PostMapping("/departments/create")
+    public String createDepartment(@ModelAttribute Department department, RedirectAttributes redirectAttributes) {
+        try {
+            adminCatalogFacade.saveDepartment(department);
+            redirectAttributes.addFlashAttribute("successMessage", "Department created successfully.");
+        } catch (IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return "redirect:/admin/departments";
+    }
+
+    @PostMapping("/departments/update")
+    public String updateDepartment(@ModelAttribute Department department, RedirectAttributes redirectAttributes) {
+        try {
+            adminCatalogFacade.saveDepartment(department);
+            redirectAttributes.addFlashAttribute("successMessage", "Department updated successfully.");
+        } catch (IllegalArgumentException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return "redirect:/admin/departments";
+    }
+
+    @GetMapping("/departments/{id}/edit-data")
+    @ResponseBody
+    public ResponseEntity<Department> getDepartmentEditData(@PathVariable String id) {
+        return adminCatalogFacade.findDepartmentById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/departments/delete/{id}")
+    public String deleteDepartment(@PathVariable String id, RedirectAttributes redirectAttributes) {
+        adminCatalogFacade.deleteDepartment(id);
+        redirectAttributes.addFlashAttribute("successMessage", "Department deleted.");
+        return "redirect:/admin/departments";
     }
 
     @GetMapping("/scholardex/forums")

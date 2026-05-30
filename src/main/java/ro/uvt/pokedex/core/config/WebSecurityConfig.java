@@ -87,11 +87,14 @@ public class WebSecurityConfig {
                             "/api/rankings/**"
                     ).permitAll();
                     ahr.requestMatchers("/actuator/**").hasAuthority("PLATFORM_ADMIN");
+                    // Groups admin is reachable by supervisors too; per-handler @PreAuthorize enforces ownership.
+                    ahr.requestMatchers("/admin/groups/**").hasAnyAuthority("PLATFORM_ADMIN", "SUPERVISOR");
                     ahr.requestMatchers("/admin/**").hasAuthority("PLATFORM_ADMIN");
                     ahr.requestMatchers("/api/admin/**").hasAuthority("PLATFORM_ADMIN");
                     ahr.requestMatchers("/api/entities/forums/**").authenticated();
                     ahr.requestMatchers("/api/entities/affiliations/**").authenticated();
                     ahr.requestMatchers("/researcher/**").hasAuthority("RESEARCHER");
+                    ahr.requestMatchers("/supervisor/**").hasAnyAuthority("SUPERVISOR", "PLATFORM_ADMIN");
                     ahr.requestMatchers("/api/supervisor/**").hasAuthority("SUPERVISOR");
                     ahr.anyRequest().authenticated();
                 }).exceptionHandling(e -> e

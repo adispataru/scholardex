@@ -298,6 +298,28 @@
                         <span>Institutions</span>
                     </a>
                 </li>
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'divisions'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/admin/divisions}">
+                        <i class="fa-solid fa-fw fa-sitemap"></i>
+                        <span>Divisions</span>
+                    </a>
+                </li>
+                <li class="app-shell-sidebar__item"
+                    th:classappend="${activeSection == 'departments'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/admin/departments}">
+                        <i class="fa-solid fa-fw fa-people-roof"></i>
+                        <span>Departments</span>
+                    </a>
+                </li>
+                <li class="app-shell-sidebar__item"
+                    th:if="${user != null and (user.hasRole('SUPERVISOR') or user.hasRole('PLATFORM_ADMIN'))}"
+                    th:classappend="${activeSection == 'supervisor-workspace'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/supervisor}">
+                        <i class="fa-solid fa-fw fa-user-shield"></i>
+                        <span>Supervisor workspace</span>
+                    </a>
+                </li>
             </ul>
         </section>
 

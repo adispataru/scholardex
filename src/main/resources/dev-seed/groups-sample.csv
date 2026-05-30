@@ -1,0 +1,8 @@
+groupName,email,lastName,firstName,position,departmentId,scopusIds
+DistributedSystems,ana.popescu@e-uvt.ro,Popescu,Ana,Prof. Dr.,dept-cs,10000001
+DistributedSystems,dan.ionescu@e-uvt.ro,Ionescu,Dan,Conf. Dr.,dept-cs,10000002
+DistributedSystems,maria.muresan@e-uvt.ro,Muresan,Maria,Lect. Dr.,dept-cs,10000003
+AppliedML,radu.stoica@e-uvt.ro,Stoica,Radu,Prof. Dr.,dept-cs,10000004
+AppliedML,ioana.tudor@e-uvt.ro,Tudor,Ioana,CS II,dept-math,10000005
+EnvData,alex.barbu@e-uvt.ro,Barbu,Alex,CS I,dept-env,10000006
+EnvData,laura.dinu@e-uvt.ro,Dinu,Laura,CS III,dept-env,10000007

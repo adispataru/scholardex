@@ -14,6 +14,7 @@ import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.repository.UserRepository;
 import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
+import ro.uvt.pokedex.core.service.application.GroupMembershipService;
 import ro.uvt.pokedex.core.service.application.ResearcherAuthorLookupService;
 import ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService;
 
@@ -42,6 +43,8 @@ class CacheServiceTest {
     private UserRepository userRepository;
     @Mock
     private ResearcherAuthorLookupService researcherAuthorLookupService;
+    @Mock
+    private GroupMembershipService groupMembershipService;
 
     private CacheService cacheService;
 
@@ -69,7 +72,8 @@ class CacheServiceTest {
                 coreConferenceRankingRepository,
                 groupRepository,
                 userRepository,
-                researcherAuthorLookupService
+                researcherAuthorLookupService,
+                groupMembershipService
         );
     }
 
@@ -126,7 +130,8 @@ class CacheServiceTest {
                 coreConferenceRankingRepository,
                 groupRepository,
                 userRepository,
-                researcherAuthorLookupService
+                researcherAuthorLookupService,
+                groupMembershipService
         );
 
         List<CoreConferenceRanking> rankings = service.getCachedConfRankingsByNormalizedTitle("shared conference title");
@@ -147,7 +152,8 @@ class CacheServiceTest {
                 coreConferenceRankingRepository,
                 groupRepository,
                 userRepository,
-                researcherAuthorLookupService
+                researcherAuthorLookupService,
+                groupMembershipService
         );
 
         List<CoreConferenceRanking> rankings = service.getCachedConfRankingsByNormalizedTitle("shared conference title");
@@ -209,13 +215,14 @@ class CacheServiceTest {
     @Test
     void constructorResolvesUniversityAuthorIdsFromGroupMembers() {
         Group group = new Group();
-        group.setMemberIds(List.of("ada@uvt.ro"));
+        group.setId("g1");
         User researcher = new User();
         researcher.setEmail("ada@uvt.ro");
         researcher.setResearcherProfile(new User.ResearcherProfile());
         ScholardexAuthorView universityAuthor = new ScholardexAuthorView();
         universityAuthor.setId("author-uvt");
         when(groupRepository.findAll()).thenReturn(List.of(group));
+        when(groupMembershipService.listCurrentMemberUserIds("g1")).thenReturn(List.of("ada@uvt.ro"));
         when(userRepository.findAllById(List.of("ada@uvt.ro"))).thenReturn(List.of(researcher));
         when(researcherAuthorLookupService.resolveAuthorLookupKeys(researcher.getResearcherProfile()))
                 .thenReturn(List.of("author-uvt"));
@@ -227,7 +234,8 @@ class CacheServiceTest {
                 coreConferenceRankingRepository,
                 groupRepository,
                 userRepository,
-                researcherAuthorLookupService
+                researcherAuthorLookupService,
+                groupMembershipService
         );
 
         assertEquals(Set.of("author-uvt"), service.getUniversityAuthorIds());
@@ -236,10 +244,11 @@ class CacheServiceTest {
     @Test
     void constructorSkipsGroupMembersWithoutResearcherProfiles() {
         Group group = new Group();
-        group.setMemberIds(List.of("admin@uvt.ro"));
+        group.setId("g1");
         User admin = new User();
         admin.setEmail("admin@uvt.ro");
         when(groupRepository.findAll()).thenReturn(List.of(group));
+        when(groupMembershipService.listCurrentMemberUserIds("g1")).thenReturn(List.of("admin@uvt.ro"));
         when(userRepository.findAllById(List.of("admin@uvt.ro"))).thenReturn(List.of(admin));
 
         CacheService service = new CacheService(
@@ -247,7 +256,8 @@ class CacheServiceTest {
                 coreConferenceRankingRepository,
                 groupRepository,
                 userRepository,
-                researcherAuthorLookupService
+                researcherAuthorLookupService,
+                groupMembershipService
         );
 
         assertTrue(service.getUniversityAuthorIds().isEmpty());

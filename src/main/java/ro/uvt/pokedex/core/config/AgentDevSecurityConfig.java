@@ -47,7 +47,7 @@ public class AgentDevSecurityConfig {
     public SecurityFilterChain agentDevFilterChain(HttpSecurity http) throws Exception {
         log.warn("=================================================================");
         log.warn("  agent-dev profile is ACTIVE — all auth checks are BYPASSED");
-        log.warn("  Principal: {} (RESEARCHER, no linked researcher profile)", AGENT_EMAIL);
+        log.warn("  Principal: {} (RESEARCHER + PLATFORM_ADMIN + SUPERVISOR, no linked researcher profile)", AGENT_EMAIL);
         log.warn("  DO NOT use this profile in production.");
         log.warn("=================================================================");
 
@@ -75,7 +75,7 @@ public class AgentDevSecurityConfig {
                 User agentUser = new User();
                 agentUser.setEmail(AGENT_EMAIL);
                 agentUser.setPassword("");
-                agentUser.setRoles(Set.of(UserRole.RESEARCHER));
+                agentUser.setRoles(Set.of(UserRole.RESEARCHER, UserRole.PLATFORM_ADMIN, UserRole.SUPERVISOR));
                 agentUser.setLocked(false);
                 // researcherId intentionally null — workspace renders "no profile linked" state
 

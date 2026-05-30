@@ -73,6 +73,8 @@ class UserReportFacadeTest {
     @Mock
     private IndividualReportRepository individualReportRepository;
     @Mock
+    private ReportVisibilityService reportVisibilityService;
+    @Mock
     private ActivityInstanceRepository activityInstanceRepository;
     @Mock
     private ScholardexProjectionReadService scholardexProjectionReadService;
@@ -134,15 +136,30 @@ class UserReportFacadeTest {
     }
 
     @Test
-    void buildIndividualReportsListViewReturnsRepositoryValues() {
+    void buildIndividualReportsListViewReturnsOnlyReportsVisibleToTheUser() {
         IndividualReport report = new IndividualReport();
         report.setTitle("R1");
-        when(individualReportRepository.findAll()).thenReturn(List.of(report));
+        when(reportVisibilityService.listVisibleReportsForUser("user@uvt.ro"))
+                .thenReturn(List.of(report));
 
         var vm = facade.buildIndividualReportsListView("user@uvt.ro");
 
         assertEquals(1, vm.individualReports().size());
         assertEquals("R1", vm.individualReports().getFirst().getTitle());
+    }
+
+    @Test
+    void buildIndividualReportsListViewFallsBackToCatalogWhenNoUserEmail() {
+        // Platform admins or anonymous contexts hit the fallback so they see something instead
+        // of an empty list. Belt-and-suspenders: also covers null/blank usernames.
+        IndividualReport report = new IndividualReport();
+        report.setTitle("Catalog report");
+        when(individualReportRepository.findAll()).thenReturn(List.of(report));
+
+        var vm = facade.buildIndividualReportsListView(null);
+
+        assertEquals(1, vm.individualReports().size());
+        assertEquals("Catalog report", vm.individualReports().getFirst().getTitle());
     }
 
     @Test

@@ -10,6 +10,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.repository.UserRepository;
 import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
+import ro.uvt.pokedex.core.service.application.GroupMembershipService;
 import ro.uvt.pokedex.core.service.application.ResearcherAuthorLookupService;
 import ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService;
 import ro.uvt.pokedex.core.service.reporting.ConferenceTitleNormalizationSupport;
@@ -29,6 +30,7 @@ public class CacheService {
     private final GroupRepository groupRepository;
     private final UserRepository userRepository;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
+    private final GroupMembershipService groupMembershipService;
     private final ConcurrentMap<String, List<CoreConferenceRanking>> confRankingCache;
     private final ConcurrentMap<String, List<CoreConferenceRanking>> confRankingTitleCache;
     private final Map<String, ScholardexAffiliationView> affiliationCache = new HashMap<>();
@@ -41,13 +43,15 @@ public class CacheService {
             CoreConferenceRankingRepository coreConferenceRankingRepository,
             GroupRepository groupRepository,
             UserRepository userRepository,
-            ResearcherAuthorLookupService researcherAuthorLookupService
+            ResearcherAuthorLookupService researcherAuthorLookupService,
+            GroupMembershipService groupMembershipService
     ) {
         this.scholardexProjectionReadService = scholardexProjectionReadService;
         this.coreConferenceRankingRepository = coreConferenceRankingRepository;
         this.groupRepository = groupRepository;
         this.userRepository = userRepository;
         this.researcherAuthorLookupService = researcherAuthorLookupService;
+        this.groupMembershipService = groupMembershipService;
         this.forumCache = new ConcurrentHashMap<>();
         this.scholardexProjectionReadService.findAllForums().forEach(f -> {
             forumCache.put(f.getId(), f);
@@ -60,7 +64,7 @@ public class CacheService {
         allConferenceRankings.forEach(this::indexConferenceRankingByTitle);
         List<ScholardexAuthorView> all = scholardexProjectionReadService.findAllAuthors();
         groupRepository.findAll().forEach(group -> {
-            List<String> memberIds = group.getMemberIds() != null ? group.getMemberIds() : List.of();
+            List<String> memberIds = groupMembershipService.listCurrentMemberUserIds(group.getId());
             userRepository.findAllById(memberIds).stream()
                     .filter(u -> u.getResearcherProfile() != null)
                     .forEach(researcher -> {

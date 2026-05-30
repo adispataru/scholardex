@@ -64,6 +64,7 @@ public class UserReportFacade {
     private final UserService userService;
     private final IndicatorRepository indicatorRepository;
     private final IndividualReportRepository individualReportRepository;
+    private final ReportVisibilityService reportVisibilityService;
     private final ActivityInstanceRepository activityInstanceRepository;
     private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final DomainRepository domainRepository;
@@ -84,8 +85,15 @@ public class UserReportFacade {
     }
 
     public UserReportsListViewModel buildIndividualReportsListView(String userEmail) {
-        // userEmail kept in signature to lock facade contract for future permission-aware filtering.
-        return new UserReportsListViewModel(individualReportRepository.findAll());
+        // Reports visible to a user are the union of (selection ∩ ¬hide) across all their groups.
+        // Falls back to the full catalog for users without any group membership so we don't
+        // silently strip away the admin's own view; explicit empty state is preferred where it
+        // makes sense, but the catalog fallback keeps platform admins from getting an empty list.
+        if (userEmail == null || userEmail.isBlank()) {
+            return new UserReportsListViewModel(individualReportRepository.findAll());
+        }
+        java.util.List<IndividualReport> visible = reportVisibilityService.listVisibleReportsForUser(userEmail);
+        return new UserReportsListViewModel(visible);
     }
 
     public Optional<Indicator> findIndicatorById(String indicatorId) {

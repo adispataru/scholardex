@@ -4,7 +4,11 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 import ro.uvt.pokedex.core.model.reporting.Group;
 
+import java.util.List;
+
 @Repository
 public interface GroupRepository extends MongoRepository<Group, String> {
-    // Additional query methods can be defined here if needed
+    List<Group> findBySupervisorUserIdsContaining(String userId);
+
+    List<Group> findByDepartmentIdsIn(Iterable<String> departmentIds);
 }

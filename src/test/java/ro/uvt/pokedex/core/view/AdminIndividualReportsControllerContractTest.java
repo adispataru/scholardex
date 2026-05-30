@@ -33,6 +33,8 @@ class AdminIndividualReportsControllerContractTest {
 
     @MockitoBean
     private IndividualReportsManagementFacade individualReportsManagementFacade;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.reporting.transfer.ReportImportRegistry reportImportRegistry;
 
     @Test
     void listDisplaysCriterionNamesWithFallback() throws Exception {

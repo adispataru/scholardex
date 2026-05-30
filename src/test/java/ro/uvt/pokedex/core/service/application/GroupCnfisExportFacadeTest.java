@@ -41,6 +41,8 @@ class GroupCnfisExportFacadeTest {
     @Mock
     private GroupManagementFacade groupManagementFacade;
     @Mock
+    private GroupMembershipService groupMembershipService;
+    @Mock
     private ScholardexProjectionReadService scholardexProjectionReadService;
     @Mock
     private PublicationEnrichmentLinkerService publicationEnrichmentLinkerService;
@@ -80,7 +82,7 @@ class GroupCnfisExportFacadeTest {
     @Test
     void buildGroupCnfisExportReturnsEmptyWhenGroupMissing() {
         when(groupManagementFacade.buildGroupEditView("missing"))
-                .thenReturn(new GroupEditViewModel(null, List.of(), List.of(), List.of()));
+                .thenReturn(new GroupEditViewModel(null, List.of(), List.of(), List.of(), List.of(), List.of()));
 
         Optional<?> result = facade.buildGroupCnfisExport("missing", 2021, 2024);
 
@@ -92,7 +94,7 @@ class GroupCnfisExportFacadeTest {
         lenient().when(userRepository.findAllById(anyCollection()))
                 .thenReturn(List.of(memberUser("jane@uvt.ro", "Jane", "Doe", List.of("a1"))));
         Group group = new Group();
-        group.setMemberIds(List.of("jane@uvt.ro"));
+        when(groupMembershipService.listCurrentMemberUserIds(any())).thenReturn(List.of("jane@uvt.ro"));
 
         ScholardexPublicationView inRange = publication("p1", "f1", "2022-05-01");
         ScholardexPublicationView outOfRange = publication("p2", "f2", "2018-03-10");
@@ -102,9 +104,9 @@ class GroupCnfisExportFacadeTest {
         Domain allDomain = new Domain();
         allDomain.setName("ALL");
 
-        GroupListViewModel groupListViewModel = new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), new Group());
+        GroupListViewModel groupListViewModel = new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), List.of(), java.util.Map.of(), java.util.Map.of(), java.util.Map.of(), new Group());
         when(groupManagementFacade.buildGroupEditView("g1"))
-                .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of()));
+                .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of(), List.of(), List.of()));
         when(groupManagementFacade.buildGroupListView()).thenReturn(groupListViewModel);
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
                 .thenReturn(List.of(inRange, outOfRange));
@@ -136,14 +138,14 @@ class GroupCnfisExportFacadeTest {
                         memberUser("dan@uvt.ro", "Dan", "Ionescu", List.of("a2"))
                 ));
         Group group = new Group();
-        group.setMemberIds(List.of("ana@uvt.ro", "dan@uvt.ro"));
+        when(groupMembershipService.listCurrentMemberUserIds(any())).thenReturn(List.of("ana@uvt.ro", "dan@uvt.ro"));
         Domain allDomain = new Domain();
         allDomain.setName("ALL");
 
         when(groupManagementFacade.buildGroupEditView("g1"))
-                .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of()));
+                .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of(), List.of(), List.of()));
         when(groupManagementFacade.buildGroupListView())
-                .thenReturn(new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), new Group()));
+                .thenReturn(new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), List.of(), java.util.Map.of(), java.util.Map.of(), java.util.Map.of(), new Group()));
 
         ScholardexPublicationView p1 = publication("p1", "f1", "2022-01-01");
         ScholardexPublicationView p2 = publication("p2", "f2", "2023-01-01");
@@ -181,14 +183,14 @@ class GroupCnfisExportFacadeTest {
         lenient().when(userRepository.findAllById(anyCollection()))
                 .thenReturn(List.of(memberUser("ana@uvt.ro", "Ana", "Popescu", List.of("a1"))));
         Group group = new Group();
-        group.setMemberIds(List.of("ana@uvt.ro"));
+        when(groupMembershipService.listCurrentMemberUserIds(any())).thenReturn(List.of("ana@uvt.ro"));
         Domain allDomain = new Domain();
         allDomain.setName("ALL");
 
         when(groupManagementFacade.buildGroupEditView("g1"))
-                .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of()));
+                .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of(), List.of(), List.of()));
         when(groupManagementFacade.buildGroupListView())
-                .thenReturn(new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), new Group()));
+                .thenReturn(new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), List.of(), java.util.Map.of(), java.util.Map.of(), java.util.Map.of(), new Group()));
 
         ScholardexPublicationView publication = publication("p1", "f1", "2022-01-01");
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(publication));
@@ -230,14 +232,14 @@ class GroupCnfisExportFacadeTest {
         lenient().when(userRepository.findAllById(anyCollection()))
                 .thenReturn(List.of(memberUser("ana@uvt.ro", "Ana", "Popescu", List.of("a1"))));
         Group group = new Group();
-        group.setMemberIds(List.of("ana@uvt.ro"));
+        when(groupMembershipService.listCurrentMemberUserIds(any())).thenReturn(List.of("ana@uvt.ro"));
         Domain allDomain = new Domain();
         allDomain.setName("ALL");
 
         when(groupManagementFacade.buildGroupEditView("g1"))
-                .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of()));
+                .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of(), List.of(), List.of()));
         when(groupManagementFacade.buildGroupListView())
-                .thenReturn(new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), new Group()));
+                .thenReturn(new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), List.of(), java.util.Map.of(), java.util.Map.of(), java.util.Map.of(), new Group()));
 
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of());
         when(scholardexProjectionReadService.findForumsByIdIn(anyCollection())).thenReturn(List.of());
@@ -258,7 +260,7 @@ class GroupCnfisExportFacadeTest {
         lenient().when(userRepository.findAllById(anyCollection()))
                 .thenReturn(List.of(memberUser("jane@uvt.ro", "Jane", "Doe", List.of("a1"))));
         Group group = new Group();
-        group.setMemberIds(List.of("jane@uvt.ro"));
+        when(groupMembershipService.listCurrentMemberUserIds(any())).thenReturn(List.of("jane@uvt.ro"));
         Domain allDomain = new Domain();
         allDomain.setName("ALL");
 
@@ -269,9 +271,9 @@ class GroupCnfisExportFacadeTest {
         forum.setId("f1");
 
         when(groupManagementFacade.buildGroupEditView("g1"))
-                .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of()));
+                .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of(), List.of(), List.of()));
         when(groupManagementFacade.buildGroupListView())
-                .thenReturn(new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), new Group()));
+                .thenReturn(new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), List.of(), java.util.Map.of(), java.util.Map.of(), java.util.Map.of(), new Group()));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
                 .thenReturn(List.of(start, end, out));
         when(publicationEnrichmentLinkerService.linkWosEnrichment(any(), any(), any(), any(), any(), any(), any()))
@@ -297,7 +299,7 @@ class GroupCnfisExportFacadeTest {
         lenient().when(userRepository.findAllById(anyCollection()))
                 .thenReturn(List.of(memberUser("jane@uvt.ro", "Jane", "Doe", List.of("a1"))));
         Group group = new Group();
-        group.setMemberIds(List.of("jane@uvt.ro"));
+        when(groupMembershipService.listCurrentMemberUserIds(any())).thenReturn(List.of("jane@uvt.ro"));
         Domain allDomain = new Domain();
         allDomain.setName("ALL");
 
@@ -307,9 +309,9 @@ class GroupCnfisExportFacadeTest {
         forum.setId("f1");
 
         when(groupManagementFacade.buildGroupEditView("g1"))
-                .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of()));
+                .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of(), List.of(), List.of()));
         when(groupManagementFacade.buildGroupListView())
-                .thenReturn(new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), new Group()));
+                .thenReturn(new GroupListViewModel(List.of(), List.of(allDomain), List.of(), List.of(), List.of(), java.util.Map.of(), java.util.Map.of(), java.util.Map.of(), new Group()));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
                 .thenReturn(List.of(valid, invalid));
         when(publicationEnrichmentLinkerService.linkWosEnrichment(any(), any(), any(), any(), any(), any(), any()))

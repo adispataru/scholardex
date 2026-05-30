@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Departments</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <div th:replace="~{fragments :: sidebar('departments')}"></div>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar('Departments')}"></div>
+            <div class="container-fluid app-page-content">
+                <div class="app-page-toolbar app-workflow">
+                    <p class="app-workflow__intro">Departments live under a division. The institution is derived automatically from the parent — pick the right division and it follows.</p>
+                    <div class="app-workflow__actions">
+                        <a href="#" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#createDepartmentModal">
+                            <i class="fa-solid fa-plus fa-sm text-white-50"></i> Create department
+                        </a>
+                    </div>
+                </div>
+
+                <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+                <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+                <div class="app-table-section">
+                    <div class="app-table-section__surface">
+                        <div class="app-table-section__header">
+                            <h6 class="app-table-section__title">All departments</h6>
+                        </div>
+                        <div class="app-table-section__body">
+                            <div class="app-table-scroll">
+                                <table class="table js-datatable app-table" id="dataTable" width="100%" cellspacing="0">
+                                    <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Division</th>
+                                        <th>Institution</th>
+                                        <th>Heads</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="dept : ${departments}">
+                                        <td th:text="${dept.name}">Name</td>
+                                        <td th:text="${dept.divisionId}"></td>
+                                        <td th:text="${dept.institutionId}"></td>
+                                        <td>
+                                            <th:block th:if="${dept.headUserIds == null or dept.headUserIds.isEmpty()}">
+                                                <span class="text-muted">—</span>
+                                            </th:block>
+                                            <th:block th:unless="${dept.headUserIds == null or dept.headUserIds.isEmpty()}">
+                                                <ul class="list-unstyled mb-0 small">
+                                                    <li th:each="email, stat : ${dept.headUserIds}"
+                                                        th:if="${stat.index < 2}"
+                                                        th:text="${headLabels.getOrDefault(email, email)}"></li>
+                                                    <li th:if="${#lists.size(dept.headUserIds) > 2}"
+                                                        class="text-muted"
+                                                        th:text="'+' + (${#lists.size(dept.headUserIds)} - 2) + ' more'"></li>
+                                                </ul>
+                                            </th:block>
+                                        </td>
+                                        <td>
+                                            <div class="app-admin-actions">
+                                                <button type="button"
+                                                        class="btn btn-outline-secondary btn-sm"
+                                                        th:attr="data-edit-department-id=${dept.id}"
+                                                        aria-label="Edit department">Edit</button>
+                                                <a class="btn btn-info btn-sm"
+                                                   th:href="@{/admin/departments/{id}/reports(id=${dept.id})}">Reports</a>
+                                                <form th:action="@{/admin/departments/delete/{id}(id=${dept.id})}" method="post" style="display:inline;">
+                                                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr th:if="${departments.isEmpty()}" class="app-admin-empty-row">
+                                        <td colspan="5">
+                                            <th:block th:replace="~{fragments :: admin-empty-state(
+                                                'fa-solid fa-people-roof',
+                                                'No departments yet',
+                                                'Create one once at least one division exists.',
+                                                '', '')}"></th:block>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Create modal -->
+<div class="modal fade app-modal app-modal-shell" id="createDepartmentModal" tabindex="-1" role="dialog" aria-hidden="true" data-app-modal-shell>
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create department</h5>
+                <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+            </div>
+            <div class="modal-body">
+                <form th:action="@{/admin/departments/create}" th:object="${department}" method="post">
+                    <div class="form-group app-form-field">
+                        <label for="create-department-name">Name</label>
+                        <input type="text" class="form-control" id="create-department-name" th:field="*{name}" required>
+                    </div>
+                    <div class="form-group app-form-field">
+                        <label for="create-department-division">Division</label>
+                        <select class="form-control" id="create-department-division" th:field="*{divisionId}" required>
+                            <option th:each="division : ${divisions}"
+                                    th:value="${division.id}"
+                                    th:text="${division.name} + ' (' + ${division.type} + ')'"></option>
+                        </select>
+                    </div>
+                    <div class="form-group app-form-field">
+                        <label>Heads <small class="text-muted">(optional — supervise everything under this department)</small></label>
+                        <div id="createDepartmentHeadsContainer" class="app-collection"></div>
+                        <div class="app-form-actions app-form-actions--inline">
+                            <button type="button" class="btn btn-primary btn-sm" data-add-head="createDepartmentHeadsContainer">Add head</button>
+                        </div>
+                    </div>
+                    <div class="modal-footer app-form-actions">
+                        <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Create</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit modal -->
+<div class="modal fade app-modal app-modal-shell" id="editDepartmentModal" tabindex="-1" role="dialog" aria-hidden="true" data-app-modal-shell>
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit department</h5>
+                <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+            </div>
+            <div class="modal-body">
+                <form th:action="@{/admin/departments/update}" method="post" id="editDepartmentForm">
+                    <input type="hidden" name="id" id="edit-department-id">
+                    <div class="form-group app-form-field">
+                        <label for="edit-department-name">Name</label>
+                        <input type="text" class="form-control" id="edit-department-name" name="name" required>
+                    </div>
+                    <div class="form-group app-form-field">
+                        <label for="edit-department-division">Division</label>
+                        <select class="form-control" id="edit-department-division" name="divisionId" required>
+                            <option th:each="division : ${divisions}"
+                                    th:value="${division.id}"
+                                    th:text="${division.name} + ' (' + ${division.type} + ')'"></option>
+                        </select>
+                    </div>
+                    <div class="form-group app-form-field">
+                        <label>Heads <small class="text-muted">(supervise this department's groups)</small></label>
+                        <div id="editDepartmentHeadsContainer" class="app-collection"></div>
+                        <div class="app-form-actions app-form-actions--inline">
+                            <button type="button" class="btn btn-primary btn-sm" data-add-head="editDepartmentHeadsContainer">Add head</button>
+                        </div>
+                    </div>
+                    <div class="modal-footer app-form-actions">
+                        <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+<script th:inline="javascript">
+    $(document).ready(function () {
+        const allResearchers = /*[[${allResearchers}]]*/ [];
+        const optionsHtml = allResearchers
+            .map(r => `<option value="${r.email}">${(r.researcherProfile && r.researcherProfile.name) ? r.researcherProfile.name : ''} &lt;${r.email}&gt;</option>`)
+            .join('');
+
+        function appendHeadRow(containerId, selectedEmail) {
+            const $c = $('#' + containerId);
+            const idx = $c.children().length;
+            const row = $(`
+                <div class="input-group mb-2 app-collection__item">
+                    <select class="form-control" name="headUserIds[${idx}]">
+                        <option value="">— pick a researcher —</option>
+                        ${optionsHtml}
+                    </select>
+                    <button type="button" class="btn btn-danger app-remove-head">Remove</button>
+                </div>`);
+            if (selectedEmail) row.find('select').val(selectedEmail);
+            $c.append(row);
+        }
+
+        function renumberHeads(containerId) {
+            $('#' + containerId).children().each(function (i, el) {
+                $(el).find('select').attr('name', `headUserIds[${i}]`);
+            });
+        }
+
+        $(document).on('click', '[data-add-head]', function () {
+            appendHeadRow($(this).data('add-head'), null);
+        });
+        $(document).on('click', '.app-remove-head', function () {
+            const $container = $(this).closest('.app-collection');
+            $(this).closest('.input-group').remove();
+            renumberHeads($container.attr('id'));
+        });
+
+        appendHeadRow('createDepartmentHeadsContainer', null);
+
+        $('#dataTable').on('click', '[data-edit-department-id]', async function (event) {
+            event.preventDefault();
+            const trigger = this;
+            const id = $(trigger).attr('data-edit-department-id');
+            try {
+                const response = await fetch('/admin/departments/' + encodeURIComponent(id) + '/edit-data', {
+                    headers: { Accept: 'application/json' }
+                });
+                if (!response.ok) throw new Error('Could not load department details.');
+                const d = await response.json();
+                $('#edit-department-id').val(d.id || '');
+                $('#edit-department-name').val(d.name || '');
+                $('#edit-department-division').val(d.divisionId || '');
+                $('#editDepartmentHeadsContainer').empty();
+                (d.headUserIds || []).forEach(email => appendHeadRow('editDepartmentHeadsContainer', email));
+                if (window.appModal) {
+                    window.appModal.open('editDepartmentModal', { trigger });
+                } else {
+                    $('#editDepartmentModal').modal('show');
+                }
+            } catch (err) {
+                console.error(err);
+                alert(err.message || 'Could not load department details.');
+            }
+        });
+    });
+</script>
+</body>
+</html>

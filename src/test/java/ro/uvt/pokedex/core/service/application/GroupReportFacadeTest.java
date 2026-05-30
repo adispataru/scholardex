@@ -3,9 +3,13 @@ package ro.uvt.pokedex.core.service.application;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ro.uvt.pokedex.core.service.application.reporting.GroupPublicationAggregator;
+import ro.uvt.pokedex.core.service.application.reporting.GroupReportRunner;
+import ro.uvt.pokedex.core.service.application.reporting.GroupReportViewModelAssembler;
+import ro.uvt.pokedex.core.service.application.reporting.ReportRunTelemetry;
+import ro.uvt.pokedex.core.service.application.reporting.VenueClassifier;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.repository.UserRepository;
@@ -87,8 +91,9 @@ class GroupReportFacadeTest {
     private ReportingLookupMemoization reportingLookupMemoization;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private GroupMembershipService groupMembershipService;
 
-    @InjectMocks
     private GroupReportFacade facade;
 
     @BeforeEach
@@ -104,6 +109,26 @@ class GroupReportFacadeTest {
             ((Runnable) invocation.getArgument(0)).run();
             return null;
         }).when(reportingLookupMemoization).withRefreshScope(any(Runnable.class));
+        lenient().when(groupMembershipService.listCurrentMemberUserIds(org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(List.of("r1"));
+
+        VenueClassifier venueClassifier = new VenueClassifier(
+                cnfisScoringService2025, computerScienceConferenceScoringService);
+        GroupPublicationAggregator aggregator = new GroupPublicationAggregator(
+                groupRepository, userRepository, groupMembershipService, individualReportRepository,
+                scholardexProjectionReadService, researcherAuthorLookupService, venueClassifier);
+        GroupReportRunner runner = new GroupReportRunner(
+                userRepository, groupMembershipService, activityInstanceRepository,
+                scholardexProjectionReadService, researcherAuthorLookupService,
+                scientificProductionService, activityReportingService,
+                reportingLookupMemoization, groupIndividualReportRunRepository);
+        GroupReportViewModelAssembler assembler = new GroupReportViewModelAssembler(
+                userRepository, groupMembershipService);
+        ReportRunTelemetry telemetry = new ReportRunTelemetry();
+
+        facade = new GroupReportFacade(
+                groupRepository, individualReportRepository, groupIndividualReportRunRepository,
+                groupMembershipService, aggregator, runner, assembler, telemetry);
     }
 
     @Test
@@ -117,7 +142,6 @@ class GroupReportFacadeTest {
         lenient().when(userRepository.findAllById(anyCollection()))
                 .thenReturn(List.of(memberUser("r1", "R", "One", List.of("a1"))));
         Group group = new Group();
-        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         Publication validPublication = new Publication();
         validPublication.setId("p1");
@@ -159,7 +183,6 @@ class GroupReportFacadeTest {
         lenient().when(userRepository.findAllById(anyCollection()))
                 .thenReturn(List.of(memberUser("r1", "R", "One", List.of("a1"))));
         Group group = new Group();
-        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         Publication p1 = new Publication();
         p1.setId("p1");
@@ -208,7 +231,6 @@ class GroupReportFacadeTest {
         lenient().when(userRepository.findAllById(anyCollection()))
                 .thenReturn(List.of(memberUser("r1", "R", "One", List.of("a1"))));
         Group group = new Group();
-        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         Publication shared = new Publication();
         shared.setId("p-shared");
@@ -242,7 +264,6 @@ class GroupReportFacadeTest {
         lenient().when(userRepository.findAllById(anyCollection()))
                 .thenReturn(List.of(memberUser("r1", "R", "One", List.of("a1"))));
         Group group = new Group();
-        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         Publication q1Journal = new Publication();
         q1Journal.setId("p1");
@@ -381,14 +402,14 @@ class GroupReportFacadeTest {
         group.setId("g1");
         lenient().when(userRepository.findAllById(anyCollection()))
                 .thenReturn(List.of(memberUser("r1", "A", "B", List.of())));
-        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         IndividualReport report = new IndividualReport();
         report.setId("rep1");
         report.setCriteria(List.of());
 
         GroupIndividualReportRun run = new GroupIndividualReportRun();
-        run.setResearcherScores(java.util.Map.of("r1", java.util.Map.of(0, 4.0)));
+        run.setResearcherScores(List.of(
+                new GroupIndividualReportRun.ResearcherScore("r1", java.util.Map.of(0, 4.0))));
         run.setCriteriaThresholds(java.util.Map.of(0, java.util.Map.of("ASSISTANT", 2.0)));
         run.setStatus(GroupIndividualReportRun.Status.READY);
         run.setBuildErrors(List.of());
@@ -411,7 +432,6 @@ class GroupReportFacadeTest {
                 .thenReturn(List.of(memberUser("r1", "A", "B", List.of("a1"))));
         Group group = new Group();
         group.setId("g1");
-        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         IndividualReport report = new IndividualReport();
         report.setId("rep1");
@@ -437,12 +457,13 @@ class GroupReportFacadeTest {
     }
 
     @Test
-    void refreshGroupIndividualReportViewEncodesDottedEmailsForPersistedScoreMapKeys() {
+    void refreshGroupIndividualReportViewKeysScoresByRawEmailWithoutEncoding() {
         lenient().when(userRepository.findAllById(anyCollection()))
                 .thenReturn(List.of(memberUser("raluca.muresan@e-uvt.ro", "Raluca", "Muresan", List.of("a1"))));
+        lenient().when(groupMembershipService.listCurrentMemberUserIds("g1"))
+                .thenReturn(List.of("raluca.muresan@e-uvt.ro"));
         Group group = new Group();
         group.setId("g1");
-        group.setMemberIds(new ArrayList<>(List.of("raluca.muresan@e-uvt.ro")));
 
         AbstractReport.Criterion criterion = new AbstractReport.Criterion();
         criterion.setIndicatorIndices(List.of());
@@ -469,14 +490,9 @@ class GroupReportFacadeTest {
         @SuppressWarnings("unchecked")
         Map<String, Map<Integer, Double>> researcherScores =
                 (Map<String, Map<Integer, Double>>) result.attributes().get("researcherScores");
-        @SuppressWarnings("unchecked")
-        Map<String, String> researcherScoreKeyByEmail =
-                (Map<String, String>) result.attributes().get("researcherScoreKeyByEmail");
-        String scoreKey = researcherScoreKeyByEmail.get("raluca.muresan@e-uvt.ro");
 
-        assertNotNull(scoreKey);
-        assertFalse(scoreKey.contains("."));
-        assertTrue(researcherScores.containsKey(scoreKey));
+        assertTrue(researcherScores.containsKey("raluca.muresan@e-uvt.ro"),
+                "scores must be addressable by raw email; the legacy mongo-safe-key encoding is gone");
     }
 
     @Test
@@ -485,7 +501,6 @@ class GroupReportFacadeTest {
                 .thenReturn(List.of(memberUser("r1", "A", "B", List.of("a1"))));
         Group group = new Group();
         group.setId("g1");
-        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         IndividualReport report = new IndividualReport();
         report.setId("rep1");
@@ -518,7 +533,6 @@ class GroupReportFacadeTest {
                 .thenReturn(List.of(memberUser("r1", "A", "B", List.of("a1"))));
         Group group = new Group();
         group.setId("g1");
-        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         Indicator citations = new Indicator();
         citations.setOutputType(Indicator.Type.CITATIONS);
@@ -576,7 +590,6 @@ class GroupReportFacadeTest {
                 .thenReturn(List.of(memberUser("r1", "A", "B", List.of("a1"))));
         Group group = new Group();
         group.setId("g1");
-        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         Activity activity = new Activity();
         activity.setName("Forum Activity");
@@ -627,7 +640,6 @@ class GroupReportFacadeTest {
                 .thenReturn(List.of(memberUser("r1", "A", "B", List.of("a1"))));
         Group group = new Group();
         group.setId("g1");
-        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         Indicator citations = new Indicator();
         citations.setOutputType(Indicator.Type.CITATIONS);
@@ -716,7 +728,6 @@ class GroupReportFacadeTest {
                 .thenReturn(List.of(memberUser("r1", "A", "B", List.of("a1"))));
         Group group = new Group();
         group.setId("g1");
-        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         Indicator citationsTop10 = new Indicator();
         citationsTop10.setOutputType(Indicator.Type.CITATIONS);
@@ -799,7 +810,6 @@ class GroupReportFacadeTest {
                 .thenReturn(List.of(memberUser("r1", "A", "B", List.of("a1"))));
         Group group = new Group();
         group.setId("g1");
-        group.setMemberIds(new ArrayList<>(List.of("r1")));
 
         Indicator publications = new Indicator();
         publications.setOutputType(Indicator.Type.PUBLICATIONS);

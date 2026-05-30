@@ -84,7 +84,7 @@ class GeneralInitializationServiceTest {
 
     @Test
     void runAllExecutesAllStepsInOrder() {
-        when(domainRepository.findById("all")).thenReturn(Optional.of(new Domain()));
+        when(domainRepository.findByName("ALL")).thenReturn(Optional.of(new Domain()));
 
         GeneralInitializationService.GeneralInitializationRunSummary summary = service.runAll();
 
@@ -114,7 +114,7 @@ class GeneralInitializationServiceTest {
 
     @Test
     void specialDomainBootstrapCreatesAllDomainOnlyWhenMissing() {
-        when(domainRepository.findById("all")).thenReturn(Optional.empty());
+        when(domainRepository.findByName("ALL")).thenReturn(Optional.empty());
 
         GeneralInitializationService.GeneralInitializationStepResult step = service.runSpecialDomainBootstrap();
 
@@ -132,7 +132,7 @@ class GeneralInitializationServiceTest {
 
     @Test
     void specialDomainBootstrapIsIdempotentWhenDomainExists() {
-        when(domainRepository.findById("all")).thenReturn(Optional.of(new Domain()));
+        when(domainRepository.findByName("ALL")).thenReturn(Optional.of(new Domain()));
 
         GeneralInitializationService.GeneralInitializationStepResult step = service.runSpecialDomainBootstrap();
 
@@ -156,7 +156,7 @@ class GeneralInitializationServiceTest {
 
     @Test
     void runAllCountsFailuresWhenAStepThrows() {
-        when(domainRepository.findById("all")).thenReturn(Optional.of(new Domain()));
+        when(domainRepository.findByName("ALL")).thenReturn(Optional.of(new Domain()));
         doThrow(new IllegalStateException("urap fail")).when(urapRankingService).loadRankingsFromFolder("data/urap-univ");
 
         GeneralInitializationService.GeneralInitializationRunSummary summary = service.runAll();

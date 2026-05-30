@@ -61,10 +61,10 @@
                                         <div class="app-admin-actions">
                                         <button type="button"
                                                 class="btn btn-outline-secondary btn-sm"
-                                                th:attr="data-edit-institution-id=${institution.name}"
+                                                th:attr="data-edit-institution-id=${institution.id}"
                                                 aria-label="Edit institution">Edit</button>
-                                        <a th:href="@{/admin/institutions/{name}(name=${institution.name})}" class="btn btn-outline-secondary btn-sm">Open workspace</a>
-                                        <form th:action="@{/admin/institutions/delete/{name}(name=${institution.name})}" method="post" style="display:inline;">
+                                        <a th:href="@{/admin/institutions/{id}(id=${institution.id})}" class="btn btn-outline-secondary btn-sm">Open workspace</a>
+                                        <form th:action="@{/admin/institutions/delete/{id}(id=${institution.id})}" method="post" style="display:inline;">
                                             <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                                         </form>
                                         </div>

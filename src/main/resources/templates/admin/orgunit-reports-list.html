@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${unitName} + ' — reports'">Reports</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <div th:replace="~{fragments :: sidebar(${unitType} + 's')}"></div>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar(${unitName} + ' — reports')}"></div>
+            <div class="container-fluid app-page-content">
+                <div class="app-page-toolbar app-workflow">
+                    <p class="app-workflow__intro">
+                        Roll-up reports aggregate researcher scoring across every member
+                        currently affiliated with this <th:block th:text="${unitType}">unit</th:block>.
+                        Pick an individual-report definition to compute scores live.
+                    </p>
+                    <div class="app-workflow__actions">
+                        <a th:if="${unitType == 'division'}"
+                           th:href="@{/admin/divisions/{id}/reports/select(id=${unitId})}"
+                           class="btn btn-primary btn-sm">Manage selection</a>
+                        <a th:if="${unitType == 'department'}"
+                           th:href="@{/admin/departments/{id}/reports/visibility(id=${unitId})}"
+                           class="btn btn-primary btn-sm">Manage visibility</a>
+                        <a th:href="${backHref}" class="btn btn-outline-secondary btn-sm">← Back</a>
+                    </div>
+                </div>
+
+                <div class="app-table-section">
+                    <div class="app-table-section__surface">
+                        <div class="app-table-section__header">
+                            <h6 class="app-table-section__title">Available report definitions</h6>
+                        </div>
+                        <div class="app-table-section__body">
+                            <div class="app-table-scroll">
+                                <table class="table app-table">
+                                    <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Description</th>
+                                        <th>Criteria</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="r : ${reports}">
+                                        <td th:text="${r.title}">Report</td>
+                                        <td th:text="${r.description}"></td>
+                                        <td th:text="${r.criteria != null ? #lists.size(r.criteria) : 0}"></td>
+                                        <td>
+                                            <a class="btn btn-info btn-sm"
+                                               th:href="${reportLinkPrefix} + ${r.id}">Run report</a>
+                                        </td>
+                                    </tr>
+                                    <tr th:if="${reports.isEmpty()}" class="app-admin-empty-row">
+                                        <td colspan="4">
+                                            <th:block th:replace="~{fragments :: admin-empty-state(
+                                                'fa-solid fa-chart-line',
+                                                'No reports defined',
+                                                'Create an Individual Report definition first; it will appear here automatically.',
+                                                '', '')}"></th:block>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+</body>
+</html>

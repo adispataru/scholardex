@@ -61,3 +61,44 @@ Noise-reduction rules:
   - `fix: ...` for bug fixes
   - `docs: ...` for documentation-only changes
   - `chore: ...` for maintenance/config updates
+
+
+## Local Tooling
+
+This machine has the following tools available for agentic coding:
+
+- Homebrew
+- Git + Git LFS
+- GitHub CLI: `gh`
+- Docker Desktop
+- Node via `mise`:
+  - default: Node 22
+  - `pnpm`, `yarn`, `bun`, `npm`
+- Python:
+  - `uv`
+  - `pipx`
+- Rust:
+  - `rustup`
+  - `cargo`
+- Go
+- Java + Maven
+- Browser testing:
+  - Playwright
+  - Chromium, Firefox, WebKit browsers installed
+- CLI utilities:
+  - `rg`, `jq`, `yq`, `fzf`, `direnv`
+
+## Preferred Commands
+
+Use these by default:
+
+```sh
+pnpm install
+pnpm test
+pnpm lint
+uv sync
+uv run pytest
+cargo test
+go test ./...
+docker compose up
+playwright test

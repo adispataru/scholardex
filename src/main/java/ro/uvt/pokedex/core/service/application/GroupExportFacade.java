@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class GroupExportFacade {
     private final GroupManagementFacade groupManagementFacade;
+    private final GroupMembershipService groupMembershipService;
     private final UserRepository userRepository;
     private final ScholardexProjectionReadService scholardexProjectionReadService;
     private final ResearcherAuthorLookupService researcherAuthorLookupService;
@@ -65,8 +66,8 @@ public class GroupExportFacade {
     }
 
     private List<User> loadResearchers(Group group) {
-        List<String> memberIds = group.getMemberIds();
-        if (memberIds == null || memberIds.isEmpty()) return new ArrayList<>();
+        List<String> memberIds = groupMembershipService.listCurrentMemberUserIds(group.getId());
+        if (memberIds.isEmpty()) return new ArrayList<>();
         return userRepository.findAllById(memberIds).stream()
                 .filter(u -> u.getResearcherProfile() != null)
                 .collect(Collectors.toList());

@@ -6,7 +6,9 @@ import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Data
@@ -20,16 +22,35 @@ public class GroupIndividualReportRun {
     private String groupId;
     private String reportDefinitionId;
 
-    private Map<String, Map<Integer, Double>> researcherScores = new HashMap<>();
+    /**
+     * Persisted as a list of {userId, criterionScores} rather than a map keyed by user identifier.
+     * Avoids the previous {@code mongoSafeReportKey} hack: dotted emails were illegal as Mongo
+     * document keys and forced a fullwidth-dot substitution that leaked into every read site.
+     */
+    private List<ResearcherScore> researcherScores = new ArrayList<>();
+
     private Map<Integer, Map<String, Double>> criteriaThresholds = new HashMap<>();
 
     private Instant createdAt;
     private Status status;
-    private java.util.List<String> buildErrors = new java.util.ArrayList<>();
+    private List<String> buildErrors = new ArrayList<>();
 
     public enum Status {
         READY,
         PARTIAL,
         FAILED
+    }
+
+    @Data
+    public static class ResearcherScore {
+        private String userId;
+        private Map<Integer, Double> criterionScores = new HashMap<>();
+
+        public ResearcherScore() {}
+
+        public ResearcherScore(String userId, Map<Integer, Double> criterionScores) {
+            this.userId = userId;
+            this.criterionScores = criterionScores;
+        }
     }
 }

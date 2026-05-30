@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${department.name} + ' — report visibility'">Visibility</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <div th:replace="~{fragments :: sidebar('departments')}"></div>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar(${department.name} + ' — report visibility')}"></div>
+            <div class="container-fluid app-page-content">
+                <div class="app-page-toolbar app-workflow">
+                    <p class="app-workflow__intro">
+                        These are the reports the parent division has selected. Toggle <em>Hidden</em>
+                        on any of them to remove that report from users in
+                        <strong th:text="${department.name}">department</strong>.
+                        Department heads cannot add new reports — that's a division-head decision.
+                    </p>
+                    <div class="app-workflow__actions">
+                        <a th:href="${backHref}" class="btn btn-outline-secondary btn-sm">← Reports</a>
+                    </div>
+                </div>
+
+                <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+                <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+                <div class="app-table-section">
+                    <div class="app-table-section__surface">
+                        <div class="app-table-section__body">
+                            <div class="app-table-scroll">
+                                <table class="table app-table">
+                                    <thead>
+                                    <tr>
+                                        <th style="width:1%; white-space:nowrap;">Hidden here</th>
+                                        <th>Title</th>
+                                        <th>Description</th>
+                                        <th>Criteria</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="r : ${inherited}">
+                                        <td>
+                                            <form th:action="${postUrl}" method="post" style="margin:0;">
+                                                <input type="hidden" name="reportId" th:value="${r.id}">
+                                                <input type="hidden" name="hidden"
+                                                       th:value="${hiddenIds.contains(r.id) ? 'false' : 'true'}">
+                                                <button type="submit"
+                                                        class="btn btn-sm"
+                                                        th:classappend="${hiddenIds.contains(r.id) ? 'btn-warning' : 'btn-outline-secondary'}"
+                                                        th:text="${hiddenIds.contains(r.id) ? 'Hidden' : 'Visible'}">Visible</button>
+                                            </form>
+                                        </td>
+                                        <td th:text="${r.title}">Report</td>
+                                        <td th:text="${r.description}"></td>
+                                        <td th:text="${r.criteria != null ? #lists.size(r.criteria) : 0}"></td>
+                                    </tr>
+                                    <tr th:if="${inherited.isEmpty()}" class="app-admin-empty-row">
+                                        <td colspan="4">
+                                            <th:block th:replace="~{fragments :: admin-empty-state(
+                                                'fa-solid fa-eye-slash',
+                                                'No reports inherited',
+                                                'The parent division has not selected any reports yet.',
+                                                '', '')}"></th:block>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+</body>
+</html>

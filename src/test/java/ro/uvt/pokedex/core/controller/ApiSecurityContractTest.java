@@ -269,14 +269,16 @@ class ApiSecurityContractTest {
     }
 
     @Test
-    void unauthenticatedEntityAuthorsApiReturns401JsonEnvelope() throws Exception {
+    void entityAuthorsApiIsPubliclyReachable() throws Exception {
+        // /api/entities/authors was opened to public access alongside the author search/detail pages
+        // (commit 0f6b1ff). This test guards that the path stays publicly reachable — when locked
+        // back down, switch to the 401 envelope assertion mirroring nonAdminApiUserManagement...
+        when(postgresScholardexAuthorReadPort.search(null, 0, 25, "name", "asc", null))
+                .thenReturn(new ScholardexAuthorPageResponse(Collections.emptyList(), 0, 25, 0, 0));
+
         mockMvc.perform(get("/api/entities/authors"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(content().contentType("application/json"))
-                .andExpect(jsonPath("$.status").value(401))
-                .andExpect(jsonPath("$.error").value("unauthorized"))
-                .andExpect(jsonPath("$.path").value("/api/entities/authors"))
-                .andExpect(jsonPath("$.timestamp").exists());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray());
     }
 
     @Test

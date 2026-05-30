@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -64,32 +65,43 @@ public class AdminGroupController {
     private String allowedContentTypes;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('PLATFORM_ADMIN')")
     public String listGroups(Model model) {
         GroupListViewModel viewModel = groupManagementFacade.buildGroupListView();
         model.addAttribute("groups", viewModel.groups());
         model.addAttribute("allDomains", viewModel.allDomains());
-        model.addAttribute("affiliations", viewModel.affiliations());
+        model.addAttribute("institutions", viewModel.institutions());
+        model.addAttribute("departmentOptions", viewModel.departmentOptions());
+        model.addAttribute("domainsById", viewModel.domainsById());
+        model.addAttribute("departmentsById", viewModel.departmentsById());
+        model.addAttribute("memberCountByGroupId", viewModel.memberCountByGroupId());
         model.addAttribute("allResearchers", viewModel.allResearchers());
         model.addAttribute("group", viewModel.group());
         return "admin/groups";
     }
 
     @PostMapping("/create")
-    public String createGroup(@ModelAttribute Group group, RedirectAttributes redirectAttributes) {
-        groupManagementFacade.createGroup(group);
+    @PreAuthorize("hasAuthority('PLATFORM_ADMIN')")
+    public String createGroup(@ModelAttribute Group group,
+                              @RequestParam(value = "userIds", required = false) List<String> userIds,
+                              RedirectAttributes redirectAttributes) {
+        groupManagementFacade.createGroup(group, userIds);
         redirectAttributes.addFlashAttribute("successMessage", "Group created successfully.");
         return "redirect:/admin/groups";
     }
 
     @GetMapping("/edit/{id}")
+    @PreAuthorize("@groupAccess.canEdit(#id, authentication)")
     public String editGroup(@PathVariable String id, Model model) {
         GroupEditViewModel viewModel = groupManagementFacade.buildGroupEditView(id);
         model.addAttribute("group", viewModel.group());
         model.addAttribute("adminFormObject", viewModel.group());
         model.addAttribute("domains", viewModel.domains());
         model.addAttribute("allDomains", viewModel.domains());
-        model.addAttribute("affiliations", viewModel.affiliations());
+        model.addAttribute("institutions", viewModel.institutions());
+        model.addAttribute("departmentOptions", viewModel.departmentOptions());
         model.addAttribute("allResearchers", viewModel.allResearchers());
+        model.addAttribute("currentMemberUserIds", viewModel.currentMemberUserIds());
         String label = viewModel.group() == null || viewModel.group().getName() == null
                 ? "Edit Group"
                 : viewModel.group().getName();
@@ -101,6 +113,7 @@ public class AdminGroupController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("@groupAccess.canView(#id, authentication)")
     public String viewGroupWorkspace(@PathVariable String id, Model model) {
         Optional<GroupPublicationsViewModel> viewModel = groupReportFacade.buildGroupPublicationsView(id);
         if (viewModel.isEmpty()) {
@@ -120,11 +133,13 @@ public class AdminGroupController {
     }
 
     @GetMapping("/{id}/publications")
+    @PreAuthorize("@groupAccess.canView(#id, authentication)")
     public String seeGroupPublications(@PathVariable String id) {
         return "redirect:/admin/groups/" + id + "#publications";
     }
 
     @GetMapping("{gid}/reports/view/{id}")
+    @PreAuthorize("@groupAccess.canView(#gid, authentication)")
     public String viewIndividualReport(Model model, Authentication authentication, @PathVariable String gid, @PathVariable String id) {
         GroupIndividualReportViewModel viewModel = groupReportFacade.buildGroupIndividualReportView(gid, id);
         if (viewModel.redirect() != null) {
@@ -135,6 +150,7 @@ public class AdminGroupController {
     }
 
     @PostMapping("{gid}/reports/view/{id}/refresh")
+    @PreAuthorize("@groupAccess.canEdit(#gid, authentication)")
     public String refreshIndividualReport(@PathVariable String gid,
                                           @PathVariable String id) {
         GroupIndividualReportViewModel viewModel = groupReportFacade.refreshGroupIndividualReportView(gid, id);
@@ -146,6 +162,7 @@ public class AdminGroupController {
 
     @GetMapping("/{id}/publications/export")
     @ResponseBody
+    @PreAuthorize("@groupAccess.canView(#id, authentication)")
     public void exportIndicatorResults(@PathVariable String id, Authentication authentication, HttpServletResponse response) throws IOException {
         Optional<GroupPublicationCsvExportViewModel> viewModel = groupExportFacade.buildGroupPublicationCsvExport(id);
         if (viewModel.isEmpty()) {
@@ -188,6 +205,7 @@ public class AdminGroupController {
 
     @GetMapping("/{id}/publications/exportCNFIS2025")
     @ResponseBody
+    @PreAuthorize("@groupAccess.canView(#id, authentication)")
     public void createCNFISReport2025(@PathVariable String id,
                                       HttpServletResponse response,
                                       @RequestParam(name = "start", defaultValue = "2021") String startYear,
@@ -214,6 +232,7 @@ public class AdminGroupController {
 
     @GetMapping("/{id}/publications/exportAllReports")
     @ResponseBody
+    @PreAuthorize("@groupAccess.canView(#id, authentication)")
     public void exportAllReports(@PathVariable String id, HttpServletResponse response) throws IOException {
         Optional<GroupCnfisZipExportViewModel> zipViewModel = groupCnfisExportFacade.buildGroupCnfisZipExport(id, 2021, 2024);
         if (zipViewModel.isEmpty()) {
@@ -235,13 +254,17 @@ public class AdminGroupController {
     }
 
     @PostMapping("/update")
-    public String updateGroup(@ModelAttribute Group group, RedirectAttributes redirectAttributes) {
-        groupManagementFacade.updateGroup(group);
+    @PreAuthorize("@groupAccess.canEdit(#group.id, authentication)")
+    public String updateGroup(@ModelAttribute Group group,
+                              @RequestParam(value = "userIds", required = false) List<String> userIds,
+                              RedirectAttributes redirectAttributes) {
+        groupManagementFacade.updateGroup(group, userIds);
         redirectAttributes.addFlashAttribute("successMessage", "Group updated successfully.");
         return "redirect:/admin/groups";
     }
 
     @PostMapping("/delete/{id}")
+    @PreAuthorize("hasAuthority('PLATFORM_ADMIN')")
     public String deleteGroup(@PathVariable String id, RedirectAttributes redirectAttributes) {
         groupManagementFacade.deleteGroup(id);
         redirectAttributes.addFlashAttribute("successMessage", "Group deleted successfully.");
@@ -249,9 +272,16 @@ public class AdminGroupController {
     }
 
     @PostMapping("/import")
-    public String importGroups(@RequestParam("file") MultipartFile file, RedirectAttributes redirectAttributes) {
+    @PreAuthorize("hasAuthority('PLATFORM_ADMIN')")
+    public String importGroups(@RequestParam("file") MultipartFile file,
+                               @RequestParam("institutionId") String institutionId,
+                               RedirectAttributes redirectAttributes) {
         if (file.isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Please select a CSV file to upload.");
+            return "redirect:/admin/groups";
+        }
+        if (institutionId == null || institutionId.isBlank()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Target institution is required.");
             return "redirect:/admin/groups";
         }
         if (file.getSize() > maxImportBytes) {
@@ -268,7 +298,7 @@ public class AdminGroupController {
         }
 
         try {
-            groupService.importGroupsFromCsv(file);
+            groupService.importGroupsFromCsv(file, institutionId);
             redirectAttributes.addFlashAttribute("successMessage", "Groups imported successfully.");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());

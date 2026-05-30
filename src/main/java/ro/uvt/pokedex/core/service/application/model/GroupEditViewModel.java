@@ -10,7 +10,9 @@ import java.util.List;
 public record GroupEditViewModel(
         Group group,
         List<Domain> domains,
-        List<Institution> affiliations,
-        List<User> allResearchers
+        List<Institution> institutions,
+        List<DepartmentOption> departmentOptions,
+        List<User> allResearchers,
+        List<String> currentMemberUserIds
 ) {
 }

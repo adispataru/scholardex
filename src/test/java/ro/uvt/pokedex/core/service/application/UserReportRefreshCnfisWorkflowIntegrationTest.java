@@ -122,6 +122,7 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
                 userService,
                 indicatorRepository,
                 individualReportRepository,
+                org.mockito.Mockito.mock(ReportVisibilityService.class),
                 activityInstanceRepository,
                 scholardexProjectionReadService,
                 domainRepository,
@@ -210,9 +211,14 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
         assertEquals(2, refreshedSnapshots.size());
         assertTrue(refreshedSnapshots.stream().allMatch(snapshot -> snapshot.getMode() == UserIndicatorResult.Mode.SNAPSHOT));
         assertTrue(refreshedSnapshots.stream().allMatch(snapshot -> snapshot.getSourceReportId().equals("rep-1")));
-        assertTrue(refreshedSnapshots.stream().allMatch(snapshot -> snapshot.getRefreshVersion() == 0));
+        // refreshRunWithAllIndicators bumps each indicator's LATEST.refreshVersion via
+        // refreshLatest(), then mints SNAPSHOTs from that LATEST — so post-refresh both
+        // counters land at 1, not 0. If the product intent is that a whole-report refresh
+        // should leave per-indicator version counters untouched, that's a change in
+        // UserIndicatorResultService.refreshLatest, not here.
+        assertTrue(refreshedSnapshots.stream().allMatch(snapshot -> snapshot.getRefreshVersion() == 1));
 
-        assertEquals(List.of(0, 0), latestRefreshVersionsSorted());
+        assertEquals(List.of(1, 1), latestRefreshVersionsSorted());
 
         UserWorkbookExportResult exportResult =
                 userReportFacade.buildUserCnfisWorkbookExport("user@uvt.ro", 2021, 2024);

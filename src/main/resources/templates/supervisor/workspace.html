@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Supervisor workspace</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <div th:replace="~{fragments :: sidebar('supervisor-workspace')}"></div>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar('Supervisor workspace')}"></div>
+            <div class="container-fluid app-page-content">
+                <div class="app-page-toolbar app-workflow">
+                    <p class="app-workflow__intro">
+                        Signed in as <strong th:text="${userId}">you</strong>.
+                        This workspace surfaces only the divisions, departments, and groups
+                        where your account is listed as a head or supervisor.
+                    </p>
+                </div>
+
+                <div th:if="${isEmpty}" class="app-empty-state">
+                    <i class="fa-solid fa-binoculars fa-2x text-muted mb-3"></i>
+                    <h5>Nothing assigned yet</h5>
+                    <p class="text-muted">
+                        Ask a platform admin to add you to the <em>Heads</em> list of a Division
+                        or Department, or to the <em>Supervisors</em> list of a specific Group.
+                        Implicit supervision propagates downward — if you head a Faculty, every
+                        Department and Group below it lights up here automatically.
+                    </p>
+                </div>
+
+                <div th:unless="${isEmpty}">
+
+                    <!-- Divisions you head -->
+                    <div th:if="${!divisions.isEmpty()}" class="app-table-section mb-4">
+                        <div class="app-table-section__surface">
+                            <div class="app-table-section__header">
+                                <h6 class="app-table-section__title">Divisions you head</h6>
+                                <span class="app-table-section__hint">Heading a division gives you implicit supervision over every Department and Group beneath it.</span>
+                            </div>
+                            <div class="app-table-section__body">
+                                <table class="table app-table">
+                                    <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Type</th>
+                                        <th>Institution</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="d : ${divisions}">
+                                        <td th:text="${d.name}">Name</td>
+                                        <td th:text="${d.type}"></td>
+                                        <td th:text="${institutionNames.getOrDefault(d.institutionId, d.institutionId)}"></td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Departments you head (direct or via division) -->
+                    <div th:if="${!departments.isEmpty()}" class="app-table-section mb-4">
+                        <div class="app-table-section__surface">
+                            <div class="app-table-section__header">
+                                <h6 class="app-table-section__title">Departments you head</h6>
+                                <span class="app-table-section__hint">Includes direct assignments and departments inside divisions you head.</span>
+                            </div>
+                            <div class="app-table-section__body">
+                                <table class="table app-table">
+                                    <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Division</th>
+                                        <th>Institution</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="dept : ${departments}">
+                                        <td th:text="${dept.name}">Name</td>
+                                        <td th:text="${divisionNames.getOrDefault(dept.divisionId, dept.divisionId)}"></td>
+                                        <td th:text="${institutionNames.getOrDefault(dept.institutionId, dept.institutionId)}"></td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Groups you supervise -->
+                    <div th:if="${!groups.isEmpty()}" class="app-table-section mb-4">
+                        <div class="app-table-section__surface">
+                            <div class="app-table-section__header">
+                                <h6 class="app-table-section__title">Groups you supervise</h6>
+                                <span class="app-table-section__hint">Explicit (named on the group) plus implicit (inside a department or division you head).</span>
+                            </div>
+                            <div class="app-table-section__body">
+                                <table class="table app-table">
+                                    <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Description</th>
+                                        <th>Departments</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="g : ${groups}">
+                                        <td th:text="${g.name}">Group name</td>
+                                        <td th:text="${g.description}"></td>
+                                        <td>
+                                            <ul class="list-unstyled mb-0">
+                                                <li th:each="deptId : ${g.departmentIds}"
+                                                    th:text="${departmentNames.getOrDefault(deptId, deptId)}"></li>
+                                            </ul>
+                                        </td>
+                                        <td>
+                                            <a th:href="@{/admin/groups/{id}(id=${g.id})}" class="btn btn-info btn-sm">Open workspace</a>
+                                            <a th:href="@{/admin/groups/edit/{id}(id=${g.id})}" class="btn btn-outline-secondary btn-sm">Edit</a>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+</body>
+</html>

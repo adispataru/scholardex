@@ -1,650 +1,92 @@
 package ro.uvt.pokedex.core.service.application;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.model.activities.ActivityInstance;
-import ro.uvt.pokedex.core.model.user.User;
-import ro.uvt.pokedex.core.model.reporting.*;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
-import ro.uvt.pokedex.core.repository.ActivityInstanceRepository;
-import ro.uvt.pokedex.core.repository.UserRepository;
+import ro.uvt.pokedex.core.model.reporting.Group;
+import ro.uvt.pokedex.core.model.reporting.GroupIndividualReportRun;
+import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.repository.reporting.GroupIndividualReportRunRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
 import ro.uvt.pokedex.core.repository.reporting.IndividualReportRepository;
 import ro.uvt.pokedex.core.service.application.model.GroupIndividualReportViewModel;
 import ro.uvt.pokedex.core.service.application.model.GroupPublicationsViewModel;
-import ro.uvt.pokedex.core.service.reporting.ActivityReportingService;
-import ro.uvt.pokedex.core.service.reporting.CNFISScoringService2025;
-import ro.uvt.pokedex.core.service.reporting.ComputerScienceConferenceScoringService;
-import ro.uvt.pokedex.core.service.reporting.PublicationSubtypeSupport;
-import ro.uvt.pokedex.core.service.reporting.Score;
-import ro.uvt.pokedex.core.service.reporting.ScientificProductionService;
+import ro.uvt.pokedex.core.service.application.reporting.GroupPublicationAggregator;
+import ro.uvt.pokedex.core.service.application.reporting.GroupReportRunner;
+import ro.uvt.pokedex.core.service.application.reporting.GroupReportViewModelAssembler;
+import ro.uvt.pokedex.core.service.application.reporting.ReportRunTelemetry;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.Optional;
 
+/**
+ * Thin orchestrator for group-level reporting flows. Real work lives in
+ * {@link GroupPublicationAggregator}, {@link GroupReportRunner},
+ * {@link GroupReportViewModelAssembler}, and {@link ReportRunTelemetry}.
+ */
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class GroupReportFacade {
-    private static final long REFRESH_SLOW_WARN_THRESHOLD_MS = 5_000L;
-    private static final String MONGO_SAFE_EMAIL_DOT_REPLACEMENT = "\uFF0E";
-    private static final List<String> VENUE_CLASS_BUCKET_ORDER = List.of(
-            "Q1", "Q2", "Q3", "Q4", "A_STAR", "A", "B", "C", "D", "LNCS", "BOOK_LNCS", "SCOPUS", "NON_RANK", "Unranked"
-    );
 
     private final GroupRepository groupRepository;
-    private final UserRepository userRepository;
     private final IndividualReportRepository individualReportRepository;
-    private final ActivityInstanceRepository activityInstanceRepository;
-    private final ActivityReportingService activityReportingService;
-    private final ScientificProductionService scientificProductionService;
-    private final CNFISScoringService2025 cnfisScoringService2025;
-    private final ComputerScienceConferenceScoringService computerScienceConferenceScoringService;
-    private final ScholardexProjectionReadService scholardexProjectionReadService;
-    private final ResearcherAuthorLookupService researcherAuthorLookupService;
     private final GroupIndividualReportRunRepository groupIndividualReportRunRepository;
-    private final ReportingLookupMemoization reportingLookupMemoization;
+    private final GroupMembershipService groupMembershipService;
+
+    private final GroupPublicationAggregator groupPublicationAggregator;
+    private final GroupReportRunner groupReportRunner;
+    private final GroupReportViewModelAssembler viewModelAssembler;
+    private final ReportRunTelemetry reportRunTelemetry;
 
     public Optional<GroupPublicationsViewModel> buildGroupPublicationsView(String groupId) {
-        Group group = groupRepository.findById(groupId).orElse(null);
-        if (group == null) {
-            return Optional.empty();
-        }
-
-        List<User> researchers = loadResearchers(group);
-        researchers.sort(Comparator.comparing(u -> u.getResearcherProfile().getName()));
-        List<String> lookupKeys = new ArrayList<>();
-        for (User user : researchers) {
-            lookupKeys.addAll(researcherAuthorLookupService.resolveAuthorLookupKeys(user.getResearcherProfile()));
-        }
-        List<String> authorIds = scholardexProjectionReadService.findAuthorsByIdIn(lookupKeys).stream()
-                .map(ScholardexAuthorView::getId)
-                .distinct()
-                .toList();
-        Map<String, ScholardexPublicationView> publicationsById = new LinkedHashMap<>();
-        scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds)
-                .forEach(publication -> publicationsById.putIfAbsent(publication.getId(), publication));
-        List<ScholardexPublicationView> publications = new ArrayList<>(publicationsById.values());
-        PublicationOrderingSupport.sortPublicationsInPlace(publications);
-
-        Set<String> authorKeys = new HashSet<>();
-        Set<String> forumKeys = new HashSet<>();
-        publications.forEach(p -> {
-            authorKeys.addAll(p.getAuthors());
-            forumKeys.add(p.getForum());
-        });
-
-        List<ScholardexAuthorView> byIdIn = scholardexProjectionReadService.findAuthorsByIdIn(authorKeys);
-        Map<String, ScholardexAuthorView> authorMap = new HashMap<>();
-        byIdIn.forEach(a -> authorMap.put(a.getId(), a));
-
-        Map<String, ScholardexForumView> forumMap = new HashMap<>();
-        List<ScholardexForumView> forums = scholardexProjectionReadService.findForumsByIdIn(forumKeys);
-        forums.forEach(f -> forumMap.put(f.getId(), f));
-
-        Map<Integer, List<ScholardexPublicationView>> publicationsByYear = publications.stream()
-                .map(publication -> new AbstractMap.SimpleEntry<>(
-                        publication,
-                        PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)))
-                .filter(entry -> entry.getValue().isPresent())
-                .collect(Collectors.groupingBy(
-                        entry -> entry.getValue().get(),
-                        TreeMap::new,
-                        Collectors.mapping(Map.Entry::getKey, Collectors.toList())
-                ));
-        publicationsByYear.values().forEach(PublicationOrderingSupport::sortPublicationsInPlace);
-
-        Map<Integer, Long> publicationsCountByYear = publications.stream()
-                .map(publication -> PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log))
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.groupingBy(year -> year, TreeMap::new, Collectors.counting()));
-
-        Map<Integer, Map<String, Long>> venueClassCountByYear = new TreeMap<>();
-        publications.forEach(publication -> PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)
-                .ifPresent(year -> {
-                    String bucket = classifyVenueBucket(publication, forumMap.get(publication.getForum()));
-                    venueClassCountByYear
-                            .computeIfAbsent(year, ignored -> new LinkedHashMap<>(initializeVenueClassBuckets()))
-                            .merge(bucket, 1L, Long::sum);
-                }));
-
-        List<IndividualReport> all = individualReportRepository.findAll();
-
-        return Optional.of(new GroupPublicationsViewModel(
-                group,
-                researchers,
-                publications,
-                authorMap,
-                forumMap,
-                publicationsByYear,
-                publicationsCountByYear,
-                venueClassCountByYear,
-                all
-        ));
-    }
-
-    private Map<String, Long> initializeVenueClassBuckets() {
-        Map<String, Long> buckets = new LinkedHashMap<>();
-        VENUE_CLASS_BUCKET_ORDER.forEach(bucket -> buckets.put(bucket, 0L));
-        return buckets;
-    }
-
-    private String classifyVenueBucket(ScholardexPublicationView publication, ScholardexForumView forum) {
-        if (PublicationSubtypeSupport.isSubtype(publication.toScoringPublication(), "ar", "re")) {
-            return classifyJournalBucket(publication);
-        }
-        if (isLncsBookChapter(publication, forum)) {
-            return classifyLncsBookChapterBucket(publication, forum);
-        }
-        if (PublicationSubtypeSupport.isSubtype(publication.toScoringPublication(), "cp")) {
-            return classifyConferenceBucket(publication);
-        }
-        return "Unranked";
-    }
-
-    private boolean isLncsBookChapter(ScholardexPublicationView publication, ScholardexForumView forum) {
-        if (!PublicationSubtypeSupport.isSubtype(publication.toScoringPublication(), "ch")) {
-            return false;
-        }
-        String publicationName = forum == null || forum.getPublicationName() == null
-                ? ""
-                : forum.getPublicationName().trim();
-        return publicationName.contains("Lecture Notes in ")
-                || publicationName.contains("Lecture Notes on ");
-    }
-
-    private String classifyLncsBookChapterBucket(ScholardexPublicationView publication, ScholardexForumView forum) {
-        int year = PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)
-                .orElse(2023);
-        Optional<Score> conferenceScore = computerScienceConferenceScoringService.tryResolveCoreScore(
-                publication.toScoringPublication(),
-                forum,
-                year
-        );
-        if (conferenceScore.isPresent()) {
-            Score score = conferenceScore.get();
-            if (score.getCoreRankingEquivalent() != null && !score.getCoreRankingEquivalent().isBlank()) {
-                return score.getCoreRankingEquivalent().trim();
-            }
-        }
-        return "BOOK_LNCS";
-    }
-
-    private String classifyJournalBucket(ScholardexPublicationView publication) {
-        Domain domain = new Domain();
-        domain.setName("ALL");
-        CNFISReport2025 report = cnfisScoringService2025.getReport(publication.toScoringPublication(), domain);
-        if (report.isIsiQ1()) {
-            return "Q1";
-        }
-        if (report.isIsiQ2()) {
-            return "Q2";
-        }
-        if (report.isIsiQ3()) {
-            return "Q3";
-        }
-        if (report.isIsiQ4()) {
-            return "Q4";
-        }
-        return "Unranked";
-    }
-
-    private String classifyConferenceBucket(ScholardexPublicationView publication) {
-        Score score = computerScienceConferenceScoringService.getScore(publication.toScoringPublication(), venueClassificationIndicator());
-        if ("LNCS".equalsIgnoreCase(score.getQuarter())) {
-            return "LNCS";
-        }
-        if ("SCOPUS".equalsIgnoreCase(score.getQuarter())) {
-            return "SCOPUS";
-        }
-        if (score.getCoreRankingEquivalent() == null || score.getCoreRankingEquivalent().isBlank()) {
-            return "Unranked";
-        }
-        return score.getCoreRankingEquivalent().trim();
-    }
-
-    private Indicator venueClassificationIndicator() {
-        Indicator indicator = new Indicator();
-        Domain domain = new Domain();
-        domain.setName("ALL");
-        indicator.setDomain(domain);
-        return indicator;
+        return groupPublicationAggregator.buildView(groupId);
     }
 
     public GroupIndividualReportViewModel buildGroupIndividualReportView(String groupId, String reportId) {
         Group group = groupRepository.findById(groupId).orElse(null);
-        if (group == null) {
-            return new GroupIndividualReportViewModel("redirect:/admin/groups", Map.of());
-        }
+        if (group == null) return redirectToGroupList();
 
         Optional<IndividualReport> reportOpt = individualReportRepository.findById(reportId);
-        if (reportOpt.isEmpty()) {
-            return new GroupIndividualReportViewModel("redirect:/admin/groups", Map.of());
-        }
+        if (reportOpt.isEmpty()) return redirectToGroupList();
         IndividualReport report = reportOpt.get();
 
         GroupIndividualReportRun run = groupIndividualReportRunRepository
                 .findTopByGroupIdAndReportDefinitionIdOrderByCreatedAtDesc(groupId, reportId)
-                .orElseGet(() -> computeAndPersistGroupRun(group, report));
+                .orElseGet(() -> groupReportRunner.computeAndPersist(group, report).run());
 
-        return toViewModel(group, report, run);
+        return viewModelAssembler.toViewModel(group, report, run);
     }
 
     public GroupIndividualReportViewModel refreshGroupIndividualReportView(String groupId, String reportId) {
-        long refreshStartNanos = System.nanoTime();
-        long lookupStartNanos = System.nanoTime();
+        long refreshStart = System.nanoTime();
+        long lookupStart = System.nanoTime();
         Group group = groupRepository.findById(groupId).orElse(null);
-        if (group == null) {
-            return new GroupIndividualReportViewModel("redirect:/admin/groups", Map.of());
-        }
+        if (group == null) return redirectToGroupList();
 
         Optional<IndividualReport> reportOpt = individualReportRepository.findById(reportId);
-        if (reportOpt.isEmpty()) {
-            return new GroupIndividualReportViewModel("redirect:/admin/groups", Map.of());
-        }
-        long lookupMs = nanosToMs(System.nanoTime() - lookupStartNanos);
+        if (reportOpt.isEmpty()) return redirectToGroupList();
+        long lookupMs = nanosToMs(System.nanoTime() - lookupStart);
 
-        long computeStartNanos = System.nanoTime();
-        ComputeGroupRunResult computeResult = reportingLookupMemoization.withRefreshScope(
-                () -> computeGroupRun(group, reportOpt.get())
-        );
-        long computeMs = nanosToMs(System.nanoTime() - computeStartNanos);
+        long computeStart = System.nanoTime();
+        GroupReportRunner.ComputeResult computeResult = groupReportRunner.compute(group, reportOpt.get());
+        long computeMs = nanosToMs(System.nanoTime() - computeStart);
 
-        long saveStartNanos = System.nanoTime();
-        GroupIndividualReportRun run = groupIndividualReportRunRepository.save(computeResult.run());
-        long saveMs = nanosToMs(System.nanoTime() - saveStartNanos);
+        long saveStart = System.nanoTime();
+        GroupIndividualReportRun run = groupReportRunner.save(computeResult.run());
+        long saveMs = nanosToMs(System.nanoTime() - saveStart);
 
-        long totalMs = nanosToMs(System.nanoTime() - refreshStartNanos);
-        String activeReadStore = "POSTGRES";
-        String refreshTimingMessage = String.format(
-                Locale.ROOT,
-                "Group report refresh timings: groupId=%s reportId=%s readStore=%s researchers=%d status=%s errors=%d counts[publications=%d, citationFacts=%d, citationIndicators=%d, activityIndicators=%d] timingsMs[lookup=%d, compute=%d, save=%d, total=%d] computeMs[authorLookup=%d, publicationLoad=%d, activityLoad=%d, citationLoad=%d, citationBasePrecompute=%d, scoring=%d, publicationScoring=%d, activityScoring=%d, citationScoring=%d, selector=%d, thresholdBuild=%d]",
-                groupId,
-                reportId,
-                activeReadStore,
-                group.getMemberIds() == null ? 0 : group.getMemberIds().size(),
-                run.getStatus(),
-                run.getBuildErrors() == null ? 0 : run.getBuildErrors().size(),
-                computeResult.timings().publicationsProcessed(),
-                computeResult.timings().citationFacts(),
-                computeResult.timings().citationIndicators(),
-                computeResult.timings().activityIndicators(),
-                lookupMs,
-                computeMs,
-                saveMs,
-                totalMs,
-                computeResult.timings().authorLookupMs(),
-                computeResult.timings().publicationLoadMs(),
-                computeResult.timings().activityLoadMs(),
-                computeResult.timings().citationLoadMs(),
-                computeResult.timings().citationBasePrecomputeMs(),
-                computeResult.timings().scoringMs(),
-                computeResult.timings().publicationScoringMs(),
-                computeResult.timings().activityScoringMs(),
-                computeResult.timings().citationScoringMs(),
-                computeResult.timings().selectorMs(),
-                computeResult.timings().thresholdBuildMs()
-        );
-        if (totalMs > REFRESH_SLOW_WARN_THRESHOLD_MS) {
-            log.warn(refreshTimingMessage);
-        } else if (log.isDebugEnabled()) {
-            log.debug(refreshTimingMessage);
-        }
+        long totalMs = nanosToMs(System.nanoTime() - refreshStart);
+        int memberCount = groupMembershipService.listCurrentMemberUserIds(group.getId()).size();
+        reportRunTelemetry.logRefresh(groupId, reportId, memberCount, run, computeResult.timings(),
+                lookupMs, computeMs, saveMs, totalMs);
 
-        return toViewModel(group, reportOpt.get(), run);
+        return viewModelAssembler.toViewModel(group, reportOpt.get(), run);
     }
 
-    private GroupIndividualReportRun computeAndPersistGroupRun(Group group, IndividualReport report) {
-        ComputeGroupRunResult computeResult = reportingLookupMemoization.withRefreshScope(
-                () -> computeGroupRun(group, report)
-        );
-        return groupIndividualReportRunRepository.save(computeResult.run());
-    }
-
-    private ComputeGroupRunResult computeGroupRun(Group group, IndividualReport report) {
-        List<User> researchers = loadResearchers(group);
-        researchers.sort(Comparator.comparing(u -> u.getResearcherProfile().getName()));
-
-        Map<String, Map<Integer, Double>> researcherScores = new HashMap<>();
-        List<String> errors = new ArrayList<>();
-        ComputeTimingsAccumulator timings = new ComputeTimingsAccumulator();
-
-        for (User user : researchers) {
-            long authorLookupStartNanos = System.nanoTime();
-            List<ScholardexAuthorView> authors = scholardexProjectionReadService.findAuthorsByIdIn(
-                    researcherAuthorLookupService.resolveAuthorLookupKeys(user.getResearcherProfile())
-            );
-            timings.authorLookupNanos += (System.nanoTime() - authorLookupStartNanos);
-            if (authors.isEmpty()) {
-                errors.add("No authors found for member " + memberDisplayName(user));
-                continue;
-            }
-
-            List<Indicator> indicators = report.getIndicators() == null ? List.of() : report.getIndicators();
-            boolean hasActivityIndicators = indicators.stream()
-                    .filter(Objects::nonNull)
-                    .anyMatch(ReportingComputationSupport::isActivityIndicator);
-            boolean hasCitationIndicators = indicators.stream()
-                    .filter(Objects::nonNull)
-                    .anyMatch(ReportingComputationSupport::isCitationIndicator);
-            long activityIndicatorCount = indicators.stream()
-                    .filter(Objects::nonNull)
-                    .filter(ReportingComputationSupport::isActivityIndicator)
-                    .count();
-            long citationIndicatorCount = indicators.stream()
-                    .filter(Objects::nonNull)
-                    .filter(ReportingComputationSupport::isCitationIndicator)
-                    .count();
-            timings.activityIndicators += activityIndicatorCount;
-            timings.citationIndicators += citationIndicatorCount;
-
-            long publicationLoadStartNanos = System.nanoTime();
-            List<String> authorIds = authors.stream().map(ScholardexAuthorView::getId).toList();
-            List<ScholardexPublicationView> publications = applyAffiliationFilter(
-                    report,
-                    scholardexProjectionReadService.findAllPublicationsByAuthorsIn(authorIds)
-            );
-            timings.publicationLoadNanos += (System.nanoTime() - publicationLoadStartNanos);
-            timings.publicationsProcessed += publications.size();
-            Set<String> researcherAuthorIds = authors.stream()
-                    .map(ScholardexAuthorView::getId)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-
-            List<ActivityInstance> activities = List.of();
-            if (hasActivityIndicators) {
-                long activityLoadStartNanos = System.nanoTime();
-                activities = activityInstanceRepository.findAllByResearcherId(user.getEmail());
-                timings.activityLoadNanos += (System.nanoTime() - activityLoadStartNanos);
-            }
-
-            CitationPrecomputeBundle citationPrecompute = CitationPrecomputeBundle.empty();
-            if (hasCitationIndicators) {
-                long citationLoadStartNanos = System.nanoTime();
-                ReportScopedIndicatorScoringSupport.CitationContext citationContext =
-                        ReportScopedIndicatorScoringSupport.prepareCitationContext(publications, scholardexProjectionReadService);
-                timings.citationLoadNanos += (System.nanoTime() - citationLoadStartNanos);
-                timings.citationFacts += citationContext.citationFactsCount();
-                long citationBasePrecomputeStartNanos = System.nanoTime();
-                Map<Indicator, Map<String, Score>> citationBaseScoresByIndicator =
-                        ReportScopedIndicatorScoringSupport.precomputeCitationBaseScoresByIndicator(
-                        indicators,
-                        citationContext,
-                        scientificProductionService
-                );
-                timings.citationBasePrecomputeNanos += (System.nanoTime() - citationBasePrecomputeStartNanos);
-                citationPrecompute = new CitationPrecomputeBundle(citationContext, citationBaseScoresByIndicator);
-            }
-
-            Map<Indicator, Double> indicatorScores = new HashMap<>();
-
-            for (Indicator indicator : indicators) {
-                if (indicator == null) {
-                    errors.add("Null indicator in report " + report.getId());
-                    continue;
-                }
-
-                long indicatorScoringStartNanos = System.nanoTime();
-                double indicatorScore = 0;
-                if (ReportingComputationSupport.isActivityIndicator(indicator)) {
-                    List<ActivityInstance> filteredActivities = activities.stream()
-                            .filter(act -> act.getActivity().getName().equals(indicator.getActivity().getName()))
-                            .toList();
-                    indicatorScore = activityReportingService.calculateActivityScores(filteredActivities, indicator)
-                            .get("total")
-                            .getAuthorScore();
-                    timings.activityScoringNanos += (System.nanoTime() - indicatorScoringStartNanos);
-                }
-                if (ReportingComputationSupport.isPublicationIndicator(indicator)) {
-                    indicatorScore = calculatePublicationScore(indicator, authors, publications);
-                    timings.publicationScoringNanos += (System.nanoTime() - indicatorScoringStartNanos);
-                } else if (ReportingComputationSupport.isCitationIndicator(indicator)) {
-                    ReportScopedIndicatorScoringSupport.CitationScoreResult citationScoreResult =
-                            ReportScopedIndicatorScoringSupport.calculateCitationScore(
-                                    indicator,
-                                    publications,
-                                    researcherAuthorIds,
-                                    citationPrecompute.citationContext(),
-                                    citationPrecompute.baseScoresByIndicator().getOrDefault(indicator, Map.of()),
-                                    scientificProductionService
-                            );
-                    indicatorScore = citationScoreResult.score();
-                    timings.selectorNanos += citationScoreResult.selectorNanos();
-                    timings.citationScoringNanos += (System.nanoTime() - indicatorScoringStartNanos);
-                }
-
-                indicatorScores.put(indicator, indicatorScore);
-                timings.scoringNanos += (System.nanoTime() - indicatorScoringStartNanos);
-            }
-
-            Map<Integer, Double> criterionScores = computeCriterionScores(report, indicators, indicatorScores, errors);
-            researcherScores.put(mongoSafeReportKey(user.getEmail()), criterionScores);
-        }
-
-        long thresholdBuildStartNanos = System.nanoTime();
-        Map<Integer, Map<String, Double>> criteriaThresholds = new HashMap<>();
-        for (int i = 0; i < report.getCriteria().size(); i++) {
-            AbstractReport.Criterion criterion = report.getCriteria().get(i);
-            Map<String, Double> thresholds = new HashMap<>();
-            for (AbstractReport.Threshold threshold : criterion.getThresholds()) {
-                thresholds.put(threshold.getPosition().name(), threshold.getValue());
-            }
-            criteriaThresholds.put(i, thresholds);
-        }
-        timings.thresholdBuildNanos += (System.nanoTime() - thresholdBuildStartNanos);
-
-        GroupIndividualReportRun run = new GroupIndividualReportRun();
-        run.setGroupId(group.getId());
-        run.setReportDefinitionId(report.getId());
-        run.setResearcherScores(researcherScores);
-        run.setCriteriaThresholds(criteriaThresholds);
-        run.setCreatedAt(java.time.Instant.now());
-        run.setBuildErrors(errors);
-        if (!errors.isEmpty()) {
-            run.setStatus(researcherScores.isEmpty() ? GroupIndividualReportRun.Status.FAILED : GroupIndividualReportRun.Status.PARTIAL);
-        } else {
-            run.setStatus(GroupIndividualReportRun.Status.READY);
-        }
-        return new ComputeGroupRunResult(run, timings.toSummary());
-    }
-
-    private GroupIndividualReportViewModel toViewModel(Group group, IndividualReport report, GroupIndividualReportRun run) {
-        List<User> researchers = loadResearchers(group);
-        researchers.sort(Comparator.comparing(u -> u.getResearcherProfile().getName()));
-
-        Map<String, Object> attrs = new HashMap<>();
-        attrs.put("report", report);
-        attrs.put("group", group);
-        attrs.put("researchers", researchers);
-        attrs.put("researcherScores", resolveResearcherScoresForView(run, researchers));
-        attrs.put("researcherScoreKeyByEmail", buildResearcherScoreKeyMap(researchers));
-        attrs.put("criteriaThresholds", run.getCriteriaThresholds() == null ? Map.of() : run.getCriteriaThresholds());
-        attrs.put("runCreatedAt", run.getCreatedAt());
-        attrs.put("runStatus", run.getStatus());
-        attrs.put("runBuildErrors", run.getBuildErrors() == null ? List.of() : run.getBuildErrors());
-        return new GroupIndividualReportViewModel(null, attrs);
-    }
-
-    private double calculatePublicationScore(Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications) {
-        return ReportingComputationSupport.calculatePublicationScore(indicator, authors, publications, scientificProductionService);
-    }
-
-    private Map<Integer, Double> computeCriterionScores(
-            IndividualReport report,
-            List<Indicator> indicators,
-            Map<Indicator, Double> indicatorScores,
-            List<String> errors) {
-        Map<Integer, Double> criterionScores = new HashMap<>();
-        List<AbstractReport.Criterion> criteria = report.getCriteria() == null ? List.of() : report.getCriteria();
-        for (int i = 0; i < criteria.size(); i++) {
-            AbstractReport.Criterion criterion = criteria.get(i);
-            double criterionScore = 0.0;
-            if (criterion.getIndicatorIndices() != null) {
-                for (Integer indicatorIndex : criterion.getIndicatorIndices()) {
-                    if (indicatorIndex == null || indicatorIndex < 0 || indicatorIndex >= indicators.size()) {
-                        errors.add("Invalid indicator index " + indicatorIndex + " in criterion " + i);
-                        continue;
-                    }
-                    Indicator indicator = indicators.get(indicatorIndex);
-                    if (indicatorScores.containsKey(indicator)) {
-                        criterionScore += indicatorScores.get(indicator);
-                    }
-                }
-            }
-            criterionScores.put(i, criterionScore);
-        }
-        return criterionScores;
-    }
-
-    private List<ScholardexPublicationView> applyAffiliationFilter(
-            IndividualReport report,
-            List<ScholardexPublicationView> publications) {
-        if (report.getIndividualAffiliation() == null
-                || "ANY".equals(report.getIndividualAffiliation().getName())) {
-            return publications;
-        }
-        return publications.stream()
-                .filter(p -> report.getIndividualAffiliation().getScopusAffiliations().stream()
-                        .anyMatch(aff -> p.getAffiliations().contains(aff.getAfid())))
-                .toList();
-    }
-
-    private String memberDisplayName(User user) {
-        User.ResearcherProfile profile = user.getResearcherProfile();
-        String first = (profile == null || profile.getFirstName() == null) ? "" : profile.getFirstName().trim();
-        String last = (profile == null || profile.getLastName() == null) ? "" : profile.getLastName().trim();
-        String full = (first + " " + last).trim();
-        return full.isBlank() ? user.getEmail() : full;
-    }
-
-    private List<User> loadResearchers(Group group) {
-        List<String> memberIds = group.getMemberIds();
-        if (memberIds == null || memberIds.isEmpty()) return new ArrayList<>();
-        return userRepository.findAllById(memberIds).stream()
-                .filter(u -> u.getResearcherProfile() != null)
-                .collect(Collectors.toList());
+    private GroupIndividualReportViewModel redirectToGroupList() {
+        return new GroupIndividualReportViewModel("redirect:/admin/groups", Map.of());
     }
 
     private long nanosToMs(long nanos) {
         return Math.max(0L, nanos / 1_000_000L);
     }
-
-    private Map<String, String> buildResearcherScoreKeyMap(List<User> researchers) {
-        Map<String, String> keyMap = new HashMap<>();
-        for (User researcher : researchers) {
-            String email = researcher.getEmail();
-            if (email != null && !email.isBlank()) {
-                keyMap.put(email, mongoSafeReportKey(email));
-            }
-        }
-        return keyMap;
-    }
-
-    static String mongoSafeReportKey(String email) {
-        if (email == null || email.isBlank()) {
-            return "";
-        }
-        return email.replace(".", MONGO_SAFE_EMAIL_DOT_REPLACEMENT);
-    }
-
-    private Map<String, Map<Integer, Double>> resolveResearcherScoresForView(GroupIndividualReportRun run,
-                                                                             List<User> researchers) {
-        Map<String, Map<Integer, Double>> persistedScores = run.getResearcherScores() == null
-                ? Map.of()
-                : run.getResearcherScores();
-        Map<String, Map<Integer, Double>> resolved = new LinkedHashMap<>();
-        for (User researcher : researchers) {
-            String email = researcher.getEmail();
-            if (email == null || email.isBlank()) {
-                continue;
-            }
-            String safeKey = mongoSafeReportKey(email);
-            Map<Integer, Double> score = persistedScores.get(safeKey);
-            if (score != null) {
-                resolved.put(safeKey, score);
-            }
-        }
-        return resolved;
-    }
-
-    private record ComputeGroupRunResult(
-            GroupIndividualReportRun run,
-            ComputeTimingsSummary timings
-    ) {
-    }
-
-    private record ComputeTimingsSummary(
-            long authorLookupMs,
-            long publicationLoadMs,
-            long activityLoadMs,
-            long citationLoadMs,
-            long citationBasePrecomputeMs,
-            long scoringMs,
-            long publicationScoringMs,
-            long activityScoringMs,
-            long citationScoringMs,
-            long selectorMs,
-            long publicationsProcessed,
-            long citationFacts,
-            long citationIndicators,
-            long activityIndicators,
-            long thresholdBuildMs
-    ) {
-    }
-
-    private static class ComputeTimingsAccumulator {
-        private long authorLookupNanos;
-        private long publicationLoadNanos;
-        private long activityLoadNanos;
-        private long citationLoadNanos;
-        private long citationBasePrecomputeNanos;
-        private long scoringNanos;
-        private long publicationScoringNanos;
-        private long activityScoringNanos;
-        private long citationScoringNanos;
-        private long selectorNanos;
-        private long publicationsProcessed;
-        private long citationFacts;
-        private long citationIndicators;
-        private long activityIndicators;
-        private long thresholdBuildNanos;
-
-        private ComputeTimingsSummary toSummary() {
-            return new ComputeTimingsSummary(
-                    Math.max(0L, authorLookupNanos / 1_000_000L),
-                    Math.max(0L, publicationLoadNanos / 1_000_000L),
-                    Math.max(0L, activityLoadNanos / 1_000_000L),
-                    Math.max(0L, citationLoadNanos / 1_000_000L),
-                    Math.max(0L, citationBasePrecomputeNanos / 1_000_000L),
-                    Math.max(0L, scoringNanos / 1_000_000L),
-                    Math.max(0L, publicationScoringNanos / 1_000_000L),
-                    Math.max(0L, activityScoringNanos / 1_000_000L),
-                    Math.max(0L, citationScoringNanos / 1_000_000L),
-                    Math.max(0L, selectorNanos / 1_000_000L),
-                    Math.max(0L, publicationsProcessed),
-                    Math.max(0L, citationFacts),
-                    Math.max(0L, citationIndicators),
-                    Math.max(0L, activityIndicators),
-                    Math.max(0L, thresholdBuildNanos / 1_000_000L)
-            );
-        }
-    }
-
-    private record CitationPrecomputeBundle(
-            ReportScopedIndicatorScoringSupport.CitationContext citationContext,
-            Map<Indicator, Map<String, Score>> baseScoresByIndicator
-    ) {
-        private static CitationPrecomputeBundle empty() {
-            return new CitationPrecomputeBundle(
-                    ReportScopedIndicatorScoringSupport.CitationContext.empty(),
-                    Map.of()
-            );
-        }
-    }
-
 }

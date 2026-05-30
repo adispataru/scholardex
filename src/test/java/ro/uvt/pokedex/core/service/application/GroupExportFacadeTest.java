@@ -29,6 +29,8 @@ class GroupExportFacadeTest {
     @Mock
     private GroupManagementFacade groupManagementFacade;
     @Mock
+    private GroupMembershipService groupMembershipService;
+    @Mock
     private ScholardexProjectionReadService scholardexProjectionReadService;
     @Mock
     private ResearcherAuthorLookupService researcherAuthorLookupService;
@@ -45,12 +47,14 @@ class GroupExportFacadeTest {
                     User.ResearcherProfile profile = invocation.getArgument(0);
                     return profile.getScopusId() == null ? List.of() : profile.getScopusId();
                 });
+        lenient().when(groupMembershipService.listCurrentMemberUserIds(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(List.of("jane@uvt.ro"));
     }
 
     @Test
     void buildGroupPublicationCsvExportReturnsEmptyWhenGroupMissing() {
         when(groupManagementFacade.buildGroupEditView("missing"))
-                .thenReturn(new GroupEditViewModel(null, List.of(), List.of(), List.of()));
+                .thenReturn(new GroupEditViewModel(null, List.of(), List.of(), List.of(), List.of(), List.of()));
 
         Optional<?> result = facade.buildGroupPublicationCsvExport("missing");
 
@@ -63,7 +67,6 @@ class GroupExportFacadeTest {
         lenient().when(userRepository.findAllById(anyCollection())).thenReturn(List.of(member));
 
         Group group = new Group();
-        group.setMemberIds(List.of("jane@uvt.ro"));
 
         ScholardexPublicationView publication = new ScholardexPublicationView();
         publication.setAuthors(List.of("a1"));
@@ -78,7 +81,7 @@ class GroupExportFacadeTest {
         forum.setPublicationName("Forum One");
 
         when(groupManagementFacade.buildGroupEditView("g1"))
-                .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of()));
+                .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of(), List.of(), List.of()));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
                 .thenReturn(List.of(publication));
         when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection()))
@@ -101,7 +104,6 @@ class GroupExportFacadeTest {
         lenient().when(userRepository.findAllById(anyCollection())).thenReturn(List.of(member));
 
         Group group = new Group();
-        group.setMemberIds(List.of("jane@uvt.ro"));
 
         ScholardexPublicationView p1 = new ScholardexPublicationView();
         p1.setId("p1");
@@ -133,7 +135,7 @@ class GroupExportFacadeTest {
         forum.setPublicationName("Forum One");
 
         when(groupManagementFacade.buildGroupEditView("g1"))
-                .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of()));
+                .thenReturn(new GroupEditViewModel(group, List.of(), List.of(), List.of(), List.of(), List.of()));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1")))
                 .thenReturn(List.of(p1, malformed, p2, p1));
         when(scholardexProjectionReadService.findAuthorsByIdIn(anyCollection()))

@@ -2,6 +2,7 @@ package ro.uvt.pokedex.core.model;
 
 import lombok.Data;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 
@@ -11,7 +12,11 @@ import java.util.List;
 @Document(collection = "institutions")
 public class Institution {
     @Id
+    private String id;
+
+    @Indexed(unique = true)
     private String name;
+
     private String description;
     private List<ScholardexAffiliationView> scopusAffiliations;
     private List<String> wosAffiliations;

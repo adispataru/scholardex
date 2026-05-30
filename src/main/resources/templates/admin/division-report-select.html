@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${division.name} + ' — select reports'">Select reports</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <div th:replace="~{fragments :: sidebar('divisions')}"></div>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar(${division.name} + ' — select reports')}"></div>
+            <div class="container-fluid app-page-content">
+                <div class="app-page-toolbar app-workflow">
+                    <p class="app-workflow__intro">
+                        Pick which individual reports apply to <strong th:text="${division.name}">division</strong>.
+                        Only selected reports surface to users and departments under this division.
+                        Department heads may further hide individual reports for their own departments.
+                    </p>
+                    <div class="app-workflow__actions">
+                        <a th:href="${backHref}" class="btn btn-outline-secondary btn-sm">← Reports</a>
+                    </div>
+                </div>
+
+                <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+                <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+                <div class="app-table-section">
+                    <div class="app-table-section__surface">
+                        <div class="app-table-section__body">
+                            <div class="app-table-scroll">
+                                <table class="table app-table">
+                                    <thead>
+                                    <tr>
+                                        <th style="width:1%; white-space:nowrap;">Selected</th>
+                                        <th>Title</th>
+                                        <th>Description</th>
+                                        <th>Criteria</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="r : ${catalog}">
+                                        <td>
+                                            <form th:action="${postUrl}" method="post" style="margin:0;">
+                                                <input type="hidden" name="reportId" th:value="${r.id}">
+                                                <input type="hidden" name="selected"
+                                                       th:value="${selectedIds.contains(r.id) ? 'false' : 'true'}">
+                                                <button type="submit"
+                                                        class="btn btn-sm"
+                                                        th:classappend="${selectedIds.contains(r.id) ? 'btn-success' : 'btn-outline-secondary'}"
+                                                        th:text="${selectedIds.contains(r.id) ? 'Selected' : 'Off'}">Off</button>
+                                            </form>
+                                        </td>
+                                        <td th:text="${r.title}">Report</td>
+                                        <td th:text="${r.description}"></td>
+                                        <td th:text="${r.criteria != null ? #lists.size(r.criteria) : 0}"></td>
+                                    </tr>
+                                    <tr th:if="${catalog.isEmpty()}" class="app-admin-empty-row">
+                                        <td colspan="4">
+                                            <th:block th:replace="~{fragments :: admin-empty-state(
+                                                'fa-solid fa-folder-open',
+                                                'No report definitions yet',
+                                                'Create individual reports in the catalog first.',
+                                                '', '')}"></th:block>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+</body>
+</html>

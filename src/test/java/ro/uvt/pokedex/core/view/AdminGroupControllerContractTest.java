@@ -88,8 +88,7 @@ class AdminGroupControllerContractTest {
         group.setId("g1");
         group.setName("Group One");
         group.setDescription("Research group");
-        group.setDomains(List.of());
-        group.setMemberIds(List.of());
+        group.setDomainIds(List.of());
 
         Domain domain = new Domain();
         domain.setName("CS");
@@ -97,7 +96,7 @@ class AdminGroupControllerContractTest {
         institution.setName("UVT");
 
         when(groupManagementFacade.buildGroupEditView("g1"))
-                .thenReturn(new GroupEditViewModel(group, List.of(domain), List.of(institution), List.of(new User())));
+                .thenReturn(new GroupEditViewModel(group, List.of(domain), List.of(institution), List.of(), List.of(new User()), List.of()));
 
         mockMvc.perform(get("/admin/groups/edit/{id}", "g1"))
                 .andExpect(status().isOk())
@@ -297,7 +296,8 @@ class AdminGroupControllerContractTest {
     @Test
     void importGroupsWithEmptyFileRedirectsWithErrorFlash() throws Exception {
         mockMvc.perform(multipart("/admin/groups/import")
-                        .file("file", new byte[0]))
+                        .file("file", new byte[0])
+                        .param("institutionId", "i1"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/groups"))
                 .andExpect(flash().attributeExists("errorMessage"));
@@ -321,12 +321,15 @@ class AdminGroupControllerContractTest {
                 "x".getBytes()
         );
         mockMvc.perform(multipart("/admin/groups/import")
-                        .file(file))
+                        .file(file)
+                        .param("institutionId", "i1"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/groups"))
                 .andExpect(flash().attributeExists("errorMessage"));
 
-        verify(groupService, never()).importGroupsFromCsv(org.mockito.ArgumentMatchers.any());
+        verify(groupService, never()).importGroupsFromCsv(
+                org.mockito.ArgumentMatchers.any(org.springframework.web.multipart.MultipartFile.class),
+                org.mockito.ArgumentMatchers.anyString());
     }
 
     @Test
@@ -337,12 +340,14 @@ class AdminGroupControllerContractTest {
                 "application/json",
                 "x".getBytes()
         );
-        mockMvc.perform(multipart("/admin/groups/import").file(file))
+        mockMvc.perform(multipart("/admin/groups/import").file(file).param("institutionId", "i1"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/groups"))
                 .andExpect(flash().attributeExists("errorMessage"));
 
-        verify(groupService, never()).importGroupsFromCsv(org.mockito.ArgumentMatchers.any());
+        verify(groupService, never()).importGroupsFromCsv(
+                org.mockito.ArgumentMatchers.any(org.springframework.web.multipart.MultipartFile.class),
+                org.mockito.ArgumentMatchers.anyString());
     }
 
     @Test

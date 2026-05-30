@@ -118,8 +118,7 @@ public class GeneralInitializationService {
     }
 
     private void createSpecialDomainIfNotExist() {
-        Optional<Domain> all = domainRepository.findById("all");
-        if (all.isPresent()) {
+        if (domainRepository.findByName("ALL").isPresent()) {
             return;
         }
         Domain domain = new Domain();
