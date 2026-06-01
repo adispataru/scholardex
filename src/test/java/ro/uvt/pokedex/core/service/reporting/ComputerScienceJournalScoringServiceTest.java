@@ -18,6 +18,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.BeforeEach;
 
 @ExtendWith(MockitoExtension.class)
 class ComputerScienceJournalScoringServiceTest {
@@ -25,6 +26,11 @@ class ComputerScienceJournalScoringServiceTest {
     @Mock
     private ReportingLookupPort lookupPort;
 
+
+    @BeforeEach
+    void stubMaxAvailableYear() {
+        org.mockito.Mockito.lenient().when(lookupPort.maxAvailableYear()).thenReturn(2023);
+    }
     @Test
     void missingAisRankForYearDoesNotThrowAndFallsBackToLowerTier() {
         ComputerScienceJournalScoringService service = new ComputerScienceJournalScoringService(lookupPort);
@@ -42,7 +48,7 @@ class ComputerScienceJournalScoringServiceTest {
         when(lookupPort.getForum("forum-1")).thenReturn(forum);
 
         WoSRanking.Rank rank = new WoSRanking.Rank();
-        rank.setQAis(Map.of(ScoringService.LAST_YEAR, WoSRanking.Quarter.Q3));
+        rank.setQAis(Map.of(2023, WoSRanking.Quarter.Q3));
         // No rankAis entry for LAST_YEAR on purpose.
 
         WoSRanking ranking = new WoSRanking();
@@ -50,14 +56,14 @@ class ComputerScienceJournalScoringServiceTest {
         ranking.setWebOfScienceCategoryIndex(Map.of("Computer Science, Theory & Methods - SCIE", rank));
 
         when(lookupPort.getRankingsByIssn("1234-5678")).thenReturn(List.of(ranking));
-        when(lookupPort.getTopRankings("Computer Science, Theory & Methods - SCIE", ScoringService.LAST_YEAR)).thenReturn(100);
+        when(lookupPort.getTopRankings("Computer Science, Theory & Methods - SCIE", 2023)).thenReturn(100);
 
         Score score = service.getScore(publication, indicator);
 
         assertEquals(2.0, score.getScore());
         assertEquals("C", score.getCoreRankingEquivalent());
         assertEquals("Q3", score.getQuarter());
-        assertEquals(ScoringService.LAST_YEAR, score.getYear());
+        assertEquals(2023, score.getYear());
     }
 
     @Test

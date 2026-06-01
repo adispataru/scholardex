@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.BeforeEach;
 
 @ExtendWith(MockitoExtension.class)
 class ComputerScienceConferenceScoringServiceSubtypeTest {
@@ -37,6 +38,11 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
     @Mock
     private ScholardexPublicationDblpEvidenceRepository dblpEvidenceRepository;
 
+
+    @BeforeEach
+    void stubMaxAvailableYear() {
+        org.mockito.Mockito.lenient().when(cacheService.maxAvailableYear()).thenReturn(2023);
+    }
     @Test
     void usesScopusSubtypeFallbackForConferenceBranch() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);

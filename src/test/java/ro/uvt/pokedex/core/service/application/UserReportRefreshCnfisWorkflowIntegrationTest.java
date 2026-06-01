@@ -116,6 +116,7 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
         CacheService cacheService = mock(CacheService.class);
         publicationEnrichmentLinkerService = mock(PublicationEnrichmentLinkerService.class);
         ReportingLookupPort reportingLookupPort = mock(ReportingLookupPort.class);
+        org.mockito.Mockito.lenient().when(reportingLookupPort.maxAvailableYear()).thenReturn(2023);
         effectiveAuthorshipReadService = mock(EffectiveAuthorshipReadService.class);
 
         userReportFacade = new UserReportFacade(

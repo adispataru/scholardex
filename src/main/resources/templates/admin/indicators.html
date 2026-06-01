@@ -108,6 +108,9 @@
             </div>
             <div class="modal-body">
                 <form th:action="@{/admin/indicators/create}" th:object="${indicator}" method="post">
+                    <!-- H52 optimistic-locking version: null on create. The hidden input keeps the
+                         CREATE/UPDATE form contracts symmetric so Spring Data sees a consistent shape. -->
+                    <input type="hidden" name="version" th:value="${indicator.version}">
                     <div class="app-form-section">
                         <div class="app-form-section__header">
                             <h6 class="app-form-section__title">Indicator identity</h6>

@@ -15,6 +15,7 @@ import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
+import org.junit.jupiter.api.BeforeEach;
 
 @ExtendWith(MockitoExtension.class)
 class ComputerScienceScoringServiceTest {
@@ -28,6 +29,11 @@ class ComputerScienceScoringServiceTest {
     @Mock
     private ReportingLookupPort cacheService;
 
+
+    @BeforeEach
+    void stubMaxAvailableYear() {
+        org.mockito.Mockito.lenient().when(cacheService.maxAvailableYear()).thenReturn(2023);
+    }
     @Test
     void bkSubtypeFallsBackToEmptyScore() {
         ComputerScienceScoringService service = new ComputerScienceScoringService(

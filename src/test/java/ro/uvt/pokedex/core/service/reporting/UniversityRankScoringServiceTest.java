@@ -15,6 +15,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.BeforeEach;
 
 @ExtendWith(MockitoExtension.class)
 class UniversityRankScoringServiceTest {
@@ -24,6 +25,11 @@ class UniversityRankScoringServiceTest {
     @Mock
     private URAPUniversityRankingService urapRankingService;
 
+
+    @BeforeEach
+    void stubMaxAvailableYear() {
+        org.mockito.Mockito.lenient().when(lookupPort.maxAvailableYear()).thenReturn(2023);
+    }
     @Test
     void missingUniversityReferenceReturnsZero() {
         UniversityRankScoringService service = new UniversityRankScoringService(lookupPort, urapRankingService);

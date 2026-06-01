@@ -34,6 +34,10 @@
                               cancelHref=@{/admin/indicators})}">
                         <th:block id="indicator-form-sections">
                         <input type="hidden" class="form-control" id="indicatorId" th:field="*{id}">
+                        <!-- Optimistic-locking version (H52). Hidden so the form binds it back
+                             from the loaded entity; concurrent edits get an OptimisticLockingFailureException
+                             instead of silently last-write-wins. -->
+                        <input type="hidden" name="version" th:value="${indicator.version}">
                         <th:block th:replace="~{fragments :: admin-form-section(
                             title='Indicator identity',
                             helperText='Review the indicator identity and activity mapping so scoring rules stay connected to the right source data.',

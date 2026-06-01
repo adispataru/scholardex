@@ -13,6 +13,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
 import java.util.List;
 import java.util.Optional;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
 
 /**
  * Scoring service that evaluates journals using the RIS metric.
@@ -100,6 +101,11 @@ public class RISJournalScoringService extends AbstractWoSForumScoringService {
     /* ------------------------------------------------------------------ */
     /*  Misc                                                              */
     /* ------------------------------------------------------------------ */
+
+    @Override
+    public ScoringStrategy strategy() {
+        return ScoringStrategy.RIS;
+    }
 
     @Override
     public String getDescription() {

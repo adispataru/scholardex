@@ -18,6 +18,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.BeforeEach;
 
 @ExtendWith(MockitoExtension.class)
 class ImpactFactorJournalScoringServiceTest {
@@ -25,6 +26,11 @@ class ImpactFactorJournalScoringServiceTest {
     @Mock
     private ReportingLookupPort lookupPort;
 
+
+    @BeforeEach
+    void stubMaxAvailableYear() {
+        org.mockito.Mockito.lenient().when(lookupPort.maxAvailableYear()).thenReturn(2023);
+    }
     @Test
     void missingIfDataReturnsEmptyScoreAndIncrementsMissingCounter() {
         SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();

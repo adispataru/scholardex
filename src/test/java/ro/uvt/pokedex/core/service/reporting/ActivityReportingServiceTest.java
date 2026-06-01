@@ -26,7 +26,7 @@ class ActivityReportingServiceTest {
 
     @Test
     void genericCountFormulaUsesFieldsAndMathFunctions() {
-        ActivityReportingService service = new ActivityReportingService(scoringFactoryService);
+        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
         Indicator indicator = indicator(Indicator.Strategy.GENERIC_COUNT, "max(hours, bonus) + min(bonus, 2)");
         ActivityInstance activity = activity("a1", Map.of("hours", "3", "bonus", "5"), true);
 
@@ -39,7 +39,7 @@ class ActivityReportingServiceTest {
 
     @Test
     void genericCountSetsScoreAndAuthorScoreFromFormula() {
-        ActivityReportingService service = new ActivityReportingService(scoringFactoryService);
+        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
         Indicator indicator = indicator(Indicator.Strategy.GENERIC_COUNT, "S * 2");
         ActivityInstance activity = activity("a1", Map.of(), false);
 
@@ -52,7 +52,7 @@ class ActivityReportingServiceTest {
 
     @Test
     void genericActivityEvaluatesFormulaWithActivityFields() {
-        ActivityReportingService service = new ActivityReportingService(scoringFactoryService);
+        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
         Indicator indicator = indicator(
                 Indicator.Strategy.GENERIC_ACTIVITY,
                 "B = Buget; X = B < 50000 ? 1 : B < 100000 ? 2 : B < 200000 ? 3 : B < 400000 ? 4 : 5; Rol == 'Membru' ? X : X * 2"
@@ -74,7 +74,7 @@ class ActivityReportingServiceTest {
 
     @Test
     void delegatedScoringUsesScoringServiceMetadataAndExtrasInFormula() {
-        ActivityReportingService service = new ActivityReportingService(scoringFactoryService);
+        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
         Indicator indicator = indicator(Indicator.Strategy.CS_JOURNAL, "S * M");
         ActivityInstance activity = activity("a1", Map.of(), false);
         Score delegated = new Score();
@@ -100,7 +100,7 @@ class ActivityReportingServiceTest {
 
     @Test
     void invalidFormulaVariableYieldsZeroAuthorScore() {
-        ActivityReportingService service = new ActivityReportingService(scoringFactoryService);
+        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
         Indicator indicator = indicator(Indicator.Strategy.GENERIC_COUNT, "S + missingVar");
         ActivityInstance activity = activity("a1", Map.of(), false);
 
@@ -112,7 +112,7 @@ class ActivityReportingServiceTest {
 
     @Test
     void calculateActivityScoresFiltersZeroScoresAndComputesTotal() {
-        ActivityReportingService service = new ActivityReportingService(scoringFactoryService);
+        ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
         Indicator indicator = indicator(Indicator.Strategy.GENERIC_COUNT, "S");
         ActivityInstance included = activity("a1", Map.of(), false);
         ActivityInstance excluded = activity("a2", Map.of(), false);

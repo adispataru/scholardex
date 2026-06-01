@@ -222,14 +222,15 @@ public abstract class AbstractForumScoringService implements ScoringService {
                 logger
         );
         publicationYear.ifPresent(pubYear -> allowedYears.addAll(Indicator.parseYearRange(indicator.getScoreYearRange(), pubYear)));
+        int maxYear = lookupPort.maxAvailableYear();
         if (allowedYears.isEmpty()) {
             publicationYear.ifPresentOrElse(
                     allowedYears::add,
-                    () -> allowedYears.add(LAST_YEAR)
+                    () -> allowedYears.add(maxYear)
             );
-        } else if (allowedYears.stream().min(Integer::compareTo).orElse(LAST_YEAR) > LAST_YEAR) {
+        } else if (allowedYears.stream().min(Integer::compareTo).orElse(maxYear) > maxYear) {
             allowedYears.clear();
-            allowedYears.add(LAST_YEAR);
+            allowedYears.add(maxYear);
         }
         return allowedYears;
     }

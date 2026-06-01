@@ -13,6 +13,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
 import java.util.List;
 import java.util.Optional;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
 
 /**
  * Scoring service that evaluates Computer Science journals based on WoS quartiles.
@@ -155,6 +156,11 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
     /* ------------------------------------------------------------------ */
     /*  Misc                                                              */
     /* ------------------------------------------------------------------ */
+
+    @Override
+    public ScoringStrategy strategy() {
+        return ScoringStrategy.ECONOMICS_JOURNAL_AIS;
+    }
 
     @Override
     public String getDescription() {

@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
 
 
 @Service
@@ -111,6 +112,11 @@ public class ArtEventScoringService extends AbstractForumScoringService {
 
     private List<ArtisticEvent> getCachedRankings(String name) {
         return rankingCache.computeIfAbsent(name, artEventsRepo::findAllByNameIgnoreCase);
+    }
+
+    @Override
+    public ScoringStrategy strategy() {
+        return ScoringStrategy.ART_EVENT;
     }
 
     @Override

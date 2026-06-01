@@ -31,6 +31,7 @@ class CNFISScoringService2025Test {
 
     @BeforeEach
     void setUp() {
+        org.mockito.Mockito.lenient().when(cacheService.maxAvailableYear()).thenReturn(2023);
         service = new CNFISScoringService2025(cacheService);
         allDomain = new Domain();
         allDomain.setName("ALL");

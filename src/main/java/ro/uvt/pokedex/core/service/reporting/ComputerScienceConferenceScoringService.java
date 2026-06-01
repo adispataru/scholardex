@@ -17,6 +17,7 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationDblp
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
 
 /**
  * Scoring service that evaluates Computer Science conferences based on CORE rankings.
@@ -1234,6 +1235,11 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
     /* ------------------------------------------------------------------ */
     /*  Misc                                                              */
     /* ------------------------------------------------------------------ */
+
+    @Override
+    public ScoringStrategy strategy() {
+        return ScoringStrategy.CS_CONFERENCE;
+    }
 
     @Override
     public String getDescription() {

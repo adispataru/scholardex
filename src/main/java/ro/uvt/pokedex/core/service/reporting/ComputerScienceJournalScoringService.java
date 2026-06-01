@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
 
 /**
  * Scoring service that evaluates Computer Science journals based on WoS quartiles.
@@ -59,7 +60,7 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
                 scoreResult.bestPoints.set(2.0);
                 scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
                 scoreResult.bestQuarter.set(WoSRanking.Quarter.SCOPUS);
-                scoreResult.bestYear.set(LAST_YEAR);
+                scoreResult.bestYear.set(lookupPort.maxAvailableYear());
                 scoreResult.scoringSource.set("SCOPUS");
                 scoreResult.scoringInfo.put("matchSource", "SCOPUS");
                 scoreResult.scoringInfo.put("fallbackReason", "SCOPUS_FALLBACK");
@@ -112,7 +113,7 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
             scoreResult.bestPoints.set(2.0);
             scoreResult.bestCategory.set(CoreConferenceRanking.Rank.C);
             scoreResult.bestQuarter.set(WoSRanking.Quarter.SCOPUS);
-            scoreResult.bestYear.set(LAST_YEAR);
+            scoreResult.bestYear.set(lookupPort.maxAvailableYear());
             scoreResult.scoringSource.set("SCOPUS");
             scoreResult.scoringInfo.put("matchSource", "SCOPUS");
             scoreResult.scoringInfo.put("fallbackReason", "SCOPUS_FALLBACK");
@@ -165,6 +166,11 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
     /* ------------------------------------------------------------------ */
     /*  Misc                                                              */
     /* ------------------------------------------------------------------ */
+
+    @Override
+    public ScoringStrategy strategy() {
+        return ScoringStrategy.CS_JOURNAL;
+    }
 
     @Override
     public String getDescription() {

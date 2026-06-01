@@ -11,6 +11,8 @@ import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
+import org.junit.jupiter.api.BeforeEach;
 
 class CategoryDomainContractTest {
 
@@ -68,6 +70,11 @@ class CategoryDomainContractTest {
         }
 
         @Override
+        public ScoringStrategy strategy() {
+            return ScoringStrategy.CS;  // arbitrary — these stubs are tested directly, not via the factory
+        }
+
+        @Override
         public String getDescription() {
             return "test";
         }
@@ -90,6 +97,11 @@ class CategoryDomainContractTest {
         @Override
         public Score getScore(ActivityInstance activity, Indicator indicator) {
             return new Score();
+        }
+
+        @Override
+        public ScoringStrategy strategy() {
+            return ScoringStrategy.CS;  // arbitrary — these stubs are tested directly, not via the factory
         }
 
         @Override

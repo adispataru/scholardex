@@ -19,4 +19,19 @@ public interface ReportingLookupPort {
     int getTopRankings(String categoryIndex, Integer year);
 
     Set<String> getUniversityAuthorIds();
+
+    /**
+     * H52 slice 8a: the latest year for which the WoS / Scopus / CORE reference data
+     * is considered authoritative. Replaces the {@code Integer LAST_YEAR = 2023}
+     * interface constant that pre-v1 was hanging off {@link ScoringService}. Callers
+     * cap forward-dated lookups to this year so an out-of-window publication doesn't
+     * produce a nonsense {@code Q?} ranking against missing data.
+     *
+     * <p>Default implementation returns {@code 2023} — same value as the removed
+     * interface constant. A live implementation should query the actual rankings
+     * collections; bumping a property is the migration path until that lands.</p>
+     */
+    default int maxAvailableYear() {
+        return 2023;
+    }
 }

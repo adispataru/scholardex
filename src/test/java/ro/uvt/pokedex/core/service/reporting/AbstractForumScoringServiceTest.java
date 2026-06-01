@@ -14,6 +14,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
 
 class AbstractForumScoringServiceTest {
 
@@ -172,6 +173,11 @@ class AbstractForumScoringServiceTest {
         @Override
         public Score getScore(ActivityInstance activity, Indicator indicator) {
             return new Score();
+        }
+
+        @Override
+        public ScoringStrategy strategy() {
+            return ScoringStrategy.CS;  // arbitrary — these stubs are tested directly, not via the factory
         }
 
         @Override

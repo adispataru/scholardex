@@ -1,12 +1,13 @@
 package ro.uvt.pokedex.core.service.reporting;
 
-import org.mvel2.MVEL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
+import ro.uvt.pokedex.core.service.reporting.formula.FormulaContext;
+import ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,6 +20,7 @@ public class ScientificProductionService {
     private static final Logger log = LoggerFactory.getLogger(ScientificProductionService.class);
 
     private final ScoringFactoryService scoringFactoryService;
+    private final FormulaEvaluator formulaEvaluator;
 
 
     public Map<String, Score> calculateScientificProductionScore(List<? extends ScoringPublicationReadModel> publications, Indicator indicator) {
@@ -205,22 +207,15 @@ public class ScientificProductionService {
         if(result.getScore() > 0) {
             int numberOfAuthors = cited.getAuthorCount();
 
-            Map<String, Object> variables = new HashMap<>();
-            variables.put("S", result.getScore());
-            variables.put("N", numberOfAuthors);
-            variables.put("Q", result.getQuarter());
-            for (String key : result.getExtra().keySet()) {
-                variables.put(key, result.getExtra().get(key));
-            }
-
-            String formula = indicator.getFormula();
-            if (formula.contains("max")) {
-                formula = formula.replaceAll("max", "Math.max");
-                variables.put("Math", Math.class);
-            }
+            FormulaContext ctx = FormulaContext.builder()
+                    .put("S", result.getScore())
+                    .put("N", numberOfAuthors)
+                    .put("Q", result.getQuarter())
+                    .putAll(result.getExtra())
+                    .build();
 
             long formulaEvalStartedAtNanos = System.nanoTime();
-            double finalScore = MVEL.eval(formula, variables, Double.class);
+            double finalScore = formulaEvaluator.eval(indicator.getFormula(), ctx);
             long formulaEvalNanos = System.nanoTime() - formulaEvalStartedAtNanos;
             if (timing != null) {
                 timing.addFormulaEvalNanos(formulaEvalNanos);

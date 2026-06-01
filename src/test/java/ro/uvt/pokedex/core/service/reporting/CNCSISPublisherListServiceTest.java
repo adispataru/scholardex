@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.BeforeEach;
 
 @ExtendWith(MockitoExtension.class)
 class CNCSISPublisherListServiceTest {
@@ -29,6 +30,11 @@ class CNCSISPublisherListServiceTest {
     @Mock
     private ReportingLookupPort lookupPort;
 
+
+    @BeforeEach
+    void stubMaxAvailableYear() {
+        org.mockito.Mockito.lenient().when(lookupPort.maxAvailableYear()).thenReturn(2023);
+    }
     @Test
     void bookSubtypeScoresOneWhenPublisherExists() {
         CNCSISPublisherListService service = new CNCSISPublisherListService(publisherRepository, lookupPort);

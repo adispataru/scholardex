@@ -34,6 +34,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.BeforeEach;
 
 @ExtendWith(MockitoExtension.class)
 class ScientificProductionServiceTest {
@@ -46,8 +47,15 @@ class ScientificProductionServiceTest {
     @Mock
     private ScholardexPublicationDblpEvidenceRepository dblpEvidenceRepository;
 
+    // Real evaluator (no MVEL behavior to mock) — @InjectMocks picks it up via the
+    // constructor signature.
+    @org.mockito.Spy
+    private ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator formulaEvaluator =
+            new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator();
+
     @InjectMocks
     private ScientificProductionService scientificProductionService;
+
 
     @Test
     void productionScoreGenericCountAssignsOnePerPublicationAndTotalSize() {
@@ -65,7 +73,7 @@ class ScientificProductionServiceTest {
         assertEquals(1.0, result.get("Paper 2").getScore(), 0.0001);
         assertEquals(1.0, result.get("Paper 2").getAuthorScore(), 0.0001);
         assertEquals(2.0, result.get("total").getAuthorScore(), 0.0001);
-        verify(scoringFactoryService, never()).getScoringService(org.mockito.ArgumentMatchers.any());
+        verify(scoringFactoryService, never()).getScoringService(org.mockito.ArgumentMatchers.any(Indicator.Strategy.class));
     }
 
     @Test
@@ -83,7 +91,7 @@ class ScientificProductionServiceTest {
         assertEquals(1.0, result.get("Citing 1").getScore(), 0.0001);
         assertEquals(1.0, result.get("Citing 2").getAuthorScore(), 0.0001);
         assertEquals(2.0, result.get("total").getAuthorScore(), 0.0001);
-        verify(scoringFactoryService, never()).getScoringService(org.mockito.ArgumentMatchers.any());
+        verify(scoringFactoryService, never()).getScoringService(org.mockito.ArgumentMatchers.any(Indicator.Strategy.class));
     }
 
     @Test
@@ -175,6 +183,7 @@ class ScientificProductionServiceTest {
     @SuppressWarnings({"rawtypes", "unchecked"})
     void publicationScoringUsesCoreConferenceMatchWhenMongoYearKeysAreStrings() {
         ReportingLookupPort lookupPort = org.mockito.Mockito.mock(ReportingLookupPort.class);
+        org.mockito.Mockito.lenient().when(lookupPort.maxAvailableYear()).thenReturn(2023);
         ComputerScienceJournalScoringService journalScoringService = org.mockito.Mockito.mock(ComputerScienceJournalScoringService.class);
         ComputerScienceBookService bookScoringService = org.mockito.Mockito.mock(ComputerScienceBookService.class);
         ComputerScienceConferenceScoringService conferenceScoringService = new ComputerScienceConferenceScoringService(lookupPort);
@@ -227,6 +236,7 @@ class ScientificProductionServiceTest {
     @Test
     void publicationScoringUsesTrailingTitleCasedConferenceAcronym() {
         ReportingLookupPort lookupPort = org.mockito.Mockito.mock(ReportingLookupPort.class);
+        org.mockito.Mockito.lenient().when(lookupPort.maxAvailableYear()).thenReturn(2023);
         ComputerScienceJournalScoringService journalScoringService = org.mockito.Mockito.mock(ComputerScienceJournalScoringService.class);
         ComputerScienceBookService bookScoringService = org.mockito.Mockito.mock(ComputerScienceBookService.class);
         ComputerScienceConferenceScoringService conferenceScoringService = new ComputerScienceConferenceScoringService(lookupPort);
@@ -272,6 +282,7 @@ class ScientificProductionServiceTest {
     @Test
     void publicationScoringUsesNormalizedTitleCoreFallbackWhenAcronymIsMissing() {
         ReportingLookupPort lookupPort = org.mockito.Mockito.mock(ReportingLookupPort.class);
+        org.mockito.Mockito.lenient().when(lookupPort.maxAvailableYear()).thenReturn(2023);
         ComputerScienceJournalScoringService journalScoringService = org.mockito.Mockito.mock(ComputerScienceJournalScoringService.class);
         ComputerScienceBookService bookScoringService = org.mockito.Mockito.mock(ComputerScienceBookService.class);
         ComputerScienceConferenceScoringService conferenceScoringService = new ComputerScienceConferenceScoringService(lookupPort);
@@ -319,6 +330,7 @@ class ScientificProductionServiceTest {
     @Test
     void publicationScoringHalvesWorkshopScoreWhenForumIsWorkshopOfParentConference() {
         ReportingLookupPort lookupPort = org.mockito.Mockito.mock(ReportingLookupPort.class);
+        org.mockito.Mockito.lenient().when(lookupPort.maxAvailableYear()).thenReturn(2023);
         ComputerScienceJournalScoringService journalScoringService = org.mockito.Mockito.mock(ComputerScienceJournalScoringService.class);
         ComputerScienceBookService bookScoringService = org.mockito.Mockito.mock(ComputerScienceBookService.class);
         ComputerScienceConferenceScoringService conferenceScoringService = new ComputerScienceConferenceScoringService(lookupPort);
@@ -362,6 +374,7 @@ class ScientificProductionServiceTest {
     @Test
     void publicationScoringUsesDblpConferenceEvidenceForLncsChapter() {
         ReportingLookupPort lookupPort = org.mockito.Mockito.mock(ReportingLookupPort.class);
+        org.mockito.Mockito.lenient().when(lookupPort.maxAvailableYear()).thenReturn(2023);
         ComputerScienceJournalScoringService journalScoringService = org.mockito.Mockito.mock(ComputerScienceJournalScoringService.class);
         ComputerScienceBookService bookScoringService = org.mockito.Mockito.mock(ComputerScienceBookService.class);
         ComputerScienceConferenceScoringService conferenceScoringService =
@@ -411,6 +424,7 @@ class ScientificProductionServiceTest {
     @Test
     void publicationScoringUsesDecoratedDblpAcronymEvidenceForLncsChapter() {
         ReportingLookupPort lookupPort = org.mockito.Mockito.mock(ReportingLookupPort.class);
+        org.mockito.Mockito.lenient().when(lookupPort.maxAvailableYear()).thenReturn(2023);
         ComputerScienceJournalScoringService journalScoringService = org.mockito.Mockito.mock(ComputerScienceJournalScoringService.class);
         ComputerScienceBookService bookScoringService = org.mockito.Mockito.mock(ComputerScienceBookService.class);
         ComputerScienceConferenceScoringService conferenceScoringService =

@@ -1,75 +1,150 @@
 package ro.uvt.pokedex.core.service.reporting;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
+import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
+import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.mock;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
 
-@ExtendWith(MockitoExtension.class)
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * H52 slice 6 — proves the Map-registry dispatcher behaves identically to the pre-v1
+ * if/else ladder for every production strategy, and that the startup invariants fire
+ * loudly when violated.
+ *
+ * <p>Replaces the pre-v1 mock-each-concrete-service style — the new factory takes
+ * {@code List<ScoringService>} so any conforming fake is enough.</p>
+ */
 class ScoringFactoryServiceTest {
 
-    private final ComputerScienceConferenceScoringService csConferenceService = mock(ComputerScienceConferenceScoringService.class);
-    private final ComputerScienceJournalScoringService csJournalService = mock(ComputerScienceJournalScoringService.class);
-    private final ComputerScienceBookService csBookService = mock(ComputerScienceBookService.class);
-    private final ComputerScienceScoringService csService = mock(ComputerScienceScoringService.class);
-    private final ImpactFactorJournalScoringService ifService = mock(ImpactFactorJournalScoringService.class);
-    private final RISJournalScoringService risService = mock(RISJournalScoringService.class);
-    private final AISJournalScoringService aisService = mock(AISJournalScoringService.class);
-    private final UniversityRankScoringService uniService = mock(UniversityRankScoringService.class);
-    private final CNCSISPublisherListService cncsisService = mock(CNCSISPublisherListService.class);
-    private final ArtEventScoringService artService = mock(ArtEventScoringService.class);
-    private final EconomicsJournalScoringService econService = mock(EconomicsJournalScoringService.class);
+    private static ScoringService fake(ScoringStrategy strategy) {
+        return new ScoringService() {
+            @Override public ScoringStrategy strategy() { return strategy; }
+            @Override public Score getScore(ScoringPublicationReadModel publication, Indicator indicator) { return null; }
+            @Override public Score getScore(ActivityInstance activity, Indicator indicator) { return null; }
+            @Override public String getDescription() { return "fake:" + strategy; }
+        };
+    }
 
-    private final ScoringFactoryService factory = new ScoringFactoryService(
-            csConferenceService, csJournalService, csBookService, csService,
-            ifService, risService, aisService, uniService, cncsisService, artService, econService
-    );
+    /**
+     * Strategies that must be registered as beans. Mirrors the production ladder.
+     * {@code GENERIC_COUNT} and {@code GENERIC_ACTIVITY} are handled inline by the
+     * call sites and are deliberately not registered.
+     */
+    private static Set<ScoringStrategy> beanBackedStrategies() {
+        Set<ScoringStrategy> all = EnumSet.allOf(ScoringStrategy.class);
+        all.remove(ScoringStrategy.GENERIC_COUNT);
+        all.remove(ScoringStrategy.GENERIC_ACTIVITY);
+        return all;
+    }
+
+    private static List<ScoringService> oneOfEach() {
+        List<ScoringService> services = new ArrayList<>();
+        for (ScoringStrategy s : beanBackedStrategies()) {
+            services.add(fake(s));
+        }
+        return services;
+    }
+
+    private static ScoringFactoryService init(List<ScoringService> services) {
+        ScoringFactoryService f = new ScoringFactoryService(services);
+        f.verifyRegistry();
+        return f;
+    }
+
+    // ---------- Production parity ----------
 
     @Test
-    void returnsConfiguredServiceForKnownStrategy() {
-        ScoringService resolved = factory.getScoringService(Indicator.Strategy.CS);
-        assertSame(csService, resolved);
+    void everyBeanBackedStrategyResolvesViaTheRegistry() {
+        ScoringFactoryService factory = init(oneOfEach());
+        for (ScoringStrategy s : beanBackedStrategies()) {
+            ScoringService svc = factory.getScoringService(s);
+            assertNotNull(svc, "no bean returned for " + s);
+            assertEquals(s, svc.strategy(), "wrong bean returned for " + s);
+        }
     }
 
     @Test
-    void returnsBookServiceForCsSenseStrategy() {
-        ScoringService resolved = factory.getScoringService(Indicator.Strategy.CS_SENSE);
-        assertSame(csBookService, resolved);
+    void legacyEnumLookupBridgesToV1() {
+        ScoringFactoryService factory = init(oneOfEach());
+        Indicator.Strategy[] legacyValues = {
+                Indicator.Strategy.CS_CONFERENCE, Indicator.Strategy.CS_JOURNAL,
+                Indicator.Strategy.CS, Indicator.Strategy.RIS, Indicator.Strategy.AIS,
+                Indicator.Strategy.CS_SENSE, Indicator.Strategy.UNI_RANKING,
+                Indicator.Strategy.CNCSIS, Indicator.Strategy.ART_EVENT,
+                Indicator.Strategy.IMPACT_FACTOR, Indicator.Strategy.ECONOMICS_JOURNAL_AIS,
+        };
+        for (Indicator.Strategy legacy : legacyValues) {
+            ScoringService viaLegacy = factory.getScoringService(legacy);
+            ScoringService viaV1 = factory.getScoringService(ScoringStrategy.fromLegacy(legacy));
+            assertSame(viaLegacy, viaV1, "legacy and v1 lookups returned different beans for " + legacy);
+        }
+    }
+
+    // ---------- Invariants ----------
+
+    @Test
+    void duplicateStrategyClaimFailsAtConstruction() {
+        List<ScoringService> services = oneOfEach();
+        services.add(fake(ScoringStrategy.AIS)); // second AIS bean
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> new ScoringFactoryService(services));
+        assertTrue(ex.getMessage().contains("Duplicate"));
+        assertTrue(ex.getMessage().contains("AIS"));
     }
 
     @Test
-    void returnsConfiguredServiceForAllSupportedStrategies() {
-        assertSame(csConferenceService, factory.getScoringService(Indicator.Strategy.CS_CONFERENCE));
-        assertSame(csJournalService, factory.getScoringService(Indicator.Strategy.CS_JOURNAL));
-        assertSame(risService, factory.getScoringService(Indicator.Strategy.RIS));
-        assertSame(aisService, factory.getScoringService(Indicator.Strategy.AIS));
-        assertSame(uniService, factory.getScoringService(Indicator.Strategy.UNI_RANKING));
-        assertSame(cncsisService, factory.getScoringService(Indicator.Strategy.CNCSIS));
-        assertSame(artService, factory.getScoringService(Indicator.Strategy.ART_EVENT));
-        assertSame(ifService, factory.getScoringService(Indicator.Strategy.IMPACT_FACTOR));
-        assertSame(econService, factory.getScoringService(Indicator.Strategy.ECONOMICS_JOURNAL_AIS));
+    void missingStrategyFailsAtVerifyRegistry() {
+        List<ScoringService> services = new ArrayList<>();
+        for (ScoringStrategy s : beanBackedStrategies()) {
+            if (s == ScoringStrategy.IMPACT_FACTOR) continue; // drop one
+            services.add(fake(s));
+        }
+        ScoringFactoryService f = new ScoringFactoryService(services);
+        IllegalStateException ex = assertThrows(IllegalStateException.class, f::verifyRegistry);
+        assertTrue(ex.getMessage().contains("IMPACT_FACTOR"));
     }
 
     @Test
-    void throwsForUnmappedStrategy() {
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> factory.getScoringService(Indicator.Strategy.GENERIC_ACTIVITY)
-        );
-
-        assertEquals("Unsupported scoring strategy: GENERIC_ACTIVITY", exception.getMessage());
+    void inlineStrategiesAreRejectedAtLookup() {
+        ScoringFactoryService factory = init(oneOfEach());
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> factory.getScoringService(ScoringStrategy.GENERIC_COUNT));
+        assertTrue(ex.getMessage().contains("inline"));
+        IllegalArgumentException ex2 = assertThrows(IllegalArgumentException.class,
+                () -> factory.getScoringService(Indicator.Strategy.GENERIC_ACTIVITY));
+        assertTrue(ex2.getMessage().contains("inline"));
     }
 
     @Test
-    void throwsForNullStrategy() {
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> factory.getScoringService(null)
-        );
+    void nullStrategyThrows() {
+        ScoringFactoryService factory = init(oneOfEach());
+        assertThrows(IllegalArgumentException.class,
+                () -> factory.getScoringService((ScoringStrategy) null));
+        assertThrows(IllegalArgumentException.class,
+                () -> factory.getScoringService((Indicator.Strategy) null));
+    }
 
-        assertEquals("Scoring strategy cannot be null", exception.getMessage());
+    @Test
+    void serviceThatReturnsNullStrategyIsRejected() {
+        ScoringService rogue = new ScoringService() {
+            @Override public ScoringStrategy strategy() { return null; }
+            @Override public Score getScore(ScoringPublicationReadModel publication, Indicator indicator) { return null; }
+            @Override public Score getScore(ActivityInstance activity, Indicator indicator) { return null; }
+            @Override public String getDescription() { return "rogue"; }
+        };
+        List<ScoringService> services = oneOfEach();
+        services.add(rogue);
+        assertThrows(IllegalStateException.class, () -> new ScoringFactoryService(services));
     }
 }

@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
 
 
 @Service
@@ -113,6 +114,11 @@ public class CNCSISPublisherListService extends AbstractForumScoringService {
 
     private List<CNCSISPublisher> getCachedRankings(String name) {
         return rankingCache.computeIfAbsent(name, publisherRepository::findAllByNameIgnoreCase);
+    }
+
+    @Override
+    public ScoringStrategy strategy() {
+        return ScoringStrategy.CNCSIS;
     }
 
     @Override

@@ -21,7 +21,6 @@ import java.util.Map;
 public class CNFISScoringService2025 {
     private static final Logger log = LoggerFactory.getLogger(CNFISScoringService2025.class);
     private final ReportingLookupPort lookupPort;
-    private static final int LAST_YEAR = 2023;
     public CNFISReport2025 getReport(ScoringPublicationReadModel publication, Domain domain) {
         ScholardexForumView forum = lookupPort.getForum(publication.getForumId());
         CNFISReport2025 report = new CNFISReport2025();
@@ -63,9 +62,9 @@ public class CNFISScoringService2025 {
                         continue;
                     }
 
-                    List<Integer> yearCandidates = allowedYears.isEmpty() ? List.of(LAST_YEAR) : List.copyOf(allowedYears);
+                    List<Integer> yearCandidates = allowedYears.isEmpty() ? List.of(lookupPort.maxAvailableYear()) : List.copyOf(allowedYears);
                     for (int candidateYear : yearCandidates) {
-                        int year = Math.min(candidateYear, LAST_YEAR);
+                        int year = Math.min(candidateYear, lookupPort.maxAvailableYear());
 
                         if (score.getQAis().get(year) != null) {
 

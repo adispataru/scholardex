@@ -1,24 +1,26 @@
 package ro.uvt.pokedex.core.service.reporting;
 
 import lombok.RequiredArgsConstructor;
-import org.mvel2.MVEL;
-import org.mvel2.PropertyAccessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
+import ro.uvt.pokedex.core.service.reporting.formula.FormulaContext;
+import ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalDouble;
 
 @Service
 @RequiredArgsConstructor
 public class ActivityReportingService {
     private static final Logger log = LoggerFactory.getLogger(ActivityReportingService.class);
     private final ScoringFactoryService scoringFactoryService;
+    private final FormulaEvaluator formulaEvaluator;
 
     public Map<String, Score> calculateActivityScores(List<ActivityInstance> activities, Indicator indicator) {
 
@@ -95,21 +97,16 @@ public class ActivityReportingService {
             });
             result.setDetails(sb.toString());
 
-            String formula = indicator.getFormula();
-
-            if (formula.contains("max")) {
-                formula = formula.replaceAll("max", "Math.max");
-                variables.put("Math", Math.class);
-            }
-            if (formula.contains("min")) {
-                formula = formula.replaceAll("min", "Math.min");
-                variables.put("Math", Math.class);
-            }
-            try {
-                double finalScore = MVEL.eval(formula, variables, Double.class);
-                result.setAuthorScore(finalScore);
-            } catch (PropertyAccessException ex) {
-                log.error("Error evaluating formula for indicator {} and activity {}", indicator.getId(), activity.getId(), ex);
+            FormulaContext ctx = FormulaContext.builder().putAll(variables).build();
+            OptionalDouble finalScore = formulaEvaluator.tryEval(rawformula, ctx);
+            if (finalScore.isPresent()) {
+                result.setAuthorScore(finalScore.getAsDouble());
+            } else {
+                // Preserves pre-v1 behavior: PropertyAccessException → 0.0. The evaluator
+                // already logged the formula + error; add the indicator/activity context
+                // we have here so the trace points to the failing row.
+                log.error("Error evaluating formula for indicator {} and activity {}",
+                        indicator.getId(), activity.getId());
                 result.setAuthorScore(0.0);
             }
         }

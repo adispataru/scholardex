@@ -13,6 +13,7 @@ import ro.uvt.pokedex.core.service.model.URAPUniversityRankingService;
 
 import java.util.List;
 import java.util.Optional;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
 
 /**
  * Scoring service that evaluates journals using the Impact Factor metric.
@@ -93,6 +94,11 @@ public class UniversityRankScoringService extends AbstractForumScoringService {
     /* ------------------------------------------------------------------ */
     /*  Misc                                                              */
     /* ------------------------------------------------------------------ */
+
+    @Override
+    public ScoringStrategy strategy() {
+        return ScoringStrategy.UNI_RANKING;
+    }
 
     @Override
     public String getDescription() {

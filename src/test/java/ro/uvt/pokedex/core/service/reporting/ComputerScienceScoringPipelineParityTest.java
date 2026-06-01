@@ -17,12 +17,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.BeforeEach;
 
 class ComputerScienceScoringPipelineParityTest {
 
     @Test
     void scoringPipelineMatchesFrozenBaselineForMixedComputerScienceDataset() {
         ReportingLookupPort lookupPort = mock(ReportingLookupPort.class);
+        org.mockito.Mockito.lenient().when(lookupPort.maxAvailableYear()).thenReturn(2023);
         SenseRankingRepository senseRankingRepository = mock(SenseRankingRepository.class);
         ScoringFactoryService scoringFactoryService = mock(ScoringFactoryService.class);
 
@@ -32,7 +34,7 @@ class ComputerScienceScoringPipelineParityTest {
         ComputerScienceScoringService computerScienceScoringService =
                 new ComputerScienceScoringService(journalService, conferenceService, bookService, lookupPort);
         ScientificProductionService scientificProductionService =
-                new ScientificProductionService(scoringFactoryService);
+                new ScientificProductionService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
 
         when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(computerScienceScoringService);
 

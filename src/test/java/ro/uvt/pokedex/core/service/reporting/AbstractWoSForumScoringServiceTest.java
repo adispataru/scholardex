@@ -6,6 +6,7 @@ import ro.uvt.pokedex.core.model.WoSRanking;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
 
 class AbstractWoSForumScoringServiceTest {
 
@@ -76,6 +77,11 @@ class AbstractWoSForumScoringServiceTest {
             Score score = new Score();
             score.setCoreRankingEquivalent(CoreConferenceRanking.Rank.NON_RANK.name());
             return score;
+        }
+
+        @Override
+        public ScoringStrategy strategy() {
+            return ScoringStrategy.CS;  // arbitrary — these stubs are tested directly, not via the factory
         }
 
         @Override

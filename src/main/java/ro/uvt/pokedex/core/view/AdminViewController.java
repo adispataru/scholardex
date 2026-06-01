@@ -307,6 +307,26 @@ public class AdminViewController {
         return "redirect:/admin/indicators";
     }
 
+    /**
+     * H52 slice 3: translates the {@code @Version} stale-write into a graceful
+     * redirect. Scoped to {@code /admin/indicators*} so other admin resources
+     * (which still bubble up the raw 500) are unaffected until they grow their
+     * own handlers.
+     */
+    @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+    public String handleIndicatorStaleWrite(org.springframework.dao.OptimisticLockingFailureException ex,
+                                            jakarta.servlet.http.HttpServletRequest request,
+                                            RedirectAttributes redirectAttributes) {
+        String uri = request.getRequestURI();
+        if (uri == null || !uri.startsWith("/admin/indicators")) {
+            throw ex;
+        }
+        log.warn("Indicator stale write rejected on {}: {}", uri, ex.getMessage());
+        redirectAttributes.addFlashAttribute("errorMessage",
+                "This indicator was edited by someone else. Please reload and re-apply your changes.");
+        return "redirect:/admin/indicators";
+    }
+
     @GetMapping("/indicators/edit/{id}")
     public String editIndicator(@PathVariable String id, Model model) {
 

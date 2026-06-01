@@ -10,6 +10,7 @@ import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
 
 /**
  * Combined scoring service that delegates to appropriate specialized services based on publication type.
@@ -128,6 +129,11 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
     /* ------------------------------------------------------------------ */
     /*  Misc                                                              */
     /* ------------------------------------------------------------------ */
+
+    @Override
+    public ScoringStrategy strategy() {
+        return ScoringStrategy.CS;
+    }
 
     @Override
     public String getDescription() {

@@ -16,6 +16,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.BeforeEach;
 
 @ExtendWith(MockitoExtension.class)
 class ArtEventScoringServiceTest {
@@ -25,6 +26,11 @@ class ArtEventScoringServiceTest {
     @Mock
     private ReportingLookupPort lookupPort;
 
+
+    @BeforeEach
+    void stubMaxAvailableYear() {
+        org.mockito.Mockito.lenient().when(lookupPort.maxAvailableYear()).thenReturn(2023);
+    }
     @Test
     void activityEventNameMapsToInternationalTopScore() {
         ArtEventScoringService service = new ArtEventScoringService(artisticEventRepository, lookupPort);

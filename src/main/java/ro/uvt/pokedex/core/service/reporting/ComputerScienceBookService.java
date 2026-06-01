@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
 
 
 @Service
@@ -217,6 +218,11 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
             return List.of();
         }
         return resolvePublisher(publisher).map(List::of).orElseGet(List::of);
+    }
+
+    @Override
+    public ScoringStrategy strategy() {
+        return ScoringStrategy.CS_SENSE;
     }
 
     @Override

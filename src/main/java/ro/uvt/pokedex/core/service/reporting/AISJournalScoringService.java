@@ -13,6 +13,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
 import java.util.List;
 import java.util.Optional;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
 
 @Service
 public class AISJournalScoringService extends AbstractWoSForumScoringService {
@@ -95,6 +96,11 @@ public class AISJournalScoringService extends AbstractWoSForumScoringService {
     /* ------------------------------------------------------------------ */
     /*  Misc                                                              */
     /* ------------------------------------------------------------------ */
+
+    @Override
+    public ScoringStrategy strategy() {
+        return ScoringStrategy.AIS;
+    }
 
     @Override
     public String getDescription() {

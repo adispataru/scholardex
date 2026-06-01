@@ -15,6 +15,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
 import java.util.List;
 import java.util.Optional;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
 
 /**
  * Scoring service that evaluates journals using the Impact Factor metric.
@@ -24,7 +25,6 @@ import java.util.Optional;
 public class ImpactFactorJournalScoringService extends AbstractWoSForumScoringService {
 
     private static final Logger logger = LoggerFactory.getLogger(ImpactFactorJournalScoringService.class);
-    private static final int LAST_YEAR = 2023;
     private final Counter requestsCounter;
     private final Counter successCounter;
     private final Counter missingCounter;
@@ -49,8 +49,9 @@ public class ImpactFactorJournalScoringService extends AbstractWoSForumScoringSe
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = getAllowedYearsForPublication(publication, indicator);
-        if(allowedYears.size() == 1 & allowedYears.getFirst() > LAST_YEAR){
-            allowedYears.set(0, LAST_YEAR);
+        int maxYear = lookupPort.maxAvailableYear();
+        if(allowedYears.size() == 1 & allowedYears.getFirst() > maxYear){
+            allowedYears.set(0, maxYear);
         }
 
         if (isArticleOrReview(publication)) {
@@ -123,6 +124,11 @@ public class ImpactFactorJournalScoringService extends AbstractWoSForumScoringSe
     /* ------------------------------------------------------------------ */
     /*  Misc                                                              */
     /* ------------------------------------------------------------------ */
+
+    @Override
+    public ScoringStrategy strategy() {
+        return ScoringStrategy.IMPACT_FACTOR;
+    }
 
     @Override
     public String getDescription() {
