@@ -79,14 +79,29 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
 
     private Boolean compareScoresByPointsAndMultiplier(Score score, ScoreResult scoreResult) {
         if(Math.abs(score.getScore() - scoreResult.bestPoints.get()) < 0.00000001) {
-            if(score.getExtra().containsKey("M") && scoreResult.extra.get("M") != null) {
-                return (int) score.getExtra().get("M") > (int) scoreResult.extra.get("M");
-            } else {
-                return false;
+            // H52 slice 9: prefer the typed multiplier slot; fall back to the
+            // {@code extra["M"]} bag for any score loaded from historical Mongo
+            // data or imported via H50 before slice 9 shipped.
+            Integer scoreM = readMultiplier(score);
+            Integer resultM = readMultiplierFromExtra(scoreResult.extra);
+            if (scoreM != null && resultM != null) {
+                return scoreM > resultM;
             }
+            return false;
         } else {
             return score.getScore() > scoreResult.bestPoints.get();
         }
+    }
+
+    private static Integer readMultiplier(Score score) {
+        if (score.getMultiplier() != null) return score.getMultiplier();
+        Object legacy = score.getExtra() != null ? score.getExtra().get("M") : null;
+        return legacy instanceof Integer i ? i : null;
+    }
+
+    private static Integer readMultiplierFromExtra(java.util.Map<String, Object> extra) {
+        Object legacy = extra != null ? extra.get("M") : null;
+        return legacy instanceof Integer i ? i : null;
     }
 
     /* ------------------------------------------------------------------ */
@@ -135,6 +150,10 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
             returnScore.setQuarter(quarterStr);
         }
 
+        // H52 slice 9 dual-write: typed slot is the new contract; extra["M"] stays
+        // populated so consumers that haven't migrated and serialized H50 payloads
+        // round-trip identically. Commit-3 slice will drop the extra write.
+        returnScore.setMultiplier(multiplier);
         returnScore.getExtra().put("M", multiplier);
 
         return Optional.of(returnScore);

@@ -43,6 +43,8 @@ class EconomicsJournalScoringServiceTest {
         assertEquals(2.5, score.getScore());
         assertEquals("Q1", score.getQuarter());
         assertEquals(10, score.getExtra().get("M"));
+        // H52 slice 9: typed slot must be populated identically to extra["M"] (dual-write).
+        assertEquals(10, score.getMultiplier());
     }
 
     @Test

@@ -80,6 +80,13 @@ public abstract class AbstractForumScoringService implements ScoringService {
         s.setScoringSource(r.scoringSource.get());
         s.setScoringInfo(new HashMap<>(r.scoringInfo));
         s.setExtra(r.extra);
+        // H52 slice 9 dual-write: the intermediate ScoreResult only carries the
+        // open-bag {@code extra} map; back-port the typed slot here so the final
+        // Score has both populated for any consumer that's migrated to the typed
+        // contract. Producer of {@code "M"} today is EconomicsJournalScoringService.
+        if (r.extra != null && r.extra.get("M") instanceof Integer m) {
+            s.setMultiplier(m);
+        }
         return s;
     }
 

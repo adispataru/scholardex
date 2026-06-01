@@ -22,11 +22,27 @@
 | Commit 1 / slice 7 — `FormulaSandbox` denylist scan over the canonical form, wired into both `FormulaEvaluator` (compile-cache miss) and `IndicatorFormulaHashStamper` (save time) | ✅ done | 11 tests; threat model is footgun prevention not adversarial — empty `ParserContext` doesn't actually block class access in MVEL |
 | Commit 1 / slice 8a — `ScoringService.LAST_YEAR` interface constant removed; replaced with `ReportingLookupPort.maxAvailableYear()` default method | ✅ done | 4 production sites + 18 test files patched; landmine pinned (test stub returning 2099 un-capped a year filter — corrected to 2023) |
 | Commit 1 / slice 8b — AST-based formula canonicalizer (`FormulaTokenizer` + normalize); closes the `S+1` vs `S + 1` hash gap | ✅ done | 13 new tests; migration runner now re-stamps stale slice-5 hashes; live verified end-to-end |
-| Commit 1 / slice 9 — per-kind adapter types (`BaseScore`/`Provenance`) replacing `Score.extra` open-bag | ⏳ next | touches the strategy-service signature; biggest interface-change slice |
-| Commit 2 — fixture-based replay-equality + decommission legacy reads | ⏳ later | |
+| Commit 1 / slice 9 — typed `Score.multiplier` replaces the `Score.extra["M"]` open-bag contract; dual-write preserves legacy readers and H50 round-trip | ✅ done | 1 added assertion; `BaseScore`/`Provenance` wrapper records intentionally deferred — they'd be unused-code without consumer migration which is Commit 3 territory |
+| Commit 2 / slice 10 — replay-shape gate against the 2463-row `userIndicatorResults` cache | ✅ done | 57 rawGraph blobs (one per distinct fingerprint) snapshotted into `src/test/resources/h52/replay-fixture.json`, PII redacted; `H52ReplayShapeTest` asserts per-view shape invariants — tripwire for Commit 3 |
+| Commit 3 — switch reads to typed slot, delete `Indicator.Type`/`Strategy`/`Score.extra`/etc. | ⏳ next | the deletion pass; tripwire from slice 10 must stay green |
 | Commit 3 — switch reads, drop legacy fields | ⏳ later | |
 | Commit 4 — UI surfaces | ⏳ later | |
 | Replay-equality test gate against 2,463-row `userIndicatorResults` cache | ⏳ later | fixture path: `src/test/resources/h52/replay-fixture.json` |
+
+Build at end of slice 10: **2078 tests, 0 failures.** Commit-2's replay-shape gate is in
+place. 57 production rawGraph blobs (one per distinct fingerprint in the live
+`userIndicatorResults` cache) are committed under `src/test/resources/h52/replay-fixture.json`
+with PII redacted. The 8-test `H52ReplayShapeTest` deserializes every blob through current
+Jackson and asserts per-view shape invariants — this is the tripwire that Commit 3's
+decommission pass has to leave green.
+
+Build at end of slice 9: **2070 tests, 0 failures.** `Score.multiplier` is now a typed
+field; `EconomicsJournalScoringService` writes both it and the legacy `extra["M"]` so
+historical scores and H50 imports continue to round-trip. The intermediate `ScoreResult`
+builder in `AbstractForumScoringService` back-ports the typed slot in `createScore`, so
+the final returned `Score` always has both populated when an Economics multiplier is
+involved. Wrapper records (`BaseScore`/`Provenance`) deliberately deferred — adding them
+without consumers would be the same unused-code window I avoided in slice 4.
 
 Build at end of slice 8b: **2070 tests, 0 failures.** The text-level whitespace pass is
 replaced by a real tokenizer; `S+1` and `S + 1` now produce the same canonical form and
@@ -919,6 +935,122 @@ stale doc — no explicit "v5 → v8b" schema flag needed.
 **Build status after slice 8b: 2070 tests, 0 failures** (+12 in `FormulaTokenizerTest`,
 +1 in `FormulaCanonicalizerTest`, -1 net adjustment from consolidating the slice-5
 "collapses but doesn't delete" test that's now invalid).
+
+#### Slice 9 — typed `Score.multiplier` (DONE)
+
+The only field of `Score.extra` ever populated in production is `"M"` — the
+EconomicsJournal multiplier (1, 2, or 3 depending on category). Slice 9 promotes it
+to a typed slot:
+
+```java
+private Integer multiplier;
+```
+
+**Dual-write keeps the slice tight.** `EconomicsJournalScoringService.computeEconomicsScore`
+now does both:
+
+```java
+returnScore.setMultiplier(multiplier);
+returnScore.getExtra().put("M", multiplier);   // ← legacy compat
+```
+
+So historical persisted scores keep round-tripping via `extra`, H50 import files
+written before this slice still deserialize identically, and consumers that have
+already migrated to the typed slot get it without ceremony. Commit 3 (slice 11+)
+deletes the `extra` write.
+
+**Intermediate-builder back-port.** `AbstractForumScoringService.ScoreResult` is the
+accumulator used during the per-(year, category) tie-break. It only tracks `extra`,
+not the typed multiplier, so the per-iteration Score's typed slot was getting lost
+when `createScore(ScoreResult)` built the final value. Fix: `createScore` now reads
+`r.extra.get("M")` and calls `s.setMultiplier(m)` if present. The final returned
+Score always has both populated when an Economics multiplier is involved. The
+intermediate builder doesn't need its own typed slot — the back-port at the seam is
+enough.
+
+**`EconomicsJournalScoringService.compareScoresByPointsAndMultiplier`** reads the
+typed slot first via a new `readMultiplier(score)` helper, with `extra["M"]` as
+fallback. The tie-break logic is unchanged.
+
+**Consumers unchanged this slice.** `ScientificProductionService` and
+`ActivityReportingService` still bind `M` into `FormulaContext` via `putAll(extra)`,
+which continues to work because of dual-write. Commit 3 will switch those reads to
+the typed slot once we drop the `extra` write.
+
+**`BaseScore` and `Provenance` records intentionally not introduced.** The doc had
+listed them as part of this slice but they'd be unused code at this point — same
+"unused-code window" argument I made in slice 4 against introducing adapter types
+without their wiring. Commit 3 (the read-switch) is the right window for those
+typed wrappers, alongside the strategy-service signature change that consumes them.
+
+**Build status after slice 9: 2070 tests, 0 failures** (+1 added assertion in
+`EconomicsJournalScoringServiceTest.articleUsesEconomicsCategoryMultiplierTen` proving
+the typed slot is populated identically to `extra["M"]`).
+
+#### Slice 10 — replay-shape gate against the 2,463-row cache (DONE)
+
+**Scope decision.** The doc had pitched Commit 2 as a "replay-equality" test against
+2,463 cached scores, but didn't specify *how* equality would be checked. After staring
+at the actual cache shape, three approaches presented themselves:
+
+| Approach | Catches | Reproducibility | Verdict |
+|---|---|---|---|
+| **A. Shape gate**: snapshot N rawGraph blobs, deserialize, assert per-view shape invariants | Schema drift from Commit-3 deletions | Committed snapshots — runs anywhere | ✅ chosen |
+| **B. Numeric replay**: re-run scoring against live data, compare to cached totals | Algorithmic regressions | Brittle — depends on upstream WoS/Scopus data not drifting | ❌ unreliable in CI |
+| **C. Full snapshot equality**: capture every blob, re-serialize, byte-compare | Drift but also re-serialization noise | Tautological — same code path on both sides | ❌ low signal |
+
+A wins because the realistic Commit-3 risk is *exactly* schema drift — deleting
+`Indicator.Type` / `Indicator.Strategy` / `Score.extra` / `Score.errors` etc. could
+break deserialization of older cached blobs in ways the current code path doesn't
+exercise. The shape gate proves the cached JSON shape stays *parseable* under future
+schema changes.
+
+**Fixture build.** A `mongosh` aggregation captured one rawGraph per distinct
+fingerprint — 57 blobs in total. That's complete coverage of every shape that exists
+in production today (the 2,463 rows collapse to 57 unique fingerprints — see "top
+fingerprints by row count" diagnostic above for the long-tail distribution). The
+fixture lives at `src/test/resources/h52/replay-fixture.json` with metadata:
+`schemaVersion`, `capturedAt`, `capturedFrom`, `fingerprintCount`, `entries[]`.
+
+Re-generation procedure (committed in this doc for future captures):
+
+```bash
+mongosh test --quiet --eval '
+  const docs = db.userIndicatorResults.aggregate([
+    {$group: {_id: "$fingerprint", indicatorId: {$first: "$indicatorId"},
+              viewName: {$first: "$viewName"}, rawGraph: {$first: "$rawGraph"}}},
+    {$sort: {_id: 1}}
+  ]).toArray();
+  // … wrap with schemaVersion + capturedAt …
+' > src/test/resources/h52/replay-fixture.json
+```
+
+**PII redaction.** 15 of the 57 blobs had a researcher email embedded inside their
+rawGraph (`userEmail`, `researcherId`). Python regex pass replaced every email with
+`redacted@test.local` before commit. Researcher-authored publication titles are
+public scholarly metadata and left intact.
+
+**Per-view shape invariants discovered during the slice.** The empty-results case
+trapped the first test draft: 18 of 38 `user/indicators-apply` entries had only
+`{indicator, total}` because the score lookup returned nothing. Per-view universal
+keys (intersection across all entries of that view):
+
+| viewName | Entries | Universal keys |
+|---|---|---|
+| `user/indicators-apply` | 38 | `indicator`, `total` |
+| `user/indicators-apply-activities` | 14 | `activities`, `allQuarters`, `allValues`, `indicator`, `scores`, `total` |
+| `user/indicators-apply-publications` | 3 | `allQuarters`, `allValues`, `forumMap`, `indicator`, `publications`, `scores`, `total` |
+| `user/indicators-apply-citations` | 2 | `allQuarters`, `allValues`, `citationMap`, `forumMap`, `indicator`, `publications`, `scores`, `total`, `totalCit` |
+
+The test now pins these per-view guarantees individually — the universal assertion
+across all 57 entries is just `indicator` + `total`.
+
+**Generic JsonNode over typed view-model classes.** Tests use Jackson's `JsonNode`
+rather than binding to the view model. The goal is to prove the cached JSON shape
+stays *parseable*; binding to view-model classes would couple this test to refactors
+of those classes, which is the opposite of the tripwire contract.
+
+**Build status after slice 10: 2078 tests, 0 failures** (+8 in `H52ReplayShapeTest`).
 
 ### Commit 2 — write-through migration script
 
