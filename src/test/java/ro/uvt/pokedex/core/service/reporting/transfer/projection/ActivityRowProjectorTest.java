@@ -57,7 +57,11 @@ class ActivityRowProjectorTest {
         Score s = new Score();
         s.setAuthorScore(12.0);
         s.setCoreRankingEquivalent("AA");
-        s.setDetails("PI on Horizon Europe project");
+        // H52 slice 11c: Score.details was the row-description source on the
+        // live-Score path. With the field deleted, the projector's reflective
+        // {@code getMethod("getDetails")} fails and falls back to the activity
+        // label (then activity-id as last resort). Cached-blob payloads that
+        // still carry "details" continue to flow via the Map path.
 
         Map<String, Object> graph = Map.of(
                 "outputMode", "activities",
@@ -70,9 +74,40 @@ class ActivityRowProjectorTest {
 
         assertThat(rows).hasSize(1);
         assertThat(rows.get(0).getActivityName()).isEqualTo("Granturi");
-        assertThat(rows.get(0).getDescription()).isEqualTo("PI on Horizon Europe project");
+        // Slice 11c: live Score no longer carries a typed description; projector
+        // falls back to activity label (the indicator's activity name "Granturi"
+        // can't be reached via the activity-id path, so we get the key).
+        assertThat(rows.get(0).getDescription()).isEqualTo("act-key");
         assertThat(rows.get(0).getCategory()).isEqualTo("AA");
         assertThat(rows.get(0).getScore()).isEqualTo(12.0);
+    }
+
+    @Test
+    void cachedMapBlobsKeepDetailsAsRowDescription() {
+        // H52 slice 11c: cached rawGraph blobs from before this slice carry a
+        // "details" string at the score-map level. The projector's Map path
+        // still reads it — proves slice 11c doesn't lose backward-compat with
+        // historical cached payloads.
+        UserIndicatorResultService svc = mock(UserIndicatorResultService.class);
+        Indicator indicator = activityIndicator("ind-3", "Granturi");
+
+        Map<String, Object> scoreMap = new java.util.HashMap<>();
+        scoreMap.put("authorScore", 8.0);
+        scoreMap.put("coreRankingEquivalent", "B");
+        scoreMap.put("details", "Co-PI on Erasmus+ project");
+
+        Map<String, Object> graph = Map.of(
+                "outputMode", "activities",
+                "scores", Map.of("act-key-2", scoreMap)
+        );
+        when(svc.getOrCreateLatest("u@x", "ind-3")).thenReturn(dto(graph));
+
+        ActivityRowProjector projector = new ActivityRowProjector(svc);
+        List<ActivitySnapshotItem> rows = projector.project("u@x", indicator, ActivityRowProjector.ROLE_KEY);
+
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).getDescription()).isEqualTo("Co-PI on Erasmus+ project");
+        assertThat(rows.get(0).getScore()).isEqualTo(8.0);
     }
 
     @Test

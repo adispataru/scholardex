@@ -34,7 +34,8 @@ class ActivityReportingServiceTest {
 
         assertEquals(1.0, score.getScore());
         assertEquals(7.0, score.getAuthorScore());
-        assertTrue(score.getDetails().contains("hours: 3.0"));
+        // H52 slice 11c: Score.details deleted; the debug breadcrumb assertion
+        // is gone. The numeric assertions above are the real contract.
     }
 
     @Test
@@ -68,8 +69,10 @@ class ActivityReportingServiceTest {
         assertEquals(1.0, score.getScore());
         assertEquals(4.0, score.getAuthorScore());
         assertEquals("Generic Activity", score.getCoreRankingEquivalent());
-        assertTrue(score.getDetails().contains("Buget: 270000.0"));
-        assertTrue(score.getDetails().contains("Rol: Membru"));
+        // H52 slice 11c: Score.details deleted; the activity-field breadcrumb
+        // strings used to land here. The formula result itself (authorScore=4.0,
+        // which depends on Buget=270000 and Rol=Membru) is the proof those
+        // variables were bound correctly.
     }
 
     @Test
@@ -84,7 +87,8 @@ class ActivityReportingServiceTest {
         delegated.setCoreRankingEquivalent("A");
         delegated.setScoringSource("SCOPUS+WOS");
         delegated.setScoringInfo(Map.of("source", "wos"));
-        delegated.setExtra(Map.of("M", 4));
+        // H52 slice 11c: typed slot. Was {@code delegated.setExtra(Map.of("M", 4))}.
+        delegated.setMultiplier(4);
 
         when(scoringFactoryService.getScoringService(Indicator.Strategy.CS_JOURNAL)).thenReturn(scoringService);
         when(scoringService.getScore(activity, indicator)).thenReturn(delegated);
@@ -95,7 +99,7 @@ class ActivityReportingServiceTest {
         assertEquals(12.0, score.getAuthorScore());
         assertEquals("Q1", score.getQuarter());
         assertEquals("SCOPUS+WOS", score.getScoringSource());
-        assertEquals(4, score.getExtra().get("M"));
+        assertEquals(4, score.getMultiplier());
     }
 
     @Test
@@ -130,12 +134,31 @@ class ActivityReportingServiceTest {
     private Indicator indicator(Indicator.Strategy strategy, String formula) {
         Indicator indicator = new Indicator();
         indicator.setScoringStrategy(strategy);
+        // H52 slice 11d.1: getEffectiveKind() needs both legacy fields populated
+        // to synthesize a kind. Production indicators always carry both; tests
+        // historically only set strategy because the legacy equality check didn't
+        // need outputType. Set a strategy-appropriate outputType so the typed
+        // accessors work.
+        indicator.setOutputType(legacyOutputTypeFor(strategy));
         indicator.setFormula(formula);
         Domain d = new Domain();
         d.setName("ALL");
         indicator.setDomain(d);
         indicator.setId("ind-1");
         return indicator;
+    }
+
+    private static Indicator.Type legacyOutputTypeFor(Indicator.Strategy strategy) {
+        // Mirrors the production (Type, Strategy) combinations surveyed in
+        // LegacyMappingTest. Defaults to PUBLICATIONS for anything not in the
+        // explicit map — every test that needs a different default sets one
+        // by hand.
+        return switch (strategy) {
+            case GENERIC_ACTIVITY -> Indicator.Type.GENERIC_ACTIVITIES;
+            case ART_EVENT -> Indicator.Type.ACTIVITY_EVENT;
+            case UNI_RANKING -> Indicator.Type.ACTIVITY_UNIVERSITY;
+            default -> Indicator.Type.PUBLICATIONS;
+        };
     }
 
     private ActivityInstance activity(String id, Map<String, String> fields, boolean numericFields) {

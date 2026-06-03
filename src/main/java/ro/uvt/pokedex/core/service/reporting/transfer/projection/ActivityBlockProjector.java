@@ -84,19 +84,18 @@ public class ActivityBlockProjector {
 
     private List<ActivitySnapshotItem> projectBlock(String userEmail, Indicator indicator,
                                                     String roleKey, BindingBlock block) {
-        Indicator.Type t = indicator.getOutputType();
-        if (t == null) return List.of();
-        return switch (t) {
-            case PUBLICATIONS, PUBLICATIONS_MAIN_AUTHOR, PUBLICATIONS_COAUTHOR ->
-                    projectPublicationRawGraph(userEmail, indicator, roleKey, block);
-            case GENERIC_ACTIVITIES, ACTIVITY_FORUM, ACTIVITY_EVENT, ACTIVITY_PROJECT, ACTIVITY_UNIVERSITY ->
-                    projectActivityRawGraph(userEmail, indicator, roleKey, block);
-            default -> {
-                LOG.debug("Block '{}': indicator {} has outputType {} — no projection support; skipping",
-                        block.getActivityName(), indicator.getId(), t);
-                yield List.of();
-            }
-        };
+        // H52 slice 11d.2: dispatch on typed kind. Publication- and activity-shaped
+        // indicators take separate code paths; citations have no projection support
+        // here (the legacy enum's CITATIONS_* cases fell through the default arm).
+        if (indicator.isPublicationOutput()) {
+            return projectPublicationRawGraph(userEmail, indicator, roleKey, block);
+        }
+        if (indicator.isActivityOutput()) {
+            return projectActivityRawGraph(userEmail, indicator, roleKey, block);
+        }
+        LOG.debug("Block '{}': indicator {} has unsupported output kind {} — no projection support; skipping",
+                block.getActivityName(), indicator.getId(), indicator.getEffectiveKind());
+        return List.of();
     }
 
     private List<ActivitySnapshotItem> projectPublicationRawGraph(String userEmail, Indicator indicator,

@@ -16,6 +16,7 @@ import ro.uvt.pokedex.core.service.application.PersistenceYearSupport;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec;
 
 public abstract class AbstractForumScoringService implements ScoringService {
 
@@ -64,7 +65,14 @@ public abstract class AbstractForumScoringService implements ScoringService {
                 new AtomicReference<>(WoSRanking.Quarter.NOT_FOUND);
         final AtomicReference<String> scoringSource = new AtomicReference<>(null);
         final Map<String, Object> scoringInfo = new HashMap<>();
-        final Map<String, Object> extra = new HashMap<>();
+        /**
+         * H52 slice 11: typed multiplier slot on the intermediate accumulator.
+         * Mirrors {@link Score#getMultiplier()} so the per-candidate tie-break in
+         * {@link EconomicsJournalScoringService#compareScoresByPointsAndMultiplier}
+         * has a typed source of truth. Slice 11c removed the parallel
+         * {@code extra} map that used to carry the same value as {@code extra["M"]}.
+         */
+        final AtomicReference<Integer> bestMultiplier = new AtomicReference<>(null);
     }
 
     protected ScoreResult initializeScoreResult() {
@@ -79,14 +87,7 @@ public abstract class AbstractForumScoringService implements ScoringService {
         s.setQuarter(r.bestQuarter.get().toString());
         s.setScoringSource(r.scoringSource.get());
         s.setScoringInfo(new HashMap<>(r.scoringInfo));
-        s.setExtra(r.extra);
-        // H52 slice 9 dual-write: the intermediate ScoreResult only carries the
-        // open-bag {@code extra} map; back-port the typed slot here so the final
-        // Score has both populated for any consumer that's migrated to the typed
-        // contract. Producer of {@code "M"} today is EconomicsJournalScoringService.
-        if (r.extra != null && r.extra.get("M") instanceof Integer m) {
-            s.setMultiplier(m);
-        }
+        s.setMultiplier(r.bestMultiplier.get());
         return s;
     }
 
@@ -164,7 +165,13 @@ public abstract class AbstractForumScoringService implements ScoringService {
                 }
                 result.bestYear.set(year);
                 copyProvenance(points.get(), result);
-                result.extra.putAll(points.get().getExtra());
+                // H52 slice 11: accumulate the typed multiplier from the winning
+                // candidate. EconomicsJournalScoringService is the only producer
+                // today; every other strategy returns null which keeps the slot
+                // null on the final Score.
+                if (points.get().getMultiplier() != null) {
+                    result.bestMultiplier.set(points.get().getMultiplier());
+                }
             }
         }
 
@@ -228,7 +235,7 @@ public abstract class AbstractForumScoringService implements ScoringService {
                 publication.getId(),
                 logger
         );
-        publicationYear.ifPresent(pubYear -> allowedYears.addAll(Indicator.parseYearRange(indicator.getScoreYearRange(), pubYear)));
+        publicationYear.ifPresent(pubYear -> allowedYears.addAll(indicator.getEffectiveScoreYearRange().allowedYears(pubYear)));
         int maxYear = lookupPort.maxAvailableYear();
         if (allowedYears.isEmpty()) {
             publicationYear.ifPresentOrElse(

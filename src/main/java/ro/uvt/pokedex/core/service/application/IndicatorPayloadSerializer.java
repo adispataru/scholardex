@@ -137,10 +137,16 @@ public class IndicatorPayloadSerializer {
     }
 
     private boolean looksLikeScoreMap(Map<String, Object> value) {
+        // H52 slice 11c: the {@code details}/{@code extra} markers used to disambiguate
+        // historical score maps. Slice 9 added {@code multiplier} as the typed slot;
+        // we still recognize the legacy markers for backward parsing of cached blobs
+        // produced before slice 11c — no false positives in practice because the
+        // remaining markers are all score-only.
         return value.containsKey("score")
                 || value.containsKey("authorScore")
                 || value.containsKey("coreRankingEquivalent") || value.containsKey("category")
                 || value.containsKey("quarter")
+                || value.containsKey("multiplier")
                 || value.containsKey("details")
                 || value.containsKey("extra");
     }
@@ -158,9 +164,19 @@ public class IndicatorPayloadSerializer {
         score.setScoringSource(asString(value.get("scoringSource")));
         score.setScoringInfo(asMap(value.get("scoringInfo")));
         score.setAuthorScore(asDouble(value.get("authorScore")));
-        score.setErrors(asStringMap(value.get("errors")));
-        score.setExtra(asMap(value.get("extra")));
-        score.setDetails(asString(value.get("details")));
+        // H52 slice 11c: typed multiplier replaces the legacy {@code extra["M"]} read.
+        // For cached blobs written before slice 9 (no top-level multiplier field),
+        // fall back to the embedded extra map so the value survives the round-trip.
+        Object typedMultiplier = value.get("multiplier");
+        if (typedMultiplier instanceof Number n) {
+            score.setMultiplier(n.intValue());
+        } else if (value.get("extra") instanceof Map<?, ?> legacyExtra
+                && legacyExtra.get("M") instanceof Number legacyM) {
+            score.setMultiplier(legacyM.intValue());
+        }
+        // {@code errors}, {@code extra}, {@code details} keys present in pre-slice-11c
+        // blobs are silently ignored — the Score model no longer has them. The cached
+        // rawGraph Map still carries the original strings for templates that want them.
         return score;
     }
 

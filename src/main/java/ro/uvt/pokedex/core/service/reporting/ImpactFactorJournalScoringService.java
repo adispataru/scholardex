@@ -16,6 +16,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import java.util.List;
 import java.util.Optional;
 import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec;
 
 /**
  * Scoring service that evaluates journals using the Impact Factor metric.
@@ -94,7 +95,7 @@ public class ImpactFactorJournalScoringService extends AbstractWoSForumScoringSe
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears =
-                Indicator.parseYearRange(indicator.getScoreYearRange(), activity.getYear());
+                indicator.getEffectiveScoreYearRange().allowedYears(activity.getYear());
 
         computeScores(
                 domain,

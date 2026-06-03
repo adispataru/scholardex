@@ -42,8 +42,9 @@ class EconomicsJournalScoringServiceTest {
 
         assertEquals(2.5, score.getScore());
         assertEquals("Q1", score.getQuarter());
-        assertEquals(10, score.getExtra().get("M"));
-        // H52 slice 9: typed slot must be populated identically to extra["M"] (dual-write).
+        // H52 slice 11b: typed-only read; the slice-9 extra["M"] dual-write was
+        // retired after all consumers (and the EJSS tie-break) switched to the
+        // typed slot via ScoreResult.bestMultiplier.
         assertEquals(10, score.getMultiplier());
     }
 
@@ -69,7 +70,7 @@ class EconomicsJournalScoringServiceTest {
         Score score = service.getScore(activity, indicator("IY"));
 
         assertEquals(1.0, score.getScore());
-        assertEquals(6, score.getExtra().get("M"));
+        assertEquals(6, score.getMultiplier());
     }
 
     @Test
@@ -84,7 +85,7 @@ class EconomicsJournalScoringServiceTest {
         Score score = service.getScore(publication("ar"), indicator("IY"));
 
         assertEquals(2.0, score.getScore());
-        assertEquals(10, score.getExtra().get("M"));
+        assertEquals(10, score.getMultiplier());
         assertEquals("Q1", score.getQuarter());
     }
 
@@ -100,7 +101,7 @@ class EconomicsJournalScoringServiceTest {
         Score score = service.getScore(publication("ar"), indicator("IY"));
 
         assertEquals(2.0, score.getScore());
-        assertEquals(10, score.getExtra().get("M"));
+        assertEquals(10, score.getMultiplier());
         assertEquals("Q1", score.getQuarter());
         assertNull(score.getScoringSource());
     }
@@ -116,7 +117,7 @@ class EconomicsJournalScoringServiceTest {
         Score score = service.getScore(publication("ar"), indicator("IY"));
 
         assertEquals(1.7, score.getScore());
-        assertEquals(8, score.getExtra().get("M"));
+        assertEquals(8, score.getMultiplier());
         assertEquals("Q2", score.getQuarter());
     }
 

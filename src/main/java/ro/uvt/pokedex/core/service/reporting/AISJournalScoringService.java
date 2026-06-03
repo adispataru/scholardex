@@ -14,6 +14,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import java.util.List;
 import java.util.Optional;
 import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec;
 
 @Service
 public class AISJournalScoringService extends AbstractWoSForumScoringService {
@@ -71,7 +72,7 @@ public class AISJournalScoringService extends AbstractWoSForumScoringService {
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears =
-                Indicator.parseYearRange(indicator.getScoreYearRange(), activity.getYear());
+                indicator.getEffectiveScoreYearRange().allowedYears(activity.getYear());
 
         computeScores(
                 domain,

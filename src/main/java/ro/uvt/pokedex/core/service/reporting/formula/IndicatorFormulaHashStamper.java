@@ -27,6 +27,14 @@ public class IndicatorFormulaHashStamper extends AbstractMongoEventListener<Indi
     @Override
     public void onBeforeConvert(BeforeConvertEvent<Indicator> event) {
         Indicator indicator = event.getSource();
+        // H52 slice 11d.3: synthesize the v1 typed fields from the legacy form
+        // values when only the latter are populated. Spring's @ModelAttribute
+        // binding sets the {@code @Transient} legacy fields from the admin form;
+        // without this hook the typed fields would round-trip as null and get
+        // wiped from the persisted doc, breaking later reads. Idempotent — only
+        // synthesizes when the typed field is missing.
+        synthesizeTypedFieldsFromLegacy(indicator);
+
         String formula = indicator.getFormula();
         if (formula == null || formula.isBlank()) {
             // Don't touch the hash; let the document round-trip with whatever was there
@@ -63,6 +71,34 @@ public class IndicatorFormulaHashStamper extends AbstractMongoEventListener<Indi
             // keeps a corrupted save from being silently mis-keyed.
             log.warn("Failed to stamp formulaHash on indicator id={} name='{}'; persisting without it. error={}",
                     indicator.getId(), indicator.getName(), ex.toString());
+        }
+    }
+
+    /**
+     * H52 slice 11d.3: fills in the typed v1 fields ({@code kind},
+     * {@code yearRangeSpec}, {@code scoreYearRangeSpec}, {@code selectorSpec})
+     * from the legacy values when the typed fields are null. Idempotent.
+     */
+    private static void synthesizeTypedFieldsFromLegacy(Indicator indicator) {
+        if (indicator.getKind() == null) {
+            ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind effective =
+                    indicator.getEffectiveKind();
+            if (effective != null) indicator.setKind(effective);
+        }
+        if (indicator.getYearRangeSpec() == null) {
+            ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec yrs =
+                    indicator.getEffectiveYearRange();
+            if (yrs != null) indicator.setYearRangeSpec(yrs);
+        }
+        if (indicator.getScoreYearRangeSpec() == null) {
+            ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec syrs =
+                    indicator.getEffectiveScoreYearRange();
+            if (syrs != null) indicator.setScoreYearRangeSpec(syrs);
+        }
+        if (indicator.getSelectorSpec() == null) {
+            ro.uvt.pokedex.core.model.reporting.scoring.Selector sel =
+                    indicator.getEffectiveSelector();
+            if (sel != null) indicator.setSelectorSpec(sel);
         }
     }
 }

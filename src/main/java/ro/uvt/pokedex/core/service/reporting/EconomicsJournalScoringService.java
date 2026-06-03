@@ -14,6 +14,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import java.util.List;
 import java.util.Optional;
 import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec;
 
 /**
  * Scoring service that evaluates Computer Science journals based on WoS quartiles.
@@ -79,11 +80,11 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
 
     private Boolean compareScoresByPointsAndMultiplier(Score score, ScoreResult scoreResult) {
         if(Math.abs(score.getScore() - scoreResult.bestPoints.get()) < 0.00000001) {
-            // H52 slice 9: prefer the typed multiplier slot; fall back to the
-            // {@code extra["M"]} bag for any score loaded from historical Mongo
-            // data or imported via H50 before slice 9 shipped.
+            // H52 slice 11: typed-only read on both sides. The intermediate
+            // ScoreResult exposes bestMultiplier now; EJSS writes via setMultiplier
+            // exclusively (no more extra["M"] dual-write).
             Integer scoreM = readMultiplier(score);
-            Integer resultM = readMultiplierFromExtra(scoreResult.extra);
+            Integer resultM = scoreResult.bestMultiplier.get();
             if (scoreM != null && resultM != null) {
                 return scoreM > resultM;
             }
@@ -93,15 +94,13 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
         }
     }
 
+    /**
+     * H52 slice 11c: typed-only read. The {@code Score.extra} bag is gone; pre-slice-9
+     * cached blobs lose their M value here but the cached {@code rawGraph} map still
+     * carries the original number for the view layer.
+     */
     private static Integer readMultiplier(Score score) {
-        if (score.getMultiplier() != null) return score.getMultiplier();
-        Object legacy = score.getExtra() != null ? score.getExtra().get("M") : null;
-        return legacy instanceof Integer i ? i : null;
-    }
-
-    private static Integer readMultiplierFromExtra(java.util.Map<String, Object> extra) {
-        Object legacy = extra != null ? extra.get("M") : null;
-        return legacy instanceof Integer i ? i : null;
+        return score.getMultiplier();
     }
 
     /* ------------------------------------------------------------------ */
@@ -115,7 +114,7 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = 
-                Indicator.parseYearRange(indicator.getScoreYearRange(), activity.getYear());
+                indicator.getEffectiveScoreYearRange().allowedYears(activity.getYear());
 
         computeScores(
                 domain,
@@ -150,11 +149,11 @@ public class EconomicsJournalScoringService extends AbstractWoSForumScoringServi
             returnScore.setQuarter(quarterStr);
         }
 
-        // H52 slice 9 dual-write: typed slot is the new contract; extra["M"] stays
-        // populated so consumers that haven't migrated and serialized H50 payloads
-        // round-trip identically. Commit-3 slice will drop the extra write.
+        // H52 slice 11: typed-only write. Slice 9 had to dual-write extra["M"] for
+        // back-compat; slice 11a switched all consumers to read from the typed slot
+        // and slice 11b stops populating the legacy bag. Historical scores still
+        // round-trip via the readMultiplier extra-fallback in this class.
         returnScore.setMultiplier(multiplier);
-        returnScore.getExtra().put("M", multiplier);
 
         return Optional.of(returnScore);
     }

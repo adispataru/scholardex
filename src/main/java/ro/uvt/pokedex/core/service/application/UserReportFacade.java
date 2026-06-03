@@ -480,15 +480,19 @@ public class UserReportFacade {
         }
 
         if (ReportingComputationSupport.isPublicationIndicator(indicator)) {
+            // H52 slice 11d.2: typed author-role dispatch. {@code AuthorRole.MAIN}
+            // keeps first-author=university; {@code .CO} keeps first-author≠university;
+            // {@code .ALL} (or null) keeps everything.
             List<ScholardexPublicationView> filteredPublications = publications;
-            if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR)) {
+            ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole role = indicator.publicationAuthorRole();
+            if (role == ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.MAIN) {
                 filteredPublications = publications.stream()
                         .filter(p -> {
                             String firstAuthorId = firstAuthorId(p);
                             return firstAuthorId != null && authors.stream().anyMatch(a -> a.getId().equals(firstAuthorId));
                         })
                         .collect(Collectors.toList());
-            } else if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_COAUTHOR)) {
+            } else if (role == ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.CO) {
                 filteredPublications = publications.stream()
                         .filter(p -> {
                             String firstAuthorId = firstAuthorId(p);
@@ -549,15 +553,17 @@ public class UserReportFacade {
     }
 
     private UserIndicatorApplyViewModel handlePublications(Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications, Map<String, Object> attrs) {
+        // H52 slice 11d.2: same author-role dispatch as handleScientificProduction.
         List<ScholardexPublicationView> filteredPublications = publications;
-        if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR)) {
+        ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole role = indicator.publicationAuthorRole();
+        if (role == ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.MAIN) {
             filteredPublications = publications.stream()
                     .filter(p -> {
                         String firstAuthorId = firstAuthorId(p);
                         return firstAuthorId != null && authors.stream().anyMatch(a -> a.getId().equals(firstAuthorId));
                     })
                     .collect(Collectors.toList());
-        } else if (indicator.getOutputType().equals(Indicator.Type.PUBLICATIONS_COAUTHOR)) {
+        } else if (role == ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.CO) {
             filteredPublications = publications.stream()
                     .filter(p -> {
                         String firstAuthorId = firstAuthorId(p);
@@ -799,7 +805,8 @@ public class UserReportFacade {
     }
 
     private void handleCitationsWorkbook(Workbook workbook, Indicator indicator, List<ScholardexAuthorView> authors, List<ScholardexPublicationView> publications, Map<String, ScholardexForumView> forumMap) {
-        boolean excludeSelf = indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF);
+        // H52 slice 11d.2: typed-kind check.
+        boolean excludeSelf = indicator.isCitationsExcludeSelf();
         Sheet sheet = workbook.getSheet("Citations");
         if (sheet == null) {
             sheet = workbook.createSheet("Citations");

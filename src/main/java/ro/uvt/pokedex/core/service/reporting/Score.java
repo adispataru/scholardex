@@ -14,17 +14,6 @@ public class Score {
     private String scoringSource;
     private Map<String, Object> scoringInfo = new HashMap<>();
     private double authorScore;
-    private Map<String, String> errors = new HashMap<>();
-
-    /**
-     * @deprecated H52 slice 9: open-bag holdover used historically to carry the
-     * EconomicsJournal {@code "M"} multiplier and nothing else. The typed field
-     * {@link #multiplier} replaces that contract for new writes; this map is kept
-     * populated in parallel so historical persisted scores and H50 round-trips
-     * still work. Slice 11 (Commit 3) deletes this field.
-     */
-    @Deprecated
-    private Map<String, Object> extra = new HashMap<>();
 
     /**
      * H52 slice 9: typed multiplier slot. Only producer is
@@ -33,11 +22,10 @@ public class Score {
      * ({@code ScientificProductionService}, {@code ActivityReportingService}) bind
      * it into the {@code FormulaContext} variable bag as {@code "M"}.
      *
-     * <p>Read order in consumers: {@code multiplier} first, fall back to
-     * {@code extra.get("M")} for any score loaded from historical Mongo data or
-     * an H50 import file written before this slice landed.</p>
+     * <p>Slice 11c retired the {@code Score.extra["M"]} fallback path; the typed
+     * slot is the only place the multiplier lives now. Pre-slice-9 cached blobs
+     * lose this value on deserialization, but the cached {@code rawGraph} map
+     * still carries the original number for the view layer to display.</p>
      */
     private Integer multiplier;
-
-    private String details;
 }

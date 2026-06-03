@@ -50,7 +50,12 @@ public abstract class AbstractWoSForumScoringService extends AbstractForumScorin
                             }
                             result.bestYear.set(year);
                             copyProvenance(points.get(), result);
-                            result.extra.putAll(points.get().getExtra());
+                            // H52 slice 11: accumulate the typed multiplier from
+                            // the winning candidate so EJSS's compare and the final
+                            // createScore both see it without going through extra.
+                            if (points.get().getMultiplier() != null) {
+                                result.bestMultiplier.set(points.get().getMultiplier());
+                            }
                         }
                     }
                 }

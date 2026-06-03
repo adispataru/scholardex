@@ -25,21 +25,26 @@ public final class ReportingComputationSupport {
             List<ScholardexPublicationView> publications,
             ScientificProductionService scientificProductionService) {
 
-        List<ScholardexPublicationView> filtered = switch (indicator.getOutputType()) {
-            case PUBLICATIONS_MAIN_AUTHOR -> publications.stream()
+        // H52 slice 11d.2: typed author-role dispatch.
+        ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole role = indicator.publicationAuthorRole();
+        List<ScholardexPublicationView> filtered;
+        if (role == ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.MAIN) {
+            filtered = publications.stream()
                     .filter(p -> {
                         String firstAuthorId = firstAuthorId(p);
                         return firstAuthorId != null && authors.stream().anyMatch(a -> a.getId().equals(firstAuthorId));
                     })
                     .collect(Collectors.toList());
-            case PUBLICATIONS_COAUTHOR -> publications.stream()
+        } else if (role == ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.CO) {
+            filtered = publications.stream()
                     .filter(p -> {
                         String firstAuthorId = firstAuthorId(p);
                         return firstAuthorId == null || authors.stream().noneMatch(a -> a.getId().equals(firstAuthorId));
                     })
                     .collect(Collectors.toList());
-            default -> publications;
-        };
+        } else {
+            filtered = publications;
+        }
         Map<String, Score> scores = scientificProductionService.calculateScientificProductionScore(
                 filtered.stream().map(ScholardexPublicationView::toScoringPublication).toList(),
                 indicator
@@ -56,9 +61,11 @@ public final class ReportingComputationSupport {
             Indicator indicator,
             Map<String, Map<String, Score>> scores) {
 
-        if (indicator.getSelector() != Indicator.Selector.TOP_10) {
+        // H52 slice 11d.2: typed-selector check via the Indicator helper.
+        if (!indicator.isTopNSelector()) {
             return;
         }
+        int limit = indicator.topNLimit();
 
         Map<String, Score> topScores = new HashMap<>();
         scores.forEach((k, v) -> topScores.putAll(v));
@@ -67,7 +74,7 @@ public final class ReportingComputationSupport {
                 .filter(x -> !x.getKey().equals("total"))
                 .sorted(Map.Entry.<String, Score>comparingByValue(
                         Comparator.comparingDouble(Score::getAuthorScore)).reversed())
-                .limit(10)
+                .limit(limit)
                 .map(Map.Entry::getKey)
                 .toList();
 
@@ -106,24 +113,20 @@ public final class ReportingComputationSupport {
         }
     }
 
+    // H52 slice 11d.2: the {@code is*Indicator} trio now delegates to the typed
+    // helpers on {@link Indicator}. Pre-v1 these used the legacy {@code outputType}
+    // enum's {@code toString().contains()} which silently coupled the type system
+    // to enum-naming conventions; the kind-based check is stricter.
     public static boolean isActivityIndicator(Indicator indicator) {
-        return indicator != null
-                && indicator.getOutputType() != null
-                && indicator.getOutputType().toString().contains("ACTIVIT");
+        return indicator != null && indicator.isActivityOutput();
     }
 
     public static boolean isPublicationIndicator(Indicator indicator) {
-        return indicator != null
-                && indicator.getOutputType() != null
-                && indicator.getOutputType().toString().contains("PUBLICATIONS");
+        return indicator != null && indicator.isPublicationOutput();
     }
 
     public static boolean isCitationIndicator(Indicator indicator) {
-        if (indicator == null || indicator.getOutputType() == null) {
-            return false;
-        }
-        return indicator.getOutputType().equals(Indicator.Type.CITATIONS)
-                || indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF);
+        return indicator != null && indicator.isCitationsOutput();
     }
 
     public static Map<Integer, Double> computeCriterionScores(

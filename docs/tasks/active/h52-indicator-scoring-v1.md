@@ -24,10 +24,128 @@
 | Commit 1 / slice 8b — AST-based formula canonicalizer (`FormulaTokenizer` + normalize); closes the `S+1` vs `S + 1` hash gap | ✅ done | 13 new tests; migration runner now re-stamps stale slice-5 hashes; live verified end-to-end |
 | Commit 1 / slice 9 — typed `Score.multiplier` replaces the `Score.extra["M"]` open-bag contract; dual-write preserves legacy readers and H50 round-trip | ✅ done | 1 added assertion; `BaseScore`/`Provenance` wrapper records intentionally deferred — they'd be unused-code without consumer migration which is Commit 3 territory |
 | Commit 2 / slice 10 — replay-shape gate against the 2463-row `userIndicatorResults` cache | ✅ done | 57 rawGraph blobs (one per distinct fingerprint) snapshotted into `src/test/resources/h52/replay-fixture.json`, PII redacted; `H52ReplayShapeTest` asserts per-view shape invariants — tripwire for Commit 3 |
-| Commit 3 — switch reads to typed slot, delete `Indicator.Type`/`Strategy`/`Score.extra`/etc. | ⏳ next | the deletion pass; tripwire from slice 10 must stay green |
+| Commit 3 / slice 11a+11b — typed-multiplier reads in consumers; stop dual-write of `extra["M"]` in `EconomicsJournalScoringService`; `ScoreResult.bestMultiplier` plumbing | ✅ done | 5 EJSS tests migrated from `extra["M"]` to `getMultiplier()`; slice-10 tripwire green throughout; live-verified save round-trip |
+| Commit 3 / slice 11c — delete `Score.extra`/`errors`/`details` fields | ✅ done | live-data cleanup trimmed cache 2463→422 first; slice-10 tripwire stayed green; landmine — `Score.details` was actually consumed by activity row projector, not just debug; resolved via Map-path fallback + new test pinning back-compat |
+| Commit 3 / slice 11d.1 — consumer reads switched to `isGenericCount()`/`isGenericActivity()` + `ScoreYearRangeSpec.allowedYears()` | ✅ done | 10 production files; instanceof landmine caught (`fromLegacy` produces `Publications(GENERIC_COUNT)`, not the `GenericCount` record); 4 tests using legacy relative grammar updated |
+| Commit 3 / slice 11d.2 — outputType + selector dispatch readers switched via typed `Indicator` helpers (`isPublicationOutput`, `isCitationsOutput`, `isCitationsExcludeSelf`, `isActivityOutput`, `publicationAuthorRole`, `isTopNSelector`, `topNLimit`) | ✅ done | 7 files; helpers fall back to legacy `outputType` when `getEffectiveKind()` is null (test compat); slice-10 tripwire green |
+| Commit 3 / slice 11d.3 — `@Transient` legacy fields on `Indicator` + derived getters + BeforeConvert synthesis hook + fingerprint derivation; **migration runner executed against live test DB** (43→42 docs, all v1 fields populated) | ✅ done | Pre-condition discovered: migration runner had never been run; v1 fields were 0/43. Backed up, ran migration, applied @Transient. Form-driven save now strips legacy keys while preserving typed shape (live-verified Info_C v5→v6 round-trip). |
+| Commit 3 / slice 11d.4 — physically remove @Deprecated fields from `Indicator` + delete `Indicator.Type`/`Strategy`/`Selector` legacy enums | ⏳ later | needs 30+ test files refactored to use typed setters; touches `ScoringFactoryService` legacy bridge, `IndicatorKind.fromLegacy`, `LegacyMappingTest` |
+| Commit 3 / slice 11e — Mongo `$unset` legacy fields + `userIndicatorResults` re-fingerprint | ⏳ later | live-data step, behind a fresh `mongodump` |
 | Commit 3 — switch reads, drop legacy fields | ⏳ later | |
 | Commit 4 — UI surfaces | ⏳ later | |
 | Replay-equality test gate against 2,463-row `userIndicatorResults` cache | ⏳ later | fixture path: `src/test/resources/h52/replay-fixture.json` |
+
+Build at end of slice 11d.3: **2079 tests, 0 failures.** Indicator's legacy fields
+(`outputType`, `scoringStrategy`, `yearRange`, `scoreYearRange`, `selector`) are now
+`@Transient` — Spring Data Mongo no longer persists or reads them. Production reads
+that still call the legacy getters (factory bridge, log messages, the fingerprint)
+work because the Lombok getters are overridden to derive from the typed kind/specs
+when the @Transient field is null. The admin form's save flow strips legacy keys
+from the persisted doc while preserving the typed shape via a new BeforeConvert
+synthesis hook on `IndicatorFormulaHashStamper` (idempotently fills in v1 fields
+from the form-bound legacy values before save). **Live-verified**: Info_C round-trip
+(v5→v6) deletes 5 legacy Mongo keys, leaves all 4 typed keys intact.
+
+**Critical landmine caught by live verify**: the migration runner had **never run**
+against the test database — 0 of 43 indicators had v1 fields populated. The
+@Transient change without first running the migration would have left every
+indicator unrecoverable (legacy field gone from in-memory, typed field never
+populated, `getEffectiveKind() → null`, downstream scoring chain breaks). Sequenced
+fix: backup → run migration runner (`--spring.profiles.active=indicator-migration,agent-dev`)
+→ verify 42 docs have v1 fields → apply @Transient. The migration runner also deleted
+the Mate_S copy id 682343657123387ec34394b1 as designed in slice 3.
+
+**Second landmine caught**: the first save round-trip wiped the typed fields too,
+because the admin form only carries the legacy field values. Spring's @ModelAttribute
+binding populated the @Transient legacy fields but left the v1 typed fields null;
+the subsequent save persisted them as null → effectively cleared. Fix: extended the
+`IndicatorFormulaHashStamper.onBeforeConvert` listener to synthesize v1 typed fields
+from the legacy values before save (idempotent). Info_C was manually restored from
+the backup via direct `$set`, then re-tested to confirm the synthesis hook holds.
+
+Build at end of slice 11d.2: **2079 tests, 0 failures.** Every production consumer of
+the legacy {@code outputType} enum and {@code selector} field now goes through typed
+helpers on {@link Indicator}: `isPublicationOutput()`, `isCitationsOutput()`,
+`isCitationsExcludeSelf()`, `isActivityOutput()`, `publicationAuthorRole()`,
+`isTopNSelector()`, `topNLimit()`. The hardcoded `limit(10)` in
+`ReportingComputationSupport.applyFinalSelector` now reads the limit from the typed
+`Selector.TopN.n()` slot — same behavior for legacy `TOP_10` but the v1 grammar reaches
+the runtime. The 7 affected files: `CitationRowProjector`, `ActivityBlockProjector`,
+`UserReportFacade` (3 sites), `ReportScopedIndicatorScoringSupport` (2 sites),
+`ReportingComputationSupport` (5 sites). `UserIndicatorResultService`'s fingerprint
+string still reads the legacy enum names — that's serialization, not dispatch, and
+moves with 11d.3 alongside the @Deprecated field deletion. Slice-10 tripwire green.
+
+**Defensive design**: each helper falls back to the legacy {@code outputType} when
+`getEffectiveKind()` returns null. This handles test fixtures that only set one half
+of the legacy pair (the same latent issue slice 11d.1 caught via the
+`legacyOutputTypeFor` helper in `ActivityReportingServiceTest`). Production indicators
+always have both legacy fields and v1 fields populated by the migration runner, so the
+typed path takes precedence there.
+
+Build at end of slice 11d.1: **2079 tests, 0 failures.** The scoring pipeline now reads
+`scoringStrategy` equality checks through the typed `IndicatorKind` via two new
+convenience methods on `Indicator`: `isGenericCount()` and `isGenericActivity()`. Eight
+strategy services (`AISJournalScoringService`, `ImpactFactorJournalScoringService`,
+`UniversityRankScoringService`, `RISJournalScoringService`, `EconomicsJournalScoringService`,
+`ComputerScienceConferenceScoringService`, `AbstractForumScoringService`,
+`ComputerScienceJournalScoringService`) read score-year ranges through
+`ScoreYearRangeSpec.allowedYears(itemYear)` — the static legacy
+`Indicator.parseYearRange(string, itemYear)` is no longer called from production code.
+The legacy fields and enums stay in place for now (slice 11d.2 + 11d.3 handle deletion);
+the slice-10 tripwire stayed green throughout because the JSON shape didn't change.
+
+**Landmine pinned**: my first pass used `instanceof IndicatorKind.GenericCount` for the
+strategy check, which silently never matched legacy data. The legacy
+`(PUBLICATIONS, GENERIC_COUNT)` pair maps to `Publications(ALL, GENERIC_COUNT)`, not the
+dedicated `GenericCount` record (which is reserved for v1 indicators that don't carry an
+output-type context — none exist yet). The fix is strategy-based: check
+`kind.strategy() == ScoringStrategy.GENERIC_COUNT`, wrapped in `Indicator.isGenericCount()`.
+Same pattern for `isGenericActivity()`.
+
+**Test fallout**:
+- Test indicator helpers in `ActivityReportingServiceTest` were only setting
+  `scoringStrategy` (no `outputType`). `getEffectiveKind()` returns null when either
+  legacy field is missing, so `isGenericCount/Activity` returned false and the tests
+  NPE'd through to the mocked factory. Helper updated to pick a strategy-appropriate
+  default `outputType` via a `legacyOutputTypeFor(strategy)` table.
+- 4 tests used the legacy relative year-range grammar (`"IY,IY+1"`, `"IY->IY+1"`,
+  `"2022, 2023, 2024"`) which the v1 `ScoreYearRangeSpec.parse()` rejects. The slice-1
+  audit had already documented that this grammar isn't used in production. Tests
+  updated to use the equivalent absolute form (`"2023->2024"`, `"2022->2024"`).
+- `ScientificProductionService.precomputeCitationBaseScores` had a null-scoringStrategy
+  guard the original code relied on. With v1, `getEffectiveKind()==null` is the typed
+  equivalent of "no resolvable strategy" — added back as an explicit guard.
+
+Build at end of slice 11c: **2079 tests, 0 failures.** Three open-bag fields gone from
+`Score`: `extra`, `errors`, `details`. All writers and copy-propagators in the scoring
+pipeline updated. The slice-10 tripwire stayed green throughout — fixture entries
+predate slice 11c and still parse cleanly through `IndicatorPayloadSerializer`, which
+now silently ignores the dropped keys. **Pre-slice-9 cached blobs lose their `extra["M"]`
+multiplier value at deserialization time, but their `rawGraph` map still carries the
+original number for the view layer to display.**
+
+**Landmine pinned**: `Score.details` looked like a debug breadcrumb (auto-populated by
+`ActivityReportingService` with the variable trail used in the formula), but the
+activity row projector consumed it via reflection as the row's user-visible description.
+Deleting the field changed the live-Score path's fallback to "activity label → activity
+id". The cached-blob Map path still reads `m.get("details")` so historical
+descriptions render unchanged. New test `cachedMapBlobsKeepDetailsAsRowDescription`
+pins this contract; the existing `projectsScoresFromLiveScoreObjectShape` test got
+updated to reflect the new fallback. The cleanup decision was kept (rather than
+restoring the field) because no production code path actually wrote a meaningful
+description there — the test had set a hardcoded string that the live writer never
+produced; the breadcrumb writer in `ActivityReportingService` produced
+`"Buget: 270000.0, Rol: Membru"` which was already debug-quality.
+
+Build at end of slice 11a+11b: **2078 tests, 0 failures.** The typed `Score.multiplier`
+slot is now the sole source of truth for the EconomicsJournal "M" contract — both writers
+(`EconomicsJournalScoringService.computeEconomicsScore`) and readers
+(`ScientificProductionService`, `ActivityReportingService`, EJSS's tie-break) read/write
+the typed field only. `extra["M"]` is no longer populated on new scores; historical
+scores still parse via the `readMultiplier` fallback. The slice-10 tripwire stayed green
+throughout — the rawGraph shape didn't change because cached blobs were already captured
+under the old extra-populated regime and the test only asserts shape parseability.
 
 Build at end of slice 10: **2078 tests, 0 failures.** Commit-2's replay-shape gate is in
 place. 57 production rawGraph blobs (one per distinct fingerprint in the live

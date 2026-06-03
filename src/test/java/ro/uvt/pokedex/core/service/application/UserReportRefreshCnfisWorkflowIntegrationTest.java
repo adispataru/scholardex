@@ -245,17 +245,28 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
     }
 
     private void seedWorkflowDefinitions() {
+        // H52 slice 11d.3: legacy {@code outputType}/{@code selector} fields are
+        // {@code @Transient} now — Spring Data Mongo no longer persists them,
+        // so seeded indicators must populate the typed {@code kind}/{@code selectorSpec}
+        // fields for the survive-save round-trip.
+        ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind pubsKind =
+                new ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind.Publications(
+                        ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.ALL,
+                        ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy.CS);
+        ro.uvt.pokedex.core.model.reporting.scoring.Selector allSelector =
+                new ro.uvt.pokedex.core.model.reporting.scoring.Selector.All();
+
         Indicator indicatorOne = new Indicator();
         indicatorOne.setId("ind-1");
         indicatorOne.setName("Publication Score A");
-        indicatorOne.setOutputType(Indicator.Type.PUBLICATIONS);
-        indicatorOne.setSelector(Indicator.Selector.ALL);
+        indicatorOne.setKind(pubsKind);
+        indicatorOne.setSelectorSpec(allSelector);
 
         Indicator indicatorTwo = new Indicator();
         indicatorTwo.setId("ind-2");
         indicatorTwo.setName("Publication Score B");
-        indicatorTwo.setOutputType(Indicator.Type.PUBLICATIONS);
-        indicatorTwo.setSelector(Indicator.Selector.ALL);
+        indicatorTwo.setKind(pubsKind);
+        indicatorTwo.setSelectorSpec(allSelector);
 
         indicatorRepository.saveAll(List.of(indicatorOne, indicatorTwo));
 

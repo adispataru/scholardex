@@ -25,7 +25,12 @@ public class ScientificProductionService {
 
     public Map<String, Score> calculateScientificProductionScore(List<? extends ScoringPublicationReadModel> publications, Indicator indicator) {
 
-        if(indicator.getScoringStrategy().equals(Indicator.Strategy.GENERIC_COUNT)) {
+        // H52 slice 11d.1: typed-strategy dispatch. The legacy GENERIC_COUNT
+        // short-circuit reads the strategy off the {@link IndicatorKind} now;
+        // the {@code IndicatorKind.GenericCount} record exists but isn't reachable
+        // through {@code fromLegacy}, because the legacy {@code (PUBLICATIONS,
+        // GENERIC_COUNT)} pairing maps to {@code Publications(ALL, GENERIC_COUNT)}.
+        if(indicator.isGenericCount()) {
             Map<String, Score> result = new HashMap<>();
             publications.forEach(pub -> {
                 Score score = new Score();
@@ -52,16 +57,20 @@ public class ScientificProductionService {
             }
         }
         Map<String, Score> result = new HashMap<>();
-        if(indicator.getSelector() != null && !indicator.getSelector().equals(Indicator.Selector.ALL)) {
-            if(indicator.getSelector().equals(Indicator.Selector.TOP_10)) {
+        // H52 slice 11d.3: typed-selector check via the Indicator helpers. The
+        // legacy {@code Selector.TOP_10} maps to {@code TopN(10)} so the limit is
+        // read from the typed slot instead of hardcoding 10.
+        if (indicator.isTopNSelector()) {
+            int topLimit = indicator.topNLimit();
+            {
                 totalScore = 0.0;
-                if(publications.size() > 10) {
+                if(publications.size() > topLimit) {
                     publications = new ArrayList<>(publications);
                     publications.sort((p1, p2) -> Double.compare(
                             interResult.get(p2.getTitle()) != null ? interResult.get(p2.getTitle()).getAuthorScore(): 0,
                             interResult.get(p1.getTitle()) != null ? interResult.get(p1.getTitle()).getAuthorScore() : 0));
                 }
-                int limit = Math.min(10, publications.size());
+                int limit = Math.min(topLimit, publications.size());
                 for (int i = 0; i < limit; i++) {
                     ScoringPublicationReadModel pub = publications.get(i);
                     Score score = interResult.get(pub.getTitle());
@@ -97,7 +106,9 @@ public class ScientificProductionService {
     ) {
         long totalStartedAtNanos = System.nanoTime();
         Map<String, Score> result = new HashMap<>();
-        if(indicator.getScoringStrategy().equals(Indicator.Strategy.GENERIC_COUNT)) {
+        // H52 slice 11d.1: same GenericCount short-circuit as the production
+        // path; CITATIONS shows up as {@code IndicatorKind.Citations(excludeSelf, …)}.
+        if(indicator.isGenericCount()) {
             publications.forEach(pub -> {
                 Score score = new Score();
                 score.setScore(1.0);
@@ -148,10 +159,9 @@ public class ScientificProductionService {
         if (log.isDebugEnabled()) {
             String citedId = cited == null ? "null" : cited.getId();
             log.debug(
-                    "Scientific impact timings [citedId={}, strategy={}, outputType={}, citingPublications={}, matchedScores={}]: baseScoreLookupMs={}, formulaEvalMs={}, aggregationMs={}, totalMs={}",
+                    "Scientific impact timings [citedId={}, kind={}, citingPublications={}, matchedScores={}]: baseScoreLookupMs={}, formulaEvalMs={}, aggregationMs={}, totalMs={}",
                     citedId,
-                    indicator.getScoringStrategy(),
-                    indicator.getOutputType(),
+                    indicator.getEffectiveKind(),
                     publications.size(),
                     positiveScores,
                     nanosToMillis(baseScoreLookupNanos),
@@ -207,12 +217,17 @@ public class ScientificProductionService {
         if(result.getScore() > 0) {
             int numberOfAuthors = cited.getAuthorCount();
 
-            FormulaContext ctx = FormulaContext.builder()
+            // H52 slice 11c: typed-only path. M comes from the typed multiplier slot
+            // (populated by EconomicsJournalScoringService); the legacy
+            // {@code extra["M"]} bag is gone.
+            FormulaContext.Builder builder = FormulaContext.builder()
                     .put("S", result.getScore())
                     .put("N", numberOfAuthors)
-                    .put("Q", result.getQuarter())
-                    .putAll(result.getExtra())
-                    .build();
+                    .put("Q", result.getQuarter());
+            if (result.getMultiplier() != null) {
+                builder.put("M", result.getMultiplier());
+            }
+            FormulaContext ctx = builder.build();
 
             long formulaEvalStartedAtNanos = System.nanoTime();
             double finalScore = formulaEvaluator.eval(indicator.getFormula(), ctx);
@@ -229,7 +244,10 @@ public class ScientificProductionService {
         if (citingPublications == null || citingPublications.isEmpty()) {
             return Map.of();
         }
-        if (indicator == null || indicator.getScoringStrategy() == null || indicator.getScoringStrategy().equals(Indicator.Strategy.GENERIC_COUNT)) {
+        // H52 slice 11d.1: typed-strategy check. GenericCount has no per-publication
+        // base scoring, so the citation cache stays empty. Also guards an indicator
+        // with no resolvable kind (legacy strategy=null was a real guarded case).
+        if (indicator == null || indicator.getEffectiveKind() == null || indicator.isGenericCount()) {
             return Map.of();
         }
         ScoringService scoringService = scoringFactoryService.getScoringService(indicator.getScoringStrategy());
@@ -259,9 +277,8 @@ public class ScientificProductionService {
         target.setScoringSource(source.getScoringSource());
         target.setScoringInfo(new HashMap<>(source.getScoringInfo() == null ? Map.of() : source.getScoringInfo()));
         target.setAuthorScore(source.getAuthorScore());
-        target.setDetails(source.getDetails());
-        target.setErrors(new HashMap<>(source.getErrors() == null ? Map.of() : source.getErrors()));
-        target.setExtra(new HashMap<>(source.getExtra() == null ? Map.of() : source.getExtra()));
+        // H52 slice 11c: typed multiplier propagates; extra/errors/details are gone.
+        target.setMultiplier(source.getMultiplier());
         return target;
     }
 

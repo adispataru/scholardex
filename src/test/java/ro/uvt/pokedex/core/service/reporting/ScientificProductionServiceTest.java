@@ -581,9 +581,9 @@ class ScientificProductionServiceTest {
         Score cachedBase = new Score();
         cachedBase.setScore(7.0);
         cachedBase.setAuthorScore(13.0);
-        cachedBase.setDetails("cached-details");
-        cachedBase.setErrors(new HashMap<>(Map.of("e", "1")));
-        cachedBase.setExtra(new HashMap<>(Map.of("x", 2)));
+        // H52 slice 11c: details/errors/extra dropped; multiplier is the only
+        // open-bag-replacement we still propagate.
+        cachedBase.setMultiplier(5);
         cachedBase.setScoringInfo(new HashMap<>(Map.of("info", "cached")));
         Map<String, Score> cached = new HashMap<>();
         cached.put("cp-cache", cachedBase);
@@ -601,9 +601,7 @@ class ScientificProductionServiceTest {
         assertEquals(7.0, result.get("total").getScore(), 0.0001);
         assertEquals(7.0, result.get("total").getAuthorScore(), 0.0001);
         assertEquals(13.0, cachedBase.getAuthorScore(), 0.0001);
-        assertEquals("cached-details", cachedBase.getDetails());
-        assertEquals("1", cachedBase.getErrors().get("e"));
-        assertEquals(2, cachedBase.getExtra().get("x"));
+        assertEquals(5, cachedBase.getMultiplier());
         assertEquals("cached", cachedBase.getScoringInfo().get("info"));
     }
 
@@ -620,10 +618,10 @@ class ScientificProductionServiceTest {
         base.setCoreRankingEquivalent("A");
         base.setQuarter("Q1");
         base.setScoringSource("SOURCE");
-        base.setDetails("details");
+        // H52 slice 11c: details/errors/extra dropped; the typed multiplier
+        // is now the only open-bag-replacement field copyScore carries forward.
+        base.setMultiplier(7);
         base.setScoringInfo(new HashMap<>(Map.of("k1", "v1")));
-        base.setErrors(new HashMap<>(Map.of("err", "2")));
-        base.setExtra(new HashMap<>(Map.of("ex", 3)));
         when(scoringService.getScore(citing, indicator)).thenReturn(base);
 
         Map<String, Score> cached = scientificProductionService.precomputeCitationBaseScores(List.of(citing), indicator);
@@ -637,23 +635,15 @@ class ScientificProductionServiceTest {
         assertEquals("A", copy.getCoreRankingEquivalent());
         assertEquals("Q1", copy.getQuarter());
         assertEquals("SOURCE", copy.getScoringSource());
-        assertEquals("details", copy.getDetails());
+        assertEquals(7, copy.getMultiplier());
         assertEquals("v1", copy.getScoringInfo().get("k1"));
-        assertEquals("2", copy.getErrors().get("err"));
-        assertEquals(3, copy.getExtra().get("ex"));
         assertNotSame(base.getScoringInfo(), copy.getScoringInfo());
-        assertNotSame(base.getErrors(), copy.getErrors());
-        assertNotSame(base.getExtra(), copy.getExtra());
 
         copy.setAuthorScore(1.0);
         copy.getScoringInfo().put("k1", "mutated");
-        copy.getErrors().put("err", "9");
-        copy.getExtra().put("ex", 11);
 
         assertEquals(4.5, base.getAuthorScore(), 0.0001);
         assertEquals("v1", base.getScoringInfo().get("k1"));
-        assertEquals("2", base.getErrors().get("err"));
-        assertEquals(3, base.getExtra().get("ex"));
         assertFalse(base.getScoringInfo().containsValue("mutated"));
     }
 

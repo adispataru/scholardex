@@ -1,5 +1,8 @@
 package ro.uvt.pokedex.core.model.reporting.scoring;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Typed replacement for {@code Indicator.scoreYearRange}. Three real shapes in production
  * (per the H52 audit):
@@ -37,6 +40,38 @@ public sealed interface ScoreYearRangeSpec
      *   <li>{@code "from->to"} or {@code "from-to"} → {@link Absolute}</li>
      * </ul>
      */
+    /**
+     * H52 slice 11d.1: returns the concrete year list to score against, given the
+     * publication or activity's own year. Mirrors what the legacy
+     * {@code Indicator.parseYearRange(scoreYearRange, itemYear)} produced, but without
+     * the open-text grammar.
+     *
+     * <ul>
+     *   <li>{@link ItemYear} → {@code [itemYear]}</li>
+     *   <li>{@link AllYears} → {@code [1990 .. currentYear]} (matches legacy {@code "*"} behavior)</li>
+     *   <li>{@link Absolute} → {@code [from, from+1, ..., to]}</li>
+     * </ul>
+     */
+    default List<Integer> allowedYears(int itemYear) {
+        if (this instanceof ItemYear) {
+            List<Integer> single = new ArrayList<>(1);
+            single.add(itemYear);
+            return single;
+        }
+        if (this instanceof AllYears) {
+            int currentYear = java.time.LocalDate.now().getYear();
+            List<Integer> years = new ArrayList<>(currentYear - 1990 + 1);
+            for (int y = 1990; y <= currentYear; y++) years.add(y);
+            return years;
+        }
+        if (this instanceof Absolute a) {
+            List<Integer> years = new ArrayList<>(a.to() - a.from() + 1);
+            for (int y = a.from(); y <= a.to(); y++) years.add(y);
+            return years;
+        }
+        throw new IllegalStateException("Unhandled ScoreYearRangeSpec: " + this);
+    }
+
     static ScoreYearRangeSpec parse(String raw) {
         if (raw == null || raw.isBlank()) return new ItemYear();
         String trimmed = raw.trim();

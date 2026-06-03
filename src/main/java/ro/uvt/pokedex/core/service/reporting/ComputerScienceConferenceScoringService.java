@@ -18,6 +18,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec;
 
 /**
  * Scoring service that evaluates Computer Science conferences based on CORE rankings.
@@ -142,7 +143,7 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
             return createScore(scoreResult);
         }
         List<Integer> allowedYears = 
-                Indicator.parseYearRange(indicator.getScoreYearRange(), activity.getYear());
+                indicator.getEffectiveScoreYearRange().allowedYears(activity.getYear());
         ConferenceScoreTrace trace = ConferenceScoreTrace.forActivity(
                 activity == null ? null : activity.getId(),
                 forum.getPublicationName(),

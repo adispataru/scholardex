@@ -850,7 +850,9 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         ranking.setYearlyRankings(Map.of(2022, rank2022, 2023, rank2023));
         when(cacheService.getConferenceRankings("ICSE")).thenReturn(List.of(ranking));
 
-        Indicator indicator = indicator("IY->IY+1");
+        // H52 slice 11d.1: was "IY->IY+1" (relative grammar). Activity is 2022,
+        // ranking covers 2022+2023; absolute range gives the same coverage.
+        Indicator indicator = indicator("2022->2023");
         Score score = service.getScore(activity, indicator);
 
         assertEquals(8.0, score.getScore());
@@ -1530,7 +1532,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         when(cacheService.getConferenceRankings("ICSE")).thenReturn(List.of(ranking));
 
         Indicator indicator = new Indicator();
-        indicator.setScoreYearRange("IY,IY+1");
+        indicator.setScoreYearRange("2023->2024"); // H52 11d.1: was "IY,IY+1" (legacy relative grammar dropped in v1)
 
         Score score = service.getScore(publication, indicator);
 
@@ -1786,7 +1788,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         when(cacheService.getConferenceRankings("ICSE")).thenReturn(List.of(ranking));
 
         Indicator indicator = new Indicator();
-        indicator.setScoreYearRange("IY,IY+1");
+        indicator.setScoreYearRange("2023->2024"); // H52 11d.1: was "IY,IY+1" (legacy relative grammar dropped in v1)
 
         Score score = service.getScore(activity, indicator);
         assertEquals(8.0, score.getScore());
@@ -1993,7 +1995,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         activityRanking.setYearlyRankings(Map.of(2023, a2023, 2024, a2024));
         when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
         when(cacheService.getConferenceRankings("ICSE")).thenReturn(List.of(activityRanking));
-        Score activityScore = service.getScore(activity, indicator("IY,IY+1"));
+        Score activityScore = service.getScore(activity, indicator("2023->2024") /* H52 11d.1: was "IY,IY+1" */);
         assertEquals(2023, activityScore.getYear());
 
         // publication getScore comparator boundary at line 91: equal score must keep first year
@@ -2010,7 +2012,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         p2024.setRank(CoreConferenceRanking.Rank.B);
         pubRanking.setYearlyRankings(Map.of(2023, p2023, 2024, p2024));
         when(cacheService.getConferenceRankings("ICSE")).thenReturn(List.of(pubRanking));
-        Score publicationScore = service.getScore(publication, indicator("IY,IY+1"));
+        Score publicationScore = service.getScore(publication, indicator("2023->2024") /* H52 11d.1: was "IY,IY+1" */);
         assertEquals(2023, publicationScore.getYear());
     }
 

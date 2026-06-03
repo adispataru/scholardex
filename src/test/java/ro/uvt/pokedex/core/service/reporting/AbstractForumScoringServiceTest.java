@@ -94,7 +94,8 @@ class AbstractForumScoringServiceTest {
                         s.setCoreRankingEquivalent("B");
                         s.setScoringSource("WOS");
                         s.setScoringInfo(Map.of("k", "v"));
-                        s.getExtra().put("M", 10);
+                        // H52 slice 11c: typed slot. Was {@code s.getExtra().put("M", 10)}.
+                        s.setMultiplier(10);
                         return Optional.of(s);
                     }
                     return Optional.empty();
@@ -107,7 +108,7 @@ class AbstractForumScoringServiceTest {
         assertEquals(2023, score.getYear());
         assertEquals("WOS", score.getScoringSource());
         assertEquals("v", score.getScoringInfo().get("k"));
-        assertEquals(10, score.getExtra().get("M"));
+        assertEquals(10, score.getMultiplier());
     }
 
     @Test

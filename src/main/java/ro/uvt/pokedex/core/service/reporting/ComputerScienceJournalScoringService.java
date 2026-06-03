@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec;
 
 /**
  * Scoring service that evaluates Computer Science journals based on WoS quartiles.
@@ -95,7 +96,7 @@ public class ComputerScienceJournalScoringService extends AbstractWoSForumScorin
 
         ScoreResult scoreResult = initializeScoreResult();
         List<Integer> allowedYears = 
-                Indicator.parseYearRange(indicator.getScoreYearRange(), activity.getYear());
+                indicator.getEffectiveScoreYearRange().allowedYears(activity.getYear());
 
         computeScores(
                 domain,

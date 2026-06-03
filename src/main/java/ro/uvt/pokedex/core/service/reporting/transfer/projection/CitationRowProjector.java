@@ -65,7 +65,8 @@ public class CitationRowProjector {
             return List.of();
         }
 
-        boolean excludeSelf = indicator.getOutputType() == Indicator.Type.CITATIONS_EXCLUDE_SELF;
+        // H52 slice 11d.2: typed-kind check via the Indicator helper.
+        boolean excludeSelf = indicator.isCitationsExcludeSelf();
         Set<String> selfAuthorIds = resolveSelfAuthorIds(userEmail);
 
         List<ScholardexPublicationView> citedPubs = authorshipRead.findConfirmedPublicationsForScoring(userEmail);

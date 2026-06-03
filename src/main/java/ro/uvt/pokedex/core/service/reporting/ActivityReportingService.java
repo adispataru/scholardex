@@ -30,7 +30,10 @@ public class ActivityReportingService {
         for (ActivityInstance act : activities) {
 
             Score score = calculateActivityScore(act, indicator);
-            boolean hasScore = indicator.getScoringStrategy().equals(Indicator.Strategy.GENERIC_ACTIVITY)
+            // H52 slice 11d.1: typed-strategy check via the Indicator helper.
+            // GENERIC_ACTIVITY contributes when its formula yields a positive
+            // author score; every other kind needs a positive base score too.
+            boolean hasScore = indicator.isGenericActivity()
                     ? score.getAuthorScore() > 0.0
                     : score.getScore() + score.getAuthorScore() > 0.0;
             if(hasScore) {
@@ -62,12 +65,15 @@ public class ActivityReportingService {
             }
         }
         final String rawformula = indicator.getFormula();
-        if(indicator.getScoringStrategy().equals(Indicator.Strategy.GENERIC_ACTIVITY)) {
+        // H52 slice 11d.1: typed-strategy dispatch. GENERIC_ACTIVITY and
+        // GENERIC_COUNT both short-circuit to a unit base score (1.0); only
+        // the labels differ.
+        if(indicator.isGenericActivity()) {
             result.setCoreRankingEquivalent("Generic Activity");
             result.setYear(activity.getYear());
             result.setScore(1.0);
             variables.put("S", 1.0);
-        } else if(indicator.getScoringStrategy().equals(Indicator.Strategy.GENERIC_COUNT)) {
+        } else if(indicator.isGenericCount()) {
             result.setCoreRankingEquivalent("Generic Count");
             result.setYear(activity.getYear());
             result.setScore(1.0);
@@ -81,22 +87,19 @@ public class ActivityReportingService {
             result.setScore(score.getScore());
             result.setScoringSource(score.getScoringSource());
             result.setScoringInfo(new HashMap<>(score.getScoringInfo() == null ? Map.of() : score.getScoringInfo()));
-            result.setExtra(score.getExtra());
+            // H52 slice 11c: typed multiplier propagates verbatim. The legacy
+            // extra bag is gone; M is the only key it ever carried.
+            result.setMultiplier(score.getMultiplier());
             variables.put("S", score.getScore());
-            for(String key: score.getExtra().keySet()){
-                variables.put(key, result.getExtra().get(key));
+            if (score.getMultiplier() != null) {
+                variables.put("M", score.getMultiplier());
             }
         }
         if(result.getScore() > 0.0) {
 
-            StringBuilder sb = new StringBuilder();
-            variables.forEach((k, v) -> {
-                if (rawformula.contains(k))
-                    sb.append(k).append(": ").append(v).append(", ");
-
-            });
-            result.setDetails(sb.toString());
-
+            // H52 slice 11c: the debug breadcrumb that used to be written to
+            // Score.details was never read by anything that mattered (no template,
+            // no exporter). Dropping the field and its writer.
             FormulaContext ctx = FormulaContext.builder().putAll(variables).build();
             OptionalDouble finalScore = formulaEvaluator.tryEval(rawformula, ctx);
             if (finalScore.isPresent()) {

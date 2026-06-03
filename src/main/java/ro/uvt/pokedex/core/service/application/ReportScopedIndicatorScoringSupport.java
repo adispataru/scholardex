@@ -66,8 +66,8 @@ public final class ReportScopedIndicatorScoringSupport {
             if (indicator == null) {
                 continue;
             }
-            if (!Indicator.Type.CITATIONS.equals(indicator.getOutputType())
-                    && !Indicator.Type.CITATIONS_EXCLUDE_SELF.equals(indicator.getOutputType())) {
+            // H52 slice 11d.2: typed-kind check for the citation family.
+            if (!indicator.isCitationsOutput()) {
                 continue;
             }
             cached.put(indicator, scientificProductionService.precomputeCitationBaseScores(uniqueCitingPublications, indicator));
@@ -98,7 +98,8 @@ public final class ReportScopedIndicatorScoringSupport {
                                                        CitationContext citationContext,
                                                        Map<String, Score> cachedCitationBaseScoresByCitingPublicationId,
                                                        ScientificProductionService scientificProductionService) {
-        boolean excludeSelf = indicator.getOutputType().equals(Indicator.Type.CITATIONS_EXCLUDE_SELF);
+        // H52 slice 11d.2: typed-kind check.
+        boolean excludeSelf = indicator.isCitationsExcludeSelf();
         Map<String, Map<String, Score>> rawScores = new LinkedHashMap<>();
         Map<String, ScholardexPublicationView> citationMap = new LinkedHashMap<>();
         Set<String> forumIds = new java.util.LinkedHashSet<>();
