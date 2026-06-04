@@ -59,8 +59,8 @@ class ScientificProductionServiceTest {
 
     @Test
     void productionScoreGenericCountAssignsOnePerPublicationAndTotalSize() {
-        Indicator indicator = indicator(Indicator.Type.PUBLICATIONS, "S");
-        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        Indicator indicator = indicator("PUBLICATIONS", "S");
+        indicator.setScoringStrategy("GENERIC_COUNT");
         List<ScoringPublicationReadModel> publications = List.of(
                 publication("p1", null, null, null, null, "Paper 1", List.of("a1")),
                 publication("p2", null, null, null, null, "Paper 2", List.of("a1", "a2"))
@@ -73,13 +73,13 @@ class ScientificProductionServiceTest {
         assertEquals(1.0, result.get("Paper 2").getScore(), 0.0001);
         assertEquals(1.0, result.get("Paper 2").getAuthorScore(), 0.0001);
         assertEquals(2.0, result.get("total").getAuthorScore(), 0.0001);
-        verify(scoringFactoryService, never()).getScoringService(org.mockito.ArgumentMatchers.any(Indicator.Strategy.class));
+        verify(scoringFactoryService, never()).getScoringService(org.mockito.ArgumentMatchers.any(String.class));
     }
 
     @Test
     void impactScoreGenericCountAssignsOnePerPublicationAndTotalSize() {
-        Indicator indicator = indicator(Indicator.Type.CITATIONS, "S");
-        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        Indicator indicator = indicator("CITATIONS", "S");
+        indicator.setScoringStrategy("GENERIC_COUNT");
         ScoringPublication cited = publication("cited", null, null, null, null, "Cited", List.of("a1"));
         List<ScoringPublicationReadModel> citingPublications = List.of(
                 publication("cp1", null, null, null, null, "Citing 1", List.of("b1")),
@@ -91,19 +91,19 @@ class ScientificProductionServiceTest {
         assertEquals(1.0, result.get("Citing 1").getScore(), 0.0001);
         assertEquals(1.0, result.get("Citing 2").getAuthorScore(), 0.0001);
         assertEquals(2.0, result.get("total").getAuthorScore(), 0.0001);
-        verify(scoringFactoryService, never()).getScoringService(org.mockito.ArgumentMatchers.any(Indicator.Strategy.class));
+        verify(scoringFactoryService, never()).getScoringService(org.mockito.ArgumentMatchers.any(String.class));
     }
 
     @Test
     void cachedBasePathMatchesLegacyPathForCitationsAndExcludeSelf() {
-        Indicator citations = indicator(Indicator.Type.CITATIONS, "S");
-        Indicator citationsExcludeSelf = indicator(Indicator.Type.CITATIONS_EXCLUDE_SELF, "S");
+        Indicator citations = indicator("CITATIONS", "S");
+        Indicator citationsExcludeSelf = indicator("CITATIONS_EXCLUDE_SELF", "S");
         ScoringPublication cited = publication("cited-1", null, null, null, null, "cited-1", List.of("a1", "a2"));
         ScoringPublication citingA = publication("cp-1", null, null, null, null, "cp-1", List.of("b1"));
         ScoringPublication citingB = publication("cp-2", null, null, null, null, "cp-2", List.of("b2"));
         List<ScoringPublicationReadModel> citingPublications = List.of(citingA, citingB);
 
-        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
         when(scoringService.getScore(citingA, citations)).thenReturn(score(2.0));
         when(scoringService.getScore(citingB, citations)).thenReturn(score(3.0));
         when(scoringService.getScore(citingA, citationsExcludeSelf)).thenReturn(score(2.0));
@@ -136,11 +136,11 @@ class ScientificProductionServiceTest {
 
     @Test
     void cachedBasePathRespectsFormulaUsingAuthorCountN() {
-        Indicator indicator = indicator(Indicator.Type.CITATIONS, "S * N");
+        Indicator indicator = indicator("CITATIONS", "S * N");
         ScoringPublication cited = publication("cited-1", null, null, null, null, "cited-1", List.of("a1", "a2", "a3"));
         ScoringPublication citing = publication("cp-1", null, null, null, null, "cp-1", List.of("b1"));
 
-        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
         when(scoringService.getScore(citing, indicator)).thenReturn(score(2.0));
 
         Map<String, Score> precomputed = scientificProductionService.precomputeCitationBaseScores(List.of(citing), indicator);
@@ -157,12 +157,12 @@ class ScientificProductionServiceTest {
 
     @Test
     void cachedBaseScoresAreNotMutatedAcrossCalls() {
-        Indicator indicator = indicator(Indicator.Type.CITATIONS, "S * N");
+        Indicator indicator = indicator("CITATIONS", "S * N");
         ScoringPublication citedWithTwoAuthors = publication("cited-1", null, null, null, null, "cited-1", List.of("a1", "a2"));
         ScoringPublication citedWithFourAuthors = publication("cited-2", null, null, null, null, "cited-2", List.of("a1", "a2", "a3", "a4"));
         ScoringPublication citing = publication("cp-1", null, null, null, null, "cp-1", List.of("b1"));
 
-        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
         when(scoringService.getScore(citing, indicator)).thenReturn(score(2.0));
 
         Map<String, Score> precomputed = scientificProductionService.precomputeCitationBaseScores(List.of(citing), indicator);
@@ -215,9 +215,9 @@ class ScientificProductionServiceTest {
                 "2023", rank2023
         ));
         when(lookupPort.getConferenceRankings("CCGRID")).thenReturn(List.of(ranking));
-        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(computerScienceScoringService);
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(computerScienceScoringService);
 
-        Indicator indicator = indicator(Indicator.Type.PUBLICATIONS, "S/max(N-2, 1)");
+        Indicator indicator = indicator("PUBLICATIONS", "S/max(N-2, 1)");
         indicator.setScoreYearRange("IY");
 
         Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(publication), indicator);
@@ -263,9 +263,9 @@ class ScientificProductionServiceTest {
         rank2023.setRank(CoreConferenceRanking.Rank.B);
         ranking.setYearlyRankings(Map.of(2023, rank2023));
         when(lookupPort.getConferenceRankings("ICNP")).thenReturn(List.of(ranking));
-        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(computerScienceScoringService);
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(computerScienceScoringService);
 
-        Indicator indicator = indicator(Indicator.Type.PUBLICATIONS, "S/max(N-2, 1)");
+        Indicator indicator = indicator("PUBLICATIONS", "S/max(N-2, 1)");
         indicator.setScoreYearRange("IY");
 
         Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(publication), indicator);
@@ -311,9 +311,9 @@ class ScientificProductionServiceTest {
         rank2023.setRank(CoreConferenceRanking.Rank.B);
         ranking.setYearlyRankings(Map.of(2023, rank2023));
         when(lookupPort.getConferenceRankingsByNormalizedTitle("parallel processing workshops")).thenReturn(List.of(ranking));
-        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(computerScienceScoringService);
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(computerScienceScoringService);
 
-        Indicator indicator = indicator(Indicator.Type.PUBLICATIONS, "S/max(N-2, 1)");
+        Indicator indicator = indicator("PUBLICATIONS", "S/max(N-2, 1)");
         indicator.setScoreYearRange("IY");
 
         Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(publication), indicator);
@@ -358,9 +358,9 @@ class ScientificProductionServiceTest {
         rank2023.setRank(CoreConferenceRanking.Rank.A);
         ranking.setYearlyRankings(Map.of(2023, rank2023));
         when(lookupPort.getConferenceRankings("PERCOM")).thenReturn(List.of(ranking));
-        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(computerScienceScoringService);
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(computerScienceScoringService);
 
-        Indicator indicator = indicator(Indicator.Type.PUBLICATIONS, "S/max(N-2, 1)");
+        Indicator indicator = indicator("PUBLICATIONS", "S/max(N-2, 1)");
         indicator.setScoreYearRange("IY");
 
         Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(publication), indicator);
@@ -401,10 +401,10 @@ class ScientificProductionServiceTest {
         evidence.setPublicationId("pub-lncs-1");
         evidence.setConferenceName("Proceedings of the International Conference on Software Engineering, ICSE 2024");
         when(dblpEvidenceRepository.findByPublicationId("pub-lncs-1")).thenReturn(Optional.of(evidence));
-        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS_CONFERENCE)).thenReturn(conferenceScoringService);
+        when(scoringFactoryService.getScoringService("CS_CONFERENCE")).thenReturn(conferenceScoringService);
 
-        Indicator indicator = indicator(Indicator.Type.PUBLICATIONS, "S/max(N-2, 1)");
-        indicator.setScoringStrategy(Indicator.Strategy.CS_CONFERENCE);
+        Indicator indicator = indicator("PUBLICATIONS", "S/max(N-2, 1)");
+        indicator.setScoringStrategy("CS_CONFERENCE");
         indicator.setScoreYearRange("IY");
 
         Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(publication), indicator);
@@ -451,10 +451,10 @@ class ScientificProductionServiceTest {
         evidence.setPublicationId("pub-aina-1");
         evidence.setConferenceName("AINA (6)");
         when(dblpEvidenceRepository.findByPublicationId("pub-aina-1")).thenReturn(Optional.of(evidence));
-        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS_CONFERENCE)).thenReturn(conferenceScoringService);
+        when(scoringFactoryService.getScoringService("CS_CONFERENCE")).thenReturn(conferenceScoringService);
 
-        Indicator indicator = indicator(Indicator.Type.PUBLICATIONS, "S/max(N-2, 1)");
-        indicator.setScoringStrategy(Indicator.Strategy.CS_CONFERENCE);
+        Indicator indicator = indicator("PUBLICATIONS", "S/max(N-2, 1)");
+        indicator.setScoringStrategy("CS_CONFERENCE");
         indicator.setScoreYearRange("IY");
 
         Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(publication), indicator);
@@ -470,9 +470,9 @@ class ScientificProductionServiceTest {
 
     @Test
     void productionScoreTop10SelectorSortsAndLimitsByAuthorScore() {
-        Indicator indicator = indicator(Indicator.Type.PUBLICATIONS, "S");
-        indicator.setSelector(Indicator.Selector.TOP_10);
-        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+        Indicator indicator = indicator("PUBLICATIONS", "S");
+        indicator.setSelector("TOP_10");
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
 
         List<ScoringPublicationReadModel> publications = IntStream.range(0, 11)
                 .mapToObj(i -> publication("p" + i, null, null, null, null, "Paper " + i, List.of("a1")))
@@ -497,9 +497,9 @@ class ScientificProductionServiceTest {
 
     @Test
     void precomputeCitationBaseScoresReturnsEmptyForGuardPathsAndSkipsDuplicateIds() {
-        Indicator genericIndicator = indicator(Indicator.Type.CITATIONS, "S");
-        genericIndicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
-        Indicator nullStrategyIndicator = indicator(Indicator.Type.CITATIONS, "S");
+        Indicator genericIndicator = indicator("CITATIONS", "S");
+        genericIndicator.setScoringStrategy("GENERIC_COUNT");
+        Indicator nullStrategyIndicator = indicator("CITATIONS", "S");
         nullStrategyIndicator.setScoringStrategy(null);
 
         assertTrue(scientificProductionService.precomputeCitationBaseScores(null, genericIndicator).isEmpty());
@@ -511,8 +511,8 @@ class ScientificProductionServiceTest {
         assertTrue(scientificProductionService.precomputeCitationBaseScores(
                 List.of(publication("p1", null, null, null, null, "P1", List.of("a1"))), genericIndicator).isEmpty());
 
-        Indicator indicator = indicator(Indicator.Type.CITATIONS, "S");
-        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+        Indicator indicator = indicator("CITATIONS", "S");
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
         ScoringPublication duplicateA = publication("dup", null, null, null, null, "A", List.of("a1"));
         ScoringPublication duplicateB = publication("dup", null, null, null, null, "B", List.of("a1"));
         ScoringPublication noId = new ScoringPublication(
@@ -547,13 +547,13 @@ class ScientificProductionServiceTest {
 
     @Test
     void impactScoreAccumulatesTotalScoreAndAuthorScoreOnPositiveMatches() {
-        Indicator indicator = indicator(Indicator.Type.CITATIONS, "S * N");
+        Indicator indicator = indicator("CITATIONS", "S * N");
         ScoringPublication cited = publication("cited", null, null, null, null, "Cited", List.of("a1", "a2"));
         ScoringPublication citingA = publication("ca", null, null, null, null, "Citing A", List.of("b1"));
         ScoringPublication citingB = publication("cb", null, null, null, null, "Citing B", List.of("b2"));
         List<ScoringPublicationReadModel> citingPublications = List.of(citingA, citingB);
 
-        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
         Score scoreA = new Score();
         scoreA.setScore(2.0);
         scoreA.setAuthorScore(0.0);
@@ -573,11 +573,11 @@ class ScientificProductionServiceTest {
 
     @Test
     void impactScoreUsesCachedBaseByCitingPublicationIdWithoutServiceLookup() {
-        Indicator indicator = indicator(Indicator.Type.CITATIONS, "S");
+        Indicator indicator = indicator("CITATIONS", "S");
         ScoringPublication cited = publication("cited", null, null, null, null, "Cited", List.of("a1"));
         ScoringPublication citing = publication("cp-cache", null, null, null, null, "Cached", List.of("b1"));
 
-        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
         Score cachedBase = new Score();
         cachedBase.setScore(7.0);
         cachedBase.setAuthorScore(13.0);
@@ -607,8 +607,8 @@ class ScientificProductionServiceTest {
 
     @Test
     void precomputeCitationBaseScoresCopiesAllRelevantScoreFieldsAndDetachesMaps() {
-        Indicator indicator = indicator(Indicator.Type.CITATIONS, "S");
-        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+        Indicator indicator = indicator("CITATIONS", "S");
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
         ScoringPublication citing = publication("cp-copy", null, null, null, null, "Copy", List.of("a1"));
 
         Score base = new Score();
@@ -649,9 +649,9 @@ class ScientificProductionServiceTest {
 
     @Test
     void productionScoreWithSelectorAllKeepsInterResultAndSkipsZeroScores() {
-        Indicator indicator = indicator(Indicator.Type.PUBLICATIONS, "S");
-        indicator.setSelector(Indicator.Selector.ALL);
-        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+        Indicator indicator = indicator("PUBLICATIONS", "S");
+        indicator.setSelector("ALL");
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
 
         ScoringPublicationReadModel p1 = publication("all-1", null, null, null, null, "All 1", List.of("a1"));
         ScoringPublicationReadModel p2 = publication("all-2", null, null, null, null, "All 2", List.of("a1"));
@@ -681,9 +681,9 @@ class ScientificProductionServiceTest {
 
     @Test
     void productionScoreTop10SelectorWithAtMostTenEntriesKeepsAllPositiveWithoutSortingBranch() {
-        Indicator indicator = indicator(Indicator.Type.PUBLICATIONS, "S");
-        indicator.setSelector(Indicator.Selector.TOP_10);
-        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+        Indicator indicator = indicator("PUBLICATIONS", "S");
+        indicator.setSelector("TOP_10");
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
 
         List<ScoringPublicationReadModel> publications = IntStream.rangeClosed(1, 3)
                 .mapToObj(i -> publication("t" + i, null, null, null, null, "Top " + i, List.of("a1")))
@@ -705,9 +705,9 @@ class ScientificProductionServiceTest {
 
     @Test
     void productionScoreTop10SelectorSortsAndKeepsBestTenWhenMoreThanTenPublications() {
-        Indicator indicator = indicator(Indicator.Type.PUBLICATIONS, "S");
-        indicator.setSelector(Indicator.Selector.TOP_10);
-        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+        Indicator indicator = indicator("PUBLICATIONS", "S");
+        indicator.setSelector("TOP_10");
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
 
         List<ScoringPublicationReadModel> publications = IntStream.rangeClosed(1, 12)
                 .mapToObj(i -> publication("mx-" + i, null, null, null, null, "Max " + i, List.of("a1")))
@@ -731,9 +731,9 @@ class ScientificProductionServiceTest {
 
     @Test
     void precomputeCitationBaseScoresGuardPathsDoNotTouchFactoryOrScoringService() {
-        Indicator genericIndicator = indicator(Indicator.Type.CITATIONS, "S");
-        genericIndicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
-        Indicator nullStrategyIndicator = indicator(Indicator.Type.CITATIONS, "S");
+        Indicator genericIndicator = indicator("CITATIONS", "S");
+        genericIndicator.setScoringStrategy("GENERIC_COUNT");
+        Indicator nullStrategyIndicator = indicator("CITATIONS", "S");
         nullStrategyIndicator.setScoringStrategy(null);
         List<ScoringPublicationReadModel> nonEmpty = List.of(
                 publication("guard", null, null, null, null, "Guard", List.of("a1"))
@@ -751,8 +751,8 @@ class ScientificProductionServiceTest {
 
     @Test
     void precomputeCitationBaseScoresDeduplicatesIdsAndReturnsIndependentCopies() {
-        Indicator indicator = indicator(Indicator.Type.CITATIONS, "S");
-        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(scoringService);
+        Indicator indicator = indicator("CITATIONS", "S");
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
 
         ScoringPublicationReadModel p1 = publication("dup", null, null, null, null, "Dup A", List.of("a1"));
         ScoringPublicationReadModel p2 = publication("dup", null, null, null, null, "Dup B", List.of("a1"));
@@ -780,7 +780,7 @@ class ScientificProductionServiceTest {
 
     @Test
     void reflectivePrivateHelpersCoverLegacyCitationAndNullCopyBranches() throws Exception {
-        Indicator indicator = indicator(Indicator.Type.CITATIONS, "S");
+        Indicator indicator = indicator("CITATIONS", "S");
         ScoringPublication cited = publication("c-1", null, null, null, null, "Cited", List.of("a1"));
         ScoringPublication citing = publication("x-1", null, null, null, null, "Citing", List.of("b1"));
         when(scoringService.getScore(citing, indicator)).thenReturn(score(3.0));
@@ -803,11 +803,11 @@ class ScientificProductionServiceTest {
         assertEquals(0.0, copiedFromNull.getScore(), 0.0001);
     }
 
-    private Indicator indicator(Indicator.Type type, String formula) {
+    private Indicator indicator(String typeName, String formula) {
         Indicator indicator = new Indicator();
-        indicator.setOutputType(type);
+        indicator.setOutputType(typeName);
         indicator.setFormula(formula);
-        indicator.setScoringStrategy(Indicator.Strategy.CS);
+        indicator.setScoringStrategy("CS");
         return indicator;
     }
 

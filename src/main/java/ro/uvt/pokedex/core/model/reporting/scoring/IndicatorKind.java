@@ -1,14 +1,12 @@
 package ro.uvt.pokedex.core.model.reporting.scoring;
 
-import ro.uvt.pokedex.core.model.reporting.Indicator;
-
 /**
  * Sealed-hierarchy replacement for the (Indicator.Type × Indicator.Strategy) cross-product.
  *
  * <p>Every existing production indicator maps into exactly one cell of this hierarchy. The
- * {@link #fromLegacy(Indicator.Type, Indicator.Strategy)} factory encodes the compatibility
- * table from the H52 design doc and is the canonical converter during the parallel-read
- * phase of the migration.
+ * {@link #of(String, String)} factory encodes the conversion from the legacy
+ * (outputType, scoringStrategy) name pair and is what the admin form / cache-fingerprint
+ * code construct kinds with after H52 slice 11d.5.
  *
  * <p>Each variant exposes its {@link #strategy()} so dispatch (formerly
  * {@code ScoringFactoryService}'s if/else ladder) collapses to a single map lookup.
@@ -59,71 +57,79 @@ public sealed interface IndicatorKind
     }
 
     /**
-     * Bidirectional conversion from the (Indicator.Type, Indicator.Strategy) pair to a
-     * v1 {@code IndicatorKind}. Encodes the per-kind permitted-strategy table from the
-     * H52 design doc; every production indicator maps cleanly.
+     * H52 slice 11d.5: constructs the right kind from the legacy
+     * {@code (outputType, scoringStrategy)} name pair. Names match what the admin
+     * form posts and what the {@code userIndicatorResults} fingerprint stores.
      *
-     * @throws IllegalArgumentException for combinations not represented in any current
-     *         indicator (the v1 doc treats those as impossible-by-construction)
+     * @throws IllegalArgumentException for combinations not represented in production
+     *         (e.g. {@code ACTIVITY_PROJECT} which has zero indicators)
      */
-    static IndicatorKind fromLegacy(Indicator.Type type, Indicator.Strategy strategy) {
-        if (type == null) throw new IllegalArgumentException("Indicator.Type cannot be null");
-        if (strategy == null) throw new IllegalArgumentException("Indicator.Strategy cannot be null");
-        ScoringStrategy s = ScoringStrategy.fromLegacy(strategy);
+    static IndicatorKind of(String outputTypeName, String strategyName) {
+        if (outputTypeName == null) throw new IllegalArgumentException("outputTypeName cannot be null");
+        if (strategyName == null) throw new IllegalArgumentException("strategyName cannot be null");
+        ScoringStrategy s;
+        try {
+            s = ScoringStrategy.valueOf(strategyName);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Unknown scoring strategy: " + strategyName, ex);
+        }
 
-        return switch (type) {
-            case PUBLICATIONS              -> new Publications(AuthorRole.ALL,  s);
-            case PUBLICATIONS_MAIN_AUTHOR  -> new Publications(AuthorRole.MAIN, s);
-            case PUBLICATIONS_COAUTHOR     -> new Publications(AuthorRole.CO,   s);
+        return switch (outputTypeName) {
+            case "PUBLICATIONS"              -> new Publications(AuthorRole.ALL,  s);
+            case "PUBLICATIONS_MAIN_AUTHOR"  -> new Publications(AuthorRole.MAIN, s);
+            case "PUBLICATIONS_COAUTHOR"     -> new Publications(AuthorRole.CO,   s);
 
-            case CITATIONS                 -> new Citations(false, s);
-            case CITATIONS_EXCLUDE_SELF    -> new Citations(true,  s);
+            case "CITATIONS"                 -> new Citations(false, s);
+            case "CITATIONS_EXCLUDE_SELF"    -> new Citations(true,  s);
 
-            case GENERIC_ACTIVITIES        -> {
+            case "GENERIC_ACTIVITIES" -> {
                 if (s != ScoringStrategy.GENERIC_ACTIVITY) {
                     throw new IllegalArgumentException(
-                            "GENERIC_ACTIVITIES output type requires GENERIC_ACTIVITY strategy; got " + strategy);
+                            "GENERIC_ACTIVITIES output type requires GENERIC_ACTIVITY strategy; got " + strategyName);
                 }
                 yield new GenericActivity();
             }
 
-            case ACTIVITY_FORUM            -> new Activity(ActivityType.FORUM,      s);
-            case ACTIVITY_UNIVERSITY       -> new Activity(ActivityType.UNIVERSITY, s);
-            case ACTIVITY_EVENT            -> new Activity(ActivityType.EVENT,      s);
+            case "ACTIVITY_FORUM"      -> new Activity(ActivityType.FORUM,      s);
+            case "ACTIVITY_UNIVERSITY" -> new Activity(ActivityType.UNIVERSITY, s);
+            case "ACTIVITY_EVENT"      -> new Activity(ActivityType.EVENT,      s);
 
-            // PROJECT exists in the enum but has zero indicators in production.
-            // Keep it modellable as an Activity with a yet-unused subtype so commit 3
-            // can drop it cleanly if the situation hasn't changed.
-            case ACTIVITY_PROJECT          -> throw new IllegalArgumentException(
-                    "ACTIVITY_PROJECT is unused in production data and not modeled in v1 yet");
+            // PROJECT exists in the legacy enum but has zero indicators in production.
+            case "ACTIVITY_PROJECT" -> throw new IllegalArgumentException(
+                    "ACTIVITY_PROJECT is unused in production data and not modeled in v1");
+            default -> throw new IllegalArgumentException("Unknown outputType: " + outputTypeName);
         };
     }
 
     /**
-     * Inverse of {@link #fromLegacy}. Returns the (Type, Strategy) pair this kind would
-     * serialize to on the legacy schema — used by parallel-write code that needs to
-     * populate the deprecated fields for backwards compatibility during the migration.
+     * Inverse of {@link #of}. Returns the (outputTypeName, strategyName) pair this kind
+     * serializes to on the legacy schema. Used by the JSON-shape derived getters on
+     * {@code Indicator} and by the {@code userIndicatorResults} fingerprint.
      */
     default LegacyShape toLegacy() {
         return switch (this) {
             case Publications p -> new LegacyShape(switch (p.role()) {
-                case ALL  -> Indicator.Type.PUBLICATIONS;
-                case MAIN -> Indicator.Type.PUBLICATIONS_MAIN_AUTHOR;
-                case CO   -> Indicator.Type.PUBLICATIONS_COAUTHOR;
-            }, p.strategy().toLegacy());
+                case ALL  -> "PUBLICATIONS";
+                case MAIN -> "PUBLICATIONS_MAIN_AUTHOR";
+                case CO   -> "PUBLICATIONS_COAUTHOR";
+            }, p.strategy().name());
             case Citations c -> new LegacyShape(
-                    c.excludeSelf() ? Indicator.Type.CITATIONS_EXCLUDE_SELF : Indicator.Type.CITATIONS,
-                    c.strategy().toLegacy());
+                    c.excludeSelf() ? "CITATIONS_EXCLUDE_SELF" : "CITATIONS",
+                    c.strategy().name());
             case Activity a -> new LegacyShape(switch (a.type()) {
-                case FORUM      -> Indicator.Type.ACTIVITY_FORUM;
-                case UNIVERSITY -> Indicator.Type.ACTIVITY_UNIVERSITY;
-                case EVENT      -> Indicator.Type.ACTIVITY_EVENT;
-            }, a.strategy().toLegacy());
-            case GenericCount gc    -> new LegacyShape(Indicator.Type.PUBLICATIONS, Indicator.Strategy.GENERIC_COUNT);
-            case GenericActivity ga -> new LegacyShape(Indicator.Type.GENERIC_ACTIVITIES, Indicator.Strategy.GENERIC_ACTIVITY);
+                case FORUM      -> "ACTIVITY_FORUM";
+                case UNIVERSITY -> "ACTIVITY_UNIVERSITY";
+                case EVENT      -> "ACTIVITY_EVENT";
+            }, a.strategy().name());
+            case GenericCount gc    -> new LegacyShape("PUBLICATIONS", "GENERIC_COUNT");
+            case GenericActivity ga -> new LegacyShape("GENERIC_ACTIVITIES", "GENERIC_ACTIVITY");
         };
     }
 
-    /** Round-trip helper for parallel-write code. */
-    record LegacyShape(Indicator.Type type, Indicator.Strategy strategy) {}
+    /**
+     * H52 slice 11d.5: name-based (outputType, strategy) pair carrying the same
+     * strings the admin form and the cached-blob fingerprint format use. Replaces
+     * the prior enum-based variant.
+     */
+    record LegacyShape(String outputTypeName, String strategyName) {}
 }

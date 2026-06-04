@@ -31,7 +31,7 @@ class ReportScopedIndicatorScoringSupportTest {
     void computeCitationViewMergesDuplicatePublicationTitlesAndBuildsDisplayMetadata() {
         ScientificProductionService scientificProductionService = mock(ScientificProductionService.class);
         Indicator indicator = new Indicator();
-        indicator.setOutputType(Indicator.Type.CITATIONS);
+        indicator.setOutputType("CITATIONS");
 
         ScholardexPublicationView citedA = publication("cited-a", "same-title", List.of("ra"), "forum-a");
         ScholardexPublicationView citedB = publication("cited-b", "same-title", List.of("rb"), null);
@@ -76,7 +76,7 @@ class ReportScopedIndicatorScoringSupportTest {
     void computeCitationViewExcludeSelfFiltersCitationsFromResearcherAuthors() {
         ScientificProductionService scientificProductionService = mock(ScientificProductionService.class);
         Indicator indicator = new Indicator();
-        indicator.setOutputType(Indicator.Type.CITATIONS_EXCLUDE_SELF);
+        indicator.setOutputType("CITATIONS_EXCLUDE_SELF");
 
         ScholardexPublicationView cited = publication("cited-a", "paper-a", List.of("ra"), "forum-a");
         ScholardexPublicationView selfCitation = publication("cit-self", "self", List.of("ra"), "forum-self");
@@ -111,7 +111,7 @@ class ReportScopedIndicatorScoringSupportTest {
     void computeCitationViewExcludeSelfWithEmptyResearcherSetDoesNotFilterAnything() {
         ScientificProductionService scientificProductionService = mock(ScientificProductionService.class);
         Indicator indicator = new Indicator();
-        indicator.setOutputType(Indicator.Type.CITATIONS_EXCLUDE_SELF);
+        indicator.setOutputType("CITATIONS_EXCLUDE_SELF");
 
         ScholardexPublicationView cited = publication("cited-a", "paper-a", List.of("ra"), "forum-a");
         ScholardexPublicationView citationA = publication("cit-a", "a", List.of("ra"), "f1");
@@ -187,11 +187,11 @@ class ReportScopedIndicatorScoringSupportTest {
                 );
 
         Indicator citation = new Indicator();
-        citation.setOutputType(Indicator.Type.CITATIONS);
+        citation.setOutputType("CITATIONS");
         Indicator citationExclude = new Indicator();
-        citationExclude.setOutputType(Indicator.Type.CITATIONS_EXCLUDE_SELF);
+        citationExclude.setOutputType("CITATIONS_EXCLUDE_SELF");
         Indicator nonCitation = new Indicator();
-        nonCitation.setOutputType(Indicator.Type.PUBLICATIONS);
+        nonCitation.setOutputType("PUBLICATIONS");
 
         when(scientificProductionService.precomputeCitationBaseScores(anyList(), eq(citation))).thenReturn(Map.of("x", score(1, 1, null)));
         when(scientificProductionService.precomputeCitationBaseScores(anyList(), eq(citationExclude))).thenReturn(Map.of("y", score(2, 2, null)));
@@ -219,7 +219,7 @@ class ReportScopedIndicatorScoringSupportTest {
                         1
                 );
         Indicator citation = new Indicator();
-        citation.setOutputType(Indicator.Type.CITATIONS);
+        citation.setOutputType("CITATIONS");
 
         doAnswer(invocation -> {
             List<ScoringPublicationReadModel> pubs = invocation.getArgument(0);

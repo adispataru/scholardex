@@ -17,7 +17,7 @@ public final class IdListCleaner {
         if (ids == null || ids.isEmpty()) return new ArrayList<>();
         LinkedHashSet<String> seen = new LinkedHashSet<>();
         for (String id : ids) {
-            if (id != null && !id.isBlank()) seen.add(id);
+            if (id != null && !id.isBlank() && !"undefined".equals(id) && !"null".equals(id)) seen.add(id);
         }
         return new ArrayList<>(seen);
     }

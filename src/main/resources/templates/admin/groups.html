@@ -230,13 +230,15 @@
         let departmentsContainer = $('#departmentsContainer');
         let allResearchers = /*[[${allResearchers}]]*/ [];
         let researchersContainer = $('#researchersContainer');
+        const departmentOptionLabel = opt =>
+            [opt.institutionShortName, opt.divisionName, opt.name].filter(Boolean).join(' · ');
 
         $('#addDomain').click(function() {
             let index = domainsContainer.children().length;
             domainsContainer.append(`
                 <div class="input-group mb-2 app-collection__item">
                     <select class="form-control" name="domainIds[${index}]">
-                        ${allDomains.map(domain => `<option value="${domain.id}">${domain.name}</option>`).join('')}
+                        ${allDomains.map(domain => `<option value="${domain.name}">${domain.name}</option>`).join('')}
                     </select>
                     <button class="btn btn-danger remove-domain" type="button">Remove</button>
                 </div>`);
@@ -253,7 +255,7 @@
             departmentsContainer.append(`
                 <div class="input-group mb-2 app-collection__item">
                     <select class="form-control" name="departmentIds[${index}]">
-                        ${departmentOptions.map(opt => `<option value="${opt.id}">${opt.label}</option>`).join('')}
+                        ${departmentOptions.map(opt => `<option value="${opt.id}">${departmentOptionLabel(opt)}</option>`).join('')}
                     </select>
                     <button class="btn btn-danger remove-department" type="button">Remove</button>
                 </div>`);
@@ -266,10 +268,11 @@
         });
 
         $('#addResearcher').click(function() {
-            let index = researchersContainer.children().length;
+            // H52 group-form fix: plain `name="userIds"` so Spring's @RequestParam
+            // List<String> userIds collects them as repeated params.
             researchersContainer.append(`
                 <div class="input-group mb-2 app-collection__item">
-                    <select class="form-control" name="userIds[${index}]">
+                    <select class="form-control" name="userIds">
                         ${allResearchers.map(researcher => `<option value="${researcher.email}">${researcher.researcherProfile?.name ?? ''}</option>`).join('')}
                     </select>
                     <button class="btn btn-danger remove-researcher" type="button">Remove</button>
@@ -277,9 +280,6 @@
         });
         researchersContainer.on('click', '.remove-researcher', function() {
             $(this).closest('.input-group').remove();
-            researchersContainer.children().each(function(index, element) {
-                $(element).find('select').attr('name', `userIds[${index}]`);
-            });
         });
     });
 </script>

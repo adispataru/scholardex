@@ -10,7 +10,7 @@ package ro.uvt.pokedex.core.model.reporting.scoring;
  * </ul>
  *
  * Replaces the {@code PUBLICATIONS_MAIN_AUTHOR} / {@code PUBLICATIONS_COAUTHOR} variants of
- * {@link ro.uvt.pokedex.core.model.reporting.Indicator.Type}.
+ * the former {@code Indicator.Type} enum (deleted in H52 slice 11d.5).
  */
 public enum AuthorRole {
     ALL,

@@ -36,7 +36,7 @@ class ComputerScienceScoringPipelineParityTest {
         ScientificProductionService scientificProductionService =
                 new ScientificProductionService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
 
-        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS)).thenReturn(computerScienceScoringService);
+        when(scoringFactoryService.getScoringService("CS")).thenReturn(computerScienceScoringService);
 
         ScholardexForumView q1JournalForum = forum("Journal", "1111-1111", null,
                 "Journal of Regression Safety");
@@ -63,8 +63,8 @@ class ComputerScienceScoringPipelineParityTest {
         when(lookupPort.getRankingsByIssn((String) null)).thenReturn(List.of());
 
         Indicator indicator = new Indicator();
-        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
-        indicator.setScoringStrategy(Indicator.Strategy.CS);
+        indicator.setOutputType("PUBLICATIONS");
+        indicator.setScoringStrategy("CS");
         indicator.setScoreYearRange("IY");
         indicator.setFormula("S/max(N-2, 1)");
         Domain domain = new Domain();

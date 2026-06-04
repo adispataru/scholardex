@@ -87,11 +87,11 @@ public class GroupManagementFacade {
     }
 
     public Group createGroup(Group group, Collection<String> memberUserIds) {
-        applyDenormalizedFields(group);
         group.setSupervisorUserIds(IdListCleaner.clean(group.getSupervisorUserIds()));
-        requireKnownUsers(group.getSupervisorUserIds());
         group.setDomainIds(IdListCleaner.clean(group.getDomainIds()));
         group.setDepartmentIds(IdListCleaner.clean(group.getDepartmentIds()));
+        applyDenormalizedFields(group);
+        requireKnownUsers(group.getSupervisorUserIds());
         Instant now = Instant.now();
         group.setCreatedAt(now);
         group.setUpdatedAt(now);
@@ -103,11 +103,11 @@ public class GroupManagementFacade {
     }
 
     public Group updateGroup(Group group, Collection<String> memberUserIds) {
-        applyDenormalizedFields(group);
         group.setSupervisorUserIds(IdListCleaner.clean(group.getSupervisorUserIds()));
-        requireKnownUsers(group.getSupervisorUserIds());
         group.setDomainIds(IdListCleaner.clean(group.getDomainIds()));
         group.setDepartmentIds(IdListCleaner.clean(group.getDepartmentIds()));
+        applyDenormalizedFields(group);
+        requireKnownUsers(group.getSupervisorUserIds());
         group.setUpdatedAt(Instant.now());
         Group saved = groupRepository.save(group);
         groupMembershipService.syncMembers(saved.getId(),

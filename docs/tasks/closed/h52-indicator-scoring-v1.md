@@ -1,8 +1,109 @@
 # H52 Indicator / Scoring / Formula Flow — v1
 
-**Status:** In progress — slices 1 and 2 of commit 1 shipped.
+**Status:** H52 v1 complete (Commit 1 + Commit 2 + Commit 3 all shipped). Commit 4 UI work (admin form DTO restructure) is optional next-iteration scope.
 **Created:** 2026-05-30
-**Last updated:** 2026-05-31
+**Last updated:** 2026-06-04
+
+## Resuming from cold context
+
+If you're picking this up without prior session memory, the essential state is:
+
+- **Tests:** 2074 / 0 failures at end of slice 12.
+- **Live `test` Mongo state**: 42 indicators (was 43; Mate_S copy `682343657123387ec34394b1`
+  deleted by the slice-3b runner during the 11d.3 migration). All 42 have v1 typed
+  fields (`kind`, `yearRangeSpec`, `scoreYearRangeSpec`, `selectorSpec`, `formulaHash`)
+  populated. Indicator docs no longer carry the legacy enum keys (`outputType`,
+  `scoringStrategy`, `yearRange`, `scoreYearRange`, `selector`) after any save flow
+  touches them. `userIndicatorResults` cache trimmed to 422 docs (was 2463) on
+  2026-06-02 to reduce broken-glass surface before slice 11c.
+- **Backups taken during this work:**
+  - `$HOME/h52-report-cleanup-backup-20260602-104246/` — pre-cache-trim
+    snapshot of `groupIndividualReportRuns`, `userIndividualReportRuns`,
+    `userIndicatorResults`.
+  - `$HOME/h52-indicator-backup-20260603-091232/` — pre-`@Transient` snapshot
+    of all 43 indicator docs (with legacy enum keys still persisted).
+- **Slice-10 fixture** at `src/test/resources/h52/replay-fixture.json` — committed,
+  PII-redacted; 57 rawGraph blobs covering every distinct production fingerprint.
+  `H52ReplayShapeTest` reads it; nothing in the live code path touches it. The
+  fixture was captured under the legacy JSON shape and stays valid because the
+  test only asserts shape parseability, not derivation-equivalence.
+
+**Boot for inspection** (per `CLAUDE.md`):
+
+```bash
+./gradlew bootRun --args='--spring.profiles.active=agent-dev --server.port=8181'
+```
+
+**Re-run the indicator migration runner** (idempotent — only writes when v1 fields
+are missing or `formulaHash` is stale; deletes Mate_S copy if it re-appears):
+
+```bash
+./gradlew bootRun --args='--spring.profiles.active=indicator-migration,agent-dev --server.port=8181'
+```
+
+**Current `Indicator.java` shape** (after slice 11d.5):
+
+- **Storage:** `id`, `name`, `formula`, `domain` (DBRef), `activity` (DBRef),
+  `version` (Long, @Version), `kind` (IndicatorKind sealed interface), `formulaHash`
+  (String), `yearRangeSpec`, `scoreYearRangeSpec`, `selectorSpec`. **No legacy
+  fields.** Two transient `String pendingOutputType` / `String pendingScoringStrategy`
+  used only to bridge the brief window between paired form-binding setter calls.
+- **Reads:** `getEffectiveKind()`, `getEffectiveYearRange()`,
+  `getEffectiveScoreYearRange()`, `getEffectiveSelector()` are the canonical typed
+  API. `getOutputType()`, `getScoringStrategy()`, `getYearRange()`,
+  `getScoreYearRange()`, `getSelector()` return **Strings** derived from the typed
+  shape (legacy-enum-style names; used by the admin form template and the cache
+  fingerprint). Convenience predicates: `isGenericCount()`, `isGenericActivity()`,
+  `isPublicationOutput()`, `isCitationsOutput()`, `isCitationsExcludeSelf()`,
+  `isActivityOutput()`, `publicationAuthorRole()`, `isTopNSelector()`, `topNLimit()`.
+- **Writes:** Typed setters (`setKind`, `setYearRangeSpec`, etc.) are the canonical
+  path. Legacy-compat setters take Strings and route through the typed fields:
+  - `setOutputType(String) + setScoringStrategy(String)` accumulate in
+    `pendingOutputType` / `pendingScoringStrategy` and materialize a `kind` once
+    both halves arrive. Incremental updates (kind already set, swap one half)
+    rebuild the kind preserving the other half.
+  - `setYearRange(String)` / `setScoreYearRange(String)` parse via
+    `YearRangeSpec.parse` / `ScoreYearRangeSpec.parse`.
+  - `setSelector(String)` routes `"TOP_10"` → `TopN(10)`, `"ALL"` → `All`, null → null.
+- **Save lifecycle:** `IndicatorFormulaHashStamper.onBeforeConvert`
+  (`service/reporting/formula/`) calls `synthesizeTypedFieldsFromLegacy` to fill in
+  any v1 typed fields not already set, then computes/stamps the `formulaHash` via
+  the `FormulaCanonicalizer` → `FormulaHasher` pipeline, then runs the `FormulaSandbox`
+  denylist check. Rejection raises `FormulaSandboxException` (extends
+  IllegalArgumentException → controller surfaces as HTTP 400).
+
+**`IndicatorKind`** (`model/reporting/scoring/`) — sealed interface:
+- `Publications(AuthorRole role, ScoringStrategy strategy)`
+- `Citations(boolean excludeSelf, ScoringStrategy strategy)`
+- `Activity(ActivityType type, ScoringStrategy strategy)` where `ActivityType ∈ {FORUM, UNIVERSITY, EVENT}`
+- `GenericCount()` (unreachable through `of(...)`; reserved for v1-native indicators)
+- `GenericActivity()` (only `("GENERIC_ACTIVITIES", "GENERIC_ACTIVITY")` produces this)
+- Construction: `IndicatorKind.of(String outputTypeName, String strategyName)`.
+- Round-trip: `kind.toLegacy()` returns `LegacyShape(String outputTypeName, String strategyName)`.
+
+**`Selector`** (sealed): `All` / `TopN(int n)`. Construction via `Selector.of(String legacyName)`
+(`"TOP_10"` → `TopN(10)`, `"ALL"` → `All`, null → `All`). Round-trip via `legacyName()`.
+
+**`YearRangeSpec`** (sealed): `AllYears` / `Absolute(int from, int to)`. Parse via
+`YearRangeSpec.parse(String)`. `"*"` → `AllYears`; `"from->to"` → `Absolute`.
+Comma-list grammar from the legacy parser is intentionally not carried into v1.
+
+**`ScoreYearRangeSpec`** (sealed): `AllYears` / `ItemYear` / `Absolute`. Parse via
+`ScoreYearRangeSpec.parse(String)`. `"IY"` → `ItemYear`; null/blank → `ItemYear`
+(matches the dominant production default). `allowedYears(int itemYear)` returns
+the concrete year list to score against.
+
+**`ScoringStrategy`** — plain enum, name matches the legacy strategy names that the
+admin form, cache fingerprint, and migration runner all use as Strings.
+`ScoringStrategy.valueOf(String)` and `.name()` are the only bridges needed.
+
+**`ScoringFactoryService`** — `Map<ScoringStrategy, ScoringService>` populated from
+the autowired `List<ScoringService>` via each impl's `strategy()` method. Two
+lookup signatures: `getScoringService(ScoringStrategy)` (typed) and
+`getScoringService(String)` (bridges to the typed via `ScoringStrategy.valueOf`).
+`@PostConstruct verifyRegistry()` rejects duplicate claims and unclaimed strategies
+(except `GENERIC_COUNT` and `GENERIC_ACTIVITY` which are handled inline by the
+two consuming services).
 
 ## Quick status (for the next person picking this up)
 
@@ -29,11 +130,203 @@
 | Commit 3 / slice 11d.1 — consumer reads switched to `isGenericCount()`/`isGenericActivity()` + `ScoreYearRangeSpec.allowedYears()` | ✅ done | 10 production files; instanceof landmine caught (`fromLegacy` produces `Publications(GENERIC_COUNT)`, not the `GenericCount` record); 4 tests using legacy relative grammar updated |
 | Commit 3 / slice 11d.2 — outputType + selector dispatch readers switched via typed `Indicator` helpers (`isPublicationOutput`, `isCitationsOutput`, `isCitationsExcludeSelf`, `isActivityOutput`, `publicationAuthorRole`, `isTopNSelector`, `topNLimit`) | ✅ done | 7 files; helpers fall back to legacy `outputType` when `getEffectiveKind()` is null (test compat); slice-10 tripwire green |
 | Commit 3 / slice 11d.3 — `@Transient` legacy fields on `Indicator` + derived getters + BeforeConvert synthesis hook + fingerprint derivation; **migration runner executed against live test DB** (43→42 docs, all v1 fields populated) | ✅ done | Pre-condition discovered: migration runner had never been run; v1 fields were 0/43. Backed up, ran migration, applied @Transient. Form-driven save now strips legacy keys while preserving typed shape (live-verified Info_C v5→v6 round-trip). |
-| Commit 3 / slice 11d.4 — physically remove @Deprecated fields from `Indicator` + delete `Indicator.Type`/`Strategy`/`Selector` legacy enums | ⏳ later | needs 30+ test files refactored to use typed setters; touches `ScoringFactoryService` legacy bridge, `IndicatorKind.fromLegacy`, `LegacyMappingTest` |
-| Commit 3 / slice 11e — Mongo `$unset` legacy fields + `userIndicatorResults` re-fingerprint | ⏳ later | live-data step, behind a fresh `mongodump` |
-| Commit 3 — switch reads, drop legacy fields | ⏳ later | |
-| Commit 4 — UI surfaces | ⏳ later | |
-| Replay-equality test gate against 2,463-row `userIndicatorResults` cache | ⏳ later | fixture path: `src/test/resources/h52/replay-fixture.json` |
+| Commit 3 / slice 11d.4 — physically removed @Deprecated fields from `Indicator`; replaced with `pending*` transient routing state + manual legacy setters that materialize the typed `kind`/specs | ✅ done | 22 test files unchanged; admin form binds via the compat setters that materialize on save; `Indicator.Type/Strategy/Selector` enums kept alive as form-value sources for now |
+| Commit 3 / slice 11d.5 — deleted `Indicator.Type`/`Strategy`/`Selector` legacy enums; `IndicatorKind.fromLegacy(Type,Strategy)` replaced by `of(String,String)`; `LegacyShape` carries Strings; `Selector.fromLegacy` replaced by `of(String)` | ✅ done | 22+ test files updated via batch transform script; admin form templates unchanged (now bind to String fields via the Indicator compat setters); `LegacyMappingTest` rewritten to pin the `of(String,String)` factory |
+| Commit 3 / slice 11e — Mongo `$unset` sweep on indicators collection + **deleted** the `ReportingComputationSupport.is*Indicator(...)` wrappers (call sites inlined to `Indicator::isXxxOutput`) | ✅ done | 41 of 42 indicators stripped of legacy keys; migration runner re-run produces no-op summary; 4 production files (`UserReportFacade`, `IndividualReportComputer`, `GroupReportRunner`, the support class) updated; cache re-fingerprint skipped (format unchanged); admin-form-DTO rewrite deferred to Commit 4 |
+| Commit 3 / slice 12 — per-kind formula **variable contract** enforced at indicator save; broken `{@link Indicator.Type/Strategy}` javadoc scrubbed; **H52 v1 done** | ✅ done | `FormulaVariableContract` rejects formulas referencing variables the kind doesn't bind (`SS` typo, `M` on non-economics, activity-field name on a publication indicator); publication/citation kinds enforced (fixed `S`/`N`/`Q`/`+M` surface), activity-shaped skipped (dynamic field surface); 10 tests; live-verified 400 reject + 200 accept; all 16 production publication/citation formulas pass |
+| Commit 4 — UI surfaces | ⏳ optional / not v1 | admin form template restructure to bind to typed kind shape via DTO; removes the `Indicator` legacy compat setters + `pending*` machinery. Out of v1 scope. |
+| Replay-equality test gate against 2,463-row `userIndicatorResults` cache | ✅ superseded by slice 10 | shipped as a replay-*shape* gate (`H52ReplayShapeTest`, 57-blob fixture at `src/test/resources/h52/replay-fixture.json`), not a numeric-equality gate — scope decision recorded in the slice-10 prose. Full numeric replay was judged brittle (depends on stable upstream WoS/Scopus data). |
+
+Build at end of slice 12: **2074 tests, 0 failures.** H52 v1 complete — including the
+per-kind variable contract, which was the last genuinely-unmet `TASKS.md` exit criterion.
+
+### Commit 3 / slice 12 — per-kind variable contract (✅ DONE 2026-06-04)
+
+The `TASKS.md` deliverable listed *"per-strategy variable contract enforced at
+indicator-save"* and the exit criterion *"rejecting an indicator save whose formula
+references an undeclared variable is a tested behavior."* Slice 7's `FormulaSandbox` is
+a denylist (dangerous classes); it did NOT validate that a formula only uses the
+variables its kind binds. Slice 12 closes that.
+
+**`FormulaVariableContract`** (`service/reporting/formula/`):
+- `assertVariablesDeclared(Indicator)` — tokenizes the formula (reusing `FormulaTokenizer`),
+  collects LHS-of-`=` assignment locals, and rejects any IDENT root not in the kind's
+  allowed set, the locals, or the universal set. Throws `FormulaVariableException`
+  (extends `IllegalArgumentException` → controller 400, same path as the sandbox).
+- **Allowed set, per kind:**
+  - Publication / citation shaped (incl. GenericCount): `S`, `N`, `Q` (+ `M` iff
+    `ECONOMICS_JOURNAL_AIS`).
+  - Universal (any kind): `Math`, `max`, `min` (the evaluator rewrites bare `max`/`min`
+    to `Math.max`/`Math.min`), and MVEL literals `true`/`false`/`null`/`empty`.
+  - **Activity-shaped kinds are skipped** — their variable surface is the dynamic,
+    user-defined activity field names (`Buget`, `N_editori`, `Nivel`, `N_ani`, …) which
+    are NOT resolvable at admin-form save time (the `activity` `@DBRef` arrives unresolved;
+    there is no `String→Activity` converter). Enforcing them would risk false-rejecting
+    the ~20 production activity indicators. Their formula/field consistency belongs with
+    the activity-definition UI. Documented as an explicit non-goal.
+
+**Root-identifier rule**: the tokenizer emits dot-chains (`Math.max`, `Q.contains`) as a
+single IDENT; the contract checks the segment before the first `.` (`Math`, `Q`).
+
+**Wiring**: `IndicatorFormulaHashStamper.onBeforeConvert` calls `assertVariablesDeclared`
+right after `FormulaSandbox.assertSafe` (kind is already materialized by
+`synthesizeTypedFieldsFromLegacy` earlier in the hook). The catch clause now handles
+`FormulaSandboxException | FormulaVariableException` → loud WARN + rethrow.
+
+**Verification**:
+- 10 unit tests in `FormulaVariableContractTest` (accept all 13 production
+  publication/citation formula shapes, accept economics `M`, accept assignment-locals,
+  reject `SS` typo / `M` on non-economics / activity-field on publication, skip
+  activity-shaped, no-op on blank/unresolved-kind, `Math` always allowed).
+- All 16 distinct production publication/citation formulas verified to pass by
+  enumeration against `{S, N, Q, M(econ), max, min, Math, locals}`.
+- Live-verified on `agent-dev`: saving Info_C with `SS / max(N-2, 1)` → **400**
+  *"Formula references undeclared variable 'SS'. This indicator kind provides only:
+  [N, Q, S]."*; saving with the original `S/max(N-2, 1)` → **200**.
+
+**Cosmetic**: the 4 broken `{@link ...Indicator.Type/Strategy}` javadoc references (left
+dangling after the slice-11d.5 enum deletion) converted to plain `{@code}` text.
+
+### H52 exit-criteria audit (2026-06-04)
+
+| `TASKS.md` exit criterion | Status |
+|---|---|
+| `MVEL.eval(string,...)` absent from hot path | ✅ grep-clean |
+| `LAST_YEAR` grep-clean | ✅ (only a doc comment in `ReportingLookupPort` remains) |
+| `(outputType, scoringStrategy)` pair / legacy enums gone from codebase | ✅ enums deleted (11d.5); only `{@code}` doc text remains |
+| Reject indicator save with undeclared variable, tested | ✅ slice 12 |
+| Numerically identical to historical cache (1e-9) | ⚠️ shipped as replay-*shape* gate (slice 10); full numeric replay judged brittle — deliberate scope call |
+
+H52 v1 is complete. The only deferred item is **Commit 4 (UI surfaces)** — restructuring
+the admin form to bind to the typed kind shape via a DTO, which would let the `Indicator`
+legacy compat setters + `pending*` machinery be deleted. Explicitly out of v1 scope.
+
+---
+
+
+**Final invariants** (live-verified against the `test` Mongo on 2026-06-04):
+- **42 / 42 indicators** carry the typed `kind`, `yearRangeSpec`, `scoreYearRangeSpec`,
+  `selectorSpec`, `formulaHash`.
+- **0** indicators carry any of the 5 legacy keys (`outputType`, `scoringStrategy`,
+  `yearRange`, `scoreYearRange`, `selector`).
+- Form save round-trip: receives derived-from-typed Strings, POST routes through
+  the compat setters, save materializes the typed `kind`. (Info_C v8→v9 round-trip
+  verified.)
+- `IndicatorV1MigrationRunner` re-run produces no-op summary:
+  `scanned=42, saved=0, kind+=0, yearRange+=0, scoreYearRange+=0, selector+=0, skippedNoLegacy=0`.
+
+**Slice 11e changes:**
+- Mongo `$unset` sweep over the indicators collection. 41 of 42 docs modified (the
+  one survivor, Info_C, had already been saved post-11d.3 via the form). All
+  legacy keys gone from the on-disk shape.
+- `ReportingComputationSupport.isActivityIndicator(...)` /
+  `isPublicationIndicator(...)` / `isCitationIndicator(...)` thin wrappers
+  physically deleted. Call sites inlined to `indicator != null &&
+  indicator.isXxxOutput()` for direct callers, or `Indicator::isXxxOutput` for
+  Stream method references. 4 files touched: `UserReportFacade` (12 sites),
+  `IndividualReportComputer` (3 sites), `GroupReportRunner` (3 sites), the test
+  for the deleted wrapper rewritten to exercise `Indicator.isCitationsOutput()`
+  directly.
+- Backup at `$HOME/h52-indicator-backup-20260604-113501/indicators.json` (42
+  docs, pre-`$unset` shape with legacy keys still present).
+
+**What's NOT in 11e (deliberately deferred):**
+- The `userIndicatorResults` re-fingerprint job from the original Commit-3 plan.
+  The fingerprint format never actually changed through 11d.1–11d.5 (still
+  `id|outputTypeName|strategyName|formula|yearRange|scoreYearRange|selector|payload-v2-scoring-provenance`),
+  so the cached blob identities are stable. If a future format change ships,
+  build a `@Profile("cache-refingerprint")` runner per the doc.
+- `Indicator.pending*` machinery + the manual legacy compat setters
+  (`setOutputType(String)` etc.) survive for the admin form. Removing them
+  needs the form template restructured to bind to a typed DTO that composes
+  the kind on POST. That's Commit-4 UI work — out of v1 scope.
+
+**Final build:** 2046 tests, 0 failures. **Slice-10 tripwire green throughout
+the entire 11a → 11e arc.**
+
+Build at end of slice 11d.5: **2046 tests, 0 failures.** The legacy nested enums
+`Indicator.Type` / `Indicator.Strategy` / `Indicator.Selector` are physically deleted
+from the codebase. The `IndicatorKind.fromLegacy(Indicator.Type, Indicator.Strategy)`
+factory and the `Indicator.Type`/`Strategy`-keyed `LegacyShape` are gone too — replaced
+by name-based String equivalents:
+
+- `IndicatorKind.of(String outputTypeName, String strategyName)` — the canonical
+  constructor for callers holding the legacy names (admin form, cache fingerprint,
+  migration runner).
+- `IndicatorKind.LegacyShape(String outputTypeName, String strategyName)` — still the
+  return shape of `toLegacy()`, now String-backed.
+- `Selector.of(String legacyName)` and `Selector.legacyName()` replace the enum-keyed
+  `fromLegacy`/`toLegacy`. `ScoringStrategy.fromLegacy/toLegacy` are also gone — the
+  enum's own `valueOf(String)` / `.name()` cover the same job now that nothing carries
+  the legacy enum.
+
+`Indicator.java` now exposes legacy-named getters and setters that take Strings:
+`setOutputType(String)`, `setScoringStrategy(String)`, `setSelector(String)`, etc.
+The admin form binds `*{outputType}` / `*{scoringStrategy}` / `*{selector}` to these
+String setters via Spring's @ModelAttribute. Reads go through the same pending-state
+→ materialize-kind pipeline as slice 11d.4, but the pending fields are now
+`String pendingOutputType` / `String pendingScoringStrategy`.
+
+`AdminViewController` populates the dropdown value lists as `List<String>` constants
+derived from the legacy enum names (kept as a static list inside the controller).
+
+**Test surface refactor**: 14 test files automatically rewritten via a Python
+transformation that replaced `Indicator.Type.X` / `Indicator.Strategy.X` / `Indicator.Selector.X`
+with the equivalent String literal. `LegacyMappingTest` rewritten to pin
+`IndicatorKind.of(String, String)`: 10 tests covering all 21 production combinations,
+publication author-role coverage, citations excludeSelf coverage, activity-type
+coverage, error rejections for unknown names / wrong pairings / null args / ACTIVITY_PROJECT.
+`IndicatorEffectiveAccessorsReplaySmokeTest`'s `Combo` record changed from
+`(Indicator.Type, Indicator.Strategy)` to `(String typeName, String strategyName)`;
+its 378-permutation smoke pass retests under the new API.
+
+**Live verify**: Info_C v7→v8 form round-trip. Form receives `outputType=CITATIONS_EXCLUDE_SELF`
+etc. as derived Strings; POST routes through `setOutputType(String)` →
+`IndicatorKind.of("CITATIONS_EXCLUDE_SELF", "CS")`; Mongo doc post-save has the typed
+kind, zero legacy keys.
+
+Build at end of slice 11d.4: **2079 tests, 0 failures.** Indicator's @Deprecated
+fields (`outputType`/`scoringStrategy`/`yearRange`/`scoreYearRange`/`selector`) are
+physically gone. There is exactly **one** storage location per shape: the typed
+`kind`/`yearRangeSpec`/`scoreYearRangeSpec`/`selectorSpec`. The legacy setters
+(`setOutputType(Type)` / `setScoringStrategy(Strategy)` / etc.) survive as `@Deprecated`
+compat shims that route inputs through:
+
+- `setOutputType(Type)` and `setScoringStrategy(Strategy)` accumulate in transient
+  `pendingOutputType`/`pendingScoringStrategy` fields; once both halves arrive the
+  pair materializes into the typed `kind` via `IndicatorKind.fromLegacy`. Incremental
+  edits (e.g. only changing the strategy on an existing indicator) rebuild the kind
+  preserving the other half. The `pending*` fields participate in equals/hashCode so
+  Mockito's `eq(indicator)` stub matching distinguishes a half-set Citations indicator
+  from a half-set Publications one.
+- `setYearRange(String)` / `setScoreYearRange(String)` parse directly into the typed
+  specs via `YearRangeSpec.parse` / `ScoreYearRangeSpec.parse`. Blank/null clears.
+- `setSelector(Indicator.Selector)` routes `TOP_10 → TopN(10)`, `ALL → All`. Null clears.
+
+The legacy GETTERS derive from the typed shape only — no dual-storage shadow. The
+admin form's `th:field="*{outputType}"` bindings still work because the legacy setters
+exist; once form-rendered values land via `@ModelAttribute`, the BeforeConvert hook
+already added in slice 11d.3 confirms the kind is materialized before save.
+
+**Live-verified end-to-end**: Info_C v6→v7 round-trip. Form renders derived legacy
+strings (`CITATIONS_EXCLUDE_SELF`/`CS`/`*`/`IY`/`ALL`), POST routes through compat
+setters, save materializes the kind, Mongo doc has only typed keys.
+
+**Test-surface landmines, all pinned:**
+- 4 `IndicatorEffectiveAccessorsTest` tests asserted the "v1 wins over legacy" duality —
+  meaningless once both setters route into the same storage. Replaced with
+  `*ReflectsTypedSpec` / `legacy*SetterRoutes*` style tests that pin the new contract.
+- `ReportingComputationSupportTest.calculatePublicationScoreSupportsMainAndCoauthorFilters`
+  failed because Mockito's `eq(main)` matched `co` — the `pendingOutputType` fields
+  had been declared `private transient Type` which Lombok @Data excludes from
+  equals/hashCode by default. Removed the Java `transient` keyword while keeping the
+  `@org.springframework.data.annotation.Transient` and `@JsonIgnore` annotations.
+- `ScientificProductionServiceTest.productionScoreGenericCountAssignsOnePerPublicationAndTotalSize`
+  failed because the test does `setOutputType(X)` then `setScoringStrategy(Y)`
+  *after* a previous setter had already materialized the kind with a different
+  strategy. Added incremental-update logic: when kind is already set,
+  `setOutputType(t)` rebuilds kind with new type + existing strategy (and same for
+  the symmetric case).
 
 Build at end of slice 11d.3: **2079 tests, 0 failures.** Indicator's legacy fields
 (`outputType`, `scoringStrategy`, `yearRange`, `scoreYearRange`, `selector`) are now
@@ -1186,20 +1479,81 @@ of those classes, which is the opposite of the tripwire contract.
 
 ### Commit 3 — switch reads, decommission old fields
 
-- All scoring code reads only the v1 fields.
-- The compatibility adapters in commit 1 are removed.
+The originally-planned Commit 3 work, with the state as of 2026-06-03 noted inline:
+
+- All scoring code reads only the v1 fields. ✅ done (slices 11d.1 / 11d.2 / 11d.3).
+- The compatibility adapters in commit 1 are removed. ✅ done (slice 11d.5 deleted
+  `IndicatorKind.fromLegacy(Type, Strategy)`, `Selector.fromLegacy`,
+  `ScoringStrategy.fromLegacy/toLegacy`).
 - Old fields are unset from every indicator (one Mongo `$unset` per field).
-- `Indicator.Type` and `Indicator.Strategy` enums are removed.
-- `Score.errors`, `Score.details`, `Score.extra` removed.
-- `ScoringFactoryService` `if/else if` ladder replaced with the Map registry.
-- `ReportingComputationSupport.is*Indicator(...)` deleted.
-- `LAST_YEAR` constants deleted; callers route through `ReportingLookupPort.maxAvailableYear(...)`.
-- The `min` rewrite path is deleted.
+  ✅ **mostly done by save flow** — the `@Transient` change in slice 11d.3 means any
+  indicator that goes through `IndicatorRepository.save(...)` automatically drops the
+  legacy keys. The explicit one-time `$unset` sweep ran in slice 11e — all 42
+  indicators are now clean. ✅ done.
+- `Indicator.Type` and `Indicator.Strategy` enums are removed. ✅ done (slice 11d.5).
+- `Score.errors`, `Score.details`, `Score.extra` removed. ✅ done (slice 11c).
+- `ScoringFactoryService` `if/else if` ladder replaced with the Map registry. ✅ done
+  (slice 6).
+- `ReportingComputationSupport.is*Indicator(...)` deleted. ✅ done (slice 11e) — the
+  thin wrappers were physically removed and call sites inlined to
+  `indicator != null && indicator.isXxxOutput()` / `Indicator::isXxxOutput`.
+- `LAST_YEAR` constants deleted; callers route through
+  `ReportingLookupPort.maxAvailableYear(...)`. ✅ done (slice 8a).
+- The `min` rewrite path is deleted. ✅ done — the duplicated inline `min` rewrite in
+  pre-v1 `ActivityReportingService` is gone (slice 4 centralized into
+  `FormulaEvaluator.rewrite`); nothing left to delete.
 - The `Score.extra` "M" contract is replaced by the typed binding in
-  `EconomicsJournalStrategy`.
-- The `userIndicatorResults` re-fingerprint job runs on startup once (gated by a
-  property), recomputes the cache identity for all 2,463 rows in the new format,
-  preserves the cached values.
+  `EconomicsJournalStrategy`. ✅ done (slice 9 + 11b).
+- The `userIndicatorResults` re-fingerprint job. ⏭️ **deliberately skipped** — the
+  fingerprint format never changed through slices 11d.1–11e (still
+  `id|outputTypeName|strategyName|formula|yearRange|scoreYearRange|selector|payload-v2-scoring-provenance`)
+  so the cache identity is stable. This job would only be needed for a future
+  format change; the recipe is documented in the slice-11e section below for
+  whenever that happens.
+
+### Commit 3 / slice 11e — final live-data cleanup (✅ DONE 2026-06-04)
+
+**Scope**:
+
+1. **Mongo `$unset` sweep on indicators collection.** Drop any residual legacy
+   keys (`outputType`, `scoringStrategy`, `yearRange`, `scoreYearRange`, `selector`)
+   from any doc that hasn't been re-saved since slice 11d.3. As of 2026-06-03 only
+   a handful of indicators still carry them (the ones not touched by the admin
+   form after that date). A one-line `mongosh` script does the work:
+
+   ```js
+   db.indicators.updateMany({}, {$unset: {
+       outputType: "", scoringStrategy: "",
+       yearRange: "", scoreYearRange: "", selector: ""
+   }});
+   ```
+
+2. **`userIndicatorResults` re-fingerprint job** (optional, see note above). If
+   the fingerprint format ever changes, build a `@Profile("cache-refingerprint")`
+   runner that loads every row, recomputes the fingerprint via the current
+   `UserIndicatorResultService.computeIndicatorFingerprint` flow, and `$set`s the
+   new value. Preserves cached `rawGraph`/`totalScore`/etc. values.
+
+3. **Optional: delete `ReportingComputationSupport.is*Indicator(...)` wrappers.**
+   They're 3-line pass-throughs now. Inline at call sites and remove.
+
+4. **Optional: simplify `Indicator`'s `pending*` machinery.** With slice 11e the
+   migration runner won't be needed again; the legacy compat setters (`setOutputType(String)`
+   etc.) could be deleted if the admin form template is rewritten to bind to typed
+   kind shape directly (e.g. a DTO with separate type/strategy fields composed
+   into a kind on POST). This is Commit-4 UI work — not strictly part of 11e but
+   the cleanest finish.
+
+**Pre-requisites**: fresh `mongodump` of the `test` database. The cleanup is
+idempotent and reversible only via restore.
+
+**Test gates**:
+- `H52ReplayShapeTest` must stay green. Fixture is static so it's unaffected by
+  Mongo writes — the gate validates the JSON shape we captured pre-cleanup
+  remains parseable through whatever code 11e introduces.
+- `IndicatorV1MigrationRunner` re-run after 11e should produce a no-op summary
+  (`scanned=42, saved=0, kind+=0, ...`) — proof the cleanup didn't undo the
+  migration.
 
 ### Commit 4 — UI surfaces
 

@@ -3,6 +3,7 @@ package ro.uvt.pokedex.core.service.application;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.service.application.reporting.GroupPublicationAggregator;
@@ -20,10 +21,12 @@ import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.reporting.AbstractReport;
 import ro.uvt.pokedex.core.model.reporting.CNFISReport2025;
+import ro.uvt.pokedex.core.model.reporting.Position;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.activities.ActivityInstance;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
@@ -38,6 +41,7 @@ import ro.uvt.pokedex.core.service.reporting.Score;
 import ro.uvt.pokedex.core.service.reporting.ScientificProductionService;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -457,6 +461,144 @@ class GroupReportFacadeTest {
     }
 
     @Test
+    void refreshGroupIndividualReportViewPersistsPartialRunWithMemberAndCriterionErrors() {
+        User noAuthorUser = memberUser("no-author@uvt.ro", "Ana", "Noauthor", List.of());
+        User validUser = memberUser("valid@uvt.ro", "Zed", "Valid", List.of("a1"));
+        lenient().when(groupMembershipService.listCurrentMemberUserIds("g1"))
+                .thenReturn(List.of("no-author@uvt.ro", "valid@uvt.ro"));
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(validUser, noAuthorUser));
+
+        Group group = new Group();
+        group.setId("g1");
+
+        AbstractReport.Threshold threshold = new AbstractReport.Threshold();
+        threshold.setPosition(Position.PROF_UNIV);
+        threshold.setValue(12.5);
+        AbstractReport.Criterion criterion = new AbstractReport.Criterion();
+        criterion.setIndicatorIndices(Arrays.asList(0, -1, 99, null));
+        criterion.setThresholds(List.of(threshold));
+
+        IndividualReport report = new IndividualReport();
+        report.setId("rep1");
+        report.setCriteria(List.of(criterion));
+        report.setIndicators(List.of());
+        Institution affiliation = new Institution();
+        affiliation.setName("ANY");
+        report.setIndividualAffiliation(affiliation);
+
+        Author author = new Author();
+        author.setId("a1");
+
+        when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
+        when(individualReportRepository.findById("rep1")).thenReturn(Optional.of(report));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of())).thenReturn(List.of());
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of());
+        when(groupIndividualReportRunRepository.save(any(GroupIndividualReportRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        facade.refreshGroupIndividualReportView("g1", "rep1");
+
+        ArgumentCaptor<GroupIndividualReportRun> captor = ArgumentCaptor.forClass(GroupIndividualReportRun.class);
+        verify(groupIndividualReportRunRepository).save(captor.capture());
+        GroupIndividualReportRun saved = captor.getValue();
+        assertEquals("g1", saved.getGroupId());
+        assertEquals("rep1", saved.getReportDefinitionId());
+        assertEquals(GroupIndividualReportRun.Status.PARTIAL, saved.getStatus());
+        assertEquals(1, saved.getResearcherScores().size());
+        assertEquals("valid@uvt.ro", saved.getResearcherScores().get(0).getUserId());
+        assertEquals(0.0, saved.getResearcherScores().get(0).getCriterionScores().get(0));
+        assertEquals(12.5, saved.getCriteriaThresholds().get(0).get(Position.PROF_UNIV.name()));
+        assertTrue(saved.getBuildErrors().stream().anyMatch(error -> error.contains("No authors found for member Ana Noauthor")));
+        assertTrue(saved.getBuildErrors().stream().anyMatch(error -> error.contains("Invalid indicator index -1 in criterion 0")));
+        assertTrue(saved.getBuildErrors().stream().anyMatch(error -> error.contains("Invalid indicator index 99 in criterion 0")));
+        assertTrue(saved.getBuildErrors().stream().anyMatch(error -> error.contains("Invalid indicator index null in criterion 0")));
+        assertNotNull(saved.getCreatedAt());
+    }
+
+    @Test
+    void refreshGroupIndividualReportViewMarksFailedWhenNoResearchersCanBeScored() {
+        User user = memberUser("orphan@uvt.ro", null, null, List.of("missing-author"));
+        lenient().when(groupMembershipService.listCurrentMemberUserIds("g1")).thenReturn(List.of("orphan@uvt.ro"));
+        lenient().when(userRepository.findAllById(anyCollection())).thenReturn(List.of(user));
+
+        Group group = new Group();
+        group.setId("g1");
+        IndividualReport report = new IndividualReport();
+        report.setId("rep1");
+        report.setCriteria(List.of());
+        report.setIndicators(List.of());
+        Institution affiliation = new Institution();
+        affiliation.setName("ANY");
+        report.setIndividualAffiliation(affiliation);
+
+        when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
+        when(individualReportRepository.findById("rep1")).thenReturn(Optional.of(report));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("missing-author"))).thenReturn(List.of());
+        when(groupIndividualReportRunRepository.save(any(GroupIndividualReportRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        facade.refreshGroupIndividualReportView("g1", "rep1");
+
+        ArgumentCaptor<GroupIndividualReportRun> captor = ArgumentCaptor.forClass(GroupIndividualReportRun.class);
+        verify(groupIndividualReportRunRepository).save(captor.capture());
+        GroupIndividualReportRun saved = captor.getValue();
+        assertEquals(GroupIndividualReportRun.Status.FAILED, saved.getStatus());
+        assertTrue(saved.getResearcherScores().isEmpty());
+        assertEquals(List.of("No authors found for member orphan@uvt.ro"), saved.getBuildErrors());
+    }
+
+    @Test
+    void refreshGroupIndividualReportViewFiltersPublicationsBySelectedAffiliation() {
+        lenient().when(userRepository.findAllById(anyCollection()))
+                .thenReturn(List.of(memberUser("r1", "A", "B", List.of("a1"))));
+        Group group = new Group();
+        group.setId("g1");
+
+        Indicator publications = new Indicator();
+        publications.setOutputType("PUBLICATIONS");
+        AbstractReport.Criterion criterion = new AbstractReport.Criterion();
+        criterion.setIndicatorIndices(List.of(0));
+
+        ScholardexAffiliationView selectedAffiliation = new ScholardexAffiliationView();
+        selectedAffiliation.setAfid("aff-keep");
+        Institution affiliation = new Institution();
+        affiliation.setName("Specific");
+        affiliation.setScopusAffiliations(List.of(selectedAffiliation));
+
+        IndividualReport report = new IndividualReport();
+        report.setId("rep1");
+        report.setCriteria(List.of(criterion));
+        report.setIndicators(List.of(publications));
+        report.setIndividualAffiliation(affiliation);
+
+        Author author = new Author();
+        author.setId("a1");
+        Publication kept = new Publication();
+        kept.setId("p-keep");
+        kept.setAuthors(List.of("a1"));
+        kept.setAffiliations(List.of("aff-keep"));
+        Publication dropped = new Publication();
+        dropped.setId("p-drop");
+        dropped.setAuthors(List.of("a1"));
+        dropped.setAffiliations(List.of("aff-drop"));
+
+        when(groupRepository.findById("g1")).thenReturn(Optional.of(group));
+        when(individualReportRepository.findById("rep1")).thenReturn(Optional.of(report));
+        when(scholardexProjectionReadService.findAuthorsByIdIn(List.of("a1"))).thenReturn(List.of(author));
+        when(scholardexProjectionReadService.findAllPublicationsByAuthorsIn(List.of("a1"))).thenReturn(List.of(kept, dropped));
+        when(scientificProductionService.calculateScientificProductionScore(anyList(), eq(publications)))
+                .thenReturn(Map.of("total", score(9.0)));
+        when(groupIndividualReportRunRepository.save(any(GroupIndividualReportRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        facade.refreshGroupIndividualReportView("g1", "rep1");
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<ScoringPublicationReadModel>> publicationsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(scientificProductionService).calculateScientificProductionScore(publicationsCaptor.capture(), eq(publications));
+        assertEquals(List.of("p-keep"), publicationsCaptor.getValue().stream().map(ScoringPublicationReadModel::getId).toList());
+    }
+
+    @Test
     void refreshGroupIndividualReportViewKeysScoresByRawEmailWithoutEncoding() {
         lenient().when(userRepository.findAllById(anyCollection()))
                 .thenReturn(List.of(memberUser("raluca.muresan@e-uvt.ro", "Raluca", "Muresan", List.of("a1"))));
@@ -535,9 +677,9 @@ class GroupReportFacadeTest {
         group.setId("g1");
 
         Indicator citations = new Indicator();
-        citations.setOutputType(Indicator.Type.CITATIONS);
+        citations.setOutputType("CITATIONS");
         Indicator citationsExcludeSelf = new Indicator();
-        citationsExcludeSelf.setOutputType(Indicator.Type.CITATIONS_EXCLUDE_SELF);
+        citationsExcludeSelf.setOutputType("CITATIONS_EXCLUDE_SELF");
 
         IndividualReport report = new IndividualReport();
         report.setId("rep1");
@@ -595,11 +737,11 @@ class GroupReportFacadeTest {
         activity.setName("Forum Activity");
 
         Indicator indicator1 = new Indicator();
-        indicator1.setOutputType(Indicator.Type.ACTIVITY_FORUM);
+        indicator1.setOutputType("ACTIVITY_FORUM");
         indicator1.setActivity(activity);
 
         Indicator indicator2 = new Indicator();
-        indicator2.setOutputType(Indicator.Type.ACTIVITY_FORUM);
+        indicator2.setOutputType("ACTIVITY_FORUM");
         indicator2.setActivity(activity);
 
         IndividualReport report = new IndividualReport();
@@ -642,9 +784,9 @@ class GroupReportFacadeTest {
         group.setId("g1");
 
         Indicator citations = new Indicator();
-        citations.setOutputType(Indicator.Type.CITATIONS);
+        citations.setOutputType("CITATIONS");
         Indicator citationsExcludeSelf = new Indicator();
-        citationsExcludeSelf.setOutputType(Indicator.Type.CITATIONS_EXCLUDE_SELF);
+        citationsExcludeSelf.setOutputType("CITATIONS_EXCLUDE_SELF");
 
         AbstractReport.Criterion criterion0 = new AbstractReport.Criterion();
         criterion0.setIndicatorIndices(List.of(0));
@@ -730,8 +872,8 @@ class GroupReportFacadeTest {
         group.setId("g1");
 
         Indicator citationsTop10 = new Indicator();
-        citationsTop10.setOutputType(Indicator.Type.CITATIONS);
-        citationsTop10.setSelector(Indicator.Selector.TOP_10);
+        citationsTop10.setOutputType("CITATIONS");
+        citationsTop10.setSelector("TOP_10");
 
         AbstractReport.Criterion criterion0 = new AbstractReport.Criterion();
         criterion0.setIndicatorIndices(List.of(0));
@@ -812,7 +954,7 @@ class GroupReportFacadeTest {
         group.setId("g1");
 
         Indicator publications = new Indicator();
-        publications.setOutputType(Indicator.Type.PUBLICATIONS);
+        publications.setOutputType("PUBLICATIONS");
 
         AbstractReport.Criterion criterion0 = new AbstractReport.Criterion();
         criterion0.setIndicatorIndices(List.of(0));

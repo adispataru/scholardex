@@ -129,9 +129,9 @@ public class UserReportFacade {
                 .collect(Collectors.toMap(ScholardexForumView::getId, forum -> forum));
 
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            if (ReportingComputationSupport.isPublicationIndicator(indicator)) {
+            if (indicator != null && indicator.isPublicationOutput()) {
                 handlePublicationsWorkbook(workbook, indicator, publications, forumMap);
-            } else if (ReportingComputationSupport.isCitationIndicator(indicator)) {
+            } else if (indicator != null && indicator.isCitationsOutput()) {
                 handleCitationsWorkbook(workbook, indicator, authors, publications, forumMap);
             }
 
@@ -280,7 +280,7 @@ public class UserReportFacade {
         Map<String, Object> attrs = new HashMap<>();
         attrs.put("indicator", indicator);
 
-        if (ReportingComputationSupport.isActivityIndicator(indicator)) {
+        if (indicator != null && indicator.isActivityOutput()) {
             List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(user.getEmail());
             activities = activities.stream().filter(act -> act.getActivity().getName().equals(indicator.getActivity().getName())).toList();
             return handleActivities(indicator, activities, attrs);
@@ -291,10 +291,10 @@ public class UserReportFacade {
         if (requiresPublicationScoring(indicator)) {
             attrs.put("confirmedPublicationScoringWarning", publications.isEmpty());
         }
-        if (ReportingComputationSupport.isPublicationIndicator(indicator)) {
+        if (indicator != null && indicator.isPublicationOutput()) {
             return handlePublications(indicator, authors, publications, attrs);
         }
-        if (ReportingComputationSupport.isCitationIndicator(indicator)) {
+        if (indicator != null && indicator.isCitationsOutput()) {
             return handleCitations(indicator, authors, publications, attrs);
         }
 
@@ -347,7 +347,7 @@ public class UserReportFacade {
 
         boolean hasCitationIndicators = indicators.stream()
                 .filter(Objects::nonNull)
-                .anyMatch(ReportingComputationSupport::isCitationIndicator);
+                .anyMatch(Indicator::isCitationsOutput);
         List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(user.getEmail());
         Set<String> researcherAuthorIds = authors.stream()
                 .map(ScholardexAuthorView::getId)
@@ -363,7 +363,7 @@ public class UserReportFacade {
             }
 
             double indicatorScore = 0.0;
-            if (ReportingComputationSupport.isActivityIndicator(indicator)) {
+            if (indicator != null && indicator.isActivityOutput()) {
                 List<ActivityInstance> filteredActivities = activities.stream()
                         .filter(act -> act.getActivity().getName().equals(indicator.getActivity().getName()))
                         .toList();
@@ -371,9 +371,9 @@ public class UserReportFacade {
                         .get("total")
                         .getAuthorScore();
             }
-            if (ReportingComputationSupport.isPublicationIndicator(indicator)) {
+            if (indicator != null && indicator.isPublicationOutput()) {
                 indicatorScore = calculatePublicationScore(indicator, authors, publications);
-            } else if (ReportingComputationSupport.isCitationIndicator(indicator)) {
+            } else if (indicator != null && indicator.isCitationsOutput()) {
                 indicatorScore = ReportScopedIndicatorScoringSupport.calculateCitationScore(
                                 indicator,
                                 publications,
@@ -458,7 +458,7 @@ public class UserReportFacade {
         Map<String, Object> rawGraph = new HashMap<>();
         rawGraph.put("indicator", indicator);
 
-        if (ReportingComputationSupport.isActivityIndicator(indicator)) {
+        if (indicator != null && indicator.isActivityOutput()) {
             List<ActivityInstance> activities = activityInstanceRepository.findAllByResearcherId(user.getEmail());
             final String activityName = indicator.getActivity().getName();
             List<ActivityInstance> filteredActivities = activities.stream()
@@ -479,7 +479,7 @@ public class UserReportFacade {
                     IndicatorApplyResultDto.Source.COMPUTED, null, Instant.now(), 0));
         }
 
-        if (ReportingComputationSupport.isPublicationIndicator(indicator)) {
+        if (indicator != null && indicator.isPublicationOutput()) {
             // H52 slice 11d.2: typed author-role dispatch. {@code AuthorRole.MAIN}
             // keeps first-author=university; {@code .CO} keeps first-author≠university;
             // {@code .ALL} (or null) keeps everything.
@@ -922,8 +922,8 @@ public class UserReportFacade {
     }
 
     private boolean requiresPublicationScoring(Indicator indicator) {
-        return ReportingComputationSupport.isPublicationIndicator(indicator)
-                || ReportingComputationSupport.isCitationIndicator(indicator);
+        return indicator != null && indicator.isPublicationOutput()
+                || indicator != null && indicator.isCitationsOutput();
     }
 
     private Optional<User> findUserWithProfile(String userEmail) {

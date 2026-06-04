@@ -83,6 +83,17 @@ class AdminGroupControllerContractTest {
     }
 
     @Test
+    void groupTemplatesUsePersistedDomainKeyForDynamicRows() throws Exception {
+        String listTemplate = Files.readString(Path.of("src/main/resources/templates/admin/groups.html"));
+        String editTemplate = Files.readString(Path.of("src/main/resources/templates/admin/edit-group.html"));
+
+        assertTrue(listTemplate.contains("value=\"${domain.name}\""));
+        assertTrue(editTemplate.contains("value=\"${domain.name}\""));
+        assertTrue(listTemplate.contains("departmentOptionLabel(opt)"));
+        assertTrue(editTemplate.contains("departmentOptionLabel(opt)"));
+    }
+
+    @Test
     void editGroupRendersSharedAdminFormBaseline() throws Exception {
         Group group = new Group();
         group.setId("g1");

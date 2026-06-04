@@ -8,24 +8,26 @@ import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
 import ro.uvt.pokedex.core.model.reporting.scoring.Selector;
 import ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * Exercises the {@code getEffective*} helpers on {@link Indicator} that bridge legacy and
- * v1 fields during the H52 migration. The contract every helper obeys: "if the v1 field is
- * set, return it; otherwise synthesise from the legacy field."
+ * Exercises the {@code getEffective*} helpers on {@link Indicator} and the
+ * legacy compat setters added in H52 slice 11d.4. Contract: there is exactly
+ * ONE storage location per shape ({@code kind}, {@code yearRangeSpec},
+ * {@code scoreYearRangeSpec}, {@code selectorSpec}). Both typed setters and the
+ * legacy compat setters mutate that same storage; the {@code getEffective*}
+ * helpers return it (with default fallbacks for never-set indicators).
  */
 class IndicatorEffectiveAccessorsTest {
 
     // ---------- Effective kind ----------
 
     @Test
-    void effectiveKindUsesV1FieldWhenPresent() {
+    void effectiveKindReflectsTypedKind() {
         Indicator ind = new Indicator();
         ind.setKind(new IndicatorKind.Publications(AuthorRole.MAIN, ScoringStrategy.IMPACT_FACTOR));
-        // Legacy fields also populated with mismatched values — v1 wins.
-        ind.setOutputType(Indicator.Type.CITATIONS_EXCLUDE_SELF);
-        ind.setScoringStrategy(Indicator.Strategy.RIS);
 
         IndicatorKind effective = ind.getEffectiveKind();
         assertInstanceOf(IndicatorKind.Publications.class, effective);
@@ -34,10 +36,13 @@ class IndicatorEffectiveAccessorsTest {
     }
 
     @Test
-    void effectiveKindFallsBackToLegacyWhenV1Unset() {
+    void legacyCompatSettersMaterializeKindFromPair() {
+        // H52 slice 11d.4: the legacy setters route inputs through pendingType/
+        // pendingScoringStrategy until both halves are set, then materialize the
+        // typed kind. Mirrors what the admin form's @ModelAttribute binding does.
         Indicator ind = new Indicator();
-        ind.setOutputType(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR);
-        ind.setScoringStrategy(Indicator.Strategy.IMPACT_FACTOR);
+        ind.setOutputType("PUBLICATIONS_MAIN_AUTHOR");
+        ind.setScoringStrategy("IMPACT_FACTOR");
 
         IndicatorKind effective = ind.getEffectiveKind();
         assertInstanceOf(IndicatorKind.Publications.class, effective);
@@ -53,23 +58,21 @@ class IndicatorEffectiveAccessorsTest {
     // ---------- Effective yearRange ----------
 
     @Test
-    void effectiveYearRangeUsesV1FieldWhenPresent() {
+    void effectiveYearRangeReflectsTypedSpec() {
         Indicator ind = new Indicator();
         ind.setYearRangeSpec(new YearRangeSpec.Absolute(2015, 2025));
-        ind.setYearRange("*");  // legacy mismatched on purpose
-
         assertEquals(new YearRangeSpec.Absolute(2015, 2025), ind.getEffectiveYearRange());
     }
 
     @Test
-    void effectiveYearRangeParsesLegacyStringFallback() {
+    void legacyYearRangeSetterParsesIntoTypedSpec() {
         Indicator ind = new Indicator();
         ind.setYearRange("2018->2025");
         assertEquals(new YearRangeSpec.Absolute(2018, 2025), ind.getEffectiveYearRange());
     }
 
     @Test
-    void effectiveYearRangeDefaultsToAllYearsWhenLegacyNull() {
+    void effectiveYearRangeDefaultsToAllYearsWhenUnset() {
         // 37 of 42 production indicators use "*"; null/blank carry the same intent.
         assertEquals(new YearRangeSpec.AllYears(), new Indicator().getEffectiveYearRange());
     }
@@ -77,16 +80,14 @@ class IndicatorEffectiveAccessorsTest {
     // ---------- Effective scoreYearRange ----------
 
     @Test
-    void effectiveScoreYearRangeUsesV1FieldWhenPresent() {
+    void effectiveScoreYearRangeReflectsTypedSpec() {
         Indicator ind = new Indicator();
         ind.setScoreYearRangeSpec(new ScoreYearRangeSpec.Absolute(2019, 2023));
-        ind.setScoreYearRange("IY");  // mismatched legacy
-
         assertEquals(new ScoreYearRangeSpec.Absolute(2019, 2023), ind.getEffectiveScoreYearRange());
     }
 
     @Test
-    void effectiveScoreYearRangeParsesItemYearFromLegacy() {
+    void legacyScoreYearRangeSetterParsesIntoTypedSpec() {
         // The dominant production value: 31 / 42 indicators are "IY".
         Indicator ind = new Indicator();
         ind.setScoreYearRange("IY");
@@ -94,42 +95,40 @@ class IndicatorEffectiveAccessorsTest {
     }
 
     @Test
-    void effectiveScoreYearRangeDefaultsToItemYearWhenLegacyNull() {
+    void effectiveScoreYearRangeDefaultsToItemYearWhenUnset() {
         assertEquals(new ScoreYearRangeSpec.ItemYear(), new Indicator().getEffectiveScoreYearRange());
     }
 
     // ---------- Effective selector ----------
 
     @Test
-    void effectiveSelectorUsesV1FieldWhenPresent() {
+    void effectiveSelectorReflectsTypedSpec() {
         Indicator ind = new Indicator();
         ind.setSelectorSpec(new Selector.TopN(10));
-        ind.setSelector(Indicator.Selector.ALL); // mismatched legacy
-
         assertEquals(new Selector.TopN(10), ind.getEffectiveSelector());
     }
 
     @Test
-    void effectiveSelectorFallsBackToLegacy() {
+    void legacySelectorSetterRoutesToTypedSpec() {
         Indicator ind = new Indicator();
-        ind.setSelector(Indicator.Selector.TOP_10);
+        ind.setSelector("TOP_10");
         assertEquals(new Selector.TopN(10), ind.getEffectiveSelector());
 
-        ind.setSelector(Indicator.Selector.ALL);
+        ind.setSelector("ALL");
         assertEquals(new Selector.All(), ind.getEffectiveSelector());
     }
 
     @Test
-    void effectiveSelectorDefaultsToAllWhenLegacyNull() {
+    void effectiveSelectorDefaultsToAllWhenUnset() {
         // 30 of 42 indicators have selector=null; the dominant intent is "all items".
         assertEquals(new Selector.All(), new Indicator().getEffectiveSelector());
     }
 
-    // ---------- The v1 fields don't trip Lombok-generated equals/hashCode ----------
+    // ---------- equals/hashCode sanity ----------
 
     @Test
     void twoBareIndicatorsAreEqualByDefault() {
-        // Smoke test that adding the v1 fields didn't accidentally split @Data's
+        // Smoke test that the v1 typed fields don't accidentally split @Data's
         // equals/hashCode in a way that breaks the existing test suites.
         assertEquals(new Indicator(), new Indicator());
         assertEquals(new Indicator().hashCode(), new Indicator().hashCode());

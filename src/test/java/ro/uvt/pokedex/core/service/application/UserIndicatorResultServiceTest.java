@@ -63,8 +63,8 @@ class UserIndicatorResultServiceTest {
     void getOrCreateLatestReusesPersistedResultWhenPresent() {
         Indicator indicator = new Indicator();
         indicator.setId("ind-1");
-        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
-        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        indicator.setOutputType("PUBLICATIONS");
+        indicator.setScoringStrategy("GENERIC_COUNT");
         indicator.setFormula("S");
 
         UserIndicatorResult persisted = new UserIndicatorResult();
@@ -95,8 +95,8 @@ class UserIndicatorResultServiceTest {
 
         Indicator indicator = new Indicator();
         indicator.setId("ind-1");
-        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
-        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        indicator.setOutputType("PUBLICATIONS");
+        indicator.setScoringStrategy("GENERIC_COUNT");
         indicator.setFormula("S");
         when(indicatorRepository.findById("ind-1")).thenReturn(Optional.of(indicator));
 
@@ -138,8 +138,8 @@ class UserIndicatorResultServiceTest {
 
         Indicator indicator = new Indicator();
         indicator.setId("ind-1");
-        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
-        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        indicator.setOutputType("PUBLICATIONS");
+        indicator.setScoringStrategy("GENERIC_COUNT");
         indicator.setFormula("S");
         when(indicatorRepository.findById("ind-1")).thenReturn(Optional.of(indicator));
 
@@ -212,7 +212,7 @@ class UserIndicatorResultServiceTest {
     void createSnapshotFromComputedPersistsReportScopedPayloadWithoutReadingLatest() {
         Indicator indicator = new Indicator();
         indicator.setId("ind-1");
-        indicator.setOutputType(Indicator.Type.CITATIONS);
+        indicator.setOutputType("CITATIONS");
         when(indicatorRepository.findById("ind-1")).thenReturn(Optional.of(indicator));
 
         User user = new User();
@@ -261,8 +261,8 @@ class UserIndicatorResultServiceTest {
     void createSnapshotFromLatestUsesLatestRefreshVersionAndSourceReportId() {
         Indicator indicator = new Indicator();
         indicator.setId("ind-1");
-        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
-        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        indicator.setOutputType("PUBLICATIONS");
+        indicator.setScoringStrategy("GENERIC_COUNT");
         indicator.setFormula("S");
 
         UserIndicatorResult latest = new UserIndicatorResult();
@@ -296,8 +296,8 @@ class UserIndicatorResultServiceTest {
     void persistedPayloadKeepsScoreProvenanceFields() {
         Indicator indicator = new Indicator();
         indicator.setId("ind-1");
-        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
-        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        indicator.setOutputType("PUBLICATIONS");
+        indicator.setScoringStrategy("GENERIC_COUNT");
         indicator.setFormula("S");
 
         Score score = new Score();
@@ -425,6 +425,78 @@ class UserIndicatorResultServiceTest {
         assertEquals(null, dto.summary().totalCount());
         assertEquals(List.of("Q1", "Q2"), dto.summary().quarterLabels());
         assertEquals(List.of(3, 0), dto.summary().quarterValues());
+    }
+
+    @Test
+    void parseSummaryHandlesUsThousandsSeparatorAndBlankValues() {
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-us-number");
+        when(indicatorRepository.findById("ind-us-number")).thenReturn(Optional.of(indicator));
+        when(userIndicatorResultRepository.findByUserEmailAndIndicatorIdAndMode("u@uvt.ro", "ind-us-number", UserIndicatorResult.Mode.LATEST))
+                .thenReturn(Optional.empty());
+        when(userReportFacade.buildIndicatorApplyView("u@uvt.ro", "ind-us-number"))
+                .thenReturn(new UserIndicatorApplyViewModel(
+                        "user/indicators",
+                        Map.of("indicator", indicator, "total", "1,234.56", "totalCit", "  ", "allValues", List.of())
+                ));
+        when(userIndicatorResultRepository.save(any(UserIndicatorResult.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        IndicatorApplyResultDto dto = service.getOrCreateLatest("u@uvt.ro", "ind-us-number");
+
+        assertEquals(1234.56, dto.summary().totalScore());
+        assertEquals(null, dto.summary().totalCount());
+        assertTrue(dto.summary().quarterLabels().isEmpty());
+        assertTrue(dto.summary().quarterValues().isEmpty());
+    }
+
+    @Test
+    void refreshLatestUpdatesExistingEntityWithoutResettingCreatedAtAndPersistsSummary() {
+        Instant originalCreatedAt = Instant.parse("2026-01-01T10:00:00Z");
+        UserIndicatorResult existing = new UserIndicatorResult();
+        existing.setId("latest-id");
+        existing.setCreatedAt(originalCreatedAt);
+        existing.setRefreshVersion(2);
+
+        Indicator indicator = new Indicator();
+        indicator.setId("ind-existing");
+        indicator.setOutputType("PUBLICATIONS");
+        indicator.setScoringStrategy("GENERIC_COUNT");
+
+        when(userIndicatorResultRepository.findByUserEmailAndIndicatorIdAndMode("u@uvt.ro", "ind-existing", UserIndicatorResult.Mode.LATEST))
+                .thenReturn(Optional.of(existing))
+                .thenReturn(Optional.of(existing));
+        when(indicatorRepository.findById("ind-existing")).thenReturn(Optional.of(indicator));
+        when(userReportFacade.buildIndicatorApplyView("u@uvt.ro", "ind-existing"))
+                .thenReturn(new UserIndicatorApplyViewModel(
+                        "user/indicators-apply-publications",
+                        Map.of(
+                                "indicator", indicator,
+                                "total", "1 234.50",
+                                "totalCit", 7,
+                                "allQuarters", List.of("Q1", "Q2"),
+                                "allValues", List.of(4, "5")
+                        )
+                ));
+        when(userIndicatorResultRepository.save(any(UserIndicatorResult.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        IndicatorApplyResultDto dto = service.refreshLatest("u@uvt.ro", "ind-existing");
+
+        assertEquals("latest-id", dto.resultId());
+        assertEquals(3, dto.refreshVersion());
+        assertEquals(1234.5, dto.summary().totalScore());
+        assertEquals(7, dto.summary().totalCount());
+        assertEquals(List.of("Q1", "Q2"), dto.summary().quarterLabels());
+        assertEquals(List.of(4, 5), dto.summary().quarterValues());
+
+        ArgumentCaptor<UserIndicatorResult> captor = ArgumentCaptor.forClass(UserIndicatorResult.class);
+        verify(userIndicatorResultRepository).save(captor.capture());
+        UserIndicatorResult saved = captor.getValue();
+        assertEquals(originalCreatedAt, saved.getCreatedAt());
+        assertNotNull(saved.getUpdatedAt());
+        assertEquals(UserIndicatorResult.SourceType.APPLY_PAGE, saved.getSourceType());
+        assertEquals(null, saved.getSourceReportId());
+        assertEquals(UserIndicatorResult.Mode.LATEST, saved.getMode());
+        assertEquals("ind-existing|PUBLICATIONS|GENERIC_COUNT|||||payload-v2-scoring-provenance", saved.getFingerprint());
     }
 
     @Test

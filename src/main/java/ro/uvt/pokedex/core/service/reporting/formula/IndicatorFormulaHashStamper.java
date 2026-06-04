@@ -51,6 +51,14 @@ public class IndicatorFormulaHashStamper extends AbstractMongoEventListener<Indi
             String canonical = FormulaCanonicalizer.canonicalize(formula);
             FormulaSandbox.assertSafe(canonical);
 
+            // H52 slice 12: enforce the per-kind variable contract. Rejects a formula
+            // that references a variable its IndicatorKind never binds (typo, or a
+            // variable from a different kind). Runs against the raw formula (not the
+            // canonical form) so the assignment-local detection sees the original
+            // statement structure. Kind/activity were already materialized above by
+            // synthesizeTypedFieldsFromLegacy.
+            FormulaVariableContract.assertVariablesDeclared(indicator);
+
             String newHash = FormulaHasher.hashCanonical(canonical);
             String existing = indicator.getFormulaHash();
             if (!newHash.equals(existing)) {
@@ -60,9 +68,9 @@ public class IndicatorFormulaHashStamper extends AbstractMongoEventListener<Indi
                             indicator.getId(), indicator.getName(), newHash);
                 }
             }
-        } catch (FormulaSandboxException ex) {
-            // Denylist hit — let it propagate so the save fails loudly. The admin sees
-            // the rejection message in the controller's error handling.
+        } catch (FormulaSandboxException | FormulaVariableException ex) {
+            // Denylist hit or undeclared-variable — let it propagate so the save fails
+            // loudly. The admin sees the rejection message in the controller's error handling.
             log.warn("Rejecting formula on indicator id={} name='{}': {}",
                     indicator.getId(), indicator.getName(), ex.getMessage());
             throw ex;

@@ -368,7 +368,7 @@ class UserReportFacadeTest {
         User user = userWithProfile("user@uvt.ro", List.of("a1"));
 
         Indicator indicator = new Indicator();
-        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
+        indicator.setOutputType("PUBLICATIONS");
 
         ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
@@ -431,7 +431,7 @@ class UserReportFacadeTest {
         User user = userWithProfile("user@uvt.ro", List.of("a1"));
 
         Indicator indicator = new Indicator();
-        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
+        indicator.setOutputType("PUBLICATIONS");
 
         ScholardexAuthorView author = new ScholardexAuthorView();
         author.setId("a1");
@@ -557,9 +557,9 @@ class UserReportFacadeTest {
 
         Indicator indicator = new Indicator();
         indicator.setId("ind-cit");
-        indicator.setOutputType(Indicator.Type.CITATIONS);
-        indicator.setSelector(Indicator.Selector.TOP_10);
-        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        indicator.setOutputType("CITATIONS");
+        indicator.setSelector("TOP_10");
+        indicator.setScoringStrategy("GENERIC_COUNT");
 
         IndividualReport report = new IndividualReport();
         report.setId("rep-cit");
@@ -653,8 +653,8 @@ class UserReportFacadeTest {
 
         Indicator indicator = new Indicator();
         indicator.setId("ind-pub");
-        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
-        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        indicator.setOutputType("PUBLICATIONS");
+        indicator.setScoringStrategy("GENERIC_COUNT");
 
         ScholardexPublicationView confirmed = new ScholardexPublicationView();
         confirmed.setId("p-confirmed");
@@ -694,8 +694,8 @@ class UserReportFacadeTest {
 
         Indicator indicator = new Indicator();
         indicator.setId("ind-pub");
-        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
-        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        indicator.setOutputType("PUBLICATIONS");
+        indicator.setScoringStrategy("GENERIC_COUNT");
 
         when(userService.getUserByEmail("user@uvt.ro")).thenReturn(Optional.of(user));
         when(indicatorRepository.findById("ind-pub")).thenReturn(Optional.of(indicator));
@@ -716,7 +716,7 @@ class UserReportFacadeTest {
 
         Indicator indicator = new Indicator();
         indicator.setId("ind-act");
-        indicator.setOutputType(Indicator.Type.GENERIC_ACTIVITIES);
+        indicator.setOutputType("GENERIC_ACTIVITIES");
         var activity = new ro.uvt.pokedex.core.model.activities.Activity();
         activity.setName("Mentoring");
         indicator.setActivity(activity);
@@ -737,8 +737,8 @@ class UserReportFacadeTest {
         User user = userWithProfile("user@uvt.ro", List.of("a1"));
         Indicator indicator = new Indicator();
         indicator.setId("ind-main-safe");
-        indicator.setOutputType(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR);
-        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        indicator.setOutputType("PUBLICATIONS_MAIN_AUTHOR");
+        indicator.setScoringStrategy("GENERIC_COUNT");
 
         ScholardexPublicationView emptyAuthors = new ScholardexPublicationView();
         emptyAuthors.setId("p-empty");
@@ -769,7 +769,7 @@ class UserReportFacadeTest {
         User user = userWithProfile("user@uvt.ro", List.of("a1"));
 
         Indicator indicator = new Indicator();
-        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
+        indicator.setOutputType("PUBLICATIONS");
 
         ScholardexAuthorView author = author("a1", "Author One");
 
@@ -809,7 +809,7 @@ class UserReportFacadeTest {
         User user = userWithProfile("user@uvt.ro", List.of("a1"));
 
         Indicator indicator = new Indicator();
-        indicator.setOutputType(Indicator.Type.CITATIONS_EXCLUDE_SELF);
+        indicator.setOutputType("CITATIONS_EXCLUDE_SELF");
 
         ScholardexAuthorView author = author("a1", "Author One");
         ScholardexAuthorView external = author("a2", "Author Two");
@@ -912,7 +912,7 @@ class UserReportFacadeTest {
         User user = userWithProfile("user@uvt.ro", List.of("a1"));
         Indicator indicator = new Indicator();
         indicator.setId("ind-act");
-        indicator.setOutputType(Indicator.Type.GENERIC_ACTIVITIES);
+        indicator.setOutputType("GENERIC_ACTIVITIES");
         var activity = new ro.uvt.pokedex.core.model.activities.Activity();
         activity.setName("Mentoring");
         indicator.setActivity(activity);
@@ -971,12 +971,12 @@ class UserReportFacadeTest {
         User user = userWithProfile("user@uvt.ro", List.of("a1"));
         Indicator main = new Indicator();
         main.setId("ind-main");
-        main.setOutputType(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR);
-        main.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        main.setOutputType("PUBLICATIONS_MAIN_AUTHOR");
+        main.setScoringStrategy("GENERIC_COUNT");
         Indicator co = new Indicator();
         co.setId("ind-co");
-        co.setOutputType(Indicator.Type.PUBLICATIONS_COAUTHOR);
-        co.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        co.setOutputType("PUBLICATIONS_COAUTHOR");
+        co.setScoringStrategy("GENERIC_COUNT");
 
         IndividualReport report = new IndividualReport();
         report.setId("rep-pub");
@@ -999,7 +999,7 @@ class UserReportFacadeTest {
                     @SuppressWarnings("unchecked")
                     List<ScoringPublicationReadModel> pubs = invocation.getArgument(0);
                     Indicator ind = invocation.getArgument(1);
-                    if (ind.getOutputType() == Indicator.Type.PUBLICATIONS_MAIN_AUTHOR) {
+                    if (ind.getOutputType() == "PUBLICATIONS_MAIN_AUTHOR") {
                         return new LinkedHashMap<>(Map.of("Main", totalScore(2.0), "total", totalScore(2.0)));
                     }
                     return new LinkedHashMap<>(Map.of("Co", totalScore(1.0), "total", totalScore(1.0)));
@@ -1019,8 +1019,8 @@ class UserReportFacadeTest {
         User user = userWithProfile("user@uvt.ro", List.of("a1"));
         Indicator main = new Indicator();
         main.setId("ind-main-detail-safe");
-        main.setOutputType(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR);
-        main.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        main.setOutputType("PUBLICATIONS_MAIN_AUTHOR");
+        main.setScoringStrategy("GENERIC_COUNT");
 
         IndividualReport report = new IndividualReport();
         report.setId("rep-main-safe");
@@ -1051,8 +1051,8 @@ class UserReportFacadeTest {
         User user = userWithProfile("user@uvt.ro", List.of("a1"));
         Indicator indicator = new Indicator();
         indicator.setId("ind-cit-aff");
-        indicator.setOutputType(Indicator.Type.CITATIONS);
-        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        indicator.setOutputType("CITATIONS");
+        indicator.setScoringStrategy("GENERIC_COUNT");
 
         var inst = new ro.uvt.pokedex.core.model.Institution();
         inst.setName("INST");
@@ -1110,8 +1110,8 @@ class UserReportFacadeTest {
         User user = userWithProfile("user@uvt.ro", List.of("a1"));
         Indicator valid = new Indicator();
         valid.setId("ind-valid");
-        valid.setOutputType(Indicator.Type.PUBLICATIONS);
-        valid.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        valid.setOutputType("PUBLICATIONS");
+        valid.setScoringStrategy("GENERIC_COUNT");
 
         var criterion = new ro.uvt.pokedex.core.model.reporting.AbstractReport.Criterion();
         criterion.setIndicatorIndices(new ArrayList<>(java.util.Arrays.asList(-1, 1, 99, null)));
@@ -1141,8 +1141,8 @@ class UserReportFacadeTest {
         User user = userWithProfile("user@uvt.ro", List.of("a1"));
         Indicator indicator = new Indicator();
         indicator.setId("ind-cit-dup");
-        indicator.setOutputType(Indicator.Type.CITATIONS);
-        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        indicator.setOutputType("CITATIONS");
+        indicator.setScoringStrategy("GENERIC_COUNT");
 
         ScholardexAuthorView author = author("a1", "Author One");
 
@@ -1196,8 +1196,8 @@ class UserReportFacadeTest {
 
         Indicator indicator = new Indicator();
         indicator.setId("ind-cit-wos");
-        indicator.setOutputType(Indicator.Type.CITATIONS);
-        indicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        indicator.setOutputType("CITATIONS");
+        indicator.setScoringStrategy("GENERIC_COUNT");
 
         ScholardexAuthorView author = author("a1", "Author One");
 
@@ -1251,7 +1251,7 @@ class UserReportFacadeTest {
     @Test
     void applyFinalSelectorDelegatesToSupport() throws Exception {
         Indicator indicator = new Indicator();
-        indicator.setSelector(Indicator.Selector.TOP_10);
+        indicator.setSelector("TOP_10");
 
         Map<String, Score> scores = new LinkedHashMap<>();
         for (int i = 1; i <= 12; i++) {
@@ -1302,7 +1302,7 @@ class UserReportFacadeTest {
         assertFalse(facade.reportUsesPublicationScoring("r0"));
 
         Indicator publications = new Indicator();
-        publications.setOutputType(Indicator.Type.PUBLICATIONS);
+        publications.setOutputType("PUBLICATIONS");
         IndividualReport withPublication = new IndividualReport();
         withPublication.setId("r1");
         withPublication.setIndicators(List.of(publications));
@@ -1328,13 +1328,13 @@ class UserReportFacadeTest {
     @Test
     void privateComputationHelpersAreReachable() throws Exception {
         Indicator publicationIndicator = new Indicator();
-        publicationIndicator.setOutputType(Indicator.Type.PUBLICATIONS);
+        publicationIndicator.setOutputType("PUBLICATIONS");
         when(scientificProductionService.calculateScientificProductionScore(anyList(), eq(publicationIndicator)))
                 .thenReturn(Map.of("total", totalScore(4.0)));
 
         Indicator citationIndicator = new Indicator();
-        citationIndicator.setOutputType(Indicator.Type.CITATIONS);
-        citationIndicator.setScoringStrategy(Indicator.Strategy.GENERIC_COUNT);
+        citationIndicator.setOutputType("CITATIONS");
+        citationIndicator.setScoringStrategy("GENERIC_COUNT");
         ScholardexPublicationView pub = new ScholardexPublicationView();
         pub.setId("p1");
         pub.setTitle("P1");
@@ -1370,7 +1370,7 @@ class UserReportFacadeTest {
     void citationWorkbookWritesAllExpectedHeaderCells() throws Exception {
         User user = userWithProfile("user@uvt.ro", List.of("a1"));
         Indicator indicator = new Indicator();
-        indicator.setOutputType(Indicator.Type.CITATIONS);
+        indicator.setOutputType("CITATIONS");
 
         ScholardexAuthorView author = author("a1", "Author One");
         ScholardexAuthorView external = author("a2", "Author Two");

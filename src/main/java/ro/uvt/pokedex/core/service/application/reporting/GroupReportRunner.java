@@ -86,13 +86,13 @@ public class GroupReportRunner {
 
             List<Indicator> indicators = report.getIndicators() == null ? List.of() : report.getIndicators();
             boolean hasActivity = indicators.stream().filter(Objects::nonNull)
-                    .anyMatch(ReportingComputationSupport::isActivityIndicator);
+                    .anyMatch(Indicator::isActivityOutput);
             boolean hasCitation = indicators.stream().filter(Objects::nonNull)
-                    .anyMatch(ReportingComputationSupport::isCitationIndicator);
+                    .anyMatch(Indicator::isCitationsOutput);
             timings.activityIndicators += indicators.stream().filter(Objects::nonNull)
-                    .filter(ReportingComputationSupport::isActivityIndicator).count();
+                    .filter(Indicator::isActivityOutput).count();
             timings.citationIndicators += indicators.stream().filter(Objects::nonNull)
-                    .filter(ReportingComputationSupport::isCitationIndicator).count();
+                    .filter(Indicator::isCitationsOutput).count();
 
             long publicationLoadStart = System.nanoTime();
             List<String> authorIds = authors.stream().map(ScholardexAuthorView::getId).toList();
@@ -133,7 +133,7 @@ public class GroupReportRunner {
                 }
                 long indicatorStart = System.nanoTime();
                 double indicatorScore = 0;
-                if (ReportingComputationSupport.isActivityIndicator(indicator)) {
+                if (indicator != null && indicator.isActivityOutput()) {
                     List<ActivityInstance> filtered = activities.stream()
                             .filter(act -> act.getActivity().getName().equals(indicator.getActivity().getName()))
                             .toList();
@@ -141,11 +141,11 @@ public class GroupReportRunner {
                             .get("total").getAuthorScore();
                     timings.activityScoringNanos += System.nanoTime() - indicatorStart;
                 }
-                if (ReportingComputationSupport.isPublicationIndicator(indicator)) {
+                if (indicator != null && indicator.isPublicationOutput()) {
                     indicatorScore = ReportingComputationSupport.calculatePublicationScore(
                             indicator, authors, publications, scientificProductionService);
                     timings.publicationScoringNanos += System.nanoTime() - indicatorStart;
-                } else if (ReportingComputationSupport.isCitationIndicator(indicator)) {
+                } else if (indicator != null && indicator.isCitationsOutput()) {
                     ReportScopedIndicatorScoringSupport.CitationScoreResult citationResult =
                             ReportScopedIndicatorScoringSupport.calculateCitationScore(
                                     indicator, publications, researcherAuthorIds,

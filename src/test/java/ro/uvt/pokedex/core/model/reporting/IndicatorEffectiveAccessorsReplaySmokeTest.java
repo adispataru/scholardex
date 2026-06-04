@@ -35,50 +35,50 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  */
 class IndicatorEffectiveAccessorsReplaySmokeTest {
 
-    private record Combo(Indicator.Type type, Indicator.Strategy strategy) {}
+    private record Combo(String typeName, String strategyName) {}
 
     private static List<Combo> productionCombos() {
         // Mirrors LegacyMappingTest#productionCombos(); duplicated here so a refactor
         // in the mapping test doesn't silently shrink this smoke surface.
         return List.of(
-                new Combo(Indicator.Type.PUBLICATIONS, Indicator.Strategy.CS_JOURNAL),
-                new Combo(Indicator.Type.PUBLICATIONS, Indicator.Strategy.CS),
-                new Combo(Indicator.Type.PUBLICATIONS, Indicator.Strategy.CS_CONFERENCE),
-                new Combo(Indicator.Type.PUBLICATIONS, Indicator.Strategy.CS_SENSE),
-                new Combo(Indicator.Type.PUBLICATIONS, Indicator.Strategy.RIS),
-                new Combo(Indicator.Type.PUBLICATIONS, Indicator.Strategy.AIS),
-                new Combo(Indicator.Type.PUBLICATIONS, Indicator.Strategy.GENERIC_COUNT),
-                new Combo(Indicator.Type.PUBLICATIONS, Indicator.Strategy.CNCSIS),
-                new Combo(Indicator.Type.PUBLICATIONS, Indicator.Strategy.ECONOMICS_JOURNAL_AIS),
-                new Combo(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR, Indicator.Strategy.IMPACT_FACTOR),
-                new Combo(Indicator.Type.PUBLICATIONS_COAUTHOR, Indicator.Strategy.IMPACT_FACTOR),
-                new Combo(Indicator.Type.CITATIONS_EXCLUDE_SELF, Indicator.Strategy.AIS),
-                new Combo(Indicator.Type.CITATIONS_EXCLUDE_SELF, Indicator.Strategy.CS),
-                new Combo(Indicator.Type.CITATIONS_EXCLUDE_SELF, Indicator.Strategy.IMPACT_FACTOR),
-                new Combo(Indicator.Type.CITATIONS_EXCLUDE_SELF, Indicator.Strategy.RIS),
-                new Combo(Indicator.Type.GENERIC_ACTIVITIES, Indicator.Strategy.GENERIC_ACTIVITY),
-                new Combo(Indicator.Type.ACTIVITY_FORUM, Indicator.Strategy.CS_CONFERENCE),
-                new Combo(Indicator.Type.ACTIVITY_FORUM, Indicator.Strategy.CS_JOURNAL),
-                new Combo(Indicator.Type.ACTIVITY_FORUM, Indicator.Strategy.CNCSIS),
-                new Combo(Indicator.Type.ACTIVITY_UNIVERSITY, Indicator.Strategy.UNI_RANKING),
-                new Combo(Indicator.Type.ACTIVITY_EVENT, Indicator.Strategy.ART_EVENT)
+                new Combo("PUBLICATIONS", "CS_JOURNAL"),
+                new Combo("PUBLICATIONS", "CS"),
+                new Combo("PUBLICATIONS", "CS_CONFERENCE"),
+                new Combo("PUBLICATIONS", "CS_SENSE"),
+                new Combo("PUBLICATIONS", "RIS"),
+                new Combo("PUBLICATIONS", "AIS"),
+                new Combo("PUBLICATIONS", "GENERIC_COUNT"),
+                new Combo("PUBLICATIONS", "CNCSIS"),
+                new Combo("PUBLICATIONS", "ECONOMICS_JOURNAL_AIS"),
+                new Combo("PUBLICATIONS_MAIN_AUTHOR", "IMPACT_FACTOR"),
+                new Combo("PUBLICATIONS_COAUTHOR", "IMPACT_FACTOR"),
+                new Combo("CITATIONS_EXCLUDE_SELF", "AIS"),
+                new Combo("CITATIONS_EXCLUDE_SELF", "CS"),
+                new Combo("CITATIONS_EXCLUDE_SELF", "IMPACT_FACTOR"),
+                new Combo("CITATIONS_EXCLUDE_SELF", "RIS"),
+                new Combo("GENERIC_ACTIVITIES", "GENERIC_ACTIVITY"),
+                new Combo("ACTIVITY_FORUM", "CS_CONFERENCE"),
+                new Combo("ACTIVITY_FORUM", "CS_JOURNAL"),
+                new Combo("ACTIVITY_FORUM", "CNCSIS"),
+                new Combo("ACTIVITY_UNIVERSITY", "UNI_RANKING"),
+                new Combo("ACTIVITY_EVENT", "ART_EVENT")
         );
     }
 
     private static final List<String> YEAR_RANGES = List.of("*", "2017->2025");
     private static final List<String> SCORE_YEAR_RANGES = java.util.Arrays.asList("IY", "2018->2024", null);
-    private static final List<Indicator.Selector> SELECTORS =
-            java.util.Arrays.asList(Indicator.Selector.ALL, Indicator.Selector.TOP_10, null);
+    private static final List<String> SELECTORS =
+            java.util.Arrays.asList("ALL", "TOP_10", null);
 
     @Test
     void everyHistoricalShapeRoundTripsThroughEffectiveGetters() {
         for (Combo c : productionCombos()) {
             for (String yr : YEAR_RANGES) {
                 for (String syr : SCORE_YEAR_RANGES) {
-                    for (Indicator.Selector sel : SELECTORS) {
+                    for (String sel : SELECTORS) {
                         Indicator ind = new Indicator();
-                        ind.setOutputType(c.type());
-                        ind.setScoringStrategy(c.strategy());
+                        ind.setOutputType(c.typeName());
+                        ind.setScoringStrategy(c.strategyName());
                         ind.setYearRange(yr);
                         ind.setScoreYearRange(syr);
                         ind.setSelector(sel);
@@ -113,11 +113,11 @@ class IndicatorEffectiveAccessorsReplaySmokeTest {
         Indicator ind = new Indicator();
         // Legacy fields set to something *different* from the v1 fields so we can
         // tell which path returned.
-        ind.setOutputType(Indicator.Type.PUBLICATIONS);
-        ind.setScoringStrategy(Indicator.Strategy.CS_JOURNAL);
+        ind.setOutputType("PUBLICATIONS");
+        ind.setScoringStrategy("CS_JOURNAL");
         ind.setYearRange("2000->2005");
         ind.setScoreYearRange("IY");
-        ind.setSelector(Indicator.Selector.ALL);
+        ind.setSelector("ALL");
 
         ind.setKind(new IndicatorKind.Citations(true,
                 ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy.RIS));

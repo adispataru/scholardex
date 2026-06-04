@@ -167,33 +167,21 @@ public class UserIndicatorResultService {
             return "MISSING_INDICATOR";
         }
         Indicator ind = indicator.get();
-        // H52 slice 11d.3: fingerprint segments derive from the typed kind/specs.
-        // Result matches the legacy enum {@code .name()} strings so previously
-        // computed fingerprints continue to round-trip — critical for the
-        // userIndicatorResults cache identity. Slice 11e re-fingerprint job will
-        // bulk-update any stale fingerprints; for now the format is stable.
-        ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind kind = ind.getEffectiveKind();
-        String outputTypeName = "";
-        String strategyName = "";
-        if (kind != null) {
-            ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind.LegacyShape legacy = kind.toLegacy();
-            outputTypeName = legacy.type().name();
-            strategyName = legacy.strategy().name();
-        } else if (ind.getOutputType() != null || ind.getScoringStrategy() != null) {
-            // Fall back to the legacy fields when the typed kind isn't resolvable;
-            // matches the pre-slice-11d.3 behavior for partially-populated indicators.
-            outputTypeName = ind.getOutputType() == null ? "" : ind.getOutputType().name();
-            strategyName = ind.getScoringStrategy() == null ? "" : ind.getScoringStrategy().name();
-        }
+        // H52 slice 11d.5: fingerprint segments derive from the typed kind/specs
+        // via the Indicator's String-returning derived getters. Result matches the
+        // legacy enum {@code .name()} strings so previously computed fingerprints
+        // continue to round-trip — critical for the userIndicatorResults cache
+        // identity. Slice 11e re-fingerprint job will bulk-update any stale
+        // fingerprints; for now the format is stable.
         return String.join(
                 "|",
                 ind.getId() == null ? "" : ind.getId(),
-                outputTypeName,
-                strategyName,
+                ind.getOutputType() == null ? "" : ind.getOutputType(),
+                ind.getScoringStrategy() == null ? "" : ind.getScoringStrategy(),
                 ind.getFormula() == null ? "" : ind.getFormula(),
                 ind.getYearRange() == null ? "" : ind.getYearRange(),
                 ind.getScoreYearRange() == null ? "" : ind.getScoreYearRange(),
-                ind.getSelector() == null ? "" : ind.getSelector().name(),
+                ind.getSelector() == null ? "" : ind.getSelector(),
                 PAYLOAD_VERSION
         );
     }

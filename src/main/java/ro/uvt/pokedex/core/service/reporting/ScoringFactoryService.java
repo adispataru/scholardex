@@ -12,14 +12,13 @@ import java.util.Map;
 
 /**
  * H52 slice 6: Map-registry dispatcher. Replaces the pre-v1 hand-written if/else ladder
- * over {@link Indicator.Strategy}. Spring autowires every {@link ScoringService} bean;
- * the constructor indexes them by {@link ScoringService#strategy()} into an
- * {@link EnumMap}. Look-up is O(1).
+ * over the former {@code Indicator.Strategy} enum. Spring autowires every
+ * {@link ScoringService} bean; the constructor indexes them by
+ * {@link ScoringService#strategy()} into an {@link EnumMap}. Look-up is O(1).
  *
  * <p>Adding a new strategy is a three-step recipe with zero churn here:</p>
  * <ol>
- *   <li>Add the enum value to {@link ScoringStrategy} (and, for the migration window,
- *       also to the legacy {@link Indicator.Strategy}).</li>
+ *   <li>Add the enum value to {@link ScoringStrategy}.</li>
  *   <li>Create a new {@code @Service} implementing {@link ScoringService} that returns
  *       the new enum value from {@code strategy()}.</li>
  *   <li>That's it. No edit here.</li>
@@ -78,15 +77,20 @@ public class ScoringFactoryService {
     }
 
     /**
-     * Look up the {@link ScoringService} for a legacy {@link Indicator.Strategy} value.
-     * Bridges callers that still pass the legacy enum; converts via
-     * {@link ScoringStrategy#fromLegacy} and delegates.
+     * H52 slice 11d.5: name-based lookup. Bridges callers that hold the legacy
+     * strategy name as a String (e.g. derived from {@code IndicatorKind.toLegacy().strategyName()}).
      */
-    public ScoringService getScoringService(Indicator.Strategy strategy) {
-        if (strategy == null) {
+    public ScoringService getScoringService(String strategyName) {
+        if (strategyName == null) {
             throw new IllegalArgumentException("Scoring strategy cannot be null");
         }
-        return getScoringService(ScoringStrategy.fromLegacy(strategy));
+        ScoringStrategy typed;
+        try {
+            typed = ScoringStrategy.valueOf(strategyName);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Unsupported scoring strategy: " + strategyName, ex);
+        }
+        return getScoringService(typed);
     }
 
     /** v1 look-up by typed {@link ScoringStrategy}. */

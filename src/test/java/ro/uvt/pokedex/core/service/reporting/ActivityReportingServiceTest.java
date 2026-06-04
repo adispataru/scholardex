@@ -27,7 +27,7 @@ class ActivityReportingServiceTest {
     @Test
     void genericCountFormulaUsesFieldsAndMathFunctions() {
         ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
-        Indicator indicator = indicator(Indicator.Strategy.GENERIC_COUNT, "max(hours, bonus) + min(bonus, 2)");
+        Indicator indicator = indicator("GENERIC_COUNT", "max(hours, bonus) + min(bonus, 2)");
         ActivityInstance activity = activity("a1", Map.of("hours", "3", "bonus", "5"), true);
 
         Score score = service.calculateActivityScores(List.of(activity), indicator).get("a1");
@@ -41,7 +41,7 @@ class ActivityReportingServiceTest {
     @Test
     void genericCountSetsScoreAndAuthorScoreFromFormula() {
         ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
-        Indicator indicator = indicator(Indicator.Strategy.GENERIC_COUNT, "S * 2");
+        Indicator indicator = indicator("GENERIC_COUNT", "S * 2");
         ActivityInstance activity = activity("a1", Map.of(), false);
 
         Score score = service.calculateActivityScores(List.of(activity), indicator).get("a1");
@@ -55,7 +55,7 @@ class ActivityReportingServiceTest {
     void genericActivityEvaluatesFormulaWithActivityFields() {
         ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
         Indicator indicator = indicator(
-                Indicator.Strategy.GENERIC_ACTIVITY,
+                "GENERIC_ACTIVITY",
                 "B = Buget; X = B < 50000 ? 1 : B < 100000 ? 2 : B < 200000 ? 3 : B < 400000 ? 4 : 5; Rol == 'Membru' ? X : X * 2"
         );
         ActivityInstance activity = grantActivity("grant-1", Map.of(
@@ -78,7 +78,7 @@ class ActivityReportingServiceTest {
     @Test
     void delegatedScoringUsesScoringServiceMetadataAndExtrasInFormula() {
         ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
-        Indicator indicator = indicator(Indicator.Strategy.CS_JOURNAL, "S * M");
+        Indicator indicator = indicator("CS_JOURNAL", "S * M");
         ActivityInstance activity = activity("a1", Map.of(), false);
         Score delegated = new Score();
         delegated.setScore(3.0);
@@ -90,7 +90,7 @@ class ActivityReportingServiceTest {
         // H52 slice 11c: typed slot. Was {@code delegated.setExtra(Map.of("M", 4))}.
         delegated.setMultiplier(4);
 
-        when(scoringFactoryService.getScoringService(Indicator.Strategy.CS_JOURNAL)).thenReturn(scoringService);
+        when(scoringFactoryService.getScoringService("CS_JOURNAL")).thenReturn(scoringService);
         when(scoringService.getScore(activity, indicator)).thenReturn(delegated);
 
         Score score = service.calculateActivityScores(List.of(activity), indicator).get("a1");
@@ -105,7 +105,7 @@ class ActivityReportingServiceTest {
     @Test
     void invalidFormulaVariableYieldsZeroAuthorScore() {
         ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
-        Indicator indicator = indicator(Indicator.Strategy.GENERIC_COUNT, "S + missingVar");
+        Indicator indicator = indicator("GENERIC_COUNT", "S + missingVar");
         ActivityInstance activity = activity("a1", Map.of(), false);
 
         Score score = service.calculateActivityScores(List.of(activity), indicator).get("a1");
@@ -117,7 +117,7 @@ class ActivityReportingServiceTest {
     @Test
     void calculateActivityScoresFiltersZeroScoresAndComputesTotal() {
         ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
-        Indicator indicator = indicator(Indicator.Strategy.GENERIC_COUNT, "S");
+        Indicator indicator = indicator("GENERIC_COUNT", "S");
         ActivityInstance included = activity("a1", Map.of(), false);
         ActivityInstance excluded = activity("a2", Map.of(), false);
 
@@ -125,21 +125,19 @@ class ActivityReportingServiceTest {
         assertEquals(1.0, scores.get("a1").getAuthorScore());
         assertEquals(1.0, scores.get("total").getAuthorScore());
 
-        Indicator zeroIndicator = indicator(Indicator.Strategy.GENERIC_ACTIVITY, "0");
+        Indicator zeroIndicator = indicator("GENERIC_ACTIVITY", "0");
         Map<String, Score> zeroScores = service.calculateActivityScores(List.of(excluded), zeroIndicator);
         assertEquals(1, zeroScores.size());
         assertEquals(0.0, zeroScores.get("total").getAuthorScore());
     }
 
-    private Indicator indicator(Indicator.Strategy strategy, String formula) {
+    private Indicator indicator(String strategyName, String formula) {
         Indicator indicator = new Indicator();
-        indicator.setScoringStrategy(strategy);
-        // H52 slice 11d.1: getEffectiveKind() needs both legacy fields populated
-        // to synthesize a kind. Production indicators always carry both; tests
-        // historically only set strategy because the legacy equality check didn't
-        // need outputType. Set a strategy-appropriate outputType so the typed
-        // accessors work.
-        indicator.setOutputType(legacyOutputTypeFor(strategy));
+        indicator.setScoringStrategy(strategyName);
+        // H52 slice 11d.5: legacy compat setters need both halves of the (outputType,
+        // strategy) pair populated to materialize the typed kind. Provide a strategy-
+        // appropriate default outputType.
+        indicator.setOutputType(legacyOutputTypeFor(strategyName));
         indicator.setFormula(formula);
         Domain d = new Domain();
         d.setName("ALL");
@@ -148,16 +146,15 @@ class ActivityReportingServiceTest {
         return indicator;
     }
 
-    private static Indicator.Type legacyOutputTypeFor(Indicator.Strategy strategy) {
-        // Mirrors the production (Type, Strategy) combinations surveyed in
+    private static String legacyOutputTypeFor(String strategyName) {
+        // Mirrors the production (outputType, strategy) combinations surveyed in
         // LegacyMappingTest. Defaults to PUBLICATIONS for anything not in the
-        // explicit map — every test that needs a different default sets one
-        // by hand.
-        return switch (strategy) {
-            case GENERIC_ACTIVITY -> Indicator.Type.GENERIC_ACTIVITIES;
-            case ART_EVENT -> Indicator.Type.ACTIVITY_EVENT;
-            case UNI_RANKING -> Indicator.Type.ACTIVITY_UNIVERSITY;
-            default -> Indicator.Type.PUBLICATIONS;
+        // explicit map.
+        return switch (strategyName) {
+            case "GENERIC_ACTIVITY" -> "GENERIC_ACTIVITIES";
+            case "ART_EVENT" -> "ACTIVITY_EVENT";
+            case "UNI_RANKING" -> "ACTIVITY_UNIVERSITY";
+            default -> "PUBLICATIONS";
         };
     }
 

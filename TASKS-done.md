@@ -2,6 +2,20 @@
 
 Archived completed tasks moved from `TASKS.md` on 2026-03-03.
 
+## H52 Indicator / Scoring / Formula Flow V1
+
+Archived from `TASKS.md` on 2026-06-04 after completing H52 v1. Closed task doc: `docs/tasks/closed/h52-indicator-scoring-v1.md`.
+
+- [x] `H52` Indicator / scoring / formula flow — v1. *(completed 2026-06-04)*
+  Goal: replace the legacy output-type/strategy cross-product, open-bag score extras, hot-path string MVEL evaluation, strategy dispatch ladder, and hardcoded year caps with typed indicator/scoring/formula infrastructure.
+  Deliverable: typed `IndicatorKind`, `YearRangeSpec`, `ScoreYearRangeSpec`, and `Selector` value types; compile-cached and sandboxed formula evaluation with formula-hash cache identity; strategy registry; typed score multiplier path; indicator-save variable contract; migration and replay-shape guardrails.
+  Exit criteria: v1 typed indicator shape live in Mongo, legacy indicator keys unset from persisted docs, hot-path `MVEL.eval(string, ...)` removed, `LAST_YEAR` removed from runtime scoring, undeclared formula variables rejected on save, and replay-shape guard green.
+  Handover:
+  - H52 v1 is complete through Commit 3 / slice 12; task doc records live Mongo verification, backups, migration runner commands, and final invariants.
+  - Replay equality was intentionally shipped as a replay-shape gate rather than full numeric replay because full numeric replay depends on unstable upstream WoS/Scopus data.
+  - Commit 4 UI surfaces are optional next-iteration scope: restructure the admin indicator form around a DTO binding to the typed kind shape, then delete `Indicator` legacy compat setters and `pending*` machinery.
+  - `ComputerScienceConferenceScoringService` internals remain a separate follow-up; it already conforms to the new `ScoringService` interface.
+
 ## H53 Import Conflict Triage Policy And Deterministic Relink Handling
 
 Archived from `TASKS.md` on 2026-05-30 after completing H53.1-H53.10. Closed task doc: `docs/tasks/closed/h53-import-conflict-triage.md`.

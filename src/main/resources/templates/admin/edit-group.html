@@ -114,7 +114,7 @@
                                 <label for="groupResearchers">Researchers</label>
                                 <div id="researchersContainer" class="app-collection">
                                     <div class="input-group mb-2 app-collection__item" th:each="memberId, iterStat : ${currentMemberUserIds}">
-                                        <select class="form-control" th:name="'userIds[' + ${iterStat.index} + ']'">
+                                        <select class="form-control" name="userIds">
                                             <option th:each="researcher : ${allResearchers}"
                                                     th:value="${researcher.email}"
                                                     th:text="${researcher.researcherProfile?.name}"
@@ -150,13 +150,15 @@
         let departmentsContainer = $('#departmentsContainer');
         let allResearchers = /*[[${allResearchers}]]*/ [];
         let researchersContainer = $('#researchersContainer');
+        const departmentOptionLabel = opt =>
+            [opt.institutionShortName, opt.divisionName, opt.name].filter(Boolean).join(' · ');
 
         $('#addDomain').click(function() {
             let index = domainsContainer.children().length;
             domainsContainer.append(`
                 <div class="input-group mb-2 app-collection__item">
                     <select class="form-control" name="domainIds[${index}]">
-                        ${allDomains.map(domain => `<option value="${domain.id}">${domain.name}</option>`).join('')}
+                        ${allDomains.map(domain => `<option value="${domain.name}">${domain.name}</option>`).join('')}
                     </select>
                     <button class="btn btn-danger remove-domain" type="button">Remove</button>
                 </div>`);
@@ -173,7 +175,7 @@
             departmentsContainer.append(`
                 <div class="input-group mb-2 app-collection__item">
                     <select class="form-control" name="departmentIds[${index}]">
-                        ${departmentOptions.map(opt => `<option value="${opt.id}">${opt.label}</option>`).join('')}
+                        ${departmentOptions.map(opt => `<option value="${opt.id}">${departmentOptionLabel(opt)}</option>`).join('')}
                     </select>
                     <button class="btn btn-danger remove-department" type="button">Remove</button>
                 </div>`);
@@ -210,17 +212,18 @@
             let index = researchersContainer.children().length;
             researchersContainer.append(`
                 <div class="input-group mb-2 app-collection__item">
-                    <select class="form-control" name="userIds[${index}]">
+                    <select class="form-control" name="userIds">
                         ${allResearchers.map(researcher => `<option value="${researcher.email}">${researcher.researcherProfile?.name ?? ''}</option>`).join('')}
                     </select>
                     <button class="btn btn-danger remove-researcher" type="button">Remove</button>
                 </div>`);
         });
         researchersContainer.on('click', '.remove-researcher', function() {
+            // H52 group-form fix: every <select> in the researchers container shares
+            // the plain `name="userIds"` so Spring's @RequestParam List<String> userIds
+            // collects them as repeated params (`userIds=a&userIds=b`). No re-index
+            // needed when a row is removed.
             $(this).closest('.input-group').remove();
-            researchersContainer.children().each(function(index, element) {
-                $(element).find('select').attr('name', `userIds[${index}]`);
-            });
         });
     });
 </script>

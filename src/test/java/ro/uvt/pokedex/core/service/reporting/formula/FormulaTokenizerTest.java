@@ -107,6 +107,65 @@ class FormulaTokenizerTest {
     }
 
     @Test
+    void invalidExponentRewindsAndLeavesSuffixAsIdentifier() {
+        List<FormulaTokenizer.Token> toks = FormulaTokenizer.tokenize("1e + 2E- + 3E+4");
+
+        assertEquals(8, toks.size());
+        assertEquals("1", toks.get(0).text());
+        assertEquals(FormulaTokenizer.Type.NUMBER, toks.get(0).type());
+        assertEquals("e", toks.get(1).text());
+        assertEquals(FormulaTokenizer.Type.IDENT, toks.get(1).type());
+        assertEquals("2", toks.get(3).text());
+        assertEquals("E", toks.get(4).text());
+        assertEquals("-", toks.get(5).text());
+        assertEquals("+", toks.get(6).text());
+        assertEquals("3E+4", toks.get(7).text());
+        assertEquals(FormulaTokenizer.Type.NUMBER, toks.get(7).type());
+    }
+
+    @Test
+    void escapedAndUnterminatedStringsAreSingleStringTokens() {
+        List<FormulaTokenizer.Token> escaped = FormulaTokenizer.tokenize("'Director\\'s Office' + \"A\\\"B\"");
+        assertEquals("'Director\\'s Office'", escaped.get(0).text());
+        assertEquals(FormulaTokenizer.Type.STRING, escaped.get(0).type());
+        assertEquals("\"A\\\"B\"", escaped.get(2).text());
+        assertEquals(FormulaTokenizer.Type.STRING, escaped.get(2).type());
+
+        List<FormulaTokenizer.Token> unterminated = FormulaTokenizer.tokenize("'still a string");
+        assertEquals(1, unterminated.size());
+        assertEquals("'still a string", unterminated.get(0).text());
+        assertEquals(FormulaTokenizer.Type.STRING, unterminated.get(0).type());
+    }
+
+    @Test
+    void dotChainsOnlyJoinWhenDotIsImmediatelyFollowedByIdentifierStart() {
+        List<FormulaTokenizer.Token> spaced = FormulaTokenizer.tokenize("Math . max + A.1 + B._ok");
+
+        assertEquals("Math", spaced.get(0).text());
+        assertEquals(".", spaced.get(1).text());
+        assertEquals(FormulaTokenizer.Type.OP, spaced.get(1).type());
+        assertEquals("max", spaced.get(2).text());
+        assertEquals("A", spaced.get(4).text());
+        assertEquals(".", spaced.get(5).text());
+        assertEquals("1", spaced.get(6).text());
+        assertEquals("B._ok", spaced.get(8).text());
+        assertEquals(FormulaTokenizer.Type.IDENT, spaced.get(8).type());
+    }
+
+    @Test
+    void arrowAndUnknownCharactersAreOperatorTokens() {
+        List<FormulaTokenizer.Token> toks = FormulaTokenizer.tokenize("x -> y @ z");
+
+        assertEquals("x", toks.get(0).text());
+        assertEquals("->", toks.get(1).text());
+        assertEquals(FormulaTokenizer.Type.OP, toks.get(1).type());
+        assertEquals("y", toks.get(2).text());
+        assertEquals("@", toks.get(3).text());
+        assertEquals(FormulaTokenizer.Type.OP, toks.get(3).type());
+        assertEquals("z", toks.get(4).text());
+    }
+
+    @Test
     void productionFormulasRoundTripStably() {
         // Every formula that appears in production: tokenize → normalize → tokenize again.
         // The second pass produces the same tokens; canonical form is a fixed point.

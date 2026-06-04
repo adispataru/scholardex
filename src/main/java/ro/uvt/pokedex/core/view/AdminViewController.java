@@ -243,28 +243,37 @@ public class AdminViewController {
         return "redirect:/admin/institutions";
     }
 
+    // H52 slice 11d.5: the dropdown value lists used to come from the legacy
+    // nested enums {@code Indicator.Type}/{@code Strategy}/{@code Selector}.
+    // After the enums were deleted, the form posts and receives plain Strings
+    // that the {@code Indicator} setters route into the typed kind/specs.
+    private static final List<String> LEGACY_OUTPUT_TYPES = List.of(
+            "PUBLICATIONS", "PUBLICATIONS_MAIN_AUTHOR", "PUBLICATIONS_COAUTHOR",
+            "CITATIONS", "CITATIONS_EXCLUDE_SELF",
+            "GENERIC_ACTIVITIES",
+            "ACTIVITY_FORUM", "ACTIVITY_EVENT", "ACTIVITY_PROJECT", "ACTIVITY_UNIVERSITY"
+    );
+    private static final List<String> LEGACY_STRATEGIES = java.util.Arrays.stream(
+                    ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy.values())
+            .map(Enum::name).toList();
+    private static final List<String> LEGACY_SELECTORS = List.of("ALL", "TOP_10");
+
     @GetMapping("/indicators")
     public String getCriterion(Model model) {
         List<Indicator> all = adminCatalogFacade.listIndicators();
         List<Activity> activities = adminCatalogFacade.listActivities();
         model.addAttribute("indicators", all);
 
-        List<Indicator.Strategy> scoringStrategies =  Arrays.asList(
-                Indicator.Strategy.values()
-        );
-
-        List<Indicator.Type> types = List.of(Indicator.Type.values());
         List<Domain> domains = adminCatalogFacade.listDomains();
-
         Map<String, String> activityDescriptions = getActivityDescriptions(activities);
 
         model.addAttribute("activities", activities);
         model.addAttribute("activityDescriptions", activityDescriptions);
-        model.addAttribute("scoringStrategies", scoringStrategies);
-        model.addAttribute("types", types);
+        model.addAttribute("scoringStrategies", LEGACY_STRATEGIES);
+        model.addAttribute("types", LEGACY_OUTPUT_TYPES);
         model.addAttribute("indicator", new Indicator());
         model.addAttribute("domains", domains);
-        model.addAttribute("selectors", Indicator.Selector.values());
+        model.addAttribute("selectors", LEGACY_SELECTORS);
         return "admin/indicators";
     }
 
@@ -334,22 +343,16 @@ public class AdminViewController {
         if(byId.isPresent()) {
             model.addAttribute("indicator", byId.get());
             model.addAttribute("adminFormObject", byId.get());
-            List<Indicator.Strategy> scoringStrategies =  Arrays.asList(
-                    Indicator.Strategy.values()
-            );
             List<Activity> activities = adminCatalogFacade.listActivities();
-
-            List<Indicator.Type> types = List.of(Indicator.Type.values());
             List<Domain> domains = adminCatalogFacade.listDomains();
-
             Map<String, String> activityDescriptions = getActivityDescriptions(activities);
 
             model.addAttribute("activities", activities);
             model.addAttribute("activityDescriptions", activityDescriptions);
-            model.addAttribute("scoringStrategies", scoringStrategies);
-            model.addAttribute("types", types);
+            model.addAttribute("scoringStrategies", LEGACY_STRATEGIES);
+            model.addAttribute("types", LEGACY_OUTPUT_TYPES);
             model.addAttribute("domains", domains);
-            model.addAttribute("selectors", Indicator.Selector.values());
+            model.addAttribute("selectors", LEGACY_SELECTORS);
             model.addAttribute("breadcrumbs", List.of(
                     new BreadcrumbItem("Indicators", "/admin/indicators"),
                     new BreadcrumbItem(byId.get().getName() == null ? "Edit Indicator" : byId.get().getName())

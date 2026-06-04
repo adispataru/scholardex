@@ -113,21 +113,10 @@ public final class ReportingComputationSupport {
         }
     }
 
-    // H52 slice 11d.2: the {@code is*Indicator} trio now delegates to the typed
-    // helpers on {@link Indicator}. Pre-v1 these used the legacy {@code outputType}
-    // enum's {@code toString().contains()} which silently coupled the type system
-    // to enum-naming conventions; the kind-based check is stricter.
-    public static boolean isActivityIndicator(Indicator indicator) {
-        return indicator != null && indicator.isActivityOutput();
-    }
-
-    public static boolean isPublicationIndicator(Indicator indicator) {
-        return indicator != null && indicator.isPublicationOutput();
-    }
-
-    public static boolean isCitationIndicator(Indicator indicator) {
-        return indicator != null && indicator.isCitationsOutput();
-    }
+    // H52 slice 11e: the {@code is*Indicator} thin-wrapper trio was inlined at every
+    // call site (callers now use {@code indicator != null && indicator.isXxxOutput()}
+    // directly). The wrappers existed only as a slice-11d.2 transition aid; they
+    // duplicated the {@link Indicator} typed helpers without adding behavior.
 
     public static Map<Integer, Double> computeCriterionScores(
             List<AbstractReport.Criterion> criteria,

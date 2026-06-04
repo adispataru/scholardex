@@ -84,7 +84,7 @@ class CitationRowProjectorTest {
         ));
 
         Indicator excludeSelfIndicator = new Indicator();
-        excludeSelfIndicator.setOutputType(Indicator.Type.CITATIONS_EXCLUDE_SELF);
+        excludeSelfIndicator.setOutputType("CITATIONS_EXCLUDE_SELF");
 
         CitationRowProjector projector = new CitationRowProjector(
                 userService, researcherLookup, authorship, projection, scoring);
@@ -145,7 +145,7 @@ class CitationRowProjectorTest {
                 .thenReturn(Map.of("Our own follow-up", score("A")));
 
         Indicator plainCitations = new Indicator();
-        plainCitations.setOutputType(Indicator.Type.CITATIONS);
+        plainCitations.setOutputType("CITATIONS");
 
         CitationRowProjector projector = new CitationRowProjector(
                 userService, researcherLookup, authorship, projection, scoring);

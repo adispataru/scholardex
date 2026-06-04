@@ -100,7 +100,7 @@ class EvaluationWorkspaceControllerContractTest {
         User user = userPrincipal("u@uvt.ro");
         Indicator activityIndicator = new Indicator();
         activityIndicator.setId("ind-act");
-        activityIndicator.setOutputType(Indicator.Type.GENERIC_ACTIVITIES);
+        activityIndicator.setOutputType("GENERIC_ACTIVITIES");
         var activity = new ro.uvt.pokedex.core.model.activities.Activity();
         activity.setName("Mentoring");
         activityIndicator.setActivity(activity);
@@ -133,7 +133,7 @@ class EvaluationWorkspaceControllerContractTest {
     private static Indicator publicationIndicator(String id) {
         Indicator indicator = new Indicator();
         indicator.setId(id);
-        indicator.setOutputType(Indicator.Type.PUBLICATIONS);
+        indicator.setOutputType("PUBLICATIONS");
         return indicator;
     }
 

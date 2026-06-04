@@ -77,16 +77,16 @@ class ScoringFactoryServiceTest {
     @Test
     void legacyEnumLookupBridgesToV1() {
         ScoringFactoryService factory = init(oneOfEach());
-        Indicator.Strategy[] legacyValues = {
-                Indicator.Strategy.CS_CONFERENCE, Indicator.Strategy.CS_JOURNAL,
-                Indicator.Strategy.CS, Indicator.Strategy.RIS, Indicator.Strategy.AIS,
-                Indicator.Strategy.CS_SENSE, Indicator.Strategy.UNI_RANKING,
-                Indicator.Strategy.CNCSIS, Indicator.Strategy.ART_EVENT,
-                Indicator.Strategy.IMPACT_FACTOR, Indicator.Strategy.ECONOMICS_JOURNAL_AIS,
+        String[] legacyValues = {
+                "CS_CONFERENCE", "CS_JOURNAL",
+                "CS", "RIS", "AIS",
+                "CS_SENSE", "UNI_RANKING",
+                "CNCSIS", "ART_EVENT",
+                "IMPACT_FACTOR", "ECONOMICS_JOURNAL_AIS",
         };
-        for (Indicator.Strategy legacy : legacyValues) {
+        for (String legacy : legacyValues) {
             ScoringService viaLegacy = factory.getScoringService(legacy);
-            ScoringService viaV1 = factory.getScoringService(ScoringStrategy.fromLegacy(legacy));
+            ScoringService viaV1 = factory.getScoringService(ScoringStrategy.valueOf(legacy));
             assertSame(viaLegacy, viaV1, "legacy and v1 lookups returned different beans for " + legacy);
         }
     }
@@ -122,7 +122,7 @@ class ScoringFactoryServiceTest {
                 () -> factory.getScoringService(ScoringStrategy.GENERIC_COUNT));
         assertTrue(ex.getMessage().contains("inline"));
         IllegalArgumentException ex2 = assertThrows(IllegalArgumentException.class,
-                () -> factory.getScoringService(Indicator.Strategy.GENERIC_ACTIVITY));
+                () -> factory.getScoringService("GENERIC_ACTIVITY"));
         assertTrue(ex2.getMessage().contains("inline"));
     }
 
@@ -132,7 +132,7 @@ class ScoringFactoryServiceTest {
         assertThrows(IllegalArgumentException.class,
                 () -> factory.getScoringService((ScoringStrategy) null));
         assertThrows(IllegalArgumentException.class,
-                () -> factory.getScoringService((Indicator.Strategy) null));
+                () -> factory.getScoringService((String) null));
     }
 
     @Test

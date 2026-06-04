@@ -43,9 +43,9 @@ class ReportingComputationSupportTest {
         pCo.setAuthors(List.of("x", "a1"));
 
         Indicator main = new Indicator();
-        main.setOutputType(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR);
+        main.setOutputType("PUBLICATIONS_MAIN_AUTHOR");
         Indicator co = new Indicator();
-        co.setOutputType(Indicator.Type.PUBLICATIONS_COAUTHOR);
+        co.setOutputType("PUBLICATIONS_COAUTHOR");
 
         when(scientificProductionService.calculateScientificProductionScore(anyList(), eq(main)))
                 .thenReturn(Map.of("total", totalScore(4.0)));
@@ -62,27 +62,28 @@ class ReportingComputationSupportTest {
     }
 
     @Test
-    void isCitationIndicatorHandlesNullsAndBothCitationTypes() {
+    void isCitationsOutputHandlesNullsAndBothCitationTypes() {
+        // H52 slice 11e: the {@code ReportingComputationSupport.isCitationIndicator}
+        // wrapper was inlined; this test now exercises {@link Indicator#isCitationsOutput()}
+        // directly, which is the same behavior.
         Indicator nullOutput = new Indicator();
-        nullOutput.setOutputType(null);
         Indicator plain = new Indicator();
-        plain.setOutputType(Indicator.Type.PUBLICATIONS);
+        plain.setOutputType("PUBLICATIONS");
         Indicator citations = new Indicator();
-        citations.setOutputType(Indicator.Type.CITATIONS);
+        citations.setOutputType("CITATIONS");
         Indicator citationsExcludeSelf = new Indicator();
-        citationsExcludeSelf.setOutputType(Indicator.Type.CITATIONS_EXCLUDE_SELF);
+        citationsExcludeSelf.setOutputType("CITATIONS_EXCLUDE_SELF");
 
-        assertFalse(ReportingComputationSupport.isCitationIndicator(null));
-        assertFalse(ReportingComputationSupport.isCitationIndicator(nullOutput));
-        assertFalse(ReportingComputationSupport.isCitationIndicator(plain));
-        assertTrue(ReportingComputationSupport.isCitationIndicator(citations));
-        assertTrue(ReportingComputationSupport.isCitationIndicator(citationsExcludeSelf));
+        assertFalse(nullOutput.isCitationsOutput());
+        assertFalse(plain.isCitationsOutput());
+        assertTrue(citations.isCitationsOutput());
+        assertTrue(citationsExcludeSelf.isCitationsOutput());
     }
 
     @Test
     void applyFinalSelectorKeepsOnlyTop10AndRebuildsTotals() {
         Indicator indicator = new Indicator();
-        indicator.setSelector(Indicator.Selector.TOP_10);
+        indicator.setSelector("TOP_10");
 
         Map<String, Score> scoreMap = new LinkedHashMap<>();
         for (int i = 1; i <= 12; i++) {
@@ -109,7 +110,7 @@ class ReportingComputationSupportTest {
     @Test
     void applyFinalSelectorDoesNothingWhenSelectorIsNotTop10() {
         Indicator indicator = new Indicator();
-        indicator.setSelector(Indicator.Selector.ALL);
+        indicator.setSelector("ALL");
         Map<String, Map<String, Score>> nested = new LinkedHashMap<>();
         Map<String, Score> one = new LinkedHashMap<>();
         one.put("p1", totalScore(1));
@@ -141,7 +142,7 @@ class ReportingComputationSupportTest {
     @Test
     void applyFinalSelectorHandlesDuplicateTitlesAcrossBucketsWithoutDoubleKeeping() {
         Indicator indicator = new Indicator();
-        indicator.setSelector(Indicator.Selector.TOP_10);
+        indicator.setSelector("TOP_10");
 
         Map<String, Score> b1 = new LinkedHashMap<>();
         b1.put("shared", totalScore(10));
@@ -185,9 +186,9 @@ class ReportingComputationSupportTest {
         ScholardexPublicationView nullAuthors = publication("p-null", null);
 
         Indicator main = new Indicator();
-        main.setOutputType(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR);
+        main.setOutputType("PUBLICATIONS_MAIN_AUTHOR");
         Indicator co = new Indicator();
-        co.setOutputType(Indicator.Type.PUBLICATIONS_COAUTHOR);
+        co.setOutputType("PUBLICATIONS_COAUTHOR");
 
         doAnswer(invocation -> Map.of("total", totalScore(((List<ScoringPublicationReadModel>) invocation.getArgument(0)).size())))
                 .when(scientificProductionService).calculateScientificProductionScore(anyList(), eq(main));
@@ -217,7 +218,7 @@ class ReportingComputationSupportTest {
 
         ScholardexPublicationView noAuthors = publication("p-empty", List.of());
         Indicator main = new Indicator();
-        main.setOutputType(Indicator.Type.PUBLICATIONS_MAIN_AUTHOR);
+        main.setOutputType("PUBLICATIONS_MAIN_AUTHOR");
 
         doAnswer(invocation -> Map.of("total", totalScore(((List<ScoringPublicationReadModel>) invocation.getArgument(0)).size())))
                 .when(scientificProductionService).calculateScientificProductionScore(anyList(), eq(main));

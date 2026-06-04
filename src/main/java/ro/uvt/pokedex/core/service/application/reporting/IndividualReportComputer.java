@@ -46,9 +46,9 @@ public class IndividualReportComputer {
 
         List<Indicator> indicators = report.getIndicators() == null ? List.of() : report.getIndicators();
         boolean hasActivity = indicators.stream().filter(Objects::nonNull)
-                .anyMatch(ReportingComputationSupport::isActivityIndicator);
+                .anyMatch(Indicator::isActivityOutput);
         boolean hasCitation = indicators.stream().filter(Objects::nonNull)
-                .anyMatch(ReportingComputationSupport::isCitationIndicator);
+                .anyMatch(Indicator::isCitationsOutput);
 
         for (User user : researchers) {
             List<ScholardexAuthorView> authors = scholardexProjectionReadService.findAuthorsByIdIn(
@@ -84,17 +84,17 @@ public class IndividualReportComputer {
                     continue;
                 }
                 double score = 0;
-                if (ReportingComputationSupport.isActivityIndicator(indicator)) {
+                if (indicator != null && indicator.isActivityOutput()) {
                     List<ActivityInstance> filtered = activities.stream()
                             .filter(act -> act.getActivity().getName().equals(indicator.getActivity().getName()))
                             .toList();
                     score = activityReportingService.calculateActivityScores(filtered, indicator)
                             .get("total").getAuthorScore();
                 }
-                if (ReportingComputationSupport.isPublicationIndicator(indicator)) {
+                if (indicator != null && indicator.isPublicationOutput()) {
                     score = ReportingComputationSupport.calculatePublicationScore(
                             indicator, authors, publications, scientificProductionService);
-                } else if (ReportingComputationSupport.isCitationIndicator(indicator)) {
+                } else if (indicator != null && indicator.isCitationsOutput()) {
                     ReportScopedIndicatorScoringSupport.CitationScoreResult res =
                             ReportScopedIndicatorScoringSupport.calculateCitationScore(
                                     indicator, publications, researcherAuthorIds,

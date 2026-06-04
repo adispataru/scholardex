@@ -8,11 +8,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind;
 import ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec;
-import ro.uvt.pokedex.core.model.reporting.scoring.Selector;
 import ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Data
 @Document(collection = "indicators")
@@ -36,44 +32,13 @@ public class Indicator {
     private Long version;
 
     // -------------------------------------------------------------------
-    // Legacy schema. As of H52 slice 11d.3 these fields are {@code @Transient}:
-    // Spring Data Mongo no longer persists or reads them. They stay on the class
-    // so unit tests that still call {@code setOutputType(...)} etc. keep
-    // compiling (production reads went through {@code getEffectiveKind()} in
-    // slices 11d.1 / 11d.2). Pre-condition: the migration runner has populated
-    // v1 typed fields ({@code kind}, {@code yearRangeSpec}, etc.) on every
-    // indicator. Slice 11e will Mongo-{@code $unset} the residual legacy keys
-    // from existing docs; slice 11d.4 physically removes the fields once the
-    // test surface has been refactored.
-    //
-    // JSON serialization still emits the legacy keys via Lombok's getters —
-    // that's what the slice-10 fixture captured, so the tripwire stays valid.
-    // -------------------------------------------------------------------
-
-    /** @deprecated use {@link #getEffectiveKind()}. Not persisted as of slice 11d.3. */
-    @Deprecated
-    @Transient
-    private Type outputType;
-    /** @deprecated use {@link #getEffectiveKind()}. Not persisted as of slice 11d.3. */
-    @Deprecated
-    @Transient
-    private Strategy scoringStrategy;
-    /** @deprecated use {@link #getEffectiveYearRange()}. Not persisted as of slice 11d.3. */
-    @Deprecated
-    @Transient
-    private String yearRange;
-    /** @deprecated use {@link #getEffectiveScoreYearRange()}. Not persisted as of slice 11d.3. */
-    @Deprecated
-    @Transient
-    private String scoreYearRange;
-    /** @deprecated use {@link #getEffectiveSelector()}. Not persisted as of slice 11d.3. */
-    @Deprecated
-    @Transient
-    private Selector selector;
-
-    // -------------------------------------------------------------------
-    // v1 typed schema (populated by H52 slice 3 migration; falls back to
-    // converting from the legacy fields until then via the helpers below).
+    // v1 typed schema. As of H52 slice 11d.4 these are the ONLY storage
+    // locations for indicator shape — the @Deprecated legacy fields are
+    // gone. Legacy {@code setOutputType(...)}/{@code setScoringStrategy(...)}/
+    // {@code setYearRange(...)}/{@code setScoreYearRange(...)}/{@code setSelector(...)}
+    // setters (declared below) route their inputs into these fields. There
+    // is no dual storage and no way to write data to a "legacy bag" that
+    // doesn't make it into the typed shape.
     // -------------------------------------------------------------------
 
     private IndicatorKind kind;
@@ -90,68 +55,142 @@ public class Indicator {
     private ro.uvt.pokedex.core.model.reporting.scoring.Selector selectorSpec;
 
     // -------------------------------------------------------------------
-    // Effective getters — prefer v1 fields when populated; otherwise
-    // synthesise the v1 shape from the legacy fields. Hot-path scoring
-    // code calls these so it doesn't care which migration phase the
-    // document is in.
+    // Transient state for the brief window between paired form-binding
+    // setter calls. Spring's @ModelAttribute may call setOutputType
+    // before setScoringStrategy (or vice versa); we accumulate both
+    // halves here and materialize the typed kind once both arrive.
+    // Never persisted, never serialized.
+    // -------------------------------------------------------------------
+    @org.springframework.data.annotation.Transient
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private String pendingOutputType;
+    @org.springframework.data.annotation.Transient
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private String pendingScoringStrategy;
+
+    // -------------------------------------------------------------------
+    // Effective getters and legacy-compat getters. The {@code getEffective*}
+    // helpers are the canonical read API; the legacy {@code getOutputType},
+    // {@code getScoringStrategy}, {@code getYearRange}, {@code getScoreYearRange},
+    // {@code getSelector} getters derive from the typed shape and are only
+    // kept alive for downstream code (admin form rendering, fingerprint
+    // composition, log messages) that hasn't migrated to the typed API yet.
     // -------------------------------------------------------------------
 
-    /** v1 shape of the indicator, computed lazily from legacy fields when not yet migrated. */
+    /** v1 shape of the indicator. {@code null} if no kind has been resolved. */
     public IndicatorKind getEffectiveKind() {
         if (kind != null) return kind;
-        if (outputType == null || scoringStrategy == null) return null;
-        return IndicatorKind.fromLegacy(outputType, scoringStrategy);
+        // During form binding, surface a synthesized kind as soon as both
+        // halves of the legacy pair have arrived. Reads after binding (e.g.
+        // by the BeforeConvert listener) see the same shape they will
+        // eventually persist.
+        if (pendingOutputType != null && pendingScoringStrategy != null) {
+            return IndicatorKind.of(pendingOutputType, pendingScoringStrategy);
+        }
+        return null;
     }
 
-    // -------------------------------------------------------------------
-    // Legacy getter overrides. Lombok's {@code @Data} generates getters
-    // from fields; we override here so that when the {@code @Transient}
-    // field is null (i.e. loaded from Mongo where the legacy keys are
-    // gone), the getter falls back to deriving the legacy value from
-    // the typed kind/specs. Production-side consumers that still call
-    // {@code getScoringStrategy()} / {@code getOutputType()} (e.g. the
-    // {@code ScoringFactoryService} legacy bridge, log messages, the
-    // {@code UserIndicatorResultService} fingerprint) continue to work
-    // without touching their call sites.
-    // -------------------------------------------------------------------
-
-    /**
-     * H52 slice 11d.3: returns the stored legacy field, or derives from
-     * {@link #kind} when the field is null (the common case post-migration).
-     */
-    public Type getOutputType() {
-        if (outputType != null) return outputType;
-        return kind != null ? kind.toLegacy().type() : null;
+    /** Derived from {@link #kind} (or from a pending half during form binding). */
+    public String getOutputType() {
+        IndicatorKind k = kind;
+        if (k != null) return k.toLegacy().outputTypeName();
+        return pendingOutputType;
     }
 
-    /** H52 slice 11d.3: stored field, or derived from {@link #kind}. */
-    public Strategy getScoringStrategy() {
-        if (scoringStrategy != null) return scoringStrategy;
-        return kind != null ? kind.toLegacy().strategy() : null;
+    /** Derived from {@link #kind} (or from a pending half during form binding). */
+    public String getScoringStrategy() {
+        IndicatorKind k = kind;
+        if (k != null) return k.toLegacy().strategyName();
+        return pendingScoringStrategy;
     }
 
-    /** H52 slice 11d.3: stored field, or derived from {@link #yearRangeSpec}. */
+    /** Derived from {@link #yearRangeSpec}. */
     public String getYearRange() {
-        if (yearRange != null) return yearRange;
         return yearRangeSpec != null ? legacyYearRangeString(yearRangeSpec) : null;
     }
 
-    /** H52 slice 11d.3: stored field, or derived from {@link #scoreYearRangeSpec}. */
+    /** Derived from {@link #scoreYearRangeSpec}. */
     public String getScoreYearRange() {
-        if (scoreYearRange != null) return scoreYearRange;
         return scoreYearRangeSpec != null ? legacyScoreYearRangeString(scoreYearRangeSpec) : null;
     }
 
-    /** H52 slice 11d.3: stored field, or derived from {@link #selectorSpec}. */
-    public Selector getSelector() {
-        if (selector != null) return selector;
-        if (selectorSpec instanceof ro.uvt.pokedex.core.model.reporting.scoring.Selector.TopN) {
-            return Selector.TOP_10;
+    /** Derived from {@link #selectorSpec}. Returns legacy name (`"ALL"`/`"TOP_10"`) or null. */
+    public String getSelector() {
+        return selectorSpec != null ? selectorSpec.legacyName() : null;
+    }
+
+    // -------------------------------------------------------------------
+    // Legacy setters — route inputs into the typed kind/specs. The legacy
+    // fields are gone; there is no dual storage. The admin form's
+    // {@code th:field="*{outputType}"} bindings land here, get translated
+    // into typed shape, and the {@code IndicatorFormulaHashStamper}
+    // {@code onBeforeConvert} hook materializes any pending halves into
+    // a kind before save.
+    // -------------------------------------------------------------------
+
+    /** Form-binding compat: routes the legacy-name output type into the typed {@link #kind}. */
+    public void setOutputType(String t) {
+        if (kind != null) {
+            // Incremental update: preserve the current strategy, swap the type.
+            String currentStrategy = kind.toLegacy().strategyName();
+            this.kind = (t != null && currentStrategy != null)
+                    ? IndicatorKind.of(t, currentStrategy)
+                    : null;
+            if (this.kind == null) this.pendingOutputType = t;
+            return;
         }
-        if (selectorSpec instanceof ro.uvt.pokedex.core.model.reporting.scoring.Selector.All) {
-            return Selector.ALL;
+        this.pendingOutputType = t;
+        materializeKindIfReady();
+    }
+
+    /** Form-binding compat: routes the legacy-name strategy into the typed {@link #kind}. */
+    public void setScoringStrategy(String s) {
+        if (kind != null) {
+            String currentType = kind.toLegacy().outputTypeName();
+            this.kind = (s != null && currentType != null)
+                    ? IndicatorKind.of(currentType, s)
+                    : null;
+            if (this.kind == null) this.pendingScoringStrategy = s;
+            return;
         }
-        return null;
+        this.pendingScoringStrategy = s;
+        materializeKindIfReady();
+    }
+
+    /** Form-binding compat: parses the legacy string into {@link #yearRangeSpec}. */
+    public void setYearRange(String yr) {
+        if (yr == null || yr.isBlank()) {
+            this.yearRangeSpec = null;
+            return;
+        }
+        this.yearRangeSpec = YearRangeSpec.parse(yr);
+    }
+
+    /** Form-binding compat: parses the legacy string into {@link #scoreYearRangeSpec}. */
+    public void setScoreYearRange(String syr) {
+        if (syr == null || syr.isBlank()) {
+            this.scoreYearRangeSpec = null;
+            return;
+        }
+        this.scoreYearRangeSpec = ScoreYearRangeSpec.parse(syr);
+    }
+
+    /**
+     * Form-binding compat: routes the legacy-name selector
+     * ({@code null} / {@code "ALL"} / {@code "TOP_10"}) into {@link #selectorSpec}.
+     */
+    public void setSelector(String legacyName) {
+        this.selectorSpec = ro.uvt.pokedex.core.model.reporting.scoring.Selector.of(legacyName);
+        // Selector.of(null) returns All(); preserve "not set" intent on null.
+        if (legacyName == null) this.selectorSpec = null;
+    }
+
+    private void materializeKindIfReady() {
+        if (pendingOutputType != null && pendingScoringStrategy != null) {
+            this.kind = IndicatorKind.of(pendingOutputType, pendingScoringStrategy);
+            this.pendingOutputType = null;
+            this.pendingScoringStrategy = null;
+        }
     }
 
     private static String legacyYearRangeString(YearRangeSpec spec) {
@@ -205,60 +244,55 @@ public class Indicator {
     public boolean isPublicationOutput() {
         IndicatorKind k = getEffectiveKind();
         if (k != null) return k instanceof IndicatorKind.Publications;
-        return outputType == Type.PUBLICATIONS
-                || outputType == Type.PUBLICATIONS_MAIN_AUTHOR
-                || outputType == Type.PUBLICATIONS_COAUTHOR;
+        // Half-set fixture: legacy setOutputType called without setScoringStrategy.
+        return "PUBLICATIONS".equals(pendingOutputType)
+                || "PUBLICATIONS_MAIN_AUTHOR".equals(pendingOutputType)
+                || "PUBLICATIONS_COAUTHOR".equals(pendingOutputType);
     }
 
     /** True iff the indicator is citations-shaped (either inclusive or exclude-self). */
     public boolean isCitationsOutput() {
         IndicatorKind k = getEffectiveKind();
         if (k != null) return k instanceof IndicatorKind.Citations;
-        return outputType == Type.CITATIONS || outputType == Type.CITATIONS_EXCLUDE_SELF;
+        return "CITATIONS".equals(pendingOutputType) || "CITATIONS_EXCLUDE_SELF".equals(pendingOutputType);
     }
 
     /** True for {@link IndicatorKind.Citations} with {@code excludeSelf == true}. */
     public boolean isCitationsExcludeSelf() {
         IndicatorKind k = getEffectiveKind();
         if (k != null) return k instanceof IndicatorKind.Citations c && c.excludeSelf();
-        return outputType == Type.CITATIONS_EXCLUDE_SELF;
+        return "CITATIONS_EXCLUDE_SELF".equals(pendingOutputType);
     }
 
     /**
      * True iff the indicator is activity-shaped —
      * {@link IndicatorKind.Activity} (FORUM/UNIVERSITY/EVENT) or
-     * {@link IndicatorKind.GenericActivity}. Mirrors the pre-v1
-     * {@code outputType.toString().contains("ACTIVIT")} check.
+     * {@link IndicatorKind.GenericActivity}.
      */
     public boolean isActivityOutput() {
         IndicatorKind k = getEffectiveKind();
         if (k != null) return k instanceof IndicatorKind.Activity || k instanceof IndicatorKind.GenericActivity;
-        return outputType == Type.ACTIVITY_FORUM
-                || outputType == Type.ACTIVITY_UNIVERSITY
-                || outputType == Type.ACTIVITY_EVENT
-                || outputType == Type.ACTIVITY_PROJECT
-                || outputType == Type.GENERIC_ACTIVITIES;
+        return "ACTIVITY_FORUM".equals(pendingOutputType)
+                || "ACTIVITY_UNIVERSITY".equals(pendingOutputType)
+                || "ACTIVITY_EVENT".equals(pendingOutputType)
+                || "ACTIVITY_PROJECT".equals(pendingOutputType)
+                || "GENERIC_ACTIVITIES".equals(pendingOutputType);
     }
 
     /**
      * The author-role constraint for a publications-typed indicator, or {@code null}
-     * if the indicator isn't publications-shaped. Replaces the legacy
-     * {@code outputType == PUBLICATIONS_MAIN_AUTHOR} / {@code _COAUTHOR} equality checks.
+     * if the indicator isn't publications-shaped.
      */
     public ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole publicationAuthorRole() {
         IndicatorKind k = getEffectiveKind();
         if (k instanceof IndicatorKind.Publications p) return p.role();
         if (k != null) return null;
-        if (outputType == Type.PUBLICATIONS_MAIN_AUTHOR) {
-            return ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.MAIN;
-        }
-        if (outputType == Type.PUBLICATIONS_COAUTHOR) {
-            return ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.CO;
-        }
-        if (outputType == Type.PUBLICATIONS) {
-            return ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.ALL;
-        }
-        return null;
+        return switch (pendingOutputType == null ? "" : pendingOutputType) {
+            case "PUBLICATIONS_MAIN_AUTHOR" -> ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.MAIN;
+            case "PUBLICATIONS_COAUTHOR"    -> ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.CO;
+            case "PUBLICATIONS"             -> ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.ALL;
+            default -> null;
+        };
     }
 
     /**
@@ -284,117 +318,23 @@ public class Indicator {
     }
 
     public YearRangeSpec getEffectiveYearRange() {
-        if (yearRangeSpec != null) return yearRangeSpec;
-        return YearRangeSpec.parse(yearRange);
+        return yearRangeSpec != null ? yearRangeSpec : new YearRangeSpec.AllYears();
     }
 
     public ScoreYearRangeSpec getEffectiveScoreYearRange() {
-        if (scoreYearRangeSpec != null) return scoreYearRangeSpec;
-        return ScoreYearRangeSpec.parse(scoreYearRange);
+        return scoreYearRangeSpec != null ? scoreYearRangeSpec : new ScoreYearRangeSpec.ItemYear();
     }
 
     public ro.uvt.pokedex.core.model.reporting.scoring.Selector getEffectiveSelector() {
-        if (selectorSpec != null) return selectorSpec;
-        return ro.uvt.pokedex.core.model.reporting.scoring.Selector.fromLegacy(selector);
+        return selectorSpec != null
+                ? selectorSpec
+                : new ro.uvt.pokedex.core.model.reporting.scoring.Selector.All();
     }
 
-    /**
-     * @deprecated Legacy nested enum. The v1 grammar lives in
-     * {@link ro.uvt.pokedex.core.model.reporting.scoring.Selector}. Removed at the end of H52.
-     */
-    @Deprecated
-    public static enum Selector {
-        ALL,
-        TOP_10
-    }
-
-    public static List<Integer> parseYearRange(String yearRange, int itemYear) {
-        List<Integer> years = new ArrayList<>();
-        if (yearRange == null || yearRange.isEmpty()) {
-            return years;
-        }
-        if(yearRange.equals("*")){
-            int currentYear = java.time.LocalDate.now().getYear();
-            for (int i = 1990; i <= currentYear; i++) {
-                years.add(i);
-            }
-            return years;
-        }
-
-        String[] parts = yearRange.split(",");
-        for (String part : parts) {
-            part = part.trim();
-            if (part.contains("->")) {
-                String[] range = part.split("->");
-                try {
-                    int start = parseYear(range[0].trim(), itemYear);
-                    int end = parseYear(range[1].trim(), itemYear);
-                    for (int i = start; i <= end; i++) {
-                        years.add(i);
-                    }
-                } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException("Invalid range format: " + part);
-                }
-            } else {
-                try {
-                    years.add(parseYear(part, itemYear));
-                } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException("Invalid year format: " + part);
-                }
-            }
-        }
-        return years;
-    }
-
-    private static int parseYear(String year, int itemYear) {
-        if (year.equals("IY")) {
-            return itemYear;
-        } else if (year.startsWith("IY")) {
-            return itemYear + Integer.parseInt(year.substring(2));
-        } else {
-            return Integer.parseInt(year);
-        }
-    }
-
-    /**
-     * @deprecated Legacy free-floating discriminator. The v1 hierarchy lives in
-     * {@link ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind}; convert via
-     * {@link ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind#fromLegacy}.
-     * Removed at the end of H52.
-     */
-    @Deprecated
-    public enum Type{
-        PUBLICATIONS,
-        PUBLICATIONS_MAIN_AUTHOR,
-        PUBLICATIONS_COAUTHOR,
-        CITATIONS,
-        CITATIONS_EXCLUDE_SELF,
-        GENERIC_ACTIVITIES,
-        ACTIVITY_FORUM,
-        ACTIVITY_EVENT,
-        ACTIVITY_PROJECT,
-        ACTIVITY_UNIVERSITY
-    }
-
-    /**
-     * @deprecated Legacy free-floating discriminator. The v1 enum lives in
-     * {@link ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy}. Removed at the
-     * end of H52.
-     */
-    @Deprecated
-    public enum Strategy{
-        GENERIC_ACTIVITY,
-        GENERIC_COUNT,
-        CS_CONFERENCE,
-        CS_JOURNAL,
-        CS_SENSE,
-        CS,
-        IMPACT_FACTOR,
-        RIS,
-        AIS,
-        ECONOMICS_JOURNAL_AIS,
-        UNI_RANKING,
-        CNCSIS,
-        ART_EVENT
-    }
+    // H52 slice 11d.5: the legacy nested enums (Selector, Type, Strategy) and the
+    // {@code parseYearRange} static helper are gone. The v1 model lives entirely in
+    // {@link ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind} /
+    // {@link YearRangeSpec} / {@link ScoreYearRangeSpec} /
+    // {@link ro.uvt.pokedex.core.model.reporting.scoring.Selector}. Year-range expansion
+    // is provided by {@link ScoreYearRangeSpec#allowedYears(int)}.
 }

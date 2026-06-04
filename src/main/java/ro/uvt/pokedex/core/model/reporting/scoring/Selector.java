@@ -1,9 +1,7 @@
 package ro.uvt.pokedex.core.model.reporting.scoring;
 
-import ro.uvt.pokedex.core.model.reporting.Indicator;
-
 /**
- * Typed replacement for {@code Indicator.selector}. Two production shapes:
+ * Typed replacement for the pre-v1 {@code Indicator.selector} field. Two production shapes:
  * <ul>
  *   <li>{@code null} or {@code ALL} → {@link All} (40 / 42)</li>
  *   <li>{@code TOP_10} → {@link TopN}(10) (2 / 42 — both FEEA indicators)</li>
@@ -24,27 +22,30 @@ public sealed interface Selector permits Selector.All, Selector.TopN {
     }
 
     /**
-     * Parse the legacy nested {@code Indicator.Selector} enum.
-     * Null is the dominant production value and maps to {@link All}.
+     * H52 slice 11d.5: name-based constructor matching the legacy enum names.
+     * {@code null} / blank → {@link All}; {@code "TOP_10"} → {@link TopN}(10);
+     * {@code "ALL"} → {@link All}. Throws on anything else.
      */
-    static Selector fromLegacy(Indicator.Selector legacy) {
-        if (legacy == null) return new All();
-        return switch (legacy) {
-            case ALL    -> new All();
-            case TOP_10 -> new TopN(10);
+    static Selector of(String legacyName) {
+        if (legacyName == null || legacyName.isBlank()) return new All();
+        return switch (legacyName) {
+            case "ALL"    -> new All();
+            case "TOP_10" -> new TopN(10);
+            default -> throw new IllegalArgumentException("Unknown selector name: " + legacyName);
         };
     }
 
     /**
-     * Reverse of {@link #fromLegacy}. Returns null for {@link All} so the persisted shape
-     * matches the legacy convention; returns {@link Indicator.Selector#TOP_10} for
-     * {@link TopN}(10). Throws for unsupported TopN values until they become real.
+     * Returns the legacy enum-style name for this selector. {@code null} for
+     * {@link All} matches the legacy persisted shape (40 / 42 indicators had
+     * no selector field). Throws for {@code TopN(n)} with {@code n != 10}
+     * until the methodology change ships.
      */
-    default Indicator.Selector toLegacy() {
+    default String legacyName() {
         return switch (this) {
             case All a -> null;
             case TopN top -> {
-                if (top.n() == 10) yield Indicator.Selector.TOP_10;
+                if (top.n() == 10) yield "TOP_10";
                 throw new IllegalStateException("TopN.n=" + top.n() + " has no legacy representation");
             }
         };
