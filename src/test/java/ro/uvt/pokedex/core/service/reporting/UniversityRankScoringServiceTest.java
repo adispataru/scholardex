@@ -83,7 +83,7 @@ class UniversityRankScoringServiceTest {
         domain.setName("ALL");
         Indicator indicator = new Indicator();
         indicator.setDomain(domain);
-        indicator.setScoreYearRange("2022->2024"); // H52 11d.1: comma-list grammar dropped in v1
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "2022->2024"); // H52 11d.1: comma-list grammar dropped in v1
         return indicator;
     }
 

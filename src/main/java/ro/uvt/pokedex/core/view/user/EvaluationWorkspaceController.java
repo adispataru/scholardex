@@ -1,5 +1,6 @@
 package ro.uvt.pokedex.core.view.user;
 
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -192,26 +193,33 @@ public class EvaluationWorkspaceController {
     // ── Export: render the run into the report's bound template ───────────────
 
     @GetMapping("/export")
-    public ResponseEntity<ByteArrayResource> exportReport(
+    public ResponseEntity<?> exportReport(
             @RequestParam("report") String reportId,
+            @RequestParam(name = "run", required = false) String runId,
             @RequestParam(name = "format", defaultValue = "XLSX") ReportFormat format,
             @RequestParam(name = "refresh", defaultValue = "false") boolean refresh,
             Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return reportExportFacade.exportRun(currentUser.getEmail(), reportId, format, refresh)
-                .<ResponseEntity<ByteArrayResource>>map(exported -> ResponseEntity.ok()
-                        .contentType(MediaType.parseMediaType(exported.contentType()))
-                        .header("Content-Disposition", "attachment; filename=\"" + exported.filename() + "\"")
-                        .body(new ByteArrayResource(exported.bytes())))
-                .orElse(ResponseEntity.notFound().build());
+        var outcome = reportExportFacade.exportRunOutcome(currentUser.getEmail(), reportId, runId, format, refresh);
+        if (!outcome.isSuccess()) {
+            return ResponseEntity.status(statusFor(outcome.failureReason())).body(outcome.message());
+        }
+        var exported = outcome.exportedReport();
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(exported.contentType()))
+                .header("Content-Disposition", "attachment; filename=\"" + exported.filename() + "\"")
+                .body(new ByteArrayResource(exported.bytes()));
     }
 
     // ── Import: read-only score verification against an uploaded file ─────────
 
     @GetMapping("/import")
-    public String showImportForm(@RequestParam("report") String reportId, Model model, Authentication authentication) {
+    public String showImportForm(@RequestParam("report") String reportId,
+                                 @RequestParam(name = "run", required = false) String runId,
+                                 Model model,
+                                 Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
             return "redirect:/login";
         }
@@ -220,32 +228,42 @@ public class EvaluationWorkspaceController {
         }
         model.addAttribute("user", currentUser);
         model.addAttribute("reportId", reportId);
+        model.addAttribute("runId", runId);
         return "user/individual-report-import";
     }
 
     @PostMapping("/import")
     public String handleImport(@RequestParam("report") String reportId,
+                               @RequestParam(name = "run", required = false) String runId,
                                @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
                                Model model,
+                               HttpServletResponse response,
                                Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User currentUser)) {
             return "redirect:/login";
         }
         model.addAttribute("user", currentUser);
         model.addAttribute("reportId", reportId);
+        model.addAttribute("runId", runId);
         if (file == null || file.isEmpty()) {
             model.addAttribute("errorMessage", "Please choose a file to upload.");
             return "user/individual-report-import";
         }
         try {
-            reportImportVerificationFacade.verify(currentUser.getEmail(), reportId, ReportFormat.XLSX, file.getInputStream())
-                    .ifPresentOrElse(
-                            comparison -> {
-                                model.addAttribute("comparison", comparison);
-                                model.addAttribute("activityDefs", loadActivityDefs(comparison));
-                            },
-                            () -> model.addAttribute("errorMessage", "Import is not available for this report."));
+            var outcome = reportImportVerificationFacade.verifyOutcome(currentUser.getEmail(), reportId, runId, ReportFormat.XLSX, file.getInputStream());
+            if (outcome.isSuccess()) {
+                var result = outcome.result();
+                model.addAttribute("comparison", result.displayedRunComparison());
+                model.addAttribute("displayedRunId", result.displayedRunId());
+                model.addAttribute("currentRunId", result.currentRunId());
+                model.addAttribute("currentRunComparison", result.currentRunComparison());
+                model.addAttribute("activityDefs", loadActivityDefs(result.displayedRunComparison()));
+            } else {
+                response.setStatus(statusFor(outcome.failureReason()).value());
+                model.addAttribute("errorMessage", outcome.message());
+            }
         } catch (Exception ex) {
+            response.setStatus(HttpStatus.UNPROCESSABLE_ENTITY.value());
             model.addAttribute("errorMessage", "Could not read the uploaded file: " + ex.getMessage());
         }
         return "user/individual-report-import";
@@ -265,6 +283,26 @@ public class EvaluationWorkspaceController {
             });
         });
         return defs;
+    }
+
+    private HttpStatus statusFor(ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportFailureReason reason) {
+        return switch (reason) {
+            case REPORT_NOT_FOUND, RUN_NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case FORBIDDEN_RUN -> HttpStatus.FORBIDDEN;
+            case REPORT_TYPE_NOT_CONFIGURED, UNSUPPORTED_FORMAT -> HttpStatus.BAD_REQUEST;
+            case RENDERER_NOT_AVAILABLE -> HttpStatus.NOT_IMPLEMENTED;
+            case NOT_READY, RUN_REPORT_MISMATCH -> HttpStatus.UNPROCESSABLE_ENTITY;
+        };
+    }
+
+    private HttpStatus statusFor(ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationFailureReason reason) {
+        return switch (reason) {
+            case REPORT_NOT_FOUND, RUN_NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case FORBIDDEN_RUN -> HttpStatus.FORBIDDEN;
+            case REPORT_TYPE_NOT_CONFIGURED, UNSUPPORTED_FORMAT -> HttpStatus.BAD_REQUEST;
+            case PARSER_NOT_AVAILABLE -> HttpStatus.NOT_IMPLEMENTED;
+            case IMPORT_DISABLED, NOT_READY, RUN_REPORT_MISMATCH, INVALID_WORKBOOK -> HttpStatus.UNPROCESSABLE_ENTITY;
+        };
     }
 
     // ── JSON: indicator detail (for inline criterion expansion in H37.3) ─────

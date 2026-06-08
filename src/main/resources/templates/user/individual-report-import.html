@@ -22,7 +22,7 @@
                 </div>
 
                 <p class="app-workflow__intro">
-                    Upload your filled Excel file to compare its computed scores against the platform's latest scores.
+                    Upload your filled Excel file to compare its computed scores against the selected platform run.
                     This is a read-only check — nothing is imported or changed.
                 </p>
 
@@ -32,6 +32,7 @@
                 <form th:action="@{/user/evaluation/import}" method="post" enctype="multipart/form-data"
                       class="app-form-field mb-4" style="max-width:640px" id="import-form">
                     <input type="hidden" name="report" th:value="${reportId}">
+                    <input type="hidden" name="run" th:value="${runId}">
                     <label class="app-dropzone" id="import-dropzone">
                         <input type="file" id="import-file" name="file" accept=".xlsx" required
                                class="app-dropzone__input" aria-describedby="import-file-help">
@@ -49,6 +50,39 @@
 
                 <!-- ── Comparison results ─────────────────────────────────────── -->
                 <th:block th:if="${comparison != null}">
+                    <div th:if="${currentRunComparison != null}" class="alert alert-warning" role="status">
+                        This file was compared against the selected run
+                        <strong th:text="${displayedRunId}">selected</strong>.
+                        A newer current run
+                        <strong th:text="${currentRunId}">current</strong>
+                        is available; its totals are shown below for comparison.
+                    </div>
+
+                    <div th:if="${currentRunComparison != null}" class="app-eval-aggregate mb-3">
+                        <div class="app-eval-aggregate__cell">
+                            <span class="app-eval-aggregate__label">Current Run Total</span>
+                            <span class="app-eval-aggregate__value app-eval-aggregate__value--sm"
+                                  th:text="${#numbers.formatDecimal(currentRunComparison.platformTotal(), 1, 2)}">0.00</span>
+                        </div>
+                        <div class="app-eval-aggregate__cell">
+                            <span class="app-eval-aggregate__label">File Total vs Current</span>
+                            <span class="app-eval-aggregate__value app-eval-aggregate__value--sm"
+                                  th:text="${#numbers.formatDecimal(currentRunComparison.fileTotal(), 1, 2)}">0.00</span>
+                        </div>
+                        <div class="app-eval-aggregate__cell">
+                            <span class="app-eval-aggregate__label">Current Correct Points</span>
+                            <span class="app-eval-aggregate__value app-eval-aggregate__value--sm"
+                                  th:text="${#numbers.formatDecimal(currentRunComparison.correctPoints(), 1, 2)}">0.00</span>
+                        </div>
+                        <div class="app-eval-aggregate__cell">
+                            <span class="app-eval-aggregate__label">Current Matching / Differing</span>
+                            <span class="app-eval-aggregate__value app-eval-aggregate__value--sm">
+                                <span th:text="${currentRunComparison.matchingCount()}">0</span>
+                                <span aria-hidden="true"> / </span>
+                                <span th:text="${currentRunComparison.differingCount()}">0</span>
+                            </span>
+                        </div>
+                    </div>
 
                     <!-- Summary metrics -->
                     <div class="app-eval-aggregate mb-3">

@@ -84,7 +84,7 @@ class CitationRowProjectorTest {
         ));
 
         Indicator excludeSelfIndicator = new Indicator();
-        excludeSelfIndicator.setOutputType("CITATIONS_EXCLUDE_SELF");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(excludeSelfIndicator, "CITATIONS_EXCLUDE_SELF");
 
         CitationRowProjector projector = new CitationRowProjector(
                 userService, researcherLookup, authorship, projection, scoring);
@@ -145,7 +145,7 @@ class CitationRowProjectorTest {
                 .thenReturn(Map.of("Our own follow-up", score("A")));
 
         Indicator plainCitations = new Indicator();
-        plainCitations.setOutputType("CITATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(plainCitations, "CITATIONS");
 
         CitationRowProjector projector = new CitationRowProjector(
                 userService, researcherLookup, authorship, projection, scoring);

@@ -14,6 +14,7 @@ import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingRole;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.TemplateBinding;
 import ro.uvt.pokedex.core.service.application.UserIndicatorResultService;
 import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
+import ro.uvt.pokedex.core.service.reporting.transfer.ReportExportReadinessValidator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -70,6 +71,7 @@ public class ActivityBlockProjector {
 
         for (Indicator indicator : report.getIndicators()) {
             if (indicator == null || indicator.getId() == null) continue;
+            if (ReportExportReadinessValidator.isExcludedFromTemplate(report, indicator.getId())) continue;
             String blockName = assigned.get(indicator.getId());
             if (blockName == null || blockName.isBlank()) {
                 // Legacy fallback for indicators that pre-date the explicit map.

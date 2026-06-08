@@ -17,6 +17,10 @@ import ro.uvt.pokedex.core.model.Institution;
 import ro.uvt.pokedex.core.model.activities.Activity;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
+import ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec;
+import ro.uvt.pokedex.core.model.reporting.scoring.Selector;
+import ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec;
 import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
@@ -51,6 +55,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -722,7 +729,8 @@ class AdminViewControllerContractTest {
                         "indicator",
                         "domains",
                         "selectors"
-                ));
+                ))
+                .andExpect(model().attribute("indicator", org.hamcrest.Matchers.instanceOf(AdminViewController.IndicatorForm.class)));
     }
 
     @Test
@@ -739,6 +747,10 @@ class AdminViewControllerContractTest {
         Indicator indicator = new Indicator();
         indicator.setId("ind-1");
         indicator.setName("Indicator One");
+        indicator.setKind(IndicatorKind.of("CITATIONS_EXCLUDE_SELF", "RIS"));
+        indicator.setYearRangeSpec(new YearRangeSpec.Absolute(2017, 2025));
+        indicator.setScoreYearRangeSpec(new ScoreYearRangeSpec.ItemYear());
+        indicator.setSelectorSpec(new Selector.TopN(10));
 
         Domain domain = new Domain();
         domain.setName("CS");
@@ -762,6 +774,13 @@ class AdminViewControllerContractTest {
                         "adminFormObject",
                         "breadcrumbs"
                 ))
+                .andExpect(model().attribute("indicator", org.hamcrest.Matchers.instanceOf(AdminViewController.IndicatorForm.class)))
+                .andExpect(model().attribute("adminFormObject", org.hamcrest.Matchers.instanceOf(AdminViewController.IndicatorForm.class)))
+                .andExpect(model().attribute("indicator", org.hamcrest.Matchers.hasProperty("outputType", org.hamcrest.Matchers.equalTo("CITATIONS_EXCLUDE_SELF"))))
+                .andExpect(model().attribute("indicator", org.hamcrest.Matchers.hasProperty("scoringStrategy", org.hamcrest.Matchers.equalTo("RIS"))))
+                .andExpect(model().attribute("indicator", org.hamcrest.Matchers.hasProperty("yearRange", org.hamcrest.Matchers.equalTo("2017->2025"))))
+                .andExpect(model().attribute("indicator", org.hamcrest.Matchers.hasProperty("scoreYearRange", org.hamcrest.Matchers.equalTo("IY"))))
+                .andExpect(model().attribute("indicator", org.hamcrest.Matchers.hasProperty("selector", org.hamcrest.Matchers.equalTo("TOP_10"))))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"indicator-admin-form\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("app-admin-form__header")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("aria-label=\"Breadcrumb\"")))
@@ -769,6 +788,68 @@ class AdminViewControllerContractTest {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"scoringYearRange\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"yearRange\"")))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.containsString("id=\"criterionFormula\"")));
+    }
+
+    @Test
+    void createIndicatorMapsFormFieldsToTypedIndicator() throws Exception {
+        mockMvc.perform(post("/admin/indicators/create")
+                        .param("name", "Typed Indicator")
+                        .param("formula", "S")
+                        .param("domain.name", "CS")
+                        .param("outputType", "PUBLICATIONS_MAIN_AUTHOR")
+                        .param("scoringStrategy", "IMPACT_FACTOR")
+                        .param("yearRange", "2018->2024")
+                        .param("scoreYearRange", "IY")
+                        .param("selector", "TOP_10"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/indicators"));
+
+        ArgumentCaptor<Indicator> captor = ArgumentCaptor.forClass(Indicator.class);
+        verify(adminCatalogFacade).saveIndicator(captor.capture());
+        Indicator saved = captor.getValue();
+
+        assertEquals("Typed Indicator", saved.getName());
+        assertEquals("S", saved.getFormula());
+        assertEquals("CS", saved.getDomain().getName());
+        IndicatorKind.Publications kind = assertInstanceOf(IndicatorKind.Publications.class, saved.getKind());
+        assertEquals(ro.uvt.pokedex.core.model.reporting.scoring.AuthorRole.MAIN, kind.role());
+        assertEquals(ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy.IMPACT_FACTOR, kind.strategy());
+        assertEquals(new YearRangeSpec.Absolute(2018, 2024), saved.getYearRangeSpec());
+        assertEquals(new ScoreYearRangeSpec.ItemYear(), saved.getScoreYearRangeSpec());
+        assertEquals(new Selector.TopN(10), saved.getSelectorSpec());
+    }
+
+    @Test
+    void updateIndicatorMapsFormFieldsToTypedIndicatorAndPreservesVersion() throws Exception {
+        mockMvc.perform(post("/admin/indicators/update")
+                        .param("id", "ind-1")
+                        .param("version", "7")
+                        .param("name", "Updated Indicator")
+                        .param("formula", "N")
+                        .param("domain.name", "MATH")
+                        .param("activity.id", "act-1")
+                        .param("outputType", "GENERIC_ACTIVITIES")
+                        .param("scoringStrategy", "GENERIC_ACTIVITY")
+                        .param("yearRange", "*")
+                        .param("scoreYearRange", "*")
+                        .param("selector", "ALL"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/indicators"));
+
+        ArgumentCaptor<Indicator> captor = ArgumentCaptor.forClass(Indicator.class);
+        verify(adminCatalogFacade).saveIndicator(captor.capture());
+        Indicator saved = captor.getValue();
+
+        assertEquals("ind-1", saved.getId());
+        assertEquals(7L, saved.getVersion());
+        assertEquals("Updated Indicator", saved.getName());
+        assertEquals("MATH", saved.getDomain().getName());
+        assertEquals("act-1", saved.getActivity().getId());
+        assertInstanceOf(IndicatorKind.GenericActivity.class, saved.getKind());
+        assertEquals(new YearRangeSpec.AllYears(), saved.getYearRangeSpec());
+        assertEquals(new ScoreYearRangeSpec.AllYears(), saved.getScoreYearRangeSpec());
+        assertEquals(new Selector.All(), saved.getSelectorSpec());
+        assertNull(saved.getSelector());
     }
 
     private static ScholardexPublicationView publication(String id, String forumId, String coverDate) {

@@ -80,7 +80,7 @@ class ImpactFactorJournalScoringServiceTest {
         SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
         ImpactFactorJournalScoringService service = new ImpactFactorJournalScoringService(lookupPort, meterRegistry);
         Indicator indicator = indicatorForAllDomain();
-        indicator.setScoreYearRange("IY");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
         ActivityInstance activity = new ActivityInstance();
         activity.setId("act-1");
         activity.setDate("2022-09-10");
@@ -116,7 +116,7 @@ class ImpactFactorJournalScoringServiceTest {
         domain.setName("ALL");
         Indicator indicator = new Indicator();
         indicator.setDomain(domain);
-        indicator.setScoreYearRange("IY");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
         return indicator;
     }
 

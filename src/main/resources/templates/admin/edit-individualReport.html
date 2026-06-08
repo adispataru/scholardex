@@ -89,6 +89,14 @@
                                 helperText='Bind this report to a template (xlsx export) and map each indicator to a binding role. Leave empty to disable export.',
                                 body=~{::#report-export-binding-fields})}">
                                 <div id="report-export-binding-fields" class="app-form-grid app-form-grid--two-up">
+                                    <div class="alert alert-warning app-form-grid--full"
+                                         th:if="${exportReadinessProblems != null and !exportReadinessProblems.isEmpty()}"
+                                         role="status">
+                                        <div class="font-weight-bold mb-1">Export/verify configuration needs attention</div>
+                                        <ul class="mb-0">
+                                            <li th:each="problem : ${exportReadinessProblems}" th:text="${problem}">Missing mapping</li>
+                                        </ul>
+                                    </div>
                                     <div class="form-group app-form-field">
                                         <label for="reportTypeKey">Report type key</label>
                                         <input type="text" class="form-control" id="reportTypeKey"
@@ -123,6 +131,10 @@
                                                             th:selected="${currentRole == null or #strings.isEmpty(currentRole)}">
                                                         — none —
                                                     </option>
+                                                    <option value="__not_exported__"
+                                                            th:selected="${currentRole != null and #strings.equals('__not_exported__', currentRole)}">
+                                                        Intentionally not exported
+                                                    </option>
                                                     <option th:each="role : ${declaredRoles}"
                                                             th:value="${role}"
                                                             th:text="${role}"
@@ -153,6 +165,10 @@
                                                 <option value=""
                                                         th:selected="${currentBlock == null or #strings.isEmpty(currentBlock)}">
                                                     — none —
+                                                </option>
+                                                <option value="__not_exported__"
+                                                        th:selected="${currentBlock != null and #strings.equals('__not_exported__', currentBlock)}">
+                                                    Intentionally not exported
                                                 </option>
                                                 <option th:each="blockName : ${declaredBlocks}"
                                                         th:value="${blockName}"

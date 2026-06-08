@@ -171,6 +171,91 @@ The import flow is now a **read-only score verification**:
 Decisions (2026-05-19): per-item + totals granularity; transient (no session persistence); evaluate
 formulas for the file score; **publications + citations first, activities later**.
 
+## Follow-up: run-backed export and criteria verification
+
+Roast findings (2026-06-04): the current export/verify flow can drift from what the run page tells the
+user. Export has no explicit run id, and snapshot/projector paths can recompute from live state or latest
+indicator results instead of rendering the persisted `UserIndividualReportRun` that the user is looking at.
+Criteria/template mappings can also silently skip indicators when admin config is incomplete, and several
+different failure modes collapse into the same not-found response.
+
+### Commit 1 — `fix: export individual reports from the selected run`
+
+Goal: exporting must use the same durable run data the user sees on the report page. Live recomputation is
+allowed only when creating a new run, not while exporting an existing one.
+
+Tasks:
+
+- Add a `run` request parameter to `/user/evaluation/export`; the report page export link must include the
+  displayed `UserIndividualReportRun.id`. A latest-run fallback is acceptable only for old links and must be
+  explicit in tests.
+- Change `ReportExportFacade` to resolve and authorize the requested run for the current user/report before
+  rendering. Reject missing, wrong-user, wrong-report, and non-exportable run states as distinct outcomes.
+- Refactor snapshot creation so export is built from `UserIndividualReportRun.indicatorResultIds`,
+  `indicatorScoresByIndicatorId`, and `criteriaScores`, plus the persisted `UserIndicatorResult` snapshots.
+  The export path must not call live scoring/projector sources such as latest indicator result lookup or
+  scientific-production reads to decide which rows belong in the workbook.
+- Split "read/compute current data" from "shape rows for a template". Existing publication, citation, and
+  activity projectors should accept run-backed indicator snapshots/raw graphs and only shape rows/cells.
+- Preserve the template formula behavior: rows and run-computed scores are placed from the selected run, and
+  Excel criteria formulas may still compute final criteria cells after the workbook is opened/evaluated.
+
+Tests:
+
+- `ReportExportFacade` proves the requested run id is used, wrong-user/wrong-report runs are rejected, and
+  live latest-result lookup is not used by the export path.
+- Snapshot/projector tests prove persisted publication, citation, and activity indicator results populate the
+  expected workbook rows and scores.
+- Workspace controller contract test proves the export link carries `run={runId}` and the controller passes it
+  through.
+
+Verification command target: focused facade/controller/snapshot tests first, then `./gradlew test`.
+
+### Commit 2 — `fix: verify uploaded reports against the displayed run`
+
+Goal: "Verify from file" must compare the uploaded workbook against the run the user is looking at, and must
+also show whether the file diverges from the latest/current run when that is different. A configured report
+must either verify deterministically or tell the admin/user exactly why it cannot.
+
+Tasks:
+
+- Add a `run` request parameter to the verify/upload endpoint; the report page "Verify from file" form must
+  submit the displayed `UserIndividualReportRun.id`.
+- Load the displayed run as the primary platform comparison. Parse and evaluate workbook formulas, then
+  compare file scores to that run's persisted item scores and totals.
+- Add an optional "current run" comparison when the latest run for the same report/user differs from the
+  displayed run. The UI should make the two comparisons explicit: file vs displayed run, and displayed run vs
+  current run.
+- Keep criteria evaluation split correctly: the workbook may apply template/precomputed formulas after rows
+  and scores are placed, but platform-side criteria comparison comes from the persisted run criteria scores.
+- Add an export-readiness validator for `IndividualReport` + registered report type binding:
+  `reportTypeKey` exists, requested format is supported, every criterion indicator reference resolves to a
+  report indicator, and every exportable criterion indicator has a valid role/block mapping or an explicit
+  "not exported by template" marker.
+- Surface readiness warnings/errors in the admin report edit form near indicator role/block configuration.
+  Saving a report with broken export config should either fail validation or clearly mark export unavailable.
+- Disable or annotate the user export action when the selected report/run is not export-ready.
+- Replace `Optional.empty`/generic not-found responses in export with a typed result or error enum, then map
+  controller responses distinctly for export and verify: missing report/run, unsupported report type/format,
+  forbidden run, stale/non-ready run, invalid export configuration, invalid workbook, and formula-evaluation
+  failure.
+- Add a guard test that missing role/block mapping for a criteria indicator fails readiness instead of
+  producing a workbook with silently missing data.
+
+Tests:
+
+- Import verification tests prove uploaded file scores are compared to the displayed run, not an implicit
+  latest/live run.
+- Comparison-service tests cover the three-way state: uploaded file, displayed run, and newer current run.
+- Readiness validator tests cover unregistered type, unsupported format, unresolved criterion indicator,
+  missing role/block mapping, and explicit template exclusion.
+- Admin controller/model tests show readiness feedback is available to the edit template.
+- User controller tests cover distinct response statuses/messages for each export and verify failure reason.
+- Renderer/facade regression test proves a misconfigured criteria indicator cannot be skipped silently.
+
+Verification command target: focused import-verification/readiness/facade/controller tests first, then
+`./gradlew test`.
+
 ## Proposed Slicing
 
 - **H50.1** — `ReportInstanceSnapshot` DTO, `ReportImportSession` Mongo model, registry abstraction (`ReportTypeImportSupport`), wiring stubs. (done)

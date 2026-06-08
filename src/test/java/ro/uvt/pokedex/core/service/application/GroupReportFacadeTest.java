@@ -555,7 +555,7 @@ class GroupReportFacadeTest {
         group.setId("g1");
 
         Indicator publications = new Indicator();
-        publications.setOutputType("PUBLICATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(publications, "PUBLICATIONS");
         AbstractReport.Criterion criterion = new AbstractReport.Criterion();
         criterion.setIndicatorIndices(List.of(0));
 
@@ -677,9 +677,9 @@ class GroupReportFacadeTest {
         group.setId("g1");
 
         Indicator citations = new Indicator();
-        citations.setOutputType("CITATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(citations, "CITATIONS");
         Indicator citationsExcludeSelf = new Indicator();
-        citationsExcludeSelf.setOutputType("CITATIONS_EXCLUDE_SELF");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(citationsExcludeSelf, "CITATIONS_EXCLUDE_SELF");
 
         IndividualReport report = new IndividualReport();
         report.setId("rep1");
@@ -737,11 +737,11 @@ class GroupReportFacadeTest {
         activity.setName("Forum Activity");
 
         Indicator indicator1 = new Indicator();
-        indicator1.setOutputType("ACTIVITY_FORUM");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(indicator1, "ACTIVITY_FORUM");
         indicator1.setActivity(activity);
 
         Indicator indicator2 = new Indicator();
-        indicator2.setOutputType("ACTIVITY_FORUM");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(indicator2, "ACTIVITY_FORUM");
         indicator2.setActivity(activity);
 
         IndividualReport report = new IndividualReport();
@@ -784,9 +784,9 @@ class GroupReportFacadeTest {
         group.setId("g1");
 
         Indicator citations = new Indicator();
-        citations.setOutputType("CITATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(citations, "CITATIONS");
         Indicator citationsExcludeSelf = new Indicator();
-        citationsExcludeSelf.setOutputType("CITATIONS_EXCLUDE_SELF");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(citationsExcludeSelf, "CITATIONS_EXCLUDE_SELF");
 
         AbstractReport.Criterion criterion0 = new AbstractReport.Criterion();
         criterion0.setIndicatorIndices(List.of(0));
@@ -872,8 +872,8 @@ class GroupReportFacadeTest {
         group.setId("g1");
 
         Indicator citationsTop10 = new Indicator();
-        citationsTop10.setOutputType("CITATIONS");
-        citationsTop10.setSelector("TOP_10");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(citationsTop10, "CITATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setSelector(citationsTop10, "TOP_10");
 
         AbstractReport.Criterion criterion0 = new AbstractReport.Criterion();
         criterion0.setIndicatorIndices(List.of(0));
@@ -954,7 +954,7 @@ class GroupReportFacadeTest {
         group.setId("g1");
 
         Indicator publications = new Indicator();
-        publications.setOutputType("PUBLICATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(publications, "PUBLICATIONS");
 
         AbstractReport.Criterion criterion0 = new AbstractReport.Criterion();
         criterion0.setIndicatorIndices(List.of(0));

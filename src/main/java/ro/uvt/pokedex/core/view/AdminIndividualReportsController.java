@@ -10,6 +10,8 @@ import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
 import ro.uvt.pokedex.core.model.reporting.Position;
 import ro.uvt.pokedex.core.service.application.IndividualReportsManagementFacade;
+import ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat;
+import ro.uvt.pokedex.core.service.reporting.transfer.ReportExportReadinessValidator;
 import ro.uvt.pokedex.core.service.reporting.transfer.ReportImportRegistry;
 import ro.uvt.pokedex.core.service.reporting.transfer.ReportTypeImportSupport;
 
@@ -23,6 +25,7 @@ public class AdminIndividualReportsController {
 
     private final IndividualReportsManagementFacade individualReportsManagementFacade;
     private final ReportImportRegistry reportImportRegistry;
+    private final ReportExportReadinessValidator reportExportReadinessValidator;
 
     @GetMapping
     public String listIndividualReports(Model model) {
@@ -72,6 +75,8 @@ public class AdminIndividualReportsController {
         List<String> allBlockNames = declaredBlocksByRole.values().stream()
                 .flatMap(java.util.Collection::stream).toList();
         model.addAttribute("declaredBlocks", allBlockNames);
+        model.addAttribute("exportReadinessProblems",
+                reportExportReadinessValidator.validate(individualReport, ReportFormat.XLSX));
         return "admin/edit-individualReport";
     }
 

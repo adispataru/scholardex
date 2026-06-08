@@ -77,7 +77,7 @@ class ArtEventScoringServiceTest {
         domain.setName("ARTS");
         Indicator indicator = new Indicator();
         indicator.setDomain(domain);
-        indicator.setScoreYearRange("IY");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
         return indicator;
     }
 

@@ -35,6 +35,8 @@ class AdminIndividualReportsControllerContractTest {
     private IndividualReportsManagementFacade individualReportsManagementFacade;
     @MockitoBean
     private ro.uvt.pokedex.core.service.reporting.transfer.ReportImportRegistry reportImportRegistry;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.reporting.transfer.ReportExportReadinessValidator reportExportReadinessValidator;
 
     @Test
     void listDisplaysCriterionNamesWithFallback() throws Exception {

@@ -60,7 +60,7 @@ class ScientificProductionServiceTest {
     @Test
     void productionScoreGenericCountAssignsOnePerPublicationAndTotalSize() {
         Indicator indicator = indicator("PUBLICATIONS", "S");
-        indicator.setScoringStrategy("GENERIC_COUNT");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "GENERIC_COUNT");
         List<ScoringPublicationReadModel> publications = List.of(
                 publication("p1", null, null, null, null, "Paper 1", List.of("a1")),
                 publication("p2", null, null, null, null, "Paper 2", List.of("a1", "a2"))
@@ -79,7 +79,7 @@ class ScientificProductionServiceTest {
     @Test
     void impactScoreGenericCountAssignsOnePerPublicationAndTotalSize() {
         Indicator indicator = indicator("CITATIONS", "S");
-        indicator.setScoringStrategy("GENERIC_COUNT");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "GENERIC_COUNT");
         ScoringPublication cited = publication("cited", null, null, null, null, "Cited", List.of("a1"));
         List<ScoringPublicationReadModel> citingPublications = List.of(
                 publication("cp1", null, null, null, null, "Citing 1", List.of("b1")),
@@ -218,7 +218,7 @@ class ScientificProductionServiceTest {
         when(scoringFactoryService.getScoringService("CS")).thenReturn(computerScienceScoringService);
 
         Indicator indicator = indicator("PUBLICATIONS", "S/max(N-2, 1)");
-        indicator.setScoreYearRange("IY");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
 
         Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(publication), indicator);
 
@@ -266,7 +266,7 @@ class ScientificProductionServiceTest {
         when(scoringFactoryService.getScoringService("CS")).thenReturn(computerScienceScoringService);
 
         Indicator indicator = indicator("PUBLICATIONS", "S/max(N-2, 1)");
-        indicator.setScoreYearRange("IY");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
 
         Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(publication), indicator);
 
@@ -314,7 +314,7 @@ class ScientificProductionServiceTest {
         when(scoringFactoryService.getScoringService("CS")).thenReturn(computerScienceScoringService);
 
         Indicator indicator = indicator("PUBLICATIONS", "S/max(N-2, 1)");
-        indicator.setScoreYearRange("IY");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
 
         Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(publication), indicator);
 
@@ -361,7 +361,7 @@ class ScientificProductionServiceTest {
         when(scoringFactoryService.getScoringService("CS")).thenReturn(computerScienceScoringService);
 
         Indicator indicator = indicator("PUBLICATIONS", "S/max(N-2, 1)");
-        indicator.setScoreYearRange("IY");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
 
         Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(publication), indicator);
 
@@ -404,8 +404,8 @@ class ScientificProductionServiceTest {
         when(scoringFactoryService.getScoringService("CS_CONFERENCE")).thenReturn(conferenceScoringService);
 
         Indicator indicator = indicator("PUBLICATIONS", "S/max(N-2, 1)");
-        indicator.setScoringStrategy("CS_CONFERENCE");
-        indicator.setScoreYearRange("IY");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "CS_CONFERENCE");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
 
         Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(publication), indicator);
 
@@ -454,8 +454,8 @@ class ScientificProductionServiceTest {
         when(scoringFactoryService.getScoringService("CS_CONFERENCE")).thenReturn(conferenceScoringService);
 
         Indicator indicator = indicator("PUBLICATIONS", "S/max(N-2, 1)");
-        indicator.setScoringStrategy("CS_CONFERENCE");
-        indicator.setScoreYearRange("IY");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "CS_CONFERENCE");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
 
         Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(List.of(publication), indicator);
 
@@ -471,7 +471,7 @@ class ScientificProductionServiceTest {
     @Test
     void productionScoreTop10SelectorSortsAndLimitsByAuthorScore() {
         Indicator indicator = indicator("PUBLICATIONS", "S");
-        indicator.setSelector("TOP_10");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setSelector(indicator, "TOP_10");
         when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
 
         List<ScoringPublicationReadModel> publications = IntStream.range(0, 11)
@@ -498,9 +498,9 @@ class ScientificProductionServiceTest {
     @Test
     void precomputeCitationBaseScoresReturnsEmptyForGuardPathsAndSkipsDuplicateIds() {
         Indicator genericIndicator = indicator("CITATIONS", "S");
-        genericIndicator.setScoringStrategy("GENERIC_COUNT");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(genericIndicator, "GENERIC_COUNT");
         Indicator nullStrategyIndicator = indicator("CITATIONS", "S");
-        nullStrategyIndicator.setScoringStrategy(null);
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(nullStrategyIndicator, null);
 
         assertTrue(scientificProductionService.precomputeCitationBaseScores(null, genericIndicator).isEmpty());
         assertTrue(scientificProductionService.precomputeCitationBaseScores(List.of(), genericIndicator).isEmpty());
@@ -650,7 +650,7 @@ class ScientificProductionServiceTest {
     @Test
     void productionScoreWithSelectorAllKeepsInterResultAndSkipsZeroScores() {
         Indicator indicator = indicator("PUBLICATIONS", "S");
-        indicator.setSelector("ALL");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setSelector(indicator, "ALL");
         when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
 
         ScoringPublicationReadModel p1 = publication("all-1", null, null, null, null, "All 1", List.of("a1"));
@@ -682,7 +682,7 @@ class ScientificProductionServiceTest {
     @Test
     void productionScoreTop10SelectorWithAtMostTenEntriesKeepsAllPositiveWithoutSortingBranch() {
         Indicator indicator = indicator("PUBLICATIONS", "S");
-        indicator.setSelector("TOP_10");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setSelector(indicator, "TOP_10");
         when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
 
         List<ScoringPublicationReadModel> publications = IntStream.rangeClosed(1, 3)
@@ -706,7 +706,7 @@ class ScientificProductionServiceTest {
     @Test
     void productionScoreTop10SelectorSortsAndKeepsBestTenWhenMoreThanTenPublications() {
         Indicator indicator = indicator("PUBLICATIONS", "S");
-        indicator.setSelector("TOP_10");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setSelector(indicator, "TOP_10");
         when(scoringFactoryService.getScoringService("CS")).thenReturn(scoringService);
 
         List<ScoringPublicationReadModel> publications = IntStream.rangeClosed(1, 12)
@@ -732,9 +732,9 @@ class ScientificProductionServiceTest {
     @Test
     void precomputeCitationBaseScoresGuardPathsDoNotTouchFactoryOrScoringService() {
         Indicator genericIndicator = indicator("CITATIONS", "S");
-        genericIndicator.setScoringStrategy("GENERIC_COUNT");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(genericIndicator, "GENERIC_COUNT");
         Indicator nullStrategyIndicator = indicator("CITATIONS", "S");
-        nullStrategyIndicator.setScoringStrategy(null);
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(nullStrategyIndicator, null);
         List<ScoringPublicationReadModel> nonEmpty = List.of(
                 publication("guard", null, null, null, null, "Guard", List.of("a1"))
         );
@@ -805,9 +805,9 @@ class ScientificProductionServiceTest {
 
     private Indicator indicator(String typeName, String formula) {
         Indicator indicator = new Indicator();
-        indicator.setOutputType(typeName);
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(indicator, typeName);
         indicator.setFormula(formula);
-        indicator.setScoringStrategy("CS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "CS");
         return indicator;
     }
 

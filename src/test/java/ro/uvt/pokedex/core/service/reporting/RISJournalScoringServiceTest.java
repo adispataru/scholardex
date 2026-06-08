@@ -52,7 +52,7 @@ class RISJournalScoringServiceTest {
     void activityPathReturnsRisScore() {
         RISJournalScoringService service = new RISJournalScoringService(lookupPort);
         Indicator indicator = indicatorForAllDomain();
-        indicator.setScoreYearRange("IY");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
         WoSRanking ranking = rankingWithRis("ECONOMICS - SCIE", 2022, 3.4, WoSRanking.Quarter.Q4);
         when(lookupPort.getRankingsByIssn("4444-4444")).thenReturn(List.of(ranking));
 
@@ -96,7 +96,7 @@ class RISJournalScoringServiceTest {
         domain.setName("ALL");
         Indicator indicator = new Indicator();
         indicator.setDomain(domain);
-        indicator.setScoreYearRange("IY");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
         return indicator;
     }
 

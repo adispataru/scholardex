@@ -80,13 +80,13 @@
                             <i class="fa-solid fa-layer-group fa-sm" aria-hidden="true"></i> My Snapshots
                         </button>
                         <a th:if="${report.reportTypeKey != null and !#strings.isEmpty(report.reportTypeKey)}"
-                           th:href="@{/user/evaluation/export(report=${report.id},format='XLSX')}"
+                           th:href="@{/user/evaluation/export(report=${report.id},run=${runMetaId},format='XLSX')}"
                            class="btn btn-sm btn-outline-secondary"
                            title="Download this report as Excel">
                             <i class="fa-solid fa-file-excel fa-sm" aria-hidden="true"></i> Export to Excel
                         </a>
                         <a th:if="${importAvailable == true}"
-                           th:href="@{/user/evaluation/import(report=${report.id})}"
+                           th:href="@{/user/evaluation/import(report=${report.id},run=${runMetaId})}"
                            class="btn btn-sm btn-outline-secondary"
                            title="Verify a filled file against platform scores">
                             <i class="fa-solid fa-file-circle-check fa-sm" aria-hidden="true"></i> Verify from file

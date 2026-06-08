@@ -63,9 +63,9 @@ class ComputerScienceScoringPipelineParityTest {
         when(lookupPort.getRankingsByIssn((String) null)).thenReturn(List.of());
 
         Indicator indicator = new Indicator();
-        indicator.setOutputType("PUBLICATIONS");
-        indicator.setScoringStrategy("CS");
-        indicator.setScoreYearRange("IY");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(indicator, "PUBLICATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "CS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
         indicator.setFormula("S/max(N-2, 1)");
         Domain domain = new Domain();
         domain.setName("ALL");

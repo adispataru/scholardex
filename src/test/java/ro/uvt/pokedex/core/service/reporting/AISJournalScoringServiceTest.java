@@ -69,7 +69,7 @@ class AISJournalScoringServiceTest {
     void activityPathUsesReferenceIssnAndYearRange() {
         AISJournalScoringService service = new AISJournalScoringService(lookupPort);
         Indicator indicator = indicatorForAllDomain();
-        indicator.setScoreYearRange("IY");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
         WoSRanking ranking = rankingWithAis("ECONOMICS - SCIE", 2024, 1.7, WoSRanking.Quarter.Q2);
         when(lookupPort.getRankingsByIssn("9999-9999")).thenReturn(List.of(ranking));
 
@@ -88,7 +88,7 @@ class AISJournalScoringServiceTest {
         domain.setName("ALL");
         Indicator indicator = new Indicator();
         indicator.setDomain(domain);
-        indicator.setScoreYearRange("IY");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
         return indicator;
     }
 

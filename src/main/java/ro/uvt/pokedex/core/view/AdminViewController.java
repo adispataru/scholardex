@@ -20,6 +20,10 @@ import ro.uvt.pokedex.core.model.org.DivisionType;
 import ro.uvt.pokedex.core.model.org.OrgDivision;
 import ro.uvt.pokedex.core.model.reporting.Domain;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
+import ro.uvt.pokedex.core.model.reporting.scoring.IndicatorKind;
+import ro.uvt.pokedex.core.model.reporting.scoring.ScoreYearRangeSpec;
+import ro.uvt.pokedex.core.model.reporting.scoring.Selector;
+import ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
@@ -271,7 +275,7 @@ public class AdminViewController {
         model.addAttribute("activityDescriptions", activityDescriptions);
         model.addAttribute("scoringStrategies", LEGACY_STRATEGIES);
         model.addAttribute("types", LEGACY_OUTPUT_TYPES);
-        model.addAttribute("indicator", new Indicator());
+        model.addAttribute("indicator", new IndicatorForm());
         model.addAttribute("domains", domains);
         model.addAttribute("selectors", LEGACY_SELECTORS);
         return "admin/indicators";
@@ -305,14 +309,14 @@ public class AdminViewController {
     }
 
     @PostMapping("/indicators/create")
-    public String createIndicator(@ModelAttribute Indicator indicator) {
-        adminCatalogFacade.saveIndicator(indicator);
+    public String createIndicator(@ModelAttribute IndicatorForm indicator) {
+        adminCatalogFacade.saveIndicator(indicator.toIndicator());
         return "redirect:/admin/indicators";
     }
 
     @PostMapping("/indicators/update")
-    public String updateCriterion(@ModelAttribute Indicator indicator) {
-        adminCatalogFacade.saveIndicator(indicator);
+    public String updateCriterion(@ModelAttribute IndicatorForm indicator) {
+        adminCatalogFacade.saveIndicator(indicator.toIndicator());
         return "redirect:/admin/indicators";
     }
 
@@ -341,8 +345,9 @@ public class AdminViewController {
 
         Optional<Indicator> byId = adminCatalogFacade.findIndicatorById(id);
         if(byId.isPresent()) {
-            model.addAttribute("indicator", byId.get());
-            model.addAttribute("adminFormObject", byId.get());
+            IndicatorForm form = IndicatorForm.fromIndicator(byId.get());
+            model.addAttribute("indicator", form);
+            model.addAttribute("adminFormObject", form);
             List<Activity> activities = adminCatalogFacade.listActivities();
             List<Domain> domains = adminCatalogFacade.listDomains();
             Map<String, String> activityDescriptions = getActivityDescriptions(activities);
@@ -360,6 +365,59 @@ public class AdminViewController {
             return "admin/indicators-edit";
         }else {
             return "redirect:/admin/indicators";
+        }
+    }
+
+    @lombok.Data
+    public static class IndicatorForm {
+        private String id;
+        private String name;
+        private String formula;
+        private Domain domain;
+        private Activity activity;
+        private Long version;
+        private String outputType;
+        private String scoringStrategy;
+        private String yearRange;
+        private String scoreYearRange;
+        // Default "ALL" so the create-form dropdown shows a selection. An "All"
+        // selector derives to null on the domain side (Selector.All.legacyName() is
+        // null, which keeps the fingerprint segment empty); the form normalizes that
+        // back to "ALL" purely for display so the <select> renders with an option
+        // marked selected.
+        private String selector = "ALL";
+
+        static IndicatorForm fromIndicator(Indicator indicator) {
+            IndicatorForm form = new IndicatorForm();
+            form.id = indicator.getId();
+            form.name = indicator.getName();
+            form.formula = indicator.getFormula();
+            form.domain = indicator.getDomain();
+            form.activity = indicator.getActivity();
+            form.version = indicator.getVersion();
+            form.outputType = indicator.getOutputType();
+            form.scoringStrategy = indicator.getScoringStrategy();
+            form.yearRange = indicator.getYearRange();
+            form.scoreYearRange = indicator.getScoreYearRange();
+            // null (the "All" selector) renders as "ALL" in the dropdown; round-trips
+            // back through Selector.of("ALL") == All on save.
+            form.selector = indicator.getSelector() == null ? "ALL" : indicator.getSelector();
+            return form;
+        }
+
+        Indicator toIndicator() {
+            Indicator indicator = new Indicator();
+            indicator.setId(id);
+            indicator.setName(name);
+            indicator.setFormula(formula);
+            indicator.setDomain(domain);
+            indicator.setActivity(activity);
+            indicator.setVersion(version);
+            indicator.setKind(IndicatorKind.of(outputType, scoringStrategy));
+            indicator.setYearRangeSpec(YearRangeSpec.parse(yearRange));
+            indicator.setScoreYearRangeSpec(ScoreYearRangeSpec.parse(scoreYearRange));
+            indicator.setSelectorSpec(Selector.of(selector));
+            return indicator;
         }
     }
 

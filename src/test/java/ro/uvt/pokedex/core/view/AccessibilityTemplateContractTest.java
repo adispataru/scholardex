@@ -52,6 +52,8 @@ class AccessibilityTemplateContractTest {
         assertTrue(reportEdit.contains("aria-label=\"Remove criterion\""));
         assertTrue(reportEdit.contains("aria-label=\"Add criterion threshold\""));
         assertTrue(reportEdit.contains("aria-label=\"Remove criterion threshold\""));
+        assertTrue(reportEdit.contains("value=\"__not_exported__\""));
+        assertTrue(reportEdit.contains("Intentionally not exported"));
 
         assertTrue(users.contains("role=\"alert\""));
         assertTrue(users.contains("role=\"status\""));

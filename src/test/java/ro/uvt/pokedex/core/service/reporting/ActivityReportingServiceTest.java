@@ -133,11 +133,11 @@ class ActivityReportingServiceTest {
 
     private Indicator indicator(String strategyName, String formula) {
         Indicator indicator = new Indicator();
-        indicator.setScoringStrategy(strategyName);
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, strategyName);
         // H52 slice 11d.5: legacy compat setters need both halves of the (outputType,
         // strategy) pair populated to materialize the typed kind. Provide a strategy-
         // appropriate default outputType.
-        indicator.setOutputType(legacyOutputTypeFor(strategyName));
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(indicator, legacyOutputTypeFor(strategyName));
         indicator.setFormula(formula);
         Domain d = new Domain();
         d.setName("ALL");

@@ -63,8 +63,8 @@ class UserIndicatorResultServiceTest {
     void getOrCreateLatestReusesPersistedResultWhenPresent() {
         Indicator indicator = new Indicator();
         indicator.setId("ind-1");
-        indicator.setOutputType("PUBLICATIONS");
-        indicator.setScoringStrategy("GENERIC_COUNT");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(indicator, "PUBLICATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "GENERIC_COUNT");
         indicator.setFormula("S");
 
         UserIndicatorResult persisted = new UserIndicatorResult();
@@ -95,8 +95,8 @@ class UserIndicatorResultServiceTest {
 
         Indicator indicator = new Indicator();
         indicator.setId("ind-1");
-        indicator.setOutputType("PUBLICATIONS");
-        indicator.setScoringStrategy("GENERIC_COUNT");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(indicator, "PUBLICATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "GENERIC_COUNT");
         indicator.setFormula("S");
         when(indicatorRepository.findById("ind-1")).thenReturn(Optional.of(indicator));
 
@@ -138,8 +138,8 @@ class UserIndicatorResultServiceTest {
 
         Indicator indicator = new Indicator();
         indicator.setId("ind-1");
-        indicator.setOutputType("PUBLICATIONS");
-        indicator.setScoringStrategy("GENERIC_COUNT");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(indicator, "PUBLICATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "GENERIC_COUNT");
         indicator.setFormula("S");
         when(indicatorRepository.findById("ind-1")).thenReturn(Optional.of(indicator));
 
@@ -212,7 +212,7 @@ class UserIndicatorResultServiceTest {
     void createSnapshotFromComputedPersistsReportScopedPayloadWithoutReadingLatest() {
         Indicator indicator = new Indicator();
         indicator.setId("ind-1");
-        indicator.setOutputType("CITATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(indicator, "CITATIONS");
         when(indicatorRepository.findById("ind-1")).thenReturn(Optional.of(indicator));
 
         User user = new User();
@@ -261,8 +261,8 @@ class UserIndicatorResultServiceTest {
     void createSnapshotFromLatestUsesLatestRefreshVersionAndSourceReportId() {
         Indicator indicator = new Indicator();
         indicator.setId("ind-1");
-        indicator.setOutputType("PUBLICATIONS");
-        indicator.setScoringStrategy("GENERIC_COUNT");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(indicator, "PUBLICATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "GENERIC_COUNT");
         indicator.setFormula("S");
 
         UserIndicatorResult latest = new UserIndicatorResult();
@@ -296,8 +296,8 @@ class UserIndicatorResultServiceTest {
     void persistedPayloadKeepsScoreProvenanceFields() {
         Indicator indicator = new Indicator();
         indicator.setId("ind-1");
-        indicator.setOutputType("PUBLICATIONS");
-        indicator.setScoringStrategy("GENERIC_COUNT");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(indicator, "PUBLICATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "GENERIC_COUNT");
         indicator.setFormula("S");
 
         Score score = new Score();
@@ -459,8 +459,8 @@ class UserIndicatorResultServiceTest {
 
         Indicator indicator = new Indicator();
         indicator.setId("ind-existing");
-        indicator.setOutputType("PUBLICATIONS");
-        indicator.setScoringStrategy("GENERIC_COUNT");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(indicator, "PUBLICATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "GENERIC_COUNT");
 
         when(userIndicatorResultRepository.findByUserEmailAndIndicatorIdAndMode("u@uvt.ro", "ind-existing", UserIndicatorResult.Mode.LATEST))
                 .thenReturn(Optional.of(existing))

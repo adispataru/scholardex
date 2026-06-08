@@ -32,7 +32,9 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
@@ -100,7 +102,7 @@ class EvaluationWorkspaceControllerContractTest {
         User user = userPrincipal("u@uvt.ro");
         Indicator activityIndicator = new Indicator();
         activityIndicator.setId("ind-act");
-        activityIndicator.setOutputType("GENERIC_ACTIVITIES");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(activityIndicator, "GENERIC_ACTIVITIES");
         var activity = new ro.uvt.pokedex.core.model.activities.Activity();
         activity.setName("Mentoring");
         activityIndicator.setActivity(activity);
@@ -121,6 +123,198 @@ class EvaluationWorkspaceControllerContractTest {
                 .andExpect(model().attribute("confirmedPublicationScoringWarning", false));
     }
 
+    @Test
+    void exportEndpointPassesSelectedRunToFacade() throws Exception {
+        User user = userPrincipal("u@uvt.ro");
+        when(reportExportFacade.exportRunOutcome(
+                "u@uvt.ro",
+                "rep-1",
+                "run-42",
+                ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.XLSX,
+                false))
+                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportOutcome.success(
+                        new ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportedReport(
+                                new byte[]{1, 2, 3},
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                "Report.xlsx")));
+
+        mockMvc.perform(get("/user/evaluation/export")
+                        .param("report", "rep-1")
+                        .param("run", "run-42")
+                        .param("format", "XLSX")
+                        .with(authenticatedUser(user)))
+                .andExpect(status().isOk());
+
+        verify(reportExportFacade).exportRunOutcome(
+                "u@uvt.ro",
+                "rep-1",
+                "run-42",
+                ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.XLSX,
+                false);
+    }
+
+    @Test
+    void exportEndpointMapsForbiddenRunToForbiddenStatus() throws Exception {
+        User user = userPrincipal("u@uvt.ro");
+        when(reportExportFacade.exportRunOutcome(
+                "u@uvt.ro",
+                "rep-1",
+                "run-42",
+                ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.XLSX,
+                false))
+                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportOutcome.failure(
+                        ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportFailureReason.FORBIDDEN_RUN,
+                        "Report run belongs to another user."));
+
+        mockMvc.perform(get("/user/evaluation/export")
+                        .param("report", "rep-1")
+                        .param("run", "run-42")
+                        .param("format", "XLSX")
+                        .with(authenticatedUser(user)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void exportEndpointMapsInvalidConfigToUnprocessableStatus() throws Exception {
+        User user = userPrincipal("u@uvt.ro");
+        when(reportExportFacade.exportRunOutcome(
+                "u@uvt.ro",
+                "rep-1",
+                "run-42",
+                ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.XLSX,
+                false))
+                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportOutcome.failure(
+                        ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportFailureReason.NOT_READY,
+                        "Report export configuration is incomplete."));
+
+        mockMvc.perform(get("/user/evaluation/export")
+                        .param("report", "rep-1")
+                        .param("run", "run-42")
+                        .param("format", "XLSX")
+                        .with(authenticatedUser(user)))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    void exportEndpointMapsMissingRendererToNotImplementedStatus() throws Exception {
+        User user = userPrincipal("u@uvt.ro");
+        when(reportExportFacade.exportRunOutcome(
+                "u@uvt.ro",
+                "rep-1",
+                "run-42",
+                ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.DOCX,
+                false))
+                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportOutcome.failure(
+                        ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportFailureReason.RENDERER_NOT_AVAILABLE,
+                        "Report type is registered, but no DOCX renderer is available."));
+
+        mockMvc.perform(get("/user/evaluation/export")
+                        .param("report", "rep-1")
+                        .param("run", "run-42")
+                        .param("format", "DOCX")
+                        .with(authenticatedUser(user)))
+                .andExpect(status().isNotImplemented());
+    }
+
+    @Test
+    void evaluationTemplateIncludesDisplayedRunInExportLink() throws Exception {
+        String template = Files.readString(Path.of("src/main/resources/templates/user/individual-report-view.html"));
+
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("run=${runMetaId}"));
+    }
+
+    @Test
+    void evaluationTemplateIncludesDisplayedRunInVerifyLink() throws Exception {
+        String template = Files.readString(Path.of("src/main/resources/templates/user/individual-report-view.html"));
+
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("@{/user/evaluation/import(report=${report.id},run=${runMetaId})}"));
+    }
+
+    @Test
+    void importTemplatePreservesDisplayedRunInUploadForm() throws Exception {
+        String template = Files.readString(Path.of("src/main/resources/templates/user/individual-report-import.html"));
+
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("name=\"run\""));
+        org.junit.jupiter.api.Assertions.assertTrue(template.contains("th:value=\"${runId}\""));
+    }
+
+    @Test
+    void importEndpointPassesSelectedRunToFacade() throws Exception {
+        User user = userPrincipal("u@uvt.ro");
+        when(reportImportVerificationFacade.verifyOutcome(
+                org.mockito.ArgumentMatchers.eq("u@uvt.ro"),
+                org.mockito.ArgumentMatchers.eq("rep-1"),
+                org.mockito.ArgumentMatchers.eq("run-42"),
+                org.mockito.ArgumentMatchers.eq(ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.XLSX),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationOutcome.success(
+                        new ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationResult(
+                        new ro.uvt.pokedex.core.service.reporting.transfer.compare.ReportScoreComparison(List.of(), List.of(), 0, 0, 0, 0, 0),
+                        null,
+                        "run-42",
+                        null)));
+
+        mockMvc.perform(multipart("/user/evaluation/import")
+                        .file("file", new byte[]{1, 2, 3})
+                        .param("report", "rep-1")
+                        .param("run", "run-42")
+                        .with(authenticatedUser(user)))
+                .andExpect(status().isOk())
+                .andExpect(model().attributeExists("comparison"))
+                .andExpect(model().attribute("runId", "run-42"));
+
+        verify(reportImportVerificationFacade).verifyOutcome(
+                org.mockito.ArgumentMatchers.eq("u@uvt.ro"),
+                org.mockito.ArgumentMatchers.eq("rep-1"),
+                org.mockito.ArgumentMatchers.eq("run-42"),
+                org.mockito.ArgumentMatchers.eq(ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.XLSX),
+                org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void importEndpointMapsInvalidWorkbookToUnprocessableStatus() throws Exception {
+        User user = userPrincipal("u@uvt.ro");
+        when(reportImportVerificationFacade.verifyOutcome(
+                org.mockito.ArgumentMatchers.eq("u@uvt.ro"),
+                org.mockito.ArgumentMatchers.eq("rep-1"),
+                org.mockito.ArgumentMatchers.eq("run-42"),
+                org.mockito.ArgumentMatchers.eq(ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.XLSX),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationOutcome.failure(
+                        ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationFailureReason.INVALID_WORKBOOK,
+                        "Could not read the uploaded workbook: bad workbook"));
+
+        mockMvc.perform(multipart("/user/evaluation/import")
+                        .file("file", new byte[]{1, 2, 3})
+                        .param("report", "rep-1")
+                        .param("run", "run-42")
+                        .with(authenticatedUser(user)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(model().attribute("errorMessage", "Could not read the uploaded workbook: bad workbook"));
+    }
+
+    @Test
+    void importEndpointMapsMissingParserToNotImplementedStatus() throws Exception {
+        User user = userPrincipal("u@uvt.ro");
+        when(reportImportVerificationFacade.verifyOutcome(
+                org.mockito.ArgumentMatchers.eq("u@uvt.ro"),
+                org.mockito.ArgumentMatchers.eq("rep-1"),
+                org.mockito.ArgumentMatchers.eq("run-42"),
+                org.mockito.ArgumentMatchers.eq(ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat.XLSX),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationOutcome.failure(
+                        ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade.VerificationFailureReason.PARSER_NOT_AVAILABLE,
+                        "Report type is registered, but no XLSX parser is available."));
+
+        mockMvc.perform(multipart("/user/evaluation/import")
+                        .file("file", new byte[]{1, 2, 3})
+                        .param("report", "rep-1")
+                        .param("run", "run-42")
+                        .with(authenticatedUser(user)))
+                .andExpect(status().isNotImplemented())
+                .andExpect(model().attribute("errorMessage", "Report type is registered, but no XLSX parser is available."));
+    }
+
     private static IndividualReport report(String id, Indicator indicator) {
         IndividualReport report = new IndividualReport();
         report.setId(id);
@@ -133,7 +327,7 @@ class EvaluationWorkspaceControllerContractTest {
     private static Indicator publicationIndicator(String id) {
         Indicator indicator = new Indicator();
         indicator.setId(id);
-        indicator.setOutputType("PUBLICATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(indicator, "PUBLICATIONS");
         return indicator;
     }
 

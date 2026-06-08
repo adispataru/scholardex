@@ -11,14 +11,13 @@ import ro.uvt.pokedex.core.model.reporting.scoring.YearRangeSpec;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Exercises the {@code getEffective*} helpers on {@link Indicator} and the
- * legacy compat setters added in H52 slice 11d.4. Contract: there is exactly
- * ONE storage location per shape ({@code kind}, {@code yearRangeSpec},
- * {@code scoreYearRangeSpec}, {@code selectorSpec}). Both typed setters and the
- * legacy compat setters mutate that same storage; the {@code getEffective*}
- * helpers return it (with default fallbacks for never-set indicators).
+ * Exercises the {@code getEffective*} helpers on {@link Indicator}. Contract:
+ * there is exactly ONE storage location per shape ({@code kind},
+ * {@code yearRangeSpec}, {@code scoreYearRangeSpec}, {@code selectorSpec}).
+ * Admin form string binding lives in the controller DTO, not in the domain model.
  */
 class IndicatorEffectiveAccessorsTest {
 
@@ -36,17 +35,9 @@ class IndicatorEffectiveAccessorsTest {
     }
 
     @Test
-    void legacyCompatSettersMaterializeKindFromPair() {
-        // H52 slice 11d.4: the legacy setters route inputs through pendingType/
-        // pendingScoringStrategy until both halves are set, then materialize the
-        // typed kind. Mirrors what the admin form's @ModelAttribute binding does.
-        Indicator ind = new Indicator();
-        ind.setOutputType("PUBLICATIONS_MAIN_AUTHOR");
-        ind.setScoringStrategy("IMPACT_FACTOR");
-
-        IndicatorKind effective = ind.getEffectiveKind();
-        assertInstanceOf(IndicatorKind.Publications.class, effective);
-        assertEquals(AuthorRole.MAIN, ((IndicatorKind.Publications) effective).role());
+    void legacyFormSettersAreNotPartOfTheDomainModel() {
+        assertThrows(NoSuchMethodException.class, () -> Indicator.class.getDeclaredMethod("setOutputType", String.class));
+        assertThrows(NoSuchMethodException.class, () -> Indicator.class.getDeclaredMethod("setScoringStrategy", String.class));
     }
 
     @Test
@@ -65,10 +56,8 @@ class IndicatorEffectiveAccessorsTest {
     }
 
     @Test
-    void legacyYearRangeSetterParsesIntoTypedSpec() {
-        Indicator ind = new Indicator();
-        ind.setYearRange("2018->2025");
-        assertEquals(new YearRangeSpec.Absolute(2018, 2025), ind.getEffectiveYearRange());
+    void legacyYearRangeSetterIsNotPartOfTheDomainModel() {
+        assertThrows(NoSuchMethodException.class, () -> Indicator.class.getDeclaredMethod("setYearRange", String.class));
     }
 
     @Test
@@ -87,11 +76,8 @@ class IndicatorEffectiveAccessorsTest {
     }
 
     @Test
-    void legacyScoreYearRangeSetterParsesIntoTypedSpec() {
-        // The dominant production value: 31 / 42 indicators are "IY".
-        Indicator ind = new Indicator();
-        ind.setScoreYearRange("IY");
-        assertEquals(new ScoreYearRangeSpec.ItemYear(), ind.getEffectiveScoreYearRange());
+    void legacyScoreYearRangeSetterIsNotPartOfTheDomainModel() {
+        assertThrows(NoSuchMethodException.class, () -> Indicator.class.getDeclaredMethod("setScoreYearRange", String.class));
     }
 
     @Test
@@ -109,13 +95,8 @@ class IndicatorEffectiveAccessorsTest {
     }
 
     @Test
-    void legacySelectorSetterRoutesToTypedSpec() {
-        Indicator ind = new Indicator();
-        ind.setSelector("TOP_10");
-        assertEquals(new Selector.TopN(10), ind.getEffectiveSelector());
-
-        ind.setSelector("ALL");
-        assertEquals(new Selector.All(), ind.getEffectiveSelector());
+    void legacySelectorSetterIsNotPartOfTheDomainModel() {
+        assertThrows(NoSuchMethodException.class, () -> Indicator.class.getDeclaredMethod("setSelector", String.class));
     }
 
     @Test

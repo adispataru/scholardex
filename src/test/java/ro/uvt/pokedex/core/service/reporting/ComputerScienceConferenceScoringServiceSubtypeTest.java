@@ -280,7 +280,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         when(cacheService.getConferenceRankings("CCGRID")).thenReturn(List.of(ranking));
 
         Indicator indicator = new Indicator();
-        indicator.setScoreYearRange(null);
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, null);
 
         Score score = service.getScore(publication, indicator);
 
@@ -508,7 +508,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         when(cacheService.getConferenceRankings("CCGRID")).thenReturn(List.of(ranking));
 
         Indicator indicator = new Indicator();
-        indicator.setScoreYearRange("IY");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "IY");
 
         Score score = service.getScore(publication, indicator);
 
@@ -1532,7 +1532,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         when(cacheService.getConferenceRankings("ICSE")).thenReturn(List.of(ranking));
 
         Indicator indicator = new Indicator();
-        indicator.setScoreYearRange("2023->2024"); // H52 11d.1: was "IY,IY+1" (legacy relative grammar dropped in v1)
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "2023->2024"); // H52 11d.1: was "IY,IY+1" (legacy relative grammar dropped in v1)
 
         Score score = service.getScore(publication, indicator);
 
@@ -1788,7 +1788,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         when(cacheService.getConferenceRankings("ICSE")).thenReturn(List.of(ranking));
 
         Indicator indicator = new Indicator();
-        indicator.setScoreYearRange("2023->2024"); // H52 11d.1: was "IY,IY+1" (legacy relative grammar dropped in v1)
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, "2023->2024"); // H52 11d.1: was "IY,IY+1" (legacy relative grammar dropped in v1)
 
         Score score = service.getScore(activity, indicator);
         assertEquals(8.0, score.getScore());
@@ -2047,7 +2047,7 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
 
     private Indicator indicator(String scoreYearRange) {
         Indicator indicator = new Indicator();
-        indicator.setScoreYearRange(scoreYearRange);
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(indicator, scoreYearRange);
         return indicator;
     }
 

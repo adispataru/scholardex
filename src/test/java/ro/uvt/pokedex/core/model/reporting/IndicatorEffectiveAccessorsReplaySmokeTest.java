@@ -77,11 +77,11 @@ class IndicatorEffectiveAccessorsReplaySmokeTest {
                 for (String syr : SCORE_YEAR_RANGES) {
                     for (String sel : SELECTORS) {
                         Indicator ind = new Indicator();
-                        ind.setOutputType(c.typeName());
-                        ind.setScoringStrategy(c.strategyName());
-                        ind.setYearRange(yr);
-                        ind.setScoreYearRange(syr);
-                        ind.setSelector(sel);
+                        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(ind, c.typeName());
+                        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(ind, c.strategyName());
+                        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setYearRange(ind, yr);
+                        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(ind, syr);
+                        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setSelector(ind, sel);
 
                         String label = "combo=" + c + ", yr=" + yr + ", syr=" + syr + ", sel=" + sel;
 
@@ -113,11 +113,11 @@ class IndicatorEffectiveAccessorsReplaySmokeTest {
         Indicator ind = new Indicator();
         // Legacy fields set to something *different* from the v1 fields so we can
         // tell which path returned.
-        ind.setOutputType("PUBLICATIONS");
-        ind.setScoringStrategy("CS_JOURNAL");
-        ind.setYearRange("2000->2005");
-        ind.setScoreYearRange("IY");
-        ind.setSelector("ALL");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(ind, "PUBLICATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(ind, "CS_JOURNAL");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setYearRange(ind, "2000->2005");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoreYearRange(ind, "IY");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setSelector(ind, "ALL");
 
         ind.setKind(new IndicatorKind.Citations(true,
                 ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy.RIS));

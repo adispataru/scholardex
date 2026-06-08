@@ -43,9 +43,9 @@ class ReportingComputationSupportTest {
         pCo.setAuthors(List.of("x", "a1"));
 
         Indicator main = new Indicator();
-        main.setOutputType("PUBLICATIONS_MAIN_AUTHOR");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(main, "PUBLICATIONS_MAIN_AUTHOR");
         Indicator co = new Indicator();
-        co.setOutputType("PUBLICATIONS_COAUTHOR");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(co, "PUBLICATIONS_COAUTHOR");
 
         when(scientificProductionService.calculateScientificProductionScore(anyList(), eq(main)))
                 .thenReturn(Map.of("total", totalScore(4.0)));
@@ -68,11 +68,11 @@ class ReportingComputationSupportTest {
         // directly, which is the same behavior.
         Indicator nullOutput = new Indicator();
         Indicator plain = new Indicator();
-        plain.setOutputType("PUBLICATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(plain, "PUBLICATIONS");
         Indicator citations = new Indicator();
-        citations.setOutputType("CITATIONS");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(citations, "CITATIONS");
         Indicator citationsExcludeSelf = new Indicator();
-        citationsExcludeSelf.setOutputType("CITATIONS_EXCLUDE_SELF");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(citationsExcludeSelf, "CITATIONS_EXCLUDE_SELF");
 
         assertFalse(nullOutput.isCitationsOutput());
         assertFalse(plain.isCitationsOutput());
@@ -83,7 +83,7 @@ class ReportingComputationSupportTest {
     @Test
     void applyFinalSelectorKeepsOnlyTop10AndRebuildsTotals() {
         Indicator indicator = new Indicator();
-        indicator.setSelector("TOP_10");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setSelector(indicator, "TOP_10");
 
         Map<String, Score> scoreMap = new LinkedHashMap<>();
         for (int i = 1; i <= 12; i++) {
@@ -110,7 +110,7 @@ class ReportingComputationSupportTest {
     @Test
     void applyFinalSelectorDoesNothingWhenSelectorIsNotTop10() {
         Indicator indicator = new Indicator();
-        indicator.setSelector("ALL");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setSelector(indicator, "ALL");
         Map<String, Map<String, Score>> nested = new LinkedHashMap<>();
         Map<String, Score> one = new LinkedHashMap<>();
         one.put("p1", totalScore(1));
@@ -126,7 +126,7 @@ class ReportingComputationSupportTest {
     @Test
     void applyFinalSelectorDoesNothingWhenSelectorIsNull() {
         Indicator indicator = new Indicator();
-        indicator.setSelector(null);
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setSelector(indicator, null);
         Map<String, Map<String, Score>> nested = new LinkedHashMap<>();
         Map<String, Score> one = new LinkedHashMap<>();
         one.put("p1", totalScore(1));
@@ -142,7 +142,7 @@ class ReportingComputationSupportTest {
     @Test
     void applyFinalSelectorHandlesDuplicateTitlesAcrossBucketsWithoutDoubleKeeping() {
         Indicator indicator = new Indicator();
-        indicator.setSelector("TOP_10");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setSelector(indicator, "TOP_10");
 
         Map<String, Score> b1 = new LinkedHashMap<>();
         b1.put("shared", totalScore(10));
@@ -186,9 +186,9 @@ class ReportingComputationSupportTest {
         ScholardexPublicationView nullAuthors = publication("p-null", null);
 
         Indicator main = new Indicator();
-        main.setOutputType("PUBLICATIONS_MAIN_AUTHOR");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(main, "PUBLICATIONS_MAIN_AUTHOR");
         Indicator co = new Indicator();
-        co.setOutputType("PUBLICATIONS_COAUTHOR");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(co, "PUBLICATIONS_COAUTHOR");
 
         doAnswer(invocation -> Map.of("total", totalScore(((List<ScoringPublicationReadModel>) invocation.getArgument(0)).size())))
                 .when(scientificProductionService).calculateScientificProductionScore(anyList(), eq(main));
@@ -218,7 +218,7 @@ class ReportingComputationSupportTest {
 
         ScholardexPublicationView noAuthors = publication("p-empty", List.of());
         Indicator main = new Indicator();
-        main.setOutputType("PUBLICATIONS_MAIN_AUTHOR");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setOutputType(main, "PUBLICATIONS_MAIN_AUTHOR");
 
         doAnswer(invocation -> Map.of("total", totalScore(((List<ScoringPublicationReadModel>) invocation.getArgument(0)).size())))
                 .when(scientificProductionService).calculateScientificProductionScore(anyList(), eq(main));

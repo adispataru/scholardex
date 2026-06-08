@@ -1,6 +1,6 @@
 # H52 Indicator / Scoring / Formula Flow — v1
 
-**Status:** H52 v1 complete (Commit 1 + Commit 2 + Commit 3 all shipped). Commit 4 UI work (admin form DTO restructure) is optional next-iteration scope.
+**Status:** H52 complete (Commit 1 + Commit 2 + Commit 3 + Commit 4 all shipped).
 **Created:** 2026-05-30
 **Last updated:** 2026-06-04
 
@@ -8,7 +8,7 @@
 
 If you're picking this up without prior session memory, the essential state is:
 
-- **Tests:** 2074 / 0 failures at end of slice 12.
+- **Tests:** 2103 / 0 failures (slice 12 + Commit 4 form DTO + selector-dropdown fix).
 - **Live `test` Mongo state**: 42 indicators (was 43; Mate_S copy `682343657123387ec34394b1`
   deleted by the slice-3b runner during the 11d.3 migration). All 42 have v1 typed
   fields (`kind`, `yearRangeSpec`, `scoreYearRangeSpec`, `selectorSpec`, `formulaHash`)
@@ -41,33 +41,26 @@ are missing or `formulaHash` is stale; deletes Mate_S copy if it re-appears):
 ./gradlew bootRun --args='--spring.profiles.active=indicator-migration,agent-dev --server.port=8181'
 ```
 
-**Current `Indicator.java` shape** (after slice 11d.5):
+**Current `Indicator.java` shape** (after Commit 4):
 
 - **Storage:** `id`, `name`, `formula`, `domain` (DBRef), `activity` (DBRef),
   `version` (Long, @Version), `kind` (IndicatorKind sealed interface), `formulaHash`
   (String), `yearRangeSpec`, `scoreYearRangeSpec`, `selectorSpec`. **No legacy
-  fields.** Two transient `String pendingOutputType` / `String pendingScoringStrategy`
-  used only to bridge the brief window between paired form-binding setter calls.
+  fields and no transient form-binding bridge.
 - **Reads:** `getEffectiveKind()`, `getEffectiveYearRange()`,
   `getEffectiveScoreYearRange()`, `getEffectiveSelector()` are the canonical typed
   API. `getOutputType()`, `getScoringStrategy()`, `getYearRange()`,
   `getScoreYearRange()`, `getSelector()` return **Strings** derived from the typed
-  shape (legacy-enum-style names; used by the admin form template and the cache
+  shape (legacy-enum-style names; used by table display and the cache
   fingerprint). Convenience predicates: `isGenericCount()`, `isGenericActivity()`,
   `isPublicationOutput()`, `isCitationsOutput()`, `isCitationsExcludeSelf()`,
   `isActivityOutput()`, `publicationAuthorRole()`, `isTopNSelector()`, `topNLimit()`.
 - **Writes:** Typed setters (`setKind`, `setYearRangeSpec`, etc.) are the canonical
-  path. Legacy-compat setters take Strings and route through the typed fields:
-  - `setOutputType(String) + setScoringStrategy(String)` accumulate in
-    `pendingOutputType` / `pendingScoringStrategy` and materialize a `kind` once
-    both halves arrive. Incremental updates (kind already set, swap one half)
-    rebuild the kind preserving the other half.
-  - `setYearRange(String)` / `setScoreYearRange(String)` parse via
-    `YearRangeSpec.parse` / `ScoreYearRangeSpec.parse`.
-  - `setSelector(String)` routes `"TOP_10"` → `TopN(10)`, `"ALL"` → `All`, null → null.
+  path. Admin indicator create/edit forms bind to `AdminViewController.IndicatorForm`,
+  which converts legacy UI strings into the typed shape before calling
+  `AdminCatalogFacade.saveIndicator`.
 - **Save lifecycle:** `IndicatorFormulaHashStamper.onBeforeConvert`
-  (`service/reporting/formula/`) calls `synthesizeTypedFieldsFromLegacy` to fill in
-  any v1 typed fields not already set, then computes/stamps the `formulaHash` via
+  (`service/reporting/formula/`) computes/stamps the `formulaHash` via
   the `FormulaCanonicalizer` → `FormulaHasher` pipeline, then runs the `FormulaSandbox`
   denylist check. Rejection raises `FormulaSandboxException` (extends
   IllegalArgumentException → controller surfaces as HTTP 400).
@@ -134,8 +127,10 @@ two consuming services).
 | Commit 3 / slice 11d.5 — deleted `Indicator.Type`/`Strategy`/`Selector` legacy enums; `IndicatorKind.fromLegacy(Type,Strategy)` replaced by `of(String,String)`; `LegacyShape` carries Strings; `Selector.fromLegacy` replaced by `of(String)` | ✅ done | 22+ test files updated via batch transform script; admin form templates unchanged (now bind to String fields via the Indicator compat setters); `LegacyMappingTest` rewritten to pin the `of(String,String)` factory |
 | Commit 3 / slice 11e — Mongo `$unset` sweep on indicators collection + **deleted** the `ReportingComputationSupport.is*Indicator(...)` wrappers (call sites inlined to `Indicator::isXxxOutput`) | ✅ done | 41 of 42 indicators stripped of legacy keys; migration runner re-run produces no-op summary; 4 production files (`UserReportFacade`, `IndividualReportComputer`, `GroupReportRunner`, the support class) updated; cache re-fingerprint skipped (format unchanged); admin-form-DTO rewrite deferred to Commit 4 |
 | Commit 3 / slice 12 — per-kind formula **variable contract** enforced at indicator save; broken `{@link Indicator.Type/Strategy}` javadoc scrubbed; **H52 v1 done** | ✅ done | `FormulaVariableContract` rejects formulas referencing variables the kind doesn't bind (`SS` typo, `M` on non-economics, activity-field name on a publication indicator); publication/citation kinds enforced (fixed `S`/`N`/`Q`/`+M` surface), activity-shaped skipped (dynamic field surface); 10 tests; live-verified 400 reject + 200 accept; all 16 production publication/citation formulas pass |
-| Commit 4 — UI surfaces | ⏳ optional / not v1 | admin form template restructure to bind to typed kind shape via DTO; removes the `Indicator` legacy compat setters + `pending*` machinery. Out of v1 scope. |
+| Commit 4 — UI surfaces | ✅ done | admin indicator create/edit forms bind through `AdminViewController.IndicatorForm`; form posts are converted to typed `IndicatorKind` / year-range / selector fields before save; `Indicator` legacy compat setters + `pending*` machinery deleted. Selector dropdown default fixed: `IndicatorForm.selector` defaults to `"ALL"` and `fromIndicator` maps a null `getSelector()` (the `All` selector, whose `legacyName()` is null) to `"ALL"` for display — DTO-layer only, so the `userIndicatorResults` fingerprint segment stays empty and cache identity is unchanged. Round-trips via `Selector.of("ALL") == All`. |
 | Replay-equality test gate against 2,463-row `userIndicatorResults` cache | ✅ superseded by slice 10 | shipped as a replay-*shape* gate (`H52ReplayShapeTest`, 57-blob fixture at `src/test/resources/h52/replay-fixture.json`), not a numeric-equality gate — scope decision recorded in the slice-10 prose. Full numeric replay was judged brittle (depends on stable upstream WoS/Scopus data). |
+
+Final build (slice 12 + Commit 4 + selector-dropdown fix): **2103 tests, 0 failures.**
 
 Build at end of slice 12: **2074 tests, 0 failures.** H52 v1 complete — including the
 per-kind variable contract, which was the last genuinely-unmet `TASKS.md` exit criterion.
@@ -197,9 +192,9 @@ dangling after the slice-11d.5 enum deletion) converted to plain `{@code}` text.
 | Reject indicator save with undeclared variable, tested | ✅ slice 12 |
 | Numerically identical to historical cache (1e-9) | ⚠️ shipped as replay-*shape* gate (slice 10); full numeric replay judged brittle — deliberate scope call |
 
-H52 v1 is complete. The only deferred item is **Commit 4 (UI surfaces)** — restructuring
-the admin form to bind to the typed kind shape via a DTO, which would let the `Indicator`
-legacy compat setters + `pending*` machinery be deleted. Explicitly out of v1 scope.
+H52 is complete through Commit 4. Admin indicator forms now bind through a DTO and
+`Indicator` writes are typed-only; the legacy compat setters and `pending*` bridge are
+gone.
 
 ---
 
@@ -236,10 +231,9 @@ legacy compat setters + `pending*` machinery be deleted. Explicitly out of v1 sc
   `id|outputTypeName|strategyName|formula|yearRange|scoreYearRange|selector|payload-v2-scoring-provenance`),
   so the cached blob identities are stable. If a future format change ships,
   build a `@Profile("cache-refingerprint")` runner per the doc.
-- `Indicator.pending*` machinery + the manual legacy compat setters
-  (`setOutputType(String)` etc.) survive for the admin form. Removing them
-  needs the form template restructured to bind to a typed DTO that composes
-  the kind on POST. That's Commit-4 UI work — out of v1 scope.
+- Commit 4 later removed the `Indicator.pending*` machinery and manual legacy
+  compat setters by moving admin indicator form binding into
+  `AdminViewController.IndicatorForm`.
 
 **Final build:** 2046 tests, 0 failures. **Slice-10 tripwire green throughout
 the entire 11a → 11e arc.**
@@ -1537,12 +1531,11 @@ The originally-planned Commit 3 work, with the state as of 2026-06-03 noted inli
 3. **Optional: delete `ReportingComputationSupport.is*Indicator(...)` wrappers.**
    They're 3-line pass-throughs now. Inline at call sites and remove.
 
-4. **Optional: simplify `Indicator`'s `pending*` machinery.** With slice 11e the
-   migration runner won't be needed again; the legacy compat setters (`setOutputType(String)`
-   etc.) could be deleted if the admin form template is rewritten to bind to typed
-   kind shape directly (e.g. a DTO with separate type/strategy fields composed
-   into a kind on POST). This is Commit-4 UI work — not strictly part of 11e but
-   the cleanest finish.
+4. **Completed in Commit 4: simplify `Indicator`'s `pending*` machinery.**
+   The admin indicator form now binds to `AdminViewController.IndicatorForm`,
+   which composes `IndicatorKind`, `YearRangeSpec`, `ScoreYearRangeSpec`, and
+   `Selector` before save. The legacy compat setters (`setOutputType(String)`
+   etc.) and transient pending fields are deleted from `Indicator`.
 
 **Pre-requisites**: fresh `mongodump` of the `test` database. The cleanup is
 idempotent and reversible only via restore.
@@ -1557,10 +1550,13 @@ idempotent and reversible only via restore.
 
 ### Commit 4 — UI surfaces
 
-- Indicator-edit form: kind dropdown drives strategy options; formula textarea shows the
-  variable contract live; year-range becomes structured inputs (radio group: All / Absolute
-  range / Item year) instead of a free-text "* / IY / 2018->2025" field.
-- Indicator-list shows kind tag + strategy tag separately for filtering.
+- Admin indicator create/edit forms bind through `AdminViewController.IndicatorForm`
+  instead of binding directly to `Indicator`.
+- The DTO preserves the existing field names (`outputType`, `scoringStrategy`,
+  `yearRange`, `scoreYearRange`, `selector`) for the HTML surface, then converts
+  them into the typed `Indicator` shape on POST.
+- `Indicator` no longer exposes form-style legacy setters or transient pending
+  state; tests use `IndicatorTestFixtures` for concise typed fixture setup.
 
 ## Dependencies
 
