@@ -9,9 +9,14 @@ import java.time.Instant;
 
 @Data
 @Document(collection = "scopus.import_events")
+// H54.3a: the unique key is the source-record identity (source, entityType, sourceRecordId),
+// NOT including payloadHash. Including the hash made a re-import with a corrected payload create
+// a NEW row instead of superseding the old one. The ledger now holds exactly one current event
+// per source record; ScopusImportEventIngestionService supersedes in place when the payload
+// changes and skips when it is identical.
 @CompoundIndex(
         name = "uniq_scopus_import_event_idempotence",
-        def = "{'entityType': 1, 'source': 1, 'sourceRecordId': 1, 'payloadHash': 1}",
+        def = "{'source': 1, 'entityType': 1, 'sourceRecordId': 1}",
         unique = true
 )
 public class ScopusImportEvent {
@@ -26,5 +31,9 @@ public class ScopusImportEvent {
     private String payload;
     private String payloadHash;
     private Instant ingestedAt;
+    /** First-write time is {@link #ingestedAt}; this is the last-write time (changes only on supersede). */
+    private Instant updatedAt;
+    /** Number of distinct payloads seen for this key: 1 on first ingest, +1 each supersede. */
+    private int version;
 }
 

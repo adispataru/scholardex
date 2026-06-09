@@ -11,8 +11,13 @@ import java.util.List;
 
 @Data
 @Document(collection = "scholardex.forum_facts")
-@CompoundIndex(name = "uniq_scholardex_forum_scopus_id", def = "{'scopusForumIds': 1}", unique = true, sparse = true)
-@CompoundIndex(name = "uniq_scholardex_forum_wos_id", def = "{'wosForumIds': 1}", unique = true, sparse = true)
+// partialFilter (not sparse): a multikey unique index over an array field indexes empty
+// arrays under a single "undefined" key, so every forum lacking scopus ids would collide.
+// sparse does not skip empty arrays; {$type:'string'} excludes empty/absent arrays and
+// enforces uniqueness only across docs that actually carry at least one id. ($ne/$size are
+// not permitted in partialFilterExpression.) See H54.2 / docs/data-ownership-inventory.md.
+@CompoundIndex(name = "uniq_scholardex_forum_scopus_id", def = "{'scopusForumIds': 1}", unique = true, partialFilter = "{'scopusForumIds': {'$type': 'string'}}")
+@CompoundIndex(name = "uniq_scholardex_forum_wos_id", def = "{'wosForumIds': 1}", unique = true, partialFilter = "{'wosForumIds': {'$type': 'string'}}")
 public class ScholardexForumFact {
     @Id
     private String id;

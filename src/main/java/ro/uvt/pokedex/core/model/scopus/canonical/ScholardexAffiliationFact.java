@@ -11,7 +11,9 @@ import java.util.List;
 
 @Data
 @Document(collection = "scholardex.affiliation_facts")
-@CompoundIndex(name = "uniq_scholardex_affiliation_scopus_id", def = "{'scopusAffiliationIds': 1}", unique = true, sparse = true)
+// partialFilter (not sparse): exclude empty/absent scopusAffiliationIds arrays from the
+// multikey unique index; sparse does not skip empty arrays. See H54.2.
+@CompoundIndex(name = "uniq_scholardex_affiliation_scopus_id", def = "{'scopusAffiliationIds': 1}", unique = true, partialFilter = "{'scopusAffiliationIds': {'$type': 'string'}}")
 public class ScholardexAffiliationFact {
     @Id
     private String id;

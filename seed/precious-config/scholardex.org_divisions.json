@@ -1,0 +1,5 @@
+[
+  {"_id":"div-ccs","institutionId":"inst-uvt","type":"SERVICE","name":"Centrul de Calcul Service","shortName":"CCS","headUserIds":[],"createdAt":{"$date":"2026-05-30T15:05:16.386Z"},"updatedAt":{"$date":"2026-05-30T15:05:16.386Z"},"_class":"ro.uvt.pokedex.core.model.org.OrgDivision"},
+  {"_id":"div-fmi","institutionId":"inst-uvt","type":"FACULTY","name":"Faculty of Mathematics and Computer Science","shortName":"FMI","headUserIds":["florin.spataru@e-uvt.ro"],"createdAt":{"$date":"2026-06-04T09:11:08.804Z"},"updatedAt":{"$date":"2026-06-04T09:11:08.804Z"},"_class":"ro.uvt.pokedex.core.model.org.OrgDivision"},
+  {"_id":"div-iaer","institutionId":"inst-uvt","type":"INSTITUTE","name":"Institute for Advanced Environmental Research","shortName":"IAER","headUserIds":[],"createdAt":{"$date":"2026-05-30T15:05:16.386Z"},"updatedAt":{"$date":"2026-05-30T15:05:16.386Z"},"_class":"ro.uvt.pokedex.core.model.org.OrgDivision"}
+]

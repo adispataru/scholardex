@@ -18,11 +18,13 @@ public class WosJournalIdentity {
     private String id;
     @Indexed
     private String identityKey;
-    @Indexed
+    // primaryIssn/eIssn/aliasIssns performance indexes are owned by WosIndexMaintenanceService
+    // (idx_wos_journal_identity_{primary_issn,eissn,alias_issn}). H54.2 convention: unique
+    // constraints are declarative (auto-index-creation); non-unique performance indexes are
+    // owned by the maintenance services. Declaring @Indexed here too produced a same-key/
+    // different-name IndexOptionsConflict (error 85) under auto-index-creation.
     private String primaryIssn;
-    @Indexed
     private String eIssn;
-    @Indexed
     private List<String> aliasIssns = new ArrayList<>();
     private String mergeGroupId;
     private String conflictType;

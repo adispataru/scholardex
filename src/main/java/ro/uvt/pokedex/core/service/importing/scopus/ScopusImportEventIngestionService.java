@@ -3,7 +3,12 @@ package ro.uvt.pokedex.core.service.importing.scopus;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.MongoBulkWriteException;
-import com.mongodb.client.model.InsertManyOptions;
+import com.mongodb.bulk.BulkWriteResult;
+import com.mongodb.client.model.BulkWriteOptions;
+import com.mongodb.client.model.UpdateOneModel;
+import com.mongodb.client.model.UpdateOptions;
+import com.mongodb.client.model.WriteModel;
+import org.bson.Document;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.lang.Nullable;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -17,12 +22,30 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 
+/**
+ * Ingests Scopus-source records into the {@code scopus.import_events} ledger with idempotent,
+ * supersede-on-change semantics (H54.3a).
+ *
+ * <p>The ledger holds exactly one current event per source-record identity
+ * {@code (source, entityType, sourceRecordId)} — the unique key no longer includes the payload
+ * hash. Re-ingesting:
+ * <ul>
+ *   <li>an <b>identical</b> payload is a no-op ("skipped");</li>
+ *   <li>a <b>changed</b> payload supersedes in place — replaces the payload, sets {@code updatedAt},
+ *       and bumps {@code version} ("imported", i.e. a write occurred);</li>
+ *   <li>a <b>new</b> identity inserts a fresh event with {@code version = 1} ("imported").</li>
+ * </ul>
+ *
+ * <p>Previously the hash was part of the unique key, so a corrected payload produced a second row
+ * instead of replacing the first — the root of the ledger duplication found on 2026-06-08.
+ */
 @Service
 public class ScopusImportEventIngestionService {
+
+    private static final String COLLECTION = "scopus.import_events";
 
     private final ScopusImportEventRepository repository;
     private final ObjectMapper objectMapper;
@@ -50,21 +73,49 @@ public class ScopusImportEventIngestionService {
         try {
             String payload = normalizePayload(payloadObject);
             String payloadHash = sha256Hex(payload);
+            Instant now = Instant.now();
 
-            ScopusImportEvent event = new ScopusImportEvent();
-            event.setEntityType(entityType);
-            event.setSource(source);
-            event.setSourceRecordId(sourceRecordId);
-            event.setBatchId(batchId);
-            event.setCorrelationId(correlationId);
-            event.setPayloadFormat(payloadFormat);
-            event.setPayload(payload);
-            event.setPayloadHash(payloadHash);
-            event.setIngestedAt(Instant.now());
-            repository.insert(event);
-            return EventIngestionOutcome.imported(event.getId());
-        } catch (DuplicateKeyException ignored) {
-            return EventIngestionOutcome.skipped();
+            Optional<ScopusImportEvent> existing =
+                    repository.findBySourceAndEntityTypeAndSourceRecordId(source, entityType, sourceRecordId);
+
+            if (existing.isEmpty()) {
+                ScopusImportEvent event = new ScopusImportEvent();
+                event.setEntityType(entityType);
+                event.setSource(source);
+                event.setSourceRecordId(sourceRecordId);
+                event.setBatchId(batchId);
+                event.setCorrelationId(correlationId);
+                event.setPayloadFormat(payloadFormat);
+                event.setPayload(payload);
+                event.setPayloadHash(payloadHash);
+                event.setIngestedAt(now);
+                event.setUpdatedAt(now);
+                event.setVersion(1);
+                try {
+                    repository.insert(event);
+                    return EventIngestionOutcome.imported(event.getId());
+                } catch (DuplicateKeyException raceLostToConcurrentInsert) {
+                    existing = repository.findBySourceAndEntityTypeAndSourceRecordId(source, entityType, sourceRecordId);
+                    if (existing.isEmpty()) {
+                        return EventIngestionOutcome.skipped();
+                    }
+                    // fall through to supersede/skip against the concurrently-inserted row
+                }
+            }
+
+            ScopusImportEvent current = existing.get();
+            if (payloadHash.equals(current.getPayloadHash())) {
+                return EventIngestionOutcome.skipped();
+            }
+            current.setPayload(payload);
+            current.setPayloadHash(payloadHash);
+            current.setPayloadFormat(payloadFormat);
+            current.setBatchId(batchId);
+            current.setCorrelationId(correlationId);
+            current.setUpdatedAt(now);
+            current.setVersion(current.getVersion() + 1);
+            repository.save(current);
+            return EventIngestionOutcome.imported(current.getId());
         } catch (Exception e) {
             return EventIngestionOutcome.error(e.getMessage());
         }
@@ -89,13 +140,8 @@ public class ScopusImportEventIngestionService {
             for (BatchIngestionItem item : items) {
                 long serializeStart = System.nanoTime();
                 EventIngestionOutcome outcome = ingest(
-                        entityType,
-                        source,
-                        item.sourceRecordId(),
-                        batchId,
-                        item.correlationId(),
-                        payloadFormat,
-                        item.payloadObject()
+                        entityType, source, item.sourceRecordId(), batchId,
+                        item.correlationId(), payloadFormat, item.payloadObject()
                 );
                 serializeMs += nanosToMillis(System.nanoTime() - serializeStart);
                 if (outcome.error()) {
@@ -106,7 +152,8 @@ public class ScopusImportEventIngestionService {
                     skipped++;
                 }
             }
-            return new BatchIngestionOutcome(items.size(), imported, skipped, errors, serializeMs, 0L, nanosToMillis(System.nanoTime() - startedAtNanos));
+            return new BatchIngestionOutcome(items.size(), imported, skipped, errors, serializeMs, 0L,
+                    nanosToMillis(System.nanoTime() - startedAtNanos));
         }
 
         List<PreparedBatchItem> prepared = new ArrayList<>(items.size());
@@ -123,58 +170,80 @@ public class ScopusImportEventIngestionService {
         }
         long serializeMs = nanosToMillis(System.nanoTime() - serializeStart);
         if (prepared.isEmpty()) {
-            return new BatchIngestionOutcome(items.size(), 0, 0, serializationErrors, serializeMs, 0L, nanosToMillis(System.nanoTime() - startedAtNanos));
+            return new BatchIngestionOutcome(items.size(), 0, 0, serializationErrors, serializeMs, 0L,
+                    nanosToMillis(System.nanoTime() - startedAtNanos));
         }
 
-        List<org.bson.Document> docs = new ArrayList<>(prepared.size());
         Instant now = Instant.now();
+        List<WriteModel<Document>> ops = new ArrayList<>(prepared.size());
         for (PreparedBatchItem item : prepared) {
-            org.bson.Document doc = new org.bson.Document()
-                    .append("entityType", entityType.name())
-                    .append("source", source)
-                    .append("sourceRecordId", item.item().sourceRecordId())
-                    .append("batchId", batchId)
-                    .append("correlationId", item.item().correlationId())
-                    .append("payloadFormat", payloadFormat)
-                    .append("payload", item.payload())
-                    .append("payloadHash", item.payloadHash());
-            doc.append("ingestedAt", now);
-            docs.add(doc);
+            ops.add(supersedeOrInsert(entityType, source, item.item().sourceRecordId(), batchId,
+                    item.item().correlationId(), payloadFormat, item.payload(), item.payloadHash(), now));
         }
 
         long dbStart = System.nanoTime();
-        Set<Integer> failedIndexes = new HashSet<>();
-        int insertedCount = 0;
+        BulkWriteResult result;
+        int writeErrors = 0;
         try {
-            insertedCount = mongoTemplate.getCollection("scopus.import_events")
-                    .insertMany(docs, new InsertManyOptions().ordered(false))
-                    .getInsertedIds()
-                    .size();
+            result = mongoTemplate.getCollection(COLLECTION).bulkWrite(ops, new BulkWriteOptions().ordered(false));
         } catch (MongoBulkWriteException e) {
-            e.getWriteErrors().forEach(writeError -> failedIndexes.add(writeError.getIndex()));
-            insertedCount = prepared.size() - failedIndexes.size();
+            result = e.getWriteResult();
+            writeErrors = e.getWriteErrors().size();
         }
         long dbMs = nanosToMillis(System.nanoTime() - dbStart);
 
-        Set<Integer> insertedIndexes = new HashSet<>();
-        for (int i = 0; i < prepared.size(); i++) {
-            if (!failedIndexes.contains(i)) {
-                insertedIndexes.add(i);
-            }
-        }
+        // upserts = brand-new rows; modifiedCount = supersedes (payload changed); both are writes.
+        // matchedCount - modifiedCount = identical re-ingests (true no-ops).
+        int inserted = result.getUpserts().size();
+        int modified = result.getModifiedCount();
+        int matched = result.getMatchedCount();
+        int imported = inserted + modified;
+        int skipped = Math.max(0, matched - modified);
+        int errors = serializationErrors + writeErrors;
 
-        int imported = Math.max(0, insertedCount);
-        int errors = serializationErrors;
-        int skipped = items.size() - imported - errors;
         return new BatchIngestionOutcome(
-                items.size(),
-                imported,
-                Math.max(0, skipped),
-                errors,
-                serializeMs,
-                dbMs,
+                items.size(), imported, skipped, errors, serializeMs, dbMs,
                 nanosToMillis(System.nanoTime() - startedAtNanos)
         );
+    }
+
+    /**
+     * Atomic upsert keyed by the source-record identity. On insert: version 1, ingestedAt/updatedAt
+     * set. On match with the same hash: every field resolves to its current value, so the document
+     * is unchanged (no-op skip). On match with a different hash: payload replaced, updatedAt set,
+     * version incremented. All branches are expressed with {@code $cond} against the pre-update
+     * document, so the whole decision is server-side and atomic.
+     */
+    private UpdateOneModel<Document> supersedeOrInsert(
+            ScopusImportEntityType entityType, String source, String sourceRecordId, String batchId,
+            String correlationId, String payloadFormat, String payload, String payloadHash, Instant now) {
+
+        Document hashUnchanged = new Document("$eq", List.of("$payloadHash", payloadHash));
+
+        Document set = new Document()
+                .append("payload", new Document("$cond", List.of(hashUnchanged, "$payload", payload)))
+                .append("version", new Document("$cond", List.of(
+                        hashUnchanged,
+                        new Document("$ifNull", List.of("$version", 1)),
+                        new Document("$add", List.of(new Document("$ifNull", List.of("$version", 0)), 1)))))
+                .append("updatedAt", new Document("$cond", List.of(
+                        hashUnchanged,
+                        new Document("$ifNull", List.of("$updatedAt", "$ingestedAt")),
+                        now)))
+                .append("payloadHash", payloadHash)
+                .append("ingestedAt", new Document("$ifNull", List.of("$ingestedAt", now)))
+                .append("entityType", entityType.name())
+                .append("source", source)
+                .append("sourceRecordId", sourceRecordId)
+                .append("batchId", batchId)
+                .append("correlationId", correlationId)
+                .append("payloadFormat", payloadFormat);
+
+        Document filter = new Document("source", source)
+                .append("entityType", entityType.name())
+                .append("sourceRecordId", sourceRecordId);
+
+        return new UpdateOneModel<>(filter, List.of(new Document("$set", set)), new UpdateOptions().upsert(true));
     }
 
     private String normalizePayload(Object payloadObject) throws JsonProcessingException {

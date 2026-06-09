@@ -1,0 +1,3 @@
+[
+  {"_id":{"$oid":"67aa280cc773fa28fab57ca4"},"groups":[{"$ref":"groups","$id":{"$oid":"67aa269c1bd2161928cb4883"}}],"affiliations":[],"title":"Lista","description":"lucrari","indicators":[{"$ref":"indicators","$id":{"$oid":"665ce9102dbfdf2e0b3caa33"}}],"_class":"ro.uvt.pokedex.core.model.reporting.GroupReport"}
+]

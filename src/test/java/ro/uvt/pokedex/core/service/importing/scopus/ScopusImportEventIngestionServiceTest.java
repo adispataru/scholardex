@@ -5,9 +5,10 @@ import com.mongodb.MongoBulkWriteException;
 import com.mongodb.ServerAddress;
 import com.mongodb.bulk.BulkWriteError;
 import com.mongodb.bulk.BulkWriteResult;
+import com.mongodb.bulk.BulkWriteUpsert;
 import com.mongodb.bulk.WriteConcernError;
 import com.mongodb.client.MongoCollection;
-import com.mongodb.client.result.InsertManyResult;
+import com.mongodb.client.model.BulkWriteOptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -51,8 +52,6 @@ class ScopusImportEventIngestionServiceTest {
     private MongoTemplate mongoTemplate;
     @Mock
     private MongoCollection<Document> collection;
-    @Mock
-    private InsertManyResult insertManyResult;
 
     private ScopusImportEventIngestionService service;
 
@@ -236,10 +235,12 @@ class ScopusImportEventIngestionServiceTest {
     }
 
     @Test
-    void ingestBatchWithMongoStoresPreparedDocumentsAndCountsSerializationErrors() {
+    void ingestBatchWithMongoBulkUpsertsAndCountsSerializationErrors() {
         when(mongoTemplate.getCollection("scopus.import_events")).thenReturn(collection);
-        when(collection.insertMany(anyList(), any())).thenReturn(insertManyResult);
-        when(insertManyResult.getInsertedIds()).thenReturn(Map.of(0, new BsonInt32(1)));
+        // One new upsert succeeds; the second item fails to serialize and never reaches the bulk write.
+        when(collection.bulkWrite(anyList(), any(BulkWriteOptions.class))).thenReturn(
+                BulkWriteResult.acknowledged(0, 0, 0, 0,
+                        List.of(new BulkWriteUpsert(0, new BsonInt32(1))), List.of()));
 
         ScopusImportEventIngestionService batchService =
                 new ScopusImportEventIngestionService(repository, new ObjectMapper(), mongoTemplate);
@@ -264,19 +265,10 @@ class ScopusImportEventIngestionServiceTest {
                 items
         );
 
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<Document>> docsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(collection).insertMany(docsCaptor.capture(), any());
-        Document doc = docsCaptor.getValue().getFirst();
-        assertEquals("PUBLICATION", doc.getString("entityType"));
-        assertEquals("SCOPUS", doc.getString("source"));
-        assertEquals("ok", doc.getString("sourceRecordId"));
-        assertEquals("batch-1", doc.getString("batchId"));
-        assertEquals("c1", doc.getString("correlationId"));
-        assertEquals("json-object", doc.getString("payloadFormat"));
-        assertEquals("{\"eid\":\"2-s2.0-123\",\"title\":\"Sample\"}", doc.getString("payload"));
-        assertEquals("aaf030fb86d87a18ca0a2452922b65b90a3941d304b44a4c7fa919ce1298790b", doc.getString("payloadHash"));
-        assertNotNull(doc.get("ingestedAt"));
+        // The bulk op is an upsert per item (UpdateOneModel); document field construction is covered
+        // end-to-end by ScopusImportEventSupersedeIntegrationTest. Here we assert the counting:
+        // 1 upsert => imported, the serialization failure => error.
+        verify(collection).bulkWrite(anyList(), any(BulkWriteOptions.class));
         assertEquals(2, outcome.processed());
         assertEquals(1, outcome.imported());
         assertEquals(0, outcome.skipped());
@@ -287,10 +279,12 @@ class ScopusImportEventIngestionServiceTest {
     }
 
     @Test
-    void ingestBatchWithMongoBulkWriteCountsFailedIndexesAsSkipped() {
+    void ingestBatchWithMongoCountsBulkWriteErrorsAsErrorsNotSkips() {
         when(mongoTemplate.getCollection("scopus.import_events")).thenReturn(collection);
-        when(collection.insertMany(anyList(), any())).thenThrow(new MongoBulkWriteException(
-                BulkWriteResult.acknowledged(1, 0, 0, 0, List.of(), List.of()),
+        // One upsert succeeded, one op produced a write error: the error must NOT be counted as a skip.
+        when(collection.bulkWrite(anyList(), any(BulkWriteOptions.class))).thenThrow(new MongoBulkWriteException(
+                BulkWriteResult.acknowledged(0, 0, 0, 0,
+                        List.of(new BulkWriteUpsert(0, new BsonInt32(1))), List.of()),
                 List.of(new BulkWriteError(11000, "dup", new BsonDocument(), 1)),
                 new WriteConcernError(64, "wc", "wc", new BsonDocument()),
                 new ServerAddress(),
@@ -314,8 +308,8 @@ class ScopusImportEventIngestionServiceTest {
 
         assertEquals(2, outcome.processed());
         assertEquals(1, outcome.imported());
-        assertEquals(1, outcome.skipped());
-        assertEquals(0, outcome.errors());
+        assertEquals(0, outcome.skipped());
+        assertEquals(1, outcome.errors());
         assertTrue(outcome.dbInsertEventMs() >= 0L);
     }
 

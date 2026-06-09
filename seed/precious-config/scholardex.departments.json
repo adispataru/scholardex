@@ -1,0 +1,6 @@
+[
+  {"_id":"dept-cs","divisionId":"div-fmi","institutionId":"inst-uvt","name":"Computer Science","headUserIds":[],"domainIds":[],"createdAt":{"$date":"2026-05-30T15:05:16.386Z"},"updatedAt":{"$date":"2026-05-30T15:05:16.386Z"},"_class":"ro.uvt.pokedex.core.model.org.Department"},
+  {"_id":"dept-env","divisionId":"div-iaer","institutionId":"inst-uvt","name":"Environmental Data Science","headUserIds":[],"domainIds":[],"createdAt":{"$date":"2026-05-30T15:05:16.386Z"},"updatedAt":{"$date":"2026-05-30T15:05:16.386Z"},"_class":"ro.uvt.pokedex.core.model.org.Department"},
+  {"_id":"dept-infra","divisionId":"div-ccs","institutionId":"inst-uvt","name":"Research Infrastructure","headUserIds":[],"domainIds":[],"createdAt":{"$date":"2026-05-30T15:05:16.386Z"},"updatedAt":{"$date":"2026-05-30T15:05:16.386Z"},"_class":"ro.uvt.pokedex.core.model.org.Department"},
+  {"_id":"dept-math","divisionId":"div-fmi","institutionId":"inst-uvt","name":"Mathematics","headUserIds":[],"domainIds":[],"createdAt":{"$date":"2026-05-30T15:05:16.386Z"},"updatedAt":{"$date":"2026-05-30T15:05:16.386Z"},"_class":"ro.uvt.pokedex.core.model.org.Department"}
+]
