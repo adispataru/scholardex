@@ -141,7 +141,7 @@ public class ScholardexEdgeReconciliationService {
                     continue;
                 }
                 if (!expectedAuthorIds.contains(normalize(edge.getAuthorId()))) {
-                    authorshipFactRepository.delete(edge);
+                    edgeWriterService.removeAuthorshipEdge(edge);
                     result.markUpdated();
                 }
             }
@@ -222,7 +222,7 @@ public class ScholardexEdgeReconciliationService {
                     continue;
                 }
                 if (!expectedAffiliationIds.contains(normalize(edge.getAffiliationId()))) {
-                    authorAffiliationFactRepository.delete(edge);
+                    edgeWriterService.removeAuthorAffiliationEdge(edge);
                     result.markUpdated();
                 }
             }

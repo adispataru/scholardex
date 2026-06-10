@@ -35,7 +35,7 @@ public class PublicationEnrichmentLinkerService {
     private static final Pattern DOI_PREFIX = Pattern.compile("^doi:", Pattern.CASE_INSENSITIVE);
 
     private final ScholardexPublicationFactRepository publicationFactRepository;
-    private final ScholardexSourceLinkService sourceLinkService;
+    private final ScholardexPublicationWriter publicationWriter;
     private final ScholardexIdentityConflictRepository identityConflictRepository;
     private final PublicationLinkConflictRepository conflictRepository;
 
@@ -83,13 +83,8 @@ public class PublicationEnrichmentLinkerService {
         }
 
         target.setWosId(incomingWosId);
-        target.setSource(source);
-        target.setSourceRecordId(incomingWosId);
-        target.setSourceBatchId(linkerRunId);
-        target.setSourceCorrelationId(linkerVersion);
-        target.setUpdatedAt(Instant.now());
-        publicationFactRepository.save(target);
-        upsertSourceLink(source, incomingWosId, target.getId(), linkerVersion, linkerRunId, "wos-link");
+        publicationWriter.upsertAndLinkSource(target,
+                new CanonicalWriteProvenance(source, incomingWosId, linkerRunId, linkerVersion, null), "wos-link");
         return new LinkResult(LinkState.LINKED, "linked", target.getId(), null);
     }
 
@@ -136,13 +131,8 @@ public class PublicationEnrichmentLinkerService {
         }
 
         target.setGoogleScholarId(incomingScholarId);
-        target.setSource(source);
-        target.setSourceRecordId(incomingScholarId);
-        target.setSourceBatchId(linkerRunId);
-        target.setSourceCorrelationId(linkerVersion);
-        target.setUpdatedAt(Instant.now());
-        publicationFactRepository.save(target);
-        upsertSourceLink(source, incomingScholarId, target.getId(), linkerVersion, linkerRunId, "scholar-link");
+        publicationWriter.upsertAndLinkSource(target,
+                new CanonicalWriteProvenance(source, incomingScholarId, linkerRunId, linkerVersion, null), "scholar-link");
         return new LinkResult(LinkState.LINKED, "linked", target.getId(), null);
     }
 
@@ -231,30 +221,6 @@ public class PublicationEnrichmentLinkerService {
         }
         identityConflictRepository.save(conflict);
         CanonicalObservabilityMetrics.recordConflictCreated(ScholardexEntityType.PUBLICATION.name(), source, reason);
-    }
-
-    private void upsertSourceLink(
-            String source,
-            String sourceRecordId,
-            String canonicalId,
-            String linkerVersion,
-            String linkerRunId,
-            String reason
-    ) {
-        if (source == null || source.isBlank() || sourceRecordId == null || sourceRecordId.isBlank()) {
-            return;
-        }
-        sourceLinkService.link(
-                ScholardexEntityType.PUBLICATION,
-                source,
-                sourceRecordId,
-                canonicalId,
-                reason,
-                null,
-                linkerRunId,
-                linkerVersion,
-                false
-        );
     }
 
     private String normalizeBlank(String value) {

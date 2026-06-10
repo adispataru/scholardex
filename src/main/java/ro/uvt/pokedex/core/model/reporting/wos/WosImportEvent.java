@@ -20,5 +20,10 @@ public class WosImportEvent {
     private String payloadFormat;
     private String payload;
     private String sourceRowItem;
+    /** First-write time; preserved across supersedes (H54.3b). */
     private Instant ingestedAt;
+    /** Last-write time; changes only when the payload is superseded (H54.3b). */
+    private Instant updatedAt;
+    /** Number of distinct payloads seen for this key: 1 on first ingest, +1 each supersede (H54.3b). */
+    private int version;
 }

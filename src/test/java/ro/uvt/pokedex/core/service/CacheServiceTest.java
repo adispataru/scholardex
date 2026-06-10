@@ -16,6 +16,7 @@ import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
 import ro.uvt.pokedex.core.service.application.GroupMembershipService;
 import ro.uvt.pokedex.core.service.application.ResearcherAuthorLookupService;
+import ro.uvt.pokedex.core.service.application.ScholardexManualEditService;
 import ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService;
 
 import java.util.List;
@@ -35,6 +36,8 @@ class CacheServiceTest {
 
     @Mock
     private ScholardexProjectionReadService scholardexProjectionReadService;
+    @Mock
+    private ScholardexManualEditService scholardexManualEditService;
     @Mock
     private CoreConferenceRankingRepository coreConferenceRankingRepository;
     @Mock
@@ -69,6 +72,7 @@ class CacheServiceTest {
 
         cacheService = new CacheService(
                 scholardexProjectionReadService,
+                scholardexManualEditService,
                 coreConferenceRankingRepository,
                 groupRepository,
                 userRepository,
@@ -127,6 +131,7 @@ class CacheServiceTest {
 
         CacheService service = new CacheService(
                 scholardexProjectionReadService,
+                scholardexManualEditService,
                 coreConferenceRankingRepository,
                 groupRepository,
                 userRepository,
@@ -149,6 +154,7 @@ class CacheServiceTest {
 
         CacheService service = new CacheService(
                 scholardexProjectionReadService,
+                scholardexManualEditService,
                 coreConferenceRankingRepository,
                 groupRepository,
                 userRepository,
@@ -201,9 +207,9 @@ class CacheServiceTest {
         cacheService.saveAllAffiliations();
 
         verify(coreConferenceRankingRepository).saveAll(cacheService.getConfRankingCache().get("ICSE"));
-        verify(scholardexProjectionReadService).saveAuthor(cacheService.getAuthor("a1"));
-        verify(scholardexProjectionReadService).saveForum(cacheService.getForum("f1"));
-        verify(scholardexProjectionReadService).saveAffiliation(cacheService.getAffiliation("af1"));
+        verify(scholardexManualEditService).saveAuthor(cacheService.getAuthor("a1"));
+        verify(scholardexManualEditService).saveForum(cacheService.getForum("f1"));
+        verify(scholardexManualEditService).saveAffiliation(cacheService.getAffiliation("af1"));
     }
 
     @Test
@@ -231,6 +237,7 @@ class CacheServiceTest {
 
         CacheService service = new CacheService(
                 scholardexProjectionReadService,
+                scholardexManualEditService,
                 coreConferenceRankingRepository,
                 groupRepository,
                 userRepository,
@@ -253,6 +260,7 @@ class CacheServiceTest {
 
         CacheService service = new CacheService(
                 scholardexProjectionReadService,
+                scholardexManualEditService,
                 coreConferenceRankingRepository,
                 groupRepository,
                 userRepository,

@@ -300,12 +300,179 @@ artifacts only; the source files are the authoritative backup. Add `data/backups
     UNIQUE. Full `./gradlew test` green. Kept `payload` (rebuild still reads it). Scopus ledger only
     — the WoS ledger key already excludes payloadHash and audited clean; WoS supersede-on-change is
     a parallel follow-up.
+  - **H54.3b — WoS ledger supersede parity. DONE 2026-06-09.** Finding (2026-06-09): the WoS ledger ALREADY
+    supersedes correctly — `WosImportEventIngestionService.processEventFast` loads existing events
+    by row-item and does skip-if-identical / update-in-place-if-changed / insert-if-new, and the
+    behavior is already covered by `rerunIsIdempotentAndChangesProduceUpdates`. The earlier
+    "parallel follow-up" note wrongly assumed WoS used Scopus's old insert-and-skip. So this slice
+    is not "add supersede" — it is the parity gap: WoS overwrote `ingestedAt` on every update
+    (losing first-ingest time) and tracked no `version`. H54.3b adds `version` + `updatedAt` to
+    `WosImportEvent`, preserves `ingestedAt` as first-ingest time, and bumps `version` on supersede
+    — matching the Scopus 3a shape. (`ingestedAt` is read nowhere except the supersede's own
+    checksum comparison, so changing its meaning is safe.) Implemented: `WosImportEvent` gains
+    `version` + `updatedAt`; `processEventFast` preserves `ingestedAt`, sets `updatedAt`, and bumps
+    `version` on supersede (insert = version 1). Extended `rerunIsIdempotentAndChangesProduceUpdates`
+    to assert version 1 → 2, preserved `ingestedAt`, and non-null `updatedAt`. Full `./gradlew test`
+    green. No index/startup change (WoS key unchanged), so no boot/reconcile step required.
   - **Moved to H54.6:** drop/externalize full-payload storage, once rebuild reads from source
     files — and only for sources with a retained external file (NOT user-sourced events).
 - **H54.4** — Single-owner write-paths for stage-2 facts: one builder per source, route
   all existing writers through it, add provenance fields, delete redundant writers.
+  **Scoping result 2026-06-09 (read-only audit): the consolidation goal is already met at
+  stage-2.** Writer map:
+  - `scopus.*_facts` (publication/author/affiliation/citation/forum/funding) — sole content
+    writer is `ScopusFactBuilderService` (saveAll); `ScopusBigBangMigrationService` only calls
+    `deleteAll()` (a rebuild wipe).
+  - `wos.{category,metric}_facts` + `wos.fact_conflicts` — sole writer `WosFactBuilderService`;
+    `wos.journal_identity` written by `WosIdentityResolutionService.save` (a build sub-step);
+    `WosBigBangMigrationService` only `deleteAll()`.
+  - `user_defined.{publication,forum}_facts` — sole writer `UserDefinedFactBuilderService`.
+  - The `Scholardex*CanonicalizationService` and parity/reconciliation services only **read**
+    stage-2 facts (zero writes). No redundant/rogue writers to delete.
+  - Provenance already present on stage-2 facts (`sourceEventId`, `source`, `sourceRecordId`,
+    `sourceBatchId`, `sourceCorrelationId`, WoS `sourceType`/`sourceFile`/`sourceVersion`/
+    `sourceRowItem`; Scopus/UserDefined also `updatedAt`). **Only gap: `builderVersion`
+    everywhere, and `builtAt` on WoS facts.**
+  - `builderVersion` only has meaning once a versioned rebuild consumes it (H54.6), so it is
+    deferred there rather than stamped in isolation now.
+  - **The real multi-writer sprawl is at stage-3** (`scholardex.*`): e.g. `scholardex.publication_facts`
+    is written by ~10 services (onboarding, authorship-decision, edge-reconciliation, enrichment
+    linker, DBLP enrichment, two canonicalizers, projection builder, migration, user-defined
+    canonicalization). That is H54.5's domain.
+  - **CLOSED-as-verified 2026-06-09:** stage-2 is already single-owner with full source lineage;
+    no redundant writers to remove. `builderVersion`/`builtAt` deferred to H54.6 (where a versioned
+    rebuild consumes them). Proceeding to H54.5 for the stage-3 consolidation.
 - **H54.5** — Single-owner write-paths for stage-3 canonical (Scholardex) with provenance
   and rebuild determinism tests.
+  **Scoping result 2026-06-09 (read-only audit).** Unlike stage-2, stage-3 canonical facts are
+  mutated by *multiple legitimately-different concerns* — so "one builder" does NOT fit; the
+  fix is a single guarded **write facade**, not collapsing everything into one builder. Accurate
+  writer map (direct `repository.save/saveAll/insert/delete` on `scholardex.*_facts`):
+  - **Canonicalization builders (source → canonical):** `ScholardexPublicationCanonicalizationService`
+    (publication_facts), `ScholardexAuthorCanonicalizationService` (author_facts),
+    `ScholardexAffiliationCanonicalizationService` (affiliation_facts),
+    `ScholardexCitationCanonicalizationService` (citation_facts),
+    `UserDefinedCanonicalizationService` (publication_facts + forum_facts),
+    `WosScholardexOnboardingService` (forum_facts).
+  - **Enrichment/linking:** `PublicationEnrichmentLinkerService` (publication_facts).
+  - **Reconciliation (edge deletes):** `ScholardexEdgeReconciliationService` (authorship_facts,
+    author_affiliation_facts).
+  - **User manual edits — MISLOCATED:** `ScholardexProjectionReadService.save{Forum,Author,Affiliation}`
+    write canonical facts with `source = MANUAL_*_EDIT`. A write path inside a class named
+    "ProjectionReadService" (CQRS smell) — relocate.
+  - **Rebuild wipe:** `ScopusBigBangMigrationService.deleteAll` (→ H54.6).
+  - **Confirmed NON-writers (reads only), correcting the earlier ~10 estimate:**
+    `AdminDashboardService` (reads), `DblpPublicationEnrichmentService` (writes the separate
+    `publication_dblp_evidence` collection, not facts), `PublicationAuthorshipDecisionService`
+    (writes the `publication_authorship_decisions` collection), `ScholardexProjectionBuilderService`
+    (writes Postgres `reporting_read`, i.e. stage-4).
+  - Per collection: publication_facts has 3 writers/3 concerns; forum_facts 3 writers/2 concerns;
+    author & affiliation 2 each (builder + manual edit); citation 1.
+  - **Proposed design:** a `ScholardexCanonicalWriter` facade (unified or per-entity) that owns the
+    repositories and exposes intent-named operations (`upsertFromSource`, `applyEnrichment`,
+    `applyManualEdit`, `removeEdge`), centralizing canonical-id resolution, source-id merging,
+    provenance stamping (+ future `builderVersion`), invariant enforcement, and dirty-marker
+    emission. The ~9 call sites become callers. Likely sub-sliced: 5a builders → facade;
+    5b enrichment + reconciliation → facade; 5c relocate the manual-edit path out of the read
+    service. High risk (canonical linking core, many call sites) — behavior-preserving, leans on
+    existing canonicalization tests + new determinism tests.
+  - **Decisions 2026-06-09:** (1) facade granularity — **decide after a 5a spike** on
+    `publication_facts` (build the publication writer first, see whether per-entity or one unified
+    writer reads better in this codebase, then commit for the rest); (2) the mislocated user
+    manual-edit write path **is in scope** as 5c. Sub-slices: **5a** publication writer spike +
+    route its 3 call sites (publication canonicalization, user-defined canonicalization,
+    enrichment linker); **5b** remaining-entity writers (author/affiliation/citation/forum) +
+    edge reconciliation, granularity per the 5a decision; **5c** relocate manual edits onto the
+    facade out of `ScholardexProjectionReadService`.
+  - **5a DONE 2026-06-09.** Added `CanonicalWriteProvenance` (shared record) and
+    `ScholardexPublicationWriter.upsertAndLinkSource(fact, provenance, reason)` — stamps the four
+    uniform provenance fields + `updatedAt`, persists, and upserts the PUBLICATION source link
+    (guard-skips when source/sourceRecordId blank, preserving prior linker behavior; links by the
+    fact's own id, as the inline paths did; `sourceEventId` stays caller-managed on the fact and is
+    recorded only on the link). Routed `PublicationEnrichmentLinkerService` (both wos + scholar
+    paths; dropped its now-unused `sourceLinkService` field and private `upsertSourceLink`) and the
+    `UserDefinedCanonicalizationService` publication path through the writer. Added
+    `ScholardexPublicationWriterTest`; updated the two service tests to wire a real writer over the
+    mocked repo + source-link service so their existing save/link verifications still hold. Full
+    `./gradlew test` green. The writer is the future chokepoint for dirty-markers + `builderVersion`.
+  - **5b DONE 2026-06-09.** Scoping found the remaining entities don't share publication's clean
+    uniform shape, so 5b is narrower than the doc imagined:
+    - **Forum:** added `ScholardexForumWriter` (mirrors the publication writer) and routed the
+      `UserDefinedCanonicalizationService` forum path through it. `WosScholardexOnboardingService`
+      is intentionally NOT routed — its `mergeForum` stamps none of the four provenance fields
+      (it tracks provenance via the source link only), so forcing it through a provenance-stamping
+      writer would silently add fields it never wrote; left as its own builder.
+    - **Edges:** `ScholardexEdgeWriterService` already owned edge upserts and reconciliation already
+      routed upserts through it, but the two reconciliation *deletes* hit the repository directly.
+      Added `removeAuthorshipEdge` / `removeAuthorAffiliationEdge` (behavior-preserving delegates to
+      `repository.delete`, consistent with the writer which emits no dirty-markers) and routed the
+      two `ScholardexEdgeReconciliationService` deletes through them — now all edge mutations
+      (upsert + delete) flow through the edge writer.
+    - **Author/affiliation/citation:** no non-grandfathered, non-manual-edit writers exist, so no
+      writers were built (would be speculative); their writers arrive in 5c where the manual-edit
+      path needs them.
+    - Tests: `ScholardexForumWriterTest`, edge-writer remove tests; updated the reconciliation test
+      to verify the routed-through removes and wired a real forum writer into the user-defined test.
+      Full `./gradlew test` green (one Testcontainers Mongo read-timeout flake in untouched
+      integration tests, passed on isolation + re-run).
+  - **5c DONE 2026-06-09.** Relocated the user manual-edit write path out of the read service —
+    fixing the CQRS smell:
+    - Added `applyManualEdit(fact, source, sourceRecordId, reason)` to `ScholardexForumWriter` and
+      new `ScholardexAuthorWriter` / `ScholardexAffiliationWriter`. It stamps
+      source/sourceRecordId/updatedAt only (NOT batch/correlation, which manual edits preserve) +
+      save + source-link with null batch/correlation/event — matching the prior behavior exactly.
+    - Extracted `ScholardexCanonicalIdResolver` (resolveCanonicalId + resolveCanonicalIds) shared by
+      the read service and the new write service.
+    - Created `ScholardexManualEditService` holding `saveForum`/`saveAuthor`/`saveAffiliation`
+      (resolve canonical id → load-or-create fact → set content → delegate to the writer →
+      author-affiliation edges via `ScholardexEdgeWriterService`). Redirected the two callers
+      (`AdminCatalogFacade`, `CacheService`) to it.
+    - `ScholardexProjectionReadService` lost the 3 save methods + write-only helpers
+      (`resolveCanonicalId`, `upsertSourceLink`) and 5 now-dead injected fields (the 3 Mongo fact
+      repos, `edgeWriterService`, `sourceLinkService`); `resolveCanonicalIds` delegates to the
+      resolver. Feasible because only ONE test constructed it directly (the other 25 mock it).
+    - Tests: migrated the save-path tests into `ScholardexManualEditServiceTest` (real writers +
+      resolver over mocked repos/source-link); updated `AdminCatalogFacadeTest` (@InjectMocks),
+      `CacheServiceTest` (constructor + verifies), and the one read-service constructor call. Full
+      `./gradlew test` green (incl. the `@SpringBootTest` context test validating the new beans +
+      changed constructors).
+  - **5a spike findings 2026-06-09 (read-only).** All three publication write sites share the same
+    pre-persist shape: stamp provenance (`source`/`sourceRecordId`/`sourceBatchId`/
+    `sourceCorrelationId`/`updatedAt`, sometimes `sourceEventId`) → `repository.save` → usually
+    `upsertSourceLink`. That common path is the natural facade responsibility (+ dirty-markers and
+    future `builderVersion`). BUT the writes are not uniform:
+    - `UserDefinedCanonicalizationService` and `PublicationEnrichmentLinkerService` are simple
+      single-`save` + provenance + source-link — trivial to route through a facade.
+    - `ScholardexPublicationCanonicalizationService` (~1100 lines) does **bulk chunked insert/update**
+      partitioned by `pendingInsertPublicationIds`, with `DuplicateKeyException` recovery that looks
+      up the existing fact by normalized DOI and re-merges via `applyCanonicalPublicationFields` —
+      tightly coupled to its `ChunkContext`. The merge is canonicalization-specific; the
+      persist+recovery+provenance is generic.
+    - **Granularity recommendation:** **per-entity writers** (each entity has its own natural key /
+      recovery key — publication=DOI, forum=ISSN, author=name — and source-link entity type) with a
+      small shared provenance/source-link/dirty-marker helper. A single unified writer would either
+      leak per-entity recovery logic or become a god-class.
+    - **Facade boundary:** the writer owns persist + provenance stamping + source-link upsert +
+      dirty-marker + generic dup-key-by-natural-key recovery; callers keep content computation/merge.
+    - **Risk:** the 2 simple sites are low-risk; routing the canonicalization bulk path through the
+      writer's batch method (while leaving merge in the service) is the high-risk part — behavior must
+      be preserved, leaning on existing canonicalization tests + a new rebuild-determinism test.
+  - **Scope decision 2026-06-09 — sanctioned surface, not literal single owner.** H54.5's goal is
+    reframed: the per-entity writer is the **sanctioned write surface for the secondary/ad-hoc
+    mutators** (where provenance/source-link/dirty-marker drift actually creeps in); the four Scopus
+    bulk **canonicalization builders are grandfathered as correct** and keep their direct,
+    optimized bulk+recovery write paths. The dividing line is write *shape*, not layer:
+    - **Route through the writer (simple single-`save` + provenance):** `UserDefinedCanonicalizationService`,
+      `WosScholardexOnboardingService`, `PublicationEnrichmentLinkerService`,
+      `ScholardexEdgeReconciliationService` (delete), and the manual-edit path in
+      `ScholardexProjectionReadService` (5c).
+    - **Grandfathered as correct (bulk chunked insert/update + dup-key recovery):**
+      `ScholardexPublication/Author/Affiliation/CitationCanonicalizationService`.
+    - **Trade-off (explicit):** this does NOT yield one-writer-per-collection (e.g. `publication_facts`
+      keeps the canonicalization builder + the writer). It yields one *sanctioned surface* for
+      secondary mutations. Grandfathered builders carry an explicit contract: they must stamp the
+      same provenance the writer enforces. Reversible — a builder may adopt the writer's batch method
+      later. This removes the high-risk bulk-path rewrite from H54.5 entirely.
 - **H54.6** — `PipelineRebuildService` with per-stage `rebuild()`; chain to a full
   rebuild-from-source; replace derived-data migration runners with versioned rebuild.
   **Also (moved from H54.3):** re-point fact-building at source files instead of the ledger

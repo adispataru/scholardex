@@ -97,6 +97,24 @@ public class ScholardexEdgeWriterService {
         return EdgeWriteResult.accepted(edge.getId(), created);
     }
 
+    /**
+     * Remove a stale authorship edge. The sanctioned single surface for authorship-edge deletion
+     * (H54.5b): edge reconciliation routes its deletes here instead of the repository directly, so
+     * all authorship-edge mutations flow through this writer.
+     */
+    public void removeAuthorshipEdge(ScholardexAuthorshipFact edge) {
+        if (edge != null) {
+            authorshipFactRepository.delete(edge);
+        }
+    }
+
+    /** Remove a stale author-affiliation edge (sanctioned single surface for deletion, H54.5b). */
+    public void removeAuthorAffiliationEdge(ScholardexAuthorAffiliationFact edge) {
+        if (edge != null) {
+            authorAffiliationFactRepository.delete(edge);
+        }
+    }
+
     public BatchEdgeWriteResult batchUpsertAuthorshipEdges(
             List<EdgeWriteCommand> commands,
             java.util.Map<String, ScholardexAuthorshipFact> preloadedByNaturalKey,

@@ -39,6 +39,7 @@ import static org.mockito.Mockito.*;
 class AdminCatalogFacadeTest {
 
     @Mock private ScholardexProjectionReadService scholardexProjectionReadService;
+    @Mock private ScholardexManualEditService scholardexManualEditService;
     @Mock private ArtisticEventRepository artisticEventRepository;
     @Mock private CoreConferenceRankingRepository coreConferenceRankingRepository;
     @Mock private IndicatorRepository indicatorRepository;
@@ -129,14 +130,14 @@ class AdminCatalogFacadeTest {
         when(domainRepository.findById("d1")).thenReturn(Optional.of(domain));
         when(domainRepository.save(domain)).thenReturn(domain);
         when(scholardexProjectionReadService.findForumById("f1")).thenReturn(Optional.of(forum));
-        when(scholardexProjectionReadService.saveForum(forum)).thenReturn(forum);
+        when(scholardexManualEditService.saveForum(forum)).thenReturn(forum);
         when(scholardexProjectionReadService.findAuthorsByAffiliationId("aff1")).thenReturn(List.of(author));
         when(scholardexProjectionReadService.findAuthorById("a1")).thenReturn(Optional.of(author));
         when(scholardexProjectionReadService.findAllPublicationsByAuthorsContaining("a1")).thenReturn(List.of(publication));
-        when(scholardexProjectionReadService.saveAuthor(author)).thenReturn(author);
+        when(scholardexManualEditService.saveAuthor(author)).thenReturn(author);
         when(scholardexProjectionReadService.findAllAffiliations()).thenReturn(List.of(affiliationA));
         when(scholardexProjectionReadService.findAffiliationById("aff1")).thenReturn(Optional.of(affiliationA));
-        when(scholardexProjectionReadService.saveAffiliation(affiliationA)).thenReturn(affiliationA);
+        when(scholardexManualEditService.saveAffiliation(affiliationA)).thenReturn(affiliationA);
         when(artisticEventRepository.findAll()).thenReturn(List.of(artisticEvent));
         when(coreConferenceRankingRepository.findAll()).thenReturn(List.of(core));
         when(postgresWosRankingDetailsReadPort.findByJournalId("w1")).thenReturn(Optional.of(wos));

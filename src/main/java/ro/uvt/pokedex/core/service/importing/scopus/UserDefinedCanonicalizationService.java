@@ -13,6 +13,9 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFact
 import ro.uvt.pokedex.core.repository.scopus.canonical.UserDefinedForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.UserDefinedPublicationFactRepository;
 import ro.uvt.pokedex.core.service.application.ScholardexEdgeWriterService;
+import ro.uvt.pokedex.core.service.application.CanonicalWriteProvenance;
+import ro.uvt.pokedex.core.service.application.ScholardexForumWriter;
+import ro.uvt.pokedex.core.service.application.ScholardexPublicationWriter;
 import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.application.UserDefinedWizardOnboardingContract;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
@@ -58,6 +61,8 @@ public class UserDefinedCanonicalizationService {
     private final ScholardexPublicationFactRepository scholardexPublicationFactRepository;
     private final ScholardexForumFactRepository scholardexForumFactRepository;
     private final ScholardexSourceLinkService sourceLinkService;
+    private final ScholardexPublicationWriter publicationWriter;
+    private final ScholardexForumWriter forumWriter;
     private final ScholardexEdgeWriterService edgeWriterService;
     private final ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
 
@@ -121,11 +126,9 @@ public class UserDefinedCanonicalizationService {
             target.setAggregationType(sourceForum.getAggregationType());
             target.setAggregationTypeNormalized(normalizeToken(sourceForum.getAggregationType()));
             target.setPublisher(sourceForum.getPublisher());
+            // sourceEventId is set on the fact as content; the writer stamps the uniform provenance
+            // fields + updatedAt and records sourceEventId on the source link.
             target.setSourceEventId(sourceForum.getSourceEventId());
-            target.setSource(SOURCE_USER_DEFINED);
-            target.setSourceRecordId(sourceForum.getSourceRecordId());
-            target.setSourceBatchId(sourceForum.getSourceBatchId());
-            target.setSourceCorrelationId(sourceForum.getSourceCorrelationId());
             target.setReviewState(sourceForum.getReviewState());
             target.setReviewReason(sourceForum.getReviewReason());
             target.setReviewStateUpdatedAt(sourceForum.getReviewStateUpdatedAt());
@@ -134,14 +137,22 @@ public class UserDefinedCanonicalizationService {
             target.setWizardSubmitterEmail(sourceForum.getWizardSubmitterEmail());
             target.setWizardSubmitterResearcherId(sourceForum.getWizardSubmitterResearcherId());
             target.setWizardSubmittedAt(sourceForum.getWizardSubmittedAt());
-            target.setUpdatedAt(now);
             target.setAliasIssns(buildAliasIssns(target.getIssn(), target.getEIssn(), target.getAliasIssns()));
             List<String> userSourceForumIds = new ArrayList<>(safeList(target.getUserSourceForumIds()));
             if (!userSourceForumIds.contains(sourceForum.getSourceRecordId())) {
                 userSourceForumIds.add(sourceForum.getSourceRecordId());
             }
             target.setUserSourceForumIds(userSourceForumIds);
-            scholardexForumFactRepository.save(target);
+
+            forumWriter.upsertAndLinkSource(
+                    target,
+                    new CanonicalWriteProvenance(
+                            SOURCE_USER_DEFINED,
+                            sourceForum.getSourceRecordId(),
+                            sourceForum.getSourceBatchId(),
+                            sourceForum.getSourceCorrelationId(),
+                            sourceForum.getSourceEventId()),
+                    LINK_REASON_USER_DEFINED_FORUM);
             if (created) {
                 canonicalForums.add(target);
                 result.markImported();
@@ -149,17 +160,6 @@ public class UserDefinedCanonicalizationService {
                 result.markUpdated();
             }
             canonicalBySourceRecordId.put(sourceForum.getSourceRecordId(), target.getId());
-            sourceLinkService.link(
-                    ScholardexEntityType.FORUM,
-                    SOURCE_USER_DEFINED,
-                    sourceForum.getSourceRecordId(),
-                    target.getId(),
-                    LINK_REASON_USER_DEFINED_FORUM,
-                    sourceForum.getSourceEventId(),
-                    sourceForum.getSourceBatchId(),
-                    sourceForum.getSourceCorrelationId(),
-                    false
-            );
         }
 
         return canonicalBySourceRecordId;
@@ -238,35 +238,28 @@ public class UserDefinedCanonicalizationService {
             target.setWizardSubmitterEmail(sourcePublication.getWizardSubmitterEmail());
             target.setWizardSubmitterResearcherId(sourcePublication.getWizardSubmitterResearcherId());
             target.setWizardSubmittedAt(sourcePublication.getWizardSubmittedAt());
+            // sourceEventId is set on the fact as content here; the writer stamps the uniform
+            // provenance fields + updatedAt and records sourceEventId on the source link.
             target.setSourceEventId(sourcePublication.getSourceEventId());
-            target.setSource(SOURCE_USER_DEFINED);
-            target.setSourceRecordId(sourcePublication.getSourceRecordId());
-            target.setSourceBatchId(sourcePublication.getSourceBatchId());
-            target.setSourceCorrelationId(sourcePublication.getSourceCorrelationId());
-            target.setUpdatedAt(now);
 
             AuthorBridgeResult authorBridgeResult = bridgeAuthors(sourcePublication.getAuthorIds());
             target.setAuthorIds(authorBridgeResult.canonicalAuthorIds());
             target.setPendingAuthorSourceIds(authorBridgeResult.pendingSourceIds());
 
-            scholardexPublicationFactRepository.save(target);
+            publicationWriter.upsertAndLinkSource(
+                    target,
+                    new CanonicalWriteProvenance(
+                            SOURCE_USER_DEFINED,
+                            sourcePublication.getSourceRecordId(),
+                            sourcePublication.getSourceBatchId(),
+                            sourcePublication.getSourceCorrelationId(),
+                            sourcePublication.getSourceEventId()),
+                    LINK_REASON_USER_DEFINED_PUBLICATION);
             if (created) {
                 result.markImported();
             } else {
                 result.markUpdated();
             }
-
-            sourceLinkService.link(
-                    ScholardexEntityType.PUBLICATION,
-                    SOURCE_USER_DEFINED,
-                    sourcePublication.getSourceRecordId(),
-                    target.getId(),
-                    LINK_REASON_USER_DEFINED_PUBLICATION,
-                    sourcePublication.getSourceEventId(),
-                    sourcePublication.getSourceBatchId(),
-                    sourcePublication.getSourceCorrelationId(),
-                    false
-            );
             upsertPublicationEdges(target, sourcePublication, authorBridgeResult);
         }
     }

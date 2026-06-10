@@ -12,6 +12,7 @@ import ro.uvt.pokedex.core.repository.reporting.CoreConferenceRankingRepository;
 import ro.uvt.pokedex.core.repository.reporting.GroupRepository;
 import ro.uvt.pokedex.core.service.application.GroupMembershipService;
 import ro.uvt.pokedex.core.service.application.ResearcherAuthorLookupService;
+import ro.uvt.pokedex.core.service.application.ScholardexManualEditService;
 import ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService;
 import ro.uvt.pokedex.core.service.reporting.ConferenceTitleNormalizationSupport;
 
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 @Data
 public class CacheService {
     private final ScholardexProjectionReadService scholardexProjectionReadService;
+    private final ScholardexManualEditService scholardexManualEditService;
     private final ConcurrentMap<String, ScholardexForumView> forumCache;
 
     private final CoreConferenceRankingRepository coreConferenceRankingRepository;
@@ -40,6 +42,7 @@ public class CacheService {
     @Autowired
     public CacheService(
             ScholardexProjectionReadService scholardexProjectionReadService,
+            ScholardexManualEditService scholardexManualEditService,
             CoreConferenceRankingRepository coreConferenceRankingRepository,
             GroupRepository groupRepository,
             UserRepository userRepository,
@@ -47,6 +50,7 @@ public class CacheService {
             GroupMembershipService groupMembershipService
     ) {
         this.scholardexProjectionReadService = scholardexProjectionReadService;
+        this.scholardexManualEditService = scholardexManualEditService;
         this.coreConferenceRankingRepository = coreConferenceRankingRepository;
         this.groupRepository = groupRepository;
         this.userRepository = userRepository;
@@ -132,15 +136,15 @@ public class CacheService {
     }
 
     public void saveAllAuthors() {
-        authorCache.values().forEach(scholardexProjectionReadService::saveAuthor);
+        authorCache.values().forEach(scholardexManualEditService::saveAuthor);
     }
 
     public void saveAllForums() {
-        forumCache.values().forEach(scholardexProjectionReadService::saveForum);
+        forumCache.values().forEach(scholardexManualEditService::saveForum);
     }
 
     public void saveAllAffiliations() {
-        affiliationCache.values().forEach(scholardexProjectionReadService::saveAffiliation);
+        affiliationCache.values().forEach(scholardexManualEditService::saveAffiliation);
     }
 
     private void indexConferenceRankingByTitle(CoreConferenceRanking ranking) {

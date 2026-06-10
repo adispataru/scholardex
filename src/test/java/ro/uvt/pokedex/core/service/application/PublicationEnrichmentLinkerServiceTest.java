@@ -48,9 +48,11 @@ class PublicationEnrichmentLinkerServiceTest {
 
     @BeforeEach
     void setUp() {
+        // Wire a real writer over the mocked repo + source-link service so the existing
+        // save/link verifications still observe the same collaborators (H54.5a).
         service = new PublicationEnrichmentLinkerService(
                 publicationFactRepository,
-                sourceLinkService,
+                new ScholardexPublicationWriter(publicationFactRepository, sourceLinkService),
                 identityConflictRepository,
                 conflictRepository
         );

@@ -549,6 +549,7 @@ public class WosImportEventIngestionService {
         try {
             String payload = normalizePayload(payloadObject);
             String checksum = sha256Hex(payload);
+            Instant now = Instant.now();
             WosImportEvent existing = existingByRowItem.get(sourceRowItem);
             if (existing != null) {
                 WosImportEvent event = existing;
@@ -556,10 +557,12 @@ public class WosImportEventIngestionService {
                     total.markSkipped("unchanged=" + sourceFile + "#" + sourceRowItem);
                     return;
                 }
+                // Supersede in place: keep first-ingest time, advance last-write time and version.
                 event.setPayloadFormat(payloadFormat);
                 event.setPayload(payload);
                 event.setChecksum(checksum);
-                event.setIngestedAt(Instant.now());
+                event.setUpdatedAt(now);
+                event.setVersion(event.getVersion() + 1);
                 toPersist.add(event);
                 total.markUpdated();
                 return;
@@ -572,7 +575,9 @@ public class WosImportEventIngestionService {
             event.setPayloadFormat(payloadFormat);
             event.setPayload(payload);
             event.setChecksum(checksum);
-            event.setIngestedAt(Instant.now());
+            event.setIngestedAt(now);
+            event.setUpdatedAt(now);
+            event.setVersion(1);
             toPersist.add(event);
             total.markImported();
         } catch (Exception e) {

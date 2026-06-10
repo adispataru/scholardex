@@ -133,6 +133,9 @@ class WosImportEventIngestionServiceTest {
         WosImportEvent eventRef = store.get(WosSourceType.GOV_AIS_RIS, "AIS_2024.xlsx", "batch-1", "1");
         assertNotNull(eventRef);
         String checksumBeforeChange = eventRef.getChecksum();
+        assertEquals(1, eventRef.getVersion());
+        java.time.Instant firstIngestedAt = eventRef.getIngestedAt();
+        assertNotNull(firstIngestedAt);
 
         createSampleExcel(ais, 9.9);
         ImportProcessingResult third = service.ingestDirectory(dir.toString(), "batch-1");
@@ -149,6 +152,10 @@ class WosImportEventIngestionServiceTest {
         assertNotNull(updatedEvent.getChecksum());
         assertNotNull(updatedEvent.getIngestedAt());
         assertNotEquals(checksumBeforeChange, updatedEvent.getChecksum());
+        // H54.3b: supersede bumps version, advances updatedAt, and preserves first-ingest time.
+        assertEquals(2, updatedEvent.getVersion());
+        assertEquals(firstIngestedAt, updatedEvent.getIngestedAt());
+        assertNotNull(updatedEvent.getUpdatedAt());
         JsonNode updatedPayload = new ObjectMapper().readTree(updatedEvent.getPayload());
         assertEquals(9.9, updatedPayload.path("cells").path("c2").asDouble(), 0.001);
     }

@@ -1384,4 +1384,32 @@ class ScholardexEdgeWriterServiceTest {
         // normalize("   ") = null → early return in openEdgeConflict → no conflict saved
         verify(identityConflictRepository, times(0)).save(any());
     }
+
+    // -------------------------------------------------------------------------
+    // removeAuthorshipEdge / removeAuthorAffiliationEdge — sanctioned deletion surface (H54.5b)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void removeAuthorshipEdgeDeletesViaRepositoryAndIsNullSafe() {
+        ScholardexAuthorshipFact edge = new ScholardexAuthorshipFact();
+        edge.setId("sae_1");
+
+        service.removeAuthorshipEdge(edge);
+        verify(authorshipFactRepository).delete(edge);
+
+        service.removeAuthorshipEdge(null);
+        verify(authorshipFactRepository, times(1)).delete(any());
+    }
+
+    @Test
+    void removeAuthorAffiliationEdgeDeletesViaRepositoryAndIsNullSafe() {
+        ScholardexAuthorAffiliationFact edge = new ScholardexAuthorAffiliationFact();
+        edge.setId("saae_1");
+
+        service.removeAuthorAffiliationEdge(edge);
+        verify(authorAffiliationFactRepository).delete(edge);
+
+        service.removeAuthorAffiliationEdge(null);
+        verify(authorAffiliationFactRepository, times(1)).delete(any());
+    }
 }

@@ -18,6 +18,8 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFact
 import ro.uvt.pokedex.core.repository.scopus.canonical.UserDefinedForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.UserDefinedPublicationFactRepository;
 import ro.uvt.pokedex.core.service.application.ScholardexEdgeWriterService;
+import ro.uvt.pokedex.core.service.application.ScholardexForumWriter;
+import ro.uvt.pokedex.core.service.application.ScholardexPublicationWriter;
 import ro.uvt.pokedex.core.service.application.ScholardexSourceLinkService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
@@ -66,6 +68,10 @@ class UserDefinedCanonicalizationServiceTest {
                 scholardexPublicationFactRepository,
                 scholardexForumFactRepository,
                 sourceLinkService,
+                // Real writers over the mocked repos + source-link service so existing save/link
+                // verifications still observe the same collaborators (H54.5a/5b).
+                new ScholardexPublicationWriter(scholardexPublicationFactRepository, sourceLinkService),
+                new ScholardexForumWriter(scholardexForumFactRepository, sourceLinkService),
                 edgeWriterService,
                 publicationCanonicalizationService
         );

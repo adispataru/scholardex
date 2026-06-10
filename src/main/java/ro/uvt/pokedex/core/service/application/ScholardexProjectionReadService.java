@@ -35,11 +35,7 @@ import java.util.stream.Collectors;
 public class ScholardexProjectionReadService {
 
     private final JdbcTemplate jdbcTemplate;
-    private final ScholardexSourceLinkService sourceLinkService;
-    private final ScholardexAuthorFactRepository canonicalAuthorFactRepository;
-    private final ScholardexAffiliationFactRepository canonicalAffiliationFactRepository;
-    private final ScholardexForumFactRepository canonicalForumFactRepository;
-    private final ScholardexEdgeWriterService edgeWriterService;
+    private final ScholardexCanonicalIdResolver canonicalIdResolver;
     private final PostgresScholardexProjectionReadPort postgresProjectionReadPort;
 
     public List<ScholardexPublicationView> findAllPublicationsByAuthorsIn(Collection<String> authorIds) {
@@ -282,180 +278,11 @@ public class ScholardexProjectionReadService {
         return arr == null ? new ArrayList<>() : new ArrayList<>(java.util.Arrays.asList(arr));
     }
 
-    public ScholardexForumView saveForum(ScholardexForumView forum) {
-        String sourceRecordId = normalizeBlank(forum.getId());
-        String canonicalId = resolveCanonicalId(ScholardexEntityType.FORUM, sourceRecordId)
-                .orElse(sourceRecordId == null
-                        ? "sforum_manual_" + Integer.toHexString(Objects.hash(forum.getPublicationName(), forum.getIssn(), forum.getEIssn(), forum.getAggregationType()))
-                        : sourceRecordId);
-        java.time.Instant now = java.time.Instant.now();
-        ScholardexForumFact canonicalFact = canonicalForumFactRepository.findById(canonicalId).orElseGet(ScholardexForumFact::new);
-        if (canonicalFact.getCreatedAt() == null) {
-            canonicalFact.setCreatedAt(now);
-        }
-        canonicalFact.setId(canonicalId);
-        canonicalFact.setName(forum.getPublicationName());
-        canonicalFact.setNameNormalized(normalizeName(forum.getPublicationName()));
-        canonicalFact.setIssn(normalizeBlank(forum.getIssn()));
-        canonicalFact.setEIssn(normalizeBlank(forum.getEIssn()));
-        canonicalFact.setAggregationType(normalizeBlank(forum.getAggregationType()));
-        canonicalFact.setAggregationTypeNormalized(normalizeName(forum.getAggregationType()));
-        canonicalFact.setSource("MANUAL_FORUM_EDIT");
-        canonicalFact.setSourceRecordId(sourceRecordId);
-        canonicalFact.setUpdatedAt(now);
-        canonicalForumFactRepository.save(canonicalFact);
-
-        if (sourceRecordId != null) {
-            upsertSourceLink(ScholardexEntityType.FORUM, "MANUAL_FORUM_EDIT", sourceRecordId, canonicalId, "manual-forum-save");
-        }
-
-        ScholardexForumView out = new ScholardexForumView();
-        out.setId(canonicalId);
-        out.setPublicationName(forum.getPublicationName());
-        out.setIssn(forum.getIssn());
-        out.setEIssn(forum.getEIssn());
-        out.setAggregationType(forum.getAggregationType());
-        return out;
-    }
-
-    public ScholardexAuthorView saveAuthor(ScholardexAuthorView author) {
-        String sourceRecordId = normalizeBlank(author.getId());
-        String canonicalId = resolveCanonicalId(ScholardexEntityType.AUTHOR, sourceRecordId)
-                .orElse(sourceRecordId == null ? "sauth_manual_" + Integer.toHexString(Objects.hash(author.getName())) : sourceRecordId);
-        List<String> affiliationSourceIds = author.getAffiliations() == null
-                ? List.of()
-                : author.getAffiliations().stream().map(ScholardexAffiliationView::getAfid).filter(Objects::nonNull).toList();
-        List<String> affiliationIds = resolveCanonicalIds(ScholardexEntityType.AFFILIATION, affiliationSourceIds);
-
-        ScholardexAuthorFact canonicalFact = canonicalAuthorFactRepository.findById(canonicalId).orElseGet(ScholardexAuthorFact::new);
-        java.time.Instant now = java.time.Instant.now();
-        if (canonicalFact.getCreatedAt() == null) {
-            canonicalFact.setCreatedAt(now);
-        }
-        canonicalFact.setId(canonicalId);
-        canonicalFact.setDisplayName(author.getName());
-        canonicalFact.setNameNormalized(normalizeName(author.getName()));
-        canonicalFact.setAffiliationIds(new ArrayList<>(affiliationIds));
-        canonicalFact.setSource("MANUAL_AUTHOR_EDIT");
-        canonicalFact.setSourceRecordId(sourceRecordId);
-        canonicalFact.setUpdatedAt(now);
-        canonicalAuthorFactRepository.save(canonicalFact);
-
-        if (sourceRecordId != null) {
-            upsertSourceLink(ScholardexEntityType.AUTHOR, "MANUAL_AUTHOR_EDIT", sourceRecordId, canonicalId, "manual-author-save");
-        }
-
-        for (String affiliationId : affiliationIds) {
-            edgeWriterService.upsertAuthorAffiliationEdge(new ScholardexEdgeWriterService.EdgeWriteCommand(
-                    canonicalId,
-                    affiliationId,
-                    "MANUAL_AUTHOR_EDIT",
-                    canonicalId + "::affiliation::" + affiliationId,
-                    null,
-                    null,
-                    null,
-                    ScholardexSourceLinkService.STATE_LINKED,
-                    "manual-author-save",
-                    false
-            ));
-        }
-
-        ScholardexAuthorView out = new ScholardexAuthorView();
-        out.setId(canonicalId);
-        out.setName(author.getName());
-        out.setAlternativeNames(author.getAlternativeNames() == null ? List.of() : new ArrayList<>(author.getAlternativeNames()));
-        out.setAffiliations(affiliationIds.stream().map(id -> {
-            ScholardexAffiliationView affiliation = new ScholardexAffiliationView();
-            affiliation.setAfid(id);
-            return affiliation;
-        }).toList());
-        return out;
-    }
-
-    public ScholardexAffiliationView saveAffiliation(ScholardexAffiliationView affiliation) {
-        String sourceRecordId = normalizeBlank(affiliation.getAfid());
-        String canonicalId = resolveCanonicalId(ScholardexEntityType.AFFILIATION, sourceRecordId)
-                .orElse(sourceRecordId == null ? "saff_manual_" + Integer.toHexString(Objects.hash(affiliation.getName(), affiliation.getCity(), affiliation.getCountry())) : sourceRecordId);
-        java.time.Instant now = java.time.Instant.now();
-
-        ScholardexAffiliationFact canonicalFact = canonicalAffiliationFactRepository.findById(canonicalId).orElseGet(ScholardexAffiliationFact::new);
-        if (canonicalFact.getCreatedAt() == null) {
-            canonicalFact.setCreatedAt(now);
-        }
-        canonicalFact.setId(canonicalId);
-        canonicalFact.setName(affiliation.getName());
-        canonicalFact.setNameNormalized(normalizeName(affiliation.getName()));
-        canonicalFact.setCity(affiliation.getCity());
-        canonicalFact.setCountry(affiliation.getCountry());
-        canonicalFact.setSource("MANUAL_AFFILIATION_EDIT");
-        canonicalFact.setSourceRecordId(sourceRecordId);
-        canonicalFact.setUpdatedAt(now);
-        canonicalAffiliationFactRepository.save(canonicalFact);
-
-        if (sourceRecordId != null) {
-            upsertSourceLink(ScholardexEntityType.AFFILIATION, "MANUAL_AFFILIATION_EDIT", sourceRecordId, canonicalId, "manual-affiliation-save");
-        }
-
-        ScholardexAffiliationView out = new ScholardexAffiliationView();
-        out.setAfid(canonicalId);
-        out.setName(affiliation.getName());
-        out.setCity(affiliation.getCity());
-        out.setCountry(affiliation.getCountry());
-        return out;
-    }
-
-    private Optional<String> resolveCanonicalId(ScholardexEntityType entityType, String candidate) {
-        if (candidate == null || candidate.isBlank()) {
-            return Optional.empty();
-        }
-        List<ScholardexSourceLink> mapped = sourceLinkService.findByEntityTypeAndSourceRecordId(entityType, candidate);
-        return mapped.stream()
-                .map(ScholardexSourceLink::getCanonicalEntityId)
-                .filter(id -> id != null && !id.isBlank())
-                .findFirst();
-    }
-
+    // Manual edits of forum/author/affiliation canonical facts were relocated to
+    // ScholardexManualEditService (H54.5c) — a read service must not write. Read paths resolve
+    // canonical ids through the shared ScholardexCanonicalIdResolver.
     private List<String> resolveCanonicalIds(ScholardexEntityType entityType, Collection<String> candidateIds) {
-        if (candidateIds == null || candidateIds.isEmpty()) {
-            return List.of();
-        }
-        LinkedHashSet<String> normalizedCandidates = new LinkedHashSet<>();
-        for (String id : candidateIds) {
-            String normalized = normalizeBlank(id);
-            if (normalized != null) {
-                normalizedCandidates.add(normalized);
-            }
-        }
-        if (normalizedCandidates.isEmpty()) {
-            return List.of();
-        }
-        LinkedHashSet<String> resolved = new LinkedHashSet<>(normalizedCandidates);
-        List<ScholardexSourceLink> mapped = sourceLinkService.findByEntityTypeAndSourceRecordIds(entityType, normalizedCandidates);
-        mapped.stream()
-                .map(ScholardexSourceLink::getCanonicalEntityId)
-                .filter(candidate -> candidate != null && !candidate.isBlank())
-                .forEach(resolved::add);
-        return new ArrayList<>(resolved);
-    }
-
-    private void upsertSourceLink(
-            ScholardexEntityType entityType,
-            String source,
-            String sourceRecordId,
-            String canonicalId,
-            String reason
-    ) {
-        sourceLinkService.link(
-                entityType,
-                source,
-                sourceRecordId,
-                canonicalId,
-                reason,
-                null,
-                null,
-                null,
-                false
-        );
+        return canonicalIdResolver.resolveCanonicalIds(entityType, candidateIds);
     }
 
     private String normalizeBlank(String value) {

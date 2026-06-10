@@ -111,7 +111,7 @@ class ScholardexEdgeReconciliationServiceTest {
         ImportProcessingResult result = service.reconcileEdges();
 
         assertEquals(2, result.getUpdatedCount());
-        verify(authorshipFactRepository).delete(staleEdge);
+        verify(edgeWriterService).removeAuthorshipEdge(staleEdge);
         verify(edgeWriterService).upsertAuthorshipEdge(any());
     }
 
@@ -357,7 +357,7 @@ class ScholardexEdgeReconciliationServiceTest {
         ImportProcessingResult result = service.reconcileEdges();
 
         assertEquals(1, result.getUpdatedCount());
-        verify(authorAffiliationFactRepository).delete(staleEdge);
+        verify(edgeWriterService).removeAuthorAffiliationEdge(staleEdge);
         verify(edgeWriterService, never()).upsertAuthorAffiliationEdge(any());
     }
 

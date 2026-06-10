@@ -36,6 +36,7 @@ import java.util.Optional;
 public class AdminCatalogFacade {
 
     private final ScholardexProjectionReadService scholardexProjectionReadService;
+    private final ScholardexManualEditService scholardexManualEditService;
     private final ArtisticEventRepository artisticEventRepository;
     private final CoreConferenceRankingRepository coreConferenceRankingRepository;
     private final IndicatorRepository indicatorRepository;
@@ -220,7 +221,7 @@ public class AdminCatalogFacade {
     }
 
     public ScholardexForumView saveScopusVenue(ScholardexForumView forum) {
-        return scholardexProjectionReadService.saveForum(forum);
+        return scholardexManualEditService.saveForum(forum);
     }
 
     public List<ScholardexAuthorView> listScopusAuthorsByAffiliation(String affiliationId) {
@@ -236,7 +237,7 @@ public class AdminCatalogFacade {
     }
 
     public ScholardexAuthorView saveScopusAuthor(ScholardexAuthorView author) {
-        return scholardexProjectionReadService.saveAuthor(author);
+        return scholardexManualEditService.saveAuthor(author);
     }
 
     public List<ScholardexAffiliationView> listScopusAffiliations() {
@@ -248,7 +249,7 @@ public class AdminCatalogFacade {
     }
 
     public ScholardexAffiliationView saveScopusAffiliation(ScholardexAffiliationView affiliation) {
-        return scholardexProjectionReadService.saveAffiliation(affiliation);
+        return scholardexManualEditService.saveAffiliation(affiliation);
     }
 
     public List<ArtisticEvent> listArtisticEvents() {
