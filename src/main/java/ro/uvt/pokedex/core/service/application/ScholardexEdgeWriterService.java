@@ -1,5 +1,7 @@
 package ro.uvt.pokedex.core.service.application;
 
+import ro.uvt.pokedex.core.service.importing.BuilderVersion;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -75,6 +77,7 @@ public class ScholardexEdgeWriterService {
         edge.setPublicationId(command.leftId());
         edge.setAuthorId(command.rightId());
         applyLineage(edge, command, now);
+        edge.setBuilderVersion(BuilderVersion.SCHOLARDEX_EDGE);
         authorshipFactRepository.save(edge);
 
         ScholardexSourceLinkService.SourceLinkWriteResult sourceLinkResult = writeSourceLink(
@@ -212,6 +215,7 @@ public class ScholardexEdgeWriterService {
             }
         }
         if (!pendingInserts.isEmpty()) {
+            pendingInserts.forEach(e -> e.setBuilderVersion(BuilderVersion.SCHOLARDEX_EDGE));
             authorshipFactRepository.insert(pendingInserts);
         }
         if (!pendingUpdateCommandsByEdgeId.isEmpty()) {
@@ -227,7 +231,8 @@ public class ScholardexEdgeWriterService {
                         .set("sourceCorrelationId", command.sourceCorrelationId())
                         .set("linkState", command.linkState())
                         .set("linkReason", command.linkReason())
-                        .set("updatedAt", Instant.now());
+                        .set("updatedAt", Instant.now())
+                        .set("builderVersion", BuilderVersion.SCHOLARDEX_EDGE);
                 bulkOps.updateOne(query, update);
             }
             bulkOps.execute();
@@ -299,6 +304,7 @@ public class ScholardexEdgeWriterService {
         edge.setAuthorId(command.leftId());
         edge.setAffiliationId(command.rightId());
         applyLineage(edge, command, now);
+        edge.setBuilderVersion(BuilderVersion.SCHOLARDEX_EDGE);
         authorAffiliationFactRepository.save(edge);
 
         ScholardexSourceLinkService.SourceLinkWriteResult sourceLinkResult = writeSourceLink(
@@ -363,6 +369,7 @@ public class ScholardexEdgeWriterService {
         edge.setAuthorId(command.leftId());
         edge.setAffiliationId(command.rightId());
         applyLineage(edge, command, now);
+        edge.setBuilderVersion(BuilderVersion.SCHOLARDEX_EDGE);
         publicationAuthorAffiliationFactRepository.save(edge);
 
         ScholardexSourceLinkService.SourceLinkWriteResult sourceLinkResult = writeSourceLink(
@@ -483,6 +490,7 @@ public class ScholardexEdgeWriterService {
         }
 
         if (!pendingSaves.isEmpty()) {
+            pendingSaves.values().forEach(e -> e.setBuilderVersion(BuilderVersion.SCHOLARDEX_EDGE));
             authorAffiliationFactRepository.saveAll(pendingSaves.values());
         }
 
@@ -633,6 +641,7 @@ public class ScholardexEdgeWriterService {
             }
         }
         if (!pendingInserts.isEmpty()) {
+            pendingInserts.forEach(e -> e.setBuilderVersion(BuilderVersion.SCHOLARDEX_EDGE));
             publicationAuthorAffiliationFactRepository.insert(pendingInserts);
         }
         if (!pendingUpdateCommandsByEdgeId.isEmpty()) {
@@ -651,7 +660,8 @@ public class ScholardexEdgeWriterService {
                         .set("sourceCorrelationId", command.sourceCorrelationId())
                         .set("linkState", command.linkState())
                         .set("linkReason", command.linkReason())
-                        .set("updatedAt", Instant.now());
+                        .set("updatedAt", Instant.now())
+                        .set("builderVersion", BuilderVersion.SCHOLARDEX_EDGE);
                 bulkOps.updateOne(query, update);
             }
             bulkOps.execute();

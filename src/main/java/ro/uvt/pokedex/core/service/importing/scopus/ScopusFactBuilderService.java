@@ -22,6 +22,7 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusCitationFactReposit
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusFundingFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusImportEventRepository;
+import ro.uvt.pokedex.core.service.importing.BuilderVersion;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusPublicationFactRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.application.UserDefinedWizardOnboardingContract;
@@ -250,6 +251,7 @@ public class ScopusFactBuilderService {
         long processFinishedAtNanos = System.nanoTime();
 
         if (!state.pendingForumSaves.isEmpty()) {
+            state.pendingForumSaves.values().forEach(f -> f.setBuilderVersion(BuilderVersion.SCOPUS_FACT));
             forumFactRepository.saveAll(state.pendingForumSaves.values());
         }
         long saveFinishedAtNanos = System.nanoTime();
@@ -349,6 +351,7 @@ public class ScopusFactBuilderService {
         long citationProcessFinishedAtNanos = System.nanoTime();
 
         if (!pendingCitationSaves.isEmpty()) {
+            pendingCitationSaves.values().forEach(f -> f.setBuilderVersion(BuilderVersion.SCOPUS_FACT));
             citationFactRepository.saveAll(pendingCitationSaves.values());
         }
         long citationSaveFinishedAtNanos = System.nanoTime();
@@ -403,18 +406,23 @@ public class ScopusFactBuilderService {
 
     private void flushPublicationChunkState(PublicationChunkState state) {
         if (!state.pendingPublicationSaves.isEmpty()) {
+            state.pendingPublicationSaves.values().forEach(f -> f.setBuilderVersion(BuilderVersion.SCOPUS_FACT));
             publicationFactRepository.saveAll(state.pendingPublicationSaves.values());
         }
         if (!state.pendingForumSaves.isEmpty()) {
+            state.pendingForumSaves.values().forEach(f -> f.setBuilderVersion(BuilderVersion.SCOPUS_FACT));
             forumFactRepository.saveAll(state.pendingForumSaves.values());
         }
         if (!state.pendingAuthorSaves.isEmpty()) {
+            state.pendingAuthorSaves.values().forEach(f -> f.setBuilderVersion(BuilderVersion.SCOPUS_FACT));
             authorFactRepository.saveAll(state.pendingAuthorSaves.values());
         }
         if (!state.pendingAffiliationSaves.isEmpty()) {
+            state.pendingAffiliationSaves.values().forEach(f -> f.setBuilderVersion(BuilderVersion.SCOPUS_FACT));
             affiliationFactRepository.saveAll(state.pendingAffiliationSaves.values());
         }
         if (!state.pendingFundingSaves.isEmpty()) {
+            state.pendingFundingSaves.values().forEach(f -> f.setBuilderVersion(BuilderVersion.SCOPUS_FACT));
             fundingFactRepository.saveAll(state.pendingFundingSaves.values());
         }
     }

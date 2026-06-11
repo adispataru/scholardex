@@ -1,5 +1,7 @@
 package ro.uvt.pokedex.core.service.importing.wos;
 
+import ro.uvt.pokedex.core.service.importing.BuilderVersion;
+
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.wos.WosIdentityConflict;
 import ro.uvt.pokedex.core.model.reporting.wos.WosJournalIdentity;
@@ -249,6 +251,7 @@ public class WosIdentityResolutionService {
 
         if (changed) {
             identity.setUpdatedAt(Instant.now());
+            identity.setBuilderVersion(BuilderVersion.WOS_FACT);
             journalIdentityRepository.save(identity);
         }
     }
@@ -433,6 +436,7 @@ public class WosIdentityResolutionService {
         Instant now = Instant.now();
         identity.setCreatedAt(now);
         identity.setUpdatedAt(now);
+        identity.setBuilderVersion(BuilderVersion.WOS_FACT);
         return journalIdentityRepository.save(identity);
     }
 

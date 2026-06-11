@@ -27,4 +27,6 @@ public class WosFactConflict {
     private WosSourceType loserSourceType;
     private String loserValueSnapshot;
     private Instant detectedAt;
+    /** Builder-logic version that produced this fact (H54.6b). */
+    private String builderVersion;
 }

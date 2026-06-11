@@ -1,5 +1,7 @@
 package ro.uvt.pokedex.core.service.importing.scopus;
 
+import ro.uvt.pokedex.core.service.importing.BuilderVersion;
+
 import org.springframework.dao.DuplicateKeyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -145,6 +147,7 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
         target.setSourceBatchId(sourceFact.getSourceBatchId());
         target.setSourceCorrelationId(sourceFact.getSourceCorrelationId());
         target.setUpdatedAt(now);
+        target.setBuilderVersion(BuilderVersion.SCHOLARDEX_AUTHOR);
         scholardexAuthorFactRepository.save(target);
         upsertAuthorSourceLink(sourceFact, sourceRecordId, target.getId());
         upsertAuthorAffiliationEdges(target, sourceFact, affiliationBridge);
@@ -388,6 +391,7 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
 
         if (!context.pendingAuthorFacts.isEmpty()) {
             try {
+                context.pendingAuthorFacts.values().forEach(f -> f.setBuilderVersion(BuilderVersion.SCHOLARDEX_AUTHOR));
                 scholardexAuthorFactRepository.saveAll(context.pendingAuthorFacts.values());
                 context.lastAuthorFactWrites = context.pendingAuthorFacts.size();
             } catch (DuplicateKeyException ex) {
@@ -745,6 +749,7 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
         }
         String sourceRecordId = normalizeBlank(fact.getSourceRecordId());
         try {
+            fact.setBuilderVersion(BuilderVersion.SCHOLARDEX_AUTHOR);
             scholardexAuthorFactRepository.save(fact);
             context.lastAuthorFactWrites++;
         } catch (DuplicateKeyException duplicateKeyException) {
@@ -756,6 +761,7 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
             }
             ScholardexAuthorFact recovered = existingBySourceId.get();
             mergeRecoveredAuthor(recovered, fact);
+            recovered.setBuilderVersion(BuilderVersion.SCHOLARDEX_AUTHOR);
             scholardexAuthorFactRepository.save(recovered);
             context.lastAuthorFactWrites++;
             context.authorByCanonicalId.put(recovered.getId(), recovered);

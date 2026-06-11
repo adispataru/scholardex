@@ -266,6 +266,19 @@ artifacts only; the source files are the authoritative backup. Add `data/backups
     `uniq_scholardex_citation_edge` (old 3-field shape) injected, boot logged
     "drifted … dropping and recreating", healed the index to the declared 2-field shape, and
     started clean. Guarded by `MongoIndexReconcilerIntegrationTest`.
+  - **H54.6b DONE 2026-06-11 (per-fact builderVersion).** Scoping correction: the writers (5a–c)
+    are only the *secondary* chokepoint — most derived facts come from the bulk builders — so
+    builderVersion was stamped comprehensively at the write paths, not just the writers. Added
+    `service/importing/BuilderVersion.java` (version constants per builder) and a `builderVersion`
+    field on all ~20 derived fact models (Scopus/WoS/UserDefined stage-2 facts, Scholardex stage-3
+    facts + edges). Stamped at: the Scopus fact builder (7 save sites), WoS fact builder (5) +
+    journal-identity resolution (2), user-defined fact builder (2), the 4 canonicalization builders
+    (publication/author/affiliation/citation) + WoS onboarding (14), the 4 stage-3 writers (5), and
+    the edge writer (single + saveAll + batch insert + bulk-update paths, 8). The value stamp is a
+    stable constant, so it does not affect rebuild determinism —
+    `PipelineRebuildDeterminismIntegrationTest` asserts `builderVersion` is populated and identical
+    across rebuilds. No consumer yet (per the chosen option); it is the substrate for a future
+    staleness check / version-targeted rebuild. Full `./gradlew test` green.
   - **Index-ownership unification — DEMOTED to optional (2026-06-09).** The current split is
     principled, not incidental duplication: unique *constraints* are declarative and created
     before any write (reconciler); non-unique *performance* indexes are owned by the
@@ -520,6 +533,31 @@ artifacts only; the source files are the authoritative backup. Add `data/backups
     tests, unrelated to these changes — they passed earlier in-session).
 - **H54.7** — Full wipe + reimport from source files; verify determinism (rebuild twice →
   identical) end to end.
+  **DONE 2026-06-11.** Scoping: the literal full-scale comparison (rebuild from multi-GB source
+  files, byte-identical) is not CI-able, so delivered as (chosen: determinism test + runbook):
+  - **`PipelineRebuildDeterminismIntegrationTest`** (Testcontainers): runs the real
+    `ScopusFactBuilderService` on a fixed ledger fixture, then (1) wipe + rebuild and (2) re-run
+    without wiping, asserting byte-identical derived facts each time. Comparison excludes only the
+    generated `_id` (ObjectId) and per-build timestamps (`createdAt`/`updatedAt`/`lastMaterializedAt`);
+    all content — including natural-key cross-references and the ledger-derived `sourceEventId` — is
+    deterministic. (Confirmed empirically: the only diff before excluding it was `lastMaterializedAt`.)
+  - **`docs/rebuild-runbook.md`** + **`scripts/h54-derived-collection-snapshot.js`**: the operational
+    at-scale procedure — back up precious, audit indexes, rebuild via `PipelineRebuildService`,
+    snapshot derived-collection counts before/after, diff for parity. Owned-collection safety rule
+    restated throughout.
+  - Full `./gradlew test` green.
+
+---
+
+## H54 status (2026-06-11): COMPLETE
+
+All slices done: H54.1 (ownership inventory + precious snapshot), H54.2 (index fixes +
+`MongoIndexReconciler`), H54.3a/3b (ledger re-key + supersede, Scopus + WoS), H54.4 (stage-2
+verified already single-owner), H54.5a/b/c (stage-3 sanctioned write surface + manual-edit
+relocation), H54.6a (guarded `PipelineRebuildService` + `OwnedCollectionRegistry`), H54.7 (rebuild
+determinism test + runbook), H54.6b (per-fact `builderVersion` stamping). **Nothing remains** —
+the only open follow-up is building a *consumer* for `builderVersion` (a staleness check or
+version-targeted incremental rebuild) if/when that is wanted.
 
 ## Verification Plan (per slice)
 

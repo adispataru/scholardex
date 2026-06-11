@@ -1,5 +1,7 @@
 package ro.uvt.pokedex.core.service.importing.scopus;
 
+import ro.uvt.pokedex.core.service.importing.BuilderVersion;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -123,6 +125,7 @@ public class UserDefinedFactBuilderService {
         fact.setLastPayloadHash(event.getPayloadHash());
         fact.setLastMaterializedAt(now);
         fact.setUpdatedAt(now);
+        fact.setBuilderVersion(BuilderVersion.USER_DEFINED_FACT);
         publicationFactRepository.save(fact);
         markImportOrUpdate(result, created);
     }
@@ -161,6 +164,7 @@ public class UserDefinedFactBuilderService {
         fact.setLastPayloadHash(event.getPayloadHash());
         fact.setLastMaterializedAt(now);
         fact.setUpdatedAt(now);
+        fact.setBuilderVersion(BuilderVersion.USER_DEFINED_FACT);
         forumFactRepository.save(fact);
         markImportOrUpdate(result, created);
     }

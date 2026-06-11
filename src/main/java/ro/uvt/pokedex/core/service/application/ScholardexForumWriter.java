@@ -7,6 +7,8 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactReposi
 
 import java.time.Instant;
 
+import ro.uvt.pokedex.core.service.importing.BuilderVersion;
+
 /**
  * Sanctioned write surface for secondary {@code scholardex.forum_facts} mutators (H54.5b).
  *
@@ -43,6 +45,7 @@ public class ScholardexForumWriter {
         fact.setSourceBatchId(provenance.sourceBatchId());
         fact.setSourceCorrelationId(provenance.sourceCorrelationId());
         fact.setUpdatedAt(Instant.now());
+        fact.setBuilderVersion(BuilderVersion.SCHOLARDEX_FORUM);
 
         ScholardexForumFact saved = repository.save(fact);
 
@@ -73,6 +76,7 @@ public class ScholardexForumWriter {
         fact.setSource(source);
         fact.setSourceRecordId(sourceRecordId);
         fact.setUpdatedAt(Instant.now());
+        fact.setBuilderVersion(BuilderVersion.SCHOLARDEX_FORUM);
         ScholardexForumFact saved = repository.save(fact);
         if (sourceRecordId != null) {
             sourceLinkService.link(

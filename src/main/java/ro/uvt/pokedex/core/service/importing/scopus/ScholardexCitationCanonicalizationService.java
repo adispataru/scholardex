@@ -1,5 +1,7 @@
 package ro.uvt.pokedex.core.service.importing.scopus;
 
+import ro.uvt.pokedex.core.service.importing.BuilderVersion;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -284,6 +286,7 @@ public class ScholardexCitationCanonicalizationService extends AbstractCanonical
     @Override
     protected CanonicalBuildChunkTimings flushPendingWrites(long chunkStartedAtNanos, long preloadFinishedAtNanos, long resolveFinishedAtNanos, ChunkContext context) {
         if (!context.pendingCitationFacts.isEmpty()) {
+            context.pendingCitationFacts.values().forEach(f -> f.setBuilderVersion(BuilderVersion.SCHOLARDEX_CITATION));
             scholardexCitationFactRepository.saveAll(context.pendingCitationFacts.values());
             context.lastCitationFactWrites = context.pendingCitationFacts.size();
         }

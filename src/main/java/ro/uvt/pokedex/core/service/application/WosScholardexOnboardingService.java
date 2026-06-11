@@ -1,5 +1,7 @@
 package ro.uvt.pokedex.core.service.application;
 
+import ro.uvt.pokedex.core.service.importing.BuilderVersion;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.observability.CanonicalObservabilityMetrics;
@@ -154,6 +156,7 @@ public class WosScholardexOnboardingService {
             if (canonicalId != null && canonicalById.containsKey(canonicalId)) {
                 ScholardexForumFact target = canonicalById.get(canonicalId);
                 mergeForum(target, sourceRecordId, normalizedIssns, name, nameNormalized, aggregationType, aggregationTypeNormalized, scopusForums, now, batchId, correlationId);
+                target.setBuilderVersion(BuilderVersion.SCHOLARDEX_FORUM);
                 scholardexForumFactRepository.save(target);
                 upsertLinkedSourceLink(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId, target.getId(), REASON_WOS_FORUM_ONBOARDING, batchId, correlationId);
                 result.markUpdated();
@@ -174,6 +177,7 @@ public class WosScholardexOnboardingService {
         ScholardexForumFact target = candidates.isEmpty() ? new ScholardexForumFact() : candidates.getFirst();
         boolean created = target.getId() == null;
         mergeForum(target, sourceRecordId, normalizedIssns, name, nameNormalized, aggregationType, aggregationTypeNormalized, scopusForums, now, batchId, correlationId);
+        target.setBuilderVersion(BuilderVersion.SCHOLARDEX_FORUM);
         scholardexForumFactRepository.save(target);
         canonicalById.put(target.getId(), target);
         upsertLinkedSourceLink(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId, target.getId(), REASON_WOS_FORUM_ONBOARDING, batchId, correlationId);

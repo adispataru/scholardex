@@ -33,4 +33,6 @@ public class ScholardexAuthorFact {
     private String sourceCorrelationId;
     private Instant createdAt;
     private Instant updatedAt;
+    /** Builder-logic version that produced this fact (H54.6b). */
+    private String builderVersion;
 }

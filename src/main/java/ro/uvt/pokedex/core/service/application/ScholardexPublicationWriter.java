@@ -7,6 +7,8 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFact
 
 import java.time.Instant;
 
+import ro.uvt.pokedex.core.service.importing.BuilderVersion;
+
 /**
  * Sanctioned write surface for secondary {@code scholardex.publication_facts} mutators (H54.5a).
  *
@@ -46,6 +48,7 @@ public class ScholardexPublicationWriter {
         fact.setSourceBatchId(provenance.sourceBatchId());
         fact.setSourceCorrelationId(provenance.sourceCorrelationId());
         fact.setUpdatedAt(Instant.now());
+        fact.setBuilderVersion(BuilderVersion.SCHOLARDEX_PUBLICATION);
 
         ScholardexPublicationFact saved = repository.save(fact);
 

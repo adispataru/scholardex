@@ -28,4 +28,6 @@ public class WosCategoryFact {
     private String sourceVersion;
     private String sourceRowItem;
     private Instant createdAt;
+    /** Builder-logic version that produced this fact (H54.6b). */
+    private String builderVersion;
 }

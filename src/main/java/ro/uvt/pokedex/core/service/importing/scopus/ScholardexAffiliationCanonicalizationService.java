@@ -1,5 +1,7 @@
 package ro.uvt.pokedex.core.service.importing.scopus;
 
+import ro.uvt.pokedex.core.service.importing.BuilderVersion;
+
 import org.springframework.dao.DuplicateKeyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -279,6 +281,7 @@ public class ScholardexAffiliationCanonicalizationService extends AbstractCanoni
     protected CanonicalBuildChunkTimings flushPendingWrites(long chunkStartedAtNanos, long preloadFinishedAtNanos, long resolveFinishedAtNanos, ChunkContext context) {
         if (!context.pendingAffiliationSaves.isEmpty()) {
             try {
+                context.pendingAffiliationSaves.values().forEach(f -> f.setBuilderVersion(BuilderVersion.SCHOLARDEX_AFFILIATION));
                 scholardexAffiliationFactRepository.saveAll(context.pendingAffiliationSaves.values());
             } catch (DuplicateKeyException ex) {
                 log.warn("Scholardex affiliation canonicalization chunk saveAll hit duplicate key; falling back to per-record recovery path for {} facts.",
@@ -321,6 +324,7 @@ public class ScholardexAffiliationCanonicalizationService extends AbstractCanoni
         }
         String sourceRecordId = normalizeBlank(fact.getSourceRecordId());
         try {
+            fact.setBuilderVersion(BuilderVersion.SCHOLARDEX_AFFILIATION);
             scholardexAffiliationFactRepository.save(fact);
         } catch (DuplicateKeyException duplicateKeyException) {
             Optional<ScholardexAffiliationFact> existingBySourceId = sourceRecordId == null
@@ -331,6 +335,7 @@ public class ScholardexAffiliationCanonicalizationService extends AbstractCanoni
             }
             ScholardexAffiliationFact recovered = existingBySourceId.get();
             mergeRecoveredAffiliation(recovered, fact);
+            recovered.setBuilderVersion(BuilderVersion.SCHOLARDEX_AFFILIATION);
             scholardexAffiliationFactRepository.save(recovered);
             context.affiliationByCanonicalId.put(recovered.getId(), recovered);
             if (sourceRecordId != null) {

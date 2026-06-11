@@ -26,4 +26,6 @@ public class ScopusAffiliationFact implements HasLineageFields {
     private Instant lastMaterializedAt;
     private Instant createdAt;
     private Instant updatedAt;
+    /** Builder-logic version that produced this fact (H54.6b). */
+    private String builderVersion;
 }

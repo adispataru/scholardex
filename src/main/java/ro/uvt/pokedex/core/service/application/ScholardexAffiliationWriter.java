@@ -7,6 +7,8 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFact
 
 import java.time.Instant;
 
+import ro.uvt.pokedex.core.service.importing.BuilderVersion;
+
 /**
  * Sanctioned write surface for {@code scholardex.affiliation_facts} (H54.5c).
  *
@@ -33,6 +35,7 @@ public class ScholardexAffiliationWriter {
         fact.setSource(source);
         fact.setSourceRecordId(sourceRecordId);
         fact.setUpdatedAt(Instant.now());
+        fact.setBuilderVersion(BuilderVersion.SCHOLARDEX_AFFILIATION);
         ScholardexAffiliationFact saved = repository.save(fact);
         if (sourceRecordId != null) {
             sourceLinkService.link(

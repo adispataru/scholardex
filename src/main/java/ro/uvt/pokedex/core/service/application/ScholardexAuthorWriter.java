@@ -7,6 +7,8 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepos
 
 import java.time.Instant;
 
+import ro.uvt.pokedex.core.service.importing.BuilderVersion;
+
 /**
  * Sanctioned write surface for {@code scholardex.author_facts} (H54.5c).
  *
@@ -33,6 +35,7 @@ public class ScholardexAuthorWriter {
         fact.setSource(source);
         fact.setSourceRecordId(sourceRecordId);
         fact.setUpdatedAt(Instant.now());
+        fact.setBuilderVersion(BuilderVersion.SCHOLARDEX_AUTHOR);
         ScholardexAuthorFact saved = repository.save(fact);
         if (sourceRecordId != null) {
             sourceLinkService.link(

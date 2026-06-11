@@ -22,6 +22,7 @@ import ro.uvt.pokedex.core.repository.reporting.WosFactConflictRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
 import ro.uvt.pokedex.core.service.application.ImportRunMetricService;
 import ro.uvt.pokedex.core.service.application.WosIndexMaintenanceService;
+import ro.uvt.pokedex.core.service.importing.BuilderVersion;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.wos.model.IdentityResolutionResult;
 import ro.uvt.pokedex.core.service.importing.wos.model.WosIdentitySourceContext;
@@ -267,6 +268,7 @@ public class WosFactBuilderService {
 
             long saveStartedAtNanos = System.nanoTime();
             if (!pendingUpdates.isEmpty()) {
+                pendingUpdates.forEach(f -> f.setBuilderVersion(BuilderVersion.WOS_FACT));
                 categoryFactRepository.saveAll(pendingUpdates);
             }
             long finishedAtNanos = System.nanoTime();
@@ -379,6 +381,7 @@ public class WosFactBuilderService {
         }
 
         if (!pendingUpdates.isEmpty()) {
+            pendingUpdates.forEach(f -> f.setBuilderVersion(BuilderVersion.WOS_FACT));
             categoryFactRepository.saveAll(pendingUpdates);
         }
 
@@ -486,12 +489,15 @@ public class WosFactBuilderService {
 
         long saveStartedAtNanos = System.nanoTime();
         if (!pendingMetricSaves.isEmpty()) {
+            pendingMetricSaves.values().forEach(f -> f.setBuilderVersion(BuilderVersion.WOS_FACT));
             metricFactRepository.saveAll(pendingMetricSaves.values());
         }
         if (!pendingCategorySaves.isEmpty()) {
+            pendingCategorySaves.values().forEach(f -> f.setBuilderVersion(BuilderVersion.WOS_FACT));
             categoryFactRepository.saveAll(pendingCategorySaves.values());
         }
         if (!pendingConflicts.isEmpty()) {
+            pendingConflicts.forEach(f -> f.setBuilderVersion(BuilderVersion.WOS_FACT));
             factConflictRepository.saveAll(pendingConflicts);
         }
 

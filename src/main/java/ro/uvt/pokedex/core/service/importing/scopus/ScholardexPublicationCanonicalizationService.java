@@ -1,5 +1,7 @@
 package ro.uvt.pokedex.core.service.importing.scopus;
 
+import ro.uvt.pokedex.core.service.importing.BuilderVersion;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -1045,6 +1047,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         if (!insertFacts.isEmpty()) {
             try {
                 long startedAt = System.nanoTime();
+                insertFacts.forEach(f -> f.setBuilderVersion(BuilderVersion.SCHOLARDEX_PUBLICATION));
                 scholardexPublicationFactRepository.insert(insertFacts);
                 context.publicationInsertMs += nanosToMillis(System.nanoTime() - startedAt);
                 context.publicationInsertCount += insertFacts.size();
@@ -1060,6 +1063,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         if (!updateFacts.isEmpty()) {
             try {
                 long startedAt = System.nanoTime();
+                updateFacts.forEach(f -> f.setBuilderVersion(BuilderVersion.SCHOLARDEX_PUBLICATION));
                 scholardexPublicationFactRepository.saveAll(updateFacts);
                 context.publicationUpdateMs += nanosToMillis(System.nanoTime() - startedAt);
                 context.publicationUpdateCount += updateFacts.size();
@@ -1080,6 +1084,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         String doiNormalized = normalizeDoi(fact.getDoi());
         try {
             long startedAt = System.nanoTime();
+            fact.setBuilderVersion(BuilderVersion.SCHOLARDEX_PUBLICATION);
             scholardexPublicationFactRepository.save(fact);
             context.publicationRecoverMs += nanosToMillis(System.nanoTime() - startedAt);
             context.publicationRecoverCount++;
@@ -1099,6 +1104,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
                         context
                 );
                 long startedAt = System.nanoTime();
+                recovered.setBuilderVersion(BuilderVersion.SCHOLARDEX_PUBLICATION);
                 scholardexPublicationFactRepository.save(recovered);
                 context.publicationRecoverMs += nanosToMillis(System.nanoTime() - startedAt);
                 context.publicationRecoverCount++;
