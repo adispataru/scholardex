@@ -479,6 +479,45 @@ artifacts only; the source files are the authoritative backup. Add `data/backups
   `payload`, then drop/externalize ledger payload — but only for sources with a retained
   external file; `user_defined.*` (user uploads) have no source file so their payload must be
   retained.
+  **Scoping result 2026-06-09 (read-only audit): the per-stage rebuild pipeline ALREADY EXISTS.**
+  - `ScopusBigBangMigrationService` is effectively the Scopus rebuild service: `runIngestStep`
+    (source files → ledger) → `runBuildFactsStep` (ledger → stage-2 facts → stage-3 canonical:
+    affiliation/author/publication/citation) → `runBuildProjectionsStep` (→ Postgres) →
+    `runEnsureIndexesStep` → `runFull`, plus incremental-upload variants.
+    `WosBigBangMigrationService` mirrors it. `ScopusCanonicalMaterializationService.rebuildFactsAndViews`
+    is a lighter build-from-ledger entry. Wipes are owned-scoped (`repository.deleteAll()` on the
+    specific fact repos — never `dropDatabase`, and the ledger is NOT wiped so build-from-ledger works).
+  - **Gaps vs the vision (the actual H54.6 work):**
+    1. No **unifying facade** over Scopus + WoS (+ user-defined) with an explicit **owned-collection
+       allow-list guard** (the H54.1 never-touch-foreign rule made concrete) and one
+       "rebuild-all-derived-from-source" entry point. Today they're triggered separately
+       (`AdminInitializationController`, `RankingMaintenanceFacade`, `ScopusIncrementalUploadService`).
+    2. `builderVersion` stamping for staleness detection (writers from 5a–5c are the chokepoint).
+  - **Re-scoped OUT:**
+    - "Replace derived-data migration runners with versioned rebuild" — **N/A**: the only runner,
+      `IndicatorV1MigrationRunner`, is a one-shot schema tweak on **indicators (precious)**, not
+      derived data; it stays. There are no derived-data migration runners — the derived rebuild
+      already lives in the BigBang services.
+    - **Payload-drop / re-point builders at source files — recommend DROP from scope.** The
+      ledger-as-replay-buffer works (build reads the ledger, which survives wipes; full rebuild
+      re-ingests files into the ledger), `user_defined.*` has no source file so its payload must
+      stay regardless, and re-pointing the builders is high-risk for ~no benefit.
+  - **Proposed cut:** **6a** — thin guarded `PipelineRebuildService` facade over the existing
+    BigBang chains + owned-collection allow-list guard + single full-rebuild entry; **6b (optional)**
+    — `builderVersion` stamping. Determinism verification is H54.7.
+  - **6a DONE 2026-06-09.** Added `OwnedCollectionRegistry` — the owned-collection set derived from
+    the `@Document` mapping context (drift-proof, same source as the index reconciler) with
+    `assertWipeable`/`assertAllWipeable` (the executable "never touch a foreign collection" rule).
+    Added `PipelineRebuildService.rebuildAllDerivedFromSource()` — one guarded entry point that
+    asserts ownership of its declared 26 managed derived collections, then runs the existing WoS +
+    Scopus full-rebuild chains. A `@PostConstruct` validates the managed list against the real
+    owned set at **startup** (fail-fast on a future typo/foreign entry; verified all 26 owned).
+    Payload-drop and migration-runner replacement confirmed out of scope. Tests:
+    `OwnedCollectionRegistryTest`, `PipelineRebuildServiceTest` (guard-then-orchestrate,
+    abort-on-rejection, startup validation). Fixed a two-constructor ambiguity caught by the
+    `@SpringBootTest` context test (`@Autowired` on the production constructor). Unit + context
+    tests green; full suite blocked only by Docker Desktop being down (Testcontainers integration
+    tests, unrelated to these changes — they passed earlier in-session).
 - **H54.7** — Full wipe + reimport from source files; verify determinism (rebuild twice →
   identical) end to end.
 
