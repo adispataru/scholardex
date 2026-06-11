@@ -251,6 +251,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         Set<String> sourceAuthorIds = new LinkedHashSet<>();
         Set<String> sourceAffiliationIds = new LinkedHashSet<>();
         Set<String> sourcePublicationIds = new LinkedHashSet<>();
+        Set<String> sourceForumIds = new LinkedHashSet<>();
         Set<String> eids = new LinkedHashSet<>();
         Set<String> dois = new LinkedHashSet<>();
         for (ScopusPublicationFact publication : chunk) {
@@ -260,6 +261,10 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
             String eid = normalizeBlank(publication.getEid());
             if (eid != null) {
                 eids.add(eid);
+            }
+            String forumId = normalizeBlank(publication.getForumId());
+            if (forumId != null && !forumId.startsWith("sforum_")) {
+                sourceForumIds.add(forumId);
             }
             String doiNormalized = normalizeDoi(publication.getDoi());
             if (doiNormalized != null) {
@@ -300,6 +305,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         preloadSourceLinks(ScholardexEntityType.AUTHOR, sourceAuthorIds, context);
         preloadSourceLinks(ScholardexEntityType.AFFILIATION, sourceAffiliationIds, context);
         preloadSourceLinks(ScholardexEntityType.PUBLICATION, sourcePublicationIds, context);
+        preloadSourceLinks(ScholardexEntityType.FORUM, sourceForumIds, context);
         preloadPublicationFacts(eids, dois, context);
         context.preloaded = true;
     }
@@ -513,7 +519,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         fact.setPendingAuthorSourceIds(authorBridgeResult.pendingSourceIds());
         fact.setCorrespondingAuthors(scopusFact.getCorrespondingAuthors() == null ? List.of() : new ArrayList<>(scopusFact.getCorrespondingAuthors()));
         fact.setAffiliationIds(resolveCanonicalPublicationAffiliationIds(scopusFact, context));
-        fact.setForumId(scopusFact.getForumId());
+        fact.setForumId(resolveCanonicalForumId(scopusFact.getSource(), scopusFact.getForumId(), context));
         fact.setVolume(scopusFact.getVolume());
         fact.setIssueIdentifier(scopusFact.getIssueIdentifier());
         fact.setCoverDate(scopusFact.getCoverDate());
@@ -696,6 +702,38 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
             return null;
         }
         return resolved.get().getCanonicalEntityId();
+    }
+
+    /**
+     * Resolve a publication's raw Scopus forum id to its canonical {@code sforum_…} forum id via the
+     * FORUM/SCOPUS source link minted by Scopus-forum canonicalization (H55.1), which runs before this
+     * step. Blank forum ids stay null (legitimate — publication has no forum). An id already canonical
+     * (prefixed {@code sforum_}) passes through. If a non-blank Scopus forum id cannot be resolved the
+     * raw id is kept (never silently nulled) and logged — H55.1 guarantees coverage, so this is a
+     * defensive fallback that H55.4 verification must confirm stays at zero.
+     */
+    private String resolveCanonicalForumId(String source, String scopusForumId, ChunkContext context) {
+        String normalized = normalizeBlank(scopusForumId, context);
+        if (normalized == null) {
+            return null;
+        }
+        if (normalized.startsWith("sforum_")) {
+            return normalized;
+        }
+        String normalizedSource = normalizeBlank(source, context);
+        Optional<ScholardexSourceLink> resolved = Optional.empty();
+        if (normalizedSource != null) {
+            resolved = findSourceLink(ScholardexEntityType.FORUM, normalizedSource, normalized, context);
+        }
+        if (resolved.isEmpty()) {
+            resolved = findSourceLink(ScholardexEntityType.FORUM, SOURCE_SCOPUS, normalized, context);
+        }
+        if (resolved.isPresent() && !isBlank(resolved.get().getCanonicalEntityId())) {
+            return resolved.get().getCanonicalEntityId();
+        }
+        log.warn("Unresolved canonical forum for Scopus forum id {} (source {}); keeping raw id. "
+                + "Expected zero after H55.1 Scopus-forum canonicalization.", normalized, normalizedSource);
+        return normalized;
     }
 
     private List<String> resolveCanonicalPublicationAffiliationIds(ScopusPublicationFact sourceFact, ChunkContext context) {

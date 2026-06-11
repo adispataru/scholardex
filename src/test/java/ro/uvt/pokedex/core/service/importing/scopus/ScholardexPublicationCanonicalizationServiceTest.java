@@ -500,6 +500,58 @@ class ScholardexPublicationCanonicalizationServiceTest {
     }
 
     @Test
+    void applyCanonicalPublicationFieldsResolvesRawScopusForumIdToCanonicalForumId() {
+        // H55.2: the stored forumId is re-pointed from the raw Scopus forum id to the canonical
+        // sforum_ id via the FORUM/SCOPUS source link minted by H55.1.
+        ScholardexPublicationFact fact = new ScholardexPublicationFact();
+        ScopusPublicationFact scopusFact = new ScopusPublicationFact();
+        scopusFact.setEid("2-s2.0-forum-replay");
+        scopusFact.setTitle("Forum Replay");
+        scopusFact.setSource("SCOPUS");
+        scopusFact.setSourceRecordId("2-s2.0-forum-replay");
+        scopusFact.setForumId("1000147102");
+
+        ScholardexPublicationCanonicalizationService.AuthorBridgeResult bridgeResult =
+                new ScholardexPublicationCanonicalizationService.AuthorBridgeResult(List.of(), List.of(), List.of());
+        ScholardexPublicationCanonicalizationService.ChunkContext context =
+                ReflectionTestUtils.invokeMethod(service, "createChunkContext");
+        ScholardexSourceLink forumLink = new ScholardexSourceLink();
+        forumLink.setCanonicalEntityId("sforum_abc123");
+        when(sourceLinkService.findByKey(ScholardexEntityType.FORUM, "SCOPUS", "1000147102"))
+                .thenReturn(Optional.of(forumLink));
+
+        ReflectionTestUtils.invokeMethod(
+                service, "applyCanonicalPublicationFields", fact, scopusFact, bridgeResult, Instant.now(), context);
+
+        assertEquals("sforum_abc123", fact.getForumId());
+    }
+
+    @Test
+    void applyCanonicalPublicationFieldsKeepsRawForumIdWhenUnresolvedRatherThanNulling() {
+        // H55.2 contract: an unresolved Scopus forum id is kept (never silently nulled). H55.1
+        // guarantees coverage, so this defensive path should stay empty in practice.
+        ScholardexPublicationFact fact = new ScholardexPublicationFact();
+        ScopusPublicationFact scopusFact = new ScopusPublicationFact();
+        scopusFact.setEid("2-s2.0-forum-unresolved");
+        scopusFact.setTitle("Forum Unresolved");
+        scopusFact.setSource("SCOPUS");
+        scopusFact.setSourceRecordId("2-s2.0-forum-unresolved");
+        scopusFact.setForumId("9999999999");
+
+        ScholardexPublicationCanonicalizationService.AuthorBridgeResult bridgeResult =
+                new ScholardexPublicationCanonicalizationService.AuthorBridgeResult(List.of(), List.of(), List.of());
+        ScholardexPublicationCanonicalizationService.ChunkContext context =
+                ReflectionTestUtils.invokeMethod(service, "createChunkContext");
+        when(sourceLinkService.findByKey(ScholardexEntityType.FORUM, "SCOPUS", "9999999999"))
+                .thenReturn(Optional.empty());
+
+        ReflectionTestUtils.invokeMethod(
+                service, "applyCanonicalPublicationFields", fact, scopusFact, bridgeResult, Instant.now(), context);
+
+        assertEquals("9999999999", fact.getForumId());
+    }
+
+    @Test
     void applyCanonicalPublicationFieldsUsesEmptyCorrespondingAuthorsAndResolvesDistinctAffiliations() {
         ScholardexPublicationFact fact = new ScholardexPublicationFact();
         ScopusPublicationFact scopusFact = new ScopusPublicationFact();

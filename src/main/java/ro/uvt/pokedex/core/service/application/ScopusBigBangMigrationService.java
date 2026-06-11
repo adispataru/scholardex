@@ -51,6 +51,9 @@ public class ScopusBigBangMigrationService {
 
     private static final Logger log = LoggerFactory.getLogger(ScopusBigBangMigrationService.class);
 
+    // Fixed (non-UUID) provenance label so FORUM/SCOPUS source-link batch ids stay rebuild-deterministic.
+    private static final String SCOPUS_FORUM_CANON_BATCH = "scopus-forum-canonicalization";
+
     @Value("${scopus.data.file}")
     private String scopusDataFile;
 
@@ -62,6 +65,7 @@ public class ScopusBigBangMigrationService {
     private final ScholardexAuthorCanonicalizationService authorCanonicalizationService;
     private final ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
     private final ScholardexCitationCanonicalizationService citationCanonicalizationService;
+    private final WosScholardexOnboardingService wosScholardexOnboardingService;
     private final ScholardexCanonicalBuildCheckpointService canonicalBuildCheckpointService;
     private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexEdgeReconciliationService edgeReconciliationService;
@@ -117,6 +121,10 @@ public class ScopusBigBangMigrationService {
         ImportProcessingResult canonicalAuthors = runStepWithTiming(
                 "scholardex-author-canonicalization",
                 () -> authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options));
+        log.info("Scopus build-facts next step: scholardex-forum-canonicalization");
+        ImportProcessingResult canonicalForums = runStepWithTiming(
+                "scholardex-forum-canonicalization",
+                () -> wosScholardexOnboardingService.runScopusForumCanonicalization(SCOPUS_FORUM_CANON_BATCH, "build-facts"));
         log.info("Scopus build-facts next step: scholardex-publication-canonicalization");
         ImportProcessingResult canonicalPublications = runStepWithTiming(
                 "scholardex-publication-canonicalization",
@@ -125,7 +133,7 @@ public class ScopusBigBangMigrationService {
         ImportProcessingResult canonicalCitations = runStepWithTiming(
                 "scholardex-citation-canonicalization",
                 () -> citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options));
-        ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors, canonicalPublications, canonicalCitations));
+        ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors, canonicalForums, canonicalPublications, canonicalCitations));
         log.info("Scopus build-facts orchestration completed: processed={} imported={} updated={} skipped={} errors={}",
                 buildFactsCombined.getProcessedCount(),
                 buildFactsCombined.getImportedCount(),
@@ -172,6 +180,10 @@ public class ScopusBigBangMigrationService {
         ImportProcessingResult canonicalAuthors = runStepWithTiming(
                 "scholardex-author-canonicalization",
                 () -> authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options));
+        log.info("Scopus incremental upload next step: scholardex-forum-canonicalization");
+        ImportProcessingResult canonicalForums = runStepWithTiming(
+                "scholardex-forum-canonicalization",
+                () -> wosScholardexOnboardingService.runScopusForumCanonicalization(SCOPUS_FORUM_CANON_BATCH, "incremental"));
         log.info("Scopus incremental upload next step: scholardex-publication-canonicalization");
         ImportProcessingResult canonicalPublications = runStepWithTiming(
                 "scholardex-publication-canonicalization",
@@ -180,7 +192,7 @@ public class ScopusBigBangMigrationService {
         ImportProcessingResult canonicalCitations = runStepWithTiming(
                 "scholardex-citation-canonicalization",
                 () -> citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options));
-        ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors, canonicalPublications, canonicalCitations));
+        ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors, canonicalForums, canonicalPublications, canonicalCitations));
         log.info("Scopus incremental upload build orchestration completed: sourceBatchIdFilter={} processed={} imported={} updated={} skipped={} errors={}",
                 sourceBatchIdFilter,
                 buildFactsCombined.getProcessedCount(),
@@ -268,12 +280,13 @@ public class ScopusBigBangMigrationService {
         CanonicalBuildOptions options = CanonicalBuildOptions.defaults();
         ImportProcessingResult canonicalAffiliations = affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(options);
         ImportProcessingResult canonicalAuthors = authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options);
+        ImportProcessingResult canonicalForums = wosScholardexOnboardingService.runScopusForumCanonicalization(SCOPUS_FORUM_CANON_BATCH, "run-full");
         ImportProcessingResult canonicalPublications = publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(options);
         ImportProcessingResult canonicalCitations = citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options);
         ImportProcessingResult projections = scopusProjectionBuilderService.rebuildViews();
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult indexResult =
                 scopusCanonicalIndexMaintenanceService.ensureIndexes();
-        ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors, canonicalPublications, canonicalCitations));
+        ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors, canonicalForums, canonicalPublications, canonicalCitations));
         return new ScopusBigBangMigrationResult(
                 scopusDataFile,
                 startedAt,

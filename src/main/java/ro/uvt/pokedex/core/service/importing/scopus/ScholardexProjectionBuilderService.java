@@ -21,7 +21,6 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
@@ -104,14 +103,9 @@ public class ScholardexProjectionBuilderService {
         String buildVersion = buildAt.toString();
         long totalStartedAtNanos = System.nanoTime();
         try {
-            // --- build forum views ---
+            // --- build forum views (H55.3: one row per canonical forum, keyed by sforum_ id) ---
             long forumStartedAtNanos = System.nanoTime();
-            List<ScopusForumFact> forumFacts = new ArrayList<>(forumFactRepository.findAll());
-            forumFacts.sort(Comparator.comparing(ScopusForumFact::getSourceId, Comparator.nullsLast(String::compareTo)));
-            List<ScholardexForumView> forumViews = forumFacts.stream()
-                    .map(fact -> toForumView(fact, buildVersion, buildAt))
-                    .collect(Collectors.toCollection(ArrayList::new));
-            mergeWosOnlyForumViews(forumViews, buildVersion, buildAt);
+            List<ScholardexForumView> forumViews = buildCanonicalForumViews(buildVersion, buildAt);
             markImported(result, forumViews.size());
             long forumMs = nanosToMillis(System.nanoTime() - forumStartedAtNanos);
 
@@ -289,10 +283,30 @@ public class ScholardexProjectionBuilderService {
     // Derivation helpers (unchanged)
     // -------------------------------------------------------------------------
 
-    private ScholardexForumView toForumView(ScopusForumFact fact, String buildVersion, Instant buildAt) {
+    /**
+     * H55.3: project one forum-view row per canonical Scholardex forum, keyed by its {@code sforum_}
+     * id. Replaces the former dual-key scheme (one row per {@code ScopusForumFact} keyed by raw Scopus
+     * id, plus a WoS-only canonical merge) that produced duplicate {@code /forums} rows. Every forum —
+     * Scopus, WoS, or user-defined — now appears exactly once under its canonical id, matching the
+     * canonical {@code forumId} that publications now carry (H55.2).
+     */
+    private List<ScholardexForumView> buildCanonicalForumViews(String buildVersion, Instant buildAt) {
+        List<ScholardexForumFact> canonicalForums = new ArrayList<>(canonicalForumFactRepository.findAll());
+        canonicalForums.sort(Comparator.comparing(ScholardexForumFact::getId, Comparator.nullsLast(String::compareTo)));
+        List<ScholardexForumView> forumViews = new ArrayList<>(canonicalForums.size());
+        for (ScholardexForumFact canonicalForum : canonicalForums) {
+            if (canonicalForum.getId() == null) {
+                continue;
+            }
+            forumViews.add(toCanonicalForumView(canonicalForum, buildVersion, buildAt));
+        }
+        return forumViews;
+    }
+
+    private ScholardexForumView toCanonicalForumView(ScholardexForumFact fact, String buildVersion, Instant buildAt) {
         ScholardexForumView view = new ScholardexForumView();
-        view.setId(fact.getSourceId());
-        view.setPublicationName(fact.getPublicationName());
+        view.setId(fact.getId());
+        view.setPublicationName(fact.getName());
         view.setIssn(fact.getIssn());
         view.setEIssn(fact.getEIssn());
         view.setIsbn(fact.getIsbn());
@@ -303,37 +317,6 @@ public class ScholardexProjectionBuilderService {
         view.setUpdatedAt(buildAt);
         view.setSourceEventId(fact.getSourceEventId());
         return view;
-    }
-
-    private void mergeWosOnlyForumViews(List<ScholardexForumView> forumViews, String buildVersion, Instant buildAt) {
-        List<ScholardexForumFact> canonicalForums = new ArrayList<>(canonicalForumFactRepository.findAll());
-        canonicalForums.sort(Comparator.comparing(ScholardexForumFact::getId, Comparator.nullsLast(String::compareTo)));
-        Set<String> existingIds = forumViews.stream()
-                .map(ScholardexForumView::getId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
-        for (ScholardexForumFact canonicalForum : canonicalForums) {
-            if (!safeList(canonicalForum.getScopusForumIds()).isEmpty()) {
-                continue;
-            }
-            if (canonicalForum.getId() == null || existingIds.contains(canonicalForum.getId())) {
-                continue;
-            }
-            ScholardexForumView wosView = new ScholardexForumView();
-            wosView.setId(canonicalForum.getId());
-            wosView.setPublicationName(canonicalForum.getName());
-            wosView.setIssn(canonicalForum.getIssn());
-            wosView.setEIssn(canonicalForum.getEIssn());
-            wosView.setIsbn(canonicalForum.getIsbn());
-            wosView.setAggregationType(canonicalForum.getAggregationType());
-            wosView.setPublisher(canonicalForum.getPublisher());
-            wosView.setBuildVersion(buildVersion);
-            wosView.setBuildAt(buildAt);
-            wosView.setUpdatedAt(buildAt);
-            wosView.setSourceEventId(canonicalForum.getSourceEventId());
-            forumViews.add(wosView);
-            existingIds.add(canonicalForum.getId());
-        }
     }
 
     private ScholardexAuthorView toAuthorView(ScholardexAuthorFact fact, String buildVersion, Instant buildAt) {
@@ -864,11 +847,10 @@ public class ScholardexProjectionBuilderService {
     }
 
     private BatchRefreshState loadBatchRefreshState(String sourceBatchId, String buildVersion, Instant buildAt) {
-        List<ScopusForumFact> forumFacts = new ArrayList<>(forumFactRepository.findBySourceBatchId(sourceBatchId));
-        forumFacts.sort(Comparator.comparing(ScopusForumFact::getSourceId, Comparator.nullsLast(String::compareTo)));
-        List<ScholardexForumView> forumViews = forumFacts.stream()
-                .map(fact -> toForumView(fact, buildVersion, buildAt))
-                .collect(Collectors.toCollection(ArrayList::new));
+        // H55.3: forums are keyed by canonical id, which has no per-Scopus-batch scoping; the canonical
+        // forum set is small, so refresh all of it on each batch (upsert) to keep the view complete and
+        // free of the stale dual-key rows that previously accumulated on the never-pruning batch path.
+        List<ScholardexForumView> forumViews = buildCanonicalForumViews(buildVersion, buildAt);
 
         List<ScholardexAuthorFact> authorFacts = new ArrayList<>(authorFactRepository.findBySourceBatchId(sourceBatchId));
         authorFacts.sort(Comparator.comparing(ScholardexAuthorFact::getId, Comparator.nullsLast(String::compareTo)));

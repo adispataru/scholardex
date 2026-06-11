@@ -34,7 +34,7 @@ const INDEXES = [
   { collection: "scopus.funding_facts",                         index: "uniq_scopus_funding_fact_key",                          keys: ["fundingKey"] },
   { collection: "scopus.forum_facts",                           index: "uniq_scopus_forum_fact_source_id",                      keys: ["sourceId"] },
   { collection: "scopus.citation_facts",                        index: "uniq_scopus_citation_fact_edge",                        keys: ["citedEid", "citingEid"] },
-  { collection: "scopus.import_events",                         index: "uniq_scopus_import_event_idempotence",                  keys: ["entityType", "source", "sourceRecordId", "payloadHash"] },
+  { collection: "scopus.import_events",                         index: "uniq_scopus_import_event_idempotence",                  keys: ["source", "entityType", "sourceRecordId"] },
   { collection: "user_defined.forum_facts",                     index: "uniq_user_defined_forum_source_record_id",              keys: ["sourceRecordId"] },
   { collection: "user_defined.publication_facts",               index: "uniq_user_defined_publication_source_record_id",        keys: ["sourceRecordId"] },
   { collection: "scholardex.source_links",                      index: "uniq_scholardex_source_link",                           keys: ["entityType", "source", "sourceRecordId"] },

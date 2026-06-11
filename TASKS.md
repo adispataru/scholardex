@@ -9,6 +9,13 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H55` Forum identity unification (canonical forum id everywhere).
+  Goal: identify every journal/venue by its canonical Scholardex forum id across storage, projection, and display — eliminating the dual id scheme (raw Scopus forum id vs canonical id) that produces duplicate `/forums` rows (e.g. Computer Science Education shown twice, `Journal` + `JOURNAL`).
+  Deliverable: a Scopus-forum canonicalization so every Scopus forum gets a canonical forum (6,991 currently have none); publication `forumId` re-pointed from Scopus id to canonical id; `scholardex_forum_view` projected from canonical forums only (one row per journal); full re-canonicalize + re-project; score parity verification.
+  Exit criteria: every forum has exactly one canonical id and one projection row; `/forums` shows no duplicates; a sample of indicator scores is unchanged before/after the re-derive (scoring services are insulated via `lookupPort.getForum`, so no scoring-service changes expected); rebuild-twice determinism holds.
+  Dependency: surfaced 2026-06-11 while investigating duplicate `/forums` entries (post-H54 full-dataset rebuild). Planning doc at `docs/tasks/active/h55-forum-identity-unification.md`. Lighter fallback (prune orphaned projection rows, keep dual-key) documented there.
+  Progress (2026-06-11): H55.1 (Scopus-forum canonicalization), H55.2 (publication `forumId` re-pointing), H55.3 (canonical-only `forum_view` projection), H55.4 (full-dataset rebuild + verification) DONE. Live rebuild on the `test`/`core` DBs: forum_view single-keyed (32,524 rows, 0 raw-Scopus), original `Journal`/`JOURNAL` duplicate fixed, 97.8% pubs on canonical ids, ISSN-preservation parity proven. H55.4 surfaced a pre-existing canonical-layer duplication (75 same-journal forum pairs split by ISSN-set completeness; 3 block 1,990 pubs via `AMBIGUOUS_ISSN_MATCH`). Remaining: **H55.5 canonical-forum deduplication** (scoped in the planning doc; not yet implemented).
+
 - [ ] `H20` Google Scholar (PoP) user-onboarding into Scholardex.
   Goal: support user-triggered Google Scholar imports from Publish-or-Perish exports as first-class canonical ingestion into Scholardex identity/link models.
   Deliverable: user-operation onboarding flow for PoP exports (upload/import from user surface) with parser + ingest adapter into Scholar-source events/facts and linker integration with Scholardex entities.

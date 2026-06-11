@@ -5,6 +5,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
@@ -30,6 +31,7 @@ import java.util.List;
 import java.util.LinkedHashSet;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -95,6 +97,41 @@ class WosScholardexOnboardingServiceTest {
         assertTrue(savedForum.getId().startsWith("sforum_"));
         assertEquals(List.of("wos-j-1"), savedForum.getWosForumIds());
         assertEquals("1234-567X", savedForum.getIssn());
+    }
+
+    @Test
+    void runWosOnboardingRecordsConflictWhenForumExternalIdAlreadyLinkedInsteadOfCrashing() {
+        // Two WoS journals can resolve to the same scopus forum id; the candidate search keys on
+        // ISSN/name, not the external forum id, so the second save collides on the H54.2 unique index
+        // uniq_scholardex_forum_scopus_id. The onboarding must record a conflict and skip, not 500.
+        WosScholardexOnboardingService service = service();
+
+        WosRankingView rankingView = new WosRankingView();
+        rankingView.setId("wos-j-dup");
+        rankingView.setName("Journal Sharing A Scopus Forum");
+        rankingView.setIssn("1335342X");
+
+        when(namedParameterJdbcTemplate.query(any(String.class), any(SqlParameterSource.class), any(RowMapper.class)))
+                .thenReturn(List.of(rankingView));
+        when(scopusForumFactRepository.findAll()).thenReturn(List.of());
+        when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
+        when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of());
+        when(sourceLinkService.findByKey(ScholardexEntityType.FORUM, "WOS", "wos-j-dup")).thenReturn(Optional.empty());
+        when(scholardexForumFactRepository.save(any(ScholardexForumFact.class)))
+                .thenThrow(new DuplicateKeyException(
+                        "E11000 duplicate key error collection: scholardex.forum_facts index: uniq_scholardex_forum_scopus_id"));
+        when(scholardexIdentityConflictRepository.findByEntityTypeAndIncomingSourceAndIncomingSourceRecordIdAndReasonCodeAndStatus(
+                eq(ScholardexEntityType.FORUM), eq("WOS"), eq("wos-j-dup"),
+                eq("FORUM_EXTERNAL_ID_ALREADY_LINKED"), eq("OPEN"))).thenReturn(Optional.empty());
+
+        ImportProcessingResult result = assertDoesNotThrow(() -> service.runWosOnboarding("batch-1", "corr-1"));
+
+        assertTrue(result.getSkippedCount() >= 1);
+        assertEquals(0, result.getImportedCount());
+        ArgumentCaptor<ScholardexIdentityConflict> conflictCaptor = ArgumentCaptor.forClass(ScholardexIdentityConflict.class);
+        verify(scholardexIdentityConflictRepository).save(conflictCaptor.capture());
+        assertEquals("FORUM_EXTERNAL_ID_ALREADY_LINKED", conflictCaptor.getValue().getReasonCode());
+        assertEquals(ScholardexEntityType.FORUM, conflictCaptor.getValue().getEntityType());
     }
 
     @Test
@@ -547,6 +584,101 @@ class WosScholardexOnboardingServiceTest {
         assertTrue(!target.getAliasIssns().contains("8765-4321"));
         assertTrue(target.getCreatedAt() != null);
         assertTrue(target.getUpdatedAt() != null);
+    }
+
+    @Test
+    void runScopusForumCanonicalizationCreatesCanonicalForumAndScopusSourceLinkForOrphan() {
+        WosScholardexOnboardingService service = service();
+
+        ScopusForumFact scopusForum = new ScopusForumFact();
+        scopusForum.setSourceId("scopus-forum-1");
+        scopusForum.setPublicationName("Orphan Journal");
+        scopusForum.setIssn("12345678");
+        scopusForum.setAggregationType("Journal");
+
+        when(scopusForumFactRepository.findAll()).thenReturn(List.of(scopusForum));
+        when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
+        when(sourceLinkService.findByKey(ScholardexEntityType.FORUM, "SCOPUS", "scopus-forum-1"))
+                .thenReturn(Optional.empty());
+        when(scholardexForumFactRepository.save(any(ScholardexForumFact.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ImportProcessingResult result = service.runScopusForumCanonicalization("batch-s", "corr-s");
+
+        assertEquals(1, result.getImportedCount());
+        ArgumentCaptor<ScholardexForumFact> forumCaptor = ArgumentCaptor.forClass(ScholardexForumFact.class);
+        verify(scholardexForumFactRepository).save(forumCaptor.capture());
+        ScholardexForumFact saved = forumCaptor.getValue();
+        assertTrue(saved.getId().startsWith("sforum_"));
+        assertEquals(List.of("scopus-forum-1"), saved.getScopusForumIds());
+        assertEquals("1234-5678", saved.getIssn());
+        assertEquals("SCOPUS", saved.getSource());
+        verify(sourceLinkService).link(
+                eq(ScholardexEntityType.FORUM), eq("SCOPUS"), eq("scopus-forum-1"), eq(saved.getId()),
+                eq("scopus-forum-onboarding"), isNull(), eq("batch-s"), eq("corr-s"), eq(false)
+        );
+    }
+
+    @Test
+    void runScopusForumCanonicalizationOnlyLinksScopusForumAlreadyFoldedIntoCanonical() {
+        // A scopus forum whose id already appears in a canonical forum's scopusForumIds (folded in by
+        // WoS onboarding) must not be re-merged/re-saved — only its FORUM/SCOPUS source link is ensured
+        // so publication re-pointing can resolve it.
+        WosScholardexOnboardingService service = service();
+
+        ScholardexForumFact canonical = new ScholardexForumFact();
+        canonical.setId("cf-linked");
+        canonical.setScopusForumIds(new ArrayList<>(List.of("scopus-forum-7")));
+
+        ScopusForumFact scopusForum = new ScopusForumFact();
+        scopusForum.setSourceId("scopus-forum-7");
+        scopusForum.setPublicationName("Already Linked Journal");
+        scopusForum.setIssn("13352342");
+
+        when(scopusForumFactRepository.findAll()).thenReturn(List.of(scopusForum));
+        when(scholardexForumFactRepository.findAll()).thenReturn(List.of(canonical));
+
+        ImportProcessingResult result = service.runScopusForumCanonicalization("batch-s", "corr-s");
+
+        assertEquals(0, result.getImportedCount());
+        assertTrue(result.getSkippedCount() >= 1);
+        verify(scholardexForumFactRepository, never()).save(any());
+        verify(sourceLinkService).link(
+                eq(ScholardexEntityType.FORUM), eq("SCOPUS"), eq("scopus-forum-7"), eq("cf-linked"),
+                eq("scopus-forum-onboarding"), isNull(), eq("batch-s"), eq("corr-s"), eq(false)
+        );
+    }
+
+    @Test
+    void runScopusForumCanonicalizationDedupsTwoOrphanScopusForumsSharingAnIssn() {
+        WosScholardexOnboardingService service = service();
+
+        ScopusForumFact a = new ScopusForumFact();
+        a.setSourceId("scopus-a");
+        a.setPublicationName("Shared Journal A");
+        a.setIssn("12345678");
+        ScopusForumFact b = new ScopusForumFact();
+        b.setSourceId("scopus-b");
+        b.setPublicationName("Shared Journal B");
+        b.setIssn("1234-5678");
+
+        when(scopusForumFactRepository.findAll()).thenReturn(List.of(b, a)); // unsorted on purpose
+        when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
+        when(sourceLinkService.findByKey(eq(ScholardexEntityType.FORUM), eq("SCOPUS"), anyString()))
+                .thenReturn(Optional.empty());
+        when(scholardexForumFactRepository.save(any(ScholardexForumFact.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ImportProcessingResult result = service.runScopusForumCanonicalization("batch-s", "corr-s");
+
+        // First orphan creates the canonical forum; the second folds into the same id (shared ISSN).
+        assertEquals(1, result.getImportedCount());
+        assertEquals(1, result.getUpdatedCount());
+        ArgumentCaptor<ScholardexForumFact> forumCaptor = ArgumentCaptor.forClass(ScholardexForumFact.class);
+        verify(scholardexForumFactRepository, times(2)).save(forumCaptor.capture());
+        List<ScholardexForumFact> saves = forumCaptor.getAllValues();
+        assertEquals(saves.get(0).getId(), saves.get(1).getId());
+        assertTrue(saves.get(1).getScopusForumIds().containsAll(List.of("scopus-a", "scopus-b")));
     }
 
     @Test

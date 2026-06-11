@@ -24,7 +24,6 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAffiliationFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorFactRepository;
@@ -94,17 +93,17 @@ class ScholardexProjectionBuilderServiceTest {
         ScholardexProjectionBuilderService service = newService();
         Instant buildAt = Instant.parse("2026-04-29T10:15:30Z");
 
-        ScopusForumFact fact = new ScopusForumFact();
-        fact.setSourceId("forum-1");
-        fact.setPublicationName("Forum One");
+        ScholardexForumFact fact = new ScholardexForumFact();
+        fact.setId("sforum_one");
+        fact.setName("Forum One");
         fact.setIssn("1234-5678");
         fact.setEIssn("8765-4321");
         fact.setAggregationType("Journal");
         fact.setSourceEventId("ev-forum-1");
 
-        ScholardexForumView view = ReflectionTestUtils.invokeMethod(service, "toForumView", fact, "build-v1", buildAt);
+        ScholardexForumView view = ReflectionTestUtils.invokeMethod(service, "toCanonicalForumView", fact, "build-v1", buildAt);
 
-        assertEquals("forum-1", view.getId());
+        assertEquals("sforum_one", view.getId());
         assertEquals("Forum One", view.getPublicationName());
         assertEquals("1234-5678", view.getIssn());
         assertEquals("8765-4321", view.getEIssn());
@@ -272,8 +271,6 @@ class ScholardexProjectionBuilderServiceTest {
         citationFact.setCitedPublicationId("p1");
         citationFact.setCitingPublicationId("p2");
         citationFact.setSource("SCOPUS_JSON_BOOTSTRAP");
-
-        when(forumFactRepository.findAll()).thenReturn(List.of());
         when(canonicalForumFactRepository.findAll()).thenReturn(List.of());
         when(authorFactRepository.findAll()).thenReturn(List.of());
         when(affiliationFactRepository.findAll()).thenReturn(List.of());
@@ -290,7 +287,7 @@ class ScholardexProjectionBuilderServiceTest {
     }
 
     @Test
-    void rebuildViewsIncludesCanonicalUserDefinedForumsWithoutScopusForumIds() throws Exception {
+    void rebuildViewsProjectsEveryCanonicalForumOnceSortedByIdIncludingScopusLinked() throws Exception {
         ScholardexProjectionBuilderService service = new ScholardexProjectionBuilderService(
                 forumFactRepository,
                 canonicalForumFactRepository,
@@ -324,12 +321,12 @@ class ScholardexProjectionBuilderServiceTest {
         earlierForum.setAggregationType("Conference");
         earlierForum.setSourceEventId("ev-a");
 
+        // H55.3: a Scopus-linked canonical forum is now projected like any other (single canonical key),
+        // no longer skipped — sorts between sforum_a and sforum_z by id.
         ScholardexForumFact scopusLinkedForum = new ScholardexForumFact();
-        scopusLinkedForum.setId("sforum_skip");
-        scopusLinkedForum.setName("Skip Me");
+        scopusLinkedForum.setId("sforum_m");
+        scopusLinkedForum.setName("Scopus Linked");
         scopusLinkedForum.setScopusForumIds(List.of("scopus-1"));
-
-        when(forumFactRepository.findAll()).thenReturn(List.of());
         when(canonicalForumFactRepository.findAll()).thenReturn(List.of(laterForum, earlierForum, scopusLinkedForum));
         when(authorFactRepository.findAll()).thenReturn(List.of());
         when(affiliationFactRepository.findAll()).thenReturn(List.of());
@@ -341,11 +338,11 @@ class ScholardexProjectionBuilderServiceTest {
 
         ImportProcessingResult result = service.rebuildViews();
 
-        assertEquals(2, result.getImportedCount());
+        assertEquals(3, result.getImportedCount());
 
         ArgumentCaptor<BatchPreparedStatementSetter> setterCaptor = ArgumentCaptor.forClass(BatchPreparedStatementSetter.class);
         verify(jdbcTemplate).batchUpdate(contains("INSERT INTO reporting_read.scholardex_forum_view"), setterCaptor.capture());
-        assertEquals(2, setterCaptor.getValue().getBatchSize());
+        assertEquals(3, setterCaptor.getValue().getBatchSize());
 
         PreparedStatement ps = mock(PreparedStatement.class);
         setterCaptor.getValue().setValues(ps, 0);
@@ -378,13 +375,15 @@ class ScholardexProjectionBuilderServiceTest {
 
         TransactionStatus txStatus = mock(TransactionStatus.class);
         when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenReturn(txStatus);
-        when(forumFactRepository.findBySourceBatchId("upload-batch-7")).thenReturn(List.of());
         when(authorFactRepository.findBySourceBatchId("upload-batch-7")).thenReturn(List.of());
         when(affiliationFactRepository.findBySourceBatchId("upload-batch-7")).thenReturn(List.of());
         when(publicationFactRepository.findBySourceBatchId("upload-batch-7")).thenReturn(List.of());
 
         service.rebuildViewsForBatch("upload-batch-7");
-        verify(forumFactRepository).findBySourceBatchId("upload-batch-7");
+        // H55.3: forums refresh globally from canonical (no per-Scopus-batch scoping); author/affiliation/
+        // publication stay batch-scoped. The Scopus forum repo is no longer consulted at all.
+        verify(canonicalForumFactRepository).findAll();
+        verify(forumFactRepository, never()).findBySourceBatchId("upload-batch-7");
         verify(authorFactRepository).findBySourceBatchId("upload-batch-7");
         verify(affiliationFactRepository).findBySourceBatchId("upload-batch-7");
         verify(publicationFactRepository).findBySourceBatchId("upload-batch-7");
@@ -426,7 +425,6 @@ class ScholardexProjectionBuilderServiceTest {
         citationFact.setCitingPublicationId("p1");
         citationFact.setSource("SCOPUS_JSON_UPLOAD");
 
-        when(forumFactRepository.findBySourceBatchId("upload-batch-7")).thenReturn(List.of());
         when(authorFactRepository.findBySourceBatchId("upload-batch-7")).thenReturn(List.of());
         when(affiliationFactRepository.findBySourceBatchId("upload-batch-7")).thenReturn(List.of());
         when(publicationFactRepository.findBySourceBatchId("upload-batch-7")).thenReturn(List.of(publicationFact));
@@ -473,7 +471,6 @@ class ScholardexProjectionBuilderServiceTest {
         citationFact.setCitingPublicationId("p_external");
         citationFact.setSource("SCOPUS_JSON_UPLOAD");
 
-        when(forumFactRepository.findBySourceBatchId("upload-batch-9")).thenReturn(List.of());
         when(authorFactRepository.findBySourceBatchId("upload-batch-9")).thenReturn(List.of());
         when(affiliationFactRepository.findBySourceBatchId("upload-batch-9")).thenReturn(List.of());
         when(publicationFactRepository.findBySourceBatchId("upload-batch-9")).thenReturn(List.of(publicationFact));
@@ -508,7 +505,6 @@ class ScholardexProjectionBuilderServiceTest {
 
         TransactionStatus txStatus = mock(TransactionStatus.class);
         when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenReturn(txStatus);
-        when(forumFactRepository.findBySourceBatchId("upload-empty")).thenReturn(List.of());
         when(authorFactRepository.findBySourceBatchId("upload-empty")).thenReturn(List.of());
         when(affiliationFactRepository.findBySourceBatchId("upload-empty")).thenReturn(List.of());
         when(publicationFactRepository.findBySourceBatchId("upload-empty")).thenReturn(List.of());
@@ -567,7 +563,6 @@ class ScholardexProjectionBuilderServiceTest {
         authorAffiliationFact.setAuthorId("a1");
         authorAffiliationFact.setAffiliationId("af1");
 
-        when(forumFactRepository.findBySourceBatchId("upload-batch-8")).thenReturn(List.of());
         when(authorFactRepository.findBySourceBatchId("upload-batch-8")).thenReturn(List.of(authorFact));
         when(affiliationFactRepository.findBySourceBatchId("upload-batch-8")).thenReturn(List.of(affiliationFact));
         when(publicationFactRepository.findBySourceBatchId("upload-batch-8")).thenReturn(List.of(publicationFact));
@@ -608,8 +603,6 @@ class ScholardexProjectionBuilderServiceTest {
         authorFact.setId("a1");
         authorFact.setDisplayName("Spataru A.");
         authorFact.setAlternativeNames(List.of("Spataru, Adrian", "Adrian Spataru"));
-
-        when(forumFactRepository.findAll()).thenReturn(List.of());
         when(canonicalForumFactRepository.findAll()).thenReturn(List.of());
         when(authorFactRepository.findAll()).thenReturn(List.of(authorFact));
         when(affiliationFactRepository.findAll()).thenReturn(List.of());
@@ -693,8 +686,6 @@ class ScholardexProjectionBuilderServiceTest {
         schedulerCitation.setCitedPublicationId("p1");
         schedulerCitation.setCitingPublicationId("p2");
         schedulerCitation.setSource("SCOPUS_PYTHON_CITATIONS_EDGE");
-
-        when(forumFactRepository.findAll()).thenReturn(List.of());
         when(canonicalForumFactRepository.findAll()).thenReturn(List.of());
         when(authorFactRepository.findAll()).thenReturn(List.of());
         when(affiliationFactRepository.findAll()).thenReturn(List.of());
@@ -755,8 +746,6 @@ class ScholardexProjectionBuilderServiceTest {
         duplicateB.setCitedPublicationId("p1");
         duplicateB.setCitingPublicationId("p2");
         duplicateB.setSource("SCOPUS_PYTHON_CITATIONS_EDGE");
-
-        when(forumFactRepository.findAll()).thenReturn(List.of());
         when(canonicalForumFactRepository.findAll()).thenReturn(List.of());
         when(authorFactRepository.findAll()).thenReturn(List.of());
         when(affiliationFactRepository.findAll()).thenReturn(List.of());
@@ -854,8 +843,6 @@ class ScholardexProjectionBuilderServiceTest {
         duplicateCitation.setCitingPublicationId("p2");
         duplicateCitation.setSource("SCOPUS_PYTHON_CITATIONS_EDGE");
         duplicateCitation.setSourceRecordId("ignored");
-
-        when(forumFactRepository.findAll()).thenReturn(List.of());
         when(canonicalForumFactRepository.findAll()).thenReturn(List.of());
         when(authorFactRepository.findAll()).thenReturn(List.of());
         when(affiliationFactRepository.findAll()).thenReturn(List.of());
@@ -907,8 +894,6 @@ class ScholardexProjectionBuilderServiceTest {
         affiliationFact.setCity("Timisoara");
         affiliationFact.setCountry("RO");
         affiliationFact.setSourceEventId("ev-af1");
-
-        when(forumFactRepository.findAll()).thenReturn(List.of());
         when(canonicalForumFactRepository.findAll()).thenReturn(List.of());
         when(authorFactRepository.findAll()).thenReturn(List.of());
         when(affiliationFactRepository.findAll()).thenReturn(List.of(affiliationFact));
@@ -962,8 +947,6 @@ class ScholardexProjectionBuilderServiceTest {
         affiliationFact.setCity("Timisoara");
         affiliationFact.setCountry("RO");
         affiliationFact.setSourceEventId("ev-af1");
-
-        when(forumFactRepository.findAll()).thenReturn(List.of());
         when(canonicalForumFactRepository.findAll()).thenReturn(List.of());
         when(authorFactRepository.findAll()).thenReturn(List.of(authorFact));
         when(affiliationFactRepository.findAll()).thenReturn(List.of(affiliationFact));
@@ -1068,8 +1051,6 @@ class ScholardexProjectionBuilderServiceTest {
         citationB.setCitedPublicationId("p1");
         citationB.setCitingPublicationId("p2");
         citationB.setSource("SCOPUS_JSON_BOOTSTRAP");
-
-        when(forumFactRepository.findAll()).thenReturn(List.of());
         when(canonicalForumFactRepository.findAll()).thenReturn(List.of());
         when(authorFactRepository.findAll()).thenReturn(List.of());
         when(affiliationFactRepository.findAll()).thenReturn(List.of());
@@ -1160,9 +1141,9 @@ class ScholardexProjectionBuilderServiceTest {
         TransactionStatus txStatus = mock(TransactionStatus.class);
         when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenReturn(txStatus);
 
-        ScopusForumFact forumFact = new ScopusForumFact();
-        forumFact.setSourceId("forum-1");
-        forumFact.setPublicationName("Forum");
+        ScholardexForumFact forumFact = new ScholardexForumFact();
+        forumFact.setId("sforum_1");
+        forumFact.setName("Forum");
         forumFact.setSourceEventId("ev-forum");
 
         ScholardexAuthorFact authorFact = new ScholardexAuthorFact();
@@ -1211,8 +1192,7 @@ class ScholardexProjectionBuilderServiceTest {
         authorAffiliationFact.setAuthorId("a1");
         authorAffiliationFact.setAffiliationId("af1");
 
-        when(forumFactRepository.findAll()).thenReturn(List.of(forumFact));
-        when(canonicalForumFactRepository.findAll()).thenReturn(List.of());
+        when(canonicalForumFactRepository.findAll()).thenReturn(List.of(forumFact));
         when(authorFactRepository.findAll()).thenReturn(List.of(authorFact));
         when(affiliationFactRepository.findAll()).thenReturn(List.of(affiliationFact));
         when(publicationFactRepository.findAll()).thenReturn(List.of(publicationFact, citingPublicationFact));
@@ -1242,9 +1222,9 @@ class ScholardexProjectionBuilderServiceTest {
         TransactionStatus txStatus = mock(TransactionStatus.class);
         when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenReturn(txStatus);
 
-        ScopusForumFact forumFact = new ScopusForumFact();
-        forumFact.setSourceId("forum-1");
-        forumFact.setPublicationName("Forum");
+        ScholardexForumFact forumFact = new ScholardexForumFact();
+        forumFact.setId("sforum_1");
+        forumFact.setName("Forum");
 
         ScholardexAuthorFact authorFact = new ScholardexAuthorFact();
         authorFact.setId("a1");
@@ -1259,7 +1239,7 @@ class ScholardexProjectionBuilderServiceTest {
         publicationFact.setId("p1");
         publicationFact.setEid("2-s2.0-1");
         publicationFact.setTitle("Paper");
-        publicationFact.setForumId("forum-1");
+        publicationFact.setForumId("sforum_1");
         publicationFact.setAuthorIds(List.of("a1"));
         publicationFact.setAffiliationIds(List.of("af1"));
 
@@ -1278,7 +1258,8 @@ class ScholardexProjectionBuilderServiceTest {
         authorAffiliationFact.setAuthorId("a1");
         authorAffiliationFact.setAffiliationId("af1");
 
-        when(forumFactRepository.findBySourceBatchId("upload-batch-all")).thenReturn(List.of(forumFact));
+        // H55.3: batch forum refresh reads the full canonical forum set, not a per-Scopus-batch slice.
+        when(canonicalForumFactRepository.findAll()).thenReturn(List.of(forumFact));
         when(authorFactRepository.findBySourceBatchId("upload-batch-all")).thenReturn(List.of(authorFact));
         when(affiliationFactRepository.findBySourceBatchId("upload-batch-all")).thenReturn(List.of(affiliationFact));
         when(publicationFactRepository.findBySourceBatchId("upload-batch-all")).thenReturn(List.of(publicationFact));
@@ -1337,8 +1318,8 @@ class ScholardexProjectionBuilderServiceTest {
         TransactionStatus txStatus = mock(TransactionStatus.class);
         when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenReturn(txStatus);
 
-        ScopusForumFact forumFact = new ScopusForumFact();
-        forumFact.setSourceId("forum-1");
+        ScholardexForumFact forumFact = new ScholardexForumFact();
+        forumFact.setId("sforum_1");
 
         ScholardexAuthorFact authorFact = new ScholardexAuthorFact();
         authorFact.setId("a1");
@@ -1353,7 +1334,7 @@ class ScholardexProjectionBuilderServiceTest {
         publicationFact.setId("p1");
         publicationFact.setEid("2-s2.0-1");
         publicationFact.setTitle("Paper");
-        publicationFact.setForumId("forum-1");
+        publicationFact.setForumId("sforum_1");
         publicationFact.setAuthorIds(List.of("a1"));
         publicationFact.setAffiliationIds(List.of("af1"));
 
@@ -1372,7 +1353,8 @@ class ScholardexProjectionBuilderServiceTest {
         authorAffiliationFact.setAuthorId("a1");
         authorAffiliationFact.setAffiliationId("af1");
 
-        when(forumFactRepository.findBySourceBatchId("upload-batch-delete")).thenReturn(List.of(forumFact));
+        // H55.3: batch forum refresh reads the full canonical forum set, not a per-Scopus-batch slice.
+        when(canonicalForumFactRepository.findAll()).thenReturn(List.of(forumFact));
         when(authorFactRepository.findBySourceBatchId("upload-batch-delete")).thenReturn(List.of(authorFact));
         when(affiliationFactRepository.findBySourceBatchId("upload-batch-delete")).thenReturn(List.of(affiliationFact));
         when(publicationFactRepository.findBySourceBatchId("upload-batch-delete")).thenReturn(List.of(publicationFact));
@@ -1456,7 +1438,6 @@ class ScholardexProjectionBuilderServiceTest {
         duplicatePair.setCitedPublicationId("p1");
         duplicatePair.setCitingPublicationId("p2");
 
-        when(forumFactRepository.findBySourceBatchId("upload-batch-cites")).thenReturn(List.of());
         when(authorFactRepository.findBySourceBatchId("upload-batch-cites")).thenReturn(List.of());
         when(affiliationFactRepository.findBySourceBatchId("upload-batch-cites")).thenReturn(List.of());
         when(publicationFactRepository.findBySourceBatchId("upload-batch-cites")).thenReturn(List.of(publicationFact));
