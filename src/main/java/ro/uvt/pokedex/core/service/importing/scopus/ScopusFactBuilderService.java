@@ -28,9 +28,6 @@ import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.application.UserDefinedWizardOnboardingContract;
 
 import java.time.Instant;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -40,6 +37,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -445,8 +443,9 @@ public class ScopusFactBuilderService {
             fact = new ScopusPublicationFact();
             state.publicationByEid.put(eid, fact);
         } else if (samePayloadHash(fact.getLastPayloadHash(), event.getPayloadHash())) {
-            refreshLineageForReplay(fact, event);
-            state.pendingPublicationSaves.put(eid, fact);
+            if (refreshLineageForReplay(fact, event)) {
+                state.pendingPublicationSaves.put(eid, fact);
+            }
             result.markSkipped(sample(event, "publication payload unchanged"));
             upsertForumFact(event, payload, result, state);
             upsertAuthorFacts(event, payload, result, state);
@@ -534,8 +533,9 @@ public class ScopusFactBuilderService {
             fact = new ScopusCitationFact();
             citationByEdge.put(edgeKey, fact);
         } else if (samePayloadHash(fact.getLastPayloadHash(), event.getPayloadHash())) {
-            refreshLineageForReplay(fact, event);
-            pendingCitationSaves.put(edgeKey, fact);
+            if (refreshLineageForReplay(fact, event)) {
+                pendingCitationSaves.put(edgeKey, fact);
+            }
             result.markSkipped(sample(event, "citation payload unchanged"));
             return;
         }
@@ -588,8 +588,9 @@ public class ScopusFactBuilderService {
                 text(payload, "aggregationType"),
                 effectivePublisherForHash);
         if (!created && samePayloadHash(fact.getLastPayloadHash(), payloadHash)) {
-            refreshLineageForReplay(fact, event);
-            state.pendingForumSaves.put(sourceId, fact);
+            if (refreshLineageForReplay(fact, event)) {
+                state.pendingForumSaves.put(sourceId, fact);
+            }
             return;
         }
 
@@ -598,9 +599,27 @@ public class ScopusFactBuilderService {
             fact.setCreatedAt(now);
         }
         fact.setSourceId(sourceId);
-        fact.setPublicationName(text(payload, "publicationName"));
-        fact.setIssn(normalizeIssn(text(payload, "issn")));
-        fact.setEIssn(normalizeIssn(text(payload, "eIssn")));
+        String publicationNameBefore = fact.getPublicationName();
+        String issnBefore = fact.getIssn();
+        String eIssnBefore = fact.getEIssn();
+        String isbnBefore = fact.getIsbn();
+        String aggregationTypeBefore = fact.getAggregationType();
+        String publisherBefore = fact.getPublisher();
+        // H56: blank-tolerant content merge — a paper that omits a forum attribute must not erase a
+        // value learned from another paper (previously name/issn/eIssn/aggregationType were overwritten
+        // unconditionally, leaving whatever the LAST paper in event order carried).
+        String incomingPublicationName = text(payload, "publicationName");
+        if (created || !isBlank(incomingPublicationName)) {
+            fact.setPublicationName(incomingPublicationName);
+        }
+        String incomingIssn = normalizeIssn(text(payload, "issn"));
+        if (created || !isBlank(incomingIssn)) {
+            fact.setIssn(incomingIssn);
+        }
+        String incomingEIssn = normalizeIssn(text(payload, "eIssn"));
+        if (created || !isBlank(incomingEIssn)) {
+            fact.setEIssn(incomingEIssn);
+        }
         // For enrichment fields not always supplied by Scopus bulk search (publisher, isbn),
         // never overwrite a previously-stored non-blank value with a blank from a new payload.
         String incomingIsbn = text(payload, "isbn");
@@ -609,12 +628,25 @@ public class ScopusFactBuilderService {
         } else if (fact.getIsbn() == null) {
             fact.setIsbn(incomingIsbn);
         }
-        fact.setAggregationType(text(payload, "aggregationType"));
+        String incomingAggregationType = text(payload, "aggregationType");
+        if (created || !isBlank(incomingAggregationType)) {
+            fact.setAggregationType(incomingAggregationType);
+        }
         String incomingPublisher = text(payload, "publisher");
         if (incomingPublisher != null && !incomingPublisher.isBlank()) {
             fact.setPublisher(incomingPublisher);
         } else if (fact.getPublisher() == null) {
             fact.setPublisher(incomingPublisher);
+        }
+        // H56: absorbed variant with no content change — skip the write (see author gate).
+        if (!created
+                && Objects.equals(publicationNameBefore, fact.getPublicationName())
+                && Objects.equals(issnBefore, fact.getIssn())
+                && Objects.equals(eIssnBefore, fact.getEIssn())
+                && Objects.equals(isbnBefore, fact.getIsbn())
+                && Objects.equals(aggregationTypeBefore, fact.getAggregationType())
+                && Objects.equals(publisherBefore, fact.getPublisher())) {
+            return;
         }
         applyLineage(fact, event);
         fact.setLastPayloadHash(payloadHash);
@@ -669,8 +701,9 @@ public class ScopusFactBuilderService {
                     trim(authorNames.get(i)),
                     String.join(",", incomingAffiliationIds));
             if (!created && samePayloadHash(fact.getLastPayloadHash(), payloadHash)) {
-                refreshLineageForReplay(fact, event);
-                state.pendingAuthorSaves.put(authorId, fact);
+                if (refreshLineageForReplay(fact, event)) {
+                    state.pendingAuthorSaves.put(authorId, fact);
+                }
                 continue;
             }
 
@@ -679,12 +712,25 @@ public class ScopusFactBuilderService {
                 fact.setCreatedAt(now);
             }
             fact.setAuthorId(authorId);
+            String nameBefore = fact.getName();
+            List<String> alternativeNamesBefore = snapshotList(fact.getAlternativeNames());
+            List<String> affiliationIdsBefore = snapshotList(fact.getAffiliationIds());
             String incomingName = trim(authorNames.get(i));
             mergeAuthorNames(fact, incomingName);
             if (created) {
                 fact.setAffiliationIds(incomingAffiliationIds);
             } else if (!incomingAffiliationIds.isEmpty()) {
                 fact.setAffiliationIds(mergeDistinctStable(fact.getAffiliationIds(), incomingAffiliationIds));
+            }
+            // H56: an already-absorbed payload variant whose merge changes nothing must not be
+            // re-written — multi-variant authors otherwise re-save on every replay (the per-event hash
+            // ping-pongs between variants). Keep the stored hash/lineage so the fact records the last
+            // event that actually changed its content.
+            if (!created
+                    && Objects.equals(nameBefore, fact.getName())
+                    && Objects.equals(alternativeNamesBefore, fact.getAlternativeNames())
+                    && Objects.equals(affiliationIdsBefore, fact.getAffiliationIds())) {
+                continue;
             }
             applyLineage(fact, event);
             fact.setLastPayloadHash(payloadHash);
@@ -736,8 +782,9 @@ public class ScopusFactBuilderService {
                     arrayValue(cities, i),
                     arrayValue(countries, i));
             if (!created && samePayloadHash(fact.getLastPayloadHash(), payloadHash)) {
-                refreshLineageForReplay(fact, event);
-                state.pendingAffiliationSaves.put(afid, fact);
+                if (refreshLineageForReplay(fact, event)) {
+                    state.pendingAffiliationSaves.put(afid, fact);
+                }
                 continue;
             }
 
@@ -746,9 +793,31 @@ public class ScopusFactBuilderService {
                 fact.setCreatedAt(now);
             }
             fact.setAfid(afid);
-            fact.setName(arrayValue(names, i));
-            fact.setCity(arrayValue(cities, i));
-            fact.setCountry(arrayValue(countries, i));
+            String nameBefore = fact.getName();
+            String cityBefore = fact.getCity();
+            String countryBefore = fact.getCountry();
+            // H56: blank-tolerant content merge — a paper that omits name/city/country must not erase
+            // values learned from another paper (the previous unconditional overwrite left the fact with
+            // whatever the LAST paper in event order happened to carry, dropping known city/country).
+            String incomingName = arrayValue(names, i);
+            String incomingCity = arrayValue(cities, i);
+            String incomingCountry = arrayValue(countries, i);
+            if (created || !isBlank(incomingName)) {
+                fact.setName(incomingName);
+            }
+            if (created || !isBlank(incomingCity)) {
+                fact.setCity(incomingCity);
+            }
+            if (created || !isBlank(incomingCountry)) {
+                fact.setCountry(incomingCountry);
+            }
+            // H56: absorbed variant with no content change — skip the write (see author gate above).
+            if (!created
+                    && Objects.equals(nameBefore, fact.getName())
+                    && Objects.equals(cityBefore, fact.getCity())
+                    && Objects.equals(countryBefore, fact.getCountry())) {
+                continue;
+            }
             applyLineage(fact, event);
             fact.setLastPayloadHash(payloadHash);
             fact.setLastMaterializedAt(now);
@@ -778,14 +847,23 @@ public class ScopusFactBuilderService {
         }
         String payloadHash = hashKey("funding", acronym, text(payload, "fund_no"), text(payload, "fund_sponsor"));
         if (!created && samePayloadHash(fact.getLastPayloadHash(), payloadHash)) {
-            refreshLineageForReplay(fact, event);
-            state.pendingFundingSaves.put(fundingKey, fact);
+            if (refreshLineageForReplay(fact, event)) {
+                state.pendingFundingSaves.put(fundingKey, fact);
+            }
             return;
         }
 
         Instant now = Instant.now();
         if (fact.getCreatedAt() == null) {
             fact.setCreatedAt(now);
+        }
+        // H56: absorbed variant with no content change — skip the write (see author gate).
+        if (!created
+                && Objects.equals(fact.getAcronym(), acronym)
+                && Objects.equals(fact.getNumber(), text(payload, "fund_no"))
+                && Objects.equals(fact.getSponsor(), text(payload, "fund_sponsor"))
+                && Objects.equals(fact.getFundingKey(), fundingKey)) {
+            return;
         }
         fact.setAcronym(acronym);
         fact.setNumber(text(payload, "fund_no"));
@@ -822,8 +900,27 @@ public class ScopusFactBuilderService {
         FactBuilderSupport.applyLineage(fact, event);
     }
 
-    private void refreshLineageForReplay(HasLineageFields fact, ScopusImportEvent event) {
-        applyLineage(fact, event);
+    /**
+     * H56: on an unchanged-payload replay, refresh lineage only when the event's lineage actually
+     * differs (e.g. the record was re-keyed under a new event). Returns true when the fact was
+     * modified and must be re-saved; an identical-lineage replay returns false so callers skip the
+     * write — previously every unchanged fact was unconditionally re-saved (~590k byte-identical
+     * document writes per rebuild, ~85% of the fact-builder's time).
+     */
+    private List<String> snapshotList(List<String> values) {
+        return values == null ? List.of() : List.copyOf(values);
+    }
+
+    private boolean refreshLineageForReplay(HasLineageFields fact, ScopusImportEvent event) {
+        boolean changed = !Objects.equals(fact.getSourceEventId(), event.getId())
+                || !Objects.equals(fact.getSource(), event.getSource())
+                || !Objects.equals(fact.getSourceRecordId(), event.getSourceRecordId())
+                || !Objects.equals(fact.getSourceBatchId(), event.getBatchId())
+                || !Objects.equals(fact.getSourceCorrelationId(), event.getCorrelationId());
+        if (changed) {
+            applyLineage(fact, event);
+        }
+        return changed;
     }
 
     private String sample(ScopusImportEvent event, String message) {
@@ -1081,17 +1178,8 @@ public class ScopusFactBuilderService {
                 material.append(trim(value));
             }
         }
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] bytes = digest.digest(material.toString().getBytes(StandardCharsets.UTF_8));
-            StringBuilder hex = new StringBuilder(bytes.length * 2);
-            for (byte b : bytes) {
-                hex.append(String.format("%02x", b));
-            }
-            return hex.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 not available", e);
-        }
+        // H56: byte-identical, ~10x faster shared implementation (payload hashes run ~750k times/run).
+        return CanonicalizationSupport.sha256Hex(material.toString());
     }
 
     private record PublicationWorkItem(ScopusImportEvent event, JsonNode payload) {

@@ -36,21 +36,31 @@ public final class CanonicalObservabilityMetrics {
         ).increment();
     }
 
+    // H56: recordSourceLinkTransition fires per source-link command (~1.2M+ per pipeline rebuild).
+    // Cache Counter handles instead of re-resolving name+tags against the registry on every call.
+    // Composite meters bind to registries added later, so caching at class-init time is safe.
+    private static final java.util.concurrent.ConcurrentHashMap<String, io.micrometer.core.instrument.Counter> COUNTER_CACHE =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
     public static void recordSourceLinkTransition(String entityType, String fromState, String toState, String outcome) {
-        Metrics.counter("core.h19.source_link.transitions",
-                "entityType", safe(entityType),
-                "fromState", safe(fromState),
-                "toState", safe(toState),
-                "outcome", safe(outcome)
-        ).increment();
+        String e = safe(entityType);
+        String f = safe(fromState);
+        String t = safe(toState);
+        String o = safe(outcome);
+        COUNTER_CACHE.computeIfAbsent("slt|" + e + '|' + f + '|' + t + '|' + o,
+                key -> Metrics.counter("core.h19.source_link.transitions",
+                        "entityType", e, "fromState", f, "toState", t, "outcome", o))
+                .increment();
     }
 
     public static void recordConflictCreated(String entityType, String source, String reasonCode) {
-        Metrics.counter("core.h19.identity_conflict.created",
-                "entityType", safe(entityType),
-                "source", safe(source),
-                "reasonCode", safe(reasonCode)
-        ).increment();
+        String e = safe(entityType);
+        String s = safe(source);
+        String r = safe(reasonCode);
+        COUNTER_CACHE.computeIfAbsent("icc|" + e + '|' + s + '|' + r,
+                key -> Metrics.counter("core.h19.identity_conflict.created",
+                        "entityType", e, "source", s, "reasonCode", r))
+                .increment();
     }
 
     private static String safe(String value) {

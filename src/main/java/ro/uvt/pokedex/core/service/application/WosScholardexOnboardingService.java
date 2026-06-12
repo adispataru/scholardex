@@ -22,9 +22,6 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFact
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.text.Normalizer;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -840,17 +837,8 @@ public class WosScholardexOnboardingService {
     }
 
     private String shortHash(String raw) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] bytes = digest.digest(raw.getBytes(StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < 12 && i < bytes.length; i++) {
-                sb.append(String.format("%02x", bytes[i]));
-            }
-            return sb.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 not available", e);
-        }
+        // First 12 bytes == first 24 lowercase-hex chars: byte-identical to the shared implementation.
+        return ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSupport.shortHash(raw);
     }
 
     private String firstNonBlank(String... values) {

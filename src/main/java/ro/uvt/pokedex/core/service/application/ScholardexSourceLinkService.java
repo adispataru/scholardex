@@ -359,6 +359,11 @@ public class ScholardexSourceLinkService {
         Map<SourceLinkKey, ScholardexSourceLink> pendingSaves = new LinkedHashMap<>();
         List<ProjectionDirtyCommand> pendingDirtyMarks = new ArrayList<>();
         List<SourceLinkBatchItemResult> results = new ArrayList<>();
+        // H56 cache-efficiency telemetry: per-command findByKey fallbacks are the suspected hidden cost
+        // of large batches whose preload misses — count them and their wall time.
+        int cacheHits = 0;
+        int fallbackLookups = 0;
+        long fallbackNanos = 0L;
 
         for (SourceLinkUpsertCommand command : commands) {
             String normalizedState = normalizeState(command.targetState());
@@ -385,12 +390,17 @@ public class ScholardexSourceLinkService {
             ScholardexSourceLink existing = working.get(key);
             boolean unresolvedPlaceholder = existing != null && existing.getId() == null;
             if ((existing == null || unresolvedPlaceholder) && allowFallbackLookup) {
+                fallbackLookups++;
+                long lookupStartedAt = System.nanoTime();
                 existing = findByKey(command.entityType(), normalizedSource, normalizedRecordId).orElse(null);
+                fallbackNanos += System.nanoTime() - lookupStartedAt;
                 if (existing != null) {
                     working.put(key, existing);
                 } else if (unresolvedPlaceholder) {
                     existing = working.get(key);
                 }
+            } else if (existing != null) {
+                cacheHits++;
             }
             String existingState = normalizeState(existing == null ? null : existing.getLinkState());
             String existingCanonicalId = normalize(existing == null ? null : existing.getCanonicalEntityId());
@@ -485,6 +495,10 @@ public class ScholardexSourceLinkService {
             sourceLinkRepository.saveAll(pendingSaves.values());
         }
         markIdentityRelinkProjectionsDirty(pendingDirtyMarks);
+        if (fallbackLookups > 0) {
+            log.info("Source-link batch cache efficiency: commands={} cacheHits={} fallbackLookups={} fallbackMs={} saves={}",
+                    commands.size(), cacheHits, fallbackLookups, fallbackNanos / 1_000_000L, pendingSaves.size());
+        }
         return new BatchWriteResult(results);
     }
 

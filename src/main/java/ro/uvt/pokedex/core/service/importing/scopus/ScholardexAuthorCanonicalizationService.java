@@ -301,7 +301,10 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
             List<ScholardexAuthorAffiliationFact> edges = scholardexAuthorAffiliationFactRepository
                     .findByAuthorIdIn(context.authorByCanonicalId.keySet());
             for (ScholardexAuthorAffiliationFact edge : edges) {
-                context.authorAffiliationEdgeByNaturalKey.put(edgeNaturalKey(edge.getAuthorId(), edge.getAffiliationId(), edge.getSource()), edge);
+                // H56: key with the edge writer's own natural key — a mismatched normalization here made
+                // every batch lookup miss and fall back to a per-edge repository read.
+                context.authorAffiliationEdgeByNaturalKey.put(
+                        edgeWriterService.authorAffiliationEdgeNaturalKey(edge.getAuthorId(), edge.getAffiliationId(), edge.getSource()), edge);
             }
         }
     }
@@ -691,7 +694,11 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
         if (synthetic.getLinkedAt() == null) {
             synthetic.setLinkedAt(Instant.now());
         }
-        context.sourceLinkCache.put(toSourceLinkKey(synthetic), synthetic);
+        // H56: never clobber a preloaded *persisted* link with this id-less synthetic — the flush-time
+        // batch treats an id-less cache entry as unresolved and falls back to a per-command findByKey,
+        // which previously turned every author chunk's link batch into ~5,000 serial Mongo reads. The
+        // synthetic exists only for intra-chunk visibility where nothing is persisted yet.
+        context.sourceLinkCache.putIfAbsent(toSourceLinkKey(synthetic), synthetic);
     }
 
     private void upsertConflictInContext(

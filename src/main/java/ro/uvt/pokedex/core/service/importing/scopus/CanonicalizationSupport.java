@@ -51,18 +51,34 @@ public final class CanonicalizationSupport {
         return normalized.isEmpty() ? null : normalized;
     }
 
-    public static String shortHash(String value) {
+    private static final char[] HEX_DIGITS = "0123456789abcdef".toCharArray();
+    // H56: SHA-256 hashing runs ~2.5M times per pipeline rebuild (deterministic ids, payload hashes).
+    // Reuse the digest per thread and hex-encode via table lookup instead of String.format("%02x")
+    // per byte — byte-identical output, ~10x faster.
+    private static final ThreadLocal<MessageDigest> SHA_256 = ThreadLocal.withInitial(() -> {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder(hash.length * 2);
-            for (byte b : hash) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.substring(0, 24);
+            return MessageDigest.getInstance("SHA-256");
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 not available", e);
         }
+    });
+
+    /** Full lowercase-hex SHA-256 of the value (64 chars). */
+    public static String sha256Hex(String value) {
+        MessageDigest digest = SHA_256.get();
+        digest.reset();
+        byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+        char[] out = new char[hash.length * 2];
+        for (int i = 0; i < hash.length; i++) {
+            int b = hash[i] & 0xFF;
+            out[i * 2] = HEX_DIGITS[b >>> 4];
+            out[i * 2 + 1] = HEX_DIGITS[b & 0x0F];
+        }
+        return new String(out);
+    }
+
+    public static String shortHash(String value) {
+        return sha256Hex(value).substring(0, 24);
     }
 
     public static boolean isBlank(String value) {

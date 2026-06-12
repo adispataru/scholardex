@@ -218,9 +218,10 @@ public class AdminInitializationController {
             @RequestParam(name = "startBatchOverride", required = false) Integer startBatchOverride,
             @RequestParam(name = "useCheckpoint", defaultValue = "true") boolean useCheckpoint,
             @RequestParam(name = "chunkSizeOverride", required = false) Integer chunkSizeOverride,
+            @RequestParam(name = "skipUnchanged", defaultValue = "false") boolean skipUnchanged,
             RedirectAttributes redirectAttributes
     ) {
-        var result = scopusBigBangMigrationService.runBuildFactsStep(startBatchOverride, useCheckpoint, chunkSizeOverride);
+        var result = scopusBigBangMigrationService.runBuildFactsStep(startBatchOverride, useCheckpoint, chunkSizeOverride, skipUnchanged);
         redirectAttributes.addFlashAttribute("successMessage", "Scopus fact build complete. "
                 + formatScopusStep("facts", result.buildFacts()) + " "
                 + formatScopusVerification(result.verification()));

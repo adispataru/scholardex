@@ -81,11 +81,144 @@ problem — the **edge source-link read+write path** is.
    - **Smaller than predicted, and the measurement corrected the model:** `saveAll` was *server-write*-bound,
      not round-trip-bound. The chunk `upsert` only dropped `5591→4578ms` — `bulkOps` collapsed the network
      round-trips (~18% of the write) but **not** the per-doc server-side re-write (~0.9ms/doc × 5,000 docs).
-   - **The real remaining win for author canon is a no-op skip on the *facts*** (don't re-write the ~5,000
-     unchanged author docs at all → the 4,578ms would approach 0), i.e. extend lever-2's idea from source
-     links to canonical facts. That is the higher-risk lever (≈30-field comparison / staleness): needs a
-     robust unchanged-check (content hash + builderVersion gate) so a real change is never skipped.
    - Publication canon is unaffected by lever 3 (resolve-bound, ~299s) and its fact write is small.
+
+4. **Fact no-op skip (author facts) — ATTEMPTED then REVERTED 2026-06-12. Verified correct but marginal;
+   its real value was a corrected diagnosis.** Prototyped a persisted `contentHash` on `ScholardexAuthorFact`
+   plus a flush-time skip (skip the write when the content hash matches the stored one and builderVersion
+   already matches). Live two-run verification proved it works and is safe — run-2 author chunks wrote
+   `authorFacts=0` with the row count unchanged at 216,470 and errors=0 — and it was unit-tested (hash
+   excludes provenance/timestamps, detects every content change) + determinism-green.
+   **But the win was only -8% (author canon 240,353 -> 221,335ms; total ~13.7 -> ~13.1 min)**, which exposed a
+   misdiagnosis: after lever 3 the fact write was already a single cheap bulk op, so skipping it saved only
+   ~178ms (chunk `upsert` 4578->4400ms). The ~4,400ms `upsert` is actually the **source-link + edge batch
+   *processing*** (~5,000 author source links + ~6,388 author-affiliation edges per chunk), not fact writes:
+   **author canon is command-processing-bound, not write-bound.**
+   **Reverted** because the persisted `contentHash` and the obligation to keep its hash comprehensive
+   (staleness footgun if a field is added without updating the hash and bumping builderVersion) was not worth
+   ~19s/run. (A prior run stamped `contentHash` onto the live author docs; the field is now orphaned -
+   harmlessly ignored by Spring on read and dropped on the next full rebuild's replaceOne.)
+
+## Lever 5 — author-canon cache-miss fixes (DONE + MEASURED 2026-06-12)
+
+**Author canon 248,849ms → 48,570ms (−80%); chunk `upsert` 4,841ms → 319ms (−93%).** The "command-
+processing-bound" reading from lever 4 was *also* wrong. Instrumentation (cache hit/miss/fallback
+telemetry added to `batchUpsertWithState` and the edge-writer batch loops — kept as permanent telemetry,
+logs only when fallbacks occur) showed **100% cache miss** on both preload caches: `commands=5000
+cacheHits=0 fallbackLookups=5000` per chunk → ~216k link + ~271k edge per-command Mongo reads ≈ 139s of
+the 249s stage, plus `pendingSaves=6388`/chunk of redundant edge re-writes. Three root-caused defects,
+all fixed:
+
+1. **Synthetic placeholder clobbering** — `queueSourceLinkCommand` overwrote the preloaded *persisted*
+   link in `context.sourceLinkCache` with an id-less synthetic under the same key; the flush-time batch
+   treats id-less entries as unresolved and falls back to `findByKey` per command. Fix: `putIfAbsent`
+   (the synthetic only fills holes where nothing is persisted yet).
+2. **Edge natural-key normalization mismatch** — author canon seeded `authorAffiliationEdgeByNaturalKey`
+   with lowercased `normalizeToken` keys while `ScholardexEdgeWriterService` looks up with its
+   case-preserving `normalize` (`…|scopus_json_bootstrap` vs `…|SCOPUS_JSON_BOOTSTRAP`) → every lookup
+   missed. Fix: the writer now exposes `authorAffiliationEdgeNaturalKey(...)` as the single key
+   authority; the preload uses it.
+3. **Unconditional author-affiliation edge re-save** — unlike the authorship batch, the AA batch ran
+   `applyLineage` + `pendingSaves.put` for every command, re-writing ~271k edges (and bumping
+   `updatedAt`) per replay. Fix: gate on `created || isLineageChanged(...)`, mirroring authorship.
+
+Verified: zero fallback lookups post-fix, errors=0, processed/updated 216,470, edge/fact/link counts
+unchanged, determinism integration test green.
+
+## Lever 6 — publication-resolve normalized cache key (DONE + MEASURED 2026-06-12)
+
+**Publication canon 295,183ms → 127,388ms (−57%); resolve 2,125ms → 38ms/chunk (−98%).** The same
+instrumentation pass on publication canon's `findSourceLink` cache wrapper showed the same disease,
+fourth variant: **596,657 fallback `findByKey` reads per run, 99.98% of which FOUND the link** (163s of
+the 295s stage). Root cause: resolve probes (`resolveAuthorSourceLink` / `resolveAffiliationSourceLink` /
+`resolveCanonicalForumId`) pass the **raw fact source** (`SCOPUS_JSON_BOOTSTRAP`) while the preload seeds
+the cache under the stored **normalized** source (`SCOPUS`) — every first probe per key missed, paid a
+Mongo read (findByKey normalizes internally, hence "found"), and re-cached under the raw key; the
+per-chunk context reset repeated this every chunk. Fix: `findSourceLink` now normalizes the source via
+`sourceLinkService.normalizeSource(...)` before building the cache key, aligning it with both the preload
+and findByKey. Post-fix: ~7 fallbacks per full run (genuinely-absent keys). The per-chunk cache-efficiency
+telemetry stays in (logs only when fallbacks occur). Tests updated where mocks modeled raw-source stored
+links (impossible live); determinism green.
+
+## Lever 7 — fact-builder lineage-gated replay saves (DONE + MEASURED 2026-06-12)
+
+**fact-builder 239,022ms → 130,414ms (−45%).** The unchanged-payload branches at all six fact types
+(publication / citation / forum / author / affiliation / funding) called `refreshLineageForReplay` and
+**unconditionally re-added the fact to `pendingSaves`** — on a same-ledger replay `applyLineage` writes
+identical values, so ~590k byte-identical documents were re-saved per run (~85% of the stage). Fix:
+`refreshLineageForReplay` now compares the five lineage fields and returns whether anything changed;
+callers only enqueue the save when it did (`HasLineageFields` gained the getters; all implementors are
+Lombok `@Data`). Verified: errors=0, counts identical, determinism green.
+
+**Residual (flagged, deliberately not changed):** ~929 writes per 1,000 events remain — the lineage
+"ping-pong" of shared dimension facts: an author/forum/affiliation fact touched by many publications has
+its lineage re-stamped by an earlier event each run, then re-stamped back by the last one. The end state
+is deterministic, but every replay re-does the churn. Eliminating it means a *semantic* decision —
+lineage = "last event that touched the fact" (today) vs "last event that *changed* it" (no replay
+writes) — which interacts with batch-scoped incremental processing (`sourceBatchId` stamping selects
+facts for incremental canonicalization). Decide separately if fact-builder time still matters.
+
+## Final H56 result (capstone full-rebuild measurement, 2026-06-12)
+
+| Step | pre-H56 | final |
+|---|---|---|
+| fact-builder | ~239s | 130s |
+| affiliation canon | ~17s | 9s |
+| author canon | ~410s | **52s** |
+| forum dedup+canon | ~12s | 12s |
+| publication canon | ~953s | **123s** |
+| citation canon | ~58s | 21s |
+| **total buildFacts** | **~28 min** | **5.8 min (−79%)** |
+
+errors=0 across all steps; fact counts identical (92,694 scopus pubs / 216,470 authors / canonical layers
+matching); rebuild-twice determinism green throughout.
+
+**Pattern that drove ~all of it (5 of 5 root-caused defects):** a preload/cache or no-op check whose
+*seeding/comparison* and *lookup/write* sides were built by different code drifted into silent
+per-record DB work — 100%-miss caches (levers 1, 5, 6), no-op-less rewrites (levers 2, 7). The durable
+guards now in place: single key-authority methods owned by the consumer, and fallback-counting telemetry
+in the source-link batch, edge batches, and publication resolve (silent unless drift recurs).
+
+## Levers 8–10 (DONE 2026-06-12): content gates, hash/metrics micro-fixes, stage-skip gate
+
+8. **Fact-builder content gates + blank-tolerant merges.** The residual replay writes were
+   *payload-variant ping-pong*: the per-event hash reflects THIS paper's view of a shared dimension
+   entity, so multi-variant authors/affiliations/forums re-took the full update path every replay. Fixes:
+   author updates now skip the save when the merge changed nothing; affiliation (name/city/country) and
+   forum (name/issn/eIssn/aggregationType) updates became **blank-tolerant** (a paper omitting a field no
+   longer erases a value learned from another paper) with the same content gate; funding gated trivially
+   (key == content). **Measured steady-state (run 2): fact-builder 130,414 → 113,630ms; update churn 929
+   → 170 per 1k events.** The remaining 170 are *conflicting non-blank values* across papers (e.g. two
+   city spellings) which still alternate under latest-non-blank-wins; converging them would need
+   first-non-blank-wins, which would also block genuine corrections — accepted as residual. The
+   blank-tolerant merge proved **precautionary, not corrective**, on this dataset (blank city/country
+   counts unchanged at 1001/159 — no erasure was actually occurring). Existing fact-builder tests that
+   asserted unchanged authors are still re-saved were updated to assert preservation-without-rewrite.
+9. **shortHash/metrics micro-fixes.** `CanonicalizationSupport.sha256Hex` now uses a per-thread
+   `MessageDigest` + hex-table encoding (~2.5M calls/run were each creating a digest and running 32×
+   `String.format("%02x")`); the edge-writer/WoS private copies and the fact-builder's `hashKey`
+   delegate to it. **Byte-identical output pinned by test** (NIST `sha256("abc")` vector + a verbatim
+   copy of the legacy implementation as oracle) — these feed persisted ids, so output drift would be
+   catastrophic. `CanonicalObservabilityMetrics` now caches `Counter` handles (~1.2M+ per-command
+   registry lookups avoided).
+10. **Stage-skip gate (`ScopusBuildSkipGateService`).** Opt-in `buildFacts?skipUnchanged=true`: a
+    fingerprint of the pipeline inputs — `scopus.import_events` and `scholardex.forum_facts` (count +
+    max `updatedAt`) plus all `BuilderVersion` constants — is recorded after every errors=0 run
+    (state doc `scopus.pipeline_state`); when unchanged, the whole pipeline is skipped. **Sound only
+    because levers 2/5/7/8 made unchanged replays write-free** (derived `updatedAt` no longer churns —
+    the canonical-forums fingerprint stayed at its June-11 value across all subsequent replays).
+    Deliberately opt-in: operator-triggered runs (e.g. after conflict resolution) use the default and
+    always execute. **Live-verified: a no-change `skipUnchanged` run returns in ~1s** with
+    "orchestration skipped: inputs unchanged" logged.
+
+**End state: full rebuild ≈ 5.5 min (from ~28, −80%); no-change replay with `skipUnchanged=true` ≈ 1s.**
+Remaining accepted residuals: ~170 conflicting-non-blank variant writes per 1k events in the
+fact-builder; per-stage (rather than whole-pipeline) skip granularity if ever needed.
+
+**Pattern worth naming (4 of 4 defects were this):** every preload/cache pair whose *seeding key* and
+*lookup key* are built by different code drifted into silent 100% miss + per-record fallback reads. The
+durable guard is (a) single key-authority methods owned by the consumer (as done for the edge writer) and
+(b) the fallback-counting telemetry now in place, which makes the next drift loudly visible.
 4. **Fast-iteration build path (low risk, big iteration win).** When only one stage's logic changed, re-run only
    the affected canonicalization stage(s) instead of the full `buildFacts`. Today forum dedup/canon are wired
    only into `buildFacts`, and `buildCanonical` runs specific entities but not forum/dedup. Add a selective path

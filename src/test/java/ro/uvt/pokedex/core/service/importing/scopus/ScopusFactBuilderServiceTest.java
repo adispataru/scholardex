@@ -1230,7 +1230,11 @@ class ScopusFactBuilderServiceTest {
         ArgumentCaptor<java.util.Collection<ScopusAuthorFact>> authorCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
         verify(authorFactRepository).saveAll(authorCaptor.capture());
         List<ScopusAuthorFact> savedFacts = List.copyOf(authorCaptor.getValue());
-        assertTrue(savedFacts.stream().anyMatch(f -> "a2".equals(f.getAuthorId()) && List.of("af-existing").equals(f.getAffiliationIds())));
+        // H56: only the newly created a1 is written; Bob's explicitly-empty slot leaves his content
+        // unchanged, so he is preserved in place without a re-write.
+        assertTrue(savedFacts.stream().anyMatch(f -> "a1".equals(f.getAuthorId())));
+        assertTrue(savedFacts.stream().noneMatch(f -> "a2".equals(f.getAuthorId())));
+        assertEquals(List.of("af-existing"), existingBob.getAffiliationIds());
     }
 
     @Test
@@ -1270,12 +1274,11 @@ class ScopusFactBuilderServiceTest {
 
         service.buildFactsFromImportEvents();
 
-        ArgumentCaptor<java.util.Collection<ScopusAuthorFact>> authorCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
-        verify(authorFactRepository).saveAll(authorCaptor.capture());
-        List<ScopusAuthorFact> savedFacts = List.copyOf(authorCaptor.getValue());
-        assertEquals(2, savedFacts.size());
-        assertTrue(savedFacts.stream().anyMatch(f -> "a1".equals(f.getAuthorId()) && List.of("af-existing-1", "af-existing-2").equals(f.getAffiliationIds())));
-        assertTrue(savedFacts.stream().anyMatch(f -> "a2".equals(f.getAuthorId()) && List.of("af-existing-3").equals(f.getAffiliationIds())));
+        // H56: the merge preserves both authors' affiliations, so their content is unchanged and they
+        // must NOT be re-written (previously they were re-saved on every replay).
+        verify(authorFactRepository, never()).saveAll(anyCollection());
+        assertEquals(List.of("af-existing-1", "af-existing-2"), existingAlice.getAffiliationIds());
+        assertEquals(List.of("af-existing-3"), existingBob.getAffiliationIds());
         assertTrue(logAppender.list.stream()
                 .map(ILoggingEvent::getFormattedMessage)
                 .noneMatch(m -> m.contains("skipped ambiguous author update") && m.contains("sourceRecordId=2-s2.0-no-author-afids")));
@@ -1314,11 +1317,9 @@ class ScopusFactBuilderServiceTest {
 
         service.buildFactsFromImportEvents();
 
-        ArgumentCaptor<java.util.Collection<ScopusAuthorFact>> authorCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
-        verify(authorFactRepository).saveAll(authorCaptor.capture());
-        List<ScopusAuthorFact> savedFacts = List.copyOf(authorCaptor.getValue());
-        assertEquals(1, savedFacts.size());
-        assertEquals(List.of("af-existing"), savedFacts.getFirst().getAffiliationIds());
+        // H56: content unchanged (blank afids preserve affiliations, name identical) -> no re-write.
+        verify(authorFactRepository, never()).saveAll(anyCollection());
+        assertEquals(List.of("af-existing"), existingAuthor.getAffiliationIds());
         assertTrue(logAppender.list.stream()
                 .map(ILoggingEvent::getFormattedMessage)
                 .noneMatch(m -> m.contains("skipped ambiguous author update") && m.contains("sourceRecordId=2-s2.0-blank-author-afids")));

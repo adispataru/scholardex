@@ -67,6 +67,7 @@ public class ScopusBigBangMigrationService {
     private final ScholardexCitationCanonicalizationService citationCanonicalizationService;
     private final WosScholardexOnboardingService wosScholardexOnboardingService;
     private final ScholardexForumDeduplicationService scholardexForumDeduplicationService;
+    private final ScopusBuildSkipGateService scopusBuildSkipGateService;
     private final ScholardexCanonicalBuildCheckpointService canonicalBuildCheckpointService;
     private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexEdgeReconciliationService edgeReconciliationService;
@@ -108,7 +109,33 @@ public class ScopusBigBangMigrationService {
             boolean useCheckpoint,
             Integer chunkSizeOverride
     ) {
+        return runBuildFactsStep(startBatchOverride, useCheckpoint, chunkSizeOverride, false);
+    }
+
+    public ScopusBigBangMigrationResult runBuildFactsStep(
+            Integer startBatchOverride,
+            boolean useCheckpoint,
+            Integer chunkSizeOverride,
+            boolean skipUnchanged
+    ) {
         Instant startedAt = Instant.now();
+        // H56: opt-in fast path — when the inputs (import-event ledger, canonical forums) and builder
+        // versions are identical to the last successful run, the rebuild is a deterministic no-op.
+        if (skipUnchanged && scopusBuildSkipGateService.canSkipBuildFacts()) {
+            log.info("Scopus build-facts orchestration skipped: inputs unchanged since last successful run");
+            return new ScopusBigBangMigrationResult(
+                    scopusDataFile,
+                    startedAt,
+                    Instant.now(),
+                    null,
+                    new MigrationStepResult("build-facts", false, 0, 0, 0, 0, 0,
+                            "skipped: inputs unchanged since last successful run", List.of(),
+                            null, null, null, null, null, null),
+                    null,
+                    null,
+                    buildVerificationSummary()
+            );
+        }
         log.info("Scopus build-facts orchestration started: startBatchOverride={} useCheckpoint={} chunkSizeOverride={}",
                 startBatchOverride, useCheckpoint, chunkSizeOverride);
         ImportProcessingResult facts = runStepWithTiming("scopus-fact-builder", scopusFactBuilderService::buildFactsFromImportEvents);
@@ -145,6 +172,9 @@ public class ScopusBigBangMigrationService {
                 buildFactsCombined.getUpdatedCount(),
                 buildFactsCombined.getSkippedCount(),
                 buildFactsCombined.getErrorCount());
+        if (buildFactsCombined.getErrorCount() == 0) {
+            scopusBuildSkipGateService.recordBuildFactsSuccess();
+        }
         return new ScopusBigBangMigrationResult(
                 scopusDataFile,
                 startedAt,

@@ -346,6 +346,15 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
                 context.authorshipEdgeUpsertMs,
                 context.publicationAuthorAffiliationEdgeUpsertMs,
                 context.conflictSaveMs);
+        if (context.sourceLinkFallbackLookups > 0) {
+            log.info("Publication canonicalization chunk {} source-link cache efficiency: cacheHits={} negativeHits={} fallbackLookups={} fallbackFound={} fallbackMs={}",
+                    chunkNo,
+                    context.sourceLinkCacheHits,
+                    context.sourceLinkNegativeHits,
+                    context.sourceLinkFallbackLookups,
+                    context.sourceLinkFallbackFound,
+                    context.sourceLinkFallbackNanos / 1_000_000L);
+        }
     }
 
     // ── Cached normalization helpers (Publication-specific optimization) ─────
@@ -776,16 +785,31 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         if (entityType == null || isBlank(source) || isBlank(sourceRecordId)) {
             return Optional.empty();
         }
-        ScholardexSourceLinkService.SourceLinkKey key = ScholardexSourceLinkService.SourceLinkKey.of(entityType, source, sourceRecordId);
+        // H56: key the cache by the NORMALIZED source. Stored links (and therefore the preload) carry
+        // the normalized source (e.g. SCOPUS), while resolve probes pass the raw fact source (e.g.
+        // SCOPUS_JSON_BOOTSTRAP) — the mismatched key made ~600k probes/run miss the cache and fall
+        // through to findByKey (which normalizes internally and found 99.98% of them).
+        String normalizedSource = sourceLinkService.normalizeSource(source);
+        if (normalizedSource == null) {
+            return Optional.empty();
+        }
+        ScholardexSourceLinkService.SourceLinkKey key = ScholardexSourceLinkService.SourceLinkKey.of(entityType, normalizedSource, sourceRecordId);
         ScholardexSourceLink preloaded = context.sourceLinkCache.get(key);
         if (preloaded != null) {
+            context.sourceLinkCacheHits++;
             return Optional.of(preloaded);
         }
         if (context.missingSourceLinkKeys.contains(key)) {
+            context.sourceLinkNegativeHits++;
             return Optional.empty();
         }
-        Optional<ScholardexSourceLink> link = sourceLinkService.findByKey(entityType, source, sourceRecordId);
+        // H56 telemetry: each fall-through here is a per-record Mongo read during resolve.
+        context.sourceLinkFallbackLookups++;
+        long lookupStartedAt = System.nanoTime();
+        Optional<ScholardexSourceLink> link = sourceLinkService.findByKey(entityType, normalizedSource, sourceRecordId);
+        context.sourceLinkFallbackNanos += System.nanoTime() - lookupStartedAt;
         if (link != null && link.isPresent()) {
+            context.sourceLinkFallbackFound++;
             context.sourceLinkCache.put(key, link.get());
             return link;
         }
@@ -1314,6 +1338,11 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         private int publicationInsertCount = 0;
         private int publicationUpdateCount = 0;
         private int publicationRecoverCount = 0;
+        private int sourceLinkCacheHits = 0;
+        private int sourceLinkNegativeHits = 0;
+        private int sourceLinkFallbackLookups = 0;
+        private int sourceLinkFallbackFound = 0;
+        private long sourceLinkFallbackNanos = 0L;
         private int sourceLinkWriteCount = 0;
         private int authorshipEdgeWriteCount = 0;
         private int publicationAuthorAffiliationEdgeWriteCount = 0;

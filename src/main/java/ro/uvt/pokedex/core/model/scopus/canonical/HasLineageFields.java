@@ -6,4 +6,10 @@ public interface HasLineageFields {
     void setSourceRecordId(String sourceRecordId);
     void setSourceBatchId(String sourceBatchId);
     void setSourceCorrelationId(String sourceCorrelationId);
+
+    String getSourceEventId();
+    String getSource();
+    String getSourceRecordId();
+    String getSourceBatchId();
+    String getSourceCorrelationId();
 }

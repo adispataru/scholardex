@@ -57,6 +57,7 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ScholardexCitationCanonicalizationService citationCanonicalizationService;
     @Mock private WosScholardexOnboardingService wosScholardexOnboardingService;
     @Mock private ScholardexForumDeduplicationService scholardexForumDeduplicationService;
+    @Mock private ScopusBuildSkipGateService scopusBuildSkipGateService;
     @Mock private ScholardexCanonicalBuildCheckpointService canonicalBuildCheckpointService;
     @Mock private ScholardexSourceLinkService sourceLinkService;
     @Mock private ScholardexEdgeReconciliationService edgeReconciliationService;
@@ -87,6 +88,7 @@ class ScopusBigBangMigrationServiceTest {
                 citationCanonicalizationService,
                 wosScholardexOnboardingService,
                 scholardexForumDeduplicationService,
+                scopusBuildSkipGateService,
                 canonicalBuildCheckpointService,
                 sourceLinkService,
                 edgeReconciliationService,
@@ -103,6 +105,39 @@ class ScopusBigBangMigrationServiceTest {
                 mongoTemplate
         );
         ReflectionTestUtils.setField(service, "scopusDataFile", "/tmp/scopus.json");
+    }
+
+    @Test
+    void runBuildFactsStepSkipsWholePipelineWhenGateReportsInputsUnchanged() {
+        when(scopusBuildSkipGateService.canSkipBuildFacts()).thenReturn(true);
+        stubVerificationSummary();
+
+        ScopusBigBangMigrationService.ScopusBigBangMigrationResult out =
+                service.runBuildFactsStep(null, true, null, true);
+
+        assertEquals(false, out.buildFacts().executed());
+        assertTrue(out.buildFacts().note().contains("inputs unchanged"));
+        verify(scopusFactBuilderService, never()).buildFactsFromImportEvents();
+        verify(affiliationCanonicalizationService, never()).rebuildCanonicalAffiliationFactsFromScopusFacts(any());
+        verify(publicationCanonicalizationService, never()).rebuildCanonicalPublicationFactsFromScopusFacts(any());
+        verify(scopusBuildSkipGateService, never()).recordBuildFactsSuccess();
+    }
+
+    @Test
+    void runBuildFactsStepDoesNotConsultGateWithoutOptInAndRecordsSuccessOnCleanRun() {
+        when(scopusFactBuilderService.buildFactsFromImportEvents()).thenReturn(result(1, 0, 1, 0, 0));
+        when(affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(any())).thenReturn(result(0, 0, 0, 0, 0));
+        when(authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(any())).thenReturn(result(0, 0, 0, 0, 0));
+        when(publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(any())).thenReturn(result(0, 0, 0, 0, 0));
+        when(citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(any())).thenReturn(result(0, 0, 0, 0, 0));
+        when(scholardexForumDeduplicationService.deduplicateForums(any(), any())).thenReturn(result(0, 0, 0, 0, 0));
+        when(wosScholardexOnboardingService.runScopusForumCanonicalization(any(), any())).thenReturn(result(0, 0, 0, 0, 0));
+        stubVerificationSummary();
+
+        service.runBuildFactsStep(null, true, null, false);
+
+        verify(scopusBuildSkipGateService, never()).canSkipBuildFacts();
+        verify(scopusBuildSkipGateService).recordBuildFactsSuccess();
     }
 
     @Test

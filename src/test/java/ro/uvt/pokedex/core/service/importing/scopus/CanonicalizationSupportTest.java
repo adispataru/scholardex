@@ -30,6 +30,14 @@ class CanonicalizationSupportTest {
         assertEquals(24, shortHash.length());
         assertTrue(shortHash.matches("[0-9a-f]{24}"));
 
+        // H56: hashing was reimplemented for speed; pin the output so persisted deterministic ids
+        // (spub_/sauth_/sae_/…) can never silently change. SHA-256("abc") is a NIST test vector.
+        assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+                CanonicalizationSupport.sha256Hex("abc"));
+        assertEquals("ba7816bf8f01cfea414140de", CanonicalizationSupport.shortHash("abc"));
+        // matches the previous MessageDigest + String.format("%02x") implementation, incl. unicode
+        assertEquals(legacySha256Hex("spub|10.1000/χρ|2024"), CanonicalizationSupport.sha256Hex("spub|10.1000/χρ|2024"));
+
         assertTrue(CanonicalizationSupport.isBlank(null));
         assertTrue(CanonicalizationSupport.isBlank(" "));
         assertFalse(CanonicalizationSupport.isBlank("x"));
@@ -53,5 +61,20 @@ class CanonicalizationSupportTest {
         CanonicalizationSupport.addUnique(values, "x");
         CanonicalizationSupport.addUnique(values, "x");
         assertEquals(List.of("x"), values);
+    }
+
+    /** The pre-H56 implementation, kept verbatim as the comparison oracle. */
+    private static String legacySha256Hex(String value) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 }

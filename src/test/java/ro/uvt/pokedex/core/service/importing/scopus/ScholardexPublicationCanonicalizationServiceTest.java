@@ -84,6 +84,16 @@ class ScholardexPublicationCanonicalizationServiceTest {
                 identityConflictRepository,
                 checkpointService
         );
+        // H56: findSourceLink now normalizes the probe source via the link service; give the mock the
+        // real normalization shape (SCOPUS-family -> SCOPUS, otherwise trimmed upper-case).
+        lenient().when(sourceLinkService.normalizeSource(any())).thenAnswer(invocation -> {
+            String raw = invocation.getArgument(0);
+            if (raw == null || raw.trim().isEmpty()) {
+                return null;
+            }
+            String upper = raw.trim().toUpperCase(java.util.Locale.ROOT);
+            return upper.equals("SCOPUS") || upper.startsWith("SCOPUS_") ? "SCOPUS" : upper;
+        });
     }
 
     @Test
@@ -207,8 +217,9 @@ class ScholardexPublicationCanonicalizationServiceTest {
         assertNotNull(inserted.getUpdatedAt());
         verify(sourceLinkService, atLeastOnce()).batchUpsertWithState(any(), any(), eq(false));
         verify(edgeWriterService, atLeastOnce()).batchUpsertAuthorshipEdges(any(), any(), any(), eq(true));
+        // H56: findSourceLink normalizes the probe source before hitting findByKey.
         verify(sourceLinkService, atLeastOnce()).findByKey(
-                eq(ScholardexEntityType.AUTHOR), eq("SCOPUS_JSON_BOOTSTRAP"), eq("au-1"));
+                eq(ScholardexEntityType.AUTHOR), eq("SCOPUS"), eq("au-1"));
     }
 
     @Test
@@ -655,11 +666,10 @@ class ScholardexPublicationCanonicalizationServiceTest {
         ScholardexSourceLink resolvedLink = new ScholardexSourceLink();
         resolvedLink.setCanonicalEntityId("sauth_resolved");
 
+        // H56: findSourceLink normalizes the probe source, so findByKey is always called with SCOPUS.
         when(sourceLinkService.normalizeSource("SCOPUS_JSON_BOOTSTRAP")).thenReturn("SCOPUS");
-        when(sourceLinkService.findByKey(ScholardexEntityType.AUTHOR, "SCOPUS_JSON_BOOTSTRAP", "au-1"))
+        when(sourceLinkService.findByKey(ScholardexEntityType.AUTHOR, "SCOPUS", "au-1"))
                 .thenReturn(Optional.of(resolvedLink));
-        when(sourceLinkService.findByKey(ScholardexEntityType.AUTHOR, "SCOPUS_JSON_BOOTSTRAP", "au-2"))
-                .thenReturn(Optional.empty());
         when(sourceLinkService.findByKey(ScholardexEntityType.AUTHOR, "SCOPUS", "au-2"))
                 .thenReturn(Optional.empty());
 
@@ -775,10 +785,9 @@ class ScholardexPublicationCanonicalizationServiceTest {
         ScholardexSourceLink affiliationLink = new ScholardexSourceLink();
         affiliationLink.setCanonicalEntityId("saff_1");
 
-        when(sourceLinkService.findByKey(ScholardexEntityType.AFFILIATION, "SCOPUS_JSON_UPLOAD", "af1"))
+        // H56: findSourceLink normalizes the probe source, so findByKey is always called with SCOPUS.
+        when(sourceLinkService.findByKey(ScholardexEntityType.AFFILIATION, "SCOPUS", "af1"))
                 .thenReturn(Optional.of(affiliationLink));
-        when(sourceLinkService.findByKey(ScholardexEntityType.AFFILIATION, "SCOPUS_JSON_UPLOAD", "missing"))
-                .thenReturn(Optional.empty());
         when(sourceLinkService.findByKey(ScholardexEntityType.AFFILIATION, "SCOPUS", "missing"))
                 .thenReturn(Optional.empty());
 
@@ -871,6 +880,9 @@ class ScholardexPublicationCanonicalizationServiceTest {
 
     @Test
     void resolveAuthorSourceLinkFallsBackToScopusAndPrefersDirectSourceWhenPresent() {
+        // H56: findSourceLink probes with the NORMALIZED source, so for SCOPUS-family raw sources the
+        // direct and fallback probes are the same key. The meaningful direct-vs-fallback distinction is
+        // a non-SCOPUS source: its own link wins when present, else the SCOPUS link is used.
         ScholardexPublicationCanonicalizationService.ChunkContext context =
                 ReflectionTestUtils.invokeMethod(service, "createChunkContext");
         ScholardexSourceLink direct = new ScholardexSourceLink();
@@ -878,17 +890,17 @@ class ScholardexPublicationCanonicalizationServiceTest {
         ScholardexSourceLink fallback = new ScholardexSourceLink();
         fallback.setCanonicalEntityId("sauth_fallback");
 
-        when(sourceLinkService.findByKey(ScholardexEntityType.AUTHOR, "SCOPUS_JSON_UPLOAD", "au-1"))
+        when(sourceLinkService.findByKey(ScholardexEntityType.AUTHOR, "USER_DEFINED", "au-1"))
                 .thenReturn(Optional.of(direct));
-        when(sourceLinkService.findByKey(ScholardexEntityType.AUTHOR, "SCOPUS_JSON_UPLOAD", "au-2"))
+        when(sourceLinkService.findByKey(ScholardexEntityType.AUTHOR, "USER_DEFINED", "au-2"))
                 .thenReturn(Optional.empty());
         when(sourceLinkService.findByKey(ScholardexEntityType.AUTHOR, "SCOPUS", "au-2"))
                 .thenReturn(Optional.of(fallback));
 
         Optional<ScholardexSourceLink> directResolved =
-                ReflectionTestUtils.invokeMethod(service, "resolveAuthorSourceLink", "SCOPUS_JSON_UPLOAD", "au-1", context);
+                ReflectionTestUtils.invokeMethod(service, "resolveAuthorSourceLink", "USER_DEFINED", "au-1", context);
         Optional<ScholardexSourceLink> fallbackResolved =
-                ReflectionTestUtils.invokeMethod(service, "resolveAuthorSourceLink", "SCOPUS_JSON_UPLOAD", "au-2", context);
+                ReflectionTestUtils.invokeMethod(service, "resolveAuthorSourceLink", "USER_DEFINED", "au-2", context);
 
         assertTrue(directResolved.isPresent());
         assertEquals("sauth_direct", directResolved.get().getCanonicalEntityId());
@@ -1191,15 +1203,17 @@ class ScholardexPublicationCanonicalizationServiceTest {
         existingPublication.setId("spub_replay");
         existingPublication.setEid("2-s2.0-replay-paf");
 
+        // Persisted source links carry the NORMALIZED source (the link service normalizes on write) —
+        // H56 keys the resolve cache the same way.
         ScholardexSourceLink authorLink = new ScholardexSourceLink();
         authorLink.setEntityType(ScholardexEntityType.AUTHOR);
-        authorLink.setSource("SCOPUS_JSON_UPLOAD");
+        authorLink.setSource("SCOPUS");
         authorLink.setSourceRecordId("au-1");
         authorLink.setCanonicalEntityId("sauth_1");
 
         ScholardexSourceLink affiliationLink = new ScholardexSourceLink();
         affiliationLink.setEntityType(ScholardexEntityType.AFFILIATION);
-        affiliationLink.setSource("SCOPUS_JSON_UPLOAD");
+        affiliationLink.setSource("SCOPUS");
         affiliationLink.setSourceRecordId("af1");
         affiliationLink.setCanonicalEntityId("saff_1");
 

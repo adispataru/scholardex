@@ -3,6 +3,8 @@ package ro.uvt.pokedex.core.service.application;
 import ro.uvt.pokedex.core.service.importing.BuilderVersion;
 
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -22,9 +24,6 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorshipFactR
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationAuthorAffiliationFactRepository;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -34,6 +33,8 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class ScholardexEdgeWriterService {
+
+    private static final Logger log = LoggerFactory.getLogger(ScholardexEdgeWriterService.class);
 
     private static final String STATUS_OPEN = "OPEN";
     public static final String REASON_EDGE_RELINK_REJECTED = "EDGE_RELINK_REJECTED";
@@ -140,6 +141,8 @@ public class ScholardexEdgeWriterService {
         int createdCount = 0;
         int updatedCount = 0;
         int conflicts = 0;
+        int edgeFallbackLookups = 0;
+        long edgeFallbackNanos = 0L;
 
         for (EdgeWriteCommand command : commands) {
             if (isBlank(command.leftId()) || isBlank(command.rightId()) || isBlank(command.source())) {
@@ -149,9 +152,12 @@ public class ScholardexEdgeWriterService {
             String key = edgeNaturalKey(command.leftId(), command.rightId(), command.source());
             ScholardexAuthorshipFact edge = working.get(key);
             if (edge == null && allowFallbackLookup) {
+                edgeFallbackLookups++;
+                long lookupStartedAt = System.nanoTime();
                 edge = authorshipFactRepository
                         .findByPublicationIdAndAuthorIdAndSource(command.leftId(), command.rightId(), command.source())
                         .orElse(null);
+                edgeFallbackNanos += System.nanoTime() - lookupStartedAt;
                 if (edge != null) {
                     working.put(key, edge);
                 }
@@ -264,6 +270,10 @@ public class ScholardexEdgeWriterService {
             }
         }
 
+        if (edgeFallbackLookups > 0) {
+            log.info("Authorship edge batch cache efficiency: commands={} edgeFallbackLookups={} edgeFallbackMs={}",
+                    commands.size(), edgeFallbackLookups, edgeFallbackNanos / 1_000_000L);
+        }
         return new BatchEdgeWriteResult(
                 accepted,
                 rejected + sourceLinkRejected,
@@ -421,6 +431,8 @@ public class ScholardexEdgeWriterService {
         int createdCount = 0;
         int updatedCount = 0;
         int conflicts = 0;
+        int edgeFallbackLookups = 0;
+        long edgeFallbackNanos = 0L;
 
         for (EdgeWriteCommand command : commands) {
             if (isBlank(command.leftId()) || isBlank(command.rightId()) || isBlank(command.source())) {
@@ -430,9 +442,12 @@ public class ScholardexEdgeWriterService {
             String key = edgeNaturalKey(command.leftId(), command.rightId(), command.source());
             ScholardexAuthorAffiliationFact edge = working.get(key);
             if (edge == null && allowFallbackLookup) {
+                edgeFallbackLookups++;
+                long lookupStartedAt = System.nanoTime();
                 edge = authorAffiliationFactRepository
                         .findByAuthorIdAndAffiliationIdAndSource(command.leftId(), command.rightId(), command.source())
                         .orElse(null);
+                edgeFallbackNanos += System.nanoTime() - lookupStartedAt;
                 if (edge != null) {
                     working.put(key, edge);
                 }
@@ -464,10 +479,18 @@ public class ScholardexEdgeWriterService {
             }
             edge.setAuthorId(command.leftId());
             edge.setAffiliationId(command.rightId());
-            applyLineage(edge, command, now);
+            // H56: mirror the authorship batch — only re-write an edge whose lineage actually changed.
+            // Unconditional applyLineage+save re-wrote every author-affiliation edge (and bumped its
+            // updatedAt) on each replay, ~271k per-doc writes per rebuild for nothing.
+            boolean lineageChanged = created || isLineageChanged(edge, command);
+            if (lineageChanged) {
+                applyLineage(edge, command, now);
+            }
 
             working.put(key, edge);
-            pendingSaves.put(key, edge);
+            if (lineageChanged) {
+                pendingSaves.put(key, edge);
+            }
             linkCommands.add(new ScholardexSourceLinkService.SourceLinkUpsertCommand(
                     ScholardexEntityType.AUTHOR_AFFILIATION,
                     command.source(),
@@ -484,7 +507,7 @@ public class ScholardexEdgeWriterService {
             accepted++;
             if (created) {
                 createdCount++;
-            } else {
+            } else if (lineageChanged) {
                 updatedCount++;
             }
         }
@@ -520,6 +543,10 @@ public class ScholardexEdgeWriterService {
             }
         }
 
+        if (edgeFallbackLookups > 0) {
+            log.info("Author-affiliation edge batch cache efficiency: commands={} edgeFallbackLookups={} edgeFallbackMs={} pendingSaves={}",
+                    commands.size(), edgeFallbackLookups, edgeFallbackNanos / 1_000_000L, pendingSaves.size());
+        }
         return new BatchEdgeWriteResult(
                 accepted,
                 rejected + sourceLinkRejected,
@@ -832,17 +859,9 @@ public class ScholardexEdgeWriterService {
     }
 
     private String shortHash(String value) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder(hash.length * 2);
-            for (byte b : hash) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.substring(0, 24);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 not available", e);
-        }
+        // H56: byte-identical, ~10x faster shared implementation (per-edge deterministic ids run
+        // ~1.2M times per rebuild).
+        return ro.uvt.pokedex.core.service.importing.scopus.CanonicalizationSupport.shortHash(value);
     }
 
     private String normalize(String value) {
@@ -855,6 +874,15 @@ public class ScholardexEdgeWriterService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    /**
+     * H56: the natural key this writer's batch methods use for their working/preload maps. Preloaders
+     * MUST seed their maps with exactly this key — a different normalization (e.g. lowercasing) makes
+     * every lookup miss and silently degrades the batch into per-command repository reads.
+     */
+    public String authorAffiliationEdgeNaturalKey(String authorId, String affiliationId, String source) {
+        return edgeNaturalKey(authorId, affiliationId, source);
     }
 
     private String edgeNaturalKey(String authorId, String affiliationId, String source) {
