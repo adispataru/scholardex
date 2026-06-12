@@ -2,10 +2,16 @@ package ro.uvt.pokedex.core.service.importing.scopus;
 
 import ro.uvt.pokedex.core.service.importing.BuilderVersion;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.mongodb.core.BulkOperations;
+import org.springframework.data.mongodb.core.FindAndReplaceOptions;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorAffiliationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
@@ -58,6 +64,7 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
     private final ScholardexAuthorFactRepository scholardexAuthorFactRepository;
     private final ScholardexAuthorAffiliationFactRepository scholardexAuthorAffiliationFactRepository;
     private final ScholardexEdgeWriterService edgeWriterService;
+    private final MongoTemplate mongoTemplate;
 
     @Value("${scopus.canonical.telemetry.heartbeat-seconds:10}")
     private long heartbeatSeconds;
@@ -69,13 +76,15 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
             ScholardexEdgeWriterService edgeWriterService,
             ScholardexSourceLinkService sourceLinkService,
             ScholardexIdentityConflictRepository identityConflictRepository,
-            ScholardexCanonicalBuildCheckpointService checkpointService
+            ScholardexCanonicalBuildCheckpointService checkpointService,
+            MongoTemplate mongoTemplate
     ) {
         super(sourceLinkService, identityConflictRepository, checkpointService);
         this.scopusAuthorFactRepository = scopusAuthorFactRepository;
         this.scholardexAuthorFactRepository = scholardexAuthorFactRepository;
         this.scholardexAuthorAffiliationFactRepository = scholardexAuthorAffiliationFactRepository;
         this.edgeWriterService = edgeWriterService;
+        this.mongoTemplate = mongoTemplate;
     }
 
     // ── Public API (unchanged) ──────────────────────────────────────────────
@@ -392,11 +401,14 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
         if (!context.pendingAuthorFacts.isEmpty()) {
             try {
                 context.pendingAuthorFacts.values().forEach(f -> f.setBuilderVersion(BuilderVersion.SCHOLARDEX_AUTHOR));
-                scholardexAuthorFactRepository.saveAll(context.pendingAuthorFacts.values());
+                bulkReplaceAuthorFacts(context.pendingAuthorFacts.values());
                 context.lastAuthorFactWrites = context.pendingAuthorFacts.size();
-            } catch (DuplicateKeyException ex) {
-                log.warn("Scholardex author canonicalization chunk saveAll hit duplicate key; falling back to per-record recovery path for {} facts.",
-                        context.pendingAuthorFacts.size());
+            } catch (DataIntegrityViolationException ex) {
+                // BulkOps surfaces duplicate-key violations as a BulkOperationException (a subtype of
+                // DataIntegrityViolationException, alongside DuplicateKeyException); fall back to the
+                // per-record recovery path exactly as the prior saveAll did.
+                log.warn("Scholardex author canonicalization chunk bulk write hit a write error ({}); falling back to per-record recovery path for {} facts.",
+                        ex.getClass().getSimpleName(), context.pendingAuthorFacts.size());
                 for (ScholardexAuthorFact fact : context.pendingAuthorFacts.values()) {
                     recoverAuthorWrite(fact, context);
                 }
@@ -460,6 +472,20 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
     }
 
     // ── Private helpers ─────────────────────────────────────────────────────
+
+    /**
+     * H56 lever 3: persist the chunk's author facts in a single unordered bulk upsert (replaceOne by
+     * _id) instead of {@code saveAll}, which issues one round trip per fact. Behaviour-identical (same
+     * documents written); just collapses ~5,000 round trips per chunk into one.
+     */
+    private void bulkReplaceAuthorFacts(java.util.Collection<ScholardexAuthorFact> facts) {
+        BulkOperations bulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, ScholardexAuthorFact.class);
+        FindAndReplaceOptions upsert = FindAndReplaceOptions.options().upsert();
+        for (ScholardexAuthorFact fact : facts) {
+            bulk.replaceOne(Query.query(Criteria.where("_id").is(fact.getId())), fact, upsert);
+        }
+        bulk.execute();
+    }
 
     private AffiliationBridgeResult bridgeAffiliationIds(List<String> sourceAffiliationIds, String source, ChunkContext context) {
         if (sourceAffiliationIds == null || sourceAffiliationIds.isEmpty()) {

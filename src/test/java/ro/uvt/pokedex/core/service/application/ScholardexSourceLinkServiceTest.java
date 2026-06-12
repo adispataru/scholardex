@@ -82,6 +82,53 @@ class ScholardexSourceLinkServiceTest {
     }
 
     @Test
+    void linkSkipsRewriteWhenExistingLinkUnchanged() {
+        // H56 lever 2: a persisted link with the same durable content (state, canonical, reason) is not
+        // re-written, even on an explicit replay with fresh provenance.
+        ScholardexSourceLinkService service = new ScholardexSourceLinkService(sourceLinkRepository, identityConflictRepository);
+        ScholardexSourceLink existing = new ScholardexSourceLink();
+        existing.setId("sl1");
+        existing.setEntityType(ScholardexEntityType.FORUM);
+        existing.setSource("SCOPUS");
+        existing.setSourceRecordId("27545");
+        existing.setLinkState("LINKED");
+        existing.setCanonicalEntityId("sforum_a");
+        existing.setLinkReason("scopus-forum-onboarding");
+        when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
+                ScholardexEntityType.FORUM, "SCOPUS", "27545")).thenReturn(Optional.of(existing));
+
+        ScholardexSourceLinkService.SourceLinkWriteResult result = service.link(
+                ScholardexEntityType.FORUM, "SCOPUS", "27545", "sforum_a",
+                "scopus-forum-onboarding", "ev-2", "b-2", "c-2", true);
+
+        assertTrue(result.accepted());
+        verify(sourceLinkRepository, never()).save(any(ScholardexSourceLink.class));
+    }
+
+    @Test
+    void linkStillRewritesWhenDurableContentChanges() {
+        // A real change (UNMATCHED -> LINKED) must be persisted, never skipped by the no-op guard.
+        ScholardexSourceLinkService service = new ScholardexSourceLinkService(sourceLinkRepository, identityConflictRepository);
+        ScholardexSourceLink existing = new ScholardexSourceLink();
+        existing.setId("sl2");
+        existing.setEntityType(ScholardexEntityType.AUTHOR);
+        existing.setSource("SCOPUS");
+        existing.setSourceRecordId("au-1");
+        existing.setLinkState("UNMATCHED");
+        existing.setCanonicalEntityId(null);
+        existing.setLinkReason("author-bridge");
+        when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(
+                ScholardexEntityType.AUTHOR, "SCOPUS", "au-1")).thenReturn(Optional.of(existing));
+
+        ScholardexSourceLinkService.SourceLinkWriteResult result = service.link(
+                ScholardexEntityType.AUTHOR, "SCOPUS", "au-1", "sauth_1",
+                "author-bridge", "ev-1", "b-1", "c-1", false);
+
+        assertTrue(result.accepted());
+        verify(sourceLinkRepository).save(any(ScholardexSourceLink.class));
+    }
+
+    @Test
     void linkNormalizesUserWizardAliasToUserDefined() {
         ScholardexSourceLinkService service = new ScholardexSourceLinkService(sourceLinkRepository, identityConflictRepository);
         when(sourceLinkRepository.findFirstByEntityTypeAndSourceAndSourceRecordIdOrderByUpdatedAtDesc(

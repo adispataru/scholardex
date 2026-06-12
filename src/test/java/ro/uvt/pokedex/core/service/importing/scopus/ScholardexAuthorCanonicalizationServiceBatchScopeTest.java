@@ -32,6 +32,10 @@ class ScholardexAuthorCanonicalizationServiceBatchScopeTest {
         ScholardexSourceLinkService sourceLinkService = mock(ScholardexSourceLinkService.class);
         ScholardexIdentityConflictRepository identityConflictRepository = mock(ScholardexIdentityConflictRepository.class);
         ScholardexCanonicalBuildCheckpointService checkpointService = mock(ScholardexCanonicalBuildCheckpointService.class);
+        org.springframework.data.mongodb.core.MongoTemplate mongoTemplate = mock(org.springframework.data.mongodb.core.MongoTemplate.class);
+        org.springframework.data.mongodb.core.BulkOperations bulkOps = mock(org.springframework.data.mongodb.core.BulkOperations.class);
+        when(mongoTemplate.bulkOps(any(), any(Class.class))).thenReturn(bulkOps);
+        when(bulkOps.replaceOne(any(), any(), any())).thenReturn(bulkOps);
         ScholardexEdgeWriterService edgeWriterService = mock(ScholardexEdgeWriterService.class);
 
         ScopusAuthorFact sourceFact = new ScopusAuthorFact();
@@ -57,7 +61,8 @@ class ScholardexAuthorCanonicalizationServiceBatchScopeTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                mongoTemplate
         );
 
         service.rebuildCanonicalAuthorFactsFromScopusFacts(
@@ -76,6 +81,10 @@ class ScholardexAuthorCanonicalizationServiceBatchScopeTest {
         ScholardexSourceLinkService sourceLinkService = mock(ScholardexSourceLinkService.class);
         ScholardexIdentityConflictRepository identityConflictRepository = mock(ScholardexIdentityConflictRepository.class);
         ScholardexCanonicalBuildCheckpointService checkpointService = mock(ScholardexCanonicalBuildCheckpointService.class);
+        org.springframework.data.mongodb.core.MongoTemplate mongoTemplate = mock(org.springframework.data.mongodb.core.MongoTemplate.class);
+        org.springframework.data.mongodb.core.BulkOperations bulkOps = mock(org.springframework.data.mongodb.core.BulkOperations.class);
+        when(mongoTemplate.bulkOps(any(), any(Class.class))).thenReturn(bulkOps);
+        when(bulkOps.replaceOne(any(), any(), any())).thenReturn(bulkOps);
         ScholardexEdgeWriterService edgeWriterService = mock(ScholardexEdgeWriterService.class);
 
         ScopusAuthorFact sourceFact = new ScopusAuthorFact();
@@ -107,7 +116,8 @@ class ScholardexAuthorCanonicalizationServiceBatchScopeTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                mongoTemplate
         );
 
         service.rebuildCanonicalAuthorFactsFromScopusFacts(

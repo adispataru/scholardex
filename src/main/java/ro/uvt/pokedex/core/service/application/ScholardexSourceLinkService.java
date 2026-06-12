@@ -316,6 +316,18 @@ public class ScholardexSourceLinkService {
             return SourceLinkWriteResult.rejected("linked-canonical-id-immutable");
         }
 
+        // H56 lever 2: no-op skip when the persisted link already carries the same durable content.
+        String incomingEffectiveCanonical =
+                (STATE_LINKED.equals(normalizedState) || STATE_UNMATCHED.equals(normalizedState))
+                        ? normalizedCanonicalId : null;
+        if (existing != null && existing.getId() != null
+                && java.util.Objects.equals(existingState, normalizedState)
+                && java.util.Objects.equals(existingCanonicalId, incomingEffectiveCanonical)
+                && java.util.Objects.equals(normalize(existing.getLinkReason()), normalize(reason))) {
+            CanonicalObservabilityMetrics.recordSourceLinkTransition(entityType.name(), existingState, normalizedState, "unchanged");
+            return SourceLinkWriteResult.accepted(existing);
+        }
+
         ScholardexSourceLink target = existing == null ? new ScholardexSourceLink() : existing;
         applyAssembly(target, entityType, normalizedSource, normalizedRecordId, normalizedCanonicalId,
                 normalizedState, normalize(reason), normalize(sourceEventId), normalize(sourceBatchId),
@@ -437,6 +449,24 @@ public class ScholardexSourceLinkService {
                 );
                 CanonicalObservabilityMetrics.recordSourceLinkTransition(command.entityType().name(), existingState, normalizedState, "rejected");
                 results.add(new SourceLinkBatchItemResult(command, false, "linked-canonical-id-immutable", null));
+                continue;
+            }
+
+            // H56 lever 2: no-op skip. On a replay the vast majority of links are unchanged; re-writing
+            // them churns ~1M docs per rebuild for nothing. If a persisted link already carries the same
+            // durable content (state, effective canonical id, reason) we keep it as-is — no save, no
+            // updatedAt/provenance churn (also better for rebuild determinism). Provenance-only diffs
+            // (batchId/correlationId/eventId) are intentionally not a reason to rewrite.
+            String incomingEffectiveCanonical =
+                    (STATE_LINKED.equals(normalizedState) || STATE_UNMATCHED.equals(normalizedState))
+                            ? normalizedCanonicalId : null;
+            if (existing != null && existing.getId() != null
+                    && java.util.Objects.equals(existingState, normalizedState)
+                    && java.util.Objects.equals(existingCanonicalId, incomingEffectiveCanonical)
+                    && java.util.Objects.equals(normalize(existing.getLinkReason()), normalize(command.reason()))) {
+                working.put(key, existing);
+                CanonicalObservabilityMetrics.recordSourceLinkTransition(command.entityType().name(), existingState, normalizedState, "unchanged");
+                results.add(new SourceLinkBatchItemResult(command, true, null, existing));
                 continue;
             }
 

@@ -39,6 +39,7 @@ import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -53,6 +54,24 @@ class ScholardexAuthorCanonicalizationServiceTest {
     @Mock private ScholardexSourceLinkService sourceLinkService;
     @Mock private ScholardexIdentityConflictRepository identityConflictRepository;
     @Mock private ScholardexCanonicalBuildCheckpointService checkpointService;
+    @Mock private org.springframework.data.mongodb.core.MongoTemplate mongoTemplate;
+
+    private org.springframework.data.mongodb.core.BulkOperations bulkOps;
+
+    @org.junit.jupiter.api.BeforeEach
+    void stubBulkOps() {
+        // H56 lever 3: author facts are now persisted via mongoTemplate.bulkOps(...).replaceOne(...);
+        // provide a no-op bulk chain so unit tests that flush facts don't NPE (previously saveAll was
+        // a void no-op on the mocked repository). Tests can capture replaceOne facts or make execute()
+        // throw to exercise the duplicate-key recovery path.
+        bulkOps = org.mockito.Mockito.mock(org.springframework.data.mongodb.core.BulkOperations.class);
+        org.mockito.Mockito.lenient().when(mongoTemplate.bulkOps(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(Class.class)))
+                .thenReturn(bulkOps);
+        org.mockito.Mockito.lenient().when(bulkOps.replaceOne(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any())).thenReturn(bulkOps);
+    }
 
     @Test
     void exposesAuthorPipelineContract() {
@@ -63,7 +82,8 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                mongoTemplate
         );
         ReflectionTestUtils.setField(service, "heartbeatSeconds", 23L);
         int defaultChunkSize = ReflectionTestUtils.invokeMethod(service, "getDefaultChunkSize");
@@ -89,7 +109,8 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                mongoTemplate
         );
 
         ScopusAuthorFact sourceFact = new ScopusAuthorFact();
@@ -112,7 +133,7 @@ class ScholardexAuthorCanonicalizationServiceTest {
         when(scholardexAuthorFactRepository.findByScopusAuthorIdsIn(anyCollection())).thenReturn(List.of());
         when(scholardexAuthorFactRepository.findByIdIn(anyCollection())).thenReturn(List.of());
         when(scholardexAuthorAffiliationFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
-        when(scholardexAuthorFactRepository.saveAll(anyCollection()))
+        when(bulkOps.execute())
                 .thenThrow(new DuplicateKeyException("dup author source id"));
         when(scholardexAuthorFactRepository.findByScopusAuthorIdsContains("11139804700"))
                 .thenReturn(Optional.of(existing));
@@ -152,7 +173,8 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                mongoTemplate
         );
 
         ScopusAuthorFact bootstrap = new ScopusAuthorFact();
@@ -200,7 +222,8 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                mongoTemplate
         );
 
         ScopusAuthorFact sourceFact = new ScopusAuthorFact();
@@ -246,7 +269,8 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                mongoTemplate
         );
 
         ScopusAuthorFact sourceFact = new ScopusAuthorFact();
@@ -296,7 +320,8 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                mongoTemplate
         );
 
         ImportProcessingResult result = new ImportProcessingResult(10);
@@ -319,7 +344,8 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                mongoTemplate
         );
 
         ScopusAuthorFact sourceFact = new ScopusAuthorFact();
@@ -361,7 +387,8 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                mongoTemplate
         );
 
         ScopusAuthorFact sourceFact = new ScopusAuthorFact();
@@ -406,7 +433,8 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                mongoTemplate
         );
 
         ScopusAuthorFact sourceFact = new ScopusAuthorFact();
@@ -448,7 +476,8 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                mongoTemplate
         );
 
         ScopusAuthorFact sourceFact = new ScopusAuthorFact();
@@ -505,7 +534,8 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                mongoTemplate
         );
         Object context = ReflectionTestUtils.invokeMethod(service, "createChunkContext");
         ScholardexSourceLink resolved = new ScholardexSourceLink();
@@ -541,7 +571,8 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                mongoTemplate
         );
         Object context = ReflectionTestUtils.invokeMethod(service, "createChunkContext");
 
@@ -599,7 +630,8 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                mongoTemplate
         );
         Object context = ReflectionTestUtils.invokeMethod(service, "createChunkContext");
         ScopusAuthorFact sourceFact = new ScopusAuthorFact();
@@ -670,7 +702,8 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                mongoTemplate
         );
         Object context = ReflectionTestUtils.invokeMethod(service, "createChunkContext");
         ScholardexAuthorFact incoming = new ScholardexAuthorFact();
@@ -728,7 +761,8 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                mongoTemplate
         );
         ScholardexAuthorCanonicalizationService.ChunkContext context =
                 ReflectionTestUtils.invokeMethod(service, "createChunkContext");
@@ -786,7 +820,8 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                mongoTemplate
         );
         ScholardexAuthorCanonicalizationService.ChunkContext context =
                 ReflectionTestUtils.invokeMethod(service, "createChunkContext");
@@ -850,7 +885,8 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                mongoTemplate
         );
 
         ScopusAuthorFact factZzz = new ScopusAuthorFact();
@@ -885,11 +921,11 @@ class ScholardexAuthorCanonicalizationServiceTest {
 
         ImportProcessingResult result = service.rebuildCanonicalAuthorFactsFromScopusFacts();
 
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<java.util.Collection<ScholardexAuthorFact>> captor =
-                ArgumentCaptor.forClass(java.util.Collection.class);
-        verify(scholardexAuthorFactRepository).saveAll(captor.capture());
-        List<ScholardexAuthorFact> saved = List.copyOf(captor.getValue());
+        // facts are now persisted via bulkOps.replaceOne(query, fact, opts) — capture the fact arg
+        ArgumentCaptor<Object> factCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(bulkOps, times(2)).replaceOne(any(), factCaptor.capture(), any());
+        List<ScholardexAuthorFact> saved = factCaptor.getAllValues().stream()
+                .map(o -> (ScholardexAuthorFact) o).toList();
         assertEquals("aaa", saved.get(0).getSourceRecordId());
         assertEquals("zzz", saved.get(1).getSourceRecordId());
         assertEquals(2, result.getProcessedCount());
@@ -904,7 +940,8 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 edgeWriterService,
                 sourceLinkService,
                 identityConflictRepository,
-                checkpointService
+                checkpointService,
+                mongoTemplate
         );
         ScholardexAuthorCanonicalizationService.ChunkContext context =
                 ReflectionTestUtils.invokeMethod(service, "createChunkContext");
@@ -981,7 +1018,7 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 )
         );
 
-        when(scholardexAuthorFactRepository.saveAll(anyCollection()))
+        when(bulkOps.execute())
                 .thenThrow(new DuplicateKeyException("dup"));
         when(scholardexAuthorFactRepository.save(first))
                 .thenThrow(new DuplicateKeyException("dup"));
