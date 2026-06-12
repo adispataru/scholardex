@@ -215,7 +215,49 @@ scope of H55 is complete and correctly bounded.
     processing order + fixed `scopus-forum-canonicalization` batch label) and covered by the H54.7
     determinism integration test. Re-run before close if desired.
 
-- **H55.5 (NEW) — Canonical-forum deduplication. SCOPED 2026-06-11; not yet implemented.**
+- **H55.5 (NEW) — Canonical-forum deduplication. IMPLEMENTED + LIVE-VERIFIED 2026-06-11.**
+
+  Live rebuild on the `test`/`core` DBs (`buildFacts?useCheckpoint=false` → `buildProjections`):
+  - Dedup step: **75 clusters → 70 merged, 5 quarantined, 70 forums deleted, 0 errors.**
+  - `scholardex.forum_facts` 32,524 → **32,454** (−70). Canonical primary-ISSN duplicate groups **49 → 0**;
+    `scholardex_forum_view` duplicate-ISSN groups **0** (32,454 rows, 0 raw-Scopus-keyed).
+  - **0 dangling `sforum_` publication references** (clean loser→winner re-pointing; losers had 0 pubs);
+    `forum_id` dangling stays at exactly the 1,990 raw-id pubs (the 3 quarantined ambiguous journals),
+    unchanged from H55.4.
+  - **5 `FORUM_DEDUP_NAME_MISMATCH` conflicts OPEN on `/admin/conflicts`** (each 2 candidates ⇒ "needs
+    review"): The BMJ/BRIT MED J, Eur Phys J C/Zeitschrift, Cell Mol Life Sci/Experientia, Int J COPD/
+    …Chronic Obstructive Pulmonary Disease, SIAM J Comput/SIAM J Math Analysis.
+  - **Score parity: byte-identical to H55.4** — ISSN-preservation 10,681/10,682 resolved links carry the
+    same journal ISSN (4,269 no-ISSN name-resolved, 1 pre-existing mismatch). No publication's resolved
+    journal moved ⇒ indicator scores cannot change.
+  - Residual (by design): the 1,990 pubs on the 3 quarantined ambiguous journals stay on raw ids pending
+    operator resolution of those conflicts (2 are continuations, 1 the SIAM data error).
+
+
+  Delivered: `ScholardexForumDeduplicationService.deduplicateForums(batchId, correlationId)` — clusters
+  canonical forums by shared normalised ISSN token (union-find), then per cluster applies the validated
+  safe rule (**merge iff members share the primary print ISSN OR their names are an abbreviation/
+  expansion match**). Merge picks a deterministic winner (most Scopus links → most ISSN tokens →
+  smallest id), unions `scopusForumIds`/`wosForumIds`/`googleScholarForumIds`/`userSourceForumIds`,
+  accumulates every distinct ISSN/eISSN as an **alias retaining its original hyphenated string**
+  (de-duplicated by normalised form; winner's own primary/eISSN excluded), re-points loser source links
+  (`FORUM/*` `canonicalEntityId`) and any publication `forumId` to the winner, then deletes the losers.
+  Name-mismatch / eIssn-only clusters are **quarantined**: an `FORUM_DEDUP_NAME_MISMATCH` identity
+  conflict is opened carrying the cluster's canonical ids as `candidateCanonicalIds` (≥2 ⇒ "needs
+  review" ⇒ visible on `/admin/conflicts`, filterable `entityType=FORUM`).
+  Wired into `ScopusBigBangMigrationService` as `scholardex-forum-dedup`, running **before**
+  `scholardex-forum-canonicalization` in all three build paths so existing duplicate canonicals collapse
+  before the canon resolves Scopus forums.
+  Tests: `ScholardexForumDeduplicationServiceTest` (same-primary merge + reference re-point;
+  abbreviation merge across an eISSN bridge; SIAM-style quarantine → conflict, no merge; singleton
+  no-op); `ScopusBigBangMigrationServiceTest` + `PostgresReportingProjectionServiceIntegrationTest`
+  updated for the new dependency / canonical forum seed. Full application + scopus suites green.
+  **Expected on the live rebuild:** `/forums` duplicate ISSN groups 75 → ~5 (the 70 WoS-only
+  zero-publication losers merge with no scoring impact); the ~5 quarantined clusters (incl. the 3 that
+  block 1,990 pubs — 2 continuations + SIAM) surface on the conflicts page for human resolution; those
+  1,990 pubs remain on raw ids until an operator resolves the conflicts (continuation handling is a
+  later refinement). **Original scoping below.**
+
 
   **Problem (measured on the live `test` DB after H55.4).** Connected-component analysis over canonical
   forums sharing any normalised ISSN token (issn/eIssn/alias) finds **75 clusters, every one a pair
@@ -302,6 +344,35 @@ scope of H55 is complete and correctly bounded.
 
   Net: the validated safe rule introduces **no** risk of merging different journals across the full
   dataset. Continuations and the SIAM error are quarantined to the ~5-cluster manual-review queue.
+
+- **H55.6 (NEW) — Primary-ISSN disambiguation in forum canonicalization. IMPLEMENTED + LIVE-VERIFIED
+  2026-06-11.** Recovers the 1,990 publications H55.5 left on raw ids (3 journals: European Physical
+  Journal C 1,987, Cell Mol Life Sci 2, SIAM J Computing 1), each ambiguous only because its Scopus
+  forum shares an *eISSN* with a sibling/continuation/erroneous canonical.
+  - Change: in `WosScholardexOnboardingService.upsertForumFromScopus`, when `findCanonicalCandidates`
+    returns >1, narrow to the candidate(s) carrying the Scopus forum's **primary print ISSN**; if exactly
+    one, link it; else fall through to the existing conflict. (Dry-run validated: 8/8 ambiguous forums
+    resolve to the correct journal, 1,990/1,990 pubs recovered, 0 residual ambiguity, 0 wrong picks.)
+  - **Bug found during live verify (the unit test masked it):** the disambiguated `link()` was silently
+    rejected on re-runs because the prior ambiguous run had left a `CONFLICT`-state FORUM/SCOPUS source
+    link, and `isTransitionAllowed(CONFLICT, LINKED)` is only true with `explicitReplayAttempt=true`,
+    while `upsertLinkedSourceLink` passed `false`. Fix: `upsertLinkedSourceLink` now takes an
+    `explicitReplayAttempt` flag — **forum** links pass `true` (a definitive resolution must override a
+    stale conflict), **publication** links keep `false` (must not bypass their own collision quarantine).
+  - Live verification (rebuild on `test`/`core`): "Unresolved canonical forum" warnings **1,990 → 0**;
+    all 3 forum links now `LINKED` to the correct primary-ISSN canonical; **`pub_forum_id_raw` 1,990 →
+    0**, all 92,654 publications on canonical ids; `pubs_forum_id_DANGLING` 1,990 → 0; ISSN-preservation
+    parity 10,681 → **10,684** (the 3 now correct; the 1 residual mismatch is the unchanged pre-existing
+    forum-20954 bad merge); `forum_view` duplicate-ISSN groups stay 0.
+  - **Stale-conflict auto-close (DONE 2026-06-12).** `upsertForumFromScopus` now calls
+    `resolveOpenForumAmbiguityConflict(sourceRecordId)` at all three link success points (already-folded,
+    existing-link re-merge, and the post-disambiguation single-candidate path): it marks any open
+    `AMBIGUOUS_ISSN_MATCH`/`AMBIGUOUS_NAME_AGG` FORUM/SCOPUS conflict `RESOLVED` (resolvedBy
+    `scopus-forum-canonicalization`) so it stops showing on `/admin/conflicts`. Unit-tested. The 3
+    pre-existing stale records were also closed one-time in the live DB (each verified `LINKED` first) →
+    **0 open `AMBIGUOUS_ISSN_MATCH` forum conflicts.** The 5 `FORUM_DEDUP_NAME_MISMATCH` conflicts
+    correctly remain open (the continuation/SIAM canonical pairs still exist as separate forums for
+    human review).
 
 - (Optional) normalize `FORUM_DEFAULT_AGG` casing.
 

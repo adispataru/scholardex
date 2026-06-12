@@ -66,6 +66,7 @@ public class ScopusBigBangMigrationService {
     private final ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
     private final ScholardexCitationCanonicalizationService citationCanonicalizationService;
     private final WosScholardexOnboardingService wosScholardexOnboardingService;
+    private final ScholardexForumDeduplicationService scholardexForumDeduplicationService;
     private final ScholardexCanonicalBuildCheckpointService canonicalBuildCheckpointService;
     private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexEdgeReconciliationService edgeReconciliationService;
@@ -121,6 +122,10 @@ public class ScopusBigBangMigrationService {
         ImportProcessingResult canonicalAuthors = runStepWithTiming(
                 "scholardex-author-canonicalization",
                 () -> authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options));
+        log.info("Scopus build-facts next step: scholardex-forum-dedup");
+        ImportProcessingResult forumDedup = runStepWithTiming(
+                "scholardex-forum-dedup",
+                () -> scholardexForumDeduplicationService.deduplicateForums(SCOPUS_FORUM_CANON_BATCH, "build-facts"));
         log.info("Scopus build-facts next step: scholardex-forum-canonicalization");
         ImportProcessingResult canonicalForums = runStepWithTiming(
                 "scholardex-forum-canonicalization",
@@ -133,7 +138,7 @@ public class ScopusBigBangMigrationService {
         ImportProcessingResult canonicalCitations = runStepWithTiming(
                 "scholardex-citation-canonicalization",
                 () -> citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options));
-        ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors, canonicalForums, canonicalPublications, canonicalCitations));
+        ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors, forumDedup, canonicalForums, canonicalPublications, canonicalCitations));
         log.info("Scopus build-facts orchestration completed: processed={} imported={} updated={} skipped={} errors={}",
                 buildFactsCombined.getProcessedCount(),
                 buildFactsCombined.getImportedCount(),
@@ -180,6 +185,10 @@ public class ScopusBigBangMigrationService {
         ImportProcessingResult canonicalAuthors = runStepWithTiming(
                 "scholardex-author-canonicalization",
                 () -> authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options));
+        log.info("Scopus incremental upload next step: scholardex-forum-dedup");
+        ImportProcessingResult forumDedup = runStepWithTiming(
+                "scholardex-forum-dedup",
+                () -> scholardexForumDeduplicationService.deduplicateForums(SCOPUS_FORUM_CANON_BATCH, "incremental"));
         log.info("Scopus incremental upload next step: scholardex-forum-canonicalization");
         ImportProcessingResult canonicalForums = runStepWithTiming(
                 "scholardex-forum-canonicalization",
@@ -192,7 +201,7 @@ public class ScopusBigBangMigrationService {
         ImportProcessingResult canonicalCitations = runStepWithTiming(
                 "scholardex-citation-canonicalization",
                 () -> citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options));
-        ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors, canonicalForums, canonicalPublications, canonicalCitations));
+        ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors, forumDedup, canonicalForums, canonicalPublications, canonicalCitations));
         log.info("Scopus incremental upload build orchestration completed: sourceBatchIdFilter={} processed={} imported={} updated={} skipped={} errors={}",
                 sourceBatchIdFilter,
                 buildFactsCombined.getProcessedCount(),
@@ -280,13 +289,14 @@ public class ScopusBigBangMigrationService {
         CanonicalBuildOptions options = CanonicalBuildOptions.defaults();
         ImportProcessingResult canonicalAffiliations = affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(options);
         ImportProcessingResult canonicalAuthors = authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options);
+        ImportProcessingResult forumDedup = scholardexForumDeduplicationService.deduplicateForums(SCOPUS_FORUM_CANON_BATCH, "run-full");
         ImportProcessingResult canonicalForums = wosScholardexOnboardingService.runScopusForumCanonicalization(SCOPUS_FORUM_CANON_BATCH, "run-full");
         ImportProcessingResult canonicalPublications = publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(options);
         ImportProcessingResult canonicalCitations = citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options);
         ImportProcessingResult projections = scopusProjectionBuilderService.rebuildViews();
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult indexResult =
                 scopusCanonicalIndexMaintenanceService.ensureIndexes();
-        ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors, canonicalForums, canonicalPublications, canonicalCitations));
+        ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors, forumDedup, canonicalForums, canonicalPublications, canonicalCitations));
         return new ScopusBigBangMigrationResult(
                 scopusDataFile,
                 startedAt,

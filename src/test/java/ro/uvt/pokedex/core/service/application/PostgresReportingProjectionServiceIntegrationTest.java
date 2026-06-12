@@ -29,7 +29,6 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
-import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
 import ro.uvt.pokedex.core.repository.reporting.WosJournalIdentityRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAffiliationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorAffiliationFactRepository;
@@ -274,11 +273,11 @@ class PostgresReportingProjectionServiceIntegrationTest {
         categoryFact.setCreatedAt(now);
         mongoTemplate.save(categoryFact);
 
-        // Scopus forum fact — used by ScholardexProjectionBuilderService (scopus.forum_facts)
-        ScopusForumFact forumFact = new ScopusForumFact();
+        // Canonical Scholardex forum fact — H55.3: scholardex_forum_view is projected from canonical
+        // forums (scholardex.forum_facts), keyed by the sforum_ id the publication now carries.
+        ScholardexForumFact forumFact = new ScholardexForumFact();
         forumFact.setId("forum-1");
-        forumFact.setSourceId("scopus-forum-1");
-        forumFact.setPublicationName("Forum One");
+        forumFact.setName("Forum One");
         forumFact.setIssn("1234-5678");
         forumFact.setCreatedAt(now);
         forumFact.setUpdatedAt(now);

@@ -56,6 +56,7 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
     @Mock private ScholardexCitationCanonicalizationService citationCanonicalizationService;
     @Mock private WosScholardexOnboardingService wosScholardexOnboardingService;
+    @Mock private ScholardexForumDeduplicationService scholardexForumDeduplicationService;
     @Mock private ScholardexCanonicalBuildCheckpointService canonicalBuildCheckpointService;
     @Mock private ScholardexSourceLinkService sourceLinkService;
     @Mock private ScholardexEdgeReconciliationService edgeReconciliationService;
@@ -85,6 +86,7 @@ class ScopusBigBangMigrationServiceTest {
                 publicationCanonicalizationService,
                 citationCanonicalizationService,
                 wosScholardexOnboardingService,
+                scholardexForumDeduplicationService,
                 canonicalBuildCheckpointService,
                 sourceLinkService,
                 edgeReconciliationService,
@@ -191,6 +193,7 @@ class ScopusBigBangMigrationServiceTest {
         when(authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(any())).thenReturn(result(1, 0, 1, 0, 0));
         when(publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(any())).thenReturn(result(1, 1, 0, 0, 0));
         when(citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(any())).thenReturn(result(1, 0, 0, 1, 0));
+        when(scholardexForumDeduplicationService.deduplicateForums(any(), any())).thenReturn(result(0, 0, 0, 0, 0));
         when(wosScholardexOnboardingService.runScopusForumCanonicalization(any(), any())).thenReturn(result(0, 0, 0, 0, 0));
         stubVerificationSummary();
 
@@ -212,6 +215,7 @@ class ScopusBigBangMigrationServiceTest {
         when(authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(any())).thenReturn(result(0, 0, 0, 0, 0));
         when(publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(any())).thenReturn(result(0, 0, 0, 0, 0));
         when(citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(any())).thenReturn(result(0, 0, 0, 0, 0));
+        when(scholardexForumDeduplicationService.deduplicateForums(any(), any())).thenReturn(result(0, 0, 0, 0, 0));
         when(wosScholardexOnboardingService.runScopusForumCanonicalization(any(), any())).thenReturn(result(0, 0, 0, 0, 0));
         stubVerificationSummary();
 
@@ -232,6 +236,7 @@ class ScopusBigBangMigrationServiceTest {
         when(authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(any())).thenReturn(result(0, 0, 0, 1, 0));
         when(publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(any())).thenReturn(result(0, 0, 0, 0, 1));
         when(citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(any())).thenReturn(result(1, 0, 0, 0, 0));
+        when(scholardexForumDeduplicationService.deduplicateForums(any(), any())).thenReturn(result(0, 0, 0, 0, 0));
         when(wosScholardexOnboardingService.runScopusForumCanonicalization(any(), any())).thenReturn(result(0, 0, 0, 0, 0));
         stubVerificationSummary();
 

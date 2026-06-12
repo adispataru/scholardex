@@ -18,4 +18,5 @@ public interface ScholardexPublicationFactRepository extends MongoRepository<Sch
     List<ScholardexPublicationFact> findAllByDoiNormalized(String doiNormalized);
     List<ScholardexPublicationFact> findAllByDoiNormalizedIn(Collection<String> doiNormalizedValues);
     List<ScholardexPublicationFact> findAllByEidIn(Collection<String> eids);
+    List<ScholardexPublicationFact> findByForumId(String forumId);
 }

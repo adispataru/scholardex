@@ -261,7 +261,7 @@ class WosScholardexOnboardingServiceTest {
         verify(scholardexForumFactRepository).save(argThat(f -> "cf-existing".equals(f.getId())));
         verify(sourceLinkService).link(
                 eq(ScholardexEntityType.FORUM), eq("WOS"), eq("wos-j-2"), eq("cf-existing"),
-                eq("wos-forum-onboarding"), isNull(), eq("batch-2"), eq("corr-2"), eq(false)
+                eq("wos-forum-onboarding"), isNull(), eq("batch-2"), eq("corr-2"), eq(true)
         );
     }
 
@@ -615,7 +615,7 @@ class WosScholardexOnboardingServiceTest {
         assertEquals("SCOPUS", saved.getSource());
         verify(sourceLinkService).link(
                 eq(ScholardexEntityType.FORUM), eq("SCOPUS"), eq("scopus-forum-1"), eq(saved.getId()),
-                eq("scopus-forum-onboarding"), isNull(), eq("batch-s"), eq("corr-s"), eq(false)
+                eq("scopus-forum-onboarding"), isNull(), eq("batch-s"), eq("corr-s"), eq(true)
         );
     }
 
@@ -645,7 +645,7 @@ class WosScholardexOnboardingServiceTest {
         verify(scholardexForumFactRepository, never()).save(any());
         verify(sourceLinkService).link(
                 eq(ScholardexEntityType.FORUM), eq("SCOPUS"), eq("scopus-forum-7"), eq("cf-linked"),
-                eq("scopus-forum-onboarding"), isNull(), eq("batch-s"), eq("corr-s"), eq(false)
+                eq("scopus-forum-onboarding"), isNull(), eq("batch-s"), eq("corr-s"), eq(true)
         );
     }
 
@@ -679,6 +679,84 @@ class WosScholardexOnboardingServiceTest {
         List<ScholardexForumFact> saves = forumCaptor.getAllValues();
         assertEquals(saves.get(0).getId(), saves.get(1).getId());
         assertTrue(saves.get(1).getScopusForumIds().containsAll(List.of("scopus-a", "scopus-b")));
+    }
+
+    @Test
+    void runScopusForumCanonicalizationResolvesStaleAmbiguityConflictWhenForumNowLinks() {
+        // A Scopus forum previously left as AMBIGUOUS_ISSN_MATCH that is now linked (here via the
+        // already-folded-into-canonical path) must have its stale open conflict marked RESOLVED so it
+        // stops showing on /admin/conflicts.
+        WosScholardexOnboardingService service = service();
+
+        ScholardexForumFact canonical = new ScholardexForumFact();
+        canonical.setId("cf_eurphysjc");
+        canonical.setScopusForumIds(new ArrayList<>(List.of("27545")));
+
+        ScopusForumFact scopusForum = new ScopusForumFact();
+        scopusForum.setSourceId("27545");
+        scopusForum.setPublicationName("European Physical Journal C");
+        scopusForum.setIssn("1434-6044");
+
+        ScholardexIdentityConflict staleConflict = new ScholardexIdentityConflict();
+        staleConflict.setId("conf_eurphysjc");
+        staleConflict.setEntityType(ScholardexEntityType.FORUM);
+        staleConflict.setReasonCode("AMBIGUOUS_ISSN_MATCH");
+        staleConflict.setStatus("OPEN");
+
+        when(scopusForumFactRepository.findAll()).thenReturn(List.of(scopusForum));
+        when(scholardexForumFactRepository.findAll()).thenReturn(List.of(canonical));
+        when(scholardexIdentityConflictRepository.findByEntityTypeAndIncomingSourceAndIncomingSourceRecordIdAndReasonCodeAndStatus(
+                ScholardexEntityType.FORUM, "SCOPUS", "27545", "AMBIGUOUS_ISSN_MATCH", "OPEN"))
+                .thenReturn(Optional.of(staleConflict));
+
+        service.runScopusForumCanonicalization("batch-s", "corr-s");
+
+        verify(scholardexIdentityConflictRepository).save(argThat(c ->
+                "conf_eurphysjc".equals(c.getId())
+                        && "RESOLVED".equals(c.getStatus())
+                        && c.getResolvedAt() != null));
+    }
+
+    @Test
+    void runScopusForumCanonicalizationDisambiguatesByPrimaryIssnInsteadOfConflicting() {
+        // H55.6: a scopus forum that matches two canonical forums (one on its primary print ISSN, one
+        // only on a shared eISSN — e.g. European Physical Journal C vs its predecessor Zeitschrift)
+        // links to the primary-ISSN match instead of opening an ambiguity conflict.
+        WosScholardexOnboardingService service = service();
+
+        ScopusForumFact scopusForum = new ScopusForumFact();
+        scopusForum.setSourceId("27545");
+        scopusForum.setPublicationName("European Physical Journal C");
+        scopusForum.setIssn("1434-6044");
+        scopusForum.setEIssn("1434-6052");
+
+        ScholardexForumFact primaryMatch = new ScholardexForumFact();
+        primaryMatch.setId("cf_eurphysjc");
+        primaryMatch.setName("EUR PHYS J C");
+        primaryMatch.setIssn("1434-6044");
+
+        ScholardexForumFact eIssnSibling = new ScholardexForumFact();
+        eIssnSibling.setId("cf_zeitschrift");
+        eIssnSibling.setName("Zeitschrift fuer Physik C");
+        eIssnSibling.setIssn("0170-9739");
+        eIssnSibling.setEIssn("1434-6052");
+
+        when(scopusForumFactRepository.findAll()).thenReturn(List.of(scopusForum));
+        when(scholardexForumFactRepository.findAll()).thenReturn(List.of(primaryMatch, eIssnSibling));
+        when(sourceLinkService.findByKey(ScholardexEntityType.FORUM, "SCOPUS", "27545")).thenReturn(Optional.empty());
+        when(scholardexForumFactRepository.save(any(ScholardexForumFact.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ImportProcessingResult result = service.runScopusForumCanonicalization("batch-s", "corr-s");
+
+        assertEquals(0, result.getSkippedCount());
+        assertEquals(1, result.getUpdatedCount());
+        verify(scholardexForumFactRepository).save(argThat(f ->
+                "cf_eurphysjc".equals(f.getId()) && f.getScopusForumIds().contains("27545")));
+        verify(sourceLinkService).link(
+                eq(ScholardexEntityType.FORUM), eq("SCOPUS"), eq("27545"), eq("cf_eurphysjc"),
+                eq("scopus-forum-onboarding"), isNull(), eq("batch-s"), eq("corr-s"), eq(true));
+        verify(scholardexIdentityConflictRepository, never()).save(any());
     }
 
     @Test
