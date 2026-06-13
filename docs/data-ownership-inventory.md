@@ -81,6 +81,10 @@ projection_dirty_markers / import_run_metrics / tasks.*), `user_defined.*`,
 **VERIFY items — RESOLVED 2026-06-09 (all precious; moved out of derived):**
 - `scholardex.artisticEvent` (303) — admin-curated catalog (`AdminCatalogFacade` /
   `ArtisticEventsService`), not pipeline-derived. → **precious (config)**.
+  *Refinement (2026-06-13): code trace shows it is imported from git-tracked
+  `data/arts/event_rankings.json` via `/general/artisticEvents` and the app only reads it (no admin
+  write surface) — strictly Tier 1b reference data. It stays in the seed snapshot as harmless
+  belt-and-braces; the source file is the authority.*
 - `activities` (18) — admin-defined activity types (`ActivityManagementFacade` /
   `AdminCatalogFacade`). → **precious (config)**.
 - `activityInstances` (20) — user-entered activity records (`UserActivityInstanceFacade`).
@@ -159,6 +163,32 @@ rebuilt from here and must be excluded from every wipe/rebuild allow-list.
   conflict/observability table. Review whether it accumulates without bound (same anti-pattern
   as the `scopus.import_events` duplication). Candidate for a TTL or rebuild-on-demand policy.
 - **Legacy Scopus namespace (~470k docs, Tier 3)** — drop after confirming unreferenced.
+- **Source-scoped resets leave cross-source canonical orphans (2026-06-13).** The
+  `/admin/initialization/{scopus,wos}/*` reset endpoints clear canonical rows per source; because
+  WoS emits no canonical citations, a stale WOS-sourced citation edge (`c12`: `p9→p9`, a non-existent
+  publication — test-fixture cruft) survived every from-scratch rebuild in `scholardex.citation_facts`.
+  Deleted manually 2026-06-13 (0 source_links, not projected, dangling). To prevent recurrence, the
+  full `PipelineRebuildService.rebuildAllDerivedFromSource()` `deleteAll()` path (which DOES clear the
+  whole collection) should be the canonical rebuild entrypoint, or the per-source reset should wipe by
+  collection rather than by source filter.
+- **WoS-source canonical forums were immortal across the admin reset chain — FIXED 2026-06-13.**
+  Originally `WosBigBangMigrationService.resetCanonicalState()` cleared WoS stage-1/2
+  (`*.import_events`, journal identities, metric/category facts) but NOT `scholardex.forum_facts`, and
+  `ScopusBigBangMigrationService.resetCanonicalState()` removes canonical rows only where
+  `source=SCOPUS`. So the ~25,615 `source=WOS` canonical forums (and their FORUM/WOS source links) had
+  persisted unchanged since **2026-03-08** — every "from scratch" admin rebuild silently skipped them
+  (WoS onboarding found the existing source link → update path → never overwrote `issn`). Discovered
+  while verifying H55's ISSN-validation change: the SIAM (Scopus-source) fix materialized on rebuild
+  but 11 WoS-source typo-ISSN forums did not. **Two coupled root causes, both fixed:** (1) WoS reset
+  now also wipes `source=WOS` canonical forums + FORUM/WOS source links (source-scoped, mirroring the
+  Scopus reset); (2) `WosScholardexOnboardingService.runWosOnboarding` now reads stage-3
+  `wos.journal_identity` directly instead of the stage-4 `reporting_read.wos_ranking_view` projection —
+  removing a backwards stage-3→stage-4 dependency that also caused an ordering bug (onboarding ran
+  before the projection it read was built). A latent NPE this surfaced (`List.of(token).contains(null)`
+  in `matchesIssn` when a rebuilt forum has a null/invalid ISSN) was fixed with a null-safe
+  `containsToken`. **Verified by a full rebuild 2026-06-13:** WoS forums rebuilt fresh (createdAt
+  today), 0 invalid-ISSN tokens (from the code path), SIAM journals separated, `forum_view` 0 dup-ISSN
+  / 0 dangling, 92,558 pubs on canonical ids.
 - **Backups taken 2026-06-08** (`userIndicatorResults`, `scopus.import_events`, 658 MB under
   `data/backups/`) are point-in-time only; the source files are the authoritative backup.
   `data/backups/` is already git-ignored (covered by `data/*`).

@@ -13,9 +13,9 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
-import org.springframework.jdbc.core.namedparam.EmptySqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import ro.uvt.pokedex.core.model.reporting.wos.WosJournalIdentity;
 import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
+import ro.uvt.pokedex.core.repository.reporting.WosJournalIdentityRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
@@ -41,7 +41,10 @@ public class WosScholardexOnboardingService {
 
     private static final String SOURCE_WOS = "WOS";
     private static final String SOURCE_SCOPUS = "SCOPUS";
-    private static final String FORUM_DEFAULT_AGG = "JOURNAL";
+    // Scopus-native casing ("Journal"), so default-onboarded forums display consistently with
+    // source-derived ones. Dedup is case-insensitive (normalizeToken lowercases), so this only
+    // affects the stored/display casing, not forum identity.
+    private static final String FORUM_DEFAULT_AGG = "Journal";
 
     private static final String STATUS_OPEN = "OPEN";
     private static final String STATUS_RESOLVED = "RESOLVED";
@@ -55,6 +58,15 @@ public class WosScholardexOnboardingService {
     private static final String REASON_AMBIGUOUS_NAME_AGG = "AMBIGUOUS_NAME_AGG_MATCH";
     private static final String REASON_SOURCE_ID_COLLISION = "SOURCE_ID_COLLISION";
     private static final String REASON_INVALID_ISSN = "NORMALIZATION_INVALID_ISSN";
+
+    // H55 curated source-data correction. "SIAM Journal on Mathematical Analysis" (print ISSN
+    // 0036-1410) carries eISSN 1095-7111 in the Scopus source — but 1095-7111 is "SIAM Journal on
+    // Computing"'s eISSN; Math Analysis's real eISSN is 1095-7154. The shared *valid* eISSN otherwise
+    // bridges two distinct journals (the AMBIGUOUS_ISSN_MATCH / FORUM_DEDUP_NAME_MISMATCH case).
+    // Check-digit validation cannot catch this: the value is a valid ISSN, just on the wrong record.
+    private static final String SIAM_MATH_ANALYSIS_PRINT_ISSN = "0036-1410";
+    private static final String SIAM_COMPUTING_EISSN = "1095-7111";
+    private static final String SIAM_MATH_ANALYSIS_EISSN = "1095-7154";
     private static final String REASON_FORUM_EXTERNAL_ID_ALREADY_LINKED = "FORUM_EXTERNAL_ID_ALREADY_LINKED";
 
     private static final Pattern ISSN_NON_ALNUM = Pattern.compile("[^0-9Xx]");
@@ -62,7 +74,7 @@ public class WosScholardexOnboardingService {
     private static final Pattern MULTI_SPACE = Pattern.compile("\\s+");
     private static final Pattern COMBINING_MARKS = Pattern.compile("\\p{M}+");
 
-    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    private final WosJournalIdentityRepository journalIdentityRepository;
     private final ScopusForumFactRepository scopusForumFactRepository;
     private final ScholardexForumFactRepository scholardexForumFactRepository;
     private final ScholardexSourceLinkService sourceLinkService;
@@ -71,24 +83,16 @@ public class WosScholardexOnboardingService {
 
     public ImportProcessingResult runWosOnboarding(String batchId, String correlationId) {
         ImportProcessingResult result = new ImportProcessingResult(20);
-        List<WosRankingView> journals = namedParameterJdbcTemplate.query(
-                """
-                SELECT journal_id, name, issn, e_issn, alternative_issns, alternative_names
-                FROM reporting_read.wos_ranking_view
-                ORDER BY journal_id
-                """,
-                EmptySqlParameterSource.INSTANCE,
-                (rs, rowNum) -> {
-                    WosRankingView view = new WosRankingView();
-                    view.setId(rs.getString("journal_id"));
-                    view.setName(rs.getString("name"));
-                    view.setIssn(rs.getString("issn"));
-                    view.setEIssn(rs.getString("e_issn"));
-                    view.setAlternativeIssns(toStringList(rs.getArray("alternative_issns")));
-                    view.setAlternativeNames(toStringList(rs.getArray("alternative_names")));
-                    return view;
-                }
-        );
+        // Read the stage-3 WoS journal-identity facts directly (the same source rebuildWosProjections
+        // projects 1:1 into reporting_read.wos_ranking_view). Forum canonicalization is stage-3, so it
+        // must not depend on the stage-4 projection: doing so created a backwards dependency that ran
+        // onboarding before the view it read was built — leaving WoS canonical forums unrebuildable
+        // (immortal/stale). Mapping mirrors WosProjectionBuilderService.toRankingView. Sorted by id for
+        // deterministic processing order (was ORDER BY journal_id).
+        List<WosRankingView> journals = journalIdentityRepository.findAll().stream()
+                .sorted(Comparator.comparing(WosJournalIdentity::getId))
+                .map(WosScholardexOnboardingService::toRankingView)
+                .toList();
 
         List<ScopusForumFact> scopusForums = new ArrayList<>(scopusForumFactRepository.findAll());
         List<ScholardexForumFact> canonicalForums = new ArrayList<>(scholardexForumFactRepository.findAll());
@@ -167,7 +171,7 @@ public class WosScholardexOnboardingService {
 
         LinkedHashSet<String> normalizedIssns = normalizedIssnSet(
                 scopusForum.getIssn(),
-                scopusForum.getEIssn(),
+                correctedScopusEIssn(scopusForum),
                 null,
                 null,
                 null,
@@ -320,15 +324,21 @@ public class WosScholardexOnboardingService {
         target.setUpdatedAt(now);
     }
 
-    private List<String> toStringList(java.sql.Array array) throws java.sql.SQLException {
-        if (array == null) {
-            return List.of();
-        }
-        Object value = array.getArray();
-        if (value instanceof String[] items) {
-            return List.of(items);
-        }
-        return List.of();
+    /**
+     * Map a stage-3 WoS journal identity to the internal {@link WosRankingView} DTO consumed by forum
+     * onboarding. Mirrors {@code WosProjectionBuilderService.toRankingView} field-for-field (the
+     * onboarding-relevant subset), so reading identities here is equivalent to reading the projection
+     * that is built 1:1 from them — minus the backwards stage-4 dependency.
+     */
+    private static WosRankingView toRankingView(WosJournalIdentity identity) {
+        WosRankingView view = new WosRankingView();
+        view.setId(identity.getId());
+        view.setName(identity.getTitle());
+        view.setIssn(identity.getPrimaryIssn());
+        view.setEIssn(identity.getEIssn());
+        view.setAlternativeIssns(identity.getAliasIssns() == null ? List.of() : new ArrayList<>(identity.getAliasIssns()));
+        view.setAlternativeNames(identity.getAlternativeNames() == null ? List.of() : new ArrayList<>(identity.getAlternativeNames()));
+        return view;
     }
 
     private void upsertForumFromWos(
@@ -475,7 +485,7 @@ public class WosScholardexOnboardingService {
         }
         if (scopusPreferred != null) {
             String scopusIssn = normalizeIssn(scopusPreferred.getIssn());
-            String scopusEIssn = normalizeIssn(scopusPreferred.getEIssn());
+            String scopusEIssn = normalizeIssn(correctedScopusEIssn(scopusPreferred));
             if (scopusIssn != null) {
                 target.setIssn(scopusIssn);
             }
@@ -566,28 +576,51 @@ public class WosScholardexOnboardingService {
         return candidates;
     }
 
+    /**
+     * Returns the Scopus forum's eISSN with the known SIAM misassignment corrected (see
+     * {@link #SIAM_MATH_ANALYSIS_PRINT_ISSN}). Returns the raw eISSN unchanged for every other forum.
+     */
+    private String correctedScopusEIssn(ScopusForumFact scopusForum) {
+        String rawEIssn = scopusForum.getEIssn();
+        if (SIAM_MATH_ANALYSIS_PRINT_ISSN.equals(normalizeIssn(scopusForum.getIssn()))
+                && SIAM_COMPUTING_EISSN.equals(normalizeIssn(rawEIssn))) {
+            return SIAM_MATH_ANALYSIS_EISSN;
+        }
+        return rawEIssn;
+    }
+
     private boolean matchesIssn(ScopusForumFact scopusForum, Collection<String> issnTokens) {
         if (issnTokens == null || issnTokens.isEmpty()) {
             return false;
         }
-        String issn = normalizeIssn(scopusForum.getIssn());
-        String eIssn = normalizeIssn(scopusForum.getEIssn());
-        return issnTokens.contains(issn) || issnTokens.contains(eIssn);
+        return containsToken(issnTokens, normalizeIssn(scopusForum.getIssn()))
+                || containsToken(issnTokens, normalizeIssn(correctedScopusEIssn(scopusForum)));
     }
 
     private boolean matchesIssn(ScholardexForumFact forum, Collection<String> issnTokens) {
         if (issnTokens == null || issnTokens.isEmpty()) {
             return false;
         }
-        if (issnTokens.contains(normalizeIssn(forum.getIssn())) || issnTokens.contains(normalizeIssn(forum.getEIssn()))) {
+        if (containsToken(issnTokens, normalizeIssn(forum.getIssn()))
+                || containsToken(issnTokens, normalizeIssn(forum.getEIssn()))) {
             return true;
         }
         for (String alias : safeList(forum.getAliasIssns())) {
-            if (issnTokens.contains(normalizeIssn(alias))) {
+            if (containsToken(issnTokens, normalizeIssn(alias))) {
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * Null-safe membership test. A forum/source record may have no (or a check-digit-invalid) ISSN, in
+     * which case {@code normalizeIssn} returns null; and the candidate token collection is often an
+     * immutable {@code List.of(...)} which throws {@link NullPointerException} on {@code contains(null)}.
+     * Guard the null before delegating.
+     */
+    private static boolean containsToken(Collection<String> tokens, String value) {
+        return value != null && tokens.contains(value);
     }
 
     private void onboardPublicationWosLinks(
@@ -802,6 +835,13 @@ public class WosScholardexOnboardingService {
         }
         String compact = ISSN_NON_ALNUM.matcher(value).replaceAll("").toUpperCase(Locale.ROOT);
         if (compact.length() != 8) {
+            return null;
+        }
+        if (!QueryNormalizationSupport.isValidIssn(compact)) {
+            // H55: reject check-digit-invalid ISSNs (real source typos, e.g. Radical Philosophy
+            // "0030-211X"). Treated as absent so the forum resolves by name instead of carrying a
+            // malformed identity token. Genuinely ISSN-less forums already hit the same REASON_INVALID_ISSN
+            // conflict path; this folds typos into that behaviour.
             return null;
         }
         return compact.substring(0, 4) + "-" + compact.substring(4);

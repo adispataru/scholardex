@@ -199,6 +199,8 @@ public class AdminInitializationController {
                         + ", factConflicts=" + result.factConflicts()
                         + ", rankingViews=" + result.rankingViewRows()
                         + ", scoringViews=" + result.scoringViewRows()
+                        + ", canonicalForums=" + result.canonicalForums()
+                        + ", forumSourceLinks=" + result.forumSourceLinks()
                         + "."
         );
         return "redirect:/admin/initialization";

@@ -28,7 +28,6 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorshipFactR
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.sql.Array;
@@ -59,7 +58,6 @@ public class ScholardexProjectionBuilderService {
     private static final Pattern DOI_PREFIX = Pattern.compile("^doi:", Pattern.CASE_INSENSITIVE);
     private static final int JDBC_BATCH_SIZE = 500;
 
-    private final ScopusForumFactRepository forumFactRepository;
     private final ScholardexForumFactRepository canonicalForumFactRepository;
     private final ScholardexAuthorFactRepository authorFactRepository;
     private final ScholardexAffiliationFactRepository affiliationFactRepository;
@@ -72,7 +70,6 @@ public class ScholardexProjectionBuilderService {
     private final TransactionTemplate transactionTemplate;
 
     public ScholardexProjectionBuilderService(
-            ScopusForumFactRepository forumFactRepository,
             ScholardexForumFactRepository canonicalForumFactRepository,
             ScholardexAuthorFactRepository authorFactRepository,
             ScholardexAffiliationFactRepository affiliationFactRepository,
@@ -84,7 +81,6 @@ public class ScholardexProjectionBuilderService {
             JdbcTemplate jdbcTemplate,
             PlatformTransactionManager transactionManager
     ) {
-        this.forumFactRepository = forumFactRepository;
         this.canonicalForumFactRepository = canonicalForumFactRepository;
         this.authorFactRepository = authorFactRepository;
         this.affiliationFactRepository = affiliationFactRepository;

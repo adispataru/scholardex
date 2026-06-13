@@ -37,7 +37,6 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorshipFactR
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
 import ro.uvt.pokedex.core.service.importing.scopus.ScholardexProjectionBuilderService;
 import ro.uvt.pokedex.core.service.application.WosIndexMaintenanceService;
 import ro.uvt.pokedex.core.service.importing.wos.WosOptimizationProperties;
@@ -92,7 +91,6 @@ class PostgresReportingProjectionServiceIntegrationTest {
 
         MongoRepositoryFactory mongoRepoFactory = new MongoRepositoryFactory(mongoTemplate);
         WosJournalIdentityRepository identityRepository = mongoRepoFactory.getRepository(WosJournalIdentityRepository.class);
-        ScopusForumFactRepository scopusForumFactRepository = mongoRepoFactory.getRepository(ScopusForumFactRepository.class);
         ScholardexForumFactRepository canonicalForumFactRepository = mongoRepoFactory.getRepository(ScholardexForumFactRepository.class);
         ScholardexAuthorFactRepository authorFactRepository = mongoRepoFactory.getRepository(ScholardexAuthorFactRepository.class);
         ScholardexAffiliationFactRepository affiliationFactRepository = mongoRepoFactory.getRepository(ScholardexAffiliationFactRepository.class);
@@ -115,7 +113,6 @@ class PostgresReportingProjectionServiceIntegrationTest {
         );
 
         ScholardexProjectionBuilderService scopusBuilder = new ScholardexProjectionBuilderService(
-                scopusForumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,

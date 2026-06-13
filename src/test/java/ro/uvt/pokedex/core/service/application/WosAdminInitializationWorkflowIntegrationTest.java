@@ -175,7 +175,7 @@ class WosAdminInitializationWorkflowIntegrationTest {
         ScholardexSourceLinkService sourceLinkService =
                 new ScholardexSourceLinkService(sourceLinkRepository, scholardexIdentityConflictRepository);
         WosScholardexOnboardingService onboardingService = new WosScholardexOnboardingService(
-                namedParameterJdbcTemplate,
+                journalIdentityRepository,
                 scopusForumFactRepository,
                 scholardexForumFactRepository,
                 sourceLinkService,
@@ -211,7 +211,8 @@ class WosAdminInitializationWorkflowIntegrationTest {
                 categoryFactRepository,
                 identityConflictRepository,
                 factConflictRepository,
-                jdbcTemplate
+                jdbcTemplate,
+                mongoTemplate
         );
 
         rankingMaintenanceFacade = new RankingMaintenanceFacade(

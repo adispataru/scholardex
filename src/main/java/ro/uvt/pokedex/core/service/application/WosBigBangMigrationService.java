@@ -10,6 +10,12 @@ import ro.uvt.pokedex.core.repository.reporting.WosJournalIdentityRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
 import ro.uvt.pokedex.core.repository.reporting.WosFactConflictRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.model.MigrationStepResult;
 import ro.uvt.pokedex.core.service.importing.wos.WosFactBuilderService;
@@ -39,6 +45,7 @@ public class WosBigBangMigrationService {
     private final WosIdentityConflictRepository identityConflictRepository;
     private final WosFactConflictRepository factConflictRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final MongoTemplate mongoTemplate;
 
     @Value("${h14.wos.migration.data-dir:data/loaded}")
     private String migrationDataDirectory;
@@ -220,6 +227,13 @@ public class WosBigBangMigrationService {
         long factConflicts = factConflictRepository.count();
         long rankingRows = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM reporting_read.wos_ranking_view", Long.class);
         long scoringRows = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM reporting_read.wos_scoring_view", Long.class);
+        // The canonical forum layer (scholardex.forum_facts) is WoS-rooted: WoS onboarding mints the
+        // canonical forum and Scopus folds in. Scopus reset only removes source=SCOPUS canonical rows, so
+        // WoS-source canonical forums (and their FORUM/WOS source links) had no wipe and went stale —
+        // every "from scratch" rebuild silently skipped them (WoS onboarding found the existing link and
+        // took the no-overwrite update path). Mirror the Scopus reset's source-scoped removal here.
+        long canonicalForums = mongoTemplate.count(wosCanonicalForumQuery(), ScholardexForumFact.class);
+        long forumSourceLinks = mongoTemplate.count(wosForumSourceLinkQuery(), ScholardexSourceLink.class);
 
         jdbcTemplate.execute("TRUNCATE TABLE reporting_read.wos_scoring_view, reporting_read.wos_category_fact, reporting_read.wos_metric_fact, reporting_read.wos_ranking_view");
         factConflictRepository.deleteAll();
@@ -228,6 +242,8 @@ public class WosBigBangMigrationService {
         metricFactRepository.deleteAll();
         journalIdentityRepository.deleteAll();
         importEventRepository.deleteAll();
+        mongoTemplate.remove(wosCanonicalForumQuery(), ScholardexForumFact.class);
+        mongoTemplate.remove(wosForumSourceLinkQuery(), ScholardexSourceLink.class);
         factBuilderService.resetFactBuildCheckpoint();
 
         return new CanonicalResetResult(
@@ -238,8 +254,18 @@ public class WosBigBangMigrationService {
                 identityConflicts,
                 factConflicts,
                 rankingRows,
-                scoringRows
+                scoringRows,
+                canonicalForums,
+                forumSourceLinks
         );
+    }
+
+    private static Query wosCanonicalForumQuery() {
+        return Query.query(Criteria.where("source").is("WOS"));
+    }
+
+    private static Query wosForumSourceLinkQuery() {
+        return Query.query(Criteria.where("entityType").is(ScholardexEntityType.FORUM).and("source").is("WOS"));
     }
 
     public MigrationStepResult runIngestStep(String sourceVersionOverride) {
@@ -344,7 +370,9 @@ public class WosBigBangMigrationService {
             long identityConflicts,
             long factConflicts,
             long rankingViewRows,
-            long scoringViewRows
+            long scoringViewRows,
+            long canonicalForums,
+            long forumSourceLinks
     ) {
     }
 

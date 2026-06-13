@@ -53,6 +53,7 @@ class WosBigBangMigrationServiceTest {
     @Mock private WosIdentityConflictRepository identityConflictRepository;
     @Mock private WosFactConflictRepository factConflictRepository;
     @Mock private JdbcTemplate jdbcTemplate;
+    @Mock private org.springframework.data.mongodb.core.MongoTemplate mongoTemplate;
 
     private WosBigBangMigrationService service;
 
@@ -71,7 +72,8 @@ class WosBigBangMigrationServiceTest {
                 categoryFactRepository,
                 identityConflictRepository,
                 factConflictRepository,
-                jdbcTemplate
+                jdbcTemplate,
+                mongoTemplate
         );
         ReflectionTestUtils.setField(service, "migrationDataDirectory", "data/loaded");
 

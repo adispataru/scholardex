@@ -6,9 +6,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.core.namedparam.SqlParameterSource;
+import ro.uvt.pokedex.core.repository.reporting.WosJournalIdentityRepository;
 import org.springframework.test.util.ReflectionTestUtils;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
@@ -16,6 +14,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexIdentityConflict;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
+import ro.uvt.pokedex.core.model.reporting.wos.WosJournalIdentity;
 import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
@@ -23,9 +22,7 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFact
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
-import java.sql.Array;
 import java.util.ArrayList;
-import java.sql.ResultSet;
 import java.time.Instant;
 import java.util.List;
 import java.util.LinkedHashSet;
@@ -51,7 +48,7 @@ import static org.mockito.Mockito.inOrder;
 @ExtendWith(MockitoExtension.class)
 class WosScholardexOnboardingServiceTest {
 
-    @Mock private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    @Mock private WosJournalIdentityRepository journalIdentityRepository;
     @Mock private ScopusForumFactRepository scopusForumFactRepository;
     @Mock private ScholardexForumFactRepository scholardexForumFactRepository;
     @Mock private ScholardexSourceLinkService sourceLinkService;
@@ -60,13 +57,26 @@ class WosScholardexOnboardingServiceTest {
 
     private WosScholardexOnboardingService service() {
         return new WosScholardexOnboardingService(
-                namedParameterJdbcTemplate,
+                journalIdentityRepository,
                 scopusForumFactRepository,
                 scholardexForumFactRepository,
                 sourceLinkService,
                 scholardexIdentityConflictRepository,
                 scholardexPublicationFactRepository
         );
+    }
+
+    // Maps a test WosRankingView fixture to the stage-3 WosJournalIdentity that runWosOnboarding now
+    // reads (mirrors WosScholardexOnboardingService.toRankingView / WosProjectionBuilderService).
+    private static WosJournalIdentity identity(WosRankingView v) {
+        WosJournalIdentity id = new WosJournalIdentity();
+        id.setId(v.getId());
+        id.setTitle(v.getName());
+        id.setPrimaryIssn(v.getIssn());
+        id.setEIssn(v.getEIssn());
+        id.setAliasIssns(v.getAlternativeIssns() == null ? new ArrayList<>() : new ArrayList<>(v.getAlternativeIssns()));
+        id.setAlternativeNames(v.getAlternativeNames() == null ? new ArrayList<>() : new ArrayList<>(v.getAlternativeNames()));
+        return id;
     }
 
     @Test
@@ -76,10 +86,10 @@ class WosScholardexOnboardingServiceTest {
         WosRankingView rankingView = new WosRankingView();
         rankingView.setId("wos-j-1");
         rankingView.setName("Journal of Testing");
-        rankingView.setIssn("1234567X");
+        rankingView.setIssn("1050124X");
 
-        when(namedParameterJdbcTemplate.query(any(String.class), any(SqlParameterSource.class), any(RowMapper.class)))
-                .thenReturn(List.of(rankingView));
+        when(journalIdentityRepository.findAll())
+                .thenReturn(List.of(identity(rankingView)));
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of());
@@ -96,7 +106,7 @@ class WosScholardexOnboardingServiceTest {
         ScholardexForumFact savedForum = forumCaptor.getValue();
         assertTrue(savedForum.getId().startsWith("sforum_"));
         assertEquals(List.of("wos-j-1"), savedForum.getWosForumIds());
-        assertEquals("1234-567X", savedForum.getIssn());
+        assertEquals("1050-124X", savedForum.getIssn());
     }
 
     @Test
@@ -111,8 +121,8 @@ class WosScholardexOnboardingServiceTest {
         rankingView.setName("Journal Sharing A Scopus Forum");
         rankingView.setIssn("1335342X");
 
-        when(namedParameterJdbcTemplate.query(any(String.class), any(SqlParameterSource.class), any(RowMapper.class)))
-                .thenReturn(List.of(rankingView));
+        when(journalIdentityRepository.findAll())
+                .thenReturn(List.of(identity(rankingView)));
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of());
@@ -145,7 +155,7 @@ class WosScholardexOnboardingServiceTest {
         ScholardexSourceLink existing = new ScholardexSourceLink();
         existing.setCanonicalEntityId("spub_other");
 
-        when(namedParameterJdbcTemplate.query(any(String.class), any(SqlParameterSource.class), any(RowMapper.class)))
+        when(journalIdentityRepository.findAll())
                 .thenReturn(List.of());
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
@@ -173,10 +183,10 @@ class WosScholardexOnboardingServiceTest {
         WosRankingView rankingView = new WosRankingView();
         rankingView.setId("   ");
         rankingView.setName("No Id Journal");
-        rankingView.setIssn("1234-5678");
+        rankingView.setIssn("1234-5679");
 
-        when(namedParameterJdbcTemplate.query(any(String.class), any(SqlParameterSource.class), any(RowMapper.class)))
-                .thenReturn(List.of(rankingView));
+        when(journalIdentityRepository.findAll())
+                .thenReturn(List.of(identity(rankingView)));
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of());
@@ -196,17 +206,17 @@ class WosScholardexOnboardingServiceTest {
         WosRankingView rankingView = new WosRankingView();
         rankingView.setId("wos-j-amb");
         rankingView.setName("Journal X");
-        rankingView.setIssn("12345678");
+        rankingView.setIssn("12345679");
 
         ScholardexForumFact f1 = new ScholardexForumFact();
         f1.setId("cf1");
-        f1.setIssn("1234-5678");
+        f1.setIssn("1234-5679");
         ScholardexForumFact f2 = new ScholardexForumFact();
         f2.setId("cf2");
-        f2.setEIssn("1234-5678");
+        f2.setEIssn("1234-5679");
 
-        when(namedParameterJdbcTemplate.query(any(String.class), any(SqlParameterSource.class), any(RowMapper.class)))
-                .thenReturn(List.of(rankingView));
+        when(journalIdentityRepository.findAll())
+                .thenReturn(List.of(identity(rankingView)));
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of(f1, f2));
         when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of());
@@ -236,7 +246,7 @@ class WosScholardexOnboardingServiceTest {
         WosRankingView rankingView = new WosRankingView();
         rankingView.setId("wos-j-2");
         rankingView.setName("Journal Existing");
-        rankingView.setIssn("12345678");
+        rankingView.setIssn("12345679");
 
         ScholardexForumFact existingForum = new ScholardexForumFact();
         existingForum.setId("cf-existing");
@@ -246,8 +256,8 @@ class WosScholardexOnboardingServiceTest {
         ScholardexSourceLink existingLink = new ScholardexSourceLink();
         existingLink.setCanonicalEntityId("cf-existing");
 
-        when(namedParameterJdbcTemplate.query(any(String.class), any(SqlParameterSource.class), any(RowMapper.class)))
-                .thenReturn(List.of(rankingView));
+        when(journalIdentityRepository.findAll())
+                .thenReturn(List.of(identity(rankingView)));
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of(existingForum));
         when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of());
@@ -274,8 +284,8 @@ class WosScholardexOnboardingServiceTest {
         rankingView.setName("Bad ISSN Journal");
         rankingView.setIssn("??");
 
-        when(namedParameterJdbcTemplate.query(any(String.class), any(SqlParameterSource.class), any(RowMapper.class)))
-                .thenReturn(List.of(rankingView));
+        when(journalIdentityRepository.findAll())
+                .thenReturn(List.of(identity(rankingView)));
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of());
@@ -306,7 +316,7 @@ class WosScholardexOnboardingServiceTest {
         valid.setId("spub-ok");
         valid.setWosId("WOS:OK");
 
-        when(namedParameterJdbcTemplate.query(any(String.class), any(SqlParameterSource.class), any(RowMapper.class)))
+        when(journalIdentityRepository.findAll())
                 .thenReturn(List.of());
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
@@ -326,8 +336,11 @@ class WosScholardexOnboardingServiceTest {
     void privateHelpersCoverNormalizationAndCandidateBranches() throws Exception {
         WosScholardexOnboardingService service = service();
 
-        assertEquals("1234-567X", ReflectionTestUtils.invokeMethod(service, "normalizeIssn", "1234 567x"));
+        assertEquals("1050-124X", ReflectionTestUtils.invokeMethod(service, "normalizeIssn", "1050 124x"));
         assertNull(ReflectionTestUtils.invokeMethod(service, "normalizeIssn", "12"));
+        // H55: check-digit-invalid ISSNs (real source typos) are rejected as absent.
+        assertNull(ReflectionTestUtils.invokeMethod(service, "normalizeIssn", "1234-5678"));
+        assertNull(ReflectionTestUtils.invokeMethod(service, "normalizeIssn", "0030-211X"));
         assertEquals("journal de test", ReflectionTestUtils.invokeMethod(service, "normalizeName", "Journál, de Test!"));
         assertEquals("", ReflectionTestUtils.invokeMethod(service, "normalizeToken", "   "));
         assertNull(ReflectionTestUtils.invokeMethod(service, "normalizeBlank", "   "));
@@ -339,17 +352,17 @@ class WosScholardexOnboardingServiceTest {
         LinkedHashSet<String> normalized = ReflectionTestUtils.invokeMethod(
                 service,
                 "normalizedIssnSet",
-                "1234-5678",
-                "8765-4321",
-                List.of("12345678", "bad"),
+                "1234-5679",
+                "8765-4326",
+                List.of("12345679", "bad"),
                 null,
                 null,
-                List.of("87654321")
+                List.of("87654326")
         );
-        assertTrue(normalized.contains("1234-5678"));
-        assertTrue(normalized.contains("8765-4321"));
+        assertTrue(normalized.contains("1234-5679"));
+        assertTrue(normalized.contains("8765-4326"));
 
-        String byIssnId = ReflectionTestUtils.invokeMethod(service, "buildCanonicalForumId", "1234-5678", null, List.of(), "name", "journal");
+        String byIssnId = ReflectionTestUtils.invokeMethod(service, "buildCanonicalForumId", "1234-5679", null, List.of(), "name", "journal");
         String byNameId = ReflectionTestUtils.invokeMethod(service, "buildCanonicalForumId", null, null, List.of(), "name", "journal");
         assertTrue(byIssnId.startsWith("sforum_"));
         assertTrue(byNameId.startsWith("sforum_"));
@@ -357,37 +370,31 @@ class WosScholardexOnboardingServiceTest {
 
         ScopusForumFact scopus = new ScopusForumFact();
         scopus.setSourceId("s1");
-        scopus.setIssn("1234-5678");
+        scopus.setIssn("1234-5679");
         scopus.setPublicationName("Journal de Test");
         scopus.setAggregationType("JOURNAL");
         List<ScopusForumFact> byIssn = ReflectionTestUtils.invokeMethod(
-                service, "findScopusCandidates", List.of(scopus), List.of("1234-5678"), "journal de test", "journal"
+                service, "findScopusCandidates", List.of(scopus), List.of("1234-5679"), "journal de test", "journal"
         );
         assertEquals(1, byIssn.size());
         List<ScopusForumFact> byName = ReflectionTestUtils.invokeMethod(
                 service, "findScopusCandidates", List.of(scopus), List.of(), "journal de test", "journal"
         );
         assertEquals(1, byName.size());
-
-        Array sqlArray = org.mockito.Mockito.mock(Array.class);
-        when(sqlArray.getArray()).thenReturn(new Object[]{"a", "b"});
-        List<String> parsed = ReflectionTestUtils.invokeMethod(service, "toStringList", sqlArray);
-        assertEquals(List.of(), parsed);
-        assertEquals(List.of(), ReflectionTestUtils.invokeMethod(service, "toStringList", (Object) null));
     }
 
     @Test
     void mergeForumAppliesScopusPreferredIssnNameAggAndAliases() {
         WosScholardexOnboardingService service = service();
         ScholardexForumFact target = new ScholardexForumFact();
-        target.setAliasIssns(new ArrayList<>(List.of("1111-1111")));
-        target.setIssn("1111-1111");
+        target.setAliasIssns(new ArrayList<>(List.of("1111-1119")));
+        target.setIssn("1111-1119");
         target.setEIssn(null);
         target.setName("Old Name");
         target.setAggregationType("JOURNAL");
 
         ScopusForumFact scopusPreferred = new ScopusForumFact();
-        scopusPreferred.setIssn("22223333");
+        scopusPreferred.setIssn("22223339");
         scopusPreferred.setEIssn("44445555");
         scopusPreferred.setPublicationName("Scopus Name");
         scopusPreferred.setAggregationType("BOOK");
@@ -397,7 +404,7 @@ class WosScholardexOnboardingServiceTest {
                 "mergeForum",
                 target,
                 "wos-id-1",
-                new LinkedHashSet<>(List.of("2222-3333", "6666-7777")),
+                new LinkedHashSet<>(List.of("2222-3339", "6666-7771")),
                 "Wos Name",
                 "wos name",
                 "JOURNAL",
@@ -408,29 +415,17 @@ class WosScholardexOnboardingServiceTest {
                 "corr-1"
         );
 
-        assertEquals("2222-3333", target.getIssn());
+        assertEquals("2222-3339", target.getIssn());
         assertEquals("4444-5555", target.getEIssn());
         assertEquals("Scopus Name", target.getName());
         assertEquals("BOOK", target.getAggregationType());
-        assertTrue(target.getAliasIssns().contains("1111-1111"));
-        assertTrue(target.getAliasIssns().contains("6666-7777"));
+        assertTrue(target.getAliasIssns().contains("1111-1119"));
+        assertTrue(target.getAliasIssns().contains("6666-7771"));
         assertEquals("WOS", target.getSource());
         assertEquals("wos-id-1", target.getSourceRecordId());
         assertEquals("batch-1", target.getSourceBatchId());
         assertEquals("corr-1", target.getSourceCorrelationId());
         assertEquals(Instant.parse("2026-04-30T00:00:00Z"), target.getUpdatedAt());
-    }
-
-    @Test
-    void toStringListReturnsValuesWhenSqlArrayContainsStringArray() throws Exception {
-        WosScholardexOnboardingService service = service();
-        Array sqlArray = mock(Array.class);
-        when(sqlArray.getArray()).thenReturn(new String[]{"x", "y"});
-
-        @SuppressWarnings("unchecked")
-        List<String> parsed = ReflectionTestUtils.invokeMethod(service, "toStringList", sqlArray);
-
-        assertEquals(List.of("x", "y"), parsed);
     }
 
     @Test
@@ -448,7 +443,7 @@ class WosScholardexOnboardingServiceTest {
         existingConflict.setId("conf_existing");
         existingConflict.setDetectedAt(java.time.Instant.parse("2024-01-01T00:00:00Z"));
 
-        when(namedParameterJdbcTemplate.query(any(String.class), any(SqlParameterSource.class), any(RowMapper.class)))
+        when(journalIdentityRepository.findAll())
                 .thenReturn(List.of());
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
@@ -470,27 +465,20 @@ class WosScholardexOnboardingServiceTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void runWosOnboardingRowMapperParsesAlternativeIssnAndNameArrays() throws Exception {
+    void runWosOnboardingMapsJournalIdentityAliasIssnsAndNames() {
         WosScholardexOnboardingService service = service();
 
-        ResultSet rs = mock(ResultSet.class);
-        Array issnArray = mock(Array.class);
-        Array namesArray = mock(Array.class);
-        when(issnArray.getArray()).thenReturn(new String[]{"11112222", "3333-4444"});
-        when(namesArray.getArray()).thenReturn(new String[]{"Alt Name A", "Alt Name B"});
-        when(rs.getString("journal_id")).thenReturn("wos-map-1");
-        when(rs.getString("name")).thenReturn("Mapped Journal");
-        when(rs.getString("issn")).thenReturn("1234-5678");
-        when(rs.getString("e_issn")).thenReturn("8765-4321");
-        when(rs.getArray("alternative_issns")).thenReturn(issnArray);
-        when(rs.getArray("alternative_names")).thenReturn(namesArray);
+        // Forum onboarding now reads stage-3 wos.journal_identity directly (not the stage-4 ranking
+        // view). Verify the identity's alias ISSNs flow into the canonical forum.
+        WosJournalIdentity identity = new WosJournalIdentity();
+        identity.setId("wos-map-1");
+        identity.setTitle("Mapped Journal");
+        identity.setPrimaryIssn("1234-5679");
+        identity.setEIssn("8765-4326");
+        identity.setAliasIssns(new ArrayList<>(List.of("11112220", "3333-4447")));
+        identity.setAlternativeNames(new ArrayList<>(List.of("Alt Name A", "Alt Name B")));
 
-        when(namedParameterJdbcTemplate.query(any(String.class), any(SqlParameterSource.class), any(RowMapper.class)))
-                .thenAnswer(invocation -> {
-                    RowMapper<WosRankingView> mapper = invocation.getArgument(2);
-                    return List.of(mapper.mapRow(rs, 0));
-                });
+        when(journalIdentityRepository.findAll()).thenReturn(List.of(identity));
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of());
@@ -504,7 +492,7 @@ class WosScholardexOnboardingServiceTest {
                 f.getWosForumIds() != null
                         && f.getWosForumIds().contains("wos-map-1")
                         && f.getAliasIssns() != null
-                        && f.getAliasIssns().contains("3333-4444")
+                        && f.getAliasIssns().contains("3333-4447")
         ));
     }
 
@@ -519,7 +507,7 @@ class WosScholardexOnboardingServiceTest {
         p1.setId("spub-a");
         p1.setWosId("WOS:A");
 
-        when(namedParameterJdbcTemplate.query(any(String.class), any(SqlParameterSource.class), any(RowMapper.class)))
+        when(journalIdentityRepository.findAll())
                 .thenReturn(List.of());
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
@@ -545,18 +533,18 @@ class WosScholardexOnboardingServiceTest {
     void mergeForumCoversScopusPreferredAndAliasPruningBranches() {
         WosScholardexOnboardingService service = service();
         ScholardexForumFact target = new ScholardexForumFact();
-        target.setAliasIssns(List.of("9999-9999"));
+        target.setAliasIssns(List.of("9999-9994"));
         target.setWosForumIds(List.of("wos-old"));
         target.setScopusForumIds(List.of("scopus-old"));
 
         ScopusForumFact preferred = new ScopusForumFact();
         preferred.setSourceId("scopus-new");
-        preferred.setIssn("1234-5678");
-        preferred.setEIssn("8765-4321");
+        preferred.setIssn("1234-5679");
+        preferred.setEIssn("8765-4326");
         preferred.setPublicationName("Scopus Preferred Journal");
         preferred.setAggregationType("JOURNAL");
 
-        LinkedHashSet<String> normalizedIssns = new LinkedHashSet<>(List.of("1234-5678", "8765-4321", "2222-2222"));
+        LinkedHashSet<String> normalizedIssns = new LinkedHashSet<>(List.of("1234-5679", "8765-4326", "2222-2227"));
         ReflectionTestUtils.invokeMethod(
                 service,
                 "mergeForum",
@@ -575,13 +563,13 @@ class WosScholardexOnboardingServiceTest {
 
         assertEquals("scopus-new", target.getScopusForumIds().getLast());
         assertTrue(target.getWosForumIds().contains("wos-new"));
-        assertEquals("1234-5678", target.getIssn());
-        assertEquals("8765-4321", target.getEIssn());
+        assertEquals("1234-5679", target.getIssn());
+        assertEquals("8765-4326", target.getEIssn());
         assertEquals("Scopus Preferred Journal", target.getName());
         assertEquals("journal", target.getAggregationTypeNormalized());
-        assertTrue(target.getAliasIssns().contains("2222-2222"));
-        assertTrue(!target.getAliasIssns().contains("1234-5678"));
-        assertTrue(!target.getAliasIssns().contains("8765-4321"));
+        assertTrue(target.getAliasIssns().contains("2222-2227"));
+        assertTrue(!target.getAliasIssns().contains("1234-5679"));
+        assertTrue(!target.getAliasIssns().contains("8765-4326"));
         assertTrue(target.getCreatedAt() != null);
         assertTrue(target.getUpdatedAt() != null);
     }
@@ -593,7 +581,7 @@ class WosScholardexOnboardingServiceTest {
         ScopusForumFact scopusForum = new ScopusForumFact();
         scopusForum.setSourceId("scopus-forum-1");
         scopusForum.setPublicationName("Orphan Journal");
-        scopusForum.setIssn("12345678");
+        scopusForum.setIssn("12345679");
         scopusForum.setAggregationType("Journal");
 
         when(scopusForumFactRepository.findAll()).thenReturn(List.of(scopusForum));
@@ -611,7 +599,7 @@ class WosScholardexOnboardingServiceTest {
         ScholardexForumFact saved = forumCaptor.getValue();
         assertTrue(saved.getId().startsWith("sforum_"));
         assertEquals(List.of("scopus-forum-1"), saved.getScopusForumIds());
-        assertEquals("1234-5678", saved.getIssn());
+        assertEquals("1234-5679", saved.getIssn());
         assertEquals("SCOPUS", saved.getSource());
         verify(sourceLinkService).link(
                 eq(ScholardexEntityType.FORUM), eq("SCOPUS"), eq("scopus-forum-1"), eq(saved.getId()),
@@ -656,11 +644,11 @@ class WosScholardexOnboardingServiceTest {
         ScopusForumFact a = new ScopusForumFact();
         a.setSourceId("scopus-a");
         a.setPublicationName("Shared Journal A");
-        a.setIssn("12345678");
+        a.setIssn("12345679");
         ScopusForumFact b = new ScopusForumFact();
         b.setSourceId("scopus-b");
         b.setPublicationName("Shared Journal B");
-        b.setIssn("1234-5678");
+        b.setIssn("1234-5679");
 
         when(scopusForumFactRepository.findAll()).thenReturn(List.of(b, a)); // unsorted on purpose
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());

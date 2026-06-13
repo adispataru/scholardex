@@ -65,7 +65,13 @@ public final class QueryNormalizationSupport {
         return normalized.isBlank() ? null : normalized;
     }
 
-    /** Upper-cases and strips punctuation from an ISSN for prefix search on *_norm fields. */
+    /**
+     * Upper-cases and strips punctuation from an ISSN for prefix search on *_norm fields.
+     *
+     * <p>Intentionally permissive — does NOT enforce the check digit, because callers use the result
+     * for {@code LIKE 'prefix%'} matching where a partial ISSN (e.g. {@code "0036"}) is legitimate
+     * input. For full-ISSN validation at ingestion, use {@link #isValidIssn(String)}.
+     */
     public static String normalizeIssn(String raw) {
         if (raw == null) return null;
         String normalized = raw.trim()
@@ -73,5 +79,32 @@ public final class QueryNormalizationSupport {
                 .replace("-", "")
                 .replace(" ", "");
         return normalized.isBlank() ? null : normalized;
+    }
+
+    /**
+     * ISO 3297 ISSN check-digit (mod-11) validation. Accepts hyphenated or compact form; the input
+     * must be a complete 8-character ISSN (7 digits + check digit, which may be {@code 'X'}).
+     * Returns {@code false} for any malformed shape or wrong check digit.
+     *
+     * <p>Used at ingestion to reject check-digit-invalid ISSNs (real source typos) so they never
+     * become forum-identity tokens. Distinct from {@link #normalizeIssn(String)}, which stays
+     * permissive for prefix search.
+     */
+    public static boolean isValidIssn(String raw) {
+        if (raw == null) return false;
+        String compact = raw.trim()
+                .toUpperCase(Locale.ROOT)
+                .replace("-", "")
+                .replace(" ", "");
+        if (compact.length() != 8) return false;
+        int sum = 0;
+        for (int i = 0; i < 7; i++) {
+            char c = compact.charAt(i);
+            if (c < '0' || c > '9') return false;
+            sum += (c - '0') * (8 - i);
+        }
+        int check = (11 - (sum % 11)) % 11;
+        char expected = (check == 10) ? 'X' : (char) ('0' + check);
+        return expected == compact.charAt(7);
     }
 }

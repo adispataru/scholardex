@@ -31,7 +31,6 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorshipFactR
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
-import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.sql.Array;
@@ -65,8 +64,6 @@ import static org.mockito.ArgumentMatchers.argThat;
 @ExtendWith(MockitoExtension.class)
 class ScholardexProjectionBuilderServiceTest {
 
-    @Mock
-    private ScopusForumFactRepository forumFactRepository;
     @Mock
     private ScholardexAuthorFactRepository authorFactRepository;
     @Mock
@@ -240,7 +237,6 @@ class ScholardexProjectionBuilderServiceTest {
     @Test
     void rebuildViewsProcessesPublicationWithCitationEdges() {
         ScholardexProjectionBuilderService service = new ScholardexProjectionBuilderService(
-                forumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
@@ -289,7 +285,6 @@ class ScholardexProjectionBuilderServiceTest {
     @Test
     void rebuildViewsProjectsEveryCanonicalForumOnceSortedByIdIncludingScopusLinked() throws Exception {
         ScholardexProjectionBuilderService service = new ScholardexProjectionBuilderService(
-                forumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
@@ -360,7 +355,6 @@ class ScholardexProjectionBuilderServiceTest {
     @Test
     void rebuildViewsForBatchUsesBatchRepositoriesInsteadOfGlobalReload() {
         ScholardexProjectionBuilderService service = new ScholardexProjectionBuilderService(
-                forumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
@@ -383,11 +377,9 @@ class ScholardexProjectionBuilderServiceTest {
         // H55.3: forums refresh globally from canonical (no per-Scopus-batch scoping); author/affiliation/
         // publication stay batch-scoped. The Scopus forum repo is no longer consulted at all.
         verify(canonicalForumFactRepository).findAll();
-        verify(forumFactRepository, never()).findBySourceBatchId("upload-batch-7");
         verify(authorFactRepository).findBySourceBatchId("upload-batch-7");
         verify(affiliationFactRepository).findBySourceBatchId("upload-batch-7");
         verify(publicationFactRepository).findBySourceBatchId("upload-batch-7");
-        verify(forumFactRepository, never()).findAll();
         verify(authorFactRepository, never()).findAll();
         verify(affiliationFactRepository, never()).findAll();
         verify(publicationFactRepository, never()).findAll();
@@ -397,7 +389,6 @@ class ScholardexProjectionBuilderServiceTest {
     @Test
     void rebuildViewsForBatchKeepsCitationWhenOnlyOneEndpointIsInAffectedBatchScope() {
         ScholardexProjectionBuilderService service = new ScholardexProjectionBuilderService(
-                forumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
@@ -443,7 +434,6 @@ class ScholardexProjectionBuilderServiceTest {
     @Test
     void rebuildViewsForBatchKeepsCitationWhenOnlyCitedEndpointIsInAffectedBatchScope() {
         ScholardexProjectionBuilderService service = new ScholardexProjectionBuilderService(
-                forumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
@@ -490,7 +480,6 @@ class ScholardexProjectionBuilderServiceTest {
     @Test
     void rebuildViewsForBatchSkipsEdgeRefreshWhenAffectedScopesAreEmpty() {
         ScholardexProjectionBuilderService service = new ScholardexProjectionBuilderService(
-                forumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
@@ -523,7 +512,6 @@ class ScholardexProjectionBuilderServiceTest {
     @Test
     void rebuildViewsForBatchRefreshesAuthorshipAndAuthorAffiliationWithinAffectedScopes() {
         ScholardexProjectionBuilderService service = new ScholardexProjectionBuilderService(
-                forumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
@@ -583,7 +571,6 @@ class ScholardexProjectionBuilderServiceTest {
     @Test
     void rebuildViewsProjectsAuthorAlternativeNames() throws Exception {
         ScholardexProjectionBuilderService service = new ScholardexProjectionBuilderService(
-                forumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
@@ -647,7 +634,6 @@ class ScholardexProjectionBuilderServiceTest {
     @Test
     void rebuildViewsDedupesCanonicalCitationPairsBeforeWritingProjectionRows() {
         ScholardexProjectionBuilderService service = new ScholardexProjectionBuilderService(
-                forumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
@@ -706,7 +692,6 @@ class ScholardexProjectionBuilderServiceTest {
     @Test
     void rebuildViewsProjectsNormalizedDoiAndUniqueCitingIdsIntoPublicationRows() throws Exception {
         ScholardexProjectionBuilderService service = new ScholardexProjectionBuilderService(
-                forumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
@@ -800,7 +785,6 @@ class ScholardexProjectionBuilderServiceTest {
     @Test
     void rebuildViewsWritesDedupedCitationRowMetadataFromRetainedEdge() throws Exception {
         ScholardexProjectionBuilderService service = new ScholardexProjectionBuilderService(
-                forumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
@@ -872,7 +856,6 @@ class ScholardexProjectionBuilderServiceTest {
     @Test
     void rebuildViewsProjectsAffiliationRowsWithCityCountryAndMetadata() throws Exception {
         ScholardexProjectionBuilderService service = new ScholardexProjectionBuilderService(
-                forumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
@@ -920,7 +903,6 @@ class ScholardexProjectionBuilderServiceTest {
     @Test
     void rebuildViewsProjectsAuthorAndAffiliationViewsWithEmptyCollections() throws Exception {
         ScholardexProjectionBuilderService service = new ScholardexProjectionBuilderService(
-                forumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
@@ -988,7 +970,6 @@ class ScholardexProjectionBuilderServiceTest {
     @Test
     void rebuildViewsProjectsFullyPopulatedPublicationRows() throws Exception {
         ScholardexProjectionBuilderService service = new ScholardexProjectionBuilderService(
-                forumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
@@ -1125,7 +1106,6 @@ class ScholardexProjectionBuilderServiceTest {
     @SuppressWarnings("unchecked")
     void rebuildViewsPerformsFullReplacementAcrossAllReportingTables() {
         ScholardexProjectionBuilderService service = new ScholardexProjectionBuilderService(
-                forumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
@@ -1302,7 +1282,6 @@ class ScholardexProjectionBuilderServiceTest {
     @SuppressWarnings("unchecked")
     void rebuildViewsForBatchDeletesAffectedRowsUsingTextArraysBeforeReinserting() throws Exception {
         ScholardexProjectionBuilderService service = new ScholardexProjectionBuilderService(
-                forumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
@@ -1399,7 +1378,6 @@ class ScholardexProjectionBuilderServiceTest {
     @Test
     void rebuildViewsForBatchProjectsSortedDerivedCitingIdsWhenCountMissing() throws Exception {
         ScholardexProjectionBuilderService service = new ScholardexProjectionBuilderService(
-                forumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
@@ -1491,7 +1469,6 @@ class ScholardexProjectionBuilderServiceTest {
 
     private ScholardexProjectionBuilderService newService() {
         return new ScholardexProjectionBuilderService(
-                forumFactRepository,
                 canonicalForumFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,

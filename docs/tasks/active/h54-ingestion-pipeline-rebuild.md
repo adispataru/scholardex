@@ -222,10 +222,13 @@ artifacts only; the source files are the authoritative backup. Add `data/backups
     — established the shared-DB constraint, the 62 owned collections, the legacy/orphaned
     Tier 3, and the foreign Tier 4 exclusion list. `data/backups/` confirmed already
     git-ignored.
-  - **Remaining:** confirm the 3 VERIFY items (`scholardex.artisticEvent`,
-    `userIndividualReportRuns`, `activities`/`activityInstances`) as precious-vs-derived,
-    then write + run the precious-snapshot dump (Tier 1a + confirmed items) to git-tracked
-    JSON.
+  - **Remaining — CLOSED 2026-06-13.** The VERIFY items were resolved 2026-06-09 in the
+    inventory (all precious; `scholardex.artisticEvent` refined 2026-06-13 to Tier 1b reference —
+    imported from git-tracked `data/arts/event_rankings.json`, read-only in the app, kept in the
+    seed snapshot as belt-and-braces). `scripts/h54-1-snapshot-precious.js` covers all of them
+    (config → git-tracked `seed/precious-config/`, PII → git-ignored `data/backups/`) and was run
+    pre-wipe before the 2026-06-12 full from-scratch rebuild (246 PII docs dumped; config seed
+    unchanged vs committed state). H54.1 is fully done.
 - **H54.2** — Index declarations: `partialFilter` on the four multikey indexes; canonical
   key shapes for the two drift cases; enable `auto-index-creation`; delete the index
   shims/maintenance services; add the boot-index integration test. (Achieves H51's exit

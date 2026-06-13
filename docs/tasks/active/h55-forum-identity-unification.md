@@ -339,6 +339,19 @@ scope of H55 is complete and correctly bounded.
     holds `1095-7111`, which is Computing's eISSN; its own is `1095-7154`) — a *valid* ISSN on the
     *wrong* journal, invisible to validity checks; and ~8 check-digit-invalid ISSNs that are real typos
     (e.g. Radical Philosophy `0030-211X` → `0300-211X`). Worth a separate source-data cleanup/flag.
+    **DONE 2026-06-13.** (a) ISO-3297 check-digit validation added (`QueryNormalizationSupport.isValidIssn`,
+    unit-tested with NIST-style vectors + the real typos) and wired into the forum-ingestion
+    `normalizeIssn` (`WosScholardexOnboardingService`) so invalid ISSNs are rejected as absent — kept the
+    *query-side* `normalizeIssn` permissive (it backs `LIKE 'prefix%'` search). (b) SIAM eISSN
+    misassignment fixed via a curated per-record correction (`correctedScopusEIssn`: print `0036-1410` +
+    eISSN `1095-7111` → `1095-7154`); on rebuild the two SIAM journals are now distinct
+    (`0036-1410`/`1095-7154` vs `0097-5397`/`1095-7111`), no shared token, parity preserved. (c) The
+    code fix only re-materialises for **Scopus-source** forums on an admin rebuild; the 11 affected
+    forums were all **WoS-source** and the admin reset chain never wipes those (see the
+    immortal-WoS-canonical finding in data-ownership-inventory) — so they were cleaned **in-place** to
+    match the fixed code's output (invalid tokens dropped, valid ones kept). Result: canonical + forum_view
+    invalid-ISSN tokens 11→0, dup-ISSN groups 0, dangling 0; `FORUM_DEDUP_NAME_MISMATCH` 5→2 (SIAM +
+    2 continuations RESOLVED, genuine BMJ/COPD remain for operator merge).
   - **`issn == eISSN` on 1,195 canonical forums** — benign normalization artifact (single-ISSN journals
     duplicated the value into both fields); not collisions. Optional cleanup: null `eIssn` when equal.
 
