@@ -28,6 +28,7 @@ public class AdminInitializationController {
     private final GeneralInitializationService generalInitializationService;
     private final RankingMaintenanceFacade rankingMaintenanceFacade;
     private final ScopusBigBangMigrationService scopusBigBangMigrationService;
+    private final ro.uvt.pokedex.core.service.application.PipelineRebuildService pipelineRebuildService;
     private final UserDefinedMaintenanceOrchestrationService userDefinedMaintenanceOrchestrationService;
     private final ObjectProvider<PostgresReportingProjectionService> postgresReportingProjectionServiceProvider;
     private final ObjectProvider<PostgresMaterializedViewRefreshService> postgresMaterializedViewRefreshServiceProvider;
@@ -581,6 +582,29 @@ public class AdminInitializationController {
             return PostgresOperationalStatusService.PostgresOperationalStatusSnapshot.unavailable();
         }
         return service.latestStatus();
+    }
+
+    @PostMapping("/rebuildAllDerived")
+    public String rebuildAllDerived(
+            @RequestParam(name = "confirmation", required = false) String confirmation,
+            RedirectAttributes redirectAttributes
+    ) {
+        if (!"RESET".equals(confirmation == null ? null : confirmation.trim())) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "Full derived-data rebuild aborted. Type RESET in the confirmation field to proceed."
+            );
+            return "redirect:/admin/initialization";
+        }
+        // Single guarded full-rebuild entry point (H58/#2): true full wipe (all owned managed collections,
+        // regardless of source attribution) then re-derive WoS + Scopus from source files. Preferred over
+        // the per-source reset chain, whose canonical wipes are source-scoped.
+        var result = pipelineRebuildService.rebuildAllDerivedFromSource();
+        redirectAttributes.addFlashAttribute(
+                "successMessage",
+                "Full derived-data rebuild complete (WoS + Scopus re-derived from source after a full wipe). "
+                        + result);
+        return "redirect:/admin/initialization";
     }
 
     @PostMapping("/scopus/resetCanonicalState")

@@ -3158,3 +3158,54 @@ Archived from `TASKS.md` on 2026-03-11 after top-level closure and backlog clean
     Exit criteria: CI gates catch identity/linking regressions and operational dashboards expose source-level ingest/link health for implemented sources.
     Handover:
     - Validation/operability contract: `docs/tasks/closed/h19.8-validation-operability-gates.md`.
+
+## H51 Mongo Unique-Index Integrity Sweep
+
+Archived from `TASKS.md` on 2026-06-14 (with `H54`). Satisfied by `H54.2`.
+
+- [x] `H51` Mongo unique-index integrity sweep and project-wide auto-index-creation enablement. *(completed 2026-06-09 via H54.2)*
+  Goal: enable `spring.data.mongodb.auto-index-creation=true` project-wide without crashing startup on existing duplicate data.
+  Deliverable: inventory of every `unique = true` Mongo index declared in the codebase (audit found 34 declared unique indexes across ~28 collections); per-collection duplicate audit and dedup policy; cleanup migration(s); the property flip; removal of the `ReportImportSessionIndexInitializer` shim. Tooling: `scripts/h51-unique-index-duplicate-audit.js`.
+  Outcome: `auto-index-creation=true`, all declared indexes build at startup with no `DuplicateKeyException`/conflict, shim removed, audit reports 0 drift / 0 duplicates.
+
+## H54 Ingestion Pipeline & Record-Keeping Rebuild
+
+Archived from `TASKS.md` on 2026-06-14. Closed task doc: `docs/tasks/closed/h54-ingestion-pipeline-rebuild.md`.
+
+- [x] `H54` Ingestion pipeline & record-keeping rebuild. *(completed 2026-06-13)*
+  Goal: restructure ingestion around one principle — a thin human-authored layer is precious and backed up; everything else is a deterministic, rebuildable function of source files/APIs — with one writer per collection, natural-key upserts, enforced indexes, provenance, and rebuild-in-place of migrations.
+  Exit criteria: every declared unique index created/matched at startup (subsumes `H51`); each derived collection has exactly one writer and a deterministic `rebuild()`; re-ingesting unchanged is a no-op and changed supersedes; full wipe + reimport reproduces counts and sampled scores, second rebuild byte-identical; audit reports zero drift/duplicates.
+  Outcome (2026-06-13): H54.1 precious snapshot done; the full from-scratch rebuild exercised the exit criteria (counts reproduced, index audit clean, parity intact, ~2.3M accumulated junk docs purged). Subsumes `H51`. Determinism later confirmed byte-identical (2026-06-14, two clean rebuilds). A true full-wipe single entry point (`PipelineRebuildService.rebuildAllDerivedFromSource()` + `POST /admin/initialization/rebuildAllDerived`) was added 2026-06-14 so the rebuild no longer depends on per-source reset coverage being exhaustive.
+
+## H55 Forum Identity Unification
+
+Archived from `TASKS.md` on 2026-06-14. Closed task doc: `docs/tasks/closed/h55-forum-identity-unification.md`.
+
+- [x] `H55` Forum identity unification (canonical forum id everywhere). *(completed 2026-06-13)*
+  Goal: identify every journal/venue by its canonical Scholardex forum id across storage, projection, and display — eliminating the dual id scheme (raw Scopus forum id vs canonical id) that produces duplicate `/forums` rows.
+  Outcome: H55.1–H55.6 complete — Scopus-forum canonicalization, publication `forumId` re-pointing, canonical-only `forum_view`, canonical-forum dedup (safe rule: shared primary ISSN OR abbreviation name match), primary-ISSN disambiguation. Source-ISSN cleanup done (ISO-3297 check-digit validation rejects typo ISSNs; SIAM eISSN misassignment corrected). Architectural fix: WoS canonical forum layer was immortal across the source-scoped admin resets — fixed by (1) WoS `resetCanonicalState` wiping `source=WOS` forums + FORUM/WOS links, (2) `runWosOnboarding` reading stage-3 `wos.journal_identity` instead of the stage-4 `wos_ranking_view` projection (removing a backwards dependency + ordering bug). Full rebuild verified: forum_view 0 dup-ISSN/0 dangling, 92,558 pubs on canonical ids, parity preserved.
+
+## H56 buildFacts Pipeline Performance
+
+Archived from `TASKS.md` on 2026-06-14. Closed task doc: `docs/tasks/closed/h56-buildfacts-performance.md`.
+
+- [x] `H56` buildFacts pipeline performance. *(completed 2026-06-12)*
+  Goal: cut the ~25–28 min Scopus `buildFacts` rebuild (publication + author canonicalization, ~87% edge writes).
+  Outcome: 10 levers; the 5 root-caused defects shared one pattern — preload/no-op checks whose two sides were built by different code, silently degrading into per-record DB work (fixed via consumer-owned key-authority methods + permanent fallback telemetry). Plus bulk writes, content gates, and an opt-in stage-skip gate. End state: full rebuild ~28 min → ~5.5 min (−80%); no-change replay ~1s. Determinism + parity green.
+
+## H57 Forum Canonicalization Merge Safety
+
+Archived from `TASKS.md` on 2026-06-14 (documented inline; no separate task doc).
+
+- [x] `H57` Forum canonicalization merge safety (no cross-journal eISSN bridges). *(completed 2026-06-14)*
+  Goal: stop forum canonicalization from merging two distinct journals that share only an eISSN/alias (misassigned-eISSN source error), which caused wrong merges + order-sensitive ids.
+  Outcome: extracted shared `ForumMergeSafetyRule` (dedup delegates to it); Layer 1 fold-time guard (don't merge across different primary print ISSNs unless names match → mint separate forum + `FORUM_CROSS_JOURNAL_ISSN` flag); Layer 2 token hygiene (drop a secondary token that is a different journal's primary print ISSN). Full rebuild verified: cross-journal bridges 8→2 (2 remaining are legit same-journal continuations), forum_view 0 dup-ISSN/0 dangling. Determinism later confirmed byte-identical across two clean rebuilds (2026-06-14). Note: SIAM-style eISSN==another-journal's-eISSN is handled by the curated correction (Layer 2 only catches eISSN==primary); FORUM_CROSS_JOURNAL_ISSN flags surface any future cases for operator review / config externalization.
+
+## H58 Eliminate Redundant Edge Source Links
+
+Archived from `TASKS.md` on 2026-06-14. Closed task doc: `docs/tasks/closed/h58-eliminate-redundant-edge-source-links.md`.
+
+- [x] `H58` Eliminate redundant edge source links. *(completed 2026-06-14)*
+  Goal: stop writing/storing the ~1.66M edge-type rows in `scholardex.source_links` (76% of source_links; ~22% of all derived docs) — they duplicate lineage + `linkState` already on the edge facts (`HasEdgeLineageFields`).
+  Outcome: edge writer (6 methods) + pub/author canon no longer write or preload edge source links; `EDGE_RELINK_REJECTED` path removed (deterministic ids make relink impossible); reconciliation untouched (already read edge facts). Result: `source_links` 2,196,429 → 531,734 (zero edge-type rows), edge facts intact, conflicts + read-model parity unchanged, `scopus-buildFacts` ~28 → ~17 min, full suite green.
+  Post-H58 caveat follow-ups (2026-06-14): determinism re-confirmed byte-identical (two clean rebuilds); author-canon edge-fact fallback made unconditional `false` (preload authoritative); true full-wipe rebuild entry point added (`rebuildAllDerivedFromSource` + `/rebuildAllDerived` endpoint, verified byte-identical to the manual chain); the H57 clean-build flag simplified away (edge-fact preload is authoritative, so fallback is unconditionally skipped). SIAM curated correction left as-is (documented one-off; externalize to config when a second case appears).

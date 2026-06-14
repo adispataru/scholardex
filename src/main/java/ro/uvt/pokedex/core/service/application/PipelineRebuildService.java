@@ -61,14 +61,17 @@ public class PipelineRebuildService {
     private final ScopusBigBangMigrationService scopusRebuild;
     private final WosBigBangMigrationService wosRebuild;
     private final OwnedCollectionRegistry ownedCollectionRegistry;
+    private final org.springframework.data.mongodb.core.MongoTemplate mongoTemplate;
 
     public PipelineRebuildService(
             ScopusBigBangMigrationService scopusRebuild,
             WosBigBangMigrationService wosRebuild,
-            OwnedCollectionRegistry ownedCollectionRegistry) {
+            OwnedCollectionRegistry ownedCollectionRegistry,
+            org.springframework.data.mongodb.core.MongoTemplate mongoTemplate) {
         this.scopusRebuild = scopusRebuild;
         this.wosRebuild = wosRebuild;
         this.ownedCollectionRegistry = ownedCollectionRegistry;
+        this.mongoTemplate = mongoTemplate;
     }
 
     /**
@@ -89,6 +92,24 @@ public class PipelineRebuildService {
 
         LOG.info("Pipeline rebuild starting: {} managed derived collections, all owned.",
                 MANAGED_DERIVED_COLLECTIONS.size());
+
+        // Stage-4 (Postgres views) + fact-build checkpoints + the per-source Mongo wipes are handled by the
+        // canonical-state resets. Order mirrors the proven admin chain (scopus reset then wos reset).
+        scopusRebuild.resetCanonicalState();
+        wosRebuild.resetCanonicalState();
+
+        // Cross-source safety net (H58-class): the per-source resets wipe canonical (scholardex.*) rows by
+        // SOURCE, so a canonical entity contributed by a source the reset doesn't scope (e.g. WoS-source
+        // forums historically) could survive. A full deleteAll over every managed Mongo collection here
+        // guarantees a clean slate regardless of source attribution — this is THE full-rebuild entry point,
+        // so it must not depend on per-source reset coverage being exhaustive.
+        long wiped = 0;
+        for (String collection : MANAGED_DERIVED_COLLECTIONS) {
+            wiped += mongoTemplate.remove(new org.springframework.data.mongodb.core.query.Query(), collection)
+                    .getDeletedCount();
+        }
+        LOG.info("Pipeline rebuild: full Mongo wipe removed {} residual docs across {} managed collections.",
+                wiped, MANAGED_DERIVED_COLLECTIONS.size());
 
         WosBigBangMigrationService.WosBigBangMigrationResult wos = wosRebuild.run(false, null);
         ScopusBigBangMigrationService.ScopusBigBangMigrationResult scopus = scopusRebuild.runFull();

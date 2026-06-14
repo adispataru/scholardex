@@ -50,6 +50,8 @@ class AdminInitializationControllerContractTest {
     @MockitoBean
     private ScopusBigBangMigrationService scopusBigBangMigrationService;
     @MockitoBean
+    private ro.uvt.pokedex.core.service.application.PipelineRebuildService pipelineRebuildService;
+    @MockitoBean
     private GeneralInitializationService generalInitializationService;
     @MockitoBean
     private PostgresReportingProjectionService postgresReportingProjectionService;

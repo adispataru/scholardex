@@ -167,10 +167,13 @@ rebuilt from here and must be excluded from every wipe/rebuild allow-list.
   `/admin/initialization/{scopus,wos}/*` reset endpoints clear canonical rows per source; because
   WoS emits no canonical citations, a stale WOS-sourced citation edge (`c12`: `p9→p9`, a non-existent
   publication — test-fixture cruft) survived every from-scratch rebuild in `scholardex.citation_facts`.
-  Deleted manually 2026-06-13 (0 source_links, not projected, dangling). To prevent recurrence, the
-  full `PipelineRebuildService.rebuildAllDerivedFromSource()` `deleteAll()` path (which DOES clear the
-  whole collection) should be the canonical rebuild entrypoint, or the per-source reset should wipe by
-  collection rather than by source filter.
+  Deleted manually 2026-06-13 (0 source_links, not projected, dangling). **RESOLVED 2026-06-14:**
+  `PipelineRebuildService.rebuildAllDerivedFromSource()` now does a true full wipe — after the per-source
+  resets it `deleteAll()`s every managed Mongo collection (cross-source safety net, independent of reset
+  source-scoping) — and is exposed as `POST /admin/initialization/rebuildAllDerived?confirmation=RESET`
+  (admin-gated). Verified: the endpoint produces a byte-identical forum fingerprint + counts to the proven
+  manual reset chain. The per-source resets stay source-scoped (safe for partial use); the full-wipe
+  entrypoint is the one to use for a true from-scratch rebuild.
 - **WoS-source canonical forums were immortal across the admin reset chain — FIXED 2026-06-13.**
   Originally `WosBigBangMigrationService.resetCanonicalState()` cleared WoS stage-1/2
   (`*.import_events`, journal identities, metric/category facts) but NOT `scholardex.forum_facts`, and
@@ -189,6 +192,14 @@ rebuilt from here and must be excluded from every wipe/rebuild allow-list.
   `containsToken`. **Verified by a full rebuild 2026-06-13:** WoS forums rebuilt fresh (createdAt
   today), 0 invalid-ISSN tokens (from the code path), SIAM journals separated, `forum_view` 0 dup-ISSN
   / 0 dangling, 92,558 pubs on canonical ids.
+- **From-scratch rebuilds are deterministic; in-place replay can lag for bridge forums (2026-06-14).**
+  Two clean from-scratch rebuilds produce byte-identical forum fingerprints + counts (verified). But an
+  *in-place* `buildFacts` replay (no reset) does not fully converge to the from-scratch state for the
+  handful of cross-journal/continuation "bridge" forums: replay updates forums in place and can keep stale
+  bridged ISSNs, whereas a from-scratch rebuild re-mints them correctly split (e.g. `J STORED PROD RES`
+  kept Steroid's eISSN under replay; clean rebuild gave the correct `0022-474X`-only). Both states are
+  valid; from-scratch is canonical. Implication: after changing forum-merge logic, prefer a true full
+  rebuild (`/rebuildAllDerived`) over an in-place replay to materialise the clean state.
 - **Backups taken 2026-06-08** (`userIndicatorResults`, `scopus.import_events`, 658 MB under
   `data/backups/`) are point-in-time only; the source files are the authoritative backup.
   `data/backups/` is already git-ignored (covered by `data/*`).

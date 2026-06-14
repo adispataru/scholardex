@@ -77,6 +77,7 @@ class PostgresProjectionFailureOperationalWorkflowTest {
                 mock(GeneralInitializationService.class),
                 mock(RankingMaintenanceFacade.class),
                 mock(ScopusBigBangMigrationService.class),
+                mock(PipelineRebuildService.class),
                 mock(UserDefinedMaintenanceOrchestrationService.class),
                 provider(projectionService),
                 provider(materializedViewRefreshService),

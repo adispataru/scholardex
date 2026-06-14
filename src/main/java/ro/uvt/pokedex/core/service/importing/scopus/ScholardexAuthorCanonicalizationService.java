@@ -429,8 +429,11 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
         ScholardexEdgeWriterService.BatchEdgeWriteResult edgeResult =
                 edgeWriterService.batchUpsertAuthorAffiliationEdges(
                         new ArrayList<>(context.pendingEdgeCommands.values()),
+                        // H58: the AA-edge preload (findByAuthorIdIn over the chunk's authors, keyed via the
+                        // edge writer's own authorAffiliationEdgeNaturalKey) is complete, so a cache miss is
+                        // authoritative — no per-edge existence fallback needed (matches pub canon).
                         context.authorAffiliationEdgeByNaturalKey,
-                        true
+                        false
                 );
         context.lastEdgeWrites = edgeResult.accepted();
         context.lastConflictsWritten += edgeResult.conflicts();
