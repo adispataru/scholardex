@@ -12,5 +12,7 @@ public interface DepartmentAffiliationRepository extends MongoRepository<Departm
 
     List<DepartmentAffiliation> findByDepartmentIdAndValidToIsNull(String departmentId);
 
+    List<DepartmentAffiliation> findByDepartmentIdInAndValidToIsNull(Iterable<String> departmentIds);
+
     List<DepartmentAffiliation> findByUserIdInAndValidToIsNull(Iterable<String> userIds);
 }

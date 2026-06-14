@@ -37,17 +37,41 @@ public class UserIndividualReportRunService {
         if (existing.isPresent()) {
             return Optional.of(toDto(existing.get(), IndividualReportRunDto.Source.PERSISTED));
         }
-        return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT, Map.of());
+        return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT, Map.of(), userEmail);
+    }
+
+    /**
+     * Read-only lookup of the latest persisted run for a user's report. Unlike
+     * {@link #getOrCreateLatestRun}, this never builds or persists a run when none exists — it is
+     * the safe primitive for delegated (admin/supervisor) viewing, where looking at a researcher's
+     * report must not mutate that researcher's data space. Returns empty when no run exists.
+     */
+    public Optional<IndividualReportRunDto> findLatestRun(String userEmail, String reportDefinitionId) {
+        return userIndividualReportRunRepository
+                .findTopByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc(userEmail, reportDefinitionId)
+                .map(run -> toDto(run, IndividualReportRunDto.Source.PERSISTED));
     }
 
     public Optional<IndividualReportRunDto> refreshRun(String userEmail, String reportDefinitionId) {
         refreshLatestForReportIndicators(userEmail, reportDefinitionId);
-        return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT, Map.of());
+        return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT, Map.of(), userEmail);
     }
 
     public Optional<IndividualReportRunDto> refreshRunWithAllIndicators(String userEmail, String reportDefinitionId) {
+        return refreshRunWithAllIndicators(userEmail, reportDefinitionId, userEmail);
+    }
+
+    /**
+     * Refresh a researcher's report and record who triggered it. {@code actorEmail} equals
+     * {@code userEmail} for a self-refresh; for an admin/supervisor delegated refresh it is the
+     * acting principal, persisted on the run as {@code triggeredByEmail} (provenance). The
+     * recomputation itself is identical — reports are a deterministic projection of canonical data.
+     */
+    public Optional<IndividualReportRunDto> refreshRunWithAllIndicators(String userEmail,
+                                                                        String reportDefinitionId,
+                                                                        String actorEmail) {
         refreshLatestForReportIndicators(userEmail, reportDefinitionId);
-        return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT, Map.of());
+        return buildAndSaveRun(userEmail, reportDefinitionId, IndividualReportRunDto.Source.BUILT, Map.of(), actorEmail);
     }
 
     /**
@@ -77,7 +101,8 @@ public class UserIndividualReportRunService {
     private Optional<IndividualReportRunDto> buildAndSaveRun(String userEmail,
                                                              String reportDefinitionId,
                                                              IndividualReportRunDto.Source source,
-                                                             Map<String, Integer> latestRefreshVersionsByIndicatorId) {
+                                                             Map<String, Integer> latestRefreshVersionsByIndicatorId,
+                                                             String actorEmail) {
         Optional<IndividualReport> reportOpt = individualReportRepository.findById(reportDefinitionId);
         if (reportOpt.isEmpty()) {
             return Optional.empty();
@@ -88,6 +113,7 @@ public class UserIndividualReportRunService {
         run.setUserEmail(userEmail);
         run.setResearcherId(userEmail);
         run.setReportDefinitionId(reportDefinitionId);
+        run.setTriggeredByEmail(actorEmail != null ? actorEmail : userEmail);
         run.setCreatedAt(Instant.now());
 
         List<String> indicatorResultIds = new ArrayList<>();
@@ -159,7 +185,8 @@ public class UserIndividualReportRunService {
                 run.getIndicatorScoresByIndicatorId() == null ? Map.of() : run.getIndicatorScoresByIndicatorId(),
                 run.getCriteriaScores() == null ? Map.of() : run.getCriteriaScores(),
                 run.getCreatedAt(),
-                source
+                source,
+                run.getTriggeredByEmail()
         );
     }
 }

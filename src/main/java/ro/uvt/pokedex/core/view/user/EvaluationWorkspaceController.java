@@ -47,6 +47,7 @@ public class EvaluationWorkspaceController {
     private final ReportExportFacade reportExportFacade;
     private final ro.uvt.pokedex.core.service.reporting.transfer.ReportImportVerificationFacade reportImportVerificationFacade;
     private final ro.uvt.pokedex.core.service.application.UserActivityInstanceFacade userActivityInstanceFacade;
+    private final IndividualReportViewModelAssembler individualReportViewModelAssembler;
 
     // ── MVC: main evaluation page ────────────────────────────────────────────
 
@@ -86,81 +87,7 @@ public class EvaluationWorkspaceController {
         }
         IndividualReportRunDto run = runOpt.get();
 
-        // Build indicatorScores map keyed by indicator ID string (safe for Thymeleaf map lookup;
-        // Indicator uses @Data which includes @DBRef fields in hashCode, making it unreliable as a Map key)
-        Map<String, Double> indicatorScores = new HashMap<>();
-        if (report.getIndicators() != null) {
-            for (Indicator indicator : report.getIndicators()) {
-                if (indicator.getId() != null) {
-                    double score = run.indicatorScoresByIndicatorId().getOrDefault(indicator.getId(), 0.0);
-                    indicatorScores.put(indicator.getId(), score);
-                }
-            }
-        }
-
-        String researcherPosition = Optional.ofNullable(currentUser.getResearcherProfile())
-                .map(p -> p.getPosition())
-                .map(Enum::name)
-                .orElse("");
-
-        // Collect prior runs for compare picker
-        List<RunSummary> priorRuns = userIndividualReportRunRepository
-                .findByUserEmailAndReportDefinitionIdOrderByCreatedAtDesc(currentUser.getEmail(), resolvedReportId)
-                .stream()
-                .map(r -> new RunSummary(r.getId(), r.getCreatedAt() != null ? r.getCreatedAt().toString() : null, r.getStatus().name(), null))
-                .toList();
-
-        Map<Integer, Double> criterionScores = run.criteriaScores() != null ? run.criteriaScores() : Map.of();
-
-        // Criteria-met count: only count criteria that have a threshold for the researcher's position.
-        // Criteria with no threshold for the current position are not applicable and excluded from both
-        // the numerator and denominator (avoids penalising e.g. a lecturer for criteria that only
-        // apply to associate/full professors).
-        int criteriaMet = 0;
-        int criteriaTotal = 0;
-        if (report.getCriteria() != null && !researcherPosition.isEmpty()) {
-            for (int i = 0; i < report.getCriteria().size(); i++) {
-                AbstractReport.Criterion crit = report.getCriteria().get(i);
-                if (crit.getThresholds() == null) continue;
-                final String pos = researcherPosition;
-                boolean hasThresholdForPosition = crit.getThresholds().stream()
-                        .anyMatch(t -> t.getPosition() != null && t.getPosition().name().equals(pos));
-                if (!hasThresholdForPosition) continue;   // not applicable for this position
-                criteriaTotal++;
-                double cScore = criterionScores.getOrDefault(i, 0.0);
-                boolean met = crit.getThresholds().stream()
-                        .filter(t -> t.getPosition() != null && t.getPosition().name().equals(pos))
-                        .anyMatch(t -> cScore >= t.getValue());
-                if (met) criteriaMet++;
-            }
-        }
-
-        // Total score: sum of criterion scores for criteria flagged as contributesToTotal
-        double totalScore = 0.0;
-        boolean anyContributesToTotal = false;
-        if (report.getCriteria() != null) {
-            for (int i = 0; i < report.getCriteria().size(); i++) {
-                AbstractReport.Criterion crit = report.getCriteria().get(i);
-                if (crit.isContributesToTotal()) {
-                    anyContributesToTotal = true;
-                    totalScore += criterionScores.getOrDefault(i, 0.0);
-                }
-            }
-        }
-
-        model.addAttribute("report", report);
-        model.addAttribute("allReports", reports);
-        model.addAttribute("indicatorScores", indicatorScores);
-        model.addAttribute("criterionScores", criterionScores);
-        model.addAttribute("criteriaMet", criteriaMet);
-        model.addAttribute("criteriaTotal", criteriaTotal);
-        model.addAttribute("totalScore", anyContributesToTotal ? totalScore : null);
-        model.addAttribute("researcherPosition", researcherPosition);
-        model.addAttribute("runMetaId", run.runId());
-        model.addAttribute("runMetaCreatedAt", run.createdAt());
-        model.addAttribute("runMetaSource", run.source());
-        model.addAttribute("priorRuns", priorRuns);
-        model.addAttribute("user", currentUser);
+        individualReportViewModelAssembler.populate(model, currentUser, report, run, reports);
         model.addAttribute("importAvailable", reportImportVerificationFacade.isImportAvailable(resolvedReportId));
         return "user/individual-report-view";
     }
@@ -812,7 +739,6 @@ public class EvaluationWorkspaceController {
 
     record CitationDetailResponse(String pubTitle, double totalScore, List<ScoredItem> citations) {}
 
-    record RunSummary(String runId, String createdAt, String status, String name) {}
 
     record ScoreDelta(double before, double after, double delta) {}
 

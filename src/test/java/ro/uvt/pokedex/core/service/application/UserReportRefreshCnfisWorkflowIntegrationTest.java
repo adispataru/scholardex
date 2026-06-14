@@ -203,9 +203,15 @@ class UserReportRefreshCnfisWorkflowIntegrationTest {
         assertNotEquals(persistedInitialRun.getId(), persistedRefreshedRun.getId());
         assertTrue(persistedRefreshedRun.getCreatedAt().isAfter(persistedInitialRun.getCreatedAt()));
         assertEquals(UserIndividualReportRun.Status.READY, persistedRefreshedRun.getStatus());
+        // Provenance: a self-refresh records the researcher as the actor.
+        assertEquals("user@uvt.ro", persistedRefreshedRun.getTriggeredByEmail());
 
         List<UserIndicatorResult> snapshots = snapshotResults();
-        assertEquals(4, snapshots.size());
+        // One SNAPSHOT per (user, indicator) — enforced by the uniq_user_indicator_mode index and
+        // honoured by UserIndicatorResultService.createSnapshotFromComputed's upsert. A refresh
+        // overwrites the two existing snapshots in place rather than inserting two more, so the
+        // total stays 2 (not 4). Both refreshed-run result ids resolve to those reused rows.
+        assertEquals(2, snapshots.size());
         List<UserIndicatorResult> refreshedSnapshots = snapshots.stream()
                 .filter(snapshot -> persistedRefreshedRun.getIndicatorResultIds().contains(snapshot.getId()))
                 .toList();

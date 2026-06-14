@@ -94,6 +94,10 @@ public class WebSecurityConfig {
                     ahr.requestMatchers("/api/entities/forums/**").authenticated();
                     ahr.requestMatchers("/api/entities/affiliations/**").authenticated();
                     ahr.requestMatchers("/researcher/**").hasAuthority("RESEARCHER");
+                    // Delegated researcher-report viewing: reachable by admins and supervisors at the
+                    // URL tier; per-handler @PreAuthorize("@researcherAccess.canView(...)") enforces
+                    // which specific researcher a supervisor may see.
+                    ahr.requestMatchers("/reports/researcher/**").hasAnyAuthority("PLATFORM_ADMIN", "SUPERVISOR");
                     ahr.requestMatchers("/supervisor/**").hasAnyAuthority("SUPERVISOR", "PLATFORM_ADMIN");
                     ahr.requestMatchers("/api/supervisor/**").hasAuthority("SUPERVISOR");
                     ahr.anyRequest().authenticated();

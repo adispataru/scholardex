@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Researcher reports</title>
+    <th:block th:replace="~{fragments :: core-styles}"></th:block>
+</head>
+<body id="page-top">
+
+<div id="wrapper">
+    <div th:replace="~{fragments :: sidebar('individual-reports')}"></div>
+
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            <div th:replace="~{fragments :: navbar('Researcher reports')}"></div>
+
+            <div class="container-fluid app-page-content">
+                <p class="text-muted">Select a researcher to view the individual report they see (read-only).</p>
+
+                <div th:if="${#lists.isEmpty(researchers)}" class="app-empty-state">
+                    <i class="fa-solid fa-users fa-2x app-empty-state__icon" aria-hidden="true"></i>
+                    <p class="app-empty-state__title">No researchers in scope</p>
+                    <p class="app-empty-state__body">You do not currently oversee any researchers with a profile.</p>
+                </div>
+
+                <div th:unless="${#lists.isEmpty(researchers)}" class="list-group">
+                    <a th:each="r : ${researchers}"
+                       th:href="@{/reports/researcher/{e}(e=${r.email})}"
+                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <span th:text="${researcherLabels.getOrDefault(r.email, r.email)}">Researcher</span>
+                        <i class="fa-solid fa-chevron-right fa-sm text-muted" aria-hidden="true"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div th:replace="~{fragments :: app-footer}"></div>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments :: core-scripts}"></th:block>
+</body>
+</html>

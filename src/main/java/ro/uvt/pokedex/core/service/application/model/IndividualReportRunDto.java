@@ -11,7 +11,8 @@ public record IndividualReportRunDto(
         Map<String, Double> indicatorScoresByIndicatorId,
         Map<Integer, Double> criteriaScores,
         Instant createdAt,
-        Source source
+        Source source,
+        String triggeredByEmail
 ) {
 
     public enum Source {

@@ -35,9 +35,15 @@
                     <i class="fa-solid fa-rotate fa-2x app-empty-state__icon" aria-hidden="true"></i>
                     <p class="app-empty-state__title">No run available for this report</p>
                     <p class="app-empty-state__body">Trigger a refresh to compute your scores.</p>
-                    <form th:action="@{/user/evaluation/refresh(report=${report.id})}" method="post">
+                    <form th:unless="${delegated}" th:action="@{/user/evaluation/refresh(report=${report.id})}" method="post">
                         <button type="submit" class="btn btn-primary">Run Now</button>
                     </form>
+                    <div th:if="${delegated}">
+                        <p class="app-empty-state__body">This researcher has not generated this report yet.</p>
+                        <form th:action="@{/reports/researcher/{e}/report/{r}/refresh(e=${delegatedSubjectEmail},r=${report.id})}" method="post">
+                            <button type="submit" class="btn btn-primary">Generate now</button>
+                        </form>
+                    </div>
                 </div>
             </div>
 
@@ -46,10 +52,25 @@
                  class="container-fluid app-page-content app-dashboard individual-report-dashboard"
                  th:attr="data-researcher-position=${researcherPosition},data-report-id=${report.id},data-run-id=${runMetaId}">
 
+                <!-- ── Delegated (admin/supervisor) read-only banner ───────────── -->
+                <div th:if="${delegated}" class="alert alert-info mb-3" role="status">
+                    <i class="fa-solid fa-user-shield" aria-hidden="true"></i>
+                    Viewing <strong th:text="${delegatedSubjectName}">researcher</strong>'s report — read-only.
+                </div>
+
                 <!-- ── Toolbar ──────────────────────────────────────────────── -->
                 <div class="app-page-toolbar">
+                    <!-- Delegated report switcher: plain links (no dashboard JS in read-only mode) -->
+                    <div class="app-eval-report-switcher" th:if="${#bools.isTrue(delegated) and allReports != null and #lists.size(allReports) > 1}">
+                        <label class="app-eval-report-switcher__label">Report</label>
+                        <a th:each="r : ${allReports}"
+                           th:href="@{/reports/researcher/{e}(e=${delegatedSubjectEmail},report=${r.id})}"
+                           th:text="${r.title}"
+                           th:classappend="${r.id == report.id} ? ' active' : ''"
+                           class="btn btn-sm btn-outline-secondary mr-1"></a>
+                    </div>
                     <!-- Report switcher -->
-                    <div class="app-eval-report-switcher" th:if="${allReports != null and #lists.size(allReports) > 1}">
+                    <div class="app-eval-report-switcher" th:if="${!#bools.isTrue(delegated) and allReports != null and #lists.size(allReports) > 1}">
                         <label for="eval-report-select" class="app-eval-report-switcher__label">Report</label>
                         <select id="eval-report-select" class="form-control form-control-sm app-eval-report-switcher__select"
                                 data-eval-report-switcher>
@@ -59,7 +80,15 @@
                                     th:selected="${r.id == report.id}"></option>
                         </select>
                     </div>
-                    <div class="app-dashboard__actions">
+                    <!-- Delegated actions: refresh only (recomputes into the researcher's space, attributed) -->
+                    <div class="app-dashboard__actions" th:if="${delegated}">
+                        <form th:action="@{/reports/researcher/{e}/report/{r}/refresh(e=${delegatedSubjectEmail},r=${report.id})}" method="post">
+                            <button type="submit" class="btn btn-sm btn-outline-primary">
+                                <i class="fa-solid fa-rotate fa-sm" aria-hidden="true"></i> Refresh
+                            </button>
+                        </form>
+                    </div>
+                    <div class="app-dashboard__actions" th:unless="${delegated}">
                         <!-- Compare run picker (hidden until toggled) -->
                         <div class="app-eval-compare-picker" id="eval-compare-picker" hidden>
                             <select id="eval-compare-select" class="form-control form-control-sm" aria-label="Select comparison run or snapshot">
@@ -146,7 +175,7 @@
                         </div>
                     </div>
                     <!-- Position selector -->
-                    <div class="app-eval-aggregate__cell">
+                    <div class="app-eval-aggregate__cell" th:unless="${delegated}">
                         <label for="eval-position-select" class="app-eval-aggregate__label">View as Position</label>
                         <select id="eval-position-select"
                                 class="form-control form-control-sm app-eval-position-select"
@@ -158,6 +187,9 @@
                         <span class="app-eval-aggregate__label">Last Run</span>
                         <span class="app-eval-aggregate__value app-eval-aggregate__value--sm"
                               th:text="${runMetaCreatedAt != null ? #temporals.format(runMetaCreatedAt, 'yyyy-MM-dd HH:mm') : '—'}">—</span>
+                        <span th:if="${runMetaTriggeredBy != null and user != null and runMetaTriggeredBy != user.email}"
+                              class="app-eval-aggregate__value app-eval-aggregate__value--sm text-muted"
+                              th:text="'by ' + ${runMetaTriggeredBy}">by someone</span>
                     </div>
                     <div class="app-eval-aggregate__cell" id="eval-compare-delta-cell" hidden>
                         <span class="app-eval-aggregate__label">Score Δ</span>
@@ -225,16 +257,20 @@
                                                  class="indicator-block">
                                                 <div class="indicator-row">
                                                     <button type="button"
+                                                            th:unless="${delegated}"
                                                             class="indicator-link indicator-expand-btn"
                                                             th:attr="data-indicator-id=${indicator.id},
                                                                      aria-controls=${'indicator-detail-' + indicator.id},
                                                                      aria-expanded='false'"
                                                             th:text="${indicator.name}">Indicator Name</button>
+                                                    <span th:if="${delegated}" class="indicator-link"
+                                                          th:text="${indicator.name}">Indicator Name</span>
                                                     <div class="indicator-row-right">
                                                         <span class="indicator-row-score"
                                                               th:text="${indicatorScores[indicator.id] != null ? #numbers.formatDecimal(indicatorScores[indicator.id], 1, 2) : '0.00'}">0.00</span>
                                                         <span class="eval-indicator-delta" th:attr="data-indicator-id=${indicator.id}"></span>
                                                         <a class="indicator-row-export"
+                                                           th:unless="${delegated}"
                                                            th:href="@{/user/indicators/export/{id}(id=${indicator.id})}"
                                                            title="Export Excel"
                                                            aria-label="Export indicator to Excel">
@@ -243,6 +279,7 @@
                                                     </div>
                                                 </div>
                                                 <div class="indicator-detail-panel"
+                                                     th:unless="${delegated}"
                                                      th:id="${'indicator-detail-' + indicator.id}"
                                                      th:attr="data-indicator-id=${indicator.id}"
                                                      hidden>
@@ -279,8 +316,8 @@
     </div>
 </div>
 
-<!-- ── Citation drilldown modal ──────────────────────────────────────────── -->
-<div class="modal fade app-modal" id="citationDetailModal" tabindex="-1" role="dialog"
+<!-- ── Citation drilldown modal (interactive — omitted in delegated read-only view) ── -->
+<div th:unless="${delegated}" class="modal fade app-modal" id="citationDetailModal" tabindex="-1" role="dialog"
      aria-labelledby="citationDetailModalLabel" aria-describedby="citationModalPubTitle citationModalTotal" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
         <div class="modal-content">
@@ -305,6 +342,9 @@
 </div>
 
 <th:block th:replace="~{fragments :: core-scripts}"></th:block>
+<!-- Dashboard interactivity (compare, snapshots, detail/citation fetch, refresh) is researcher-only;
+     the delegated read-only view ships none of it. -->
+<th:block th:unless="${delegated}">
 <script th:inline="javascript">
 /*<![CDATA[*/
 window.evalPriorRuns    = /*[[${priorRuns}]]*/ [];
@@ -312,6 +352,7 @@ window.evalCurrentRunId = /*[[${runMetaId}]]*/ null;
 /*]]>*/
 </script>
 <script src="/js/individual-report-dashboard.js"></script>
+</th:block>
 
 </body>
 </html>

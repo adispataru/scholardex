@@ -41,7 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(EvaluationWorkspaceController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import(GlobalControllerAdvice.class)
+@Import({GlobalControllerAdvice.class, IndividualReportViewModelAssembler.class})
 class EvaluationWorkspaceControllerContractTest {
 
     @Autowired
@@ -339,7 +339,8 @@ class EvaluationWorkspaceControllerContractTest {
                 Map.of(),
                 Map.of(),
                 Instant.parse("2026-04-16T12:00:00Z"),
-                IndividualReportRunDto.Source.BUILT
+                IndividualReportRunDto.Source.BUILT,
+                "user@uvt.ro"
         );
     }
 

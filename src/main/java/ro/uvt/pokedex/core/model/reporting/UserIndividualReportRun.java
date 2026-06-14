@@ -31,6 +31,13 @@ public class UserIndividualReportRun {
     private Status status;
     private List<String> buildErrors = new ArrayList<>();
 
+    /**
+     * Email of the principal that triggered this run. Equals {@code userEmail} for a researcher's
+     * own refresh; differs when an admin or supervisor refreshed on the researcher's behalf
+     * (H59 delegated refresh). Null on historical runs created before provenance was tracked.
+     */
+    private String triggeredByEmail;
+
     public enum Status {
         READY,
         PARTIAL,
