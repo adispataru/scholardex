@@ -6,7 +6,6 @@ import ro.uvt.pokedex.core.model.reporting.transfer.ActivitySnapshotItem;
 import ro.uvt.pokedex.core.model.reporting.transfer.CitationSnapshotItem;
 import ro.uvt.pokedex.core.model.reporting.transfer.PublicationSnapshotItem;
 import ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat;
-import ro.uvt.pokedex.core.model.reporting.transfer.ReportImportItem;
 import ro.uvt.pokedex.core.model.reporting.transfer.ReportInstanceSnapshot;
 import ro.uvt.pokedex.core.model.reporting.transfer.SnapshotItem;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.TemplateBinding;
@@ -110,15 +109,5 @@ public class Informatica2016ReportTypeImportSupport implements ReportTypeImportS
             throw new IllegalArgumentException("Unsupported import format: " + format);
         }
         return scoreParser.parse(binding, input);
-    }
-
-    @Override
-    public ReportImportItem reconcile(SnapshotItem item) {
-        throw new UnsupportedOperationException("Import not implemented yet for " + REPORT_TYPE_KEY);
-    }
-
-    @Override
-    public CommitResult commit(ReportImportItem item, String userEmail) {
-        throw new UnsupportedOperationException("Import not implemented yet for " + REPORT_TYPE_KEY);
     }
 }

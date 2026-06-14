@@ -93,10 +93,12 @@ projection_dirty_markers / import_run_metrics / tasks.*), `user_defined.*`,
 - `userIndividualReportRuns` (26) — persisted historical runs users export/reference; a
   recomputation would not reproduce a past run's exact state. → **precious (personal data)**.
 
-**Report export/import collections — deliberately NOT backed up:**
-- `reportImportSessions` (0) — H50 staged import workspace. Has a Mongo TTL index
-  (`expireAfter = "0s"` on `expiresAt`): documents are ephemeral by design and
-  reconstructable by re-uploading the source file. → **transient/derived, excluded.**
+**Report export/import collections — not owned:**
+- `reportImportSessions` — **no longer a thing.** It was the H50 staged-import workspace, but the
+  import flow was revised to a transient read-only score-verification (no persistence), and the
+  `ReportImportSession` model was deleted as dead code (2026-06-14). No model ⇒ the collection is
+  never created and is not an owned collection. (Drop any stale `reportImportSessions` collection
+  if one lingers in an old DB.)
 
 ---
 

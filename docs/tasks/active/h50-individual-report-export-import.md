@@ -1,6 +1,8 @@
 # H50 Individual Report Export / Import
 
-**Status:** Planning
+**Status:** In progress — export + read-only score-verification import live for `informatica-2016`
+(H50.1–H50.3 + the run-backed export/verify commits done). Remaining: docx (H50.4/H50.6) and the
+other report types (H50.5). See "Superseded design removed" and updated slicing below.
 **Created:** 2026-05-13
 
 ## Purpose
@@ -171,6 +173,16 @@ The import flow is now a **read-only score verification**:
 Decisions (2026-05-19): per-item + totals granularity; transient (no session persistence); evaluate
 formulas for the file score; **publications + citations first, activities later**.
 
+### Superseded design removed (2026-06-14)
+
+The 4-bucket reconcile/commit machinery from H50.1 was deleted as dead code, since the read-only
+verify flow never used it: `ReportTypeImportSupport.reconcile()`/`commit()` (interface + impl
+stubs that threw `UnsupportedOperationException`), the unused `ReportImportSession` model +
+`ReportImportSessionRepository`, and `ReportImportItem`, `CommitResult`, `ReportImportStatus`,
+`ReportImportBucket`, `ReportImportDecision`. `FieldDiff` was kept — the live score-comparison
+service uses it. The `reportImportSessions` Mongo collection no longer has a model, so it is no
+longer created/owned (removed from the data-ownership inventory's exclusion note).
+
 ## Follow-up: run-backed export and criteria verification
 
 Roast findings (2026-06-04): the current export/verify flow can drift from what the run page tells the
@@ -260,15 +272,16 @@ Verification command target: focused import-verification/readiness/facade/contro
 
 - **H50.1** — `ReportInstanceSnapshot` DTO, `ReportImportSession` Mongo model, registry abstraction (`ReportTypeImportSupport`), wiring stubs. (done)
 - **H50.2** — xlsx exporter + template for `informatica-2016`. End-to-end download. (done)
-- **H50.3** — xlsx **score-verification import** (revised): parse + evaluate, compare file vs latest run, comparison UI. Publications + citations first.
-  - **H50.3.a** — parse uploaded xlsx → per-item scores (publications), evaluate formulas; add `score` to platform snapshot items.
-  - **H50.3.b** — comparison service (per-item match by title + totals + correct-points tally).
-  - **H50.3.c** — upload endpoint, comparison page, "Verify from file" button, `importEnabled` setting.
-  - **H50.3.d** — citations comparison.
-  - **H50.3.e** — activities comparison.
-- **H50.4** — docx exporter (export-only).
-- **H50.5** — extend to remaining individual report types.
-- **H50.6** — docx import.
+- **H50.3** — xlsx **score-verification import** (revised): parse + evaluate, compare file vs run, comparison UI. (done — all item types)
+  - **H50.3.a** — parse uploaded xlsx → per-item scores (publications), evaluate formulas. (done)
+  - **H50.3.b** — comparison service (per-item match by title + totals + correct-points tally). (done)
+  - **H50.3.c** — upload endpoint, comparison page, "Verify from file" button, `importEnabled` setting. (done)
+  - **H50.3.d** — citations comparison (`TILED_SHEETS` parsing). (done)
+  - **H50.3.e** — activities comparison (`STACKED_BLOCKS` parsing). (done)
+- **Run-backed export/verify commits** (2026-06-04 follow-up above) — run-id'd export, verify-vs-displayed-run, `ReportExportReadinessValidator`, typed `ExportFailureReason`. (done)
+- **H50.4** — docx exporter (export-only). (remaining)
+- **H50.5** — extend to the remaining individual report types (only `informatica-2016` has a binding today; FV Matematică / FEEA_partial / Eligibilitate Tinere Echipe / Eligibilitate PD have no `reportTypeKey`). (remaining — the bulk of what's left)
+- **H50.6** — docx import. (remaining)
 
 ## Verification Plan (per slice)
 

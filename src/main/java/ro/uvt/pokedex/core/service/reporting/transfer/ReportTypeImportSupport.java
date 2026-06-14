@@ -1,7 +1,6 @@
 package ro.uvt.pokedex.core.service.reporting.transfer;
 
 import ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat;
-import ro.uvt.pokedex.core.model.reporting.transfer.ReportImportItem;
 import ro.uvt.pokedex.core.model.reporting.transfer.ReportInstanceSnapshot;
 import ro.uvt.pokedex.core.model.reporting.transfer.SnapshotItem;
 
@@ -39,8 +38,4 @@ public interface ReportTypeImportSupport {
     byte[] render(ReportInstanceSnapshot snapshot, ReportFormat format);
 
     List<SnapshotItem> parse(InputStream input, ReportFormat format);
-
-    ReportImportItem reconcile(SnapshotItem item);
-
-    CommitResult commit(ReportImportItem item, String userEmail);
 }
