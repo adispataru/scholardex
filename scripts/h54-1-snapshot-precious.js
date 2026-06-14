@@ -37,6 +37,7 @@ const PII_LOCAL = [
   "activityInstances",
   "userIndividualReportRuns",
   "groupIndividualReportRuns",
+  "evaluationSnapshots", // user-saved point-in-time evaluation scores; not pipeline-derivable
   "scholardex.workspacePreferences",
   "scholardex.memberships",
   "scholardex.department_affiliations",

@@ -75,6 +75,12 @@ public class AdminIndividualReportsController {
         List<String> allBlockNames = declaredBlocksByRole.values().stream()
                 .flatMap(java.util.Collection::stream).toList();
         model.addAttribute("declaredBlocks", allBlockNames);
+        // Pass the sentinel as a model attribute: a "__not_exported__" string *literal* inside a
+        // Thymeleaf expression gets mangled by Thymeleaf's __...__ preprocessing (it evaluates the
+        // inner `not_exported` and collapses the literal to ""), so th:selected never matched the
+        // saved value and the dropdown showed "— none —" on reload. A model variable has no __ to
+        // preprocess.
+        model.addAttribute("excludedFromTemplateValue", ReportExportReadinessValidator.EXCLUDED_FROM_TEMPLATE);
         model.addAttribute("exportReadinessProblems",
                 reportExportReadinessValidator.validate(individualReport, ReportFormat.XLSX));
         return "admin/edit-individualReport";

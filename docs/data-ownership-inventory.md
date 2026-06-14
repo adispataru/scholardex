@@ -52,6 +52,7 @@ so the repository map is authoritative.
 | `scholardex.department_report_hides` | 0 | Org reporting config. |
 | `scholardex.workspacePreferences` | 5 | User preferences. |
 | `scholardex.publication_authorship_decisions` | 71 | **Human authorship decisions.** Irreplaceable. |
+| `evaluationSnapshots` | 0* | **User-saved point-in-time evaluation scores** (indicator/criteria), keyed to `userEmail`/`reportId`; saved from the evaluation workspace. A recompute would not reproduce a saved snapshot's exact state. *0 only because this DB is rebuilt-from-scratch; populated in real instances. Added to the H54.1 PII snapshot 2026-06-14. |
 
 ### 1b. Reference — loaded from files in `data/`. Rebuildable via `general.init.*`. **Do not back up; retain the source files.**
 
@@ -91,6 +92,11 @@ projection_dirty_markers / import_run_metrics / tasks.*), `user_defined.*`,
   → **precious (personal data)**.
 - `userIndividualReportRuns` (26) — persisted historical runs users export/reference; a
   recomputation would not reproduce a past run's exact state. → **precious (personal data)**.
+
+**Report export/import collections — deliberately NOT backed up:**
+- `reportImportSessions` (0) — H50 staged import workspace. Has a Mongo TTL index
+  (`expireAfter = "0s"` on `expiresAt`): documents are ephemeral by design and
+  reconstructable by re-uploading the source file. → **transient/derived, excluded.**
 
 ---
 

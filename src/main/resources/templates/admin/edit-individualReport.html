@@ -132,7 +132,7 @@
                                                         — none —
                                                     </option>
                                                     <option value="__not_exported__"
-                                                            th:selected="${currentRole != null and #strings.equals('__not_exported__', currentRole)}">
+                                                            th:selected="${currentRole != null and #strings.equals(excludedFromTemplateValue, currentRole)}">
                                                         Intentionally not exported
                                                     </option>
                                                     <option th:each="role : ${declaredRoles}"
@@ -167,7 +167,7 @@
                                                     — none —
                                                 </option>
                                                 <option value="__not_exported__"
-                                                        th:selected="${currentBlock != null and #strings.equals('__not_exported__', currentBlock)}">
+                                                        th:selected="${currentBlock != null and #strings.equals(excludedFromTemplateValue, currentBlock)}">
                                                     Intentionally not exported
                                                 </option>
                                                 <option th:each="blockName : ${declaredBlocks}"

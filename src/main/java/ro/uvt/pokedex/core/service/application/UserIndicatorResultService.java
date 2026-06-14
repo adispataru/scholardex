@@ -53,7 +53,12 @@ public class UserIndicatorResultService {
                                                           String sourceReportId,
                                                           IndicatorApplyResultDto computed,
                                                           int refreshVersion) {
-        UserIndicatorResult snapshot = new UserIndicatorResult();
+        // One SNAPSHOT per (userEmail, indicatorId) is enforced by the uniq_user_indicator_mode
+        // index, so re-use the existing slot on refresh (mirror the LATEST upsert above) instead
+        // of inserting a fresh document, which would dup-key on every refresh after the first.
+        UserIndicatorResult snapshot = userIndicatorResultRepository
+                .findByUserEmailAndIndicatorIdAndMode(userEmail, indicatorId, UserIndicatorResult.Mode.SNAPSHOT)
+                .orElseGet(UserIndicatorResult::new);
         Instant now = Instant.now();
         snapshot.setUserEmail(userEmail);
         snapshot.setResearcherId(userEmail);
@@ -68,7 +73,9 @@ public class UserIndicatorResultService {
         snapshot.setTotalCount(computed.summary().totalCount());
         snapshot.setQuarterLabels(computed.summary().quarterLabels());
         snapshot.setQuarterValues(computed.summary().quarterValues());
-        snapshot.setCreatedAt(now);
+        if (snapshot.getCreatedAt() == null) {
+            snapshot.setCreatedAt(now);
+        }
         snapshot.setUpdatedAt(now);
         snapshot.setRefreshVersion(refreshVersion);
         return userIndicatorResultRepository.save(snapshot);

@@ -105,8 +105,15 @@ public class UserIndividualReportRunService {
                 errors.add("Missing indicator id in report definition.");
                 continue;
             }
-            IndicatorApplyResultDto computedIndicatorResult = computation.reportScopedIndicatorResultsByIndicatorId()
-                    .get(indicator.getId());
+            // Use the report-scoped *detail* (rich rawGraph with outputMode/scores/publications),
+            // not computation.reportScopedIndicatorResultsByIndicatorId() which carries only the
+            // thin {indicator,total} graph. The exporter's RunIndicatorSnapshotProjector needs the
+            // per-item detail to render publication/citation rows; with the thin graph every
+            // projected row set is empty and the export shows 0 everywhere. Totals match because
+            // both paths score through the same support/service with the same affiliation filter.
+            IndicatorApplyResultDto computedIndicatorResult = userReportFacade
+                    .buildReportScopedIndicatorDetail(userEmail, reportDefinitionId, indicator.getId())
+                    .orElseGet(() -> computation.reportScopedIndicatorResultsByIndicatorId().get(indicator.getId()));
             if (computedIndicatorResult == null) {
                 errors.add("Missing computed indicator result for indicator " + indicator.getId());
                 continue;

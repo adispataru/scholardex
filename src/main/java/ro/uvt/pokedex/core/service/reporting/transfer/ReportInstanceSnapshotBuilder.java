@@ -63,9 +63,14 @@ public class ReportInstanceSnapshotBuilder {
 
         for (Indicator indicator : report.getIndicators()) {
             if (indicator == null || indicator.getId() == null) continue;
-            if (ReportExportReadinessValidator.isExcludedFromTemplate(report, indicator.getId())) continue;
             String roleKey = roles.get(indicator.getId());
-            if (roleKey == null || roleKey.isBlank()) continue;
+            // Publication/citation indicators dispatch on their role; the block field is N/A for
+            // them and the admin form stores the __not_exported__ sentinel there by default. The
+            // combined role-OR-block exclusion check would therefore wrongly drop every valid-role
+            // publication/citation indicator (export shows 0). Exclude here on the *role* only;
+            // activity-block exclusion remains block-driven in the projectors below.
+            if (roleKey == null || roleKey.isBlank()
+                    || ReportExportReadinessValidator.isExcludedFromTemplate(roleKey)) continue;
 
             switch (roleKey) {
                 case PublicationRowProjector.ROLE_JOURNAL,
