@@ -62,7 +62,8 @@ class WosScholardexOnboardingServiceTest {
                 scholardexForumFactRepository,
                 sourceLinkService,
                 scholardexIdentityConflictRepository,
-                scholardexPublicationFactRepository
+                scholardexPublicationFactRepository,
+                new ForumMergeSafetyRule()
         );
     }
 
@@ -572,6 +573,76 @@ class WosScholardexOnboardingServiceTest {
         assertTrue(!target.getAliasIssns().contains("8765-4326"));
         assertTrue(target.getCreatedAt() != null);
         assertTrue(target.getUpdatedAt() != null);
+    }
+
+    @Test
+    void runScopusForumCanonicalizationDoesNotBridgeDifferentJournalsSharingAnEissn() {
+        // H57 Layer 1: a Scopus forum matching a canonical candidate ONLY via a shared eISSN, while
+        // carrying a different primary print ISSN and an unrelated name, must NOT be folded in. Mint a
+        // separate forum + flag FORUM_CROSS_JOURNAL_ISSN.
+        WosScholardexOnboardingService service = service();
+
+        ScopusForumFact storedProducts = new ScopusForumFact();
+        storedProducts.setSourceId("20954");
+        storedProducts.setPublicationName("Journal of Stored Products Research");
+        storedProducts.setIssn("0022-474X");
+
+        ScholardexForumFact steroid = new ScholardexForumFact(); // misassigned eISSN bridges the two
+        steroid.setId("cf_steroid");
+        steroid.setName("Journal of Steroid Biochemistry");
+        steroid.setIssn("0960-0760");
+        steroid.setEIssn("0022-474X");
+
+        when(scopusForumFactRepository.findAll()).thenReturn(List.of(storedProducts));
+        when(scholardexForumFactRepository.findAll()).thenReturn(List.of(steroid));
+        when(sourceLinkService.findByKey(ScholardexEntityType.FORUM, "SCOPUS", "20954")).thenReturn(Optional.empty());
+        when(scholardexForumFactRepository.save(any(ScholardexForumFact.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.runScopusForumCanonicalization("batch-s", "corr-s");
+
+        ArgumentCaptor<ScholardexForumFact> forumCaptor = ArgumentCaptor.forClass(ScholardexForumFact.class);
+        verify(scholardexForumFactRepository).save(forumCaptor.capture());
+        ScholardexForumFact saved = forumCaptor.getValue();
+        assertTrue(!"cf_steroid".equals(saved.getId())); // separate forum, not folded into Steroid
+        assertEquals("0022-474X", saved.getIssn());
+        verify(scholardexIdentityConflictRepository).save(argThat(c ->
+                "FORUM_CROSS_JOURNAL_ISSN".equals(c.getReasonCode())
+                        && c.getEntityType() == ScholardexEntityType.FORUM));
+    }
+
+    @Test
+    void runWosOnboardingDropsEissnThatIsAnotherJournalsPrimaryPrintIssn() {
+        // H57 Layer 2: the WoS Steroid identity carries eIssn 0022-474X, which is Stored Products'
+        // primary print ISSN. That misassigned token is dropped, so it never enters Steroid's identity.
+        WosScholardexOnboardingService service = service();
+
+        WosJournalIdentity steroid = new WosJournalIdentity();
+        steroid.setId("jid_steroid");
+        steroid.setTitle("Journal of Steroid Biochemistry");
+        steroid.setPrimaryIssn("0960-0760");
+        steroid.setEIssn("0022-474X");
+
+        ScopusForumFact storedProducts = new ScopusForumFact(); // makes 0022-474X a known primary print ISSN
+        storedProducts.setSourceId("20954");
+        storedProducts.setIssn("0022-474X");
+
+        when(journalIdentityRepository.findAll()).thenReturn(List.of(steroid));
+        when(scopusForumFactRepository.findAll()).thenReturn(List.of(storedProducts));
+        when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
+        when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of());
+        when(sourceLinkService.findByKey(ScholardexEntityType.FORUM, "WOS", "jid_steroid")).thenReturn(Optional.empty());
+        when(scholardexForumFactRepository.save(any(ScholardexForumFact.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.runWosOnboarding("batch-w", "corr-w");
+
+        ArgumentCaptor<ScholardexForumFact> forumCaptor = ArgumentCaptor.forClass(ScholardexForumFact.class);
+        verify(scholardexForumFactRepository).save(forumCaptor.capture());
+        ScholardexForumFact saved = forumCaptor.getValue();
+        assertEquals("0960-0760", saved.getIssn());
+        assertTrue(!"0022-474X".equals(saved.getEIssn()));
+        assertTrue(saved.getAliasIssns() == null || !saved.getAliasIssns().contains("0022-474X"));
     }
 
     @Test

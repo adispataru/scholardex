@@ -228,7 +228,6 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
     protected void preloadChunkContext(List<ScopusAuthorFact> chunk, ChunkContext context) {
         Set<String> sourceAuthorIds = new LinkedHashSet<>();
         Set<String> sourceAffiliationIds = new LinkedHashSet<>();
-        Set<String> sourceAuthorAffiliationEdgeRecordIds = new LinkedHashSet<>();
         Set<String> predictedCanonicalIds = new LinkedHashSet<>();
         for (ScopusAuthorFact sourceFact : chunk) {
             if (sourceFact == null) {
@@ -244,16 +243,6 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
                     String normalized = normalizeBlank(sourceAffiliationId);
                     if (normalized != null) {
                         sourceAffiliationIds.add(normalized);
-                        if (!isBlank(sourceFact.getSource()) && !isBlank(sourceFact.getSourceRecordId())) {
-                            sourceAuthorAffiliationEdgeRecordIds.add(
-                                    buildAuthorAffiliationSourceRecordId(sourceFact.getSourceRecordId(), normalized)
-                            );
-                        }
-                        if (!isBlank(sourceFact.getSource()) && !isBlank(sourceFact.getAuthorId())) {
-                            sourceAuthorAffiliationEdgeRecordIds.add(
-                                    buildAuthorAffiliationSourceRecordId(sourceFact.getAuthorId(), normalized)
-                            );
-                        }
                     }
                 }
             }
@@ -272,11 +261,7 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
         for (ScholardexSourceLink link : affiliationSourceLinks) {
             context.sourceLinkCache.put(toSourceLinkKey(link), link);
         }
-        List<ScholardexSourceLink> authorAffiliationEdgeSourceLinks = sourceLinkService
-                .findByEntityTypeAndSourceRecordIds(ScholardexEntityType.AUTHOR_AFFILIATION, sourceAuthorAffiliationEdgeRecordIds);
-        for (ScholardexSourceLink link : authorAffiliationEdgeSourceLinks) {
-            context.sourceLinkCache.put(toSourceLinkKey(link), link);
-        }
+        // H58: AUTHOR_AFFILIATION edges have no source link — the edge fact is the single source of truth.
 
         List<ScholardexAuthorFact> existingBySource = scholardexAuthorFactRepository.findByScopusAuthorIdsIn(sourceAuthorIds);
         for (ScholardexAuthorFact authorFact : existingBySource) {
@@ -445,7 +430,6 @@ public class ScholardexAuthorCanonicalizationService extends AbstractCanonicaliz
                 edgeWriterService.batchUpsertAuthorAffiliationEdges(
                         new ArrayList<>(context.pendingEdgeCommands.values()),
                         context.authorAffiliationEdgeByNaturalKey,
-                        context.sourceLinkCache,
                         true
                 );
         context.lastEdgeWrites = edgeResult.accepted();

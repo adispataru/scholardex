@@ -180,7 +180,8 @@ class WosAdminInitializationWorkflowIntegrationTest {
                 scholardexForumFactRepository,
                 sourceLinkService,
                 scholardexIdentityConflictRepository,
-                scholardexPublicationFactRepository
+                scholardexPublicationFactRepository,
+                new ForumMergeSafetyRule()
         );
         WosProjectionBuilderService projectionBuilderService = new WosProjectionBuilderService(
                 journalIdentityRepository,

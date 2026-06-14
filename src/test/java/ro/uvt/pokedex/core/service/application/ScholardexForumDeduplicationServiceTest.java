@@ -37,7 +37,8 @@ class ScholardexForumDeduplicationServiceTest {
 
     private ScholardexForumDeduplicationService service() {
         return new ScholardexForumDeduplicationService(
-                forumRepository, sourceLinkRepository, publicationRepository, identityConflictRepository);
+                forumRepository, sourceLinkRepository, publicationRepository, identityConflictRepository,
+                new ForumMergeSafetyRule());
     }
 
     private ScholardexForumFact forum(String id, String name, String issn, String eIssn, List<String> scopusIds, List<String> wosIds) {

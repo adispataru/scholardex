@@ -32,7 +32,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 @Service
@@ -68,6 +70,9 @@ public class WosScholardexOnboardingService {
     private static final String SIAM_COMPUTING_EISSN = "1095-7111";
     private static final String SIAM_MATH_ANALYSIS_EISSN = "1095-7154";
     private static final String REASON_FORUM_EXTERNAL_ID_ALREADY_LINKED = "FORUM_EXTERNAL_ID_ALREADY_LINKED";
+    // H57: an incoming forum matched a canonical candidate only via a shared eISSN/alias while carrying a
+    // *different* primary print ISSN (a misassigned-eISSN cross-journal bridge) — not auto-merged.
+    private static final String REASON_FORUM_CROSS_JOURNAL_ISSN = "FORUM_CROSS_JOURNAL_ISSN";
 
     private static final Pattern ISSN_NON_ALNUM = Pattern.compile("[^0-9Xx]");
     private static final Pattern NON_ALNUM_OR_SPACE = Pattern.compile("[^\\p{Alnum}\\s]");
@@ -80,6 +85,14 @@ public class WosScholardexOnboardingService {
     private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexIdentityConflictRepository scholardexIdentityConflictRepository;
     private final ScholardexPublicationFactRepository scholardexPublicationFactRepository;
+    private final ForumMergeSafetyRule mergeSafetyRule;
+
+    // H57 Layer 2 (token hygiene): the set of all primary (print) ISSNs known across sources, rebuilt at
+    // the start of each onboarding/canonicalization run. An eISSN/alias that equals a *different*
+    // journal's primary print ISSN is a misassigned-eISSN source error and is dropped from a forum's
+    // identity tokens so it cannot bridge two distinct journals. Non-final: per-run scratch state (the
+    // builder runs single-threaded per invocation).
+    private Set<String> primaryIssnIndex = Set.of();
 
     public ImportProcessingResult runWosOnboarding(String batchId, String correlationId) {
         ImportProcessingResult result = new ImportProcessingResult(20);
@@ -95,6 +108,7 @@ public class WosScholardexOnboardingService {
                 .toList();
 
         List<ScopusForumFact> scopusForums = new ArrayList<>(scopusForumFactRepository.findAll());
+        primaryIssnIndex = buildPrimaryIssnIndex(scopusForums);
         List<ScholardexForumFact> canonicalForums = new ArrayList<>(scholardexForumFactRepository.findAll());
         Map<String, ScholardexForumFact> canonicalById = new LinkedHashMap<>();
         for (ScholardexForumFact canonicalForum : canonicalForums) {
@@ -127,6 +141,7 @@ public class WosScholardexOnboardingService {
         ImportProcessingResult result = new ImportProcessingResult(20);
 
         List<ScopusForumFact> scopusForums = new ArrayList<>(scopusForumFactRepository.findAll());
+        primaryIssnIndex = buildPrimaryIssnIndex(scopusForums);
         List<ScholardexForumFact> canonicalForums = new ArrayList<>(scholardexForumFactRepository.findAll());
         Map<String, ScholardexForumFact> canonicalById = new LinkedHashMap<>();
         Map<String, String> canonicalIdByScopusForumId = new LinkedHashMap<>();
@@ -243,7 +258,19 @@ public class WosScholardexOnboardingService {
             return;
         }
 
-        ScholardexForumFact target = candidates.isEmpty() ? new ScholardexForumFact() : candidates.getFirst();
+        // H57: only fold into a candidate if the safe-merge rule allows it. A candidate matched solely via
+        // a shared eISSN/alias while carrying a different primary print ISSN (names not matching) is a
+        // different journal — mint a separate forum and flag the bridge instead of merging.
+        ScholardexForumFact target;
+        if (candidates.isEmpty()) {
+            target = new ScholardexForumFact();
+        } else if (mergeSafetyRule.isSafeToMerge(scopusForum.getIssn(), name, candidates.getFirst())) {
+            target = candidates.getFirst();
+        } else {
+            openConflict(ScholardexEntityType.FORUM, SOURCE_SCOPUS, sourceRecordId, REASON_FORUM_CROSS_JOURNAL_ISSN,
+                    List.of(candidates.getFirst().getId()), batchId, correlationId);
+            target = new ScholardexForumFact();
+        }
         boolean created = target.getId() == null;
         mergeForumFromScopus(target, scopusForum, normalizedIssns, name, aggregationType, now, batchId, correlationId);
         target.setBuilderVersion(BuilderVersion.SCHOLARDEX_FORUM);
@@ -400,7 +427,18 @@ public class WosScholardexOnboardingService {
             return;
         }
 
-        ScholardexForumFact target = candidates.isEmpty() ? new ScholardexForumFact() : candidates.getFirst();
+        // H57: same safe-merge guard as the Scopus path — don't bridge two distinct journals that share
+        // only an eISSN/alias.
+        ScholardexForumFact target;
+        if (candidates.isEmpty()) {
+            target = new ScholardexForumFact();
+        } else if (mergeSafetyRule.isSafeToMerge(rankingView.getIssn(), name, candidates.getFirst())) {
+            target = candidates.getFirst();
+        } else {
+            openConflict(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId, REASON_FORUM_CROSS_JOURNAL_ISSN,
+                    List.of(candidates.getFirst().getId()), batchId, correlationId);
+            target = new ScholardexForumFact();
+        }
         boolean created = target.getId() == null;
         mergeForum(target, sourceRecordId, normalizedIssns, name, nameNormalized, aggregationType, aggregationTypeNormalized, scopusForums, now, batchId, correlationId);
         target.setBuilderVersion(BuilderVersion.SCHOLARDEX_FORUM);
@@ -785,15 +823,21 @@ public class WosScholardexOnboardingService {
             List<String> rankingAliases
     ) {
         LinkedHashSet<String> out = new LinkedHashSet<>();
-        addIssn(out, primaryIssn);
-        addIssn(out, eIssn);
-        addIssn(out, rankingIssn);
-        addIssn(out, rankingEIssn);
+        // The forum's own primary print ISSN (arg 1) is never filtered. Every other token (eISSN,
+        // aliases, ranking ISSNs) is a "secondary" and is dropped if it is a *different* journal's
+        // primary print ISSN — a misassigned-eISSN cross-journal bridge (H57 Layer 2).
+        String primaryNorm = normalizeIssn(primaryIssn);
+        if (primaryNorm != null) {
+            out.add(primaryNorm);
+        }
+        addSecondaryIssn(out, primaryNorm, eIssn);
+        addSecondaryIssn(out, primaryNorm, rankingIssn);
+        addSecondaryIssn(out, primaryNorm, rankingEIssn);
         for (String token : safeList(aliasIssns)) {
-            addIssn(out, token);
+            addSecondaryIssn(out, primaryNorm, token);
         }
         for (String token : safeList(rankingAliases)) {
-            addIssn(out, token);
+            addSecondaryIssn(out, primaryNorm, token);
         }
         return out;
     }
@@ -803,6 +847,41 @@ public class WosScholardexOnboardingService {
         if (normalized != null) {
             out.add(normalized);
         }
+    }
+
+    /** Add a non-primary ISSN token unless it is a different journal's primary print ISSN (H57). */
+    private void addSecondaryIssn(LinkedHashSet<String> out, String primaryNorm, String rawIssn) {
+        String normalized = normalizeIssn(rawIssn);
+        if (normalized != null && !isCrossJournalToken(primaryNorm, normalized)) {
+            out.add(normalized);
+        }
+    }
+
+    /**
+     * True when {@code token} is a primary print ISSN of some <i>other</i> journal — so adopting it as
+     * this forum's identity token would bridge two distinct journals. Only fires when this forum has its
+     * own primary (so a journal known only by one ISSN never loses it).
+     */
+    private boolean isCrossJournalToken(String primaryNorm, String token) {
+        return primaryNorm != null && !token.equals(primaryNorm) && primaryIssnIndex.contains(token);
+    }
+
+    /** Builds the set of all primary (print) ISSNs across Scopus forums + WoS journal identities. */
+    private Set<String> buildPrimaryIssnIndex(List<ScopusForumFact> scopusForums) {
+        Set<String> index = new HashSet<>();
+        for (ScopusForumFact sf : scopusForums) {
+            String p = normalizeIssn(sf.getIssn());
+            if (p != null) {
+                index.add(p);
+            }
+        }
+        for (WosJournalIdentity id : journalIdentityRepository.findAll()) {
+            String p = normalizeIssn(id.getPrimaryIssn());
+            if (p != null) {
+                index.add(p);
+            }
+        }
+        return index;
     }
 
     private String buildCanonicalForumId(

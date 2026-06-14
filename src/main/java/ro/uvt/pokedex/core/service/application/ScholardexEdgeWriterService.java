@@ -37,7 +37,6 @@ public class ScholardexEdgeWriterService {
     private static final Logger log = LoggerFactory.getLogger(ScholardexEdgeWriterService.class);
 
     private static final String STATUS_OPEN = "OPEN";
-    public static final String REASON_EDGE_RELINK_REJECTED = "EDGE_RELINK_REJECTED";
     public static final String REASON_EDGE_CANONICAL_ID_MISMATCH = "EDGE_CANONICAL_ID_MISMATCH";
 
     private final ScholardexAuthorshipFactRepository authorshipFactRepository;
@@ -80,24 +79,7 @@ public class ScholardexEdgeWriterService {
         applyLineage(edge, command, now);
         edge.setBuilderVersion(BuilderVersion.SCHOLARDEX_EDGE);
         authorshipFactRepository.save(edge);
-
-        ScholardexSourceLinkService.SourceLinkWriteResult sourceLinkResult = writeSourceLink(
-                ScholardexEntityType.AUTHORSHIP,
-                command,
-                edge.getId()
-        );
-        if (!sourceLinkResult.accepted() && !isPrecedenceKeptSourceLinkRejection(sourceLinkResult.reason())) {
-            openEdgeConflict(
-                    ScholardexEntityType.AUTHORSHIP,
-                    command.source(),
-                    command.sourceRecordId(),
-                    REASON_EDGE_RELINK_REJECTED,
-                    List.of(edge.getId()),
-                    command.sourceEventId(),
-                    command.sourceBatchId(),
-                    command.sourceCorrelationId()
-            );
-        }
+        // H58: no separate edge source link — the edge fact above is the single source of truth.
         return EdgeWriteResult.accepted(edge.getId(), created);
     }
 
@@ -122,9 +104,11 @@ public class ScholardexEdgeWriterService {
     public BatchEdgeWriteResult batchUpsertAuthorshipEdges(
             List<EdgeWriteCommand> commands,
             java.util.Map<String, ScholardexAuthorshipFact> preloadedByNaturalKey,
-            java.util.Map<ScholardexSourceLinkService.SourceLinkKey, ScholardexSourceLink> preloadedSourceLinks,
             boolean allowFallbackLookup
     ) {
+        // H58: edges no longer carry a separate source link. The edge fact itself holds the lineage +
+        // linkState (HasEdgeLineageFields) and drives the no-op skip; the edge id is deterministic, so a
+        // relink to a different canonical id is impossible (the EDGE_CANONICAL_ID_MISMATCH guard remains).
         if (commands == null || commands.isEmpty()) {
             return new BatchEdgeWriteResult(0, 0, 0, 0, 0);
         }
@@ -134,7 +118,6 @@ public class ScholardexEdgeWriterService {
         }
         java.util.List<ScholardexAuthorshipFact> pendingInserts = new java.util.ArrayList<>();
         java.util.Map<String, EdgeWriteCommand> pendingUpdateCommandsByEdgeId = new java.util.LinkedHashMap<>();
-        java.util.List<ScholardexSourceLinkService.SourceLinkUpsertCommand> linkCommands = new java.util.ArrayList<>();
 
         int accepted = 0;
         int rejected = 0;
@@ -200,18 +183,6 @@ public class ScholardexEdgeWriterService {
             } else if (lineageChanged) {
                 pendingUpdateCommandsByEdgeId.put(edge.getId(), command);
             }
-            linkCommands.add(new ScholardexSourceLinkService.SourceLinkUpsertCommand(
-                    ScholardexEntityType.AUTHORSHIP,
-                    command.source(),
-                    command.sourceRecordId(),
-                    edge.getId(),
-                    command.linkState(),
-                    command.linkReason(),
-                    command.sourceEventId(),
-                    command.sourceBatchId(),
-                    command.sourceCorrelationId(),
-                    command.explicitReplayAttempt()
-            ));
 
             accepted++;
             if (created) {
@@ -244,39 +215,13 @@ public class ScholardexEdgeWriterService {
             bulkOps.execute();
         }
 
-        ScholardexSourceLinkService.BatchWriteResult sourceLinkResults =
-                sourceLinkService.batchUpsertWithState(linkCommands, preloadedSourceLinks, allowFallbackLookup);
-        int sourceLinkRejected = 0;
-        if (sourceLinkResults.rejectedCount() > 0) {
-            for (ScholardexSourceLinkService.SourceLinkBatchItemResult item : sourceLinkResults.results()) {
-                if (item.accepted()) {
-                    continue;
-                }
-                if (isPrecedenceKeptSourceLinkRejection(item.reason())) {
-                    continue;
-                }
-                sourceLinkRejected++;
-                openEdgeConflict(
-                        ScholardexEntityType.AUTHORSHIP,
-                        item.command().source(),
-                        item.command().sourceRecordId(),
-                        REASON_EDGE_RELINK_REJECTED,
-                        item.command().canonicalEntityId() == null ? List.of() : List.of(item.command().canonicalEntityId()),
-                        item.command().sourceEventId(),
-                        item.command().sourceBatchId(),
-                        item.command().sourceCorrelationId()
-                );
-                conflicts++;
-            }
-        }
-
         if (edgeFallbackLookups > 0) {
             log.info("Authorship edge batch cache efficiency: commands={} edgeFallbackLookups={} edgeFallbackMs={}",
                     commands.size(), edgeFallbackLookups, edgeFallbackNanos / 1_000_000L);
         }
         return new BatchEdgeWriteResult(
                 accepted,
-                rejected + sourceLinkRejected,
+                rejected,
                 createdCount,
                 updatedCount,
                 conflicts
@@ -316,24 +261,7 @@ public class ScholardexEdgeWriterService {
         applyLineage(edge, command, now);
         edge.setBuilderVersion(BuilderVersion.SCHOLARDEX_EDGE);
         authorAffiliationFactRepository.save(edge);
-
-        ScholardexSourceLinkService.SourceLinkWriteResult sourceLinkResult = writeSourceLink(
-                ScholardexEntityType.AUTHOR_AFFILIATION,
-                command,
-                edge.getId()
-        );
-        if (!sourceLinkResult.accepted() && !isPrecedenceKeptSourceLinkRejection(sourceLinkResult.reason())) {
-            openEdgeConflict(
-                    ScholardexEntityType.AUTHOR_AFFILIATION,
-                    command.source(),
-                    command.sourceRecordId(),
-                    REASON_EDGE_RELINK_REJECTED,
-                    List.of(edge.getId()),
-                    command.sourceEventId(),
-                    command.sourceBatchId(),
-                    command.sourceCorrelationId()
-            );
-        }
+        // H58: no separate edge source link — the edge fact above is the single source of truth.
         return EdgeWriteResult.accepted(edge.getId(), created);
     }
 
@@ -381,41 +309,23 @@ public class ScholardexEdgeWriterService {
         applyLineage(edge, command, now);
         edge.setBuilderVersion(BuilderVersion.SCHOLARDEX_EDGE);
         publicationAuthorAffiliationFactRepository.save(edge);
-
-        ScholardexSourceLinkService.SourceLinkWriteResult sourceLinkResult = writeSourceLink(
-                ScholardexEntityType.PUBLICATION_AUTHOR_AFFILIATION,
-                command,
-                edge.getId()
-        );
-        if (!sourceLinkResult.accepted() && !isPrecedenceKeptSourceLinkRejection(sourceLinkResult.reason())) {
-            openEdgeConflict(
-                    ScholardexEntityType.PUBLICATION_AUTHOR_AFFILIATION,
-                    command.source(),
-                    command.sourceRecordId(),
-                    REASON_EDGE_RELINK_REJECTED,
-                    List.of(edge.getId()),
-                    command.sourceEventId(),
-                    command.sourceBatchId(),
-                    command.sourceCorrelationId()
-            );
-        }
+        // H58: no separate edge source link — the edge fact above is the single source of truth.
         return EdgeWriteResult.accepted(edge.getId(), created);
     }
 
     public BatchEdgeWriteResult batchUpsertAuthorAffiliationEdges(
             List<EdgeWriteCommand> commands,
-            java.util.Map<String, ScholardexAuthorAffiliationFact> preloadedByNaturalKey,
-            java.util.Map<ScholardexSourceLinkService.SourceLinkKey, ScholardexSourceLink> preloadedSourceLinks
+            java.util.Map<String, ScholardexAuthorAffiliationFact> preloadedByNaturalKey
     ) {
-        return batchUpsertAuthorAffiliationEdges(commands, preloadedByNaturalKey, preloadedSourceLinks, true);
+        return batchUpsertAuthorAffiliationEdges(commands, preloadedByNaturalKey, true);
     }
 
     public BatchEdgeWriteResult batchUpsertAuthorAffiliationEdges(
             List<EdgeWriteCommand> commands,
             java.util.Map<String, ScholardexAuthorAffiliationFact> preloadedByNaturalKey,
-            java.util.Map<ScholardexSourceLinkService.SourceLinkKey, ScholardexSourceLink> preloadedSourceLinks,
             boolean allowFallbackLookup
     ) {
+        // H58: edge fact is the single source of truth; no separate edge source link is written.
         if (commands == null || commands.isEmpty()) {
             return new BatchEdgeWriteResult(0, 0, 0, 0, 0);
         }
@@ -424,7 +334,6 @@ public class ScholardexEdgeWriterService {
             working.putAll(preloadedByNaturalKey);
         }
         java.util.Map<String, ScholardexAuthorAffiliationFact> pendingSaves = new java.util.LinkedHashMap<>();
-        java.util.List<ScholardexSourceLinkService.SourceLinkUpsertCommand> linkCommands = new java.util.ArrayList<>();
 
         int accepted = 0;
         int rejected = 0;
@@ -491,18 +400,6 @@ public class ScholardexEdgeWriterService {
             if (lineageChanged) {
                 pendingSaves.put(key, edge);
             }
-            linkCommands.add(new ScholardexSourceLinkService.SourceLinkUpsertCommand(
-                    ScholardexEntityType.AUTHOR_AFFILIATION,
-                    command.source(),
-                    command.sourceRecordId(),
-                    edge.getId(),
-                    command.linkState(),
-                    command.linkReason(),
-                    command.sourceEventId(),
-                    command.sourceBatchId(),
-                    command.sourceCorrelationId(),
-                    command.explicitReplayAttempt()
-            ));
 
             accepted++;
             if (created) {
@@ -517,39 +414,13 @@ public class ScholardexEdgeWriterService {
             authorAffiliationFactRepository.saveAll(pendingSaves.values());
         }
 
-        ScholardexSourceLinkService.BatchWriteResult sourceLinkResults =
-                sourceLinkService.batchUpsertWithState(linkCommands, preloadedSourceLinks, allowFallbackLookup);
-        int sourceLinkRejected = 0;
-        if (sourceLinkResults.rejectedCount() > 0) {
-            for (ScholardexSourceLinkService.SourceLinkBatchItemResult item : sourceLinkResults.results()) {
-                if (item.accepted()) {
-                    continue;
-                }
-                if (isPrecedenceKeptSourceLinkRejection(item.reason())) {
-                    continue;
-                }
-                sourceLinkRejected++;
-                openEdgeConflict(
-                        ScholardexEntityType.AUTHOR_AFFILIATION,
-                        item.command().source(),
-                        item.command().sourceRecordId(),
-                        REASON_EDGE_RELINK_REJECTED,
-                        item.command().canonicalEntityId() == null ? List.of() : List.of(item.command().canonicalEntityId()),
-                        item.command().sourceEventId(),
-                        item.command().sourceBatchId(),
-                        item.command().sourceCorrelationId()
-                );
-                conflicts++;
-            }
-        }
-
         if (edgeFallbackLookups > 0) {
             log.info("Author-affiliation edge batch cache efficiency: commands={} edgeFallbackLookups={} edgeFallbackMs={} pendingSaves={}",
                     commands.size(), edgeFallbackLookups, edgeFallbackNanos / 1_000_000L, pendingSaves.size());
         }
         return new BatchEdgeWriteResult(
                 accepted,
-                rejected + sourceLinkRejected,
+                rejected,
                 createdCount,
                 updatedCount,
                 conflicts
@@ -558,18 +429,17 @@ public class ScholardexEdgeWriterService {
 
     public BatchEdgeWriteResult batchUpsertPublicationAuthorAffiliationEdges(
             List<EdgeWriteCommand> commands,
-            java.util.Map<String, ScholardexPublicationAuthorAffiliationFact> preloadedByNaturalKey,
-            java.util.Map<ScholardexSourceLinkService.SourceLinkKey, ScholardexSourceLink> preloadedSourceLinks
+            java.util.Map<String, ScholardexPublicationAuthorAffiliationFact> preloadedByNaturalKey
     ) {
-        return batchUpsertPublicationAuthorAffiliationEdges(commands, preloadedByNaturalKey, preloadedSourceLinks, true);
+        return batchUpsertPublicationAuthorAffiliationEdges(commands, preloadedByNaturalKey, true);
     }
 
     public BatchEdgeWriteResult batchUpsertPublicationAuthorAffiliationEdges(
             List<EdgeWriteCommand> commands,
             java.util.Map<String, ScholardexPublicationAuthorAffiliationFact> preloadedByNaturalKey,
-            java.util.Map<ScholardexSourceLinkService.SourceLinkKey, ScholardexSourceLink> preloadedSourceLinks,
             boolean allowFallbackLookup
     ) {
+        // H58: edge fact is the single source of truth; no separate edge source link is written.
         if (commands == null || commands.isEmpty()) {
             return new BatchEdgeWriteResult(0, 0, 0, 0, 0);
         }
@@ -579,7 +449,6 @@ public class ScholardexEdgeWriterService {
         }
         java.util.List<ScholardexPublicationAuthorAffiliationFact> pendingInserts = new java.util.ArrayList<>();
         java.util.Map<String, EdgeWriteCommand> pendingUpdateCommandsByEdgeId = new java.util.LinkedHashMap<>();
-        java.util.List<ScholardexSourceLinkService.SourceLinkUpsertCommand> linkCommands = new java.util.ArrayList<>();
 
         int accepted = 0;
         int rejected = 0;
@@ -647,19 +516,6 @@ public class ScholardexEdgeWriterService {
                 pendingUpdateCommandsByEdgeId.put(edge.getId(), command);
             }
 
-            linkCommands.add(new ScholardexSourceLinkService.SourceLinkUpsertCommand(
-                    ScholardexEntityType.PUBLICATION_AUTHOR_AFFILIATION,
-                    command.source(),
-                    command.sourceRecordId(),
-                    edge.getId(),
-                    command.linkState(),
-                    command.linkReason(),
-                    command.sourceEventId(),
-                    command.sourceBatchId(),
-                    command.sourceCorrelationId(),
-                    command.explicitReplayAttempt()
-            ));
-
             accepted++;
             if (created) {
                 createdCount++;
@@ -693,34 +549,9 @@ public class ScholardexEdgeWriterService {
             }
             bulkOps.execute();
         }
-        ScholardexSourceLinkService.BatchWriteResult sourceLinkResults =
-                sourceLinkService.batchUpsertWithState(linkCommands, preloadedSourceLinks, allowFallbackLookup);
-        int sourceLinkRejected = 0;
-        if (sourceLinkResults.rejectedCount() > 0) {
-            for (ScholardexSourceLinkService.SourceLinkBatchItemResult item : sourceLinkResults.results()) {
-                if (item.accepted()) {
-                    continue;
-                }
-                if (isPrecedenceKeptSourceLinkRejection(item.reason())) {
-                    continue;
-                }
-                sourceLinkRejected++;
-                openEdgeConflict(
-                        ScholardexEntityType.PUBLICATION_AUTHOR_AFFILIATION,
-                        item.command().source(),
-                        item.command().sourceRecordId(),
-                        REASON_EDGE_RELINK_REJECTED,
-                        item.command().canonicalEntityId() == null ? List.of() : List.of(item.command().canonicalEntityId()),
-                        item.command().sourceEventId(),
-                        item.command().sourceBatchId(),
-                        item.command().sourceCorrelationId()
-                );
-                conflicts++;
-            }
-        }
         return new BatchEdgeWriteResult(
                 accepted,
-                rejected + sourceLinkRejected,
+                rejected,
                 createdCount,
                 updatedCount,
                 conflicts
@@ -737,61 +568,6 @@ public class ScholardexEdgeWriterService {
 
     public String buildPublicationAuthorAffiliationId(String publicationId, String authorId, String affiliationId, String source) {
         return "spaaf_" + shortHash(publicationId + "|" + authorId + "|" + affiliationId + "|" + source);
-    }
-
-    private ScholardexSourceLinkService.SourceLinkWriteResult writeSourceLink(
-            ScholardexEntityType entityType,
-            EdgeWriteCommand command,
-            String canonicalEdgeId
-    ) {
-        if (ScholardexSourceLinkService.STATE_LINKED.equals(command.linkState())) {
-            return sourceLinkService.link(
-                    entityType,
-                    command.source(),
-                    command.sourceRecordId(),
-                    canonicalEdgeId,
-                    command.linkReason(),
-                    command.sourceEventId(),
-                    command.sourceBatchId(),
-                    command.sourceCorrelationId(),
-                    command.explicitReplayAttempt()
-            );
-        }
-        if (ScholardexSourceLinkService.STATE_UNMATCHED.equals(command.linkState())) {
-            return sourceLinkService.markUnmatched(
-                    entityType,
-                    command.source(),
-                    command.sourceRecordId(),
-                    canonicalEdgeId,
-                    command.linkReason(),
-                    command.sourceEventId(),
-                    command.sourceBatchId(),
-                    command.sourceCorrelationId(),
-                    command.explicitReplayAttempt()
-            );
-        }
-        if (ScholardexSourceLinkService.STATE_CONFLICT.equals(command.linkState())) {
-            return sourceLinkService.markConflict(
-                    entityType,
-                    command.source(),
-                    command.sourceRecordId(),
-                    command.linkReason(),
-                    command.sourceEventId(),
-                    command.sourceBatchId(),
-                    command.sourceCorrelationId(),
-                    command.explicitReplayAttempt()
-            );
-        }
-        return sourceLinkService.markSkipped(
-                entityType,
-                command.source(),
-                command.sourceRecordId(),
-                command.linkReason(),
-                command.sourceEventId(),
-                command.sourceBatchId(),
-                command.sourceCorrelationId(),
-                command.explicitReplayAttempt()
-        );
     }
 
     private void applyLineage(HasEdgeLineageFields edge, EdgeWriteCommand command, Instant now) {
@@ -812,10 +588,6 @@ public class ScholardexEdgeWriterService {
                 || !Objects.equals(edge.getSourceCorrelationId(), command.sourceCorrelationId())
                 || !Objects.equals(edge.getLinkState(), command.linkState())
                 || !Objects.equals(edge.getLinkReason(), command.linkReason());
-    }
-
-    private boolean isPrecedenceKeptSourceLinkRejection(String reason) {
-        return "linked-canonical-id-kept-by-precedence".equals(reason);
     }
 
     private void openEdgeConflict(

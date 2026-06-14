@@ -142,7 +142,7 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(sourceLinkService.batchUpsertWithState(anyCollection(), any(), eq(true)))
                 .thenReturn(new ScholardexSourceLinkService.BatchWriteResult(List.of()));
-        when(edgeWriterService.batchUpsertAuthorAffiliationEdges(anyList(), any(), any(), eq(true)))
+        when(edgeWriterService.batchUpsertAuthorAffiliationEdges(anyList(), any(), eq(true)))
                 .thenReturn(new ScholardexEdgeWriterService.BatchEdgeWriteResult(0, 0, 0, 0, 0));
 
         ImportProcessingResult result = service.rebuildCanonicalAuthorFactsFromScopusFacts(
@@ -916,7 +916,7 @@ class ScholardexAuthorCanonicalizationServiceTest {
                 .thenAnswer(invocation -> List.copyOf((java.util.Collection<?>) invocation.getArgument(0)));
         when(sourceLinkService.batchUpsertWithState(anyCollection(), any(), eq(true)))
                 .thenReturn(new ScholardexSourceLinkService.BatchWriteResult(List.of()));
-        when(edgeWriterService.batchUpsertAuthorAffiliationEdges(anyList(), any(), any(), eq(true)))
+        when(edgeWriterService.batchUpsertAuthorAffiliationEdges(anyList(), any(), eq(true)))
                 .thenReturn(new ScholardexEdgeWriterService.BatchEdgeWriteResult(0, 0, 0, 0, 0));
 
         ImportProcessingResult result = service.rebuildCanonicalAuthorFactsFromScopusFacts();
@@ -1044,14 +1044,14 @@ class ScholardexAuthorCanonicalizationServiceTest {
                         new ScholardexSourceLinkService.SourceLinkBatchItemResult(pendingSourceLinkCommands.get("AUTHOR|SCOPUS|222"), true, null, conflictLink),
                         new ScholardexSourceLinkService.SourceLinkBatchItemResult(pendingSourceLinkCommands.get("AUTHOR|SCOPUS|333"), true, null, skipped)
                 )));
-        when(edgeWriterService.batchUpsertAuthorAffiliationEdges(anyList(), any(), any(), eq(true)))
+        when(edgeWriterService.batchUpsertAuthorAffiliationEdges(anyList(), any(), eq(true)))
                 .thenReturn(new ScholardexEdgeWriterService.BatchEdgeWriteResult(3, 0, 2, 1, 2));
 
         ReflectionTestUtils.invokeMethod(service, "flushPendingWrites", 0L, 10L, 20L, context);
 
         verify(identityConflictRepository).saveAll(pendingConflicts.values());
         verify(sourceLinkService).batchUpsertWithState(anyCollection(), any(Map.class), eq(true));
-        verify(edgeWriterService).batchUpsertAuthorAffiliationEdges(anyList(), any(), any(), eq(true));
+        verify(edgeWriterService).batchUpsertAuthorAffiliationEdges(anyList(), any(), eq(true));
         assertEquals(2, ReflectionTestUtils.getField(context, "lastAuthorFactWrites"));
         assertEquals(1, ReflectionTestUtils.getField(context, "lastSourceLinkLinkedWrites"));
         assertEquals(1, ReflectionTestUtils.getField(context, "lastSourceLinkUnmatchedWrites"));

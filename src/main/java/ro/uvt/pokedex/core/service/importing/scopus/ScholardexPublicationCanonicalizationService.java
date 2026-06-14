@@ -1008,8 +1008,8 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
             edgeWriterService.batchUpsertAuthorshipEdges(
                     new ArrayList<>(context.pendingAuthorshipCommands.values()),
                     context.authorshipEdgeByNaturalKey,
-                    context.sourceLinkCache,
-                    true
+                    false  // H58: edge-fact preload (findByPublicationIdIn) is complete and its natural
+                    // key matches the edge writer's, so a cache miss is authoritative — no fallback needed.
             );
             context.authorshipEdgeUpsertMs += nanosToMillis(System.nanoTime() - startedAt);
             context.authorshipEdgeWriteCount += context.pendingAuthorshipCommands.size();
@@ -1020,8 +1020,8 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
             edgeWriterService.batchUpsertPublicationAuthorAffiliationEdges(
                     new ArrayList<>(context.pendingPublicationAuthorAffiliationCommands.values()),
                     context.publicationAuthorAffiliationEdgeByNaturalKey,
-                    context.sourceLinkCache,
-                    true
+                    false  // H58: edge-fact preload (findByPublicationIdIn) is complete and its natural
+                    // key matches the edge writer's, so a cache miss is authoritative — no fallback needed.
             );
             context.publicationAuthorAffiliationEdgeUpsertMs += nanosToMillis(System.nanoTime() - startedAt);
             context.publicationAuthorAffiliationEdgeWriteCount += context.pendingPublicationAuthorAffiliationCommands.size();
@@ -1046,20 +1046,14 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
             return;
         }
         Set<String> publicationIds = new LinkedHashSet<>();
-        Set<String> linkSourceRecordIds = new LinkedHashSet<>();
         for (ScholardexEdgeWriterService.EdgeWriteCommand command : context.pendingAuthorshipCommands.values()) {
             String publicationId = normalizeBlank(command.leftId(), context);
             if (publicationId != null) {
                 publicationIds.add(publicationId);
             }
-            String linkRecordId = normalizeBlank(command.sourceRecordId(), context);
-            if (linkRecordId != null) {
-                linkSourceRecordIds.add(linkRecordId);
-            }
         }
-        // H56: seed the AUTHORSHIP source links so the edge writer's batchUpsertWithState resolves them
-        // from cache instead of a per-edge findByKey fallback.
-        preloadSourceLinks(ScholardexEntityType.AUTHORSHIP, linkSourceRecordIds, context);
+        // H58: edges have no source link — only preload the edge FACTS (by natural key) to drive the
+        // no-op skip; the AUTHORSHIP source-link preload is gone.
         if (publicationIds.isEmpty()) {
             return;
         }
@@ -1076,19 +1070,13 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
             return;
         }
         Set<String> publicationIds = new LinkedHashSet<>();
-        Set<String> linkSourceRecordIds = new LinkedHashSet<>();
         for (ScholardexEdgeWriterService.EdgeWriteCommand command : context.pendingPublicationAuthorAffiliationCommands.values()) {
             String publicationId = normalizeBlank(command.publicationId(), context);
             if (publicationId != null) {
                 publicationIds.add(publicationId);
             }
-            String linkRecordId = normalizeBlank(command.sourceRecordId(), context);
-            if (linkRecordId != null) {
-                linkSourceRecordIds.add(linkRecordId);
-            }
         }
-        // H56: seed the PUBLICATION_AUTHOR_AFFILIATION source links to avoid per-edge findByKey fallback.
-        preloadSourceLinks(ScholardexEntityType.PUBLICATION_AUTHOR_AFFILIATION, linkSourceRecordIds, context);
+        // H58: edges have no source link — only preload the edge FACTS (by natural key) for the no-op skip.
         if (publicationIds.isEmpty()) {
             return;
         }

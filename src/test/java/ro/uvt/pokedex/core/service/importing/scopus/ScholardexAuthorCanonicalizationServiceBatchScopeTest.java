@@ -51,7 +51,7 @@ class ScholardexAuthorCanonicalizationServiceBatchScopeTest {
         when(sourceLinkService.findByEntityTypeAndSourceRecordIds(any(), anyCollection())).thenReturn(List.of());
         when(sourceLinkService.batchUpsertWithState(any(), any(), any(Boolean.class)))
                 .thenReturn(new ScholardexSourceLinkService.BatchWriteResult(List.of()));
-        when(edgeWriterService.batchUpsertAuthorAffiliationEdges(any(), any(), any(), any(Boolean.class)))
+        when(edgeWriterService.batchUpsertAuthorAffiliationEdges(any(), any(), any(Boolean.class)))
                 .thenReturn(new ScholardexEdgeWriterService.BatchEdgeWriteResult(0, 0, 0, 0, 0));
 
         ScholardexAuthorCanonicalizationService service = new ScholardexAuthorCanonicalizationService(
@@ -106,7 +106,7 @@ class ScholardexAuthorCanonicalizationServiceBatchScopeTest {
         )).thenReturn(Optional.of(new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink()));
         when(sourceLinkService.batchUpsertWithState(any(), any(Map.class), eq(true)))
                 .thenReturn(new ScholardexSourceLinkService.BatchWriteResult(List.of()));
-        when(edgeWriterService.batchUpsertAuthorAffiliationEdges(any(), any(), any(), any(Boolean.class)))
+        when(edgeWriterService.batchUpsertAuthorAffiliationEdges(any(), any(), any(Boolean.class)))
                 .thenReturn(new ScholardexEdgeWriterService.BatchEdgeWriteResult(0, 0, 0, 0, 0));
 
         ScholardexAuthorCanonicalizationService service = new ScholardexAuthorCanonicalizationService(

@@ -18,7 +18,6 @@ import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -26,7 +25,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -52,15 +50,12 @@ public class ScholardexForumDeduplicationService {
     private static final String REASON_DEDUP_NAME_MISMATCH = "FORUM_DEDUP_NAME_MISMATCH";
 
     private static final Pattern ISSN_NON_ALNUM = Pattern.compile("[^0-9Xx]");
-    private static final Pattern NAME_NON_ALNUM = Pattern.compile("[^a-z0-9]+");
-    private static final Set<String> NAME_STOPWORDS = Set.of(
-            "of", "and", "the", "for", "in", "on", "de", "la", "le", "des", "du", "und", "fur",
-            "der", "die", "das", "a", "an");
 
     private final ScholardexForumFactRepository forumRepository;
     private final ScholardexSourceLinkRepository sourceLinkRepository;
     private final ScholardexPublicationFactRepository publicationRepository;
     private final ScholardexIdentityConflictRepository identityConflictRepository;
+    private final ForumMergeSafetyRule mergeSafetyRule;
 
     public ImportProcessingResult deduplicateForums(String batchId, String correlationId) {
         ImportProcessingResult result = new ImportProcessingResult(20);
@@ -73,7 +68,7 @@ public class ScholardexForumDeduplicationService {
                 continue;
             }
             result.markProcessed();
-            if (isSafeToMerge(cluster)) {
+            if (mergeSafetyRule.isSafeToMergeCluster(cluster)) {
                 mergeCluster(cluster, now, result);
             } else {
                 quarantineCluster(cluster, batchId, correlationId, now, result);
@@ -131,30 +126,7 @@ public class ScholardexForumDeduplicationService {
         }
     }
 
-    // ---- safe-merge decision ----------------------------------------------------------------------
-
-    private boolean isSafeToMerge(List<ScholardexForumFact> cluster) {
-        // Share a single primary (print) ISSN across the whole cluster?
-        Set<String> primaries = new LinkedHashSet<>();
-        for (ScholardexForumFact f : cluster) {
-            String pi = normalizeIssn(f.getIssn());
-            if (pi != null) {
-                primaries.add(pi);
-            }
-        }
-        if (primaries.size() == 1 && cluster.stream().allMatch(f -> normalizeIssn(f.getIssn()) != null)) {
-            return true;
-        }
-        // Otherwise require every pair of names to be an abbreviation/expansion match.
-        for (int i = 0; i < cluster.size(); i++) {
-            for (int j = i + 1; j < cluster.size(); j++) {
-                if (!namesMatch(cluster.get(i).getName(), cluster.get(j).getName())) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
+    // ---- safe-merge decision: see ForumMergeSafetyRule (shared with fold-time canonicalization) -----
 
     // ---- merge ------------------------------------------------------------------------------------
 
@@ -305,67 +277,6 @@ public class ScholardexForumDeduplicationService {
         }
         String compact = ISSN_NON_ALNUM.matcher(raw).replaceAll("").toUpperCase(Locale.ROOT);
         return compact.length() == 8 ? compact : (compact.isEmpty() ? null : compact);
-    }
-
-    /** True when one name is an in-order word-prefix abbreviation of the other (leading "journal"/"j" ignored). */
-    private boolean namesMatch(String a, String b) {
-        List<String> wa = nameWords(a);
-        List<String> wb = nameWords(b);
-        if (wa.isEmpty() || wb.isEmpty()) {
-            return false;
-        }
-        if (String.join(" ", wa).equals(String.join(" ", wb))) {
-            return true;
-        }
-        return abbreviationOf(wa, wb) || abbreviationOf(wb, wa);
-    }
-
-    private boolean abbreviationOf(List<String> shortWords, List<String> longWords) {
-        List<String> s = stripLeadingJournal(shortWords);
-        List<String> l = stripLeadingJournal(longWords);
-        if (s.isEmpty()) {
-            return false;
-        }
-        int j = 0;
-        for (String tok : s) {
-            boolean found = false;
-            while (j < l.size()) {
-                String lw = l.get(j);
-                j++;
-                if (lw.startsWith(tok) || tok.startsWith(lw)) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private List<String> stripLeadingJournal(List<String> words) {
-        if (!words.isEmpty() && (words.get(0).equals("journal") || words.get(0).equals("j"))) {
-            return words.subList(1, words.size());
-        }
-        return words;
-    }
-
-    private List<String> nameWords(String name) {
-        if (name == null) {
-            return List.of();
-        }
-        String cleaned = NAME_NON_ALNUM.matcher(name.toLowerCase(Locale.ROOT)).replaceAll(" ").trim();
-        if (cleaned.isEmpty()) {
-            return List.of();
-        }
-        List<String> out = new ArrayList<>();
-        for (String w : cleaned.split("\\s+")) {
-            if (!w.isEmpty() && !NAME_STOPWORDS.contains(w)) {
-                out.add(w);
-            }
-        }
-        return out;
     }
 
     private List<String> safe(List<String> in) {
