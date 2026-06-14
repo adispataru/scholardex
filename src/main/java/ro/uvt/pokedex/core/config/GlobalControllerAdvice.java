@@ -65,6 +65,11 @@ public class GlobalControllerAdvice {
                 || path.startsWith("/core/")
                 || path.equals("/core")
                 || path.startsWith("/universities")
-                || path.startsWith("/events");
+                || path.startsWith("/events")
+                // Delegated researcher-report viewing is reachable by admins (admin sidebar) and
+                // supervisors (user sidebar); resolving to admin context for admins keeps them in
+                // the admin shell, while supervisors fall through to the user shell where the
+                // role-gated "Researcher reports" entry also appears.
+                || path.startsWith("/reports/");
     }
 }

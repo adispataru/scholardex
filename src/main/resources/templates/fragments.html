@@ -320,6 +320,14 @@
                         <span>Supervisor workspace</span>
                     </a>
                 </li>
+                <li class="app-shell-sidebar__item"
+                    th:if="${user != null and (user.hasRole('SUPERVISOR') or user.hasRole('PLATFORM_ADMIN'))}"
+                    th:classappend="${activeSection == 'researcher-reports'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/reports/researcher}">
+                        <i class="fa-solid fa-fw fa-chart-line"></i>
+                        <span>Researcher reports</span>
+                    </a>
+                </li>
             </ul>
         </section>
 
@@ -483,6 +491,14 @@
                     <a class="app-shell-sidebar__link" th:href="@{/user/evaluation}">
                         <i class="fa-solid fa-fw fa-chart-bar"></i>
                         <span>Evaluation</span>
+                    </a>
+                </li>
+                <li class="app-shell-sidebar__item"
+                    th:if="${user != null and (user.hasRole('SUPERVISOR') or user.hasRole('PLATFORM_ADMIN'))}"
+                    th:classappend="${activeSection == 'researcher-reports'} ? ' active' : ''">
+                    <a class="app-shell-sidebar__link" th:href="@{/reports/researcher}">
+                        <i class="fa-solid fa-fw fa-chart-line"></i>
+                        <span>Researcher reports</span>
                     </a>
                 </li>
             </ul>

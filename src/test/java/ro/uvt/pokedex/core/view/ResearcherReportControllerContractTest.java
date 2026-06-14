@@ -12,11 +12,13 @@ import ro.uvt.pokedex.core.config.GlobalControllerAdvice;
 import ro.uvt.pokedex.core.model.reporting.AbstractReport;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
+import ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.repository.reporting.UserIndividualReportRunRepository;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.UserIndividualReportRunService;
 import ro.uvt.pokedex.core.service.application.UserReportFacade;
+import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
 import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
 import ro.uvt.pokedex.core.service.application.model.UserReportsListViewModel;
 import ro.uvt.pokedex.core.service.security.ResearcherAccessService;
@@ -36,6 +38,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -61,6 +64,8 @@ class ResearcherReportControllerContractTest {
     private UserIndividualReportRunService userIndividualReportRunService;
     @MockitoBean
     private UserIndividualReportRunRepository userIndividualReportRunRepository; // assembler dependency
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade reportExportFacade;
 
     private IndividualReport report() {
         Indicator ind = new Indicator();
@@ -85,13 +90,19 @@ class ResearcherReportControllerContractTest {
 
     @Test
     void pickerRendersInScopeResearchers() throws Exception {
-        when(researcherAccess.findInScopeResearchers(any())).thenReturn(List.of(researcher()));
-        when(userService.findDisplayLabels(any())).thenReturn(Map.of(EMAIL, "Florin S"));
+        User researcher = researcher();
+        User.ResearcherProfile profile = new User.ResearcherProfile();
+        profile.setFirstName("Florin");
+        profile.setLastName("Spataru");
+        researcher.setResearcherProfile(profile);
+        when(researcherAccess.findInScopeResearchers(any())).thenReturn(List.of(researcher));
 
         mockMvc.perform(get("/reports/researcher"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("reports/researcher-picker"))
-                .andExpect(content().string(containsString("Florin S")));
+                .andExpect(content().string(containsString("Florin Spataru")))   // profile name column
+                .andExpect(content().string(containsString(EMAIL)))               // email column
+                .andExpect(content().string(containsString("/reports/researcher/" + EMAIL))); // view-report link
     }
 
     @Test
@@ -154,5 +165,94 @@ class ResearcherReportControllerContractTest {
 
         // Refresh runs against the researcher's data but is attributed to the acting principal.
         verify(userIndividualReportRunService).refreshRunWithAllIndicators(EMAIL, "rep-1", "admin@e-uvt.ro");
+    }
+
+    @Test
+    void exportReturnsAttachmentAndIsReadOnly() throws Exception {
+        var exported = new ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportedReport(
+                "xlsx-bytes".getBytes(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "FV Test.xlsx");
+        when(reportExportFacade.exportRunOutcome(EMAIL, "rep-1", null, ReportFormat.XLSX, false))
+                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportOutcome.success(exported));
+
+        mockMvc.perform(get("/reports/researcher/{email}/report/{reportId}/export", EMAIL, "rep-1"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", containsString("FV Test.xlsx")));
+
+        // Read-only: export must never force a refresh (no mutation of the researcher's data).
+        verify(reportExportFacade).exportRunOutcome(EMAIL, "rep-1", null, ReportFormat.XLSX, false);
+    }
+
+    @Test
+    void exportFailureMapsToHttpStatus() throws Exception {
+        when(reportExportFacade.exportRunOutcome(EMAIL, "rep-1", null, ReportFormat.XLSX, false))
+                .thenReturn(ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportOutcome.failure(
+                        ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade.ExportFailureReason.NOT_READY,
+                        "Report export configuration is incomplete."));
+
+        mockMvc.perform(get("/reports/researcher/{email}/report/{reportId}/export", EMAIL, "rep-1"))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    void indicatorDetailReturnsJsonReadOnly() throws Exception {
+        Map<String, Object> scores = new java.util.LinkedHashMap<>();
+        ro.uvt.pokedex.core.service.reporting.Score s = new ro.uvt.pokedex.core.service.reporting.Score();
+        s.setAuthorScore(7.0);
+        scores.put("Paper A", s);
+        Map<String, Object> graph = new java.util.LinkedHashMap<>();
+        graph.put("outputMode", "publications");
+        graph.put("scores", scores);
+        IndicatorApplyResultDto dto = new IndicatorApplyResultDto(
+                "r", "ind-1", "view", graph,
+                new IndicatorApplyResultDto.Summary(7.0, null, List.of(), List.of()),
+                IndicatorApplyResultDto.Source.COMPUTED, null, java.time.Instant.now(), 0);
+        when(userReportFacade.buildReportScopedIndicatorDetail(EMAIL, "rep-1", "ind-1"))
+                .thenReturn(Optional.of(dto));
+
+        mockMvc.perform(get("/reports/researcher/{email}/indicator/{id}/detail", EMAIL, "ind-1")
+                        .param("report", "rep-1"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("\"indicatorId\":\"ind-1\"")))
+                .andExpect(content().string(containsString("Paper A")));
+
+        // Read-only: report-scoped compute only (no cache-writing getOrCreateLatest path exists here).
+        verify(userReportFacade).buildReportScopedIndicatorDetail(EMAIL, "rep-1", "ind-1");
+    }
+
+    @Test
+    void indicatorDetailNotFoundWhenComputeEmpty() throws Exception {
+        when(userReportFacade.buildReportScopedIndicatorDetail(EMAIL, "rep-1", "ind-x"))
+                .thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/reports/researcher/{email}/indicator/{id}/detail", EMAIL, "ind-x")
+                        .param("report", "rep-1"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void citationDetailReturnsJson() throws Exception {
+        Map<String, Object> citing = new java.util.LinkedHashMap<>();
+        ro.uvt.pokedex.core.service.reporting.Score c = new ro.uvt.pokedex.core.service.reporting.Score();
+        c.setAuthorScore(4.0);
+        citing.put("Citing 1", c);
+        Map<String, Object> scores = new java.util.LinkedHashMap<>();
+        scores.put("Cited Pub", citing);
+        Map<String, Object> graph = new java.util.LinkedHashMap<>();
+        graph.put("outputMode", "citations");
+        graph.put("scores", scores);
+        IndicatorApplyResultDto dto = new IndicatorApplyResultDto(
+                "r", "ind-1", "view", graph,
+                new IndicatorApplyResultDto.Summary(4.0, null, List.of(), List.of()),
+                IndicatorApplyResultDto.Source.COMPUTED, null, java.time.Instant.now(), 0);
+        when(userReportFacade.buildReportScopedIndicatorDetail(EMAIL, "rep-1", "ind-1"))
+                .thenReturn(Optional.of(dto));
+
+        mockMvc.perform(get("/reports/researcher/{email}/indicator/{id}/citations", EMAIL, "ind-1")
+                        .param("pub", "Cited Pub").param("report", "rep-1"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("\"pubTitle\":\"Cited Pub\"")))
+                .andExpect(content().string(containsString("Citing 1")));
     }
 }

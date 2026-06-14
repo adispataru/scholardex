@@ -160,8 +160,29 @@ surfaced in the UI as "Last refreshed by X on `<date>`".
   `POST /reports/researcher/{email}/report/{reportId}/refresh` gated by `canRefresh`, delegated
   Refresh button + "Generate now" + "by &lt;actor&gt;" provenance line. Verified end-to-end under
   `agent-dev`.
-- **Remaining:** Slice 4 — delegated export (`GET …/export`, reuse
-  `ReportExportFacade.exportRunOutcome(email, …)`). Stretch — indicator/citation drilldown.
+- **Slice 4 — delegated export (DONE):** `GET /reports/researcher/{email}/report/{reportId}/export`
+  (gated by `canView`) reuses `ReportExportFacade.exportRunOutcome(email, …)` with
+  `forceRefresh=false` (strictly read-only — never mutates). Extracted the
+  `ExportFailureReason → HttpStatus` mapping into shared `ReportExportHttpStatus` (used by both the
+  user and delegated export). Added an "Export to Excel" link to the delegated toolbar. Verified
+  end-to-end: real xlsx download, no run created.
+- **Nav entry (DONE):** "Researcher reports" sidebar link (`/reports/researcher`,
+  `fa-chart-line`) gated to SUPERVISOR/PLATFORM_ADMIN, added to both the admin-sidebar and
+  user-sidebar fragments; `GlobalControllerAdvice` resolves `/reports/` as a shared route so
+  admins keep the admin shell while supervisors get the user shell — the entry appears in both.
+- **Picker UX (DONE):** rebuilt `reports/researcher-picker.html` to the `docs/ux-design-guide.md`
+  list/table pattern — intro text, `app-table-section` surface, a `js-datatable app-table`
+  (Researcher / Email / per-row "View report" action; search + pagination for free), and the
+  shared `admin-empty-state` for the no-researchers case. Replaced the original bare link list.
+- **Drilldown (DONE):** indicator-detail + citation drilldown in delegated mode, built for
+  no-drift across three layers: (1) computation already shared
+  (`buildReportScopedIndicatorDetail`); (2) response mapping extracted to shared
+  `IndicatorDetailResponseAssembler` (+ the 3 response records), used by both controllers; (3) the
+  dashboard JS reads a `data-eval-api-base` attribute (default `/user/evaluation`, delegated
+  `/reports/researcher/{email}`) so one script drives both surfaces. Delegated endpoints
+  `GET …/indicator/{id}/detail` and `…/citations` are read-only (report-scoped compute only, no
+  cache-writing fallback) and gated by `canView`. Tested: assembler unit (mapping once), delegated
+  contract (read-only + JSON), user drilldown regression. Verified end-to-end under `agent-dev`.
 
 ## Dependencies
 

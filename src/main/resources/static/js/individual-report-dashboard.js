@@ -177,13 +177,17 @@
     items.forEach(function (item) {
       var isClickable = isCitations && indicatorId;
       var clickable = isClickable ? ' eval-scored-item--clickable' : '';
+      // A categorized publication whose scoring formula produced 0: shown (it matched the
+      // indicator) but visually de-emphasised so it reads as "counted, scored 0".
+      var isZeroScored = !isActivities && !isCitations && toNumber(item.authorScore) <= 0;
+      var zeroClass = isZeroScored ? ' eval-scored-item--zero' : '';
       var dataAttrs = isClickable
         ? ' role="button" tabindex="0"' +
           ' data-citation-pub="' + esc(item.key) + '"' +
           ' data-indicator-id="' + esc(indicatorId) + '"' +
           ' aria-label="View citations for ' + esc(item.key) + '"'
         : '';
-      html += '<div class="eval-scored-item' + clickable + '"' + dataAttrs + '>';
+      html += '<div class="eval-scored-item' + clickable + zeroClass + '"' + dataAttrs + '>';
       html += '<div class="eval-scored-item__body">';
 
       // Line 1: title
@@ -218,6 +222,9 @@
       html += '</div>'; // body
 
       // Score on the right
+      if (isZeroScored) {
+        html += '<span class="eval-scored-item__zero-flag" title="Categorized for this indicator, but the scoring formula produced 0">below threshold</span>';
+      }
       html += '<span class="eval-scored-item__score">' + toNumber(item.authorScore).toFixed(2) + '</span>';
       html += '</div>'; // item
     });
@@ -273,7 +280,7 @@
 
   // ── Citation detail modal ─────────────────────────────────────────────────
 
-  function openCitationModal(indicatorId, pubTitle, reportId) {
+  function openCitationModal(indicatorId, pubTitle, reportId, apiBase) {
     _modalTrigger = document.activeElement || null;
     var modal      = document.getElementById('citationDetailModal');
     var titleEl    = document.getElementById('citationModalPubTitle');
@@ -294,7 +301,7 @@
     // Show modal — no Bootstrap JS required
     showBsModal(modal);
 
-    var citUrl = '/user/evaluation/indicator/' + encodeURIComponent(indicatorId) +
+    var citUrl = (apiBase || '/user/evaluation') + '/indicator/' + encodeURIComponent(indicatorId) +
       '/citations?pub=' + encodeURIComponent(pubTitle);
     if (reportId) citUrl += '&report=' + encodeURIComponent(reportId);
 
@@ -317,7 +324,7 @@
       });
   }
 
-  function initCitationModal(root, reportId) {
+  function initCitationModal(root, reportId, apiBase) {
     // Wire close buttons (data-dismiss="modal") on the citation modal
     var modal = document.getElementById('citationDetailModal');
     if (modal) {
@@ -337,7 +344,7 @@
       var pubTitle    = row.getAttribute('data-citation-pub');
       var indicatorId = row.getAttribute('data-indicator-id');
       if (pubTitle && indicatorId) {
-        openCitationModal(indicatorId, pubTitle, reportId);
+        openCitationModal(indicatorId, pubTitle, reportId, apiBase);
       }
     });
 
@@ -350,7 +357,7 @@
       var pubTitle    = row.getAttribute('data-citation-pub');
       var indicatorId = row.getAttribute('data-indicator-id');
       if (pubTitle && indicatorId) {
-        openCitationModal(indicatorId, pubTitle, reportId);
+        openCitationModal(indicatorId, pubTitle, reportId, apiBase);
       }
     });
   }
@@ -364,7 +371,7 @@
       .replace(/"/g, '&quot;');
   }
 
-  function loadIndicatorDetail(panel, indicatorId, reportId) {
+  function loadIndicatorDetail(panel, indicatorId, reportId, apiBase) {
     var skeleton = panel.querySelector('.indicator-detail-skeleton');
     var content = panel.querySelector('.indicator-detail-content');
 
@@ -372,7 +379,7 @@
     if (skeleton) skeleton.hidden = false;
     if (content) content.innerHTML = '';
 
-    var url = '/user/evaluation/indicator/' + encodeURIComponent(indicatorId) + '/detail';
+    var url = (apiBase || '/user/evaluation') + '/indicator/' + encodeURIComponent(indicatorId) + '/detail';
     if (reportId) url += '?report=' + encodeURIComponent(reportId);
 
     fetch(url, {
@@ -424,7 +431,7 @@
     if (skeleton) skeleton.hidden = true;
   }
 
-  function initIndicatorExpand(root, reportId) {
+  function initIndicatorExpand(root, reportId, apiBase) {
     root.querySelectorAll('.indicator-expand-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var indicatorId = btn.getAttribute('data-indicator-id');
@@ -456,7 +463,7 @@
           }
           btn.setAttribute('aria-expanded', 'true');
           openIndicatorPanel(panel);
-          loadIndicatorDetail(panel, indicatorId, reportId);
+          loadIndicatorDetail(panel, indicatorId, reportId, apiBase);
         }
       });
     });
@@ -861,8 +868,12 @@
       });
     }
 
-    // Load snapshots into compare picker on page init (async, non-blocking)
-    _loadSnapshotsForPicker(reportId);
+    // Load snapshots into compare picker on page init (async, non-blocking).
+    // Only when the compare picker actually exists — the delegated (admin/supervisor) view ships
+    // no snapshot/compare controls, so this must not fire a cross-user snapshot fetch there.
+    if (document.getElementById('eval-compare-select')) {
+      _loadSnapshotsForPicker(reportId);
+    }
   }
 
   function _saveSnapshot(root, reportId, currentRunId) {
@@ -1056,12 +1067,16 @@
 
     var researcherPosition = root.getAttribute('data-researcher-position') || '';
     var reportId = root.getAttribute('data-report-id') || '';
+    // Drilldown fetch base: '/user/evaluation' for the researcher's own page, or
+    // '/reports/researcher/{email}' for the delegated admin/supervisor view. Same JS, same
+    // endpoints shape — only the prefix differs, so the two surfaces cannot drift.
+    var apiBase = root.getAttribute('data-eval-api-base') || '/user/evaluation';
 
     initPositionSelector(root, researcherPosition);
     initThresholdRows(root, researcherPosition);
     initCriterionToggles(root);
-    initIndicatorExpand(root, reportId);
-    initCitationModal(root, reportId);
+    initIndicatorExpand(root, reportId, apiBase);
+    initCitationModal(root, reportId, apiBase);
     initReportSwitcher();
     var currentRunId = root.getAttribute('data-run-id') || (window.evalCurrentRunId || null);
     initComparisonControls(root, reportId, currentRunId);

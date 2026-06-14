@@ -8,28 +8,62 @@
 <body id="page-top">
 
 <div id="wrapper">
-    <div th:replace="~{fragments :: sidebar('individual-reports')}"></div>
+    <div th:replace="~{fragments :: sidebar('researcher-reports')}"></div>
 
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
             <div th:replace="~{fragments :: navbar('Researcher reports')}"></div>
 
             <div class="container-fluid app-page-content">
-                <p class="text-muted">Select a researcher to view the individual report they see (read-only).</p>
-
-                <div th:if="${#lists.isEmpty(researchers)}" class="app-empty-state">
-                    <i class="fa-solid fa-users fa-2x app-empty-state__icon" aria-hidden="true"></i>
-                    <p class="app-empty-state__title">No researchers in scope</p>
-                    <p class="app-empty-state__body">You do not currently oversee any researchers with a profile.</p>
+                <div class="app-page-toolbar app-workflow">
+                    <p class="app-workflow__intro">
+                        Open the individual evaluation report a researcher sees — read-only, with the
+                        option to refresh or export it on their behalf.
+                    </p>
                 </div>
 
-                <div th:unless="${#lists.isEmpty(researchers)}" class="list-group">
-                    <a th:each="r : ${researchers}"
-                       th:href="@{/reports/researcher/{e}(e=${r.email})}"
-                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                        <span th:text="${researcherLabels.getOrDefault(r.email, r.email)}">Researcher</span>
-                        <i class="fa-solid fa-chevron-right fa-sm text-muted" aria-hidden="true"></i>
-                    </a>
+                <div class="app-table-section">
+                    <div class="app-table-section__surface">
+                        <div class="app-table-section__header">
+                            <h6 class="app-table-section__title">Researchers in scope</h6>
+                        </div>
+                        <div class="app-table-section__body">
+                            <th:block th:if="${#lists.isEmpty(researchers)}"
+                                      th:replace="~{fragments :: admin-empty-state(
+                                          'No researchers in scope',
+                                          'You do not currently oversee any researchers with a profile.',
+                                          null, null)}"></th:block>
+
+                            <div th:unless="${#lists.isEmpty(researchers)}" class="app-table-scroll">
+                                <table class="table js-datatable app-table" id="researcherReportsTable"
+                                       width="100%" cellspacing="0">
+                                    <thead>
+                                    <tr>
+                                        <th scope="col">Researcher</th>
+                                        <th scope="col">Email</th>
+                                        <th scope="col">Report</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="r : ${researchers}">
+                                        <td th:text="${r.researcherProfile != null and r.researcherProfile.name != null and !#strings.isEmpty(r.researcherProfile.name) ? r.researcherProfile.name : r.email}">
+                                            Researcher name
+                                        </td>
+                                        <td><span class="text-muted" th:text="${r.email}">email</span></td>
+                                        <td>
+                                            <a class="btn btn-sm btn-outline-primary"
+                                               th:href="@{/reports/researcher/{e}(e=${r.email})}"
+                                               th:aria-label="'View ' + ${r.email} + ' report'">
+                                                <i class="fa-solid fa-up-right-from-square fa-xs" aria-hidden="true"></i>
+                                                View report
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

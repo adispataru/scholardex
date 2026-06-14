@@ -837,3 +837,29 @@
   border-color: var(--app-danger, #dc2626);
   box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.18);
 }
+
+/* ── Categorized publication scored 0 by the formula (shown, de-emphasised) ── */
+.eval-scored-item--zero {
+  opacity: 0.7;
+}
+.eval-scored-item--zero .eval-scored-item__score {
+  color: var(--app-color-text-muted, #8898aa);
+  font-weight: 600;
+}
+.eval-scored-item__zero-flag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.66rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--app-color-text-muted, #8898aa);
+  background: var(--app-color-surface-sunken, rgba(136, 152, 170, 0.12));
+  border: 1px solid var(--app-color-border, rgba(136, 152, 170, 0.28));
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  margin-right: 0.5rem;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  align-self: center;
+}

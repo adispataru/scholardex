@@ -1,6 +1,9 @@
 package ro.uvt.pokedex.core.view;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -10,17 +13,22 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
+import ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.service.UserService;
 import ro.uvt.pokedex.core.service.application.UserIndividualReportRunService;
 import ro.uvt.pokedex.core.service.application.UserReportFacade;
 import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
+import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
+import ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade;
 import ro.uvt.pokedex.core.service.security.ResearcherAccessService;
+import ro.uvt.pokedex.core.view.IndicatorDetailResponseAssembler.CitationDetailResponse;
+import ro.uvt.pokedex.core.view.IndicatorDetailResponseAssembler.IndicatorDetailResponse;
 import ro.uvt.pokedex.core.view.user.IndividualReportViewModelAssembler;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -41,15 +49,12 @@ public class ResearcherReportController {
     private final UserReportFacade userReportFacade;
     private final UserIndividualReportRunService userIndividualReportRunService;
     private final IndividualReportViewModelAssembler individualReportViewModelAssembler;
+    private final ReportExportFacade reportExportFacade;
 
     @GetMapping
     @PreAuthorize("hasAnyAuthority('PLATFORM_ADMIN','SUPERVISOR')")
     public String pickResearcher(Authentication authentication, Model model) {
-        List<User> researchers = researcherAccess.findInScopeResearchers(authentication);
-        List<String> emails = researchers.stream().map(User::getEmail).toList();
-        Map<String, String> labels = userService.findDisplayLabels(emails);
-        model.addAttribute("researchers", researchers);
-        model.addAttribute("researcherLabels", labels);
+        model.addAttribute("researchers", researcherAccess.findInScopeResearchers(authentication));
         return "reports/researcher-picker";
     }
 
@@ -111,5 +116,62 @@ public class ResearcherReportController {
                                           Authentication authentication) {
         userIndividualReportRunService.refreshRunWithAllIndicators(email, reportId, authentication.getName());
         return "redirect:/reports/researcher/" + email + "?report=" + reportId;
+    }
+
+    /**
+     * Delegated export: download the researcher's report exactly as they would. Strictly read-only —
+     * {@code forceRefresh} is always false, so the export never mutates the researcher's cached
+     * results (an admin wanting fresh numbers refreshes first). The facade validates that any
+     * supplied {@code run} belongs to this researcher.
+     */
+    @GetMapping("/{email}/report/{reportId}/export")
+    @ResponseBody
+    @PreAuthorize("@researcherAccess.canView(#email, authentication)")
+    public ResponseEntity<?> exportResearcherReport(@PathVariable String email,
+                                                    @PathVariable String reportId,
+                                                    @RequestParam(name = "run", required = false) String runId,
+                                                    @RequestParam(name = "format", defaultValue = "XLSX") ReportFormat format) {
+        ReportExportFacade.ExportOutcome outcome =
+                reportExportFacade.exportRunOutcome(email, reportId, runId, format, false);
+        if (!outcome.isSuccess()) {
+            return ResponseEntity.status(ReportExportHttpStatus.of(outcome.failureReason())).body(outcome.message());
+        }
+        ReportExportFacade.ExportedReport exported = outcome.exportedReport();
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(exported.contentType()))
+                .header("Content-Disposition", "attachment; filename=\"" + exported.filename() + "\"")
+                .body(new ByteArrayResource(exported.bytes()));
+    }
+
+    /**
+     * Delegated indicator drilldown (read-only). Always report-scoped — uses
+     * {@code buildReportScopedIndicatorDetail} (pure compute, no persistence) and 404s when the
+     * indicator yields nothing, never falling back to the cache-writing {@code getOrCreateLatest}
+     * path the researcher's own endpoint uses. The JSON is built by the shared
+     * {@link IndicatorDetailResponseAssembler}, so it is identical to the researcher's own drilldown.
+     */
+    @GetMapping("/{email}/indicator/{indicatorId}/detail")
+    @ResponseBody
+    @PreAuthorize("@researcherAccess.canView(#email, authentication)")
+    public ResponseEntity<IndicatorDetailResponse> researcherIndicatorDetail(@PathVariable String email,
+                                                                             @PathVariable String indicatorId,
+                                                                             @RequestParam("report") String reportId) {
+        Optional<IndicatorApplyResultDto> result =
+                userReportFacade.buildReportScopedIndicatorDetail(email, reportId, indicatorId);
+        return result.map(r -> ResponseEntity.ok(IndicatorDetailResponseAssembler.buildDetail(r)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{email}/indicator/{indicatorId}/citations")
+    @ResponseBody
+    @PreAuthorize("@researcherAccess.canView(#email, authentication)")
+    public ResponseEntity<CitationDetailResponse> researcherCitationDetail(@PathVariable String email,
+                                                                           @PathVariable String indicatorId,
+                                                                           @RequestParam("pub") String pubTitle,
+                                                                           @RequestParam("report") String reportId) {
+        Optional<IndicatorApplyResultDto> result =
+                userReportFacade.buildReportScopedIndicatorDetail(email, reportId, indicatorId);
+        return result.map(r -> ResponseEntity.ok(IndicatorDetailResponseAssembler.buildCitations(r, pubTitle)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }
