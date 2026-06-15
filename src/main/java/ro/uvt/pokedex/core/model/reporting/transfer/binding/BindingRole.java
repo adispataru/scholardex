@@ -53,4 +53,11 @@ public class BindingRole {
     private String tileTotalLabel;    // label in the key column marking the tile's grand-total row (e.g. "TOTAL")
     private String sheetNameTemplate;
     private List<BindingSummaryFormula> summaryFormulas = new ArrayList<>();
+
+    // DOCX fields. A DOCX role addresses a Word table by 0-based index; `firstDataRow`/`maxRows`
+    // are table-row indices, and `columns` is keyed by 0-based cell index ("0".."5") instead of an
+    // Excel column letter. `docxTotals` place computed totals into label-bearing cells anywhere in
+    // the document (located by marker text), each sourced from a snapshot total key.
+    private Integer tableIndex;
+    private List<BindingDocxTotal> docxTotals = new ArrayList<>();
 }

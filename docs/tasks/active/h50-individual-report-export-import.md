@@ -1,9 +1,23 @@
 # H50 Individual Report Export / Import
 
 **Status:** In progress — export + read-only score-verification import live for `informatica-2016`
-(H50.1–H50.3 + the run-backed export/verify commits done). Remaining: docx (H50.4/H50.6) and the
-other report types (H50.5). See "Superseded design removed" and updated slicing below.
+(H50.1–H50.3 + the run-backed export/verify commits done). DOCX **export** now also live for
+`matematica-2016` (FV Matematică): FIXED_TABLE publications/citations + STACKED_BLOCKS C1–C4_UVT
+(per-item rows, cloning, marker-driven block discovery) + dedicated-indicator totals. Remaining:
+docx **import** (H50.6) and the other report types (H50.5).
 **Created:** 2026-05-13
+
+> **Decision (2026-06-15):** `matematica-2016` is intentionally **export-only for now** — re-parsing a
+> no-formula Word table for read-only verification (H50.6) is deferred. Revisit only if the math report
+> actually needs the upload→verify round-trip.
+
+> **Deferred follow-up (2026-06-15):** per-report **activity-block** description wording. Publication-fed
+> block wording is per-report via `ReportTypeImportSupport.formatBlockPublicationDescription(pub)`;
+> block **columns** (category/score) are already per-report via each binding's `blockColumns` (sources
+> `activity.category` / `activity.score`). The remaining gap is *activity*-fed block descriptions
+> (grants/awards), which still use the projector's generic `buildActivityInstanceDescription`. When a
+> report needs custom activity wording, add a sibling hook `formatBlockActivityDescription(...)`
+> mirroring the publication one (low risk, same pattern). Not built — nothing requires it yet.
 
 ## Purpose
 

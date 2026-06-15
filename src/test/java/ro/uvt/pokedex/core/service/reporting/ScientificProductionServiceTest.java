@@ -135,6 +135,29 @@ class ScientificProductionServiceTest {
     }
 
     @Test
+    void universalSubtypeGateExcludesNonResearchPublicationsForAnyStrategy() {
+        // Strategy intentionally non-CS ("AIS") to prove the gate lives in the shared
+        // orchestrator and applies to every domain's scoring service, not just CS.
+        Indicator indicator = indicator("PUBLICATIONS", "S");
+        ro.uvt.pokedex.core.testsupport.IndicatorTestFixtures.setScoringStrategy(indicator, "AIS");
+
+        ScoringPublication article = publication("p-ar", null, null, "ar", "ar", "Real Article", List.of("a1"));
+        ScoringPublication editorial = publication("p-ed", null, null, "ed", "ed", "An Editorial", List.of("a1"));
+
+        when(scoringFactoryService.getScoringService("AIS")).thenReturn(scoringService);
+        when(scoringService.getScore(article, indicator)).thenReturn(score(8.0));
+
+        Map<String, Score> result = scientificProductionService.calculateScientificProductionScore(
+                List.of(article, editorial), indicator);
+
+        // Editorial is gated before the scorer is consulted; only the article contributes.
+        verify(scoringService, never()).getScore(editorial, indicator);
+        assertEquals(8.0, result.get("Real Article").getAuthorScore(), 0.0001);
+        assertEquals(null, result.get("An Editorial"));
+        assertEquals(8.0, result.get("total").getAuthorScore(), 0.0001);
+    }
+
+    @Test
     void cachedBasePathRespectsFormulaUsingAuthorCountN() {
         Indicator indicator = indicator("CITATIONS", "S * N");
         ScoringPublication cited = publication("cited-1", null, null, null, null, "cited-1", List.of("a1", "a2", "a3"));

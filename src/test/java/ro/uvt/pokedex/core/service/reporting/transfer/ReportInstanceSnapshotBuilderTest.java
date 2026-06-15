@@ -46,7 +46,7 @@ class ReportInstanceSnapshotBuilderTest {
                 activityBlockProjector,
                 registry,
                 userIndicatorResultService,
-                new RunIndicatorSnapshotProjector());
+                new RunIndicatorSnapshotProjector(mock(ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService.class)));
 
         IndividualReport report = report(publicationIndicator("ind-pub"));
         UserIndividualReportRun run = run("run-1", "result-pub");
@@ -94,7 +94,7 @@ class ReportInstanceSnapshotBuilderTest {
                 activityBlockProjector,
                 registry,
                 userIndicatorResultService,
-                new RunIndicatorSnapshotProjector());
+                new RunIndicatorSnapshotProjector(mock(ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService.class)));
 
         IndividualReport report = report(citationIndicator("ind-cit"), CitationRowProjector.ROLE_KEY);
         UserIndividualReportRun run = run("run-1", "result-cit");
@@ -162,7 +162,7 @@ class ReportInstanceSnapshotBuilderTest {
                 activityBlockProjector,
                 registry,
                 userIndicatorResultService,
-                new RunIndicatorSnapshotProjector());
+                new RunIndicatorSnapshotProjector(mock(ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService.class)));
 
         Indicator indicator = publicationIndicator("ind-excluded");
         IndividualReport report = report(indicator, "__not_exported__");
@@ -183,7 +183,7 @@ class ReportInstanceSnapshotBuilderTest {
 
         assertEquals(0, snapshot.getItems().size());
         verify(publicationProjector, never()).project(any(), any(), any());
-        verify(activityBlockProjector, never()).projectAllBlocks(any(), any(), any());
+        verify(activityBlockProjector, never()).projectAllBlocks(any(), any(), any(), any());
     }
 
     private static IndividualReport report(Indicator indicator) {

@@ -11,6 +11,8 @@ import java.util.List;
 public class TemplateBinding {
     private String reportTypeKey;
     private String templateResource;
+    /** Output format this binding drives. Defaults to XLSX for back-compat with existing bindings. */
+    private TemplateFormat templateFormat = TemplateFormat.XLSX;
     private int schemaVersion;
     private List<BindingScalarCell> scalarCells = new ArrayList<>();
     private List<BindingRole> roles = new ArrayList<>();

@@ -47,6 +47,12 @@ public class ComputerScienceScoringService extends AbstractForumScoringService {
             return createEmptyScore();
         }
 
+        if (!PublicationSubtypeSupport.isResearchContribution(publication)) {
+            logger.debug("Skipping non-research subtype '{}' for publication {}",
+                    PublicationSubtypeSupport.resolveSubtype(publication), publication.getId());
+            return createEmptyScore();
+        }
+
         ScholardexForumView forum = publication.getForumId() == null ? null : lookupPort.getForum(publication.getForumId());
         if (forum != null && forum.getAggregationType() != null) {
             return switch (forum.getAggregationType()) {

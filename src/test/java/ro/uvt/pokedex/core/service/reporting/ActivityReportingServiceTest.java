@@ -56,7 +56,7 @@ class ActivityReportingServiceTest {
         ActivityReportingService service = new ActivityReportingService(scoringFactoryService, new ro.uvt.pokedex.core.service.reporting.formula.FormulaEvaluator());
         Indicator indicator = indicator(
                 "GENERIC_ACTIVITY",
-                "B = Buget; X = B < 50000 ? 1 : B < 100000 ? 2 : B < 200000 ? 3 : B < 400000 ? 4 : 5; Rol == 'Membru' ? X : X * 2"
+                "B = Buget; X = B < 50000 ? 1 : B < 100000 ? 2 : B < 200000 ? 3 : B < 500000 ? 4 : 5; Rol == 'Membru' ? X : X * 2"
         );
         ActivityInstance activity = grantActivity("grant-1", Map.of(
                 "Buget", "270000",
@@ -73,6 +73,16 @@ class ActivityReportingServiceTest {
         // strings used to land here. The formula result itself (authorScore=4.0,
         // which depends on Buget=270000 and Rol=Membru) is the proof those
         // variables were bound correctly.
+
+        // CNATDCU perspective d.v boundary: a 450k EUR grant sits in the 200k-499,999
+        // bracket (8|4), NOT the >=500k bracket (10|5). Locks the corrected boundary.
+        ActivityInstance boundaryDirector = grantActivity("grant-2", Map.of(
+                "Buget", "450000",
+                "Rol", "Director",
+                "Nume Proiect", "BOUNDARY"
+        ));
+        assertEquals(8.0,
+                service.calculateActivityScores(List.of(boundaryDirector), indicator).get("grant-2").getAuthorScore());
     }
 
     @Test

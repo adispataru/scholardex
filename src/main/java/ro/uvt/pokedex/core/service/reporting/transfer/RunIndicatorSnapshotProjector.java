@@ -8,17 +8,29 @@ import ro.uvt.pokedex.core.model.reporting.transfer.CitationSnapshotItem;
 import ro.uvt.pokedex.core.model.reporting.transfer.PublicationSnapshotItem;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.BindingKind;
 import ro.uvt.pokedex.core.model.reporting.transfer.binding.TemplateBinding;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.service.application.ScholardexProjectionReadService;
 import ro.uvt.pokedex.core.service.application.model.IndicatorApplyResultDto;
 import ro.uvt.pokedex.core.service.reporting.transfer.projection.CategoryLetterMapper;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
 public class RunIndicatorSnapshotProjector {
+
+    private final ScholardexProjectionReadService projectionRead;
+
+    public RunIndicatorSnapshotProjector(ScholardexProjectionReadService projectionRead) {
+        this.projectionRead = projectionRead;
+    }
 
     public List<PublicationSnapshotItem> projectPublication(IndicatorApplyResultDto result, String roleKey) {
         if (result == null || result.rawGraph() == null) return List.of();
@@ -26,6 +38,8 @@ public class RunIndicatorSnapshotProjector {
         if (!(result.rawGraph().get("scores") instanceof Map<?, ?> scores)) return List.of();
 
         Map<String, Map<?, ?>> publicationsByTitle = publicationsByTitle(result.rawGraph().get("publications"));
+        Map<String, String> authorNames = resolveAuthorNames(publicationsByTitle.values());
+        Map<String, String> forumNames = resolveForumNames(publicationsByTitle.values());
         List<PublicationSnapshotItem> out = new ArrayList<>();
         for (Map.Entry<?, ?> entry : scores.entrySet()) {
             String title = String.valueOf(entry.getKey());
@@ -34,11 +48,8 @@ public class RunIndicatorSnapshotProjector {
             item.setRoleKey(roleKey);
             item.setItemKey(firstNonBlank(asString(value(publication, "id")), title));
             item.setTitle(title);
-            item.setAuthors(formatList(value(publication, "authors")));
-            item.setForumName(firstNonBlank(
-                    asString(value(publication, "forumName")),
-                    asString(value(publication, "publicationName")),
-                    asString(value(publication, "forum"))));
+            item.setAuthors(joinAuthorNames(value(publication, "authors"), authorNames));
+            item.setForumName(resolveForumLabel(publication, forumNames));
             item.setVolumeInfo(asString(value(publication, "volume")));
             item.setYear(extractYear(value(publication, "coverDate")));
             item.setAuthorCount(asInteger(value(publication, "authorCount")));
@@ -48,6 +59,7 @@ public class RunIndicatorSnapshotProjector {
             double authorScore = authorScore(entry.getValue());
             item.setScore(authorScore);
             item.setAuthorScore(authorScore > 0 ? authorScore : score(entry.getValue()));
+            item.setForumScore(score(entry.getValue()));
             out.add(item);
         }
         return out;
@@ -111,7 +123,8 @@ public class RunIndicatorSnapshotProjector {
     public List<ActivitySnapshotItem> projectActivityBlocks(
             IndividualReport report,
             TemplateBinding binding,
-            Map<String, IndicatorApplyResultDto> resultsByIndicatorId) {
+            Map<String, IndicatorApplyResultDto> resultsByIndicatorId,
+            java.util.function.Function<PublicationSnapshotItem, String> pubDescriptionFormatter) {
         Map<String, List<Indicator>> indicatorsByBlock = indicatorsByBlock(report);
         List<ActivitySnapshotItem> out = new ArrayList<>();
         for (var role : binding.getRoles()) {
@@ -128,7 +141,7 @@ public class RunIndicatorSnapshotProjector {
                             item.setActivityName(block.getActivityName());
                             item.setActivityId(indicator.getActivity() != null ? indicator.getActivity().getId() : null);
                             item.setItemKey(block.getActivityName() + ":" + firstNonBlank(pub.getItemKey(), pub.getTitle()));
-                            item.setDescription(formatPublicationDescription(pub));
+                            item.setDescription(pubDescriptionFormatter.apply(pub));
                             item.setCategory(pub.getForumCategoryLetter());
                             item.setScore(pub.getAuthorScore() != null ? pub.getAuthorScore() : 0.0);
                             out.add(item);
@@ -210,19 +223,57 @@ public class RunIndicatorSnapshotProjector {
                         LinkedHashMap::new));
     }
 
-    private String formatPublicationDescription(PublicationSnapshotItem pub) {
-        List<String> parts = new ArrayList<>();
-        if (pub.getTitle() != null && !pub.getTitle().isBlank()) parts.add(pub.getTitle());
-        if (pub.getAuthors() != null && !pub.getAuthors().isBlank()) parts.add(pub.getAuthors());
-        if (pub.getForumName() != null && !pub.getForumName().isBlank()) parts.add(pub.getForumName());
-        String main = String.join(" — ", parts);
-        if (pub.getVolumeInfo() != null && !pub.getVolumeInfo().isBlank()) main += ", " + pub.getVolumeInfo();
-        if (pub.getYear() != null) main += " (" + pub.getYear() + ")";
-        return main;
-    }
-
     private Object value(Map<?, ?> map, String key) {
         return map != null ? map.get(key) : null;
+    }
+
+    // ── Name resolution (rawGraph publications carry author/forum *ids*; resolve to names) ──────
+
+    private Map<String, String> resolveAuthorNames(Collection<Map<?, ?>> pubs) {
+        Set<String> ids = new HashSet<>();
+        for (Map<?, ?> p : pubs) {
+            if (value(p, "authors") instanceof List<?> list) {
+                for (Object o : list) {
+                    if (o != null) ids.add(String.valueOf(o));
+                }
+            }
+        }
+        if (ids.isEmpty()) return Map.of();
+        return projectionRead.findAuthorsByIdIn(ids).stream()
+                .collect(Collectors.toMap(ScholardexAuthorView::getId, ScholardexAuthorView::getName, (a, b) -> a));
+    }
+
+    private Map<String, String> resolveForumNames(Collection<Map<?, ?>> pubs) {
+        Set<String> ids = new HashSet<>();
+        for (Map<?, ?> p : pubs) {
+            String f = asString(value(p, "forum"));
+            if (f != null && !f.isBlank()) ids.add(f);
+        }
+        if (ids.isEmpty()) return Map.of();
+        return projectionRead.findForumsByIdIn(ids).stream()
+                .collect(Collectors.toMap(ScholardexForumView::getId, ScholardexForumView::getPublicationName, (a, b) -> a));
+    }
+
+    private String joinAuthorNames(Object authorsValue, Map<String, String> nameById) {
+        if (!(authorsValue instanceof List<?> list)) return asString(authorsValue);
+        List<String> names = new ArrayList<>();
+        for (Object o : list) {
+            if (o == null) continue;
+            String id = String.valueOf(o);
+            String name = nameById.get(id);
+            names.add(name != null && !name.isBlank() ? name : id);
+        }
+        return String.join(", ", names);
+    }
+
+    private String resolveForumLabel(Map<?, ?> publication, Map<String, String> forumNames) {
+        String direct = firstNonBlank(asString(value(publication, "forumName")),
+                asString(value(publication, "publicationName")));
+        if (direct != null) return direct;
+        String forumId = asString(value(publication, "forum"));
+        if (forumId == null) return null;
+        String name = forumNames.get(forumId);
+        return name != null && !name.isBlank() ? name : forumId;
     }
 
     private String formatList(Object value) {

@@ -200,6 +200,14 @@ public class ScientificProductionService {
             Map<String, Score> cachedBaseScoresByCitingPublicationId,
             ScoreComputationTiming timing
     ) {
+        // Universal subtype gate: only original research contributions carry forum points,
+        // across every domain/strategy. Non-research subtypes (editorial, erratum, note,
+        // letter, …) score nothing whether they are the candidate's own publication
+        // (perspective b) or a citing publication (perspective c).
+        if (!PublicationSubtypeSupport.isResearchContribution(citing)) {
+            return new Score();
+        }
+
         Score baseScore = null;
         long baseScoreLookupNanos = 0L;
         if (cachedBaseScoresByCitingPublicationId != null && citing != null && citing.getId() != null) {
@@ -259,7 +267,11 @@ public class ScientificProductionService {
             if (citingPublication == null || citingPublication.getId() == null || cached.containsKey(citingPublication.getId())) {
                 continue;
             }
-            Score baseScore = scoringService.getScore(citingPublication, indicator);
+            // Mirror the universal subtype gate so non-research citing publications are
+            // cached as zero rather than scored.
+            Score baseScore = PublicationSubtypeSupport.isResearchContribution(citingPublication)
+                    ? scoringService.getScore(citingPublication, indicator)
+                    : new Score();
             cached.put(citingPublication.getId(), copyScore(baseScore));
         }
         return cached;

@@ -49,6 +49,20 @@ public class Indicator {
     private ScoreYearRangeSpec scoreYearRangeSpec;
     private ro.uvt.pokedex.core.model.reporting.scoring.Selector selectorSpec;
 
+    /**
+     * Optional absolute ceiling on this indicator's TOTAL score across all matched items.
+     * Models per-indicator caps from the standard, e.g. Info_D_ix (visiting professor)
+     * "maximum 24 puncte". {@code null} means no cap. Aggregate caps that depend on the
+     * whole-perspective total (the "max 10% of perspective d" rules) cannot be expressed
+     * here — those are a criterion-level concern.
+     */
+    private Integer maxPoints;
+
+    /** Clamp a computed indicator total to {@link #maxPoints} when a cap is configured. */
+    public double applyPointsCap(double total) {
+        return maxPoints == null ? total : Math.min(total, maxPoints.doubleValue());
+    }
+
     // -------------------------------------------------------------------
     // Effective getters and legacy-compat getters. The {@code getEffective*}
     // helpers are the canonical read API; the legacy {@code getOutputType},

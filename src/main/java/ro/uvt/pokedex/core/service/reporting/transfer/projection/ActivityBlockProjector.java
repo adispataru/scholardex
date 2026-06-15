@@ -42,7 +42,8 @@ public class ActivityBlockProjector {
 
     public List<ActivitySnapshotItem> projectAllBlocks(String userEmail,
                                                        IndividualReport report,
-                                                       TemplateBinding binding) {
+                                                       TemplateBinding binding,
+                                                       java.util.function.Function<PublicationSnapshotItem, String> pubDescriptionFormatter) {
         List<ActivitySnapshotItem> out = new ArrayList<>();
         Map<String, List<Indicator>> indicatorsByBlock = buildIndicatorsByBlock(report);
 
@@ -51,7 +52,7 @@ public class ActivityBlockProjector {
             for (BindingBlock block : role.getBlocks()) {
                 List<Indicator> indicators = indicatorsByBlock.getOrDefault(block.getActivityName(), List.of());
                 for (Indicator indicator : indicators) {
-                    out.addAll(projectBlock(userEmail, indicator, role.getRoleKey(), block));
+                    out.addAll(projectBlock(userEmail, indicator, role.getRoleKey(), block, pubDescriptionFormatter));
                 }
             }
         }
@@ -85,12 +86,13 @@ public class ActivityBlockProjector {
     }
 
     private List<ActivitySnapshotItem> projectBlock(String userEmail, Indicator indicator,
-                                                    String roleKey, BindingBlock block) {
+                                                    String roleKey, BindingBlock block,
+                                                    java.util.function.Function<PublicationSnapshotItem, String> pubDescriptionFormatter) {
         // H52 slice 11d.2: dispatch on typed kind. Publication- and activity-shaped
         // indicators take separate code paths; citations have no projection support
         // here (the legacy enum's CITATIONS_* cases fell through the default arm).
         if (indicator.isPublicationOutput()) {
-            return projectPublicationRawGraph(userEmail, indicator, roleKey, block);
+            return projectPublicationRawGraph(userEmail, indicator, roleKey, block, pubDescriptionFormatter);
         }
         if (indicator.isActivityOutput()) {
             return projectActivityRawGraph(userEmail, indicator, roleKey, block);
@@ -101,7 +103,8 @@ public class ActivityBlockProjector {
     }
 
     private List<ActivitySnapshotItem> projectPublicationRawGraph(String userEmail, Indicator indicator,
-                                                                  String roleKey, BindingBlock block) {
+                                                                  String roleKey, BindingBlock block,
+                                                                  java.util.function.Function<PublicationSnapshotItem, String> pubDescriptionFormatter) {
         // Delegate to PublicationRowProjector so the description (C), category (H) and score (K)
         // all come from the same Score object — avoids any title-key drift between this projector
         // and a re-fetched rawGraph.
@@ -113,22 +116,12 @@ public class ActivityBlockProjector {
             item.setActivityName(block.getActivityName());
             item.setActivityId(indicator.getActivity() != null ? indicator.getActivity().getId() : null);
             item.setItemKey(block.getActivityName() + ":" + (pub.getItemKey() != null ? pub.getItemKey() : pub.getTitle()));
-            item.setDescription(formatPublicationDescription(pub));
+            item.setDescription(pubDescriptionFormatter.apply(pub));
             item.setCategory(pub.getForumCategoryLetter());
             item.setScore(pub.getAuthorScore() != null ? pub.getAuthorScore() : 0.0);
             out.add(item);
         }
         return out;
-    }
-
-    private String formatPublicationDescription(PublicationSnapshotItem pub) {
-        StringBuilder sb = new StringBuilder();
-        if (pub.getTitle() != null && !pub.getTitle().isBlank()) sb.append(pub.getTitle());
-        if (pub.getAuthors() != null && !pub.getAuthors().isBlank()) sb.append(" — ").append(pub.getAuthors());
-        if (pub.getForumName() != null && !pub.getForumName().isBlank()) sb.append(" — ").append(pub.getForumName());
-        if (pub.getVolumeInfo() != null && !pub.getVolumeInfo().isBlank()) sb.append(", ").append(pub.getVolumeInfo());
-        if (pub.getYear() != null) sb.append(" (").append(pub.getYear()).append(')');
-        return sb.toString();
     }
 
     private List<ActivitySnapshotItem> projectActivityRawGraph(String userEmail, Indicator indicator,

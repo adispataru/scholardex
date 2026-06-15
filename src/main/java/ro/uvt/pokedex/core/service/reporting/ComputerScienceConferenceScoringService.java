@@ -567,7 +567,45 @@ public class ComputerScienceConferenceScoringService extends AbstractForumScorin
         }
         registerWorkshopAcronymCandidates(candidates, publicationName);
         registerTrailingTitleCasedAcronymCandidate(candidates, publicationName);
+        registerConcatenatedShortNameAcronymCandidate(candidates, publicationName);
         return new ArrayList<>(candidates.values());
+    }
+
+    /**
+     * Scopus emits conference venues as {@code "Proceedings - YYYY <Full Name>, <Short Name> YYYY"}.
+     * When the short name is a multi-word acronym spelled with spaces (e.g. CORE acronym {@code "BigData"}
+     * appearing as {@code "Big Data"}), neither the per-token acronym lookup nor the exact normalized-title
+     * lookup can match it. Concatenate the leading run of strict title-cased words in the trailing
+     * comma fragment so the collapsed form ({@code "BigData"}) is offered as an acronym candidate; the
+     * existing confidence scoring still requires the ranking name to match, so this cannot upgrade a
+     * venue on the acronym alone.
+     */
+    private void registerConcatenatedShortNameAcronymCandidate(Map<String, AcronymCandidate> candidates, String publicationName) {
+        if (publicationName == null) {
+            return;
+        }
+        int lastComma = publicationName.lastIndexOf(',');
+        if (lastComma < 0 || lastComma + 1 >= publicationName.length()) {
+            return;
+        }
+        String trailingFragment = publicationName.substring(lastComma + 1).trim();
+        if (trailingFragment.isBlank()) {
+            return;
+        }
+        StringBuilder concatenated = new StringBuilder();
+        int wordCount = 0;
+        for (String token : trailingFragment.split("\\s+")) {
+            String stripped = token.replaceAll("^[^A-Za-z0-9]+|[^A-Za-z0-9]+$", "");
+            if (!isStrictTitleCaseWord(stripped)) {
+                break;
+            }
+            concatenated.append(stripped);
+            wordCount++;
+        }
+        if (wordCount < 2 || concatenated.length() > 12) {
+            return;
+        }
+        registerCandidate(candidates, normalizeAcronymToken(concatenated.toString()), AcronymSource.LAST_COMMA_FRAGMENT);
     }
 
     private void registerWorkshopAcronymCandidates(Map<String, AcronymCandidate> candidates, String publicationName) {

@@ -83,17 +83,33 @@ class ComputerScienceBookServiceTest {
     }
 
     @Test
-    void unlistedSenseRankingUsesEnumSafeNonRankCategory() {
+    void dRankSenseBookScoresTwoPointsAsCategoryD() {
+        // CNATDCU perspective d.i: authored/edited book of SENSE category D/E/unlisted = 2p
+        // (a chapter of the same category becomes 1p via the "ch" halving).
         ComputerScienceBookService service = new ComputerScienceBookService(senseRankingRepository, lookupPort);
         when(lookupPort.getForum("forum-1")).thenReturn(forumWithPublisher("Unlisted Publisher"));
         when(senseRankingRepository.findAllByNameIgnoreCase("Unlisted Publisher")).thenReturn(List.of(ranking(SenseBookRanking.Rank.D)));
 
         Score score = service.getScore(publication("bk", null), indicator());
 
-        assertEquals(1.0, score.getScore());
-        assertEquals("NON_RANK", score.getCoreRankingEquivalent());
+        assertEquals(2.0, score.getScore());
+        assertEquals("D", score.getCoreRankingEquivalent());
         assertEquals("SCOPUS+SENSE", score.getScoringSource());
         assertEquals("D", score.getScoringInfo().get("resolvedRank"));
+    }
+
+    @Test
+    void dRankSenseChapterScoresOnePointAfterHalving() {
+        // The same SENSE category D for a chapter ("ch") halves the book score: 2p -> 1p.
+        ComputerScienceBookService service = new ComputerScienceBookService(senseRankingRepository, lookupPort);
+        when(lookupPort.getForum("forum-1")).thenReturn(forumWithPublisher("Unlisted Publisher"));
+        when(senseRankingRepository.findAllByNameIgnoreCase("Unlisted Publisher")).thenReturn(List.of(ranking(SenseBookRanking.Rank.D)));
+
+        Score score = service.getScore(publication("ch", "ch"), indicator());
+
+        assertEquals(1.0, score.getScore());
+        assertEquals("D", score.getCoreRankingEquivalent());
+        assertEquals("SCOPUS+SENSE", score.getScoringSource());
     }
 
     @Test

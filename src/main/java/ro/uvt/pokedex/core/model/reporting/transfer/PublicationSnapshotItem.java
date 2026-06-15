@@ -27,6 +27,9 @@ public class PublicationSnapshotItem implements SnapshotItem {
      *  import score-verification comparison; not written to any template cell. */
     private Double score;
     private Double authorScore;
+    /** Base/forum score before the per-author division (Score.getScore()). For templates that show
+     *  both the journal score (si) and the per-author contribution (si/ni = authorScore). */
+    private Double forumScore;
 
     @Override
     public String entityType() {

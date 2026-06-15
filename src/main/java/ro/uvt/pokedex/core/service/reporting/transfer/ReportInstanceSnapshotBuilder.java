@@ -74,7 +74,11 @@ public class ReportInstanceSnapshotBuilder {
 
             switch (roleKey) {
                 case PublicationRowProjector.ROLE_JOURNAL,
-                     PublicationRowProjector.ROLE_CONFERENCE -> {
+                     PublicationRowProjector.ROLE_CONFERENCE,
+                     PublicationRowProjector.ROLE_JOURNAL_RECENT -> {
+                    // ROLE_JOURNAL_RECENT carries its items (tagged with the role) so a no-formula
+                    // template can mark which publications are "recent" and total them separately;
+                    // the renderer is responsible for not listing them as duplicate rows.
                     List<PublicationSnapshotItem> items = useRunResults
                             ? runProjector.projectPublication(runResultsByIndicatorId.get(indicator.getId()), roleKey)
                             : publicationProjector.project(userEmail, indicator, roleKey);
@@ -101,15 +105,49 @@ public class ReportInstanceSnapshotBuilder {
             registry.find(report.getReportTypeKey()).ifPresent(support -> {
                 if (useRunResults) {
                     snapshot.getItems().addAll(
-                            runProjector.projectActivityBlocks(report, support.binding(), runResultsByIndicatorId));
+                            runProjector.projectActivityBlocks(report, support.binding(), runResultsByIndicatorId,
+                                    support::formatBlockPublicationDescription));
                 } else {
                     snapshot.getItems().addAll(
-                            activityBlockProjector.projectAllBlocks(userEmail, report, support.binding()));
+                            activityBlockProjector.projectAllBlocks(userEmail, report, support.binding(),
+                                    support::formatBlockPublicationDescription));
                 }
             });
         }
 
+        populateTotals(snapshot, run, report);
         return snapshot;
+    }
+
+    /**
+     * Per-role / per-block totals from the run's dedicated indicator scores, for no-formula (DOCX)
+     * templates. Keyed by activity block name when the indicator maps to a block, otherwise by its
+     * role key. Each role/block accumulates the scores of the indicators mapped to it — so e.g. the
+     * recent-publications role total comes from its own indicator, distinct from the all-publications
+     * role. XLSX templates ignore this (their formulas compute totals).
+     */
+    private void populateTotals(ReportInstanceSnapshot snapshot, UserIndividualReportRun run, IndividualReport report) {
+        if (run == null || run.getIndicatorScoresByIndicatorId() == null
+                || report.getIndicators() == null || report.getIndicatorRolesByIndicatorId() == null) {
+            return;
+        }
+        Map<String, String> roles = report.getIndicatorRolesByIndicatorId();
+        Map<String, String> blocks = report.getBlockByIndicatorId();
+        Map<String, Double> scores = run.getIndicatorScoresByIndicatorId();
+        for (Indicator indicator : report.getIndicators()) {
+            if (indicator == null || indicator.getId() == null) continue;
+            String role = roles.get(indicator.getId());
+            if (role == null || role.isBlank() || ReportExportReadinessValidator.isExcludedFromTemplate(role)) continue;
+            String block = blocks != null ? blocks.get(indicator.getId()) : null;
+            boolean blockUsable = block != null && !block.isBlank()
+                    && !ReportExportReadinessValidator.isExcludedFromTemplate(block);
+            String key = blockUsable ? block : role;
+            // Enforce the per-indicator cap (e.g. Info_D_ix "maximum 24 puncte") at the snapshot
+            // boundary too, so the exported total honours it independently of the upstream run
+            // score, and each indicator's contribution is capped before it is summed into a block.
+            double score = indicator.applyPointsCap(scores.getOrDefault(indicator.getId(), 0.0));
+            snapshot.getTotals().merge(key, score, Double::sum);
+        }
     }
 
     private Map<String, IndicatorApplyResultDto> runResultsByIndicatorId(UserIndividualReportRun run) {

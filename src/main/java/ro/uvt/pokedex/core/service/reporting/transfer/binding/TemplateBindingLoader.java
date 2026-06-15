@@ -64,6 +64,12 @@ public class TemplateBindingLoader {
             throw new IllegalStateException(bindingResourcePath + ": templateResource is required");
         }
 
+        if (binding.getTemplateFormat()
+                == ro.uvt.pokedex.core.model.reporting.transfer.binding.TemplateFormat.DOCX) {
+            validateDocx(binding, bindingResourcePath);
+            return;
+        }
+
         Resource template = resolveResource(binding.getTemplateResource());
         try (InputStream in = template.getInputStream();
              Workbook workbook = WorkbookFactory.create(in)) {
@@ -71,6 +77,41 @@ public class TemplateBindingLoader {
             validateRoles(binding, workbook, bindingResourcePath);
         } catch (IOException e) {
             throw new IllegalStateException(bindingResourcePath + ": failed to open template "
+                    + binding.getTemplateResource(), e);
+        }
+    }
+
+    /**
+     * Fail-fast validation for DOCX bindings: roles unique with a kind, the Word template opens,
+     * and every role's {@code tableIndex} (when set) is in range. Cell addressing is 0-based-index
+     * based and bounds-checked by the renderer.
+     */
+    private void validateDocx(TemplateBinding binding, String src) {
+        Set<String> seen = new HashSet<>();
+        for (BindingRole role : binding.getRoles()) {
+            if (isBlank(role.getRoleKey())) {
+                throw new IllegalStateException(src + ": role missing roleKey");
+            }
+            if (!seen.add(role.getRoleKey())) {
+                throw new IllegalStateException(src + ": duplicate roleKey '" + role.getRoleKey() + "'");
+            }
+            if (role.getKind() == null) {
+                throw new IllegalStateException(src + ": role '" + role.getRoleKey() + "' missing kind");
+            }
+        }
+        Resource template = resolveResource(binding.getTemplateResource());
+        try (InputStream in = template.getInputStream();
+             org.apache.poi.xwpf.usermodel.XWPFDocument doc = new org.apache.poi.xwpf.usermodel.XWPFDocument(in)) {
+            int tableCount = doc.getTables().size();
+            for (BindingRole role : binding.getRoles()) {
+                Integer ti = role.getTableIndex();
+                if (ti != null && (ti < 0 || ti >= tableCount)) {
+                    throw new IllegalStateException(src + ": role '" + role.getRoleKey()
+                            + "' tableIndex " + ti + " out of range (template has " + tableCount + " tables)");
+                }
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException(src + ": failed to open DOCX template "
                     + binding.getTemplateResource(), e);
         }
     }

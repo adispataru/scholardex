@@ -66,6 +66,8 @@ class ResearcherReportControllerContractTest {
     private UserIndividualReportRunRepository userIndividualReportRunRepository; // assembler dependency
     @MockitoBean
     private ro.uvt.pokedex.core.service.reporting.transfer.ReportExportFacade reportExportFacade;
+    @MockitoBean
+    private ro.uvt.pokedex.core.service.reporting.transfer.ReportImportRegistry reportImportRegistry; // assembler dep
 
     private IndividualReport report() {
         Indicator ind = new Indicator();

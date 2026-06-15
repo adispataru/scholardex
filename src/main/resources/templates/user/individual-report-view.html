@@ -83,10 +83,10 @@
                     <!-- Delegated actions: export (read-only) + refresh (attributed recompute) -->
                     <div class="app-dashboard__actions" th:if="${delegated}">
                         <a th:if="${report.reportTypeKey != null and !#strings.isEmpty(report.reportTypeKey)}"
-                           th:href="@{/reports/researcher/{e}/report/{r}/export(e=${delegatedSubjectEmail},r=${report.id},format='XLSX',run=${runMetaId})}"
+                           th:href="@{/reports/researcher/{e}/report/{r}/export(e=${delegatedSubjectEmail},r=${report.id},format=${exportFormat},run=${runMetaId})}"
                            class="btn btn-sm btn-outline-secondary"
-                           title="Download this researcher's report as Excel">
-                            <i class="fa-solid fa-file-excel fa-sm" aria-hidden="true"></i> Export to Excel
+                           th:title="'Download this researcher''s report as ' + ${exportFormatLabel}">
+                            <i class="fa-solid fa-file-export fa-sm" aria-hidden="true"></i> <span th:text="'Export to ' + ${exportFormatLabel}">Export</span>
                         </a>
                         <form th:action="@{/reports/researcher/{e}/report/{r}/refresh(e=${delegatedSubjectEmail},r=${report.id})}" method="post">
                             <button type="submit" class="btn btn-sm btn-outline-primary">
@@ -115,10 +115,10 @@
                             <i class="fa-solid fa-layer-group fa-sm" aria-hidden="true"></i> My Snapshots
                         </button>
                         <a th:if="${report.reportTypeKey != null and !#strings.isEmpty(report.reportTypeKey)}"
-                           th:href="@{/user/evaluation/export(report=${report.id},run=${runMetaId},format='XLSX')}"
+                           th:href="@{/user/evaluation/export(report=${report.id},run=${runMetaId},format=${exportFormat})}"
                            class="btn btn-sm btn-outline-secondary"
-                           title="Download this report as Excel">
-                            <i class="fa-solid fa-file-excel fa-sm" aria-hidden="true"></i> Export to Excel
+                           th:title="'Download this report as ' + ${exportFormatLabel}">
+                            <i class="fa-solid fa-file-export fa-sm" aria-hidden="true"></i> <span th:text="'Export to ' + ${exportFormatLabel}">Export</span>
                         </a>
                         <a th:if="${importAvailable == true}"
                            th:href="@{/user/evaluation/import(report=${report.id},run=${runMetaId})}"

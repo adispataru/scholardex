@@ -194,6 +194,27 @@ class ComputerScienceScoringServiceTest {
     }
 
     @Test
+    void nonResearchSubtypeInJournalForumIsRejectedAndScoresNothing() {
+        ComputerScienceScoringService service = new ComputerScienceScoringService(
+                journalScoringService,
+                conferenceScoringService,
+                bookScoringService,
+                cacheService
+        );
+
+        // An editorial ("ed") sitting in a Journal forum must NOT inherit the journal
+        // scoring path — only original contributions (ar/re/cp/ch/bk) are scored.
+        ScoringPublication publication = publication("p-ed-1", "forum-ed", "ed", "ed");
+
+        Score score = service.getScore(publication, new Indicator());
+
+        assertEquals(0.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.NON_RANK.toString(), score.getCoreRankingEquivalent());
+        // Rejected before forum lookup or any delegate is consulted.
+        verifyNoInteractions(journalScoringService, conferenceScoringService, bookScoringService);
+    }
+
+    @Test
     void lncsBookSeriesKeepsConferenceDispatchForConferencePaperSubtype() {
         ComputerScienceScoringService service = new ComputerScienceScoringService(
                 journalScoringService,

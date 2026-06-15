@@ -384,6 +384,11 @@ public class UserReportFacade {
                         .score();
             }
 
+            // Per-indicator absolute cap (e.g. Info_D_ix visiting-professor "maximum 24 puncte").
+            // Applied at the single point where all output types converge, so it governs the
+            // official indicator score and the criterion thresholds computed below.
+            indicatorScore = indicator.applyPointsCap(indicatorScore);
+
             indicatorScores.put(indicator, indicatorScore);
             indicatorScoresByIndicatorId.put(indicator.getId(), indicatorScore);
             reportScopedIndicatorResultsByIndicatorId.put(

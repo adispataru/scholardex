@@ -44,6 +44,38 @@ class ComputerScienceConferenceScoringServiceSubtypeTest {
         org.mockito.Mockito.lenient().when(cacheService.maxAvailableYear()).thenReturn(2023);
     }
     @Test
+    void resolvesScopusBigDataProceedingsForumToCoreRankViaConcatenatedShortName() {
+        ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
+
+        // Real Scopus forum string for "IEEE International Conference on Big Data" (CORE acronym "BigData").
+        // The acronym "BigData" appears as two words ("Big Data") and the long name is duplicated in the
+        // trailing "<Short Name> <year>" fragment, defeating both acronym and exact-title lookups.
+        ScoringPublication publication = conferencePublication("forum-bigdata", "2020-12-10");
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("Proceedings - 2020 IEEE International Conference on Big Data, Big Data 2020");
+        when(cacheService.getForum("forum-bigdata")).thenReturn(forum);
+        when(cacheService.getConferenceRankings(anyString())).thenReturn(List.of());
+
+        CoreConferenceRanking ranking = new CoreConferenceRanking();
+        ranking.setId("BigData-IEEE International Conference on Big Data");
+        ranking.setAcronym("BigData");
+        ranking.setName("IEEE International Conference on Big Data");
+        CoreConferenceRanking.YearlyRanking rank2021 = new CoreConferenceRanking.YearlyRanking();
+        rank2021.setRank(CoreConferenceRanking.Rank.B);
+        CoreConferenceRanking.YearlyRanking rank2023 = new CoreConferenceRanking.YearlyRanking();
+        rank2023.setRank(CoreConferenceRanking.Rank.B);
+        ranking.setYearlyRankings(Map.of(2021, rank2021, 2023, rank2023));
+        when(cacheService.getConferenceRankings("BIGDATA")).thenReturn(List.of(ranking));
+
+        Score score = service.getScore(publication, indicator("IY"));
+
+        assertEquals(4.0, score.getScore());
+        assertEquals(CoreConferenceRanking.Rank.B.toString(), score.getCoreRankingEquivalent());
+        assertEquals("SCOPUS+CORE", score.getScoringSource());
+        assertEquals("BigData", score.getScoringInfo().get("matchedAcronym"));
+    }
+
+    @Test
     void usesScopusSubtypeFallbackForConferenceBranch() {
         ComputerScienceConferenceScoringService service = new ComputerScienceConferenceScoringService(cacheService);
 

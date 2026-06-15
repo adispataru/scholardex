@@ -1,10 +1,12 @@
 package ro.uvt.pokedex.core.service.reporting.transfer;
 
+import ro.uvt.pokedex.core.model.reporting.transfer.PublicationSnapshotItem;
 import ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat;
 import ro.uvt.pokedex.core.model.reporting.transfer.ReportInstanceSnapshot;
 import ro.uvt.pokedex.core.model.reporting.transfer.SnapshotItem;
 
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -38,4 +40,26 @@ public interface ReportTypeImportSupport {
     byte[] render(ReportInstanceSnapshot snapshot, ReportFormat format);
 
     List<SnapshotItem> parse(InputStream input, ReportFormat format);
+
+    /**
+     * Formats the one-line description for a publication-fed STACKED_BLOCKS item (e.g. the C4_UVT
+     * "Publicaţii" rows). The default order is {@code Title — Authors — Forum, vol (year)}; report
+     * types whose template fixes a different order (e.g. FV Matematică's "Autori, titlu, revistă,
+     * vol. (anul)") override this. Called by the block projectors at projection time so the rendered
+     * snapshot already carries the per-report wording.
+     */
+    default String formatBlockPublicationDescription(PublicationSnapshotItem pub) {
+        List<String> parts = new ArrayList<>();
+        if (notBlank(pub.getTitle())) parts.add(pub.getTitle());
+        if (notBlank(pub.getAuthors())) parts.add(pub.getAuthors());
+        if (notBlank(pub.getForumName())) parts.add(pub.getForumName());
+        String main = String.join(" — ", parts);
+        if (notBlank(pub.getVolumeInfo())) main += ", " + pub.getVolumeInfo();
+        if (pub.getYear() != null) main += " (" + pub.getYear() + ")";
+        return main;
+    }
+
+    private static boolean notBlank(String s) {
+        return s != null && !s.isBlank();
+    }
 }

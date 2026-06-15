@@ -120,8 +120,9 @@ public class ComputerScienceBookService extends AbstractForumScoringService {
                 score.setCoreRankingEquivalent("C");
             }
             default -> {
-                score.setScore(1.0);
-                score.setCoreRankingEquivalent("NON_RANK");
+                // SENSE D/E/unlisted: authored/edited book = 2p (chapter becomes 1p after the "ch" halving above).
+                score.setScore(2.0);
+                score.setCoreRankingEquivalent("D");
             }
         }
         Map<String, Object> scoringInfo = new LinkedHashMap<>();

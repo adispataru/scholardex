@@ -21,6 +21,31 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 class IndicatorEffectiveAccessorsTest {
 
+    // ---------- Per-indicator points cap ----------
+
+    @Test
+    void applyPointsCapReturnsTotalUnchangedWhenNoCapConfigured() {
+        Indicator ind = new Indicator();
+        assertNull(ind.getMaxPoints());
+        assertEquals(40.0, ind.applyPointsCap(40.0));
+    }
+
+    @Test
+    void applyPointsCapClampsTotalToMaxPoints() {
+        Indicator ind = new Indicator();
+        ind.setMaxPoints(24);
+        // Info_D_ix: visiting-professor total above the "maximum 24 puncte" ceiling is clamped.
+        assertEquals(24.0, ind.applyPointsCap(36.0));
+    }
+
+    @Test
+    void applyPointsCapLeavesTotalsBelowTheCapUntouched() {
+        Indicator ind = new Indicator();
+        ind.setMaxPoints(24);
+        assertEquals(16.0, ind.applyPointsCap(16.0));
+        assertEquals(24.0, ind.applyPointsCap(24.0));
+    }
+
     // ---------- Effective kind ----------
 
     @Test

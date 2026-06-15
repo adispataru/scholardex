@@ -6,9 +6,11 @@ import org.springframework.ui.Model;
 import ro.uvt.pokedex.core.model.reporting.AbstractReport;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.IndividualReport;
+import ro.uvt.pokedex.core.model.reporting.transfer.ReportFormat;
 import ro.uvt.pokedex.core.model.user.User;
 import ro.uvt.pokedex.core.repository.reporting.UserIndividualReportRunRepository;
 import ro.uvt.pokedex.core.service.application.model.IndividualReportRunDto;
+import ro.uvt.pokedex.core.service.reporting.transfer.ReportImportRegistry;
 
 import java.util.HashMap;
 import java.util.List;
@@ -30,6 +32,7 @@ import java.util.Optional;
 public class IndividualReportViewModelAssembler {
 
     private final UserIndividualReportRunRepository userIndividualReportRunRepository;
+    private final ReportImportRegistry reportImportRegistry;
 
     public void populate(Model model,
                          User researcher,
@@ -114,5 +117,20 @@ public class IndividualReportViewModelAssembler {
         model.addAttribute("runMetaTriggeredBy", run.triggeredByEmail());
         model.addAttribute("priorRuns", priorRuns);
         model.addAttribute("user", researcher);
+
+        // Export format the report type drives (XLSX → "Excel", DOCX → "Word"), so the export
+        // action labels/links correctly instead of hardcoding xlsx.
+        ReportFormat exportFormat = resolveExportFormat(report);
+        model.addAttribute("exportFormat", exportFormat.name());
+        model.addAttribute("exportFormatLabel", exportFormat == ReportFormat.DOCX ? "Word" : "Excel");
+    }
+
+    private ReportFormat resolveExportFormat(IndividualReport report) {
+        return reportImportRegistry.find(report.getReportTypeKey())
+                .map(s -> s.supportedExportFormats())
+                .filter(formats -> !formats.isEmpty())
+                // Prefer XLSX when a type supports both; otherwise the single declared format.
+                .map(formats -> formats.contains(ReportFormat.XLSX) ? ReportFormat.XLSX : formats.iterator().next())
+                .orElse(ReportFormat.XLSX);
     }
 }

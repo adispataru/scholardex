@@ -38,6 +38,9 @@ public class PublicationRowProjector {
 
     public static final String ROLE_JOURNAL = "journal-publications";
     public static final String ROLE_CONFERENCE = "conference-publications";
+    /** Recent-subset publications role: contributes a separate total (e.g. Srecent) and marks which
+     *  publications are recent; its rows are not rendered separately (the main role lists them). */
+    public static final String ROLE_JOURNAL_RECENT = "journal-publications-recent";
 
     private final EffectiveAuthorshipReadService authorshipRead;
     private final ScholardexProjectionReadService projectionRead;
@@ -106,6 +109,7 @@ public class PublicationRowProjector {
             // indicator's MVEL formula evaluated in ScientificProductionService).
             double authorScore = score.getAuthorScore();
             item.setAuthorScore(authorScore > 0 ? authorScore : score.getScore());
+            item.setForumScore(score.getScore());
             out.add(item);
         }
         return out;

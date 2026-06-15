@@ -1,0 +1,66 @@
+{
+  "reportTypeKey": "matematica-2016",
+  "templateResource": "classpath:report-templates/matematica-2016/template.docx",
+  "templateFormat": "DOCX",
+  "schemaVersion": 1,
+  "roles": [
+    {
+      "roleKey": "journal-publications-recent",
+      "kind": "FIXED_TABLE"
+    },
+    {
+      "roleKey": "journal-publications",
+      "kind": "FIXED_TABLE",
+      "tableIndex": 0,
+      "firstDataRow": 1,
+      "maxRows": 3,
+      "columns": {
+        "1": { "policy": "WRITE", "source": "publication.reference" },
+        "2": { "policy": "WRITE", "source": "publication.recentFlag" },
+        "3": { "policy": "WRITE_SCORE", "source": "publication.forumScore" },
+        "4": { "policy": "WRITE", "source": "publication.authorCount" },
+        "5": { "policy": "WRITE_SCORE", "source": "publication.authorScore" }
+      },
+      "docxTotals": [
+        { "marker": "S =", "totalKey": "journal-publications", "equalsIndex": 0 },
+        { "marker": "Srecent", "totalKey": "journal-publications-recent", "equalsIndex": 1 }
+      ]
+    },
+    {
+      "roleKey": "citations-per-publication",
+      "kind": "FIXED_TABLE",
+      "tableIndex": 1,
+      "firstDataRow": 1,
+      "maxRows": 2,
+      "columns": {
+        "1": { "policy": "WRITE", "source": "citation.citedTitle" },
+        "2": { "policy": "WRITE", "source": "citation.citingList" },
+        "3": { "policy": "WRITE_SCORE", "source": "citation.score" }
+      },
+      "docxTotals": [
+        { "marker": "C =", "totalKey": "citations-per-publication", "equalsIndex": 0 }
+      ]
+    },
+    {
+      "roleKey": "indicatori-suplimentari-uvt",
+      "kind": "STACKED_BLOCKS",
+      "tableIndex": 2,
+      "groupingKey": "activity.activityName",
+      "blockColumns": {
+        "1": { "policy": "WRITE", "source": "activity.description" }
+      },
+      "blocks": [
+        { "activityName": "C1_UVT" },
+        { "activityName": "C2_UVT" },
+        { "activityName": "C3_UVT" },
+        { "activityName": "C4_UVT" }
+      ],
+      "docxTotals": [
+        { "marker": "Total punctaj C1_UVT", "totalKey": "C1_UVT" },
+        { "marker": "Total punctaj C2_UVT", "totalKey": "C2_UVT" },
+        { "marker": "Total punctaj C3_UVT", "totalKey": "C3_UVT" },
+        { "marker": "Total punctaj C4_UVT", "totalKey": "C4_UVT" }
+      ]
+    }
+  ]
+}
