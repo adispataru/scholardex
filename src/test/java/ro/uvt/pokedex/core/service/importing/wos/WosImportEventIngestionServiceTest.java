@@ -110,6 +110,38 @@ class WosImportEventIngestionServiceTest {
     }
 
     @Test
+    void ingestMjlDirectoryImportsEditionEventsAndSkipsMatrix() throws Exception {
+        Path dir = Files.createTempDirectory("mjl");
+        Files.writeString(dir.resolve("Science Citation Index Expanded (SCIE) (1).csv"),
+                "\"Journal title\",\"ISSN\",\"eISSN\",\"Publisher name\",\"Publisher address\",\"Languages\",\"Web of Science Categories\"\n"
+                        + "\"Journal of Things\",\"1234-5678\",\"8765-4321\",\"Elsevier\",\"addr\",\"English\",\"COMPUTER SCIENCE\"\n"
+                        + "\"E-Only Journal\",\"\",\"2222-0000\",\"MDPI\",\"addr\",\"English\",\"PHYSICS\"\n");
+        // The JCR matrix file (no edition token in its name, no ISSN) must be skipped entirely.
+        Files.writeString(dir.resolve("JCR 2025.csv"), "Title20,Title,Country,SCIE,SSCI,AHCI,ESCI\nX,X,US,1,0,0,0\n");
+
+        EventStore store = new EventStore();
+        WosImportEventRepository repository = repositoryMock(store);
+        WosImportEventIngestionService service = newService(repository);
+
+        ImportProcessingResult result = service.ingestMjlDirectory(dir.toString(), "2025");
+
+        assertEquals(2, result.getProcessedCount()); // 2 SCIE rows; JCR matrix skipped
+        assertEquals(2, result.getImportedCount());
+        assertEquals(0, result.getErrorCount());
+        assertTrue(store.containsSourceType(WosSourceType.MJL_COVERAGE));
+
+        WosImportEvent ev = store.get(WosSourceType.MJL_COVERAGE,
+                "Science Citation Index Expanded (SCIE) (1).csv", "2025", "1234-5678|SCIE");
+        assertNotNull(ev);
+        assertEquals("mjl-csv-row", ev.getPayloadFormat());
+        assertTrue(ev.getPayload().contains("SCIE"));
+        assertTrue(ev.getPayload().contains("Journal of Things"));
+        // eISSN-only row is keyed by eISSN.
+        assertNotNull(store.get(WosSourceType.MJL_COVERAGE,
+                "Science Citation Index Expanded (SCIE) (1).csv", "2025", "2222-0000|SCIE"));
+    }
+
+    @Test
     void rerunIsIdempotentAndChangesProduceUpdates() throws Exception {
         Path dir = Files.createTempDirectory("wos-events-rerun");
         Path ais = dir.resolve("AIS_2024.xlsx");

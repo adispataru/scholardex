@@ -94,8 +94,6 @@ class WosScholardexOnboardingServiceTest {
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of());
-        when(sourceLinkService.findByKey(
-                ScholardexEntityType.FORUM, "WOS", "wos-j-1")).thenReturn(Optional.empty());
         when(scholardexForumFactRepository.save(any(ScholardexForumFact.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -127,7 +125,6 @@ class WosScholardexOnboardingServiceTest {
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of());
-        when(sourceLinkService.findByKey(ScholardexEntityType.FORUM, "WOS", "wos-j-dup")).thenReturn(Optional.empty());
         when(scholardexForumFactRepository.save(any(ScholardexForumFact.class)))
                 .thenThrow(new DuplicateKeyException(
                         "E11000 duplicate key error collection: scholardex.forum_facts index: uniq_scholardex_forum_scopus_id"));
@@ -221,7 +218,6 @@ class WosScholardexOnboardingServiceTest {
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of(f1, f2));
         when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of());
-        when(sourceLinkService.findByKey(ScholardexEntityType.FORUM, "WOS", "wos-j-amb")).thenReturn(Optional.empty());
         when(scholardexIdentityConflictRepository.findByEntityTypeAndIncomingSourceAndIncomingSourceRecordIdAndReasonCodeAndStatus(
                 eq(ScholardexEntityType.FORUM), eq("WOS"), eq("wos-j-amb"), eq("AMBIGUOUS_ISSN_MATCH"), eq("OPEN")
         )).thenReturn(Optional.empty());
@@ -229,10 +225,13 @@ class WosScholardexOnboardingServiceTest {
         ImportProcessingResult result = service.runWosOnboarding("batch-1", "corr-1");
 
         assertEquals(1, result.getSkippedCount());
-        verify(sourceLinkService).markConflict(
-                eq(ScholardexEntityType.FORUM), eq("WOS"), eq("wos-j-amb"), eq("AMBIGUOUS_ISSN_MATCH"),
-                isNull(), eq("batch-1"), eq("corr-1"), eq(false)
-        );
+        // H66: the conflict source-link is batched as a CONFLICT command via batchUpsertWithState.
+        verify(sourceLinkService).batchUpsertWithState(
+                argThat(cmds -> cmds.stream().anyMatch(c ->
+                        c.entityType() == ScholardexEntityType.FORUM && "WOS".equals(c.source())
+                                && "wos-j-amb".equals(c.sourceRecordId()) && "AMBIGUOUS_ISSN_MATCH".equals(c.reason())
+                                && "CONFLICT".equals(c.targetState()))),
+                any());
         verify(scholardexIdentityConflictRepository).save(argThat(conflict ->
                 conflict.getEntityType() == ScholardexEntityType.FORUM
                         && "AMBIGUOUS_ISSN_MATCH".equals(conflict.getReasonCode())
@@ -255,6 +254,9 @@ class WosScholardexOnboardingServiceTest {
         existingForum.setAggregationType("JOURNAL");
 
         ScholardexSourceLink existingLink = new ScholardexSourceLink();
+        existingLink.setEntityType(ScholardexEntityType.FORUM);
+        existingLink.setSource("WOS");
+        existingLink.setSourceRecordId("wos-j-2");
         existingLink.setCanonicalEntityId("cf-existing");
 
         when(journalIdentityRepository.findAll())
@@ -262,7 +264,9 @@ class WosScholardexOnboardingServiceTest {
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of(existingForum));
         when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of());
-        when(sourceLinkService.findByKey(ScholardexEntityType.FORUM, "WOS", "wos-j-2")).thenReturn(Optional.of(existingLink));
+        // H66: re-run-idempotency now reads the preloaded source-link map, not a per-row findByKey.
+        when(sourceLinkService.findByEntityTypeAndSourceRecordIds(eq(ScholardexEntityType.FORUM), any()))
+                .thenReturn(List.of(existingLink));
         when(scholardexForumFactRepository.save(any(ScholardexForumFact.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -270,10 +274,13 @@ class WosScholardexOnboardingServiceTest {
 
         assertEquals(1, result.getUpdatedCount());
         verify(scholardexForumFactRepository).save(argThat(f -> "cf-existing".equals(f.getId())));
-        verify(sourceLinkService).link(
-                eq(ScholardexEntityType.FORUM), eq("WOS"), eq("wos-j-2"), eq("cf-existing"),
-                eq("wos-forum-onboarding"), isNull(), eq("batch-2"), eq("corr-2"), eq(true)
-        );
+        // H66: link is batched via batchUpsertWithState.
+        verify(sourceLinkService).batchUpsertWithState(
+                argThat(cmds -> cmds.stream().anyMatch(c ->
+                        c.entityType() == ScholardexEntityType.FORUM && "WOS".equals(c.source())
+                                && "wos-j-2".equals(c.sourceRecordId()) && "cf-existing".equals(c.canonicalEntityId())
+                                && "LINKED".equals(c.targetState()) && "wos-forum-onboarding".equals(c.reason()))),
+                any());
     }
 
     @Test
@@ -290,7 +297,6 @@ class WosScholardexOnboardingServiceTest {
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of());
-        when(sourceLinkService.findByKey(ScholardexEntityType.FORUM, "WOS", "wos-j-badissn")).thenReturn(Optional.empty());
         when(scholardexIdentityConflictRepository.findByEntityTypeAndIncomingSourceAndIncomingSourceRecordIdAndReasonCodeAndStatus(
                 eq(ScholardexEntityType.FORUM), eq("WOS"), eq("wos-j-badissn"), eq("NORMALIZATION_INVALID_ISSN"), eq("OPEN")
         )).thenReturn(Optional.empty());
@@ -483,7 +489,6 @@ class WosScholardexOnboardingServiceTest {
         when(scopusForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of());
-        when(sourceLinkService.findByKey(ScholardexEntityType.FORUM, "WOS", "wos-map-1")).thenReturn(Optional.empty());
         when(scholardexForumFactRepository.save(any(ScholardexForumFact.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -630,7 +635,6 @@ class WosScholardexOnboardingServiceTest {
         when(scopusForumFactRepository.findAll()).thenReturn(List.of(storedProducts));
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
         when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of());
-        when(sourceLinkService.findByKey(ScholardexEntityType.FORUM, "WOS", "jid_steroid")).thenReturn(Optional.empty());
         when(scholardexForumFactRepository.save(any(ScholardexForumFact.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 

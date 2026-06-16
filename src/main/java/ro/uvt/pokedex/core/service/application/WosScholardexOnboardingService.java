@@ -116,12 +116,18 @@ public class WosScholardexOnboardingService {
             canonicalById.put(canonicalForum.getId(), canonicalForum);
         }
         CanonicalForumIndex forumIndex = new CanonicalForumIndex(canonicalById);
+        // H66: same preload + batch as the Scopus path — preload existing FORUM/WOS source links (in-memory
+        // re-run-idempotency check instead of per-row findByKey) and accumulate link writes for one flush.
+        Map<ScholardexSourceLinkService.SourceLinkKey, ScholardexSourceLink> existingForumLinks = loadForumSourceLinks(
+                SOURCE_WOS, journals.stream().map(WosRankingView::getId).toList());
+        List<ScholardexSourceLinkService.SourceLinkUpsertCommand> linkCommands = new ArrayList<>();
 
         Instant now = Instant.now();
         for (WosRankingView journal : journals) {
             result.markProcessed();
-            upsertForumFromWos(journal, scopusForums, canonicalById, forumIndex, batchId, correlationId, now, result);
+            upsertForumFromWos(journal, scopusForums, canonicalById, forumIndex, existingForumLinks, linkCommands, batchId, correlationId, now, result);
         }
+        sourceLinkService.batchUpsertWithState(linkCommands, existingForumLinks);
 
         onboardPublicationWosLinks(batchId, correlationId, now, result);
         return result;
@@ -441,6 +447,8 @@ public class WosScholardexOnboardingService {
             List<ScopusForumFact> scopusForums,
             Map<String, ScholardexForumFact> canonicalById,
             CanonicalForumIndex forumIndex,
+            Map<ScholardexSourceLinkService.SourceLinkKey, ScholardexSourceLink> existingForumLinks,
+            List<ScholardexSourceLinkService.SourceLinkUpsertCommand> linkCommands,
             String batchId,
             String correlationId,
             Instant now,
@@ -470,8 +478,8 @@ public class WosScholardexOnboardingService {
             openConflict(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId, REASON_INVALID_ISSN, List.of(), batchId, correlationId);
         }
 
-        Optional<ScholardexSourceLink> existingLink = sourceLinkService
-                .findByKey(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId);
+        Optional<ScholardexSourceLink> existingLink = Optional.ofNullable(
+                existingForumLinks.get(ScholardexSourceLinkService.SourceLinkKey.of(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId)));
         if (existingLink.isPresent()) {
             String canonicalId = normalizeBlank(existingLink.get().getCanonicalEntityId());
             if (canonicalId != null && canonicalById.containsKey(canonicalId)) {
@@ -480,7 +488,7 @@ public class WosScholardexOnboardingService {
                 target.setBuilderVersion(BuilderVersion.SCHOLARDEX_FORUM);
                 if (persistForumOrRecordConflict(target, sourceRecordId, batchId, correlationId, result)) {
                     forumIndex.put(target); // re-index: the merge may have added ISSN tokens/aliases
-                    upsertLinkedSourceLink(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId, target.getId(), REASON_WOS_FORUM_ONBOARDING, batchId, correlationId, true);
+                    linkCommands.add(linkedCommand(SOURCE_WOS, sourceRecordId, target.getId(), REASON_WOS_FORUM_ONBOARDING, batchId, correlationId));
                     result.markUpdated();
                 }
                 return;
@@ -491,7 +499,7 @@ public class WosScholardexOnboardingService {
         if (candidates.size() > 1) {
             String reason = normalizedIssns.isEmpty() ? REASON_AMBIGUOUS_NAME_AGG : REASON_AMBIGUOUS_ISSN;
             List<String> candidateIds = candidates.stream().map(ScholardexForumFact::getId).toList();
-            upsertConflictSourceLink(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId, reason, batchId, correlationId);
+            linkCommands.add(conflictCommand(SOURCE_WOS, sourceRecordId, reason, batchId, correlationId));
             openConflict(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId, reason, candidateIds, batchId, correlationId);
             result.markSkipped("wos-forum-ambiguous-candidates sourceRecordId=" + sourceRecordId);
             return;
@@ -516,7 +524,7 @@ public class WosScholardexOnboardingService {
             return;
         }
         forumIndex.put(target);
-        upsertLinkedSourceLink(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId, target.getId(), REASON_WOS_FORUM_ONBOARDING, batchId, correlationId, true);
+        linkCommands.add(linkedCommand(SOURCE_WOS, sourceRecordId, target.getId(), REASON_WOS_FORUM_ONBOARDING, batchId, correlationId));
         if (created) {
             result.markImported();
         } else {

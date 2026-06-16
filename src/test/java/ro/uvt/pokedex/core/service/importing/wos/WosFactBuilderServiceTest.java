@@ -53,6 +53,7 @@ class WosFactBuilderServiceTest {
     @Mock private WosIdentityResolutionService identityResolutionService;
     @Mock private WosMetricFactRepository metricFactRepository;
     @Mock private WosCategoryFactRepository categoryFactRepository;
+    @Mock private ro.uvt.pokedex.core.repository.reporting.WosCoverageFactRepository coverageFactRepository;
     @Mock private WosFactConflictRepository factConflictRepository;
     @Mock private MongoTemplate mongoTemplate;
     @Mock private WosFactBuildCheckpointService checkpointService;
@@ -75,6 +76,7 @@ class WosFactBuilderServiceTest {
                 identityResolutionService,
                 metricFactRepository,
                 categoryFactRepository,
+                coverageFactRepository,
                 factConflictRepository,
                 mongoTemplate,
                 checkpointService,
@@ -1120,6 +1122,7 @@ class WosFactBuilderServiceTest {
                 identityResolutionService,
                 metricFactRepository,
                 categoryFactRepository,
+                coverageFactRepository,
                 factConflictRepository,
                 mongoTemplate,
                 checkpointService,

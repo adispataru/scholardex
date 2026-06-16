@@ -29,6 +29,7 @@ public class AdminInitializationController {
     private final RankingMaintenanceFacade rankingMaintenanceFacade;
     private final ScopusBigBangMigrationService scopusBigBangMigrationService;
     private final ro.uvt.pokedex.core.service.importing.ScopusDataService scopusDataService;
+    private final ro.uvt.pokedex.core.service.importing.wos.WosImportEventIngestionService wosImportEventIngestionService;
     private final ro.uvt.pokedex.core.service.application.PipelineRebuildService pipelineRebuildService;
     private final UserDefinedMaintenanceOrchestrationService userDefinedMaintenanceOrchestrationService;
     private final ObjectProvider<PostgresReportingProjectionService> postgresReportingProjectionServiceProvider;
@@ -230,6 +231,23 @@ public class AdminInitializationController {
         redirectAttributes.addFlashAttribute("successMessage",
                 "CiteScore import complete (batchId=" + effectiveBatchId + "). processed=" + result.getProcessedCount()
                         + ", imported=" + result.getImportedCount()
+                        + ", skipped=" + result.getSkippedCount()
+                        + ", errors=" + result.getErrorCount());
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/wos/importMjl")
+    public String runWosImportMjl(
+            @RequestParam(name = "dir", defaultValue = "data/wos/mjl") String dir,
+            @RequestParam(name = "sourceVersion", required = false) String sourceVersion,
+            RedirectAttributes redirectAttributes
+    ) {
+        var result = wosImportEventIngestionService.ingestMjlDirectory(dir, sourceVersion);
+        redirectAttributes.addFlashAttribute("successMessage",
+                "WoS MJL ingest complete (dir=" + dir + ", sourceVersion=" + (sourceVersion == null ? "2025" : sourceVersion)
+                        + "). processed=" + result.getProcessedCount()
+                        + ", imported=" + result.getImportedCount()
+                        + ", updated=" + result.getUpdatedCount()
                         + ", skipped=" + result.getSkippedCount()
                         + ", errors=" + result.getErrorCount());
         return "redirect:/admin/initialization";

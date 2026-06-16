@@ -22,7 +22,12 @@ import ro.uvt.pokedex.core.repository.reporting.WosImportEventRepository;
 import ro.uvt.pokedex.core.service.application.WosIndexMaintenanceService;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
+import com.opencsv.CSVReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.io.IOException;
 import java.nio.file.StandardCopyOption;
 import java.nio.charset.StandardCharsets;
@@ -80,6 +85,98 @@ public class WosImportEventIngestionService {
                 total.getProcessedCount(), total.getImportedCount(), total.getUpdatedCount(), total.getSkippedCount(),
                 total.getErrorCount(), total.getErrorsSample());
         return total;
+    }
+
+    /**
+     * H66 A3.1: ingest the WoS Master Journal List coverage export — one CSV per edition (SCIE/SSCI/AHCI/ESCI)
+     * in {@code directoryPath} (the JCR matrix file is skipped). Each row becomes a {@link WosSourceType#MJL_COVERAGE}
+     * {@link WosImportEvent} via the standard supersede/persist core, so it flows through the normal WoS
+     * build-facts pipeline. {@code sourceVersion} doubles as the snapshot as-of label (e.g. "2025").
+     */
+    public ImportProcessingResult ingestMjlDirectory(String directoryPath, String sourceVersionOverride) {
+        ImportProcessingResult total = new ImportProcessingResult(20);
+        File dataDir = new File(directoryPath);
+        File[] files = dataDir.listFiles((d, name) -> name.toLowerCase(Locale.ROOT).endsWith(".csv"));
+        if (files == null) {
+            throw new IllegalArgumentException("MJL directory not found or not readable: " + directoryPath);
+        }
+        String sourceVersion = (sourceVersionOverride == null || sourceVersionOverride.isBlank()) ? "2025" : sourceVersionOverride;
+        for (File file : files) {
+            String edition = editionFromMjlFileName(file.getName());
+            if (edition == null) {
+                continue; // not an edition coverage file (e.g. the JCR matrix) — skip
+            }
+            ingestMjlEditionFile(file, edition, sourceVersion, total);
+        }
+        log.info("WoS MJL ingestion summary: processed={}, imported={}, updated={}, skipped={}, errors={}, sample={}",
+                total.getProcessedCount(), total.getImportedCount(), total.getUpdatedCount(), total.getSkippedCount(),
+                total.getErrorCount(), total.getErrorsSample());
+        return total;
+    }
+
+    /** Map an MJL coverage filename to its edition token, or null if it is not a recognized edition file. */
+    private static String editionFromMjlFileName(String fileName) {
+        String upper = fileName.toUpperCase(Locale.ROOT);
+        if (upper.contains("(SCIE)")) return "SCIE";
+        if (upper.contains("(SSCI)")) return "SSCI";
+        if (upper.contains("(AHCI)")) return "AHCI";
+        if (upper.contains("(ESCI)")) return "ESCI";
+        return null;
+    }
+
+    private void ingestMjlEditionFile(File file, String edition, String sourceVersion, ImportProcessingResult total) {
+        String fileName = file.getName();
+        try (CSVReader reader = new CSVReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+            List<String[]> rows = reader.readAll();
+            if (rows.isEmpty()) {
+                return;
+            }
+            Map<String, Integer> header = new HashMap<>();
+            String[] head = rows.get(0);
+            for (int i = 0; i < head.length; i++) {
+                if (head[i] != null) {
+                    header.put(head[i].trim().toLowerCase(Locale.ROOT), i);
+                }
+            }
+            Integer titleCol = header.get("journal title");
+            Integer issnCol = header.get("issn");
+            Integer eIssnCol = header.getOrDefault("eissn", header.get("e-issn"));
+            Integer publisherCol = header.get("publisher name");
+            Integer categoriesCol = header.get("web of science categories");
+            Map<String, WosImportEvent> existingByRowItem = loadExistingByRowItem(WosSourceType.MJL_COVERAGE, fileName, sourceVersion);
+            List<WosImportEvent> toPersist = new ArrayList<>();
+            for (int i = 1; i < rows.size(); i++) {
+                String[] row = rows.get(i);
+                String issn = mjlCell(row, issnCol);
+                String eIssn = mjlCell(row, eIssnCol);
+                if (issn == null && eIssn == null) {
+                    total.markSkipped("mjl=" + fileName + "#row" + i + " missing issn/eissn");
+                    continue;
+                }
+                String rowItem = (issn != null ? issn : eIssn) + "|" + edition;
+                Map<String, Object> payload = new LinkedHashMap<>();
+                payload.put("edition", edition);
+                payload.put("title", mjlCell(row, titleCol));
+                payload.put("issn", issn);
+                payload.put("eIssn", eIssn);
+                payload.put("publisher", mjlCell(row, publisherCol));
+                payload.put("categories", mjlCell(row, categoriesCol));
+                processEventFast(WosSourceType.MJL_COVERAGE, fileName, sourceVersion, rowItem, "mjl-csv-row",
+                        payload, existingByRowItem, toPersist, total);
+                flushBatchIfNeeded(toPersist);
+            }
+            flushBatch(toPersist);
+        } catch (Exception e) {
+            total.markError("mjl-file=" + fileName + ", error=" + e.getMessage());
+        }
+    }
+
+    private static String mjlCell(String[] row, Integer col) {
+        if (col == null || col < 0 || col >= row.length) {
+            return null;
+        }
+        String v = row[col] == null ? null : row[col].trim();
+        return (v == null || v.isEmpty()) ? null : v;
     }
 
     public WosIngestionPreview previewDirectory(String directoryPath, String sourceVersionOverride) {

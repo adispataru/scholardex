@@ -288,17 +288,54 @@ rows. CSV has **quoted fields with embedded commas** → needs an RFC-4180 parse
   one forum with all its ASJC sub-subject codes unioned + Type + ISSN; re-run idempotent (source_id unique).
 - **Dep:** A1.
 
-**A3 — WoS MJL loader (current edition membership).**
-- **Do:** parse the four `data/wos/mjl/*` CSVs (each file = one edition: SCIE/SSCI/AHCI/ESCI) → forum source
-  facts (new `wos.forum_facts` source stream, or a WoS-tagged FORUM event) → match to forums **by ISSN**
-  (MJL has no WoS journalId) → write **current edition membership** rows into `scholardex_forum_membership_view`
-  (`database=<edition>`, `year=NULL`, `as_of=2025`, `source=MJL`) + fill publisher/identity for MJL-only
-  venues. NOTE: this does NOT set `wosForumIds` (no journalId in MJL — that link is B1) and does NOT write the
-  year-true category view (that's JCR, move B2). Current WoS categories from MJL: defer (low value — JCR
-  category view covers scored journals).
-- **Verify:** an MJL ESCI-only journal gets a membership row `(ESCI, year=NULL, MJL)`; a journal in both
-  CiteScore and MJL stays **one** canonical forum (matched by ISSN); MJL-only venues create thin forums.
-- **Dep:** A1 (A2 recommended first so ISSN merges have targets).
+**A3 — WoS MJL loader (current edition coverage). — DESIGN LOCKED 2026-06-16**
+Design (after code inspection): **MJL is a WoS source**, not a bespoke stream. It rides the existing WoS
+pipeline — `WosImportEvent` → `WosFactBuilderService` (identity resolution mints journalIds from ISSN) →
+`wos.journal_identity` → the **existing `upsertForumFromWos` onboarding** turns identities into forums
+(verified: onboarding does `journalIdentityRepository.findAll()`, no metric filter, so MJL-only journals
+with no AIS/IF still become forums). So **no `MjlForumFact`, no `upsertForumFromMjl`.** The only genuinely-new
+fact is **`wos.coverage_facts(journalId, year, edition, category, source)`** — edition coverage doesn't fit
+`wos.category_facts` (its `metricType` is NOT NULL + in the unique key, and the scoring read switches
+exhaustively on metricType — adding a `MetricType.MJL` would break those switches + need a Postgres enum
+migration; rejected). Coverage stays isolated; **unification happens at B2 projection** (B2 projects
+`category_facts` JCR year-true 1997–2024 **and** `coverage_facts` MJL 2025 into the same forum
+category/membership view by `wosForumIds`), leaving the JCR scoring path untouched.
+
+Sub-steps:
+- **A3.1 — ✅ DONE 2026-06-16.** `WosSourceType.MJL_COVERAGE`; `WosImportEventIngestionService.ingestMjlDirectory`
+  reads the 4 edition CSVs (skips `JCR 2025.csv` via `editionFromMjlFileName`), emits `WosImportEvent`s via the
+  existing `processEventFast` supersede core, `sourceFile=<edition CSV>`, `sourceRowItem=<issn-or-eissn>|<edition>`,
+  payloadFormat `mjl-csv-row`, payload `{edition, title, issn, eIssn, publisher, categories}`; admin endpoint
+  `POST /admin/initialization/wos/importMjl?dir=data/wos/mjl&sourceVersion=2025`. Unit test green
+  (`ingestMjlDirectoryImportsEditionEventsAndSkipsMatrix` — incl. eISSN-only keying + JCR-matrix skip).
+  **Verified e2e on isolated 27018: 24,123 events** (SCIE 9430 / SSCI 3538 / AHCI 1799 / ESCI 9356, exact),
+  payload correct, prod untouched.
+- **A3.2 — ✅ DONE 2026-06-16.** `MjlImportEventParser` (supports `MJL_COVERAGE` + `mjl-csv-row`; splits the
+  pipe-separated WoS-categories column → one record per category, `metricType=null`, year = sourceVersion);
+  new `WosCoverageFact` (`wos.coverage_facts`, unique `(journalId, year, edition, category)`) + repo;
+  `WosFactBuilderService` routes MJL records around the metric-source policy gate → `resolveJournalId`
+  (mints/finds journalId by ISSN) → `wos.journal_identity`, then `upsertCoverageFact` → `wos.coverage_facts`
+  (batched saveAll). Unit tests green (`MjlImportEventParserTest`; existing builder + ingestion suites);
+  fixed the 3 builder-constructor sites for the new repo dep. **Verified e2e (isolated 27018):** 24,123 MJL
+  events → **22,974 `wos.journal_identity`** (deduped across editions) + **33,193 `wos.coverage_facts`**
+  (SCIE 15,020 / ESCI 11,100 / SSCI 5,035 / AHCI 2,038; categories split), sample correct, prod untouched.
+- **A3.3 — ✅ CONFIRMED 2026-06-16 (no new code).** The same e2e run shows the *existing* `upsertForumFromWos`
+  onboarding canonicalized all **22,974** MJL identities into forums (each with a `wosForumId`), with **zero
+  metrics present** — proving MJL-only journals become forums through the existing path. (In a real A2→A3 run,
+  MJL journals matching CiteScore forums by ISSN merge instead of creating thin forums.)
+- **A3 perf — ✅ DONE 2026-06-16.** A3.3 surfaced that the A2.1 onboarding batching (Opt 2 findByKey preload +
+  Opt 4 source-link batch) had been applied only to the *Scopus* path, not the symmetric WoS path that A3.3
+  rides. Applied the same to `runWosOnboarding`/`upsertForumFromWos`: preload FORUM/WOS source links, accumulate
+  LINKED/CONFLICT `linkCommands`, one `batchUpsertWithState` flush. Byte-identical (22,974 journal_identity /
+  33,193 coverage / 22,974 forums); onboarding unit tests green (same conversions as the Scopus tests). buildFacts
+  **~40s → ~28s** (onboarding ~25s → ~18s). Residual ~18s is the **per-item forum save** — deliberately left
+  un-batched on both paths (the forum-save dup-fallback restructure was declined as highest-risk/smallest-gain).
+  Fact-build (~10s) is per-journal identity creates (~unavoidable). Both onboarding paths now at the same tier.
+- **A3.4** — B2-style projection of `coverage_facts` → `membership_view` by `wosForumIds`.
+- **Decisions locked:** dedicated loader (MJL CSV ≠ the Excel/JSON directory scanner); extend the builder
+  (reuse identity resolution); coverage_facts **includes category**; one event/coverage row per (journal,
+  edition); `sourceVersion`/`asOf` = "2025" (loader param). MJL-only journals → new identities → new forums.
+- **Dep:** A1; A2 recommended first (CiteScore forums as ISSN match targets).
 
 **A4 — DOAJ loader (open-access flag).**
 - **Do:** fetch/parse DOAJ CSV → set the DOAJ indexing flag on matching forums by ISSN.

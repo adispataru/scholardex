@@ -86,6 +86,7 @@ class WosAdminInitializationWorkflowIntegrationTest {
     private WosJournalIdentityRepository journalIdentityRepository;
     private WosMetricFactRepository metricFactRepository;
     private WosCategoryFactRepository categoryFactRepository;
+    private ro.uvt.pokedex.core.repository.reporting.WosCoverageFactRepository coverageFactRepository;
     private WosFactBuildCheckpointRepository checkpointRepository;
 
     @BeforeEach
@@ -118,6 +119,7 @@ class WosAdminInitializationWorkflowIntegrationTest {
         journalIdentityRepository = mongoRepoFactory.getRepository(WosJournalIdentityRepository.class);
         metricFactRepository = mongoRepoFactory.getRepository(WosMetricFactRepository.class);
         categoryFactRepository = mongoRepoFactory.getRepository(WosCategoryFactRepository.class);
+        coverageFactRepository = mongoRepoFactory.getRepository(ro.uvt.pokedex.core.repository.reporting.WosCoverageFactRepository.class);
         WosIdentityConflictRepository identityConflictRepository =
                 mongoRepoFactory.getRepository(WosIdentityConflictRepository.class);
         WosFactConflictRepository factConflictRepository =
@@ -165,6 +167,7 @@ class WosAdminInitializationWorkflowIntegrationTest {
                 identityResolutionService,
                 metricFactRepository,
                 categoryFactRepository,
+                coverageFactRepository,
                 factConflictRepository,
                 mongoTemplate,
                 checkpointService,

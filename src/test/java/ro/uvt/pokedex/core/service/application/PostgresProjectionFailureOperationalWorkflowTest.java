@@ -78,6 +78,7 @@ class PostgresProjectionFailureOperationalWorkflowTest {
                 mock(RankingMaintenanceFacade.class),
                 mock(ScopusBigBangMigrationService.class),
                 mock(ro.uvt.pokedex.core.service.importing.ScopusDataService.class),
+                mock(ro.uvt.pokedex.core.service.importing.wos.WosImportEventIngestionService.class),
                 mock(PipelineRebuildService.class),
                 mock(UserDefinedMaintenanceOrchestrationService.class),
                 provider(projectionService),

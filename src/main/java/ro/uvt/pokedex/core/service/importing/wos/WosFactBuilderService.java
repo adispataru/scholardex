@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.reporting.wos.EditionNormalized;
 import ro.uvt.pokedex.core.model.reporting.wos.MetricType;
 import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
+import ro.uvt.pokedex.core.model.reporting.wos.WosCoverageFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosFactBuildCheckpoint;
 import ro.uvt.pokedex.core.model.reporting.wos.WosFactConflict;
 import ro.uvt.pokedex.core.model.reporting.wos.WosJournalIdentity;
@@ -52,6 +53,7 @@ public class WosFactBuilderService {
     private final WosIdentityResolutionService identityResolutionService;
     private final WosMetricFactRepository metricFactRepository;
     private final WosCategoryFactRepository categoryFactRepository;
+    private final ro.uvt.pokedex.core.repository.reporting.WosCoverageFactRepository coverageFactRepository;
     private final WosFactConflictRepository factConflictRepository;
     private final MongoTemplate mongoTemplate;
     private final WosFactBuildCheckpointService checkpointService;
@@ -66,6 +68,7 @@ public class WosFactBuilderService {
             WosIdentityResolutionService identityResolutionService,
             WosMetricFactRepository metricFactRepository,
             WosCategoryFactRepository categoryFactRepository,
+            ro.uvt.pokedex.core.repository.reporting.WosCoverageFactRepository coverageFactRepository,
             WosFactConflictRepository factConflictRepository,
             MongoTemplate mongoTemplate,
             WosFactBuildCheckpointService checkpointService,
@@ -78,6 +81,7 @@ public class WosFactBuilderService {
         this.identityResolutionService = identityResolutionService;
         this.metricFactRepository = metricFactRepository;
         this.categoryFactRepository = categoryFactRepository;
+        this.coverageFactRepository = coverageFactRepository;
         this.factConflictRepository = factConflictRepository;
         this.mongoTemplate = mongoTemplate;
         this.checkpointService = checkpointService;
@@ -92,6 +96,7 @@ public class WosFactBuilderService {
             WosIdentityResolutionService identityResolutionService,
             WosMetricFactRepository metricFactRepository,
             WosCategoryFactRepository categoryFactRepository,
+            ro.uvt.pokedex.core.repository.reporting.WosCoverageFactRepository coverageFactRepository,
             WosFactConflictRepository factConflictRepository,
             MongoTemplate mongoTemplate,
             WosFactBuildCheckpointService checkpointService,
@@ -104,6 +109,7 @@ public class WosFactBuilderService {
                 identityResolutionService,
                 metricFactRepository,
                 categoryFactRepository,
+                coverageFactRepository,
                 factConflictRepository,
                 mongoTemplate,
                 checkpointService,
@@ -444,6 +450,17 @@ public class WosFactBuilderService {
                         result.getProcessedCount(), result.getImportedCount(), result.getUpdatedCount(),
                         result.getSkippedCount(), result.getErrorCount());
             }
+            if (record.sourceType() == WosSourceType.MJL_COVERAGE) {
+                // H66 A3.2: coverage records aren't metrics — bypass the metric-source policy gate, resolve
+                // identity (mint/find journalId by ISSN), and route to the coverage-fact upsert below.
+                String coverageJournalId = resolveJournalId(
+                        record, result, identityCache, tokenSetResolutionCache,
+                        preResolvedIdentityByKey, prefetchedCandidatesByTokenSet, normalizedTokenSetsByKey, identityTelemetry);
+                if (coverageJournalId != null && !coverageJournalId.isBlank()) {
+                    resolved.add(new ResolvedRecord(coverageJournalId, record));
+                }
+                continue;
+            }
             if (!WosCanonicalContractSupport.isSourceAllowedForMetric(record.metricType(), record.sourceType())) {
                 if (record.metricType() == MetricType.IF) {
                     ifSourcePolicySkipCounter.increment();
@@ -480,11 +497,17 @@ public class WosFactBuilderService {
         long upsertStartedAtNanos = System.nanoTime();
         Map<MetricFactKey, WosMetricFact> pendingMetricSaves = new LinkedHashMap<>();
         Map<CategoryFactKey, WosCategoryFact> pendingCategorySaves = new LinkedHashMap<>();
+        Map<CoverageFactKey, WosCoverageFact> existingCoverage = preloadCoverageFacts(resolved);
+        Map<CoverageFactKey, WosCoverageFact> pendingCoverageSaves = new LinkedHashMap<>();
         List<WosFactConflict> pendingConflicts = new ArrayList<>();
 
         for (ResolvedRecord resolvedRecord : resolved) {
-            upsertMetricFact(resolvedRecord, result, existingMetrics, pendingMetricSaves, pendingConflicts, runId);
-            upsertCategoryFact(resolvedRecord, result, existingCategories, pendingCategorySaves, pendingConflicts, runId);
+            if (resolvedRecord.record().sourceType() == WosSourceType.MJL_COVERAGE) {
+                upsertCoverageFact(resolvedRecord, result, existingCoverage, pendingCoverageSaves);
+            } else {
+                upsertMetricFact(resolvedRecord, result, existingMetrics, pendingMetricSaves, pendingConflicts, runId);
+                upsertCategoryFact(resolvedRecord, result, existingCategories, pendingCategorySaves, pendingConflicts, runId);
+            }
         }
 
         long saveStartedAtNanos = System.nanoTime();
@@ -495,6 +518,10 @@ public class WosFactBuilderService {
         if (!pendingCategorySaves.isEmpty()) {
             pendingCategorySaves.values().forEach(f -> f.setBuilderVersion(BuilderVersion.WOS_FACT));
             categoryFactRepository.saveAll(pendingCategorySaves.values());
+        }
+        if (!pendingCoverageSaves.isEmpty()) {
+            pendingCoverageSaves.values().forEach(f -> f.setBuilderVersion(BuilderVersion.WOS_FACT));
+            coverageFactRepository.saveAll(pendingCoverageSaves.values());
         }
         if (!pendingConflicts.isEmpty()) {
             pendingConflicts.forEach(f -> f.setBuilderVersion(BuilderVersion.WOS_FACT));
@@ -1527,6 +1554,72 @@ public class WosFactBuilderService {
         static <T> WinnerDecision<T> existing(String reason) {
             return new WinnerDecision<>(false, reason);
         }
+    }
+
+    // ---- H66 A3.2: WoS edition-coverage facts (MJL) ----
+
+    private record CoverageFactKey(String journalId, Integer year, EditionNormalized edition, String category) {
+    }
+
+    private CoverageFactKey coverageKey(String journalId, WosParsedRecord record) {
+        if (journalId == null || record.year() == null || record.editionNormalized() == null) {
+            return null;
+        }
+        return new CoverageFactKey(journalId, record.year(), record.editionNormalized(), record.categoryNameCanonical());
+    }
+
+    private Map<CoverageFactKey, WosCoverageFact> preloadCoverageFacts(List<ResolvedRecord> resolved) {
+        List<String> journalIds = resolved.stream()
+                .filter(rr -> rr.record().sourceType() == WosSourceType.MJL_COVERAGE)
+                .map(ResolvedRecord::journalId)
+                .distinct()
+                .toList();
+        Map<CoverageFactKey, WosCoverageFact> existing = new LinkedHashMap<>();
+        if (journalIds.isEmpty() || coverageFactRepository == null) {
+            return existing;
+        }
+        for (WosCoverageFact fact : coverageFactRepository.findAllByJournalIdIn(journalIds)) {
+            existing.put(new CoverageFactKey(fact.getJournalId(), fact.getYear(), fact.getEditionNormalized(),
+                    fact.getCategoryNameCanonical()), fact);
+        }
+        return existing;
+    }
+
+    private void upsertCoverageFact(
+            ResolvedRecord resolved,
+            ImportProcessingResult result,
+            Map<CoverageFactKey, WosCoverageFact> existingCoverage,
+            Map<CoverageFactKey, WosCoverageFact> pendingCoverageSaves
+    ) {
+        WosParsedRecord record = resolved.record();
+        CoverageFactKey key = coverageKey(resolved.journalId(), record);
+        if (key == null) {
+            result.markSkipped("coverage-key-incomplete source=" + record.sourceFile() + "#" + record.sourceRowItem());
+            return;
+        }
+        if (existingCoverage.containsKey(key) || pendingCoverageSaves.containsKey(key)) {
+            result.markSkipped("coverage-duplicate journalId=" + resolved.journalId() + " edition=" + record.editionNormalized());
+            return;
+        }
+        WosCoverageFact created = toCoverageFact(resolved.journalId(), record);
+        existingCoverage.put(key, created);
+        pendingCoverageSaves.put(key, created);
+        result.markImported();
+    }
+
+    private WosCoverageFact toCoverageFact(String journalId, WosParsedRecord record) {
+        WosCoverageFact fact = new WosCoverageFact();
+        fact.setJournalId(journalId);
+        fact.setYear(record.year());
+        fact.setEditionNormalized(record.editionNormalized());
+        fact.setCategoryNameCanonical(record.categoryNameCanonical());
+        fact.setSourceType(record.sourceType());
+        fact.setSourceEventId(record.sourceEventId());
+        fact.setSourceFile(record.sourceFile());
+        fact.setSourceVersion(record.sourceVersion());
+        fact.setSourceRowItem(record.sourceRowItem());
+        fact.setCreatedAt(Instant.now());
+        return fact;
     }
 
     private record ResolvedRecord(String journalId, WosParsedRecord record) {
