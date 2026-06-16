@@ -1,0 +1,78 @@
+# H65 Physics (Fizică / FF) report — DOCX export
+
+**Status:** Planning — **postponed behind [H63](h63-openalex-enrichment.md) (OpenAlex) + [H64](h64-canonical-projects.md)
+(canonical projects)**, which supply data the physics indicators need (corresponding author for P; trusted
+project budget/attribution for A9/A10).
+**Created:** 2026-06-16
+
+Source docs (user-supplied): `FF_Criterii-concurs.pdf` (Ordin 6129/2016, Anexa 1 — Fizică), report template
+`FV-Verificare_FF-1.docx`. Bound report id: TBD.
+
+## Scoping done so far (2026-06-16)
+
+The largest fišă yet — **21 tables**. Methodology read (PDF pages 1–5); template fully mapped.
+
+### The core new primitive: `n_ef` (effective author count)
+A bracketed transform of the real author count, used as the divisor everywhere instead of raw `N`
+(dampens huge HEPP author lists):
+```
+n ≤ 5 → n ;  5<n≤15 → (n+5)/2 ;  15<n≤75 → (n+15)/3 ;  n>75 → (n+45)/4
+```
+HEPP exception: `n_ef` may come from the internal note's author count — treat as manual/out of scope.
+Engine fit: bind a computed `Nef` var in `FormulaContext` (publication path `ScientificProductionService`
++ activity path `ActivityReportingService`) and declare it in `FormulaVariableContract`. Then most
+indicators are config (`S/Nef`, `4/Nef`, …).
+
+### Indicators (summary table T20: A | I | P | C | h | T)
+| id | what | formula | notes |
+|---|---|---|---|
+| I | articles as author | ΣAIS/Nef | reuse AIS strategy |
+| P | principal/corresponding author | ΣAIS | **first-author now (H65); corresponding via H63**; alphabetical-ordering exclusion stays manual |
+| A1 | books intl, author | Σ4/Nef | WoS Master Book List publisher allowlist |
+| A2 | chapters intl / reviews | Σ1/Nef | |
+| A3 | books intl, **editor** | Σ0.5/Nef | author-vs-editor role |
+| A4 | national books/manuals | Σ0.5/Nef | |
+| A5 | national chapters | Σ0.2/Nef | |
+| A6 | ISI Proceedings | Σ0.2/Nef | |
+| A7 | intl patents | Σ3/Nef | reuse `Brevet` activity (N_autori→Nef, Tip=Triadic) |
+| A8 | national patents | Σ0.5/Nef | reuse `Brevet` (Tip=National) |
+| A9 | project/program director | Σ0.5 (count) | reuse `Proiect educational`; excludes research projects |
+| A10 | research project € | ΣV/100000 | reuse `Grant Cercetare.Buget` now → **H64 canonical project budget** later |
+| A | total didactic | ΣA_i | |
+| C | citations in journals w/ non-null IF | **count** | like Mate_C count; self-cit rule TBD |
+| h | Hirsch index | — | **new computation** over candidate pubs (have `citedByCount`) |
+| T | composite total | TBD | Conf `A+I+P=5` fits; Lector inconsistent — confirm formula |
+
+### Template (21 tables)
+- Reference/static: T0–T4 (formulas, lector + conf/prof). Prerequisites: T5 (Da/Nu — doctorate, ≥2
+  recommendation letters → manual). Detail fill: T6 (articles + `Autor principal` flag), T7–T16 (A1–A10),
+  T17 (I), T18 (P), T19 (citations). Summary: **T20** (A/I/P/C/h/T × Lector/Conf/Prof/obtained).
+- Thresholds seen: Lector A≥0.5,I≥1,P≥1,T≥1.5 · Conf A≥1,I≥2,P≥2,C≥20,h≥5,T≥5 · **Prof row not yet read**.
+
+### Reuse vs new
+- **Reuse**: AIS strategy; the FEAA/CNCSIS publisher-allowlist pattern (here WoS Master Book List);
+  Mate_C citation-count; the docx render/binding/cell-total infra; existing activities `Grant Cercetare`
+  (A10 Buget), `Brevet` (A7/A8 N_autori/Tip), `Proiect educational` (A9).
+- **New**: `Nef` var (small, core); h-index computation; author-vs-editor role (A3); WoS Master Book List
+  publisher recognition; `Nef` in the activity context (patents); the T composite.
+
+## Dependencies (why postponed)
+- **[H63] OpenAlex** → corresponding author so **P = first OR corresponding** (else P is first-author-only).
+- **[H64] canonical projects** → trusted project budget + director-attribution for **A9/A10** (interim: the
+  existing `Grant Cercetare`/`Buget` activity works, so physics *could* ship first-author + activity-based,
+  but we chose to do the data first).
+
+## Still to do before/while implementing
+- **Read PDF pages 6–14**: Prof/CS I thresholds (T20 row), exact **C** definition (self-citation? IF
+  threshold? count vs weighted), **h** threshold, the **T composite** formula, Da/Nu specifics, HEPP `n_ef`
+  exception. (These gate the summary + slice 4.)
+
+## Proposed slices
+1. **Nef core + research half** — `Nef` primitive (helper + bind + contract), I, P (first-author), T17/T18 + I/P in summary.
+2. **A1–A6** — books/chapters/reviews/proceedings (WoS Master Book List allowlist + editor role), A1–A6 tables + A subtotal.
+3. **A7–A10** — patents + projects (reused activities; `Nef` in activity context; A10 budget via H64), A complete.
+4. **C + h + T + summary** — citation count, Hirsch computation, composite T, T20 obtained row. (Da/Nu manual.)
+
+## Exit criteria
+Physics fišă exports per a real run: I/P (Nef), A1–A10 + A, C, h, T, summary vs thresholds; corresponding-author
+P once H63 lands; trusted project figures once H64 lands; replay-shape guard green; no regression to other report types.

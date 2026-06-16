@@ -9,6 +9,84 @@ Done history moved to `TASKS-done.md`.
 
 ## Active
 
+- [ ] `H66` Canonical Forum registry (multi-source identity + rankings + indexing). **Reshaped from
+  "curated allowlists" → forum-first; re-grounded against code (scope narrower than first thought).**
+  Code check confirms the canonical forum is **already first-class and multi-source** (`ScholardexForumFact`
+  already has `scopusForumIds`/`wosForumIds`/`googleScholarForumIds`/`userSourceForumIds` + ISSN/aliases),
+  a **standalone forum-import path already exists** (`ScopusImportEntityType.FORUM` via the publisher-CSV
+  ingestion), and the publication path is **already resolve-or-enrich** (`upsertForumFact` keys by
+  `source_id`, blank-tolerant). So this is NOT a pipeline rewrite — it's three moves: **(A)** feed the new
+  list sources (CiteScore/MJL/DOAJ/ERIH) into the existing FORUM import path and canonicalize by ISSN→name;
+  **(B)** the bug-killer — fold WoS rankings/indexing (today a `journalId`-keyed sibling joined *fuzzily at
+  scoring time*) **onto the forum by `wosForumIds` FK** + project onto the forum view, retiring the fuzzy
+  resolver; **(C)** verify pub resolve-or-enrich + dedup cover the new id sources. Keep publication forum
+  emission (long-tail venues need it) — it just becomes near-idempotent linking once seeded.
+  Sources in hand: **Scopus CiteScore list** (`data/scopus/...csv`, 29,777 sources w/ Source ID + ISSN/eISSN
+  + ASJC + type) — the clean FK for resolving Scopus pubs; **WoS MJL** (`data/wos/mjl/`, 24,123 journals,
+  index membership + categories); **WoS metrics** (AIS/IF/RIS in Postgres); **DOAJ** (CSV); **ERIH+**
+  (Typesense, pinned); CNCSIS/SENSE/CORE (DB). Still: ERIH+ pull, CNCS A/B/C tiers, embedded prestige lists
+  (transcribe from `data/standards/`), vendor title-lists for "≥N DBs". MBL no longer downloadable
+  (substitute SENSE/CNCSIS/admin). Planning doc at `docs/tasks/active/h66-curated-allowlists.md`.
+
+- [ ] `H67` h-index (Hirsch) computation (foundational, from the standards assessment).
+  Goal: compute the candidate's Hirsch index from our citation data + expose it as a scoring/threshold input
+  (nothing computes it today). Needed by chimie (≥13/9 WoS), geografie (Hirsch excl. self-cit), fizica (h
+  column), istorie (GS h≥3 OR ≥70 citations). Aggregate metric over the corpus; citation source per domain
+  (WoS/Scopus/GS); self-citation exclusion; per-position thresholds. Planning doc at
+  `docs/tasks/active/h67-h-index.md`.
+
+- [ ] `H68` Advanced criteria / threshold extensions (foundational, from the standards assessment).
+  Goal: extend the criteria engine for recurring patterns — **post-PhD temporal anchor**, per-indicator/
+  per-group **caps (plafoane)**, **best-of single-indicator assignment**, **count + point** mixed criteria,
+  **Da/Nu** qualitative gates, cross-criterion compensation. Modest config-level extensions on the existing
+  per-position threshold model. Consumers: FSGC, drept, FLIT, FAD, FSP, sport, fizica. Planning doc at
+  `docs/tasks/active/h68-criteria-extensions.md`.
+
+- [ ] `H65` Physics (Fizică/FF) report — DOCX export. **Postponed behind H63 + H64.**
+  Goal: export the FV Fizică fišă (Ordin 6129/2016 Anexa 1; 21-table template). Scoped this session;
+  implementation deferred until the data tasks land (P needs corresponding author from H63; A9/A10 need
+  canonical project budget/attribution from H64).
+  Notable: core new primitive `Nef` (effective author-count bracket, divisor for I/P/A1–A8); indicators
+  I=ΣAIS/Nef, P=ΣAIS (first-author now → first-or-corresponding via H63), A1–A10 didactic (reuse `Grant
+  Cercetare`/`Brevet`/`Proiect educational` activities + WoS Master Book List allowlist + editor role),
+  A=ΣA_i, C=citation count, h=Hirsch (new), T=composite. Reuse AIS strategy, FEAA/CNCSIS allowlist pattern,
+  Mate_C count, docx infra. Still to read: PDF p6–14 (Prof thresholds, C/h/T definitions, HEPP exception).
+  Slices: (1) Nef core + I/P; (2) A1–A6; (3) A7–A10; (4) C+h+T+summary. Planning doc at
+  `docs/tasks/active/h65-physics-report-export.md`.
+
+- [ ] `H64` Canonical projects (unification across sources).
+  Goal: a canonical `ScholardexProject` entity researchers reference across all project-scoring reports
+  (physics A9/A10, FEAA, CS), unifying project identity + attribution. Primary value is unification (one
+  trusted project + who led it), not budget.
+  Notable: OpenAIRE has **no** RO national (UEFISCDI/PN-III) projects (verified); CORDIS has EU projects
+  with per-partner budget (free bulk); **brainmap is the only RO-national source** (rich: code, programme,
+  partners, **director person+role** — no budget). Sources: CORDIS bulk import + brainmap **offline dump
+  generator** (NOT a live dependency; gentle pacing to avoid account lock; creds gitignored) + OpenAIRE
+  (deferred, EU links). Threads a new Project entity through the existing pipeline (events → source facts →
+  canonical facts → projections); partners tie to canonical `ScholardexAffiliationFact` (PIC / name+country);
+  researcher↔project + project↔partner join facts.
+  Open decisions first: budget semantics (org contribution vs led-team share — decides if budget ingest is
+  worth it), full-pipeline vs lighter reference-import, brainmap mechanism (admin tool vs UEFISCDI export),
+  **currency normalization + monetary eligibility thresholds** (RON↔EUR bnr.ro; grant ≥X thresholds recur
+  across chimie/geografie/FSGC/drept/FSP/sport/FEAA per the standards assessment). Physics/FEAA ship NOW on
+  the existing `Grant Cercetare`/`Buget` activity — this is independent. Planning doc at
+  `docs/tasks/active/h64-canonical-projects.md`.
+
+- [ ] `H63` OpenAlex enrichment (corresponding + last author + ORCID).
+  Goal: add OpenAlex as an enrichment source (keyed by DOI) to obtain corresponding-author info we lack
+  today (`authorships[].is_corresponding` + ORCID + `author_position` for **last-author**), plus author
+  disambiguation. Driver: physics `P = prim autor sau autor corespondent`. **Cross-cutting** (standards
+  assessment): corresponding-author needed by chimie/biologie/geografie/fizica/FSP/sport; **last-author as
+  principal** needed by biologie + FSP + sport — fold last-author into this task.
+  Notable: `correspondingAuthors` is empty for all ~92.6k facts (our Scopus export lacks it). Crossref
+  has no corresponding author; Scopus Abstract Retrieval has it but name-based + 5k/week; OpenAlex has it
+  ID-precise (ORCID), free, ~100k/day → ~7k UVT-paper backfill in minutes. Additive source — does NOT
+  touch the Scopus dumper/wrapper.
+  Deliverable: enrichment fetcher (backfill + DOI-keyed incremental) → populate `correspondingAuthors` →
+  expose on `ScoringPublicationReadModel` → upgrade physics P from first-author-only to first-or-corresponding.
+  Exit criteria: UVT pubs carry corresponding author where OpenAlex declares it (ORCID-matched), partial
+  coverage handled with first-author fallback. Planning doc at `docs/tasks/active/h63-openalex-enrichment.md`.
+
 - [ ] `H20` Google Scholar (PoP) user-onboarding into Scholardex.
   Goal: support user-triggered Google Scholar imports from Publish-or-Perish exports as first-class canonical ingestion into Scholardex identity/link models.
   Deliverable: user-operation onboarding flow for PoP exports (upload/import from user surface) with parser + ingest adapter into Scholar-source events/facts and linker integration with Scholardex entities.
