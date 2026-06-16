@@ -26,6 +26,13 @@ public class ScholardexForumFact {
     private List<String> wosForumIds = new ArrayList<>();
     private List<String> googleScholarForumIds = new ArrayList<>();
     private List<String> userSourceForumIds = new ArrayList<>();
+    /** H66 A1: ERIH+ native ids (parity with the other source-id lists; populated by A5). */
+    private List<String> erihIds = new ArrayList<>();
+
+    /** H66 A1: C-scalar — normalized venue kind (journal/book-series/conference/trade), from CiteScore (A2). */
+    private String forumType;
+    /** H66 A1: C-scalar — Scopus ASJC subject codes (snapshot, from CiteScore A2). */
+    private List<String> asjc = new ArrayList<>();
 
     private String name;
     private String nameNormalized;

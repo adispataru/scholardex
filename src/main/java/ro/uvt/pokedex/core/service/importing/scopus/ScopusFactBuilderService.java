@@ -579,6 +579,15 @@ public class ScopusFactBuilderService {
         String effectivePublisherForHash = (incomingPublisherForHash != null && !incomingPublisherForHash.isBlank())
                 ? incomingPublisherForHash
                 : fact.getPublisher();
+        // H66 A2: forumType + asjc — enrichment fields supplied only by the CiteScore (and later MJL) FORUM
+        // feed, never by publication events. Hash on the EFFECTIVE value so a blank-carrying publication
+        // event keeps the seeded hash (early return) instead of churning.
+        String incomingForumType = text(payload, "forumType");
+        String effectiveForumTypeForHash = (incomingForumType != null && !incomingForumType.isBlank())
+                ? incomingForumType
+                : fact.getForumType();
+        List<String> incomingAsjc = distinctNonBlank(splitSemicolon(text(payload, "asjc")));
+        List<String> effectiveAsjcForHash = !incomingAsjc.isEmpty() ? incomingAsjc : fact.getAsjc();
         String payloadHash = hashKey("forum",
                 sourceId,
                 text(payload, "publicationName"),
@@ -586,7 +595,9 @@ public class ScopusFactBuilderService {
                 normalizeIssn(text(payload, "eIssn")),
                 effectiveIsbnForHash,
                 text(payload, "aggregationType"),
-                effectivePublisherForHash);
+                effectivePublisherForHash,
+                effectiveForumTypeForHash,
+                String.join(";", effectiveAsjcForHash == null ? List.of() : effectiveAsjcForHash));
         if (!created && samePayloadHash(fact.getLastPayloadHash(), payloadHash)) {
             if (refreshLineageForReplay(fact, event)) {
                 state.pendingForumSaves.put(sourceId, fact);
@@ -605,6 +616,8 @@ public class ScopusFactBuilderService {
         String isbnBefore = fact.getIsbn();
         String aggregationTypeBefore = fact.getAggregationType();
         String publisherBefore = fact.getPublisher();
+        String forumTypeBefore = fact.getForumType();
+        List<String> asjcBefore = snapshotList(fact.getAsjc());
         // H56: blank-tolerant content merge — a paper that omits a forum attribute must not erase a
         // value learned from another paper (previously name/issn/eIssn/aggregationType were overwritten
         // unconditionally, leaving whatever the LAST paper in event order carried).
@@ -638,6 +651,13 @@ public class ScopusFactBuilderService {
         } else if (fact.getPublisher() == null) {
             fact.setPublisher(incomingPublisher);
         }
+        // H66 A2: forumType + asjc — blank-tolerant (FORUM-feed enrichment, never erased by a publication event).
+        if (created || !isBlank(incomingForumType)) {
+            fact.setForumType(incomingForumType);
+        }
+        if (created || !incomingAsjc.isEmpty()) {
+            fact.setAsjc(incomingAsjc);
+        }
         // H56: absorbed variant with no content change — skip the write (see author gate).
         if (!created
                 && Objects.equals(publicationNameBefore, fact.getPublicationName())
@@ -645,7 +665,9 @@ public class ScopusFactBuilderService {
                 && Objects.equals(eIssnBefore, fact.getEIssn())
                 && Objects.equals(isbnBefore, fact.getIsbn())
                 && Objects.equals(aggregationTypeBefore, fact.getAggregationType())
-                && Objects.equals(publisherBefore, fact.getPublisher())) {
+                && Objects.equals(publisherBefore, fact.getPublisher())
+                && Objects.equals(forumTypeBefore, fact.getForumType())
+                && Objects.equals(asjcBefore, fact.getAsjc())) {
             return;
         }
         applyLineage(fact, event);

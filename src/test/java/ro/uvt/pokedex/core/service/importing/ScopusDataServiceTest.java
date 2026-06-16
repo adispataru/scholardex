@@ -20,6 +20,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 class ScopusDataServiceTest {
@@ -432,5 +433,54 @@ class ScopusDataServiceTest {
                 new ScopusImportEventIngestionService(repository, objectMapper, null),
                 mock(ScopusCanonicalMaterializationService.class)
         );
+    }
+
+    // --- H66 A2: CiteScore loader ---
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void importCiteScore_groupsRowsBySource_unionsAsjc_mapsTypeAndIssn(@TempDir Path tempDir) throws IOException {
+        when(importEventIngestionService.ingest(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(ScopusImportEventIngestionService.EventIngestionOutcome.imported("evt"));
+
+        // Source 100 spans two ASJC sub-subjects (two rows); source 200 is a book series with a quoted,
+        // comma-containing publisher. Header column order matches the real CiteScore export.
+        String csv = String.join("\n",
+                "Scopus Source ID,Title,Type,Scopus ASJC Code (Sub-subject Area),Publisher,Print ISSN,E-ISSN",
+                "100,Journal of Things,j,1902,Elsevier,16807316,16807324",
+                "100,Journal of Things,j,3107,Elsevier,16807316,16807324",
+                "200,Book Series of Stuff,k,1700,\"Springer Nature, Inc.\",,12345678");
+        Path file = tempDir.resolve("citescore.csv");
+        Files.writeString(file, csv);
+
+        ImportProcessingResult result = service.importCiteScoreCsvFromPath(file.toString(), "batch-cs");
+
+        // Two distinct sources -> two FORUM events (3 rows collapsed).
+        assertEquals(2, result.getProcessedCount());
+        ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(importEventIngestionService, times(2)).ingest(
+                eq(ScopusImportEntityType.FORUM), any(), any(), eq("batch-cs"), any(), any(), payloadCaptor.capture());
+
+        Map<String, Object> j = payloadCaptor.getAllValues().stream()
+                .filter(p -> "100".equals(p.get("source_id"))).findFirst().orElseThrow();
+        assertEquals("Journal of Things", j.get("publicationName"));
+        assertEquals("journal", j.get("forumType"));
+        assertEquals("16807316", j.get("issn"));
+        assertEquals("16807324", j.get("eIssn"));
+        assertEquals("Elsevier", j.get("publisher"));
+        assertEquals("1902;3107", j.get("asjc")); // unioned across the source's two rows
+
+        Map<String, Object> k = payloadCaptor.getAllValues().stream()
+                .filter(p -> "200".equals(p.get("source_id"))).findFirst().orElseThrow();
+        assertEquals("book-series", k.get("forumType"));
+        assertEquals("Springer Nature, Inc.", k.get("publisher")); // quoted comma preserved (RFC-4180)
+        assertEquals("1700", k.get("asjc"));
+        assertNull(k.get("issn")); // blank print ISSN -> null
+    }
+
+    @Test
+    void importCiteScore_missingFile_throwsIllegalArgument() {
+        assertThrows(IllegalArgumentException.class,
+                () -> service.importCiteScoreCsvFromPath("/no/such/citescore.csv", "b"));
     }
 }

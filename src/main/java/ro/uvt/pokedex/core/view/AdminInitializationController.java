@@ -28,6 +28,7 @@ public class AdminInitializationController {
     private final GeneralInitializationService generalInitializationService;
     private final RankingMaintenanceFacade rankingMaintenanceFacade;
     private final ScopusBigBangMigrationService scopusBigBangMigrationService;
+    private final ro.uvt.pokedex.core.service.importing.ScopusDataService scopusDataService;
     private final ro.uvt.pokedex.core.service.application.PipelineRebuildService pipelineRebuildService;
     private final UserDefinedMaintenanceOrchestrationService userDefinedMaintenanceOrchestrationService;
     private final ObjectProvider<PostgresReportingProjectionService> postgresReportingProjectionServiceProvider;
@@ -213,6 +214,24 @@ public class AdminInitializationController {
         redirectAttributes.addFlashAttribute("successMessage", "Scopus ingest complete. "
                 + formatScopusStep("ingest", result.ingest()) + " "
                 + formatScopusVerification(result.verification()));
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/scopus/importCiteScore")
+    public String runScopusImportCiteScore(
+            @RequestParam(name = "path") String path,
+            @RequestParam(name = "batchId", required = false) String batchId,
+            RedirectAttributes redirectAttributes
+    ) {
+        String effectiveBatchId = (batchId == null || batchId.isBlank())
+                ? "citescore-" + java.time.Instant.now().toEpochMilli()
+                : batchId;
+        var result = scopusDataService.importCiteScoreCsvFromPath(path, effectiveBatchId);
+        redirectAttributes.addFlashAttribute("successMessage",
+                "CiteScore import complete (batchId=" + effectiveBatchId + "). processed=" + result.getProcessedCount()
+                        + ", imported=" + result.getImportedCount()
+                        + ", skipped=" + result.getSkippedCount()
+                        + ", errors=" + result.getErrorCount());
         return "redirect:/admin/initialization";
     }
 

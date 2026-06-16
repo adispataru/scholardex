@@ -308,6 +308,8 @@ public class ScholardexProjectionBuilderService {
         view.setIsbn(fact.getIsbn());
         view.setAggregationType(fact.getAggregationType());
         view.setPublisher(fact.getPublisher());
+        view.setForumType(fact.getForumType());
+        view.setAsjc(fact.getAsjc() == null ? new ArrayList<>() : new ArrayList<>(fact.getAsjc()));
         view.setBuildVersion(buildVersion);
         view.setBuildAt(buildAt);
         view.setUpdatedAt(buildAt);
@@ -444,8 +446,8 @@ public class ScholardexProjectionBuilderService {
     private void insertForumRows(List<ScholardexForumView> rows) {
         String sql = """
                 INSERT INTO reporting_read.scholardex_forum_view
-                    (id, publication_name, issn, e_issn, isbn, aggregation_type, publisher, build_version, build_at, updated_at, source_event_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (id, publication_name, issn, e_issn, isbn, aggregation_type, publisher, forum_type, asjc, build_version, build_at, updated_at, source_event_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         writeForumRows(rows, sql);
     }
@@ -453,8 +455,8 @@ public class ScholardexProjectionBuilderService {
     private void upsertForumRows(List<ScholardexForumView> rows) {
         String sql = """
                 INSERT INTO reporting_read.scholardex_forum_view
-                    (id, publication_name, issn, e_issn, isbn, aggregation_type, publisher, build_version, build_at, updated_at, source_event_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (id, publication_name, issn, e_issn, isbn, aggregation_type, publisher, forum_type, asjc, build_version, build_at, updated_at, source_event_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (id) DO UPDATE SET
                     publication_name = EXCLUDED.publication_name,
                     issn = EXCLUDED.issn,
@@ -462,6 +464,8 @@ public class ScholardexProjectionBuilderService {
                     isbn = EXCLUDED.isbn,
                     aggregation_type = EXCLUDED.aggregation_type,
                     publisher = EXCLUDED.publisher,
+                    forum_type = EXCLUDED.forum_type,
+                    asjc = EXCLUDED.asjc,
                     build_version = EXCLUDED.build_version,
                     build_at = EXCLUDED.build_at,
                     updated_at = EXCLUDED.updated_at,
@@ -482,10 +486,12 @@ public class ScholardexProjectionBuilderService {
                 ps.setString(5, row.getIsbn());
                 ps.setString(6, row.getAggregationType());
                 ps.setString(7, row.getPublisher());
-                ps.setString(8, row.getBuildVersion());
-                setInstant(ps, 9, row.getBuildAt());
-                setInstant(ps, 10, row.getUpdatedAt());
-                ps.setString(11, row.getSourceEventId());
+                ps.setString(8, row.getForumType());
+                ps.setArray(9, textArray(ps.getConnection(), row.getAsjc()));
+                ps.setString(10, row.getBuildVersion());
+                setInstant(ps, 11, row.getBuildAt());
+                setInstant(ps, 12, row.getUpdatedAt());
+                ps.setString(13, row.getSourceEventId());
             }
 
             @Override

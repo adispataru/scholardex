@@ -22,6 +22,9 @@ public interface ScholardexIdentityConflictRepository extends MongoRepository<Sc
 
     Optional<ScholardexIdentityConflict> findByIdAndStatus(String id, String status);
 
+    /** H66: bulk-load all conflicts in a state for one entity type, to preload-and-skip per-row resolve lookups. */
+    java.util.List<ScholardexIdentityConflict> findByEntityTypeAndStatus(ScholardexEntityType entityType, String status);
+
     Page<ScholardexIdentityConflict> findAllByIncomingSourceContainingIgnoreCaseAndReasonCodeContainingIgnoreCaseAndStatusContainingIgnoreCaseAndDetectedAtBetween(
             String incomingSource,
             String reasonCode,

@@ -6,6 +6,8 @@ import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @Document(collection = "scopus.forum_facts")
@@ -20,6 +22,10 @@ public class ScopusForumFact implements HasLineageFields {
     private String isbn;
     private String aggregationType;
     private String publisher;
+    /** H66 A2: normalized venue kind (journal/book-series/conference/trade), from the CiteScore Type column. */
+    private String forumType;
+    /** H66 A2: Scopus ASJC sub-subject codes (unioned across the source's CiteScore rows). */
+    private List<String> asjc = new ArrayList<>();
     private String sourceEventId;
     private String source;
     private String sourceRecordId;

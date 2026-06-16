@@ -21,6 +21,7 @@ import ro.uvt.pokedex.core.service.integration.IntegrationException;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -36,6 +37,7 @@ public class ScopusDataService {
     private static final String SOURCE_SCOPUS_JSON_BOOTSTRAP = "SCOPUS_JSON_BOOTSTRAP";
     private static final String SOURCE_SCOPUS_JSON_UPLOAD = "SCOPUS_JSON_UPLOAD";
     private static final String SOURCE_SCOPUS_PUBLISHER_CSV_UPLOAD = "SCOPUS_PUBLISHER_CSV_UPLOAD";
+    private static final String SOURCE_SCOPUS_CITESCORE_LIST = "SCOPUS_CITESCORE_LIST";
     private static final int INGEST_HEARTBEAT = 5_000;
     private static final int CITATION_INGEST_BATCH_SIZE = 1_000;
     private static final CanonicalBuildOptions BOOTSTRAP_FULL_RESCAN_OPTIONS =
@@ -221,6 +223,135 @@ public class ScopusDataService {
                 elapsedMs,
                 result.getErrorsSample());
         return result;
+    }
+
+    /**
+     * H66 A2: admin path-based import of the Scopus CiteScore source list (~7MB, gitignored — not bundled).
+     * Seeds the canonical forum registry's identity/classification backbone. CiteScore is one row per
+     * (source x ASJC sub-subject), so rows are grouped by Scopus Source ID and the ASJC codes are unioned;
+     * journal-level fields (title, ISSN/eISSN, publisher, type) are taken from the source's rows. Scores
+     * (CiteScore/SNIP/SJR/quartile) are intentionally skipped — no domain uses them. Emits one
+     * {@code FORUM} event per source, carrying forumType + asjc through the standard FORUM ingestion path.
+     */
+    public ImportProcessingResult importCiteScoreCsvFromPath(String absolutePath, String batchId) {
+        ImportProcessingResult result = new ImportProcessingResult(DEFAULT_ERROR_SAMPLE_SIZE);
+        long startedAtNanos = System.nanoTime();
+        try (CSVReader reader = new CSVReader(new InputStreamReader(new FileInputStream(absolutePath), StandardCharsets.UTF_8))) {
+            List<String[]> rows = reader.readAll();
+            if (rows.isEmpty()) {
+                logger.warn("CiteScore CSV is empty: path={}", absolutePath);
+                return result;
+            }
+            String[] header = rows.get(0);
+            Map<String, Integer> headerIndex = new HashMap<>();
+            for (int i = 0; i < header.length; i++) {
+                if (header[i] != null) {
+                    headerIndex.put(header[i].trim(), i);
+                }
+            }
+            Integer sourceIdCol = headerIndex.get("Scopus Source ID");
+            Integer titleCol = headerIndex.get("Title");
+            Integer typeCol = headerIndex.get("Type");
+            Integer asjcCol = headerIndex.get("Scopus ASJC Code (Sub-subject Area)");
+            Integer printIssnCol = headerIndex.get("Print ISSN");
+            Integer eIssnCol = headerIndex.get("E-ISSN");
+            Integer publisherCol = headerIndex.get("Publisher");
+            if (sourceIdCol == null || titleCol == null) {
+                throw new IllegalArgumentException("CiteScore CSV missing required columns 'Scopus Source ID' / 'Title'");
+            }
+
+            // Group rows by Source ID, unioning ASJC codes (preserve first-seen order).
+            Map<String, CiteScoreSource> bySource = new LinkedHashMap<>();
+            for (int i = 1; i < rows.size(); i++) {
+                String[] row = rows.get(i);
+                String sourceId = normalizeBlankCsvValue(safeColumn(row, sourceIdCol));
+                if (sourceId == null) {
+                    continue;
+                }
+                CiteScoreSource src = bySource.computeIfAbsent(sourceId, k -> new CiteScoreSource());
+                src.title = firstNonBlankCsv(src.title, safeColumn(row, titleCol));
+                src.printIssn = firstNonBlankCsv(src.printIssn, safeColumn(row, printIssnCol));
+                src.eIssn = firstNonBlankCsv(src.eIssn, safeColumn(row, eIssnCol));
+                src.publisher = firstNonBlankCsv(src.publisher, safeColumn(row, publisherCol));
+                src.forumType = firstNonBlankCsv(src.forumType, mapCiteScoreType(safeColumn(row, typeCol)));
+                String asjc = normalizeBlankCsvValue(safeColumn(row, asjcCol));
+                if (asjc != null) {
+                    src.asjc.add(asjc);
+                }
+            }
+            logger.info("CiteScore CSV: {} rows -> {} distinct sources: path={}", rows.size() - 1, bySource.size(), absolutePath);
+
+            for (Map.Entry<String, CiteScoreSource> entry : bySource.entrySet()) {
+                result.markProcessed();
+                String sourceId = entry.getKey();
+                CiteScoreSource src = entry.getValue();
+                Map<String, Object> payload = new LinkedHashMap<>();
+                payload.put("source_id", sourceId);
+                payload.put("publicationName", src.title);
+                payload.put("issn", normalizeBlankCsvValue(src.printIssn));
+                payload.put("eIssn", normalizeBlankCsvValue(src.eIssn));
+                payload.put("publisher", normalizeBlankCsvValue(src.publisher));
+                payload.put("forumType", src.forumType);
+                payload.put("asjc", String.join(";", src.asjc));
+                ScopusImportEventIngestionService.EventIngestionOutcome outcome = importEventIngestionService.ingest(
+                        ScopusImportEntityType.FORUM,
+                        SOURCE_SCOPUS_CITESCORE_LIST,
+                        sourceId,
+                        batchId,
+                        "citescore-source-" + sourceId,
+                        PAYLOAD_FORMAT_JSON_OBJECT,
+                        payload
+                );
+                applyIngestionOutcome(result, outcome, "citescore sourceId=" + sourceId);
+                if (result.getProcessedCount() % INGEST_HEARTBEAT == 0) {
+                    logger.info("CiteScore ingest heartbeat: processed={} imported={} skipped={} errors={}",
+                            result.getProcessedCount(), result.getImportedCount(), result.getSkippedCount(), result.getErrorCount());
+                }
+            }
+        } catch (IOException | CsvException e) {
+            logger.error("Error reading CiteScore CSV file: {}", absolutePath, e);
+            throw new IllegalArgumentException("Failed to parse CiteScore CSV file.", e);
+        }
+        long elapsedMs = (System.nanoTime() - startedAtNanos) / 1_000_000L;
+        logger.info("CiteScore ingest finished: path={} processed={} imported={} skipped={} errors={} elapsedMs={} sample={}",
+                absolutePath,
+                result.getProcessedCount(),
+                result.getImportedCount(),
+                result.getSkippedCount(),
+                result.getErrorCount(),
+                elapsedMs,
+                result.getErrorsSample());
+        return result;
+    }
+
+    /** Map the CiteScore single-letter Type to the canonical forumType vocabulary. */
+    private static String mapCiteScoreType(String rawType) {
+        String t = rawType == null ? "" : rawType.trim().toLowerCase(Locale.ROOT);
+        return switch (t) {
+            case "j" -> "journal";
+            case "k" -> "book-series";
+            case "p" -> "conference";
+            case "d" -> "trade";
+            default -> null;
+        };
+    }
+
+    private static String firstNonBlankCsv(String existing, String incoming) {
+        if (existing != null && !existing.isBlank()) {
+            return existing;
+        }
+        String normalized = normalizeBlankCsvValue(incoming);
+        return normalized != null ? normalized : existing;
+    }
+
+    /** Mutable per-source accumulator for the CiteScore row grouping. */
+    private static final class CiteScoreSource {
+        private String title;
+        private String printIssn;
+        private String eIssn;
+        private String publisher;
+        private String forumType;
+        private final LinkedHashSet<String> asjc = new LinkedHashSet<>();
     }
 
     private static String safeColumn(String[] row, Integer col) {

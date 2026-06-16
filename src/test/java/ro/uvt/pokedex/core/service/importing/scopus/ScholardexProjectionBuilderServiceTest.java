@@ -97,6 +97,9 @@ class ScholardexProjectionBuilderServiceTest {
         fact.setEIssn("8765-4321");
         fact.setAggregationType("Journal");
         fact.setSourceEventId("ev-forum-1");
+        // H66 A1: C-scalars.
+        fact.setForumType("journal");
+        fact.setAsjc(List.of("1700", "2600"));
 
         ScholardexForumView view = ReflectionTestUtils.invokeMethod(service, "toCanonicalForumView", fact, "build-v1", buildAt);
 
@@ -109,6 +112,26 @@ class ScholardexProjectionBuilderServiceTest {
         assertEquals(buildAt, view.getBuildAt());
         assertEquals(buildAt, view.getUpdatedAt());
         assertEquals("ev-forum-1", view.getSourceEventId());
+        // H66 A1: C-scalars map through; asjc is copied into a fresh list.
+        assertEquals("journal", view.getForumType());
+        assertEquals(List.of("1700", "2600"), view.getAsjc());
+    }
+
+    @Test
+    void toForumViewDefaultsAsjcToEmptyWhenFactHasNone() {
+        ScholardexProjectionBuilderService service = newService();
+        Instant buildAt = Instant.parse("2026-04-29T10:15:30Z");
+
+        ScholardexForumFact fact = new ScholardexForumFact();
+        fact.setId("sforum_two");
+        fact.setName("Forum Two");
+        fact.setAsjc(null);
+
+        ScholardexForumView view = ReflectionTestUtils.invokeMethod(service, "toCanonicalForumView", fact, "build-v1", buildAt);
+
+        assertNotNull(view.getAsjc());
+        assertTrue(view.getAsjc().isEmpty());
+        assertEquals(null, view.getForumType());
     }
 
     @Test
@@ -340,6 +363,10 @@ class ScholardexProjectionBuilderServiceTest {
         assertEquals(3, setterCaptor.getValue().getBatchSize());
 
         PreparedStatement ps = mock(PreparedStatement.class);
+        Connection connection = mock(Connection.class);
+        Array emptyAsjc = mock(Array.class);
+        when(ps.getConnection()).thenReturn(connection);
+        when(connection.createArrayOf(eq("text"), any(Object[].class))).thenReturn(emptyAsjc);
         setterCaptor.getValue().setValues(ps, 0);
         verify(ps).setString(1, "sforum_a");
         verify(ps).setString(2, "Wizard Forum A");
@@ -348,7 +375,10 @@ class ScholardexProjectionBuilderServiceTest {
         verify(ps).setString(5, null);
         verify(ps).setString(6, "Conference");
         verify(ps).setString(7, null);
-        verify(ps).setString(11, "ev-a");
+        // H66 A1: forum_type (8) then asjc array (9) precede build metadata; source_event_id shifts to 13.
+        verify(ps).setString(8, null);
+        verify(ps).setArray(9, emptyAsjc);
+        verify(ps).setString(13, "ev-a");
         verify(ps, times(2)).setTimestamp(anyInt(), any(Timestamp.class));
     }
 

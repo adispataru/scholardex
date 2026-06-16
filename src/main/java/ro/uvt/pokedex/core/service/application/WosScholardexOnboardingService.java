@@ -27,6 +27,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -114,11 +115,12 @@ public class WosScholardexOnboardingService {
         for (ScholardexForumFact canonicalForum : canonicalForums) {
             canonicalById.put(canonicalForum.getId(), canonicalForum);
         }
+        CanonicalForumIndex forumIndex = new CanonicalForumIndex(canonicalById);
 
         Instant now = Instant.now();
         for (WosRankingView journal : journals) {
             result.markProcessed();
-            upsertForumFromWos(journal, scopusForums, canonicalById, batchId, correlationId, now, result);
+            upsertForumFromWos(journal, scopusForums, canonicalById, forumIndex, batchId, correlationId, now, result);
         }
 
         onboardPublicationWosLinks(batchId, correlationId, now, result);
@@ -161,18 +163,77 @@ public class WosScholardexOnboardingService {
             return sourceId == null ? "" : sourceId;
         }));
 
+        CanonicalForumIndex forumIndex = new CanonicalForumIndex(canonicalById);
+        // H66: preload the OPEN forum-conflict keys once, so the per-row ambiguity-resolve does a DB read
+        // only when a conflict actually exists for that record. On a from-empty rebuild the set is empty,
+        // turning ~60k (2 reasons × n) always-miss lookups into in-memory checks.
+        Set<String> openForumConflictKeys = loadOpenForumConflictKeys();
+        // H66: preload existing FORUM source links once (keyed by SourceLinkKey) — serves both the per-row
+        // re-run-idempotency lookup (in-memory instead of a DB findByKey) AND the batchUpsertWithState
+        // preloadedByKey below (so the batch needs no per-command fallback lookups). Empty on a fresh build.
+        Map<ScholardexSourceLinkService.SourceLinkKey, ScholardexSourceLink> existingForumLinks = loadForumSourceLinks(
+                SOURCE_SCOPUS, scopusForums.stream().map(ScopusForumFact::getSourceId).toList());
+        // H66: accumulate source-link writes and flush once after the loop (nothing reads links mid-loop;
+        // the in-memory canonicalIdByScopusForumId map handles the already-canonical check).
+        List<ScholardexSourceLinkService.SourceLinkUpsertCommand> linkCommands = new ArrayList<>();
         Instant now = Instant.now();
         for (ScopusForumFact scopusForum : scopusForums) {
             result.markProcessed();
-            upsertForumFromScopus(scopusForum, canonicalById, canonicalIdByScopusForumId, batchId, correlationId, now, result);
+            upsertForumFromScopus(scopusForum, canonicalById, canonicalIdByScopusForumId, forumIndex, openForumConflictKeys, existingForumLinks, linkCommands, batchId, correlationId, now, result);
         }
+        sourceLinkService.batchUpsertWithState(linkCommands, existingForumLinks);
         return result;
+    }
+
+    /** H66: existing FORUM source links for the given source, keyed by SourceLinkKey (for preload-and-skip + batch). */
+    private Map<ScholardexSourceLinkService.SourceLinkKey, ScholardexSourceLink> loadForumSourceLinks(String source, Collection<String> sourceRecordIds) {
+        Map<ScholardexSourceLinkService.SourceLinkKey, ScholardexSourceLink> byKey = new HashMap<>();
+        for (ScholardexSourceLink link : sourceLinkService.findByEntityTypeAndSourceRecordIds(ScholardexEntityType.FORUM, sourceRecordIds)) {
+            if (source.equals(link.getSource())) {
+                byKey.put(ScholardexSourceLinkService.SourceLinkKey.of(ScholardexEntityType.FORUM, link.getSource(), link.getSourceRecordId()), link);
+            }
+        }
+        return byKey;
+    }
+
+    /** H66: keys ("source|sourceRecordId|reason") of all OPEN forum identity conflicts, for preload-and-skip. */
+    private Set<String> loadOpenForumConflictKeys() {
+        Set<String> keys = new HashSet<>();
+        for (ScholardexIdentityConflict conflict : scholardexIdentityConflictRepository
+                .findByEntityTypeAndStatus(ScholardexEntityType.FORUM, STATUS_OPEN)) {
+            keys.add(openConflictKey(conflict.getIncomingSource(), conflict.getIncomingSourceRecordId(), conflict.getReasonCode()));
+        }
+        return keys;
+    }
+
+    private static String openConflictKey(String source, String sourceRecordId, String reason) {
+        return source + "|" + sourceRecordId + "|" + reason;
+    }
+
+    /** H66: LINKED source-link command (replaces per-row upsertLinkedSourceLink for batch flush). */
+    private static ScholardexSourceLinkService.SourceLinkUpsertCommand linkedCommand(
+            String source, String sourceRecordId, String canonicalEntityId, String reason, String batchId, String correlationId) {
+        return new ScholardexSourceLinkService.SourceLinkUpsertCommand(
+                ScholardexEntityType.FORUM, source, sourceRecordId, canonicalEntityId,
+                ScholardexSourceLinkService.STATE_LINKED, reason, null, batchId, correlationId, true);
+    }
+
+    /** H66: CONFLICT source-link command (replaces per-row upsertConflictSourceLink for batch flush). */
+    private static ScholardexSourceLinkService.SourceLinkUpsertCommand conflictCommand(
+            String source, String sourceRecordId, String reason, String batchId, String correlationId) {
+        return new ScholardexSourceLinkService.SourceLinkUpsertCommand(
+                ScholardexEntityType.FORUM, source, sourceRecordId, null,
+                ScholardexSourceLinkService.STATE_CONFLICT, reason, null, batchId, correlationId, false);
     }
 
     private void upsertForumFromScopus(
             ScopusForumFact scopusForum,
             Map<String, ScholardexForumFact> canonicalById,
             Map<String, String> canonicalIdByScopusForumId,
+            CanonicalForumIndex forumIndex,
+            Set<String> openForumConflictKeys,
+            Map<ScholardexSourceLinkService.SourceLinkKey, ScholardexSourceLink> existingForumLinks,
+            List<ScholardexSourceLinkService.SourceLinkUpsertCommand> linkCommands,
             String batchId,
             String correlationId,
             Instant now,
@@ -206,16 +267,16 @@ public class WosScholardexOnboardingService {
         // FORUM/SCOPUS source link so publication re-pointing can resolve this Scopus forum id.
         String linkedCanonicalId = canonicalIdByScopusForumId.get(sourceRecordId);
         if (linkedCanonicalId != null && canonicalById.containsKey(linkedCanonicalId)) {
-            upsertLinkedSourceLink(ScholardexEntityType.FORUM, SOURCE_SCOPUS, sourceRecordId, linkedCanonicalId, REASON_SCOPUS_FORUM_ONBOARDING, batchId, correlationId, true);
-            resolveOpenForumAmbiguityConflict(sourceRecordId);
+            linkCommands.add(linkedCommand(SOURCE_SCOPUS, sourceRecordId, linkedCanonicalId, REASON_SCOPUS_FORUM_ONBOARDING, batchId, correlationId));
+            resolveOpenForumAmbiguityConflict(sourceRecordId, openForumConflictKeys);
             result.markSkipped("scopus-forum-already-canonical sourceRecordId=" + sourceRecordId);
             return;
         }
 
         // Re-run idempotency: a prior canonicalization already created/linked a canonical forum for this
         // Scopus forum id; re-merge it in place and refresh the link.
-        Optional<ScholardexSourceLink> existingLink = sourceLinkService
-                .findByKey(ScholardexEntityType.FORUM, SOURCE_SCOPUS, sourceRecordId);
+        Optional<ScholardexSourceLink> existingLink = Optional.ofNullable(
+                existingForumLinks.get(ScholardexSourceLinkService.SourceLinkKey.of(ScholardexEntityType.FORUM, SOURCE_SCOPUS, sourceRecordId)));
         if (existingLink.isPresent()) {
             String canonicalId = normalizeBlank(existingLink.get().getCanonicalEntityId());
             if (canonicalId != null && canonicalById.containsKey(canonicalId)) {
@@ -223,16 +284,17 @@ public class WosScholardexOnboardingService {
                 mergeForumFromScopus(target, scopusForum, normalizedIssns, name, aggregationType, now, batchId, correlationId);
                 target.setBuilderVersion(BuilderVersion.SCHOLARDEX_FORUM);
                 if (persistForumOrRecordConflict(target, sourceRecordId, batchId, correlationId, result)) {
+                    forumIndex.put(target); // re-index: the merge may have added ISSN tokens/aliases
                     canonicalIdByScopusForumId.put(sourceRecordId, target.getId());
-                    upsertLinkedSourceLink(ScholardexEntityType.FORUM, SOURCE_SCOPUS, sourceRecordId, target.getId(), REASON_SCOPUS_FORUM_ONBOARDING, batchId, correlationId, true);
-                    resolveOpenForumAmbiguityConflict(sourceRecordId);
+                    linkCommands.add(linkedCommand(SOURCE_SCOPUS, sourceRecordId, target.getId(), REASON_SCOPUS_FORUM_ONBOARDING, batchId, correlationId));
+                    resolveOpenForumAmbiguityConflict(sourceRecordId, openForumConflictKeys);
                     result.markUpdated();
                 }
                 return;
             }
         }
 
-        List<ScholardexForumFact> candidates = findCanonicalCandidates(canonicalById.values(), normalizedIssns, nameAggKey);
+        List<ScholardexForumFact> candidates = forumIndex.findCandidates(normalizedIssns, nameAggKey);
         if (candidates.size() > 1) {
             // H55.6: an ISSN-token match against several canonical forums is usually a forum that shares
             // only an eISSN with a sibling/continuation (e.g. European Physical Journal C vs Zeitschrift
@@ -252,7 +314,7 @@ public class WosScholardexOnboardingService {
         if (candidates.size() > 1) {
             String reason = normalizedIssns.isEmpty() ? REASON_AMBIGUOUS_NAME_AGG : REASON_AMBIGUOUS_ISSN;
             List<String> candidateIds = candidates.stream().map(ScholardexForumFact::getId).toList();
-            upsertConflictSourceLink(ScholardexEntityType.FORUM, SOURCE_SCOPUS, sourceRecordId, reason, batchId, correlationId);
+            linkCommands.add(conflictCommand(SOURCE_SCOPUS, sourceRecordId, reason, batchId, correlationId));
             openConflict(ScholardexEntityType.FORUM, SOURCE_SCOPUS, sourceRecordId, reason, candidateIds, batchId, correlationId);
             result.markSkipped("scopus-forum-ambiguous-candidates sourceRecordId=" + sourceRecordId);
             return;
@@ -277,10 +339,10 @@ public class WosScholardexOnboardingService {
         if (!persistForumOrRecordConflict(target, sourceRecordId, batchId, correlationId, result)) {
             return;
         }
-        canonicalById.put(target.getId(), target);
+        forumIndex.put(target);
         canonicalIdByScopusForumId.put(sourceRecordId, target.getId());
-        upsertLinkedSourceLink(ScholardexEntityType.FORUM, SOURCE_SCOPUS, sourceRecordId, target.getId(), REASON_SCOPUS_FORUM_ONBOARDING, batchId, correlationId, true);
-        resolveOpenForumAmbiguityConflict(sourceRecordId);
+        linkCommands.add(linkedCommand(SOURCE_SCOPUS, sourceRecordId, target.getId(), REASON_SCOPUS_FORUM_ONBOARDING, batchId, correlationId));
+        resolveOpenForumAmbiguityConflict(sourceRecordId, openForumConflictKeys);
         if (created) {
             result.markImported();
         } else {
@@ -340,6 +402,12 @@ public class WosScholardexOnboardingService {
         target.setAggregationType(preferredAgg);
         target.setAggregationTypeNormalized(normalizeToken(preferredAgg));
 
+        // H66 A2: C-scalars from the Scopus/CiteScore forum — additive, never clears a prior writer's value.
+        target.setForumType(firstNonBlank(target.getForumType(), scopusForum.getForumType()));
+        LinkedHashSet<String> asjc = new LinkedHashSet<>(safeList(target.getAsjc()));
+        asjc.addAll(safeList(scopusForum.getAsjc()));
+        target.setAsjc(new ArrayList<>(asjc));
+
         if (target.getId() == null) {
             String forumId = buildCanonicalForumId(target.getIssn(), target.getEIssn(), target.getAliasIssns(), target.getNameNormalized(), target.getAggregationTypeNormalized());
             target.setId(forumId);
@@ -372,6 +440,7 @@ public class WosScholardexOnboardingService {
             WosRankingView rankingView,
             List<ScopusForumFact> scopusForums,
             Map<String, ScholardexForumFact> canonicalById,
+            CanonicalForumIndex forumIndex,
             String batchId,
             String correlationId,
             Instant now,
@@ -410,6 +479,7 @@ public class WosScholardexOnboardingService {
                 mergeForum(target, sourceRecordId, normalizedIssns, name, nameNormalized, aggregationType, aggregationTypeNormalized, scopusForums, now, batchId, correlationId);
                 target.setBuilderVersion(BuilderVersion.SCHOLARDEX_FORUM);
                 if (persistForumOrRecordConflict(target, sourceRecordId, batchId, correlationId, result)) {
+                    forumIndex.put(target); // re-index: the merge may have added ISSN tokens/aliases
                     upsertLinkedSourceLink(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId, target.getId(), REASON_WOS_FORUM_ONBOARDING, batchId, correlationId, true);
                     result.markUpdated();
                 }
@@ -417,7 +487,7 @@ public class WosScholardexOnboardingService {
             }
         }
 
-        List<ScholardexForumFact> candidates = findCanonicalCandidates(canonicalById.values(), normalizedIssns, nameAggKey);
+        List<ScholardexForumFact> candidates = forumIndex.findCandidates(normalizedIssns, nameAggKey);
         if (candidates.size() > 1) {
             String reason = normalizedIssns.isEmpty() ? REASON_AMBIGUOUS_NAME_AGG : REASON_AMBIGUOUS_ISSN;
             List<String> candidateIds = candidates.stream().map(ScholardexForumFact::getId).toList();
@@ -445,7 +515,7 @@ public class WosScholardexOnboardingService {
         if (!persistForumOrRecordConflict(target, sourceRecordId, batchId, correlationId, result)) {
             return;
         }
-        canonicalById.put(target.getId(), target);
+        forumIndex.put(target);
         upsertLinkedSourceLink(ScholardexEntityType.FORUM, SOURCE_WOS, sourceRecordId, target.getId(), REASON_WOS_FORUM_ONBOARDING, batchId, correlationId, true);
         if (created) {
             result.markImported();
@@ -591,27 +661,104 @@ public class WosScholardexOnboardingService {
         return candidates;
     }
 
-    private List<ScholardexForumFact> findCanonicalCandidates(
-            Collection<ScholardexForumFact> existingForums,
-            Collection<String> issnTokens,
-            String nameAggKey
-    ) {
-        List<ScholardexForumFact> candidates = new ArrayList<>();
-        if (!issnTokens.isEmpty()) {
-            for (ScholardexForumFact forum : existingForums) {
-                if (matchesIssn(forum, issnTokens)) {
-                    candidates.add(forum);
+    /**
+     * H66: incremental index over the canonical-forum-by-id map giving O(1) candidate lookup during bulk
+     * forum canonicalization. The prior {@code findCanonicalCandidates} linear-scanned every canonical forum
+     * per source row, so onboarding 29.7k Scopus forums was O(n²) (~5.8 min measured). Forums are indexed by
+     * their ISSN tokens (issn/eIssn/aliases, normalized) and by name|agg key, updated incrementally as forums
+     * are created or merged. Merges only add tokens, so re-indexing is idempotent and no stale-entry removal
+     * is needed. The id map is shared with the caller, so {@code containsKey}/{@code get} on it still observe
+     * inserts made through this index.
+     */
+    private final class CanonicalForumIndex {
+        private final Map<String, ScholardexForumFact> byId;
+        private final Map<String, Set<String>> issnTokenToIds = new HashMap<>();
+        private final Map<String, Set<String>> nameAggToIds = new HashMap<>();
+
+        CanonicalForumIndex(Map<String, ScholardexForumFact> byId) {
+            this.byId = byId;
+            for (ScholardexForumFact forum : byId.values()) {
+                indexTokens(forum);
+            }
+        }
+
+        /** Insert/refresh a forum: store it in the id map and (re)index its current tokens. Idempotent. */
+        void put(ScholardexForumFact forum) {
+            if (forum == null || forum.getId() == null) {
+                return;
+            }
+            byId.put(forum.getId(), forum);
+            indexTokens(forum);
+        }
+
+        private void indexTokens(ScholardexForumFact forum) {
+            String id = forum.getId();
+            if (id == null) {
+                return;
+            }
+            for (String token : issnTokensOf(forum)) {
+                issnTokenToIds.computeIfAbsent(token, k -> new LinkedHashSet<>()).add(id);
+            }
+            nameAggToIds.computeIfAbsent(nameAggKeyOf(forum), k -> new LinkedHashSet<>()).add(id);
+        }
+
+        /**
+         * Canonical forums sharing ≥1 ISSN token with {@code issnTokens}; when ISSN-less, those matching the
+         * {@code nameAggKey}. Same result as the old per-row linear scan + {@code matchesIssn}, but via the
+         * index. Id-sorted for deterministic candidate order (order only affects the reported candidate list
+         * of an ambiguity conflict). The {@code matchesIssn} re-check is a redundant exactness guard over the
+         * tiny candidate set.
+         */
+        List<ScholardexForumFact> findCandidates(Collection<String> issnTokens, String nameAggKey) {
+            boolean byIssn = issnTokens != null && !issnTokens.isEmpty();
+            LinkedHashSet<String> ids = new LinkedHashSet<>();
+            if (byIssn) {
+                for (String token : issnTokens) {
+                    Set<String> hits = issnTokenToIds.get(token);
+                    if (hits != null) {
+                        ids.addAll(hits);
+                    }
+                }
+            } else {
+                Set<String> hits = nameAggToIds.get(nameAggKey);
+                if (hits != null) {
+                    ids.addAll(hits);
                 }
             }
-            return candidates;
-        }
-        for (ScholardexForumFact forum : existingForums) {
-            String key = normalizeName(forum.getName()) + "|" + normalizeToken(forum.getAggregationType());
-            if (key.equals(nameAggKey)) {
+            List<ScholardexForumFact> candidates = new ArrayList<>();
+            for (String id : ids) {
+                ScholardexForumFact forum = byId.get(id);
+                if (forum == null) {
+                    continue;
+                }
+                if (byIssn && !matchesIssn(forum, issnTokens)) {
+                    continue;
+                }
                 candidates.add(forum);
             }
+            candidates.sort(Comparator.comparing(ScholardexForumFact::getId));
+            return candidates;
         }
-        return candidates;
+    }
+
+    private List<String> issnTokensOf(ScholardexForumFact forum) {
+        List<String> tokens = new ArrayList<>();
+        addIssnToken(tokens, normalizeIssn(forum.getIssn()));
+        addIssnToken(tokens, normalizeIssn(forum.getEIssn()));
+        for (String alias : safeList(forum.getAliasIssns())) {
+            addIssnToken(tokens, normalizeIssn(alias));
+        }
+        return tokens;
+    }
+
+    private static void addIssnToken(List<String> tokens, String token) {
+        if (token != null && !token.isBlank()) {
+            tokens.add(token);
+        }
+    }
+
+    private String nameAggKeyOf(ScholardexForumFact forum) {
+        return normalizeName(forum.getName()) + "|" + normalizeToken(forum.getAggregationType());
     }
 
     /**
@@ -767,8 +914,12 @@ public class WosScholardexOnboardingService {
      * disambiguation, or because a prior run folded its id into a canonical forum). Without this the
      * conflict lingers on {@code /admin/conflicts} even though the forum is resolved.
      */
-    private void resolveOpenForumAmbiguityConflict(String sourceRecordId) {
+    private void resolveOpenForumAmbiguityConflict(String sourceRecordId, Set<String> openForumConflictKeys) {
         for (String reason : List.of(REASON_AMBIGUOUS_ISSN, REASON_AMBIGUOUS_NAME_AGG)) {
+            // H66: skip the DB lookup unless a matching OPEN conflict was preloaded for this record.
+            if (!openForumConflictKeys.contains(openConflictKey(SOURCE_SCOPUS, sourceRecordId, reason))) {
+                continue;
+            }
             scholardexIdentityConflictRepository
                     .findByEntityTypeAndIncomingSourceAndIncomingSourceRecordIdAndReasonCodeAndStatus(
                             ScholardexEntityType.FORUM, SOURCE_SCOPUS, sourceRecordId, reason, STATUS_OPEN)

@@ -806,7 +806,7 @@ class ScopusFactBuilderServiceTest {
         existingForum.setIssn("1234-5678");
         existingForum.setEIssn("8765-4321");
         existingForum.setAggregationType("Journal");
-        existingForum.setLastPayloadHash(hashKey("forum", "forum-1", "Forum 1", "1234-5678", "8765-4321", null, "Journal", null));
+        existingForum.setLastPayloadHash(hashKey("forum", "forum-1", "Forum 1", "1234-5678", "8765-4321", null, "Journal", null, null, ""));
         existingForum.setSourceBatchId("b-old");
         existingForum.setSourceCorrelationId("corr-old");
         existingForum.setCreatedAt(java.time.Instant.parse("2025-01-02T00:00:00Z"));
@@ -884,7 +884,7 @@ class ScopusFactBuilderServiceTest {
         assertEquals("Forum 1", replayedForum.getPublicationName());
         assertEquals("1234-5678", replayedForum.getIssn());
         assertEquals("8765-4321", replayedForum.getEIssn());
-        assertEquals(hashKey("forum", "forum-1", "Forum 1", "1234-5678", "8765-4321", null, "Journal", null), replayedForum.getLastPayloadHash());
+        assertEquals(hashKey("forum", "forum-1", "Forum 1", "1234-5678", "8765-4321", null, "Journal", null, null, ""), replayedForum.getLastPayloadHash());
         assertEquals(java.time.Instant.parse("2025-01-02T00:00:00Z"), replayedForum.getLastMaterializedAt());
         assertEquals(java.time.Instant.parse("2025-01-02T00:00:00Z"), replayedForum.getUpdatedAt());
 

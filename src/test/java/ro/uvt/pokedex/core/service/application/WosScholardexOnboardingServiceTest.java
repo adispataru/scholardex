@@ -595,7 +595,6 @@ class WosScholardexOnboardingServiceTest {
 
         when(scopusForumFactRepository.findAll()).thenReturn(List.of(storedProducts));
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of(steroid));
-        when(sourceLinkService.findByKey(ScholardexEntityType.FORUM, "SCOPUS", "20954")).thenReturn(Optional.empty());
         when(scholardexForumFactRepository.save(any(ScholardexForumFact.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -657,8 +656,6 @@ class WosScholardexOnboardingServiceTest {
 
         when(scopusForumFactRepository.findAll()).thenReturn(List.of(scopusForum));
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
-        when(sourceLinkService.findByKey(ScholardexEntityType.FORUM, "SCOPUS", "scopus-forum-1"))
-                .thenReturn(Optional.empty());
         when(scholardexForumFactRepository.save(any(ScholardexForumFact.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -672,10 +669,13 @@ class WosScholardexOnboardingServiceTest {
         assertEquals(List.of("scopus-forum-1"), saved.getScopusForumIds());
         assertEquals("1234-5679", saved.getIssn());
         assertEquals("SCOPUS", saved.getSource());
-        verify(sourceLinkService).link(
-                eq(ScholardexEntityType.FORUM), eq("SCOPUS"), eq("scopus-forum-1"), eq(saved.getId()),
-                eq("scopus-forum-onboarding"), isNull(), eq("batch-s"), eq("corr-s"), eq(true)
-        );
+        // H66: source links are now batched via batchUpsertWithState instead of per-row link().
+        verify(sourceLinkService).batchUpsertWithState(
+                argThat(cmds -> cmds.stream().anyMatch(c ->
+                        c.entityType() == ScholardexEntityType.FORUM && "SCOPUS".equals(c.source())
+                                && "scopus-forum-1".equals(c.sourceRecordId()) && saved.getId().equals(c.canonicalEntityId())
+                                && "LINKED".equals(c.targetState()) && "scopus-forum-onboarding".equals(c.reason()))),
+                any());
     }
 
     @Test
@@ -702,10 +702,13 @@ class WosScholardexOnboardingServiceTest {
         assertEquals(0, result.getImportedCount());
         assertTrue(result.getSkippedCount() >= 1);
         verify(scholardexForumFactRepository, never()).save(any());
-        verify(sourceLinkService).link(
-                eq(ScholardexEntityType.FORUM), eq("SCOPUS"), eq("scopus-forum-7"), eq("cf-linked"),
-                eq("scopus-forum-onboarding"), isNull(), eq("batch-s"), eq("corr-s"), eq(true)
-        );
+        // H66: batched source link instead of per-row link().
+        verify(sourceLinkService).batchUpsertWithState(
+                argThat(cmds -> cmds.stream().anyMatch(c ->
+                        c.entityType() == ScholardexEntityType.FORUM && "SCOPUS".equals(c.source())
+                                && "scopus-forum-7".equals(c.sourceRecordId()) && "cf-linked".equals(c.canonicalEntityId())
+                                && "LINKED".equals(c.targetState()) && "scopus-forum-onboarding".equals(c.reason()))),
+                any());
     }
 
     @Test
@@ -723,8 +726,6 @@ class WosScholardexOnboardingServiceTest {
 
         when(scopusForumFactRepository.findAll()).thenReturn(List.of(b, a)); // unsorted on purpose
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
-        when(sourceLinkService.findByKey(eq(ScholardexEntityType.FORUM), eq("SCOPUS"), anyString()))
-                .thenReturn(Optional.empty());
         when(scholardexForumFactRepository.save(any(ScholardexForumFact.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -759,11 +760,16 @@ class WosScholardexOnboardingServiceTest {
         ScholardexIdentityConflict staleConflict = new ScholardexIdentityConflict();
         staleConflict.setId("conf_eurphysjc");
         staleConflict.setEntityType(ScholardexEntityType.FORUM);
+        staleConflict.setIncomingSource("SCOPUS");
+        staleConflict.setIncomingSourceRecordId("27545");
         staleConflict.setReasonCode("AMBIGUOUS_ISSN_MATCH");
         staleConflict.setStatus("OPEN");
 
         when(scopusForumFactRepository.findAll()).thenReturn(List.of(scopusForum));
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of(canonical));
+        // H66: the per-row resolve now only fires when the conflict is in the preloaded OPEN set.
+        when(scholardexIdentityConflictRepository.findByEntityTypeAndStatus(ScholardexEntityType.FORUM, "OPEN"))
+                .thenReturn(List.of(staleConflict));
         when(scholardexIdentityConflictRepository.findByEntityTypeAndIncomingSourceAndIncomingSourceRecordIdAndReasonCodeAndStatus(
                 ScholardexEntityType.FORUM, "SCOPUS", "27545", "AMBIGUOUS_ISSN_MATCH", "OPEN"))
                 .thenReturn(Optional.of(staleConflict));
@@ -802,7 +808,6 @@ class WosScholardexOnboardingServiceTest {
 
         when(scopusForumFactRepository.findAll()).thenReturn(List.of(scopusForum));
         when(scholardexForumFactRepository.findAll()).thenReturn(List.of(primaryMatch, eIssnSibling));
-        when(sourceLinkService.findByKey(ScholardexEntityType.FORUM, "SCOPUS", "27545")).thenReturn(Optional.empty());
         when(scholardexForumFactRepository.save(any(ScholardexForumFact.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -812,9 +817,12 @@ class WosScholardexOnboardingServiceTest {
         assertEquals(1, result.getUpdatedCount());
         verify(scholardexForumFactRepository).save(argThat(f ->
                 "cf_eurphysjc".equals(f.getId()) && f.getScopusForumIds().contains("27545")));
-        verify(sourceLinkService).link(
-                eq(ScholardexEntityType.FORUM), eq("SCOPUS"), eq("27545"), eq("cf_eurphysjc"),
-                eq("scopus-forum-onboarding"), isNull(), eq("batch-s"), eq("corr-s"), eq(true));
+        verify(sourceLinkService).batchUpsertWithState(
+                argThat(cmds -> cmds.stream().anyMatch(c ->
+                        c.entityType() == ScholardexEntityType.FORUM && "SCOPUS".equals(c.source())
+                                && "27545".equals(c.sourceRecordId()) && "cf_eurphysjc".equals(c.canonicalEntityId())
+                                && "LINKED".equals(c.targetState()) && "scopus-forum-onboarding".equals(c.reason()))),
+                any());
         verify(scholardexIdentityConflictRepository, never()).save(any());
     }
 
