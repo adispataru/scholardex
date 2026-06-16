@@ -41,6 +41,9 @@ class PostgresReportingLookupFacadeTest {
     @Mock
     private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
+    @Mock
+    private WosForumResolutionService wosForumResolutionService;
+
     private PostgresReportingLookupFacade facade;
 
     @BeforeEach
@@ -48,7 +51,8 @@ class PostgresReportingLookupFacadeTest {
         facade = new PostgresReportingLookupFacade(
                 cacheService,
                 namedParameterJdbcTemplate,
-                new ReportingLookupMemoization()
+                new ReportingLookupMemoization(),
+                wosForumResolutionService
         );
     }
 
@@ -83,7 +87,7 @@ class PostgresReportingLookupFacadeTest {
         when(namedParameterJdbcTemplate.queryForObject(any(String.class), any(MapSqlParameterSource.class), eq(Integer.class)))
                 .thenReturn(3);
         ReportingLookupMemoization memoization = new ReportingLookupMemoization();
-        facade = new PostgresReportingLookupFacade(cacheService, namedParameterJdbcTemplate, memoization);
+        facade = new PostgresReportingLookupFacade(cacheService, namedParameterJdbcTemplate, memoization, wosForumResolutionService);
 
         memoization.withRefreshScope(() -> {
             assertEquals(3, facade.getTopRankings("ECONOMICS - SCIE", 2024));
@@ -101,6 +105,31 @@ class PostgresReportingLookupFacadeTest {
     @Test
     void getRankingsByIssnReturnsEmptyOnBlankInput() {
         assertTrue(facade.getRankingsByIssn(" ").isEmpty());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getRankingsByForumFallsBackToNameResolutionWhenIssnMisses() {
+        // No ISSN on the forum → the ISSN path resolves nothing; the facade must fall back to the
+        // WosForumResolutionService (name) path and then load by the resolved journal id.
+        when(wosForumResolutionService.buildResolutionIndex())
+                .thenReturn(new WosForumResolutionService.ResolutionIndex(java.util.Map.of(), java.util.Map.of()));
+        when(wosForumResolutionService.resolveJournalId(any(ScholardexForumView.class), any()))
+                .thenReturn("jResolvedByName");
+        when(namedParameterJdbcTemplate.query(any(String.class), any(MapSqlParameterSource.class), any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenReturn(List.of());
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setPublicationName("Some Journal Without A Matching ISSN");
+
+        facade.getRankingsByForum(forum);
+
+        verify(wosForumResolutionService).resolveJournalId(any(ScholardexForumView.class), any());
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(namedParameterJdbcTemplate, atLeast(1))
+                .query(sqlCaptor.capture(), any(MapSqlParameterSource.class), any(org.springframework.jdbc.core.RowMapper.class));
+        assertTrue(sqlCaptor.getAllValues().stream().anyMatch(s -> s.contains("WHERE journal_id = :journalId")),
+                "fallback must query the resolved journal id");
     }
 
     @Test
@@ -165,7 +194,7 @@ class PostgresReportingLookupFacadeTest {
                     return List.of();
                 });
         ReportingLookupMemoization memoization = new ReportingLookupMemoization();
-        facade = new PostgresReportingLookupFacade(cacheService, namedParameterJdbcTemplate, memoization);
+        facade = new PostgresReportingLookupFacade(cacheService, namedParameterJdbcTemplate, memoization, wosForumResolutionService);
 
         memoization.withRefreshScope(() -> {
             assertTrue(facade.getRankingsByIssn("1234-5678").isEmpty());

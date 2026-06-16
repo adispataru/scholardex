@@ -30,6 +30,9 @@ public class PublicationSnapshotItem implements SnapshotItem {
     /** Base/forum score before the per-author division (Score.getScore()). For templates that show
      *  both the journal score (si) and the per-author contribution (si/ni = authorScore). */
     private Double forumScore;
+    /** JCR-category multiplier (Score.getMultiplier(), e.g. FEAA's M = 10/8/6). Surfaced for templates
+     *  that show M as its own column (FV FEAA articles). Null when the strategy carries no multiplier. */
+    private Integer multiplier;
 
     @Override
     public String entityType() {

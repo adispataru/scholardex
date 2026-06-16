@@ -206,11 +206,33 @@ public class TemplateDocxRenderer {
         for (BindingDocxTotal total : role.getDocxTotals()) {
             Double value = totals.get(total.getTotalKey());
             if (value == null) continue;
-            XWPFParagraph target = findParagraph(doc, total.getMarker());
-            if (target != null) {
-                writeAfterEquals(target, total.getEqualsIndex(), format(value));
+            if (total.getCellIndex() != null) {
+                writeTotalIntoCell(doc, role, total, format(value));
+            } else {
+                XWPFParagraph target = findParagraph(doc, total.getMarker());
+                if (target != null) {
+                    writeAfterEquals(target, total.getEqualsIndex(), format(value));
+                }
             }
         }
+    }
+
+    /**
+     * Cell-target total: within the role's table, find the row whose text contains the marker and
+     * write the value into its {@code cellIndex}-th cell. Scoped to the role's table so markers that
+     * recur across the document (e.g. "Punctaj final (S)" in both the criteria and summary tables)
+     * resolve to the right one.
+     */
+    private void writeTotalIntoCell(XWPFDocument doc, BindingRole role, BindingDocxTotal total, String value) {
+        List<XWPFTable> tables = doc.getTables();
+        if (role.getTableIndex() == null || role.getTableIndex() < 0 || role.getTableIndex() >= tables.size()) return;
+        XWPFTable table = tables.get(role.getTableIndex());
+        int rowIdx = findRowIndexContaining(table, total.getMarker());
+        if (rowIdx < 0) return;
+        XWPFTableRow row = table.getRow(rowIdx);
+        int cellIdx = total.getCellIndex();
+        if (cellIdx < 0 || cellIdx >= row.getTableCells().size()) return;
+        setCellText(row.getCell(cellIdx), value);
     }
 
     /** First paragraph (table cell or body) whose whitespace-normalized text contains the marker. */

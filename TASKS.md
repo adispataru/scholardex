@@ -15,6 +15,19 @@ Done history moved to `TASKS-done.md`.
   Exit criteria: Scholar imported records from user operations link deterministically and preserve source lineage without mutating non-owned fields; no separate non-user onboarding path is required in this slice.
   Dependency: execute after `H19.9` citation canonicalization so imported Scholar citation edges are canonical-ID compatible at ingest time.
 
+- [ ] `H62` FEAA Economics report — full-fišă DOCX export (bound to `6849fb3d97a94f22948f9430`).
+  Goal: no-formula DOCX export for the FEAA verification fišă — articles (M/N/AIS/Pi), books/chapters
+  slots 7–10 (Pi=coeff/N by publisher tier), citations (AIS/quartile/Cj), and a P/C/S=P+C summary with
+  all-position thresholds. Same pattern as `matematica-2016`.
+  Notable: scoring already exists — FEEA_P (`ECONOMICS_JOURNAL_AIS`, `M*(1-(N-1)*0.1)*S`) and FEEA_C
+  (`AIS`, quartile points); `report.criteria` hold per-position thresholds; S=P+C (sum, no separate
+  indicator). New work: surface M on publications + AIS/quartile on citations; book tier-scoring + Anexa 1
+  publisher-list seed; Core/Infoeconomics article count. `Fisa-verificare_prof_conf` is the methodology
+  annex (M table + publisher list), NOT a candidate fišă; the `Standarde-minimale-*` files are the fišă
+  (identical structure, differ only by position thresholds).
+  Slices: (1) articles+citations+summary using existing indicators [unblocked]; (2) books/chapters
+  scoring; (3) Core-Econ count. Planning doc at `docs/tasks/active/h62-feaa-economics-report-export.md`.
+
 - [ ] `H61` Citation exclusion "any co-author" mode (Scopus all-authors self-citation) for Informatică.
   Goal: add a third citation-exclusion mode — exclude a citation when the citing work shares **any** author
   with the *cited* publication (not only the candidate) — for the upcoming Informatică standard. Today we

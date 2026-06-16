@@ -29,6 +29,11 @@ public class ReportingLookupFacade implements ReportingLookupPort {
     }
 
     @Override
+    public List<WoSRanking> getRankingsByForum(ScholardexForumView forum) {
+        return postgresFacade.getRankingsByForum(forum);
+    }
+
+    @Override
     public List<CoreConferenceRanking> getConferenceRankings(String acronym) {
         return postgresFacade.getConferenceRankings(acronym);
     }

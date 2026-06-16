@@ -41,6 +41,9 @@ public class PublicationRowProjector {
     /** Recent-subset publications role: contributes a separate total (e.g. Srecent) and marks which
      *  publications are recent; its rows are not rendered separately (the main role lists them). */
     public static final String ROLE_JOURNAL_RECENT = "journal-publications-recent";
+    /** Book/chapter publications role (e.g. FEAA slots 7–10). Publication-typed, but scored by a book
+     *  strategy; the renderer groups the items into per-tier tables. */
+    public static final String ROLE_BOOKS = "book-publications";
 
     private final EffectiveAuthorshipReadService authorshipRead;
     private final ScholardexProjectionReadService projectionRead;
@@ -55,7 +58,7 @@ public class PublicationRowProjector {
     }
 
     public List<PublicationSnapshotItem> project(String userEmail, Indicator indicator, String roleKey) {
-        if (!ROLE_JOURNAL.equals(roleKey) && !ROLE_CONFERENCE.equals(roleKey)) {
+        if (!ROLE_JOURNAL.equals(roleKey) && !ROLE_CONFERENCE.equals(roleKey) && !ROLE_BOOKS.equals(roleKey)) {
             return List.of();
         }
         return projectInternal(userEmail, indicator, roleKey);

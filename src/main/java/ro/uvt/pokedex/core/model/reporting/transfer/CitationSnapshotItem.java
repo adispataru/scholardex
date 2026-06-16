@@ -73,6 +73,13 @@ public class CitationSnapshotItem implements SnapshotItem {
         private Integer year;
         private String isWorkshopDaNu;
         private String forumCategoryLetter;
+        /** Base/journal score of the citing publication (Score.getScore()); for the AIS strategy this is
+         *  the AIS, shown in FV FEAA's "AIS" column. */
         private Double score;
+        /** Per-citation contribution (Score.getAuthorScore() = the formula result, e.g. FEAA's Cj quartile
+         *  points). Distinct from {@link #score}, which is the raw journal score. */
+        private Double authorScore;
+        /** AIS quartile of the citing journal (Score.getQuarter(), e.g. "Q1"); FV FEAA "Cuartila" column. */
+        private String quartile;
     }
 }

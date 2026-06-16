@@ -60,6 +60,7 @@ public class RunIndicatorSnapshotProjector {
             item.setScore(authorScore);
             item.setAuthorScore(authorScore > 0 ? authorScore : score(entry.getValue()));
             item.setForumScore(score(entry.getValue()));
+            item.setMultiplier(multiplier(entry.getValue()));
             out.add(item);
         }
         return out;
@@ -107,7 +108,9 @@ public class RunIndicatorSnapshotProjector {
                     row.setYear(extractYear(value(citingPublication, "coverDate")));
                     row.setIsWorkshopDaNu(isWorkshopAdjusted(scoreObj) ? "DA" : "NU");
                     row.setForumCategoryLetter(CategoryLetterMapper.toPublicationTemplateLetter(coreRankingEquivalent(scoreObj)));
-                    row.setScore(score(scoreObj));
+                    row.setScore(score(scoreObj));               // base/journal score (= AIS for the AIS strategy)
+                    row.setAuthorScore(authorScore(scoreObj));   // per-citation contribution (FEAA Cj)
+                    row.setQuartile(quarter(scoreObj));
                     tile.getCitingPublications().add(row);
                 }
             }
@@ -332,6 +335,26 @@ public class RunIndicatorSnapshotProjector {
             return n.doubleValue();
         }
         return 0.0;
+    }
+
+    private Integer multiplier(Object scoreObj) {
+        if (scoreObj instanceof ro.uvt.pokedex.core.service.reporting.Score score) {
+            return score.getMultiplier();
+        }
+        if (scoreObj instanceof Map<?, ?> map && map.get("multiplier") instanceof Number n) {
+            return n.intValue();
+        }
+        return null;
+    }
+
+    private String quarter(Object scoreObj) {
+        if (scoreObj instanceof ro.uvt.pokedex.core.service.reporting.Score score) {
+            return score.getQuarter();
+        }
+        if (scoreObj instanceof Map<?, ?> map && map.get("quarter") != null) {
+            return String.valueOf(map.get("quarter"));
+        }
+        return null;
     }
 
     private String coreRankingEquivalent(Object scoreObj) {

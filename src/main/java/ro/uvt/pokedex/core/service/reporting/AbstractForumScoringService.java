@@ -113,14 +113,13 @@ public abstract class AbstractForumScoringService implements ScoringService {
     /* ----------  Generic ranking helpers  ---------- */
 
     protected List<WoSRanking> getRankingsForForum(ScholardexForumView forum) {
-        List<WoSRanking> rankings = new ArrayList<>();
-        if (forum.getIssn() != null) {
-            rankings = lookupPort.getRankingsByIssn(forum.getIssn());
+        if (forum == null) {
+            return List.of();
         }
-        if (rankings.isEmpty()) {
-            rankings = lookupPort.getRankingsByIssn(forum.getEIssn());
-        }
-        return rankings;
+        // Resolve via the port's forum-aware path: ISSN candidates + journal-name fallback (the same
+        // resolution the /forums/{id} view uses), instead of raw ISSN only — so a forum with a
+        // missing/mismatched ISSN but a matching name is still scored.
+        return lookupPort.getRankingsByForum(forum);
     }
 
     protected boolean isCategoryInDomain(Domain domain, String category) {

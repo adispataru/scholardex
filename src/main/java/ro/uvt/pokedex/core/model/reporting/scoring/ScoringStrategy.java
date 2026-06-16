@@ -19,5 +19,6 @@ public enum ScoringStrategy {
     ECONOMICS_JOURNAL_AIS,
     UNI_RANKING,
     CNCSIS,
-    ART_EVENT;
+    ART_EVENT,
+    FEAA_BOOK;
 }

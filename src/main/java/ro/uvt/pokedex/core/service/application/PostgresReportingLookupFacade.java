@@ -39,14 +39,59 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
     private final CacheService cacheService;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     private final ReportingLookupMemoization reportingLookupMemoization;
+    private final WosForumResolutionService wosForumResolutionService;
+    /** Lazily-built name/ISSN → journalId index reused across forum resolutions (same staleness class
+     *  as the memoized ranking lookups). */
+    private volatile WosForumResolutionService.ResolutionIndex resolutionIndex;
 
     public PostgresReportingLookupFacade(
             CacheService cacheService,
             NamedParameterJdbcTemplate namedParameterJdbcTemplate,
-            ReportingLookupMemoization reportingLookupMemoization) {
+            ReportingLookupMemoization reportingLookupMemoization,
+            WosForumResolutionService wosForumResolutionService) {
         this.cacheService = cacheService;
         this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
         this.reportingLookupMemoization = reportingLookupMemoization;
+        this.wosForumResolutionService = wosForumResolutionService;
+    }
+
+    @Override
+    public List<WoSRanking> getRankingsByForum(ScholardexForumView forum) {
+        if (forum == null) {
+            return List.of();
+        }
+        List<WoSRanking> rankings = getRankingsByIssn(forum.getIssn());
+        if (rankings.isEmpty()) {
+            rankings = getRankingsByIssn(forum.getEIssn());
+        }
+        if (!rankings.isEmpty()) {
+            return rankings;
+        }
+        // Fallback to the same resolution the forum view uses (ISSN candidates + normalized name).
+        String journalId = wosForumResolutionService.resolveJournalId(forum, resolutionIndex());
+        if (journalId == null || journalId.isBlank()) {
+            return List.of();
+        }
+        return reportingLookupMemoization.getOrCompute(
+                "postgres",
+                "rankingsByJournalId",
+                journalId,
+                () -> loadRankingsByJournalId(journalId)
+        );
+    }
+
+    private WosForumResolutionService.ResolutionIndex resolutionIndex() {
+        WosForumResolutionService.ResolutionIndex cached = resolutionIndex;
+        if (cached == null) {
+            synchronized (this) {
+                cached = resolutionIndex;
+                if (cached == null) {
+                    cached = wosForumResolutionService.buildResolutionIndex();
+                    resolutionIndex = cached;
+                }
+            }
+        }
+        return cached;
     }
 
     @Override
@@ -105,9 +150,6 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
     }
 
     private List<WoSRanking> loadRankingsByIssn(String normalizedIssn) {
-
-        long totalStartedAtNanos = System.nanoTime();
-        long rankingLookupStartedAtNanos = System.nanoTime();
         List<WosRankingView> views = namedParameterJdbcTemplate.query(
                 """
                         (
@@ -131,23 +173,29 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
                 new MapSqlParameterSource("issn", normalizedIssn),
                 this::mapRankingView
         );
-        long rankingLookupMs = nanosToMillis(System.nanoTime() - rankingLookupStartedAtNanos);
+        return assembleRankings(views);
+    }
 
+    private List<WoSRanking> loadRankingsByJournalId(String journalId) {
+        List<WosRankingView> views = namedParameterJdbcTemplate.query(
+                """
+                        SELECT journal_id, name, issn, e_issn, alternative_issns, alternative_names
+                        FROM reporting_read.wos_ranking_view
+                        WHERE journal_id = :journalId
+                        """,
+                new MapSqlParameterSource("journalId", journalId),
+                this::mapRankingView
+        );
+        return assembleRankings(views);
+    }
+
+    private List<WoSRanking> assembleRankings(List<WosRankingView> views) {
         if (views.isEmpty()) {
-            if (log.isDebugEnabled()) {
-                log.debug(
-                        "WoS ISSN lookup timings [issn={}]: rankingLookupMs={}, metricLoadMs=0, categoryLoadMs=0, assemblyMs=0, totalMs={}",
-                        normalizedIssn,
-                        rankingLookupMs,
-                        nanosToMillis(System.nanoTime() - totalStartedAtNanos)
-                );
-            }
             return List.of();
         }
 
         List<String> journalIds = views.stream().map(WosRankingView::getId).toList();
 
-        long metricLoadStartedAtNanos = System.nanoTime();
         List<WosMetricFact> metricFacts = namedParameterJdbcTemplate.query(
                 """
                         SELECT journal_id, year, metric_type, value
@@ -167,9 +215,7 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
                     return fact;
                 }
         );
-        long metricLoadMs = nanosToMillis(System.nanoTime() - metricLoadStartedAtNanos);
 
-        long categoryLoadStartedAtNanos = System.nanoTime();
         List<WosCategoryFact> categoryFacts = namedParameterJdbcTemplate.query(
                 """
                         SELECT journal_id, year, category_name_canonical, edition_normalized,
@@ -198,9 +244,7 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
                     return fact;
                 }
         );
-        long categoryLoadMs = nanosToMillis(System.nanoTime() - categoryLoadStartedAtNanos);
 
-        long assemblyStartedAtNanos = System.nanoTime();
         Map<String, List<WosMetricFact>> scoresByJournal = new HashMap<>();
         for (WosMetricFact metricFact : metricFacts) {
             scoresByJournal.computeIfAbsent(metricFact.getJournalId(), ignored -> new ArrayList<>()).add(metricFact);
@@ -219,19 +263,6 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
                 continue;
             }
             rankings.add(toLegacyRanking(view, journalScores, journalCategories));
-        }
-        long assemblyMs = nanosToMillis(System.nanoTime() - assemblyStartedAtNanos);
-        if (log.isDebugEnabled()) {
-            log.debug(
-                    "WoS ISSN lookup timings [issn={}, journals={}]: rankingLookupMs={}, metricLoadMs={}, categoryLoadMs={}, assemblyMs={}, totalMs={}",
-                    normalizedIssn,
-                    journalIds.size(),
-                    rankingLookupMs,
-                    metricLoadMs,
-                    categoryLoadMs,
-                    assemblyMs,
-                    nanosToMillis(System.nanoTime() - totalStartedAtNanos)
-            );
         }
         return rankings;
     }

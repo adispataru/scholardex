@@ -12,6 +12,24 @@ public interface ReportingLookupPort {
 
     List<WoSRanking> getRankingsByIssn(String issn);
 
+    /**
+     * Resolves WoS rankings for a forum the way the rest of the app does (see
+     * {@code WosForumResolutionService}): by ISSN candidates and then by normalized journal name.
+     * The default here is ISSN-only (issn, then e-issn) for back-compat; the Postgres facade overrides
+     * it to add the name fallback so scoring resolves the same journal the {@code /forums/{id}} view
+     * shows AIS for (forums with a missing/mismatched ISSN but a matching name).
+     */
+    default List<WoSRanking> getRankingsByForum(ScholardexForumView forum) {
+        if (forum == null) {
+            return List.of();
+        }
+        List<WoSRanking> rankings = getRankingsByIssn(forum.getIssn());
+        if (rankings.isEmpty()) {
+            rankings = getRankingsByIssn(forum.getEIssn());
+        }
+        return rankings;
+    }
+
     List<CoreConferenceRanking> getConferenceRankings(String acronym);
 
     List<CoreConferenceRanking> getConferenceRankingsByNormalizedTitle(String normalizedTitle);
