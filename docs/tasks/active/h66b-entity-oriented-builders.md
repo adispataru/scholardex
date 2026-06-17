@@ -72,45 +72,108 @@ Key invariants:
 | (unchanged) author/affiliation canonicalization | `ScholardexAuthor/AffiliationCanonicalizationService` | publication dimensions; keep |
 | (unchanged) source parsers | `ScopusFactBuilderService` (Scopus JSON→stage-2), `WosFactBuilderService`, `ScopusDataService` (CiteScore/SourceList ingest), `Doaj/ErihDataService` | the line-501 forum derivation is **removed** here, not just flagged |
 
-## Migration sequence (keep the pipeline green at every step)
+## Redesign (full rewrite, not strangler)
 
-Strangler pattern — introduce builders as the new orchestration entry, delegating to existing services
-first, then internalize and delete the old glue. Re-run the isolated live rebuild + reconcile audit after
-each step; compare conflicts to the 448-forum baseline.
+Decision (2026-06-17): this is a **rewrite of the forum-build core**, not an in-place consolidation. The
+inherited order/structure is the problem, so we do **not** preserve it. North star: **conflicts collapse to
+the genuine residual** (~27 = cross-journal ISSN + dedup name-mismatch + invalid ISSN), not parity with the
+448-conflict baseline (421 of which were ordering churn). We can afford the longer build + the
+core-identity-logic risk; the isolated-rebuild + reconcile-audit harness is the regression net.
 
-- **B66B.1 — ForumBuilder (facade first).** — **DONE.** `ScholardexForumBuilder.buildScopusForums(batchId,
-  correlationId)` owns the Scopus-side forum build in one forums-first sequence (dedup → Scopus
-  canonicalization → ERIH onboard → conditional erih-dedup), returning a `ScopusForumBuildResult` record. The
-  three inline copies in `ScopusBigBangMigrationService` (runFull / buildFacts / incremental) now route
-  through it; the three forum services moved out of that orchestrator into the builder. As a bonus the
-  `runFull` path now runs the **whole** forum build (incl. ERIH) *before* publication/citation
-  canonicalization — true forums-first (was: dedup+canon, then pub/cit, then ERIH). buildFacts/incremental
-  gain the idempotent ERIH steps (consistency). Tests: `ScholardexForumBuilderTest` (ordered delegation +
-  conditional erih-dedup); migration test updated to mock the builder. WoS journal onboarding still runs in
-  the WoS rebuild — folded in at B66B.6.
-- **B66B.2 — internalize forum logic + remove publication forum derivation.** Move the scattered logic into
-  ForumBuilder; delete `upsertForumFact`'s publication path (the `fromPublication` branch) so Scopus parsing
-  emits only `ScopusPublicationFact`. Option-B venues minted by ForumBuilder from a publication-venue stream.
-- **B66B.3 — RankingBuilder.** Extract WoS metric/category projection + enrichment; add CiteScore scores
-  (D2). Forum-keyed; runs after ForumBuilder.
-- **B66B.4 — PublicationBuilder.** Make venue resolution explicit against the registry; generalize input to
-  publication-event sources. Then **CitationBuilder**.
-- **B66B.5 — BookBuilder** (H66 Move E): `book_facts`, `bookId` on publications, `aggregationType` branch,
-  point book scoring at the registry.
-- **B66B.6 — Orchestrator reorg.** Replace the source-interleaved BigBang flow with the entity DAG in
-  `PipelineRebuildService`: parse sources → ForumBuilder → RankingBuilder → PublicationBuilder →
-  CitationBuilder. Retire the source-coupled `runFull` interleaving (H66 D5/D6/D7 fold in here: one
-  forums-first pass, MJL coverage built, config for feed paths).
+### Components (decompose the 1177-line monolith)
 
-## Verification
+`WosScholardexOnboardingService` is dissolved. Forum building becomes a **single source-agnostic engine**
+fed by a normalized record:
 
-- **Behavior parity:** isolated full rebuild (the H66 recipe: throwaway `scholardex_h66` + `core_h66`,
-  `--spring.mongodb.uri`) after each step; reconcile audit `healthy=true`, 0 orphaned publication links,
-  100% WoS-linked forums resolve metrics by FK.
-- **Conflict regression:** `EXTERNAL_ID_ALREADY_LINKED` should fall from **421 → ~0** once forum-building is a
-  single ordered pass (B66B.1–.2). Compare the full `identity_conflicts` tally to the 2026-06-17 baseline
-  (448 forum conflicts).
-- **MJL coverage present** (B66B.6): SCIE/SSCI/AHCI/ESCI membership > 0.
+- **`ForumSourceRecord {idType, externalId, name, issn, eIssn, aggregationType, attrs}`** — every forum
+  *source* emits these. `idType ∈ {SCOPUS, WOS, ERIH, USER, …}` selects which forum id-list the externalId
+  lands in.
+- **`ForumIdentityIndex`** — the in-memory ISSN-token + name|agg index (today's `CanonicalForumIndex`/
+  `ScopusForumIndex`), built once and updated incrementally. The performance heart (see below).
+- **`ForumMergeEngine.ingest(ForumSourceRecord)`** — find-or-create the canonical forum via the index +
+  `ForumMergeSafetyRule`; attach `externalId` to the `idType` list; stage the forum save + source link;
+  record conflicts. **`runWosOnboarding` and `runScopusForumCanonicalization` collapse into this** — they were
+  ~90% duplicate machinery differing only in idType/id-list.
+- **`SourceLinkWriter`** / **`ConflictRecorder`** — batched source-link upserts and identity-conflict
+  recording, lifted out of the monolith as focused collaborators.
+- **`ForumBuilder.build()`** — drives the engine over **all** forum sources (Source List, WoS journal
+  identity, ERIH, conference venues observed in publications, user-defined), then a final dedup. One entry,
+  one place forums are built.
+
+What stays (load-bearing, NOT cruft): the event ledger + stage-2 facts (deterministic replay/checkpoint),
+**source links** (provenance + dedup re-pointing + publication resolution), **identity conflicts**, and
+`ForumMergeSafetyRule`.
+
+Publications go **pure**: they emit only `ScopusPublicationFact` (already carries `forumId = source_id`) plus
+a deduplicated **conference-venue source stream** (the ~2,065 venues, mostly un-profiled conferences, that no
+curated list has — a *legitimate* forum source). No publication→`scopus.forum_facts` write.
+
+### Performance invariants (non-negotiable)
+
+The current speed comes from specific structures; the rewrite must not regress them. Every milestone is
+timed on the isolated rebuild and gated against the current baseline (forum build ≈ tens of seconds; full
+rebuild ≈ 23 min dominated by the 482 MB Scopus parse, which is unchanged).
+
+1. **One index build, incremental updates.** `ForumIdentityIndex` is loaded once per build and mutated as
+   forums are created/merged — never rebuilt per record, never re-queried per lookup.
+2. **No linear scans over growing collections.** Candidate lookup is O(1) amortized via the token index (the
+   bug class we already fixed twice — `findScopusCandidates`, source-link batching). Any `for-forum-in-all`
+   inside a per-record loop is a defect.
+3. **Batched IO only.** Bulk `findByIdIn` preloads, `saveAll`, JDBC `batchUpdate` (chunk ≈ 500–1000). No
+   per-record DB round-trips for forums, source links, or conflicts.
+4. **Stream large inputs.** The Book List (475k rows / 42 MB) and any >50k-row xlsx are read via the POI
+   streaming/SAX reader, not a full in-memory `XSSFWorkbook`. (The 48k-row Source List in-memory is fine.)
+5. **Single pass, no double builds.** The orchestrator runs each builder once; no re-running `buildFacts`
+   to fold a feed (the gap that cost a second full pass in the 2026-06-17 live run).
+
+### Milestones (rewrite; branch `codex/h66b-builders`, pipeline may be red between milestones)
+
+Each milestone: unit tests + isolated live rebuild measuring **conflict tally vs residual** *and* **timing
+vs baseline** + reconcile audit `healthy=true`.
+
+- **M0 — B66B.1 done.** `ScholardexForumBuilder` facade exists; runFull is forums-first. Carries over.
+- **M1 — Merge engine + index, extracted & unit-tested.** Pull `ForumIdentityIndex` + `ForumMergeEngine` +
+  `SourceLinkWriter` + `ConflictRecorder` out of `WosScholardexOnboardingService` as standalone components,
+  behavior-equivalent, with the perf structures intact. Old methods delegate to them (transient).
+- **M2 — Unify WoS + Scopus ingestion through `ForumMergeEngine.ingest(ForumSourceRecord)`.** Delete the two
+  duplicate onboarding methods. ForumBuilder feeds Source List + WoS identity records through one engine.
+  Gate: conflicts ≤ baseline and trending down; forum-build time ≤ baseline.
+- **M3 — Pure publications + conference-venue source.** Remove the publication→forum-fact write; ForumBuilder
+  ingests the dedup'd conference-venue stream + ERIH (now create-or-match) + user-defined. Gate:
+  `EXTERNAL_ID_ALREADY_LINKED` → ~0; total forum conflicts → residual; null-forumId count tiny.
+- **M4 — RankingBuilder.** CiteScore scores (D2) + WoS metrics/category + WoS score-only→quartile enrichment
+  → forum-keyed rankings. CiteScore stops being a forum-identity feed.
+- **M5 — PublicationBuilder + CitationBuilder.** Clean builders resolving against the registry; source-plural
+  input shape (OpenAlex/DBLP/GS-ready).
+- **M6 — BookBuilder.** `scholardex.book_facts` (streamed Book List), `bookId` on publications, venue branch
+  on `aggregationType`, book scoring resolves the registry.
+- **M7 — DAG orchestrator.** One orchestrator: parse → ForumBuilder → RankingBuilder → PublicationBuilder →
+  CitationBuilder → projections. Retire `runFull`/`wosRebuild`/`PipelineRebuild` orchestration (their parsing
+  survives as parser components). Folds in H66 D5/D6/D7 (one forums-first pass, MJL coverage, feed config).
+  `runWosOnboarding`'s standalone caller dies here — no more "WoS rebuild that onboards forums."
+
+### Open design choices
+
+- **ERIH create-or-match:** the unified engine naturally lets ERIH *create* forums (the deferred ERIH-only
+  humanities venues), not just match. Lean **create** (unblocks non-STEM; clean) — confirm at M3.
+- **Branch + red windows:** carry the rewrite on `codex/h66b-builders`, accepting a red pipeline between
+  milestones, rather than keeping `main`-green every commit.
+
+## Verification (per milestone)
+
+Isolated full rebuild (the H66 recipe: throwaway `scholardex_h66` + `core_h66` on port-isolated Mongo via
+`--spring.mongodb.uri`; **never** prod `test`). Three gates, all measured each milestone:
+
+- **Integrity:** reconcile audit `healthy=true`, 0 orphaned publication links, 100% WoS-linked forums resolve
+  metrics by FK.
+- **Conflicts → residual (not parity):** drive `EXTERNAL_ID_ALREADY_LINKED` from **421 → ~0** and total forum
+  conflicts from **448 → the genuine ~27** (cross-journal ISSN + dedup name-mismatch + invalid ISSN). The
+  goal is *eliminating* the churn, so a milestone that merely reproduces 448 has not succeeded.
+- **Timing (non-negotiable):** forum-build phase and total rebuild time **≤ the current baseline** at every
+  milestone (perf invariants above). A regression here blocks the milestone regardless of correctness.
+
+Plus: MJL coverage present (SCIE/SSCI/AHCI/ESCI membership > 0) by M7, and a baseline timing capture before
+M1 so the per-milestone timing gate has a reference.
 
 ## Already landed (H66, forward-compatible)
 
