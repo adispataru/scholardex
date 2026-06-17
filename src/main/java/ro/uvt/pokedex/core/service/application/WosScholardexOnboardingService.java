@@ -22,7 +22,6 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFact
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
-import java.text.Normalizer;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -31,12 +30,10 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -62,23 +59,10 @@ public class WosScholardexOnboardingService {
     private static final String REASON_SOURCE_ID_COLLISION = "SOURCE_ID_COLLISION";
     private static final String REASON_INVALID_ISSN = "NORMALIZATION_INVALID_ISSN";
 
-    // H55 curated source-data correction. "SIAM Journal on Mathematical Analysis" (print ISSN
-    // 0036-1410) carries eISSN 1095-7111 in the Scopus source — but 1095-7111 is "SIAM Journal on
-    // Computing"'s eISSN; Math Analysis's real eISSN is 1095-7154. The shared *valid* eISSN otherwise
-    // bridges two distinct journals (the AMBIGUOUS_ISSN_MATCH / FORUM_DEDUP_NAME_MISMATCH case).
-    // Check-digit validation cannot catch this: the value is a valid ISSN, just on the wrong record.
-    private static final String SIAM_MATH_ANALYSIS_PRINT_ISSN = "0036-1410";
-    private static final String SIAM_COMPUTING_EISSN = "1095-7111";
-    private static final String SIAM_MATH_ANALYSIS_EISSN = "1095-7154";
     private static final String REASON_FORUM_EXTERNAL_ID_ALREADY_LINKED = "FORUM_EXTERNAL_ID_ALREADY_LINKED";
     // H57: an incoming forum matched a canonical candidate only via a shared eISSN/alias while carrying a
     // *different* primary print ISSN (a misassigned-eISSN cross-journal bridge) — not auto-merged.
     private static final String REASON_FORUM_CROSS_JOURNAL_ISSN = "FORUM_CROSS_JOURNAL_ISSN";
-
-    private static final Pattern ISSN_NON_ALNUM = Pattern.compile("[^0-9Xx]");
-    private static final Pattern NON_ALNUM_OR_SPACE = Pattern.compile("[^\\p{Alnum}\\s]");
-    private static final Pattern MULTI_SPACE = Pattern.compile("\\s+");
-    private static final Pattern COMBINING_MARKS = Pattern.compile("\\p{M}+");
 
     private final WosJournalIdentityRepository journalIdentityRepository;
     private final ScopusForumFactRepository scopusForumFactRepository;
@@ -688,14 +672,11 @@ public class WosScholardexOnboardingService {
     }
 
     private List<String> scopusIssnTokens(ScopusForumFact scopusForum) {
-        List<String> tokens = new ArrayList<>();
-        addIssnToken(tokens, normalizeIssn(scopusForum.getIssn()));
-        addIssnToken(tokens, normalizeIssn(correctedScopusEIssn(scopusForum)));
-        return tokens;
+        return ForumIdentityNormalization.scopusIssnTokens(scopusForum);
     }
 
     private String scopusNameAggKey(ScopusForumFact scopusForum) {
-        return normalizeName(scopusForum.getPublicationName()) + "|" + normalizeToken(scopusForum.getAggregationType());
+        return ForumIdentityNormalization.scopusNameAggKey(scopusForum);
     }
 
     /**
@@ -779,23 +760,11 @@ public class WosScholardexOnboardingService {
     }
 
     private List<String> issnTokensOf(ScholardexForumFact forum) {
-        List<String> tokens = new ArrayList<>();
-        addIssnToken(tokens, normalizeIssn(forum.getIssn()));
-        addIssnToken(tokens, normalizeIssn(forum.getEIssn()));
-        for (String alias : safeList(forum.getAliasIssns())) {
-            addIssnToken(tokens, normalizeIssn(alias));
-        }
-        return tokens;
-    }
-
-    private static void addIssnToken(List<String> tokens, String token) {
-        if (token != null && !token.isBlank()) {
-            tokens.add(token);
-        }
+        return ForumIdentityNormalization.issnTokensOf(forum);
     }
 
     private String nameAggKeyOf(ScholardexForumFact forum) {
-        return normalizeName(forum.getName()) + "|" + normalizeToken(forum.getAggregationType());
+        return ForumIdentityNormalization.nameAggKeyOf(forum);
     }
 
     /**
@@ -803,46 +772,15 @@ public class WosScholardexOnboardingService {
      * {@link #SIAM_MATH_ANALYSIS_PRINT_ISSN}). Returns the raw eISSN unchanged for every other forum.
      */
     private String correctedScopusEIssn(ScopusForumFact scopusForum) {
-        String rawEIssn = scopusForum.getEIssn();
-        if (SIAM_MATH_ANALYSIS_PRINT_ISSN.equals(normalizeIssn(scopusForum.getIssn()))
-                && SIAM_COMPUTING_EISSN.equals(normalizeIssn(rawEIssn))) {
-            return SIAM_MATH_ANALYSIS_EISSN;
-        }
-        return rawEIssn;
+        return ForumIdentityNormalization.correctedScopusEIssn(scopusForum);
     }
 
     private boolean matchesIssn(ScopusForumFact scopusForum, Collection<String> issnTokens) {
-        if (issnTokens == null || issnTokens.isEmpty()) {
-            return false;
-        }
-        return containsToken(issnTokens, normalizeIssn(scopusForum.getIssn()))
-                || containsToken(issnTokens, normalizeIssn(correctedScopusEIssn(scopusForum)));
+        return ForumIdentityNormalization.matchesIssn(scopusForum, issnTokens);
     }
 
     private boolean matchesIssn(ScholardexForumFact forum, Collection<String> issnTokens) {
-        if (issnTokens == null || issnTokens.isEmpty()) {
-            return false;
-        }
-        if (containsToken(issnTokens, normalizeIssn(forum.getIssn()))
-                || containsToken(issnTokens, normalizeIssn(forum.getEIssn()))) {
-            return true;
-        }
-        for (String alias : safeList(forum.getAliasIssns())) {
-            if (containsToken(issnTokens, normalizeIssn(alias))) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Null-safe membership test. A forum/source record may have no (or a check-digit-invalid) ISSN, in
-     * which case {@code normalizeIssn} returns null; and the candidate token collection is often an
-     * immutable {@code List.of(...)} which throws {@link NullPointerException} on {@code contains(null)}.
-     * Guard the null before delegating.
-     */
-    private static boolean containsToken(Collection<String> tokens, String value) {
-        return value != null && tokens.contains(value);
+        return ForumIdentityNormalization.matchesIssn(forum, issnTokens);
     }
 
     private void onboardPublicationWosLinks(
@@ -1096,51 +1034,19 @@ public class WosScholardexOnboardingService {
     }
 
     private String normalizeIssn(String rawIssn) {
-        String value = normalizeBlank(rawIssn);
-        if (value == null) {
-            return null;
-        }
-        String compact = ISSN_NON_ALNUM.matcher(value).replaceAll("").toUpperCase(Locale.ROOT);
-        if (compact.length() != 8) {
-            return null;
-        }
-        if (!QueryNormalizationSupport.isValidIssn(compact)) {
-            // H55: reject check-digit-invalid ISSNs (real source typos, e.g. Radical Philosophy
-            // "0030-211X"). Treated as absent so the forum resolves by name instead of carrying a
-            // malformed identity token. Genuinely ISSN-less forums already hit the same REASON_INVALID_ISSN
-            // conflict path; this folds typos into that behaviour.
-            return null;
-        }
-        return compact.substring(0, 4) + "-" + compact.substring(4);
+        return ForumIdentityNormalization.normalizeIssn(rawIssn);
     }
 
     private String normalizeName(String rawName) {
-        String value = normalizeBlank(rawName);
-        if (value == null) {
-            return null;
-        }
-        String normalized = Normalizer.normalize(value, Normalizer.Form.NFKD);
-        normalized = COMBINING_MARKS.matcher(normalized).replaceAll("");
-        normalized = normalized.toLowerCase(Locale.ROOT);
-        normalized = NON_ALNUM_OR_SPACE.matcher(normalized).replaceAll(" ");
-        normalized = MULTI_SPACE.matcher(normalized).replaceAll(" ").trim();
-        return normalized.isEmpty() ? null : normalized;
+        return ForumIdentityNormalization.normalizeName(rawName);
     }
 
     private String normalizeToken(String rawValue) {
-        String value = normalizeBlank(rawValue);
-        if (value == null) {
-            return "";
-        }
-        return value.trim().toLowerCase(Locale.ROOT);
+        return ForumIdentityNormalization.normalizeToken(rawValue);
     }
 
     private String normalizeBlank(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
+        return ForumIdentityNormalization.normalizeBlank(value);
     }
 
     private String shortHash(String raw) {
@@ -1149,13 +1055,7 @@ public class WosScholardexOnboardingService {
     }
 
     private String firstNonBlank(String... values) {
-        for (String value : values) {
-            String normalized = normalizeBlank(value);
-            if (normalized != null) {
-                return normalized;
-            }
-        }
-        return null;
+        return ForumIdentityNormalization.firstNonBlank(values);
     }
 
     private boolean hasAnyNonBlank(String... values) {
@@ -1172,6 +1072,6 @@ public class WosScholardexOnboardingService {
     }
 
     private List<String> safeList(List<String> values) {
-        return values == null ? List.of() : values;
+        return ForumIdentityNormalization.safeList(values);
     }
 }
