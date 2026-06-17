@@ -99,7 +99,7 @@ public class WosScholardexOnboardingService {
         for (ScholardexForumFact canonicalForum : canonicalForums) {
             canonicalById.put(canonicalForum.getId(), canonicalForum);
         }
-        CanonicalForumIndex forumIndex = new CanonicalForumIndex(canonicalById);
+        ForumIdentityIndex forumIndex = new ForumIdentityIndex(canonicalById);
         ScopusForumIndex scopusForumIndex = new ScopusForumIndex(scopusForums);
         // H66: same preload + batch as the Scopus path — preload existing FORUM/WOS source links (in-memory
         // re-run-idempotency check instead of per-row findByKey) and accumulate link writes for one flush.
@@ -154,7 +154,7 @@ public class WosScholardexOnboardingService {
             return sourceId == null ? "" : sourceId;
         }));
 
-        CanonicalForumIndex forumIndex = new CanonicalForumIndex(canonicalById);
+        ForumIdentityIndex forumIndex = new ForumIdentityIndex(canonicalById);
         // H66: preload the OPEN forum-conflict keys once, so the per-row ambiguity-resolve does a DB read
         // only when a conflict actually exists for that record. On a from-empty rebuild the set is empty,
         // turning ~60k (2 reasons × n) always-miss lookups into in-memory checks.
@@ -221,7 +221,7 @@ public class WosScholardexOnboardingService {
             ScopusForumFact scopusForum,
             Map<String, ScholardexForumFact> canonicalById,
             Map<String, String> canonicalIdByScopusForumId,
-            CanonicalForumIndex forumIndex,
+            ForumIdentityIndex forumIndex,
             Set<String> openForumConflictKeys,
             Map<ScholardexSourceLinkService.SourceLinkKey, ScholardexSourceLink> existingForumLinks,
             List<ScholardexSourceLinkService.SourceLinkUpsertCommand> linkCommands,
@@ -431,7 +431,7 @@ public class WosScholardexOnboardingService {
             WosRankingView rankingView,
             ScopusForumIndex scopusForumIndex,
             Map<String, ScholardexForumFact> canonicalById,
-            CanonicalForumIndex forumIndex,
+            ForumIdentityIndex forumIndex,
             Map<ScholardexSourceLinkService.SourceLinkKey, ScholardexSourceLink> existingForumLinks,
             List<ScholardexSourceLinkService.SourceLinkUpsertCommand> linkCommands,
             String batchId,
@@ -629,47 +629,6 @@ public class WosScholardexOnboardingService {
         target.setUpdatedAt(now);
     }
 
-    /**
-     * H66 perf: ISSN-token + name|agg index over Scopus forums for O(1) candidate lookup during WoS
-     * onboarding. Mirrors {@link CanonicalForumIndex}; replaces the prior linear scan over all scopus forums
-     * per WoS journal — which was O(n²) (≈26.9k journals × 29.8k scopus forums ≈ 800M comparisons, ~16 min),
-     * invisible until a real CiteScore+MJL run (the scopus-forum list is empty in MJL-only tests).
-     */
-    private final class ScopusForumIndex {
-        private final Map<String, List<ScopusForumFact>> byIssnToken = new HashMap<>();
-        private final Map<String, List<ScopusForumFact>> byNameAgg = new HashMap<>();
-
-        ScopusForumIndex(List<ScopusForumFact> scopusForums) {
-            for (ScopusForumFact scopusForum : scopusForums) {
-                for (String token : scopusIssnTokens(scopusForum)) {
-                    byIssnToken.computeIfAbsent(token, k -> new ArrayList<>()).add(scopusForum);
-                }
-                byNameAgg.computeIfAbsent(scopusNameAggKey(scopusForum), k -> new ArrayList<>()).add(scopusForum);
-            }
-        }
-
-        /** Same result as the old linear scan + matchesIssn: ISSN-token matches, falling back to name|agg. */
-        List<ScopusForumFact> findCandidates(Collection<String> issnTokens, String nameNormalized, String aggregationTypeNormalized) {
-            LinkedHashSet<ScopusForumFact> issnMatches = new LinkedHashSet<>();
-            if (issnTokens != null) {
-                for (String token : issnTokens) {
-                    List<ScopusForumFact> hits = byIssnToken.get(token);
-                    if (hits != null) {
-                        for (ScopusForumFact scopusForum : hits) {
-                            if (matchesIssn(scopusForum, issnTokens)) {
-                                issnMatches.add(scopusForum);
-                            }
-                        }
-                    }
-                }
-            }
-            if (!issnMatches.isEmpty() || nameNormalized == null) {
-                return new ArrayList<>(issnMatches);
-            }
-            List<ScopusForumFact> nameHits = byNameAgg.get(nameNormalized + "|" + normalizeToken(aggregationTypeNormalized));
-            return nameHits == null ? new ArrayList<>() : new ArrayList<>(nameHits);
-        }
-    }
 
     private List<String> scopusIssnTokens(ScopusForumFact scopusForum) {
         return ForumIdentityNormalization.scopusIssnTokens(scopusForum);
@@ -679,85 +638,6 @@ public class WosScholardexOnboardingService {
         return ForumIdentityNormalization.scopusNameAggKey(scopusForum);
     }
 
-    /**
-     * H66: incremental index over the canonical-forum-by-id map giving O(1) candidate lookup during bulk
-     * forum canonicalization. The prior {@code findCanonicalCandidates} linear-scanned every canonical forum
-     * per source row, so onboarding 29.7k Scopus forums was O(n²) (~5.8 min measured). Forums are indexed by
-     * their ISSN tokens (issn/eIssn/aliases, normalized) and by name|agg key, updated incrementally as forums
-     * are created or merged. Merges only add tokens, so re-indexing is idempotent and no stale-entry removal
-     * is needed. The id map is shared with the caller, so {@code containsKey}/{@code get} on it still observe
-     * inserts made through this index.
-     */
-    private final class CanonicalForumIndex {
-        private final Map<String, ScholardexForumFact> byId;
-        private final Map<String, Set<String>> issnTokenToIds = new HashMap<>();
-        private final Map<String, Set<String>> nameAggToIds = new HashMap<>();
-
-        CanonicalForumIndex(Map<String, ScholardexForumFact> byId) {
-            this.byId = byId;
-            for (ScholardexForumFact forum : byId.values()) {
-                indexTokens(forum);
-            }
-        }
-
-        /** Insert/refresh a forum: store it in the id map and (re)index its current tokens. Idempotent. */
-        void put(ScholardexForumFact forum) {
-            if (forum == null || forum.getId() == null) {
-                return;
-            }
-            byId.put(forum.getId(), forum);
-            indexTokens(forum);
-        }
-
-        private void indexTokens(ScholardexForumFact forum) {
-            String id = forum.getId();
-            if (id == null) {
-                return;
-            }
-            for (String token : issnTokensOf(forum)) {
-                issnTokenToIds.computeIfAbsent(token, k -> new LinkedHashSet<>()).add(id);
-            }
-            nameAggToIds.computeIfAbsent(nameAggKeyOf(forum), k -> new LinkedHashSet<>()).add(id);
-        }
-
-        /**
-         * Canonical forums sharing ≥1 ISSN token with {@code issnTokens}; when ISSN-less, those matching the
-         * {@code nameAggKey}. Same result as the old per-row linear scan + {@code matchesIssn}, but via the
-         * index. Id-sorted for deterministic candidate order (order only affects the reported candidate list
-         * of an ambiguity conflict). The {@code matchesIssn} re-check is a redundant exactness guard over the
-         * tiny candidate set.
-         */
-        List<ScholardexForumFact> findCandidates(Collection<String> issnTokens, String nameAggKey) {
-            boolean byIssn = issnTokens != null && !issnTokens.isEmpty();
-            LinkedHashSet<String> ids = new LinkedHashSet<>();
-            if (byIssn) {
-                for (String token : issnTokens) {
-                    Set<String> hits = issnTokenToIds.get(token);
-                    if (hits != null) {
-                        ids.addAll(hits);
-                    }
-                }
-            } else {
-                Set<String> hits = nameAggToIds.get(nameAggKey);
-                if (hits != null) {
-                    ids.addAll(hits);
-                }
-            }
-            List<ScholardexForumFact> candidates = new ArrayList<>();
-            for (String id : ids) {
-                ScholardexForumFact forum = byId.get(id);
-                if (forum == null) {
-                    continue;
-                }
-                if (byIssn && !matchesIssn(forum, issnTokens)) {
-                    continue;
-                }
-                candidates.add(forum);
-            }
-            candidates.sort(Comparator.comparing(ScholardexForumFact::getId));
-            return candidates;
-        }
-    }
 
     private List<String> issnTokensOf(ScholardexForumFact forum) {
         return ForumIdentityNormalization.issnTokensOf(forum);

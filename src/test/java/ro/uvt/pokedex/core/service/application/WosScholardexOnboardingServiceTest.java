@@ -80,29 +80,14 @@ class WosScholardexOnboardingServiceTest {
         return id;
     }
 
-    // H66: reflectively build the private ScopusForumIndex (replaces the old findScopusCandidates list scan).
-    private Object scopusIndex(WosScholardexOnboardingService service, List<ScopusForumFact> forums) {
-        try {
-            Class<?> idxClass = Class.forName("ro.uvt.pokedex.core.service.application.WosScholardexOnboardingService$ScopusForumIndex");
-            var ctor = idxClass.getDeclaredConstructor(WosScholardexOnboardingService.class, List.class);
-            ctor.setAccessible(true);
-            return ctor.newInstance(service, forums);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    // H66B M1b: ScopusForumIndex is now a top-level class — build it directly (was a reflected inner class).
+    private ScopusForumIndex scopusIndex(WosScholardexOnboardingService service, List<ScopusForumFact> forums) {
+        return new ScopusForumIndex(forums);
     }
 
-    @SuppressWarnings("unchecked")
     private List<ScopusForumFact> scopusFindCandidates(WosScholardexOnboardingService service, List<ScopusForumFact> forums,
             java.util.Collection<String> issnTokens, String nameNormalized, String aggregationTypeNormalized) {
-        try {
-            Object idx = scopusIndex(service, forums);
-            var m = idx.getClass().getDeclaredMethod("findCandidates", java.util.Collection.class, String.class, String.class);
-            m.setAccessible(true);
-            return (List<ScopusForumFact>) m.invoke(idx, issnTokens, nameNormalized, aggregationTypeNormalized);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        return scopusIndex(service, forums).findCandidates(issnTokens, nameNormalized, aggregationTypeNormalized);
     }
 
     @Test
