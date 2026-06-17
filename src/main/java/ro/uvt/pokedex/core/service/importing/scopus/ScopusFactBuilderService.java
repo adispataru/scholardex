@@ -118,9 +118,12 @@ public class ScopusFactBuilderService {
                 forumEvents.size(),
                 FACT_BUILD_CHUNK_SIZE);
 
+        // H66 D3 — forums first: seed the serial registry from authoritative FORUM events (Scopus Source
+        // List, CiteScore) before publications, so the publication path resolves-and-links instead of
+        // defining forums from noisy venue data.
+        processForumChunks(forumEvents, result);
         processPublicationChunks(publicationEvents, result);
         processCitationChunks(citationEvents, result);
-        processForumChunks(forumEvents, result);
 
         log.info("Scopus fact-builder summary: processed={}, imported={}, updated={}, skipped={}, errors={}, sample={}",
                 result.getProcessedCount(), result.getImportedCount(), result.getUpdatedCount(),
@@ -244,7 +247,7 @@ public class ScopusFactBuilderService {
         long preloadFinishedAtNanos = System.nanoTime();
 
         for (ForumWorkItem item : items) {
-            upsertForumFact(item.event, item.payload, result, state);
+            upsertForumFact(item.event, item.payload, result, state, false);
         }
         long processFinishedAtNanos = System.nanoTime();
 
@@ -447,7 +450,7 @@ public class ScopusFactBuilderService {
                 state.pendingPublicationSaves.put(eid, fact);
             }
             result.markSkipped(sample(event, "publication payload unchanged"));
-            upsertForumFact(event, payload, result, state);
+            upsertForumFact(event, payload, result, state, true);
             upsertAuthorFacts(event, payload, result, state);
             upsertAffiliationFacts(event, payload, result, state);
             upsertFundingFact(event, payload, result, state);
@@ -498,7 +501,7 @@ public class ScopusFactBuilderService {
         state.pendingPublicationSaves.put(eid, fact);
         markImportOrUpdate(result, created);
 
-        upsertForumFact(event, payload, result, state);
+        upsertForumFact(event, payload, result, state, true);
         upsertAuthorFacts(event, payload, result, state);
         upsertAffiliationFacts(event, payload, result, state);
         upsertFundingFact(event, payload, result, state);
@@ -558,7 +561,8 @@ public class ScopusFactBuilderService {
             ScopusImportEvent event,
             JsonNode payload,
             ImportProcessingResult result,
-            PublicationChunkState state
+            PublicationChunkState state,
+            boolean fromPublication
     ) {
         String sourceId = text(payload, "source_id");
         if (isBlank(sourceId)) {
@@ -567,6 +571,13 @@ public class ScopusFactBuilderService {
 
         ScopusForumFact fact = state.forumBySourceId.get(sourceId);
         boolean created = fact == null;
+        // H66 D4 — publications resolve-and-link only: never mutate a forum already seeded by an
+        // authoritative FORUM source (Scopus Source List / CiteScore). A venue absent from every authoritative
+        // source falls through to create a minimal publication-derived forum (option B); its provenance is
+        // the publication event's lineage source, distinct from SCOPUS_SOURCE_LIST / SCOPUS_CITESCORE_LIST.
+        if (fromPublication && !created) {
+            return;
+        }
         if (created) {
             fact = new ScopusForumFact();
             state.forumBySourceId.put(sourceId, fact);

@@ -571,15 +571,19 @@ Publications **resolve-and-link** only. Books move to their own registry (Move E
 - **D2 — Reposition CiteScore (A2) as rankings, not forum creation.** CiteScore stops defining forum
   identity; its CiteScore/SJR/SNIP/quartile attach as a **forum-keyed metrics layer** (mirrors
   `wos.metric_facts` → forum views). Forum identity/type/ASJC come from the Source List.
-- **D3 — Build forums before publications.** In `buildFactsFromImportEvents`, process FORUM chunks before
-  PUBLICATION chunks (today: publications → citations → forums). Seed the registry from the authoritative
-  forum facts first.
-- **D4 — Publication importer = resolve-and-link (strict (i)).** Resolve the venue (Source ID → ISSN → name)
-  against the seeded registry and store `forumId`; **no forum mutation when it resolves** (link only). With
-  the Source List as backbone the e-ISSN gap closes (754→~0), so strict link-only is the chosen semantics —
-  publications contribute nothing the Source List lacks (name/publisher gap-fills were already 0). A venue in
-  **no** authoritative source → a vestigial provenance-tagged publication-derived forum
-  (`origin=SCOPUS_PUBLICATION_DERIVED`), expected to be rare once the Source List seeds.
+- **D3 — Build forums before publications.** — **DONE.** `buildFactsFromImportEvents` now runs
+  `processForumChunks` → `processPublicationChunks` → `processCitationChunks` (was publications → citations →
+  forums). FORUM events (Source List + CiteScore) seed `scopus.forum_facts` before the publication chunk's
+  `findBySourceIdIn` preload runs.
+- **D4 — Publication importer = resolve-and-link (strict (i)).** — **DONE.** `upsertForumFact` gained a
+  `fromPublication` flag: the FORUM-event caller passes `false` (create-or-enrich, authoritative); the two
+  publication-path callers pass `true` → if the forum already exists, **return immediately (no mutation, no
+  save)** — strict link-only; if absent, create a minimal option-B forum whose provenance is the publication
+  event's lineage source (distinct from `SCOPUS_SOURCE_LIST`/`SCOPUS_CITESCORE_LIST` — no new field needed).
+  The venue link is resolved at stage-3 canonicalization by source id, so link-only needs no stage-2 write.
+  Tests flipped to the new contract (seeded forum → link-only, publication does not enrich; a publication
+  replay no longer refreshes its forum's lineage). Verified: strict link-only is safe because the Source List
+  supplies the e-ISSNs publications were gap-filling.
 - **D5 — Adapt `PipelineRebuildService`/`runFull` to forums-first + fold the feeds in.** One rebuild: wipe →
   ingest Source List + CiteScore + MJL + WoS + Scopus → `buildFacts` (forums-first) → publication
   resolve-and-link → ERIH onboard → dedup → projections. No manual afterthought, no double build.

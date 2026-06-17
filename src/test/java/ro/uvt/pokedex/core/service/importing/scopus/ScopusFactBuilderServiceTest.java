@@ -327,12 +327,11 @@ class ScopusFactBuilderServiceTest {
     }
 
     @Test
-    void buildFactsFromImportEventsResolveOrEnrichDoesNotDuplicateSeededForumAndPreservesAttributes() throws Exception {
-        // H66 C1 (confirm resolve-or-enrich): a publication whose venue is already seeded (e.g. by the
-        // CiteScore FORUM feed) must NOT create a second forum and must NOT erase the seeded attributes the
-        // publication omits — it should only enrich (here: add the missing eIssn). This locks the
-        // publication-emit seam (findBySourceIdIn -> reuse + blank-tolerant merge), distinct from the
-        // canonicalization-path link test in WosScholardexOnboardingServiceTest.
+    void buildFactsFromImportEventsPublicationLinksSeededForumWithoutMutatingIt() throws Exception {
+        // H66 D4 (forums-first, resolve-and-link): a publication whose venue is already seeded by an
+        // authoritative FORUM source (Source List / CiteScore) must NOT mutate that forum — strict link-only.
+        // The publication's eIssn does NOT enrich the forum (the Source List is the identity authority); the
+        // venue link is resolved at stage-3 canonicalization by source id. Replaces the old enrich contract.
         ScopusImportEvent publicationEvent = new ScopusImportEvent();
         publicationEvent.setId("ev1");
         publicationEvent.setEntityType(ScopusImportEntityType.PUBLICATION);
@@ -376,24 +375,14 @@ class ScopusFactBuilderServiceTest {
 
         service.buildFactsFromImportEvents();
 
-        ArgumentCaptor<java.util.Collection<ScopusForumFact>> captor =
-                ArgumentCaptor.forClass(java.util.Collection.class);
-        verify(forumFactRepository).saveAll(captor.capture());
-        java.util.Collection<ScopusForumFact> savedForums = captor.getValue();
-
-        // Resolve, not duplicate: exactly one forum saved, and it is the seeded source_id.
-        assertEquals(1, savedForums.size());
-        ScopusForumFact saved = savedForums.iterator().next();
-        assertEquals("f1", saved.getSourceId());
-        // Enriched: the missing eIssn was filled from the publication.
-        assertEquals("8765-4321", saved.getEIssn());
-        // Preserved: the publication's blanks did not erase the CiteScore-seeded attributes.
-        assertEquals("Seeded Forum", saved.getPublicationName());
-        assertEquals("1234-5678", saved.getIssn());
-        assertEquals("Journal", saved.getAggregationType());
-        assertEquals("Seeded Publisher", saved.getPublisher());
-        assertEquals("journal", saved.getForumType());
-        assertEquals(java.util.List.of("1000"), saved.getAsjc());
+        // Link-only: the seeded forum is never re-saved or mutated by the publication.
+        verify(forumFactRepository, org.mockito.Mockito.never()).saveAll(anyCollection());
+        org.junit.jupiter.api.Assertions.assertNull(seededForum.getEIssn(),
+                "publication must not enrich the authoritative forum's eIssn (strict link-only)");
+        assertEquals("1234-5678", seededForum.getIssn());
+        assertEquals("Seeded Forum", seededForum.getPublicationName());
+        // The publication itself is still processed.
+        verify(publicationFactRepository).saveAll(anyCollection());
     }
 
     @Test
@@ -926,18 +915,18 @@ class ScopusFactBuilderServiceTest {
         assertEquals(0, result.getUpdatedCount());
 
         ArgumentCaptor<java.util.Collection<ScopusPublicationFact>> publicationCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
-        ArgumentCaptor<java.util.Collection<ScopusForumFact>> forumCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
         ArgumentCaptor<java.util.Collection<ScopusAuthorFact>> authorCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
         ArgumentCaptor<java.util.Collection<ScopusAffiliationFact>> affiliationCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
         ArgumentCaptor<java.util.Collection<ScopusFundingFact>> fundingCaptor = ArgumentCaptor.forClass(java.util.Collection.class);
         verify(publicationFactRepository).saveAll(publicationCaptor.capture());
-        verify(forumFactRepository).saveAll(forumCaptor.capture());
+        // H66 D4: a publication replay no longer touches its forum — forum lineage comes from FORUM sources,
+        // not publications. The forum is link-only, so it is never re-saved by the publication path.
+        verify(forumFactRepository, org.mockito.Mockito.never()).saveAll(anyCollection());
         verify(authorFactRepository).saveAll(authorCaptor.capture());
         verify(affiliationFactRepository).saveAll(affiliationCaptor.capture());
         verify(fundingFactRepository).saveAll(fundingCaptor.capture());
 
         ScopusPublicationFact replayedPublication = publicationCaptor.getValue().iterator().next();
-        ScopusForumFact replayedForum = forumCaptor.getValue().iterator().next();
         ScopusAuthorFact replayedAuthor = authorCaptor.getValue().iterator().next();
         ScopusAffiliationFact replayedAffiliation = affiliationCaptor.getValue().iterator().next();
         ScopusFundingFact replayedFunding = fundingCaptor.getValue().iterator().next();
@@ -948,15 +937,6 @@ class ScopusFactBuilderServiceTest {
         assertEquals("pub-same-hash", replayedPublication.getLastPayloadHash());
         assertEquals(java.time.Instant.parse("2025-01-01T00:00:00Z"), replayedPublication.getLastMaterializedAt());
         assertEquals(java.time.Instant.parse("2025-01-01T00:00:00Z"), replayedPublication.getUpdatedAt());
-
-        assertEquals("b-replay", replayedForum.getSourceBatchId());
-        assertEquals("corr-replay", replayedForum.getSourceCorrelationId());
-        assertEquals("Forum 1", replayedForum.getPublicationName());
-        assertEquals("1234-5678", replayedForum.getIssn());
-        assertEquals("8765-4321", replayedForum.getEIssn());
-        assertEquals(hashKey("forum", "forum-1", "Forum 1", "1234-5678", "8765-4321", null, "Journal", null, null, ""), replayedForum.getLastPayloadHash());
-        assertEquals(java.time.Instant.parse("2025-01-02T00:00:00Z"), replayedForum.getLastMaterializedAt());
-        assertEquals(java.time.Instant.parse("2025-01-02T00:00:00Z"), replayedForum.getUpdatedAt());
 
         assertEquals("b-replay", replayedAuthor.getSourceBatchId());
         assertEquals("corr-replay", replayedAuthor.getSourceCorrelationId());
