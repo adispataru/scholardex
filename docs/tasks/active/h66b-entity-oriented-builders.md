@@ -226,27 +226,68 @@ vs baseline** + reconcile audit `healthy=true`.
   - **(later/optional) user-defined** — same shape (`idType=USER`).
   - Net: the M3 *conflict* goal (`EXTERNAL_ID_ALREADY_LINKED` → ~0, total → residual) **is already met**;
     ERIH-only venues now have forums (M3-A). M3 is effectively complete bar the M5 fold.
-- **M4 — RankingBuilder + membership feeds.** CiteScore scores (D2) + WoS metrics/category + WoS
-  score-only→quartile enrichment → forum-keyed rankings; CiteScore stops being a forum-identity feed. **Plus
-  the attach-to-existing-forum feeds split out of the old M3:** DOAJ membership + ERIH membership (both already
-  stage-4 projections keyed on the resolved forum / its `erihIds` FK). All resolve against the finished
-  registry.
-- **M5 — PublicationBuilder + CitationBuilder.** Clean builders resolving against the registry; source-plural
-  input shape (OpenAlex/DBLP/GS-ready).
-- **M6 — BookBuilder.** `scholardex.book_facts` (streamed Book List), `bookId` on publications, venue branch
+
+> ### Target pipeline ordering (CONFIRMED 2026-06-17) — identity → ranking → observation
+>
+> The end-state pipeline runs in three strict layers. **Identity is built only from curated lists;**
+> rankings and publications resolve against the finished registry and never define new identity (except the
+> publication option-B long tail).
+>
+> 1. **IDENTITY (ForumBuilder, create-or-match through `ingest`, in authority order):**
+>    `Source List → MJL → ERIH → DOAJ → WoS`. Earlier = higher authority for the stored name/identity;
+>    later sources match-or-enrich, minting only for venues no earlier source had. **WoS runs *last* in this
+>    layer as create-or-match** (identity-of-last-resort — preserves historical/defunct WoS journals 1997–2019
+>    that the curated lists may not cover, while the curated lists win identity because they run first).
+> 2. **RANKING (RankingBuilder, attach by FK, never create):** WoS metrics (AIS/IF/RIS/JIF) + CiteScore
+>    (CiteScore/SJR/SNIP). Both stop being identity feeds; their numbers attach to forums the identity layer
+>    built. DOAJ/ERIH/MJL membership rows also land here.
+> 3. **OBSERVATION (Publication/CitationBuilder):** Scopus publications resolve their venue to the registry;
+>    a venue in no curated list mints an option-B forum from a deduplicated conference-venue stream. Citations.
+>
+> This is a re-architecture of source roles, not just ordering: **MJL + DOAJ are promoted** from membership-
+> only to identity sources; **WoS + CiteScore are demoted** from identity creators to ranking-only (WoS keeps
+> a create-or-match fallback). The current code does none of this yet (WoS creates identity first; CiteScore
+> creates; pubs create option-B inline) — M4–M8 below get there.
+
+- **M4 — Complete the IDENTITY layer.** Promote **MJL** and **DOAJ** to ForumBuilder sources: new
+  `ForumIdType.MJL`/`DOAJ` + `ofMjl`/`ofDoaj` mappers + onboarding through `ingest` (create-or-match, like
+  ERIH). Make **WoS onboarding run *after* the curated lists** as create-or-match (it already goes through
+  `ingest`; the change is order + treating it as identity-of-last-resort, not first). Establish the
+  `Source List → MJL → ERIH → DOAJ → WoS` authority order. Gate: registry built from curated lists; WoS-only
+  historical journals still get forums; conflicts stay at residual.
+- **M5 — RankingBuilder (WoS + CiteScore stop creating identity).** WoS metrics (AIS/IF/RIS/JIF) + CiteScore
+  (CiteScore/SJR/SNIP) + WoS score-only→quartile enrichment **attach to the registry by FK** — CiteScore and
+  WoS metric facts no longer mint forums. Plus the membership feeds (DOAJ/ERIH/MJL) → forum-keyed views.
+- **M6 — PublicationBuilder + CitationBuilder (folds old M3-B).** Publications resolve venue against the
+  finished registry and emit **only** `ScopusPublicationFact` — remove the inline publication→`forum_facts`
+  write; the conference-venue option-B becomes its own deduplicated `ForumSourceRecord` stream feeding the
+  IDENTITY layer. Source-plural input shape (OpenAlex/DBLP/GS-ready).
+- **M7 — BookBuilder.** `scholardex.book_facts` (streamed Book List), `bookId` on publications, venue branch
   on `aggregationType`, book scoring resolves the registry. **Streaming precedent set (2026-06-17):**
   `ScopusDataService.importSourceListXlsxFromPath` was rewritten from a full in-memory `XSSFWorkbook` to the
   POI SAX event reader (`OPCPackage`/`XSSFReader`/`XSSFSheetXMLHandler` + `ReadOnlySharedStringsTable`) — the
   May-2026 Source List (49,599 rows) has a part exceeding POI's 100 MB byte-array ceiling, which the full
   load tripped (`RecordFormatException`, the live-rebuild blocker). Parses in ~4s now. The Book List
   (475k rows) reuses this exact streaming pattern.
-- **M7 — DAG orchestrator.** One orchestrator: parse → ForumBuilder → RankingBuilder → PublicationBuilder →
-  CitationBuilder → projections. Retire `runFull`/`wosRebuild`/`PipelineRebuild` orchestration (their parsing
-  survives as parser components). Folds in H66 D5/D6/D7 (one forums-first pass, MJL coverage, feed config).
-  `runWosOnboarding`'s standalone caller dies here — no more "WoS rebuild that onboards forums."
+- **M8 — DAG orchestrator (enforces the identity → ranking → observation ordering).** One orchestrator:
+  parse all sources → **ForumBuilder over the curated identity sources in authority order
+  (`Source List → MJL → ERIH → DOAJ → WoS` create-or-match)** → RankingBuilder (WoS metrics + CiteScore,
+  attach-only) → PublicationBuilder + CitationBuilder (resolve + option-B) → projections. Retire
+  `runFull`/`wosRebuild`/`PipelineRebuild` (their parsing survives as parser components). This is where the
+  current "WoS rebuild first, then Scopus runFull, feeds as side imports" structure is replaced by the strict
+  layered order. Folds in H66 D5/D6/D7. `runWosOnboarding`'s standalone caller dies here — no more "WoS
+  rebuild that onboards forums."
 
 ### Open design choices
 
+- **WoS role + identity ordering:** RESOLVED (2026-06-17). WoS is **create-or-match, last in the identity
+  layer** (identity-of-last-resort), not a first-class identity creator and not strict ranking-only — keeps
+  historical/defunct WoS journals covered while the curated lists (Source List/MJL/ERIH/DOAJ) win identity by
+  running first. Authority order `Source List → MJL → ERIH → DOAJ → WoS`. MJL + DOAJ promoted to identity
+  sources; WoS metrics + CiteScore demoted to ranking-only. See the target-ordering block above.
+- **Intra-identity name authority (open):** when two identity sources disagree on a forum's display
+  name/aggregation, the first writer in the authority order wins (later ones enrich). Confirm Source List's
+  Scopus names should outrank MJL/WoS names at M4 (today `mergeForum` prefers the Scopus-derived name).
 - **ERIH create-or-match:** RESOLVED (2026-06-17) — **create-or-match**. ERIH becomes a ForumBuilder source
   (`idType=ERIH`) routed through `ingest`; it mints forums for ERIH-only humanities venues (unblocks non-STEM)
   and the engine sets `erihIds` on the resolved/created forum. Done in M3.
