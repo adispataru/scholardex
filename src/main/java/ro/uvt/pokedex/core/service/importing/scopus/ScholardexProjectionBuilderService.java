@@ -1085,9 +1085,14 @@ public class ScholardexProjectionBuilderService {
     /** AIS/IF/RIS per (forum, year, metric); collapse by max value when a forum carries >1 journal id. */
     private List<ForumMetricRow> buildForumMetricRows(Map<String, String> journalIdToForumId, String buildVersion, Instant buildAt) {
         Map<String, ForumMetricRow> best = new LinkedHashMap<>();
+        LinkedHashSet<String> orphanJournalIds = new LinkedHashSet<>();
         for (WosMetricFact fact : wosMetricFactRepository.findAll()) {
             String forumId = journalIdToForumId.get(fact.getJournalId());
-            if (forumId == null || fact.getYear() == null || fact.getMetricType() == null) {
+            if (forumId == null) {
+                addOrphanJournalId(orphanJournalIds, fact.getJournalId());
+                continue;
+            }
+            if (fact.getYear() == null || fact.getMetricType() == null) {
                 continue;
             }
             String metricType = fact.getMetricType().name();
@@ -1097,7 +1102,30 @@ public class ScholardexProjectionBuilderService {
                 best.put(key, new ForumMetricRow(key, forumId, fact.getYear(), metricType, fact.getValue(), "JCR"));
             }
         }
+        logOrphanJournals("metric", orphanJournalIds);
         return new ArrayList<>(best.values());
+    }
+
+    /** H66B M5: a WoS journalId carrying ranking/coverage facts that resolves to no forum (its rankings are dropped). */
+    private static void addOrphanJournalId(LinkedHashSet<String> orphanJournalIds, String journalId) {
+        if (journalId != null && !journalId.isBlank()) {
+            orphanJournalIds.add(journalId);
+        }
+    }
+
+    /**
+     * H66B M5 — report (don't mint) ranking/coverage facts whose journal resolves to no forum. WoS identity
+     * is create-or-match, so every metric-bearing journal should already have a forum; a non-zero orphan
+     * count is a health signal (a journal whose forum was conflict-quarantined, or an identity gap), not a
+     * reason to mint a forum in the ranking layer.
+     */
+    private void logOrphanJournals(String view, LinkedHashSet<String> orphanJournalIds) {
+        if (orphanJournalIds.isEmpty()) {
+            return;
+        }
+        List<String> sample = orphanJournalIds.stream().limit(10).toList();
+        log.warn("Forum {} projection: {} WoS journals have {} facts but resolve to no forum (rankings dropped); sample={}",
+                view, orphanJournalIds.size(), view, sample);
     }
 
     private static int compareNullableMax(Double incoming, Double existing) {
@@ -1109,9 +1137,14 @@ public class ScholardexProjectionBuilderService {
     /** JCR edition+category+quartile per (forum, year, edition, category, metric); dedup by key. */
     private List<ForumCategoryRow> buildForumCategoryRows(Map<String, String> journalIdToForumId, String buildVersion, Instant buildAt) {
         Map<String, ForumCategoryRow> rows = new LinkedHashMap<>();
+        LinkedHashSet<String> orphanJournalIds = new LinkedHashSet<>();
         for (WosCategoryFact fact : wosCategoryFactRepository.findAll()) {
             String forumId = journalIdToForumId.get(fact.getJournalId());
-            if (forumId == null || fact.getYear() == null || fact.getEditionNormalized() == null
+            if (forumId == null) {
+                addOrphanJournalId(orphanJournalIds, fact.getJournalId());
+                continue;
+            }
+            if (fact.getYear() == null || fact.getEditionNormalized() == null
                     || fact.getCategoryNameCanonical() == null || fact.getMetricType() == null) {
                 continue;
             }
@@ -1121,15 +1154,21 @@ public class ScholardexProjectionBuilderService {
             rows.putIfAbsent(key, new ForumCategoryRow(key, forumId, fact.getYear(), edition,
                     fact.getCategoryNameCanonical(), metricType, fact.getQuarter(), fact.getQuartileRank(), fact.getRank(), "JCR"));
         }
+        logOrphanJournals("category", orphanJournalIds);
         return new ArrayList<>(rows.values());
     }
 
     /** MJL current edition coverage → snapshot membership per (forum, edition); category deferred. */
     private List<ForumMembershipRow> buildForumMembershipRows(Map<String, String> journalIdToForumId, String buildVersion, Instant buildAt) {
         Map<String, ForumMembershipRow> rows = new LinkedHashMap<>();
+        LinkedHashSet<String> orphanJournalIds = new LinkedHashSet<>();
         for (WosCoverageFact fact : wosCoverageFactRepository.findAll()) {
             String forumId = journalIdToForumId.get(fact.getJournalId());
-            if (forumId == null || fact.getEditionNormalized() == null) {
+            if (forumId == null) {
+                addOrphanJournalId(orphanJournalIds, fact.getJournalId());
+                continue;
+            }
+            if (fact.getEditionNormalized() == null) {
                 continue;
             }
             String database = fact.getEditionNormalized().name();
@@ -1138,6 +1177,7 @@ public class ScholardexProjectionBuilderService {
             String key = forumId + "|" + database + "|" + source;
             rows.putIfAbsent(key, new ForumMembershipRow(key, forumId, database, asOf, source));
         }
+        logOrphanJournals("coverage", orphanJournalIds);
         return new ArrayList<>(rows.values());
     }
 

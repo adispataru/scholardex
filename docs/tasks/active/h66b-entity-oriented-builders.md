@@ -268,9 +268,18 @@ vs baseline** + reconcile audit `healthy=true`.
   - **WoS create-or-match ordering** (run *after* the curated lists, identity-of-last-resort) is enforced by
     the M8 orchestrator; WoS already goes through `ingest` (create-or-match), so no engine change here.
   - Authority order target `Source List → (MJL via WoS) → ERIH → DOAJ → WoS`.
-- **M5 — RankingBuilder (WoS + CiteScore stop creating identity).** WoS metrics (AIS/IF/RIS/JIF) + CiteScore
-  (CiteScore/SJR/SNIP) + WoS score-only→quartile enrichment **attach to the registry by FK** — CiteScore and
-  WoS metric facts no longer mint forums. Plus the membership feeds (DOAJ/ERIH/MJL) → forum-keyed views.
+- **M5 — RankingBuilder — DONE (already satisfied + orphan reporting added).** Investigation (2026-06-18)
+  showed the ranking layer already exists as the stage-4 forum-keyed projection: WoS metrics (AIS/IF/RIS) →
+  `scholardex_forum_metric_view` by FK (`buildForumMetricRows`, live `fkMetricForums≈25.8k`), WoS
+  category/quartile → `_category_view`, MJL coverage + DOAJ + ERIH → `_membership_view`. **CiteScore scores
+  are intentionally not ingested** ("no domain uses them" — `ScopusDataService:248`); CiteScore contributes
+  only forumType/asjc (classification, additive), so there is no CiteScore ranking to project. CiteScore-only
+  forum creation is moot now that the Source List streams (CiteScore ⊂ Source List → it enriches, doesn't
+  mint). **Added:** orphan reporting — `buildForumMetricRows`/`buildForumCategoryRows`/`buildForumMembershipRows`
+  now log WoS journals that carry ranking/coverage facts but resolve to no forum (rankings dropped), per the
+  agreed "attach-by-FK + report, never mint in the ranking layer" design. Expected ~0 (WoS identity is
+  create-or-match); a non-zero count is a health signal (conflict-quarantined forum / identity gap), not a
+  mint trigger.
 - **M6 — PublicationBuilder + CitationBuilder (folds old M3-B).** Publications resolve venue against the
   finished registry and emit **only** `ScopusPublicationFact` — remove the inline publication→`forum_facts`
   write; the conference-venue option-B becomes its own deduplicated `ForumSourceRecord` stream feeding the
