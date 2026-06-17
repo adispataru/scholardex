@@ -249,12 +249,25 @@ vs baseline** + reconcile audit `healthy=true`.
 > a create-or-match fallback). The current code does none of this yet (WoS creates identity first; CiteScore
 > creates; pubs create option-B inline) — M4–M8 below get there.
 
-- **M4 — Complete the IDENTITY layer.** Promote **MJL** and **DOAJ** to ForumBuilder sources: new
-  `ForumIdType.MJL`/`DOAJ` + `ofMjl`/`ofDoaj` mappers + onboarding through `ingest` (create-or-match, like
-  ERIH). Make **WoS onboarding run *after* the curated lists** as create-or-match (it already goes through
-  `ingest`; the change is order + treating it as identity-of-last-resort, not first). Establish the
-  `Source List → MJL → ERIH → DOAJ → WoS` authority order. Gate: registry built from curated lists; WoS-only
-  historical journals still get forums; conflicts stay at residual.
+- **M4 — Complete the IDENTITY layer.**
+  - **M4-A display-name rule — DONE.** WoS title wins the display name (→ Scopus → existing); ALL-CAPS WoS
+    titles title-cased (`normalizeDisplayCase`); blank WoS title (id-fallback) falls through to Scopus.
+  - **M4-B DOAJ as an identity source — DONE.** DOAJ promoted from a stage-4 membership-match to a
+    create-or-match ForumBuilder source. Added `ForumIdType.DOAJ` + `ofDoaj`, the `doajIds` FK on the forum,
+    and `DoajOnboardingService` (mirrors ERIH). Generalized the engine's ERIH path to serve both:
+    `startErihRun`→`startCreateOrTagRun`, `ingestErih`→`ingestCreateOrTag`, `mergeForumFromErih`→
+    `mergeForumFromCreateOrTag`, `addErihId`→`addExternalId(idType,…)` (switches `erihIds`/`doajIds`). Wired
+    into `ScholardexForumBuilder` after ERIH (record gains `doajOnboarding`; `erihDedup`→`membershipDedup`,
+    re-runs when ERIH **or** DOAJ tagged). `/forum/onboardDoaj` admin endpoint added for re-runs. Tests:
+    `DoajOnboardingServiceTest` (2) + ERIH/builder/engine nets green. DOAJ-only OA venues now mint forums.
+  - **MJL needs NO promotion (corrected 2026-06-17).** MJL is *not* identity-less: `MjlImportEventParser`
+    carries `issn/eIssn/title` and `WosFactBuilderService` mints/finds a persisted `wos.journal_identity` by
+    ISSN for each coverage record — so MJL-only journals already get a WoS identity and become forums via
+    `runWosOnboarding` (WoS create-or-match). MJL identity = WoS identity. The "MJL coverage=0" symptom is a
+    stage-4 membership-projection gap (M5/M7), not an identity gap. No `ForumIdType.MJL` / `ofMjl`.
+  - **WoS create-or-match ordering** (run *after* the curated lists, identity-of-last-resort) is enforced by
+    the M8 orchestrator; WoS already goes through `ingest` (create-or-match), so no engine change here.
+  - Authority order target `Source List → (MJL via WoS) → ERIH → DOAJ → WoS`.
 - **M5 — RankingBuilder (WoS + CiteScore stop creating identity).** WoS metrics (AIS/IF/RIS/JIF) + CiteScore
   (CiteScore/SJR/SNIP) + WoS score-only→quartile enrichment **attach to the registry by FK** — CiteScore and
   WoS metric facts no longer mint forums. Plus the membership feeds (DOAJ/ERIH/MJL) → forum-keyed views.

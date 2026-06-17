@@ -26,13 +26,15 @@ public class ScholardexForumBuilder {
     private final ScholardexForumDeduplicationService deduplicationService;
     private final WosScholardexOnboardingService wosScholardexOnboardingService;
     private final ErihOnboardingService erihOnboardingService;
+    private final DoajOnboardingService doajOnboardingService;
 
-    /** The four per-step results of a Scopus-side forum build, kept separate so callers can aggregate them. */
+    /** The per-step results of a Scopus-side forum build, kept separate so callers can aggregate them. */
     public record ScopusForumBuildResult(
             ImportProcessingResult dedup,
             ImportProcessingResult canonicalization,
             ImportProcessingResult erihOnboarding,
-            ImportProcessingResult erihDedup
+            ImportProcessingResult doajOnboarding,
+            ImportProcessingResult membershipDedup
     ) {
     }
 
@@ -41,8 +43,8 @@ public class ScholardexForumBuilder {
      * <ol>
      *   <li>dedup pre-existing canonical forums (ISSN + erihId clusters, safe-merge),</li>
      *   <li>canonicalize the stage-2 Scopus forum facts (Source List / CiteScore) into the registry,</li>
-     *   <li>onboard ERIH ids onto matching forums,</li>
-     *   <li>a conditional dedup to merge the erihId-shared split-journals ERIH just surfaced (C1 part 2).</li>
+     *   <li>onboard ERIH then DOAJ as create-or-match identity sources (tag matches / mint source-only venues),</li>
+     *   <li>a conditional dedup to merge the shared-id split-journals ERIH/DOAJ just surfaced (C1 part 2).</li>
      * </ol>
      */
     public ScopusForumBuildResult buildScopusForums(String batchId, String correlationId) {
@@ -50,13 +52,17 @@ public class ScholardexForumBuilder {
         ImportProcessingResult canonicalization =
                 wosScholardexOnboardingService.runScopusForumCanonicalization(batchId, correlationId);
         ImportProcessingResult erihOnboarding = erihOnboardingService.onboardErih();
-        ImportProcessingResult erihDedup = erihOnboarding.getUpdatedCount() > 0
-                ? deduplicationService.deduplicateForums(batchId, correlationId + "-erih")
+        ImportProcessingResult doajOnboarding = doajOnboardingService.onboardDoaj();
+        // Re-dedup only when a create-or-match source tagged existing forums (shared-id clusters worth
+        // merging); source-only creates don't share ISSNs with existing forums, so they don't trigger it.
+        boolean membershipTagged = erihOnboarding.getUpdatedCount() > 0 || doajOnboarding.getUpdatedCount() > 0;
+        ImportProcessingResult membershipDedup = membershipTagged
+                ? deduplicationService.deduplicateForums(batchId, correlationId + "-membership")
                 : new ImportProcessingResult(0);
         log.info("Forum build complete (correlationId={}): dedupMerged={} canonProcessed={} "
-                        + "erihForumsUpdated={} erihDedupMerged={}",
+                        + "erihForumsUpdated={} doajForumsUpdated={} membershipDedupMerged={}",
                 correlationId, dedup.getUpdatedCount(), canonicalization.getProcessedCount(),
-                erihOnboarding.getUpdatedCount(), erihDedup.getUpdatedCount());
-        return new ScopusForumBuildResult(dedup, canonicalization, erihOnboarding, erihDedup);
+                erihOnboarding.getUpdatedCount(), doajOnboarding.getUpdatedCount(), membershipDedup.getUpdatedCount());
+        return new ScopusForumBuildResult(dedup, canonicalization, erihOnboarding, doajOnboarding, membershipDedup);
     }
 }

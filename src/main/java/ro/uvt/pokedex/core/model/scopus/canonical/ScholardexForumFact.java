@@ -28,6 +28,8 @@ public class ScholardexForumFact {
     private List<String> userSourceForumIds = new ArrayList<>();
     /** H66 A1: ERIH+ native ids (parity with the other source-id lists; populated by A5). */
     private List<String> erihIds = new ArrayList<>();
+    /** H66B M4-B: DOAJ native ids (DOAJ promoted to a create-or-match identity source). */
+    private List<String> doajIds = new ArrayList<>();
 
     /** H66 A1: C-scalar — normalized venue kind (journal/book-series/conference/trade), from CiteScore (A2). */
     private String forumType;

@@ -162,7 +162,8 @@ public class ScopusBigBangMigrationService {
                 "scholardex-citation-canonicalization",
                 () -> citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options));
         ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors,
-                forumBuild.dedup(), forumBuild.canonicalization(), forumBuild.erihOnboarding(), forumBuild.erihDedup(),
+                forumBuild.dedup(), forumBuild.canonicalization(), forumBuild.erihOnboarding(),
+                forumBuild.doajOnboarding(), forumBuild.membershipDedup(),
                 canonicalPublications, canonicalCitations));
         log.info("Scopus build-facts orchestration completed: processed={} imported={} updated={} skipped={} errors={}",
                 buildFactsCombined.getProcessedCount(),
@@ -225,7 +226,8 @@ public class ScopusBigBangMigrationService {
                 "scholardex-citation-canonicalization",
                 () -> citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options));
         ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors,
-                forumBuild.dedup(), forumBuild.canonicalization(), forumBuild.erihOnboarding(), forumBuild.erihDedup(),
+                forumBuild.dedup(), forumBuild.canonicalization(), forumBuild.erihOnboarding(),
+                forumBuild.doajOnboarding(), forumBuild.membershipDedup(),
                 canonicalPublications, canonicalCitations));
         log.info("Scopus incremental upload build orchestration completed: sourceBatchIdFilter={} processed={} imported={} updated={} skipped={} errors={}",
                 sourceBatchIdFilter,
@@ -325,7 +327,8 @@ public class ScopusBigBangMigrationService {
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult indexResult =
                 scopusCanonicalIndexMaintenanceService.ensureIndexes();
         ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors,
-                forumBuild.dedup(), forumBuild.canonicalization(), forumBuild.erihOnboarding(), forumBuild.erihDedup(),
+                forumBuild.dedup(), forumBuild.canonicalization(), forumBuild.erihOnboarding(),
+                forumBuild.doajOnboarding(), forumBuild.membershipDedup(),
                 canonicalPublications, canonicalCitations));
         return new ScopusBigBangMigrationResult(
                 scopusDataFile,

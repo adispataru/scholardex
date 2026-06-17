@@ -32,11 +32,11 @@ public class ErihOnboardingService {
 
     public ImportProcessingResult onboardErih() {
         ImportProcessingResult result = new ImportProcessingResult(20);
-        ForumMergeEngine.Context ctx = forumMergeEngine.startErihRun();
+        ForumMergeEngine.Context ctx = forumMergeEngine.startCreateOrTagRun();
         Instant now = Instant.now();
         for (ErihJournalFact erih : erihJournalFactRepository.findAll()) {
             result.markProcessed();
-            forumMergeEngine.ingestErih(ForumSourceRecord.ofErih(erih), ctx, null, null, now, result);
+            forumMergeEngine.ingestCreateOrTag(ForumSourceRecord.ofErih(erih), ctx, null, null, now, result);
         }
         forumMergeEngine.flush(ctx);
         log.info("ERIH onboarding complete: erihProcessed={} forumsTagged={} forumsCreated={}",

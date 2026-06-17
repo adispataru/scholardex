@@ -39,6 +39,7 @@ public class AdminInitializationController {
     private final ro.uvt.pokedex.core.service.importing.DoajDataService doajDataService;
     private final ro.uvt.pokedex.core.service.importing.ErihDataService erihDataService;
     private final ro.uvt.pokedex.core.service.application.ErihOnboardingService erihOnboardingService;
+    private final ro.uvt.pokedex.core.service.application.DoajOnboardingService doajOnboardingService;
     private final ro.uvt.pokedex.core.service.application.ScholardexForumDeduplicationService scholardexForumDeduplicationService;
 
     @GetMapping
@@ -332,6 +333,20 @@ public class AdminInitializationController {
                 "ERIH onboarding complete. processed=" + result.getProcessedCount()
                         + ", forumsUpdated=" + result.getUpdatedCount()
                         + ", unmatched=" + result.getSkippedCount());
+        return "redirect:/admin/initialization";
+    }
+
+    /**
+     * H66B M4-B — onboard DOAJ as a create-or-match identity source (tag matches by ISSN / mint DOAJ-only
+     * venues). Standalone re-run; in a full rebuild it runs inside the forum build after ERIH.
+     */
+    @PostMapping("/forum/onboardDoaj")
+    public String runDoajOnboarding(RedirectAttributes redirectAttributes) {
+        var result = doajOnboardingService.onboardDoaj();
+        redirectAttributes.addFlashAttribute("successMessage",
+                "DOAJ onboarding complete. processed=" + result.getProcessedCount()
+                        + ", forumsTagged=" + result.getUpdatedCount()
+                        + ", forumsCreated=" + result.getImportedCount());
         return "redirect:/admin/initialization";
     }
 

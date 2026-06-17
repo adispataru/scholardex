@@ -1,5 +1,6 @@
 package ro.uvt.pokedex.core.service.application;
 
+import ro.uvt.pokedex.core.model.doaj.DoajJournalFact;
 import ro.uvt.pokedex.core.model.erih.ErihJournalFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
@@ -32,7 +33,8 @@ public record ForumSourceRecord(
     public enum ForumIdType {
         SCOPUS("SCOPUS", "scopus-forum-missing-id", "scopus-forum-onboarding", "scopus-forum-ambiguous-candidates"),
         WOS("WOS", "wos-journal-missing-id", "wos-forum-onboarding", "wos-forum-ambiguous-candidates"),
-        ERIH("ERIH", "erih-missing-id", "erih-forum-onboarding", "erih-forum-ambiguous-candidates");
+        ERIH("ERIH", "erih-missing-id", "erih-forum-onboarding", "erih-forum-ambiguous-candidates"),
+        DOAJ("DOAJ", "doaj-missing-id", "doaj-forum-onboarding", "doaj-forum-ambiguous-candidates");
 
         private final String source;
         private final String missingIdReason;
@@ -112,6 +114,24 @@ public record ForumSourceRecord(
                 erih.getTitle(),
                 erih.getIssn(),
                 erih.getEIssn(),
+                List.of(),
+                null,
+                null,
+                null
+        );
+    }
+
+    /**
+     * A DOAJ (open-access) journal. Like ERIH, a create-or-match identity source: matches existing forums by
+     * ISSN (tagging the {@code doajIds} FK) or mints one for a DOAJ-only OA journal no curated source had.
+     */
+    public static ForumSourceRecord ofDoaj(DoajJournalFact doaj) {
+        return new ForumSourceRecord(
+                ForumIdType.DOAJ,
+                doaj.getId(),
+                doaj.getTitle(),
+                doaj.getIssn(),
+                doaj.getEIssn(),
                 List.of(),
                 null,
                 null,

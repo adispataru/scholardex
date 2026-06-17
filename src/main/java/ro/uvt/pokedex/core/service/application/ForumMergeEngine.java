@@ -159,7 +159,7 @@ public class ForumMergeEngine {
         return ctx;
     }
 
-    /** Flush a run: batch the accumulated source-link writes, and saveAll any in-place-tagged forums (ERIH). */
+    /** Flush a run: batch the accumulated source-link writes, and saveAll any in-place-tagged forums. */
     public void flush(Context ctx) {
         if (!ctx.dirtyForums.isEmpty()) {
             scholardexForumFactRepository.saveAll(new ArrayList<>(ctx.dirtyForums.values()));
@@ -168,11 +168,11 @@ public class ForumMergeEngine {
     }
 
     /**
-     * Build the per-run context for ERIH onboarding: the canonical token index (for ISSN-token matching) and
-     * the primary-ISSN index (H57 token hygiene). ERIH writes no source links — its identity linkage is the
-     * forum's {@code erihIds} FK — so no existing-link preload is needed.
+     * Build the per-run context for a create-or-tag membership source (ERIH, DOAJ): the canonical token index
+     * (for ISSN-token matching) and the primary-ISSN index (H57 token hygiene). These sources write no source
+     * links — the linkage is the forum's per-source FK (`erihIds`/`doajIds`) — so no existing-link preload.
      */
-    public Context startErihRun() {
+    public Context startCreateOrTagRun() {
         List<ScopusForumFact> scopusForums = new ArrayList<>(scopusForumFactRepository.findAll());
         Context ctx = new Context();
         ctx.primaryIssnIndex = buildPrimaryIssnIndex(scopusForums);
@@ -182,13 +182,13 @@ public class ForumMergeEngine {
     }
 
     /**
-     * Onboard one ERIH journal: match on ISSN tokens and tag the {@code erihIds} FK on <b>every</b> matching
-     * forum (the split-journal signal the dedup pass clusters on — fan-out, not conflict); when no forum
-     * matches, create an ERIH-only canonical forum. Created forums and in-place tags both register in the
-     * context index so later ERIH records resolve against them; tagged forums are saved in the {@link #flush}
-     * batch, created forums immediately (for the DuplicateKey guard).
+     * Onboard one create-or-tag membership record (ERIH or DOAJ): match on ISSN tokens and tag the source's
+     * FK (`erihIds`/`doajIds`) on <b>every</b> matching forum (ERIH's split-journal signal; harmless fan-out
+     * for DOAJ); when no forum matches, mint a source-only canonical forum carrying that FK. Created forums
+     * and in-place tags both register in the context index so later records resolve against them; tagged
+     * forums are saved in the {@link #flush} batch, created forums immediately (for the DuplicateKey guard).
      */
-    public void ingestErih(
+    public void ingestCreateOrTag(
             ForumSourceRecord record,
             Context ctx,
             String batchId,
@@ -196,22 +196,23 @@ public class ForumMergeEngine {
             Instant now,
             ImportProcessingResult result
     ) {
+        ForumSourceRecord.ForumIdType idType = record.idType();
         String sourceRecordId = normalizeBlank(record.externalId());
         if (sourceRecordId == null) {
-            result.markSkipped(record.idType().missingIdReason());
+            result.markSkipped(idType.missingIdReason());
             return;
         }
 
         LinkedHashSet<String> normalizedIssns = normalizedIssnSet(
                 ctx.primaryIssnIndex, record.issn(), record.eIssn(), record.aliasIssns(), null, null, null);
 
-        // Fan-out match: every forum sharing an ISSN token is tagged with this erihId (split-journal signal).
+        // Fan-out match: every forum sharing an ISSN token is tagged with this source's id.
         if (!normalizedIssns.isEmpty()) {
             List<ScholardexForumFact> matches = ctx.forumIndex.findCandidates(normalizedIssns, null);
             if (!matches.isEmpty()) {
                 boolean changed = false;
                 for (ScholardexForumFact forum : matches) {
-                    if (addErihId(forum, sourceRecordId)) {
+                    if (addExternalId(forum, idType, sourceRecordId)) {
                         forum.setUpdatedAt(now);
                         ctx.dirtyForums.put(forum.getId(), forum);
                         changed = true;
@@ -220,17 +221,17 @@ public class ForumMergeEngine {
                 if (changed) {
                     result.markUpdated();
                 } else {
-                    result.markSkipped("erih-already-tagged sourceRecordId=" + sourceRecordId);
+                    result.markSkipped(idType.source() + "-already-tagged sourceRecordId=" + sourceRecordId);
                 }
                 return;
             }
         }
 
-        // ERIH-only venue (no ISSN match): create a canonical forum carrying this erihId.
+        // Source-only venue (no ISSN match): mint a canonical forum carrying this source's FK.
         String name = firstNonBlank(record.name(), sourceRecordId);
         String aggregationType = firstNonBlank(record.aggregationType(), FORUM_DEFAULT_AGG);
         ScholardexForumFact target = new ScholardexForumFact();
-        mergeForumFromErih(target, record, normalizedIssns, name, aggregationType, now, batchId, correlationId);
+        mergeForumFromCreateOrTag(target, record, normalizedIssns, name, aggregationType, now, batchId, correlationId);
         target.setBuilderVersion(BuilderVersion.SCHOLARDEX_FORUM);
         if (persistForumOrRecordConflict(target, sourceRecordId, batchId, correlationId, result)) {
             ctx.forumIndex.put(target);
@@ -529,11 +530,12 @@ public class ForumMergeEngine {
     }
 
     /**
-     * Materialize an ERIH-only canonical forum (no Scopus/WoS counterpart matched): carry the erihId, the
-     * normalized ISSN/name/aggregation, and mint the canonical id. Additive on the off chance the target is
-     * an existing forum, mirroring the other merge helpers, though the ERIH path only calls this for new ones.
+     * Materialize a source-only canonical forum (ERIH/DOAJ, no Scopus/WoS counterpart matched): carry the
+     * source FK (`erihIds`/`doajIds`), the normalized ISSN/name/aggregation, and mint the canonical id.
+     * Additive on the off chance the target is an existing forum, mirroring the other merge helpers, though
+     * the create-or-tag path only calls this for new ones.
      */
-    private void mergeForumFromErih(
+    private void mergeForumFromCreateOrTag(
             ScholardexForumFact target,
             ForumSourceRecord record,
             LinkedHashSet<String> normalizedIssns,
@@ -546,7 +548,7 @@ public class ForumMergeEngine {
         if (target.getCreatedAt() == null) {
             target.setCreatedAt(now);
         }
-        addErihId(target, record.externalId());
+        addExternalId(target, record.idType(), record.externalId());
 
         List<String> issnList = new ArrayList<>(normalizedIssns);
         String preferredIssn = issnList.isEmpty() ? null : issnList.getFirst();
@@ -586,17 +588,27 @@ public class ForumMergeEngine {
         target.setUpdatedAt(now);
     }
 
-    /** Add the erihId to the forum's list if absent (kept sorted); returns true when it changed. */
-    private static boolean addErihId(ScholardexForumFact forum, String erihId) {
-        List<String> ids = forum.getErihIds();
-        if (ids == null) {
-            ids = new ArrayList<>();
-            forum.setErihIds(ids);
-        }
-        if (ids.contains(erihId)) {
+    /** Add the external id to the forum's per-source FK list (`erihIds`/`doajIds`) if absent (kept sorted). */
+    private static boolean addExternalId(ScholardexForumFact forum, ForumSourceRecord.ForumIdType idType, String externalId) {
+        List<String> ids = switch (idType) {
+            case ERIH -> {
+                if (forum.getErihIds() == null) {
+                    forum.setErihIds(new ArrayList<>());
+                }
+                yield forum.getErihIds();
+            }
+            case DOAJ -> {
+                if (forum.getDoajIds() == null) {
+                    forum.setDoajIds(new ArrayList<>());
+                }
+                yield forum.getDoajIds();
+            }
+            default -> throw new IllegalArgumentException("create-or-tag id list undefined for idType=" + idType);
+        };
+        if (ids.contains(externalId)) {
             return false;
         }
-        ids.add(erihId);
+        ids.add(externalId);
         ids.sort(Comparator.naturalOrder());
         return true;
     }

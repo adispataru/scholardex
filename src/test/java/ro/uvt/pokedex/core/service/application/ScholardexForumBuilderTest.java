@@ -21,6 +21,7 @@ class ScholardexForumBuilderTest {
     @Mock private ScholardexForumDeduplicationService deduplicationService;
     @Mock private WosScholardexOnboardingService wosScholardexOnboardingService;
     @Mock private ErihOnboardingService erihOnboardingService;
+    @Mock private DoajOnboardingService doajOnboardingService;
 
     private ImportProcessingResult result(int processed, int imported, int updated, int skipped, int errors) {
         ImportProcessingResult r = new ImportProcessingResult(10);
@@ -32,39 +33,44 @@ class ScholardexForumBuilderTest {
         return r;
     }
 
+    private ScholardexForumBuilder builder() {
+        return new ScholardexForumBuilder(
+                deduplicationService, wosScholardexOnboardingService, erihOnboardingService, doajOnboardingService);
+    }
+
     @Test
-    void buildsForumsFirstInOrderAndRunsErihDedupWhenErihWroteIds() {
+    void buildsForumsFirstInOrderAndRunsMembershipDedupWhenAnIdentitySourceTagged() {
         when(deduplicationService.deduplicateForums(eq("batch"), any())).thenReturn(result(0, 0, 1, 0, 0));
         when(wosScholardexOnboardingService.runScopusForumCanonicalization("batch", "run")).thenReturn(result(5, 5, 0, 0, 0));
-        when(erihOnboardingService.onboardErih()).thenReturn(result(10, 0, 3, 0, 0)); // wrote erihIds -> dedup again
+        when(erihOnboardingService.onboardErih()).thenReturn(result(10, 0, 3, 0, 0)); // tagged forums -> dedup again
+        when(doajOnboardingService.onboardDoaj()).thenReturn(result(8, 1, 0, 0, 0));
 
-        ScholardexForumBuilder builder = new ScholardexForumBuilder(
-                deduplicationService, wosScholardexOnboardingService, erihOnboardingService);
-        ScholardexForumBuilder.ScopusForumBuildResult out = builder.buildScopusForums("batch", "run");
+        ScholardexForumBuilder.ScopusForumBuildResult out = builder().buildScopusForums("batch", "run");
 
-        // forums-first order: dedup -> canonicalization -> erih onboard -> erih dedup
-        InOrder order = inOrder(deduplicationService, wosScholardexOnboardingService, erihOnboardingService);
+        // forums-first order: dedup -> canonicalization -> ERIH -> DOAJ -> membership dedup
+        InOrder order = inOrder(deduplicationService, wosScholardexOnboardingService, erihOnboardingService, doajOnboardingService);
         order.verify(deduplicationService).deduplicateForums("batch", "run");
         order.verify(wosScholardexOnboardingService).runScopusForumCanonicalization("batch", "run");
         order.verify(erihOnboardingService).onboardErih();
-        order.verify(deduplicationService).deduplicateForums("batch", "run-erih");
+        order.verify(doajOnboardingService).onboardDoaj();
+        order.verify(deduplicationService).deduplicateForums("batch", "run-membership");
 
         assertEquals(3, out.erihOnboarding().getUpdatedCount());
+        assertEquals(1, out.doajOnboarding().getImportedCount());
         assertEquals(5, out.canonicalization().getProcessedCount());
     }
 
     @Test
-    void skipsErihDedupWhenOnboardingWroteNoIds() {
+    void skipsMembershipDedupWhenNeitherSourceTagged() {
         when(deduplicationService.deduplicateForums("batch", "run")).thenReturn(result(0, 0, 0, 0, 0));
         when(wosScholardexOnboardingService.runScopusForumCanonicalization("batch", "run")).thenReturn(result(0, 0, 0, 0, 0));
-        when(erihOnboardingService.onboardErih()).thenReturn(result(0, 0, 0, 0, 0)); // no erihIds written
+        when(erihOnboardingService.onboardErih()).thenReturn(result(0, 0, 0, 0, 0)); // no tags
+        when(doajOnboardingService.onboardDoaj()).thenReturn(result(2, 1, 0, 0, 0)); // only a create, no tag
 
-        ScholardexForumBuilder builder = new ScholardexForumBuilder(
-                deduplicationService, wosScholardexOnboardingService, erihOnboardingService);
-        builder.buildScopusForums("batch", "run");
+        builder().buildScopusForums("batch", "run");
 
-        // only the first dedup runs; no erih-dedup pass
+        // only the first dedup runs; creates (imported) alone don't trigger the membership dedup
         verify(deduplicationService).deduplicateForums("batch", "run");
-        verify(deduplicationService, never()).deduplicateForums("batch", "run-erih");
+        verify(deduplicationService, never()).deduplicateForums("batch", "run-membership");
     }
 }
