@@ -135,6 +135,12 @@ vs baseline** + reconcile audit `healthy=true`.
 - **M1 — Merge engine + index, extracted & unit-tested.** Pull `ForumIdentityIndex` + `ForumMergeEngine` +
   `SourceLinkWriter` + `ConflictRecorder` out of `WosScholardexOnboardingService` as standalone components,
   behavior-equivalent, with the perf structures intact. Old methods delegate to them (transient).
+  - **M1a DONE:** `ForumIdentityNormalization` extracted — all forum identity normalization + token
+    extraction (normalizeIssn→hyphenated+check-digit, normalizeName, matchesIssn ×2, issn/name token
+    extraction, SIAM eISSN correction) as pure static functions, faithfully ported + unit-tested
+    (`ForumIdentityNormalizationTest`). The substrate the index + merge engine share. **Next:** delegate the
+    service's private copies to it (remove duplication), then extract `ForumIdentityIndex` (from
+    `CanonicalForumIndex`/`ScopusForumIndex`) and `ForumMergeEngine`.
 - **M2 — Unify WoS + Scopus ingestion through `ForumMergeEngine.ingest(ForumSourceRecord)`.** Delete the two
   duplicate onboarding methods. ForumBuilder feeds Source List + WoS identity records through one engine.
   Gate: conflicts ≤ baseline and trending down; forum-build time ≤ baseline.
