@@ -1,5 +1,6 @@
 package ro.uvt.pokedex.core.service.application;
 
+import ro.uvt.pokedex.core.model.erih.ErihJournalFact;
 import ro.uvt.pokedex.core.model.reporting.wos.WosRankingView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact;
 
@@ -30,7 +31,8 @@ public record ForumSourceRecord(
     /** Which forum source minted the record — selects the id-list, reason strings, and Scopus-only branches. */
     public enum ForumIdType {
         SCOPUS("SCOPUS", "scopus-forum-missing-id", "scopus-forum-onboarding", "scopus-forum-ambiguous-candidates"),
-        WOS("WOS", "wos-journal-missing-id", "wos-forum-onboarding", "wos-forum-ambiguous-candidates");
+        WOS("WOS", "wos-journal-missing-id", "wos-forum-onboarding", "wos-forum-ambiguous-candidates"),
+        ERIH("ERIH", "erih-missing-id", "erih-forum-onboarding", "erih-forum-ambiguous-candidates");
 
         private final String source;
         private final String missingIdReason;
@@ -92,6 +94,25 @@ public record ForumSourceRecord(
                 rankingView.getIssn(),
                 rankingView.getEIssn(),
                 rankingView.getAlternativeIssns(),
+                null,
+                null,
+                null
+        );
+    }
+
+    /**
+     * An ERIH+ journal. Aggregation defaults to {@code Journal} (engine applies it); no Scopus C-scalars.
+     * The engine matches on ISSN (fan-out tagging the {@code erihIds} FK on every match) or, for an
+     * ERIH-only venue with no matching forum, creates one.
+     */
+    public static ForumSourceRecord ofErih(ErihJournalFact erih) {
+        return new ForumSourceRecord(
+                ForumIdType.ERIH,
+                erih.getId(),
+                erih.getTitle(),
+                erih.getIssn(),
+                erih.getEIssn(),
+                List.of(),
                 null,
                 null,
                 null

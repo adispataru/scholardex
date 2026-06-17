@@ -196,16 +196,27 @@ vs baseline** + reconcile audit `healthy=true`.
 > only because the conference-venue forum source requires it (else conference forums double-mint).
 
 - **M3 — Complete the ForumBuilder (forum sources through `ingest`).** Route the remaining forum-*creating*
-  sources through `ForumMergeEngine.ingest(ForumSourceRecord)`:
-  - **ERIH create-or-match** — `ErihOnboardingService` stops being a bespoke match-only `erihIds` writer;
-    ERIH journals become `ForumSourceRecord`s (`idType=ERIH`) that the engine matches *or creates*. The
-    `erihIds` FK is set by the engine on the resolved/created forum (so the existing ERIH membership
-    projection still reads it). Add `ERIH` to `ForumIdType` + the forum id-list it lands in.
-  - **Conference-venue source** — extract the dedup'd conference-venue stream (the ~2,065 mostly-unprofiled
-    venues no curated list has) from publication facts as `ForumSourceRecord`s (option-B minimal forums,
-    provenance-tagged), and **remove the publication→`scopus.forum_facts` write** (D4's `fromPublication`
-    flag becomes structurally impossible — publications emit only `ScopusPublicationFact`). These two are one
-    change: the venue source replaces the publication-derived forum write, so conference forums are minted
+  sources through the unified engine:
+  - **M3-A ERIH create-or-match DONE.** `ErihOnboardingService` is no longer a bespoke match-only `erihIds`
+    writer — it builds a `ForumMergeEngine.Context` (`startErihRun`) and loops ERIH journals through
+    `forumMergeEngine.ingestErih(ofErih(erih), …)`. Per the design call (kept fan-out, not conflict):
+    ISSN-token match → tag the `erihId` on **every** matching forum (split-journal signal; batched `saveAll`
+    on `flush` via a new `Context.dirtyForums`); no match → **create** an ERIH-only canonical forum
+    (`mergeForumFromErih` mints id + carries the erihId, saved per-record for the DuplicateKey guard).
+    `ForumIdType.ERIH` added; `ofErih` mapper added; ERIH now obeys the **same strict ISSN identity** as
+    every source (check-digit validation + H57 hygiene via the shared index) — a correctness improvement
+    (old lax compacting matched typo ISSNs). ERIH writes **no source links** (its `erihIds` FK is the
+    linkage), so `startErihRun` skips the link preload. `ScholardexForumBuilder`'s re-dedup trigger
+    (`erihOnboarding.getUpdatedCount() > 0`) still fires on fan-out tags; creates (imported) correctly don't
+    trigger it. `ErihOnboardingServiceTest` rewritten for create-or-match through the engine (valid-ISSN
+    fixtures); 3 + the engine/service nets green. The service constructor dropped `ScholardexForumFactRepository`
+    (now `(erihJournalFactRepository, forumMergeEngine)`).
+  - **M3-B (next) — conference-venue source + remove publication forum-write.** Extract the dedup'd
+    conference-venue stream (the ~2,065 mostly-unprofiled venues no curated list has) from publication facts
+    as `ForumSourceRecord`s (option-B minimal forums, provenance-tagged), and **remove the
+    publication→`scopus.forum_facts` write** (D4's `fromPublication` flag becomes structurally impossible —
+    publications emit only `ScopusPublicationFact`). These two are one change: the venue source replaces the
+    publication-derived forum write, so conference forums are minted
     once, by the ForumBuilder, not double-minted.
   - **(later/optional) user-defined** — same shape (`idType=USER`).
   - Gate: `EXTERNAL_ID_ALREADY_LINKED` → ~0; total forum conflicts → the genuine residual; null-forumId count

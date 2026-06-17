@@ -8,7 +8,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.erih.ErihJournalFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
 import ro.uvt.pokedex.core.repository.erih.ErihJournalFactRepository;
+import ro.uvt.pokedex.core.repository.reporting.WosJournalIdentityRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.util.List;
@@ -17,16 +20,39 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * H66B M3 — ERIH onboarding as a create-or-match ForumBuilder source. ISSN matching is now check-digit
+ * strict (engine normalization), so fixtures use valid ISSNs. Behavior runs end-to-end through
+ * {@link ForumMergeEngine#ingestErih}: fan-out tagging on match, create on no-match.
+ */
 @ExtendWith(MockitoExtension.class)
 class ErihOnboardingServiceTest {
 
+    @Mock private WosJournalIdentityRepository journalIdentityRepository;
+    @Mock private ScopusForumFactRepository scopusForumFactRepository;
     @Mock private ScholardexForumFactRepository forumRepository;
+    @Mock private ScholardexSourceLinkService sourceLinkService;
+    @Mock private ScholardexIdentityConflictRepository identityConflictRepository;
     @Mock private ErihJournalFactRepository erihJournalFactRepository;
+
+    private ErihOnboardingService service() {
+        ForumMergeEngine engine = new ForumMergeEngine(
+                journalIdentityRepository,
+                scopusForumFactRepository,
+                forumRepository,
+                sourceLinkService,
+                identityConflictRepository,
+                new ForumMergeSafetyRule(),
+                new ConflictRecorder(identityConflictRepository, sourceLinkService)
+        );
+        return new ErihOnboardingService(erihJournalFactRepository, engine);
+    }
 
     private static ScholardexForumFact forum(String id, String issn, String eIssn) {
         ScholardexForumFact f = new ScholardexForumFact();
@@ -46,44 +72,55 @@ class ErihOnboardingServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void writesErihIdOntoIssnMatchedForumsAndSkipsUnmatched() {
-        ScholardexForumFact forumA = forum("sforum_a", "1234-5678", null);
-        ScholardexForumFact forumB = forum("sforum_b", null, "2345-6789");
+    void tagsIssnMatchedForumsAndCreatesForumForErihOnlyJournal() {
+        ScholardexForumFact forumA = forum("sforum_a", "1234-5679", null);
+        ScholardexForumFact forumB = forum("sforum_b", null, "2345-6787");
+        when(scopusForumFactRepository.findAll()).thenReturn(List.of());
+        when(journalIdentityRepository.findAll()).thenReturn(List.of());
         when(forumRepository.findAll()).thenReturn(List.of(forumA, forumB));
+        when(forumRepository.save(any(ScholardexForumFact.class))).thenAnswer(i -> i.getArgument(0));
         when(erihJournalFactRepository.findAll()).thenReturn(List.of(
-                erih("E1", "12345678", null),     // matches forumA print ISSN
-                erih("E2", "99999999", null),     // matches nothing
-                erih("E3", null, "23456789")      // matches forumB eISSN
+                erih("E1", "12345679", null),   // matches forumA print ISSN
+                erih("E2", "8765-4326", null),  // valid ISSN, matches nothing -> create
+                erih("E3", null, "23456787")    // matches forumB eISSN
         ));
 
-        ErihOnboardingService service = new ErihOnboardingService(forumRepository, erihJournalFactRepository);
-        ImportProcessingResult result = service.onboardErih();
+        ImportProcessingResult result = service().onboardErih();
 
         assertEquals(3, result.getProcessedCount());
-        assertEquals(2, result.getUpdatedCount());  // forumA + forumB
-        assertEquals(1, result.getSkippedCount());  // E2 unmatched
+        assertEquals(2, result.getUpdatedCount());   // forumA + forumB tagged
+        assertEquals(1, result.getImportedCount());  // E2 created an ERIH-only forum
+        assertEquals(0, result.getSkippedCount());
 
-        ArgumentCaptor<List<ScholardexForumFact>> captor = ArgumentCaptor.forClass(List.class);
-        verify(forumRepository).saveAll(captor.capture());
-        Map<String, ScholardexForumFact> saved = captor.getValue().stream()
+        // The two tagged forums are saved in the flush batch.
+        ArgumentCaptor<List<ScholardexForumFact>> tagged = ArgumentCaptor.forClass(List.class);
+        verify(forumRepository).saveAll(tagged.capture());
+        Map<String, ScholardexForumFact> savedTagged = tagged.getValue().stream()
                 .collect(Collectors.toMap(ScholardexForumFact::getId, f -> f));
-        assertEquals(List.of("E1"), saved.get("sforum_a").getErihIds());
-        assertEquals(List.of("E3"), saved.get("sforum_b").getErihIds());
+        assertEquals(List.of("E1"), savedTagged.get("sforum_a").getErihIds());
+        assertEquals(List.of("E3"), savedTagged.get("sforum_b").getErihIds());
+
+        // The ERIH-only journal minted a new canonical forum carrying its erihId.
+        verify(forumRepository).save(org.mockito.ArgumentMatchers.argThat(f ->
+                f.getId() != null && f.getId().startsWith("sforum_")
+                        && f.getErihIds().equals(List.of("E2"))
+                        && "ERIH".equals(f.getSource())));
     }
 
     @Test
     @SuppressWarnings("unchecked")
     void oneErihJournalMatchingTwoForumsTagsBothWithSameErihId() {
         // The split-journal signal: both forums get E1, so dedup (C1 part 2) can later merge them.
-        ScholardexForumFact forumA = forum("sforum_a", "1234-5678", null);
-        ScholardexForumFact forumB = forum("sforum_b", null, "2345-6789");
+        ScholardexForumFact forumA = forum("sforum_a", "1234-5679", null);
+        ScholardexForumFact forumB = forum("sforum_b", null, "2345-6787");
+        when(scopusForumFactRepository.findAll()).thenReturn(List.of());
+        when(journalIdentityRepository.findAll()).thenReturn(List.of());
         when(forumRepository.findAll()).thenReturn(List.of(forumA, forumB));
         when(erihJournalFactRepository.findAll()).thenReturn(List.of(
-                erih("E1", "1234-5678", "2345-6789") // print matches A, eISSN matches B
+                erih("E1", "1234-5679", "2345-6787") // print matches A, eISSN matches B
         ));
 
-        ErihOnboardingService service = new ErihOnboardingService(forumRepository, erihJournalFactRepository);
-        service.onboardErih();
+        service().onboardErih();
 
         ArgumentCaptor<List<ScholardexForumFact>> captor = ArgumentCaptor.forClass(List.class);
         verify(forumRepository).saveAll(captor.capture());
@@ -94,16 +131,20 @@ class ErihOnboardingServiceTest {
     }
 
     @Test
-    void noMatchesSavesNothing() {
-        ScholardexForumFact forumA = forum("sforum_a", "1234-5678", null);
+    void erihOnlyJournalCreatesForumAndTagsNoExisting() {
+        ScholardexForumFact forumA = forum("sforum_a", "1234-5679", null);
+        when(scopusForumFactRepository.findAll()).thenReturn(List.of());
+        when(journalIdentityRepository.findAll()).thenReturn(List.of());
         when(forumRepository.findAll()).thenReturn(List.of(forumA));
-        when(erihJournalFactRepository.findAll()).thenReturn(List.of(erih("E9", "00000000", null)));
+        when(forumRepository.save(any(ScholardexForumFact.class))).thenAnswer(i -> i.getArgument(0));
+        when(erihJournalFactRepository.findAll()).thenReturn(List.of(erih("E9", "8765-4326", null)));
 
-        ErihOnboardingService service = new ErihOnboardingService(forumRepository, erihJournalFactRepository);
-        ImportProcessingResult result = service.onboardErih();
+        ImportProcessingResult result = service().onboardErih();
 
-        assertEquals(1, result.getSkippedCount());
-        assertTrue(result.getUpdatedCount() == 0);
-        verify(forumRepository, never()).saveAll(anyList());
+        assertEquals(1, result.getImportedCount());
+        assertEquals(0, result.getUpdatedCount());
+        verify(forumRepository, never()).saveAll(anyList()); // no existing forum tagged
+        verify(forumRepository).save(org.mockito.ArgumentMatchers.argThat(f ->
+                f.getErihIds().equals(List.of("E9")) && "ERIH".equals(f.getSource())));
     }
 }

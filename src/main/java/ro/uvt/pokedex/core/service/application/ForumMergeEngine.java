@@ -98,6 +98,8 @@ public class ForumMergeEngine {
         Set<String> openForumConflictKeys = Set.of();
         Map<ScholardexSourceLinkService.SourceLinkKey, ScholardexSourceLink> existingForumLinks = new HashMap<>();
         final List<ScholardexSourceLinkService.SourceLinkUpsertCommand> linkCommands = new ArrayList<>();
+        // ERIH-run only: forums whose erihIds FK was tagged in place (existing matches) — batched saveAll on flush.
+        final Map<String, ScholardexForumFact> dirtyForums = new LinkedHashMap<>();
         // Scopus-run only: the loaded + deterministically sorted scopus forums to iterate.
         List<ScopusForumFact> scopusForums = List.of();
 
@@ -157,9 +159,83 @@ public class ForumMergeEngine {
         return ctx;
     }
 
-    /** Flush the accumulated source-link writes for one run in a single batch upsert. */
+    /** Flush a run: batch the accumulated source-link writes, and saveAll any in-place-tagged forums (ERIH). */
     public void flush(Context ctx) {
+        if (!ctx.dirtyForums.isEmpty()) {
+            scholardexForumFactRepository.saveAll(new ArrayList<>(ctx.dirtyForums.values()));
+        }
         sourceLinkService.batchUpsertWithState(ctx.linkCommands, ctx.existingForumLinks);
+    }
+
+    /**
+     * Build the per-run context for ERIH onboarding: the canonical token index (for ISSN-token matching) and
+     * the primary-ISSN index (H57 token hygiene). ERIH writes no source links — its identity linkage is the
+     * forum's {@code erihIds} FK — so no existing-link preload is needed.
+     */
+    public Context startErihRun() {
+        List<ScopusForumFact> scopusForums = new ArrayList<>(scopusForumFactRepository.findAll());
+        Context ctx = new Context();
+        ctx.primaryIssnIndex = buildPrimaryIssnIndex(scopusForums);
+        ctx.canonicalById = loadCanonicalById();
+        ctx.forumIndex = new ForumIdentityIndex(ctx.canonicalById);
+        return ctx;
+    }
+
+    /**
+     * Onboard one ERIH journal: match on ISSN tokens and tag the {@code erihIds} FK on <b>every</b> matching
+     * forum (the split-journal signal the dedup pass clusters on — fan-out, not conflict); when no forum
+     * matches, create an ERIH-only canonical forum. Created forums and in-place tags both register in the
+     * context index so later ERIH records resolve against them; tagged forums are saved in the {@link #flush}
+     * batch, created forums immediately (for the DuplicateKey guard).
+     */
+    public void ingestErih(
+            ForumSourceRecord record,
+            Context ctx,
+            String batchId,
+            String correlationId,
+            Instant now,
+            ImportProcessingResult result
+    ) {
+        String sourceRecordId = normalizeBlank(record.externalId());
+        if (sourceRecordId == null) {
+            result.markSkipped(record.idType().missingIdReason());
+            return;
+        }
+
+        LinkedHashSet<String> normalizedIssns = normalizedIssnSet(
+                ctx.primaryIssnIndex, record.issn(), record.eIssn(), record.aliasIssns(), null, null, null);
+
+        // Fan-out match: every forum sharing an ISSN token is tagged with this erihId (split-journal signal).
+        if (!normalizedIssns.isEmpty()) {
+            List<ScholardexForumFact> matches = ctx.forumIndex.findCandidates(normalizedIssns, null);
+            if (!matches.isEmpty()) {
+                boolean changed = false;
+                for (ScholardexForumFact forum : matches) {
+                    if (addErihId(forum, sourceRecordId)) {
+                        forum.setUpdatedAt(now);
+                        ctx.dirtyForums.put(forum.getId(), forum);
+                        changed = true;
+                    }
+                }
+                if (changed) {
+                    result.markUpdated();
+                } else {
+                    result.markSkipped("erih-already-tagged sourceRecordId=" + sourceRecordId);
+                }
+                return;
+            }
+        }
+
+        // ERIH-only venue (no ISSN match): create a canonical forum carrying this erihId.
+        String name = firstNonBlank(record.name(), sourceRecordId);
+        String aggregationType = firstNonBlank(record.aggregationType(), FORUM_DEFAULT_AGG);
+        ScholardexForumFact target = new ScholardexForumFact();
+        mergeForumFromErih(target, record, normalizedIssns, name, aggregationType, now, batchId, correlationId);
+        target.setBuilderVersion(BuilderVersion.SCHOLARDEX_FORUM);
+        if (persistForumOrRecordConflict(target, sourceRecordId, batchId, correlationId, result)) {
+            ctx.forumIndex.put(target);
+            result.markImported();
+        }
     }
 
     private Map<String, ScholardexForumFact> loadCanonicalById() {
@@ -450,6 +526,79 @@ public class ForumMergeEngine {
         target.setSourceBatchId(batchId);
         target.setSourceCorrelationId(correlationId);
         target.setUpdatedAt(now);
+    }
+
+    /**
+     * Materialize an ERIH-only canonical forum (no Scopus/WoS counterpart matched): carry the erihId, the
+     * normalized ISSN/name/aggregation, and mint the canonical id. Additive on the off chance the target is
+     * an existing forum, mirroring the other merge helpers, though the ERIH path only calls this for new ones.
+     */
+    private void mergeForumFromErih(
+            ScholardexForumFact target,
+            ForumSourceRecord record,
+            LinkedHashSet<String> normalizedIssns,
+            String name,
+            String aggregationType,
+            Instant now,
+            String batchId,
+            String correlationId
+    ) {
+        if (target.getCreatedAt() == null) {
+            target.setCreatedAt(now);
+        }
+        addErihId(target, record.externalId());
+
+        List<String> issnList = new ArrayList<>(normalizedIssns);
+        String preferredIssn = issnList.isEmpty() ? null : issnList.getFirst();
+        String preferredEIssn = issnList.size() > 1 ? issnList.get(1) : null;
+        if (target.getIssn() == null) {
+            target.setIssn(preferredIssn);
+        }
+        if (target.getEIssn() == null) {
+            target.setEIssn(preferredEIssn);
+        }
+        LinkedHashSet<String> aliases = new LinkedHashSet<>(safeList(target.getAliasIssns()));
+        aliases.addAll(issnList);
+        if (target.getIssn() != null) {
+            aliases.remove(target.getIssn());
+        }
+        if (target.getEIssn() != null) {
+            aliases.remove(target.getEIssn());
+        }
+        target.setAliasIssns(new ArrayList<>(aliases));
+
+        String preferredName = firstNonBlank(target.getName(), name);
+        target.setName(preferredName);
+        target.setNameNormalized(normalizeName(preferredName));
+
+        String preferredAgg = firstNonBlank(target.getAggregationType(), aggregationType);
+        target.setAggregationType(preferredAgg);
+        target.setAggregationTypeNormalized(normalizeToken(preferredAgg));
+
+        if (target.getId() == null) {
+            String forumId = buildCanonicalForumId(target.getIssn(), target.getEIssn(), target.getAliasIssns(), target.getNameNormalized(), target.getAggregationTypeNormalized());
+            target.setId(forumId);
+        }
+        target.setSource(record.idType().source());
+        target.setSourceRecordId(record.externalId());
+        target.setSourceBatchId(batchId);
+        target.setSourceCorrelationId(correlationId);
+        target.setUpdatedAt(now);
+    }
+
+    /** Add the erihId to the forum's list if absent (kept sorted); returns true when it changed. */
+    private static boolean addErihId(ScholardexForumFact forum, String erihId) {
+        List<String> ids = forum.getErihIds();
+        if (ids == null) {
+            ids = new ArrayList<>();
+            forum.setErihIds(ids);
+        }
+        if (ids.contains(erihId)) {
+            return false;
+        }
+        ids.add(erihId);
+        ids.sort(Comparator.naturalOrder());
+        return true;
     }
 
     /**
