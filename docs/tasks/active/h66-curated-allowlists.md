@@ -527,8 +527,12 @@ rebuild + report-only residual.**
 - **Verify:** `ErihDataServiceTest`, `ErihOnboardingServiceTest` (ISSN match, split-journal double-tag,
   no-match), `ForumMergeSafetyRuleTest` + `ScholardexForumDeduplicationServiceTest` (shared-erihId
   safe-merge), projection test (ERIH + DOAJ-from-ERIH). Live ingest is a deploy step.
-- **Rebuild ordering:** forums get wiped/rebuilt from Scopus/WoS, so erihIds must be re-onboarded after:
-  rebuild → `importErih` (persists) → `onboardErih` → `dedup` → `buildProjections`.
+- **Workflow integration (not gated on a consumer):** `ScopusBigBangMigrationService.runFull` (driven by
+  `PipelineRebuildService`, the deploy path) now runs `onboardErih()` + a conditional erih-dedup pass right
+  before its final projection — so a single full rebuild produces the complete registry (erihIds + ERIH/DOAJ
+  membership) automatically. `importErih`/`importDoaj` are the only manual pre-rebuild steps (reference data,
+  persists across the wipe). The standalone `/forum/onboardErih` + `/forum/dedup` endpoints remain for the
+  step-wise admin path and re-runs.
 
 ### Deferred (after the in-hand lists prove out)
 - CNCS A/B/C tiers (transcribe/UEFISCDI), embedded prestige publisher lists (`data/standards/`), vendor

@@ -104,11 +104,13 @@ Run on a prod-equivalent snapshot first, then prod. All endpoints are under `/ad
    admin flow drives the same BigBang rebuild): ingest → facts → canonical (forum dedup + WoS/Scopus fold) →
    projections. If running per-step instead, the Scopus build-facts/canonical steps must run with
    `useCheckpoint=false` after the reset above.
-5. **Onboard ERIH + re-dedup** (A5 / C1 part 2) — the rebuild reconstructed forums from Scopus/WoS, so the
-   `erihIds` FK must be written now, before projection:
-   - `POST /forum/onboardErih` — match ERIH journals to forums by ISSN, write `erihIds` (match-only).
-   - `POST /forum/dedup` — clusters by ISSN **+ shared erihId** and safe-merges the split-journal pairs ERIH
-     just surfaced (quarantining unsafe ones as conflicts).
+5. **ERIH onboarding + dedup is automatic in the full rebuild.** `runFull` / `PipelineRebuildService` now
+   runs `ErihOnboardingService.onboardErih()` (writes `erihIds` onto the freshly-rebuilt forums) followed by
+   a second dedup pass (clusters by ISSN **+ shared erihId**, C1 part 2) right before its projection — so a
+   single full rebuild produces the complete registry. No manual step needed here. (For the **step-wise**
+   admin path — `buildFacts` then `buildProjections` separately — run `POST /forum/onboardErih` then
+   `POST /forum/dedup` between them; both endpoints also exist for re-runs.) Prerequisite: `importErih` (and
+   `importDoaj`) must have populated the reference data before the rebuild — they persist across it.
 6. **Build projections** — produces the three forum-keyed views B2/B3 read by FK
    (`scholardex_forum_metric_view` / `_category_view` / `_membership_view`); membership now includes DOAJ +
    ERIH rows: `POST /scopus/buildProjections` (and `POST /wos/rebuildProjections` for the WoS side).

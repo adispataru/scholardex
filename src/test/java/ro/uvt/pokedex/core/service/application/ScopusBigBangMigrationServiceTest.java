@@ -57,6 +57,7 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ScholardexCitationCanonicalizationService citationCanonicalizationService;
     @Mock private WosScholardexOnboardingService wosScholardexOnboardingService;
     @Mock private ScholardexForumDeduplicationService scholardexForumDeduplicationService;
+    @Mock private ErihOnboardingService erihOnboardingService;
     @Mock private ScopusBuildSkipGateService scopusBuildSkipGateService;
     @Mock private ScholardexCanonicalBuildCheckpointService canonicalBuildCheckpointService;
     @Mock private ScholardexSourceLinkService sourceLinkService;
@@ -88,6 +89,7 @@ class ScopusBigBangMigrationServiceTest {
                 citationCanonicalizationService,
                 wosScholardexOnboardingService,
                 scholardexForumDeduplicationService,
+                erihOnboardingService,
                 scopusBuildSkipGateService,
                 canonicalBuildCheckpointService,
                 sourceLinkService,
@@ -151,6 +153,7 @@ class ScopusBigBangMigrationServiceTest {
         when(scopusDataService.importScopusDataCitationsSync("/tmp/scopus.json")).thenReturn(citations);
         when(scopusFactBuilderService.buildFactsFromImportEvents()).thenReturn(facts);
         when(scopusProjectionBuilderService.rebuildViews()).thenReturn(views);
+        when(erihOnboardingService.onboardErih()).thenReturn(result(0, 0, 0, 0, 0));
         when(indexMaintenanceService.ensureIndexes()).thenReturn(
                 new ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult(
                         List.of("c1"), List.of("p1"), List.of(), List.of()

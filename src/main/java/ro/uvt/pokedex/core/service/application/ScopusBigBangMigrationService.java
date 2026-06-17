@@ -67,6 +67,7 @@ public class ScopusBigBangMigrationService {
     private final ScholardexCitationCanonicalizationService citationCanonicalizationService;
     private final WosScholardexOnboardingService wosScholardexOnboardingService;
     private final ScholardexForumDeduplicationService scholardexForumDeduplicationService;
+    private final ErihOnboardingService erihOnboardingService;
     private final ScopusBuildSkipGateService scopusBuildSkipGateService;
     private final ScholardexCanonicalBuildCheckpointService canonicalBuildCheckpointService;
     private final ScholardexSourceLinkService sourceLinkService;
@@ -323,10 +324,17 @@ public class ScopusBigBangMigrationService {
         ImportProcessingResult canonicalForums = wosScholardexOnboardingService.runScopusForumCanonicalization(SCOPUS_FORUM_CANON_BATCH, "run-full");
         ImportProcessingResult canonicalPublications = publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(options);
         ImportProcessingResult canonicalCitations = citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options);
+        // H66 A5: with all forums (WoS + Scopus) now built, populate erihIds from the persisted ERIH
+        // reference data, then a second dedup pass merges the erihId-shared split-journal pairs (C1 part 2)
+        // — all before the final projection so ERIH membership + merges land. No-op when ERIH isn't loaded.
+        ImportProcessingResult erihOnboarding = erihOnboardingService.onboardErih();
+        ImportProcessingResult erihDedup = erihOnboarding.getUpdatedCount() > 0
+                ? scholardexForumDeduplicationService.deduplicateForums(SCOPUS_FORUM_CANON_BATCH, "run-full-erih")
+                : new ImportProcessingResult(0);
         ImportProcessingResult projections = scopusProjectionBuilderService.rebuildViews();
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult indexResult =
                 scopusCanonicalIndexMaintenanceService.ensureIndexes();
-        ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors, forumDedup, canonicalForums, canonicalPublications, canonicalCitations));
+        ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors, forumDedup, canonicalForums, erihOnboarding, erihDedup, canonicalPublications, canonicalCitations));
         return new ScopusBigBangMigrationResult(
                 scopusDataFile,
                 startedAt,
