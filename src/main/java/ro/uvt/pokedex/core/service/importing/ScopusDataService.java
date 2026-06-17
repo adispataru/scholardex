@@ -53,6 +53,9 @@ public class ScopusDataService {
     private static final String SOURCE_SCOPUS_PUBLISHER_CSV_UPLOAD = "SCOPUS_PUBLISHER_CSV_UPLOAD";
     private static final String SOURCE_SCOPUS_CITESCORE_LIST = "SCOPUS_CITESCORE_LIST";
     private static final String SOURCE_SCOPUS_SOURCE_LIST = "SCOPUS_SOURCE_LIST";
+    private static final String SOURCE_SCOPUS_BOOK_LIST = "SCOPUS_BOOK_LIST";
+    private static final int BOOK_FLUSH_CHUNK = 1_000;
+    private static final int BOOK_HEARTBEAT = 50_000;
     private static final int INGEST_HEARTBEAT = 5_000;
     private static final int CITATION_INGEST_BATCH_SIZE = 1_000;
     private static final CanonicalBuildOptions BOOTSTRAP_FULL_RESCAN_OPTIONS =
@@ -61,6 +64,7 @@ public class ScopusDataService {
     private final ScopusImportEventRepository importEventRepository;
     private final ScopusImportEventIngestionService importEventIngestionService;
     private final ScopusCanonicalMaterializationService canonicalMaterializationService;
+    private final ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository bookFactRepository;
 
     @Async("taskExecutor")
     public void loadScopusDataIfEmpty(String scopusDataFile) {
@@ -392,6 +396,181 @@ public class ScopusDataService {
                 absolutePath, result.getProcessedCount(), result.getImportedCount(), result.getUpdatedCount(),
                 result.getSkippedCount(), result.getErrorCount(), elapsedMs, result.getErrorsSample());
         return result;
+    }
+
+    /**
+     * H66B M7 — load the Scopus Books List (`Scopus_Books_list_*.xlsx`, ~475k rows) as the book registry.
+     * Books are a distinct entity from forums: upserts {@code scholardex.book_facts} keyed by Scopus Source
+     * ID (TITLE / PRINT ISBN / ELECTRONIC ISBN / PUBLISHER / PUBLICATION YEAR / ASJC / SCOPUS ID). Streamed
+     * via the POI SAX reader (same pattern as the Source List) and flushed in batches during the parse so the
+     * full 475k rows never materialize at once.
+     */
+    public ImportProcessingResult importBookListXlsxFromPath(String absolutePath, String batchId, String asOf) {
+        ImportProcessingResult result = new ImportProcessingResult(DEFAULT_ERROR_SAMPLE_SIZE);
+        long startedAtNanos = System.nanoTime();
+        DataFormatter fmt = new DataFormatter();
+        boolean parsedAnySheet = false;
+        try (OPCPackage pkg = OPCPackage.open(new File(absolutePath), PackageAccess.READ)) {
+            ReadOnlySharedStringsTable sharedStrings = new ReadOnlySharedStringsTable(pkg);
+            XSSFReader reader = new XSSFReader(pkg);
+            StylesTable styles = reader.getStylesTable();
+            XSSFReader.SheetIterator sheets = (XSSFReader.SheetIterator) reader.getSheetsData();
+            while (sheets.hasNext()) {
+                try (InputStream sheetStream = sheets.next()) {
+                    if (!sheets.getSheetName().startsWith("Scopus_Books")) {
+                        continue;
+                    }
+                    parsedAnySheet = true;
+                    BookSheetHandler handler = new BookSheetHandler(batchId, asOf, result);
+                    XMLReader xmlReader = XMLHelper.newXMLReader();
+                    xmlReader.setContentHandler(new XSSFSheetXMLHandler(styles, sharedStrings, handler, fmt, false));
+                    xmlReader.parse(new InputSource(sheetStream));
+                    handler.flushRemaining();
+                }
+            }
+        } catch (IOException | org.apache.poi.openxml4j.exceptions.OpenXML4JException
+                 | org.xml.sax.SAXException | javax.xml.parsers.ParserConfigurationException
+                 | RuntimeException e) {
+            logger.error("Error reading Scopus Books List xlsx: {}", absolutePath, e);
+            throw new IllegalArgumentException("Failed to parse Scopus Books List xlsx.", e);
+        }
+        if (!parsedAnySheet) {
+            throw new IllegalArgumentException("Scopus Books List missing the 'Scopus_Books' sheet");
+        }
+        long elapsedMs = (System.nanoTime() - startedAtNanos) / 1_000_000L;
+        logger.info("Scopus Books List ingest finished: path={} processed={} imported={} skipped={} errors={} elapsedMs={}",
+                absolutePath, result.getProcessedCount(), result.getImportedCount(), result.getSkippedCount(),
+                result.getErrorCount(), elapsedMs);
+        return result;
+    }
+
+    /**
+     * SAX row handler for the Scopus_Books sheet: first non-empty row defines the header, each data row builds
+     * a {@link ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact} keyed by Scopus Source ID,
+     * buffered and saved in batches (the sheet is too large to hold in memory).
+     */
+    private final class BookSheetHandler implements XSSFSheetXMLHandler.SheetContentsHandler {
+        private final String batchId;
+        private final String asOf;
+        private final ImportProcessingResult result;
+        private final Map<String, Integer> headerIdx = new HashMap<>();
+        private final Map<Integer, String> rowCells = new HashMap<>();
+        private final List<ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact> buffer = new ArrayList<>();
+        private final java.time.Instant now = java.time.Instant.now();
+        private boolean headerParsed = false;
+        private boolean currentRowIsHeader;
+
+        BookSheetHandler(String batchId, String asOf, ImportProcessingResult result) {
+            this.batchId = batchId;
+            this.asOf = asOf;
+            this.result = result;
+        }
+
+        @Override
+        public void startRow(int rowNum) {
+            rowCells.clear();
+            currentRowIsHeader = !headerParsed;
+        }
+
+        @Override
+        public void cell(String cellReference, String formattedValue, org.apache.poi.xssf.usermodel.XSSFComment comment) {
+            if (cellReference == null || formattedValue == null) {
+                return;
+            }
+            String value = formattedValue.trim();
+            if (!value.isEmpty()) {
+                rowCells.put((int) new CellReference(cellReference).getCol(), value);
+            }
+        }
+
+        @Override
+        public void endRow(int rowNum) {
+            if (currentRowIsHeader) {
+                if (rowCells.isEmpty()) {
+                    return;
+                }
+                for (Map.Entry<Integer, String> e : rowCells.entrySet()) {
+                    headerIdx.put(e.getValue(), e.getKey());
+                }
+                headerParsed = true;
+                if (!headerIdx.containsKey("SCOPUS ID")) {
+                    logger.warn("Scopus Books List sheet has no 'SCOPUS ID' column; skipping");
+                }
+                return;
+            }
+            if (!headerIdx.containsKey("SCOPUS ID")) {
+                return;
+            }
+            String scopusId = cellValue(rowCells, headerIdx.get("SCOPUS ID"));
+            if (scopusId == null) {
+                return;
+            }
+            result.markProcessed();
+            var book = new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact();
+            book.setId(scopusId);
+            book.setScopusId(scopusId);
+            book.setTitle(cellValue(rowCells, headerIdx.get("TITLE")));
+            book.setPrintIsbn(cellValue(rowCells, headerIdx.get("PRINT ISBN")));
+            book.setElectronicIsbn(cellValue(rowCells, headerIdx.get("ELECTRONIC ISBN")));
+            book.setPublisher(cellValue(rowCells, headerIdx.get("PUBLISHER")));
+            book.setPublicationYear(parseYear(cellValue(rowCells, headerIdx.get("PUBLICATION YEAR"))));
+            book.setAsjc(splitAsjcList(cellValue(rowCells, headerIdx.get("ASJC"))));
+            book.setAsOf(asOf);
+            book.setSource(SOURCE_SCOPUS_BOOK_LIST);
+            book.setSourceBatchId(batchId);
+            book.setCreatedAt(now);
+            book.setUpdatedAt(now);
+            buffer.add(book);
+            if (buffer.size() >= BOOK_FLUSH_CHUNK) {
+                flush();
+            }
+        }
+
+        private void flush() {
+            if (buffer.isEmpty()) {
+                return;
+            }
+            bookFactRepository.saveAll(new ArrayList<>(buffer));
+            buffer.forEach(b -> result.markImported());
+            if (result.getProcessedCount() % BOOK_HEARTBEAT == 0 || result.getImportedCount() % BOOK_HEARTBEAT == 0) {
+                logger.info("Scopus Books List ingest heartbeat: processed={} imported={}",
+                        result.getProcessedCount(), result.getImportedCount());
+            }
+            buffer.clear();
+        }
+
+        void flushRemaining() {
+            flush();
+        }
+    }
+
+    private static Integer parseYear(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String digits = raw.replaceAll("[^0-9]", "");
+        if (digits.length() < 4) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(digits.substring(0, 4));
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static List<String> splitAsjcList(String raw) {
+        if (raw == null) {
+            return new ArrayList<>();
+        }
+        List<String> out = new ArrayList<>();
+        for (String token : raw.split("[;,]")) {
+            String t = token.replaceAll("\\s+", "");
+            if (!t.isEmpty()) {
+                out.add(t);
+            }
+        }
+        return out;
     }
 
     private void parseSourceListSheet(InputStream sheetStream, StylesTable styles, SharedStrings sharedStrings,

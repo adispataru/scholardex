@@ -23,6 +23,10 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact;
+
+import java.util.stream.Collectors;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -32,10 +36,13 @@ class ScopusDataServiceTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ScopusImportEventIngestionService importEventIngestionService = mock(ScopusImportEventIngestionService.class);
     private final ScopusCanonicalMaterializationService materializationService = mock(ScopusCanonicalMaterializationService.class);
+    private final ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository bookFactRepository =
+            mock(ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository.class);
     private final ScopusDataService service = new ScopusDataService(
             mock(ScopusImportEventRepository.class),
             importEventIngestionService,
-            materializationService
+            materializationService,
+            bookFactRepository
     );
 
     @TempDir Path tempDir;
@@ -46,7 +53,7 @@ class ScopusDataServiceTest {
     void loadScopusDataIfEmptySync_repoHasData_returnsFalse() {
         ScopusImportEventRepository repo = mock(ScopusImportEventRepository.class);
         when(repo.count()).thenReturn(5L);
-        ScopusDataService svc = new ScopusDataService(repo, importEventIngestionService, materializationService);
+        ScopusDataService svc = new ScopusDataService(repo, importEventIngestionService, materializationService, bookFactRepository);
 
         assertFalse(svc.loadScopusDataIfEmptySync("/irrelevant"));
         verify(importEventIngestionService, never()).ingest(any(), any(), any(), any(), any(), any(), any());
@@ -58,7 +65,8 @@ class ScopusDataServiceTest {
         when(repo.count()).thenReturn(0L);
         ScopusImportEventIngestionService ingestion = mock(ScopusImportEventIngestionService.class);
         ScopusCanonicalMaterializationService materialization = mock(ScopusCanonicalMaterializationService.class);
-        ScopusDataService svc = new ScopusDataService(repo, ingestion, materialization);
+        ScopusDataService svc = new ScopusDataService(repo, ingestion, materialization,
+                mock(ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository.class));
 
         Path file = tempDir.resolve("scopus.json");
         Files.writeString(file, "{\"eid\":[\"2-s2.0-1\"],\"title\":[\"T\"]}");
@@ -435,7 +443,8 @@ class ScopusDataServiceTest {
         return new ScopusDataService(
                 repository,
                 new ScopusImportEventIngestionService(repository, objectMapper, null),
-                mock(ScopusCanonicalMaterializationService.class)
+                mock(ScopusCanonicalMaterializationService.class),
+                bookFactRepository
         );
     }
 
@@ -570,5 +579,51 @@ class ScopusDataServiceTest {
     void importSourceList_missingFile_throwsIllegalArgument() {
         assertThrows(IllegalArgumentException.class,
                 () -> service.importSourceListXlsxFromPath("/no/such/ext_list.xlsx", "b"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void importBookList_streamsBooksKeyedByScopusId() throws IOException {
+        Path xlsx = tempDir.resolve("books.xlsx");
+        try (XSSFWorkbook wb = new XSSFWorkbook()) {
+            Sheet s = wb.createSheet("Scopus_Books");
+            String[] h = {"TITLE", "PRINT ISBN", "ELECTRONIC ISBN", "PUBLISHER", "PUBLICATION YEAR", "ASJC", "SCOPUS ID"};
+            Row hr = s.createRow(0);
+            for (int i = 0; i < h.length; i++) setCell(hr, i, h[i]);
+            Row r1 = s.createRow(1);
+            setCell(r1, 0, "A Great Book"); setCell(r1, 1, "1438437676"); setCell(r1, 2, "9781438437675");
+            setCell(r1, 3, "SUNY Press"); setCell(r1, 4, "2011"); setCell(r1, 5, "1200; 3300"); setCell(r1, 6, "bk-1");
+            Row r2 = s.createRow(2);
+            setCell(r2, 0, "Another Book"); setCell(r2, 3, "De Gruyter"); setCell(r2, 6, "bk-2"); // sparse row, no ISBNs
+            try (var out = Files.newOutputStream(xlsx)) {
+                wb.write(out);
+            }
+        }
+        when(bookFactRepository.saveAll(any())).thenAnswer(i -> i.getArgument(0));
+
+        ImportProcessingResult result = service.importBookListXlsxFromPath(xlsx.toString(), "b1", "2026");
+
+        assertEquals(2, result.getProcessedCount());
+        ArgumentCaptor<java.util.List<ScholardexBookFact>> captor = ArgumentCaptor.forClass(java.util.List.class);
+        verify(bookFactRepository, atLeastOnce()).saveAll(captor.capture());
+        Map<String, ScholardexBookFact> byId = captor.getAllValues().stream()
+                .flatMap(java.util.List::stream)
+                .collect(Collectors.toMap(ScholardexBookFact::getId, b -> b));
+        ScholardexBookFact b1 = byId.get("bk-1");
+        assertEquals("A Great Book", b1.getTitle());
+        assertEquals("1438437676", b1.getPrintIsbn());
+        assertEquals("9781438437675", b1.getElectronicIsbn());
+        assertEquals("SUNY Press", b1.getPublisher());
+        assertEquals(Integer.valueOf(2011), b1.getPublicationYear());
+        assertEquals(List.of("1200", "3300"), b1.getAsjc());
+        assertEquals("SCOPUS_BOOK_LIST", b1.getSource());
+        assertEquals("2026", b1.getAsOf());
+        assertEquals("bk-2", byId.get("bk-2").getId()); // sparse row still keyed by Scopus ID
+    }
+
+    @Test
+    void importBookList_missingFile_throwsIllegalArgument() {
+        assertThrows(IllegalArgumentException.class,
+                () -> service.importBookListXlsxFromPath("/no/such/books.xlsx", "b", "2026"));
     }
 }

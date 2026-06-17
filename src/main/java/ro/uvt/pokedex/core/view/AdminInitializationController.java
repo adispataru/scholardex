@@ -257,6 +257,24 @@ public class AdminInitializationController {
         return "redirect:/admin/initialization";
     }
 
+    @PostMapping("/scopus/importBookList")
+    public String runScopusImportBookList(
+            @RequestParam(name = "path") String path,
+            @RequestParam(name = "asOf", required = false) String asOf,
+            @RequestParam(name = "batchId", required = false) String batchId,
+            RedirectAttributes redirectAttributes
+    ) {
+        String effectiveBatchId = (batchId == null || batchId.isBlank())
+                ? "booklist-" + java.time.Instant.now().toEpochMilli()
+                : batchId;
+        var result = scopusDataService.importBookListXlsxFromPath(path, effectiveBatchId, asOf);
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Scopus Books List import complete (batchId=" + effectiveBatchId + "). processed="
+                        + result.getProcessedCount() + ", imported=" + result.getImportedCount()
+                        + ", errors=" + result.getErrorCount());
+        return "redirect:/admin/initialization";
+    }
+
     @PostMapping("/scopus/importCiteScore")
     public String runScopusImportCiteScore(
             @RequestParam(name = "path") String path,

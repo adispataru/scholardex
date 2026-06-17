@@ -294,8 +294,19 @@ vs baseline** + reconcile audit `healthy=true`.
   **Gate (held, per request):** isolated rebuild — forum count stable (~46.7k), conflicts ≤ 25,
   `orphanedPublicationForumLinks = 0`, observed-venue provenance count sane. Source-plural input shape
   (OpenAlex/DBLP/GS) is now the natural extension point.
-- **M7 — BookBuilder.** `scholardex.book_facts` (streamed Book List), `bookId` on publications, venue branch
-  on `aggregationType`, book scoring resolves the registry. **Streaming precedent set (2026-06-17):**
+- **M7 — BookBuilder.**
+  - **M7-A book registry — DONE.** `ScholardexBookFact` (`scholardex.book_facts`, keyed by Scopus Source ID:
+    title/print+electronic ISBN/publisher/year/ASJC) + `ScholardexBookFactRepository`. Streamed importer
+    `ScopusDataService.importBookListXlsxFromPath` (POI SAX, batched saveAll during the parse — flushes every
+    1,000 so the 475k rows never materialize at once) + `/scopus/importBookList` admin endpoint. Reference
+    data (persists across rebuild, outside MANAGED_DERIVED_COLLECTIONS, like DOAJ/ERIH). Verified on the real
+    file: **475,453 books parsed in ~5.9s under a 2 GB heap**, no ceiling/OOM. Unit-tested (fixture + missing-file).
+  - **M7-B (next, decision needed) — publication venue branch on `aggregationType`.** A book-typed venue sets
+    `bookId` (resolving the book registry) and is NOT minted as a serial forum.
+  - **M7-C (next, decision needed) — book scoring resolves the book registry.** `FeaaBookScoringService` today
+    reads `forum.getPublisher()` via `publication.getForumId()`; point it at `scholardex.book_facts` (publisher
+    for Anexa-1 prestige membership) via the lookup port.
+  - **Streaming precedent set (2026-06-17):**
   `ScopusDataService.importSourceListXlsxFromPath` was rewritten from a full in-memory `XSSFWorkbook` to the
   POI SAX event reader (`OPCPackage`/`XSSFReader`/`XSSFSheetXMLHandler` + `ReadOnlySharedStringsTable`) — the
   May-2026 Source List (49,599 rows) has a part exceeding POI's 100 MB byte-array ceiling, which the full
