@@ -437,13 +437,24 @@ join — exactly what the fuzzy resolver computed at query time. Prod untouched 
 
 ### Move C — publication path + dedup hardening
 
-**C1 — Confirm resolve-or-enrich + extend dedup to new id sources.**
-- **Do:** verify `upsertForumFact` links (not duplicates) when a seeded forum already matches by `source_id`/
-  ISSN; extend `ScholardexForumDeduplicationService` + `ForumMergeSafetyRule` to treat shared Scopus Source
-  ID / WoS journalId / ERIH id as safe-merge keys (not just ISSN).
-- **Verify:** import a publication whose venue is already seeded → no new forum, attributes preserved; dedup
-  run merges Source-ID-shared forums and quarantines unsafe ones.
-- **Dep:** A2/A3.
+**C1 — Confirm resolve-or-enrich + extend dedup to new id sources.** — **part 1 DONE; part 2 deferred to A5.**
+- **Do (part 1, DONE):** confirmed `upsertForumFact` links (not duplicates) when a seeded forum already
+  matches by `source_id` — `ScopusFactBuilderService` resolves via `state.forumBySourceId`
+  (`findBySourceIdIn`) → reuse + blank-tolerant merge; WoS path links via the source-link /
+  `canonicalIdByScopusForumId` map. Added `ScopusFactBuilderServiceTest
+  .buildFactsFromImportEventsResolveOrEnrichDoesNotDuplicateSeededForumAndPreservesAttributes` (publication
+  whose venue is already seeded → one forum saved, eIssn enriched, all other CiteScore attrs preserved).
+  Canonicalization-path link is already covered by `WosScholardexOnboardingServiceTest
+  .runScopusForumCanonicalizationOnlyLinksScopusForumAlreadyFoldedIntoCanonical`.
+- **Part 2 deferred to A5 (extend dedup keys):** `ScholardexForumFact` carries **unique partial indexes on
+  `scopusForumIds` and `wosForumIds`** (`uniq_scholardex_forum_scopus_id` / `_wos_id`), so two canonical
+  forums physically cannot share a Scopus/WoS id — the collision is resolved at *write* time
+  (`DuplicateKeyException` → conflict opened in `WosScholardexOnboardingService`), not at dedup time.
+  Therefore adding scopus/wos id to the dedup clustering/safe-merge keys finds **zero new clusters today**;
+  the only un-indexed id lists are `googleScholarForumIds` (never onboarded) and `erihIds` (not populated
+  until **A5**). Building it now would be dormant code — fold the safe-merge-by-external-id rule into A5
+  when `erihIds` lands and actually needs it.
+- **Dep:** A2/A3 (part 1 done); part 2 → A5.
 
 **C2 — Backfill/reconcile existing forums against the seeded registry.**
 - **Do:** one-time reconcile of pre-existing (publication-derived) forums into the seeded registry by ISSN/
@@ -453,7 +464,10 @@ join — exactly what the fuzzy resolver computed at query time. Prod untouched 
 - **Dep:** B3, C1.
 
 ### Deferred (after the in-hand lists prove out)
-- **A5 — ERIH+ Typesense fetcher** → `erihIds` + disciplines (pinned endpoint; needs the pull).
+- **A5 — ERIH+ Typesense fetcher** → `erihIds` + disciplines (pinned endpoint; needs the pull). **Folds in
+  C1 part 2:** once `erihIds` is populated, extend `ScholardexForumDeduplicationService` clustering +
+  `ForumMergeSafetyRule` to treat a shared external id (erih, and gs if onboarded) as a safe-merge key —
+  scopus/wos are already write-time-unique so they need no dedup-key handling.
 - CNCS A/B/C tiers (transcribe/UEFISCDI), embedded prestige publisher lists (`data/standards/`), vendor
   title-lists for the "≥N DBs" predicate — pulled in by the first non-STEM report that needs them.
 

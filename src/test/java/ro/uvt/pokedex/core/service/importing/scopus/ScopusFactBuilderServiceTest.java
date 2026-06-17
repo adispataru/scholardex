@@ -327,6 +327,76 @@ class ScopusFactBuilderServiceTest {
     }
 
     @Test
+    void buildFactsFromImportEventsResolveOrEnrichDoesNotDuplicateSeededForumAndPreservesAttributes() throws Exception {
+        // H66 C1 (confirm resolve-or-enrich): a publication whose venue is already seeded (e.g. by the
+        // CiteScore FORUM feed) must NOT create a second forum and must NOT erase the seeded attributes the
+        // publication omits — it should only enrich (here: add the missing eIssn). This locks the
+        // publication-emit seam (findBySourceIdIn -> reuse + blank-tolerant merge), distinct from the
+        // canonicalization-path link test in WosScholardexOnboardingServiceTest.
+        ScopusImportEvent publicationEvent = new ScopusImportEvent();
+        publicationEvent.setId("ev1");
+        publicationEvent.setEntityType(ScopusImportEntityType.PUBLICATION);
+        publicationEvent.setSource("SCOPUS_JSON_BOOTSTRAP");
+        publicationEvent.setSourceRecordId("2-s2.0-p1");
+        publicationEvent.setBatchId("b1");
+        publicationEvent.setCorrelationId("c1");
+        // The publication carries the venue's source_id and an eIssn, but deliberately OMITS
+        // publicationName/issn/aggregationType/publisher/forumType/asjc — all seeded by CiteScore.
+        publicationEvent.setPayload(mapper.writeValueAsString(java.util.Map.ofEntries(
+                java.util.Map.entry("eid", "2-s2.0-p1"),
+                java.util.Map.entry("title", "Paper 1"),
+                java.util.Map.entry("author_ids", "a1"),
+                java.util.Map.entry("author_names", "Alice"),
+                java.util.Map.entry("author_afids", "af1"),
+                java.util.Map.entry("afid", "af1"),
+                java.util.Map.entry("affilname", "Aff 1"),
+                java.util.Map.entry("affiliation_city", "City1"),
+                java.util.Map.entry("affiliation_country", "RO"),
+                java.util.Map.entry("source_id", "f1"),
+                java.util.Map.entry("eIssn", "8765-4321"),
+                java.util.Map.entry("coverDate", "2025-01-01"),
+                java.util.Map.entry("citedby_count", 10)
+        )));
+
+        ScopusForumFact seededForum = new ScopusForumFact();
+        seededForum.setSourceId("f1");
+        seededForum.setPublicationName("Seeded Forum");
+        seededForum.setIssn("1234-5678");
+        seededForum.setAggregationType("Journal");
+        seededForum.setPublisher("Seeded Publisher");
+        seededForum.setForumType("journal");
+        seededForum.setAsjc(java.util.List.of("1000"));
+
+        when(importEventRepository.findAll()).thenReturn(List.of(publicationEvent));
+        when(publicationFactRepository.findByEidIn(anyCollection())).thenReturn(List.of());
+        when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of(seededForum));
+        when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
+        when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
+        when(fundingFactRepository.findByFundingKeyIn(anyCollection())).thenReturn(List.of());
+
+        service.buildFactsFromImportEvents();
+
+        ArgumentCaptor<java.util.Collection<ScopusForumFact>> captor =
+                ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(forumFactRepository).saveAll(captor.capture());
+        java.util.Collection<ScopusForumFact> savedForums = captor.getValue();
+
+        // Resolve, not duplicate: exactly one forum saved, and it is the seeded source_id.
+        assertEquals(1, savedForums.size());
+        ScopusForumFact saved = savedForums.iterator().next();
+        assertEquals("f1", saved.getSourceId());
+        // Enriched: the missing eIssn was filled from the publication.
+        assertEquals("8765-4321", saved.getEIssn());
+        // Preserved: the publication's blanks did not erase the CiteScore-seeded attributes.
+        assertEquals("Seeded Forum", saved.getPublicationName());
+        assertEquals("1234-5678", saved.getIssn());
+        assertEquals("Journal", saved.getAggregationType());
+        assertEquals("Seeded Publisher", saved.getPublisher());
+        assertEquals("journal", saved.getForumType());
+        assertEquals(java.util.List.of("1000"), saved.getAsjc());
+    }
+
+    @Test
     void buildFactsFromImportEventsLogsChunkAndSummary() {
         ScopusImportEvent event = new ScopusImportEvent();
         event.setEntityType(ScopusImportEntityType.PUBLICATION);
