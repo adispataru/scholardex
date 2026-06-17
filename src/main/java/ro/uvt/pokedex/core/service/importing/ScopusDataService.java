@@ -5,6 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvException;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +43,7 @@ public class ScopusDataService {
     private static final String SOURCE_SCOPUS_JSON_UPLOAD = "SCOPUS_JSON_UPLOAD";
     private static final String SOURCE_SCOPUS_PUBLISHER_CSV_UPLOAD = "SCOPUS_PUBLISHER_CSV_UPLOAD";
     private static final String SOURCE_SCOPUS_CITESCORE_LIST = "SCOPUS_CITESCORE_LIST";
+    private static final String SOURCE_SCOPUS_SOURCE_LIST = "SCOPUS_SOURCE_LIST";
     private static final int INGEST_HEARTBEAT = 5_000;
     private static final int CITATION_INGEST_BATCH_SIZE = 1_000;
     private static final CanonicalBuildOptions BOOTSTRAP_FULL_RESCAN_OPTIONS =
@@ -322,6 +328,161 @@ public class ScopusDataService {
                 elapsedMs,
                 result.getErrorsSample());
         return result;
+    }
+
+    /**
+     * H66 A6 — load the Scopus Source List (`ext_list_*.xlsx`) as the authoritative serial forum backbone.
+     * Emits FORUM events keyed by Scopus {@code Sourcerecord ID} (one per serial/conference source) into the
+     * existing FORUM-event pipeline → `scopus.forum_facts` → canonical serial forums. Unlike CiteScore (a
+     * scored subset), this is full Scopus serial coverage; it supplies forum identity (ISSN/EISSN), type,
+     * publisher and ASJC. Reads the "Scopus Sources" sheet (journals/book-series/trade) and the
+     * "Serial Conf. Proc. with Profile" sheet (conferences). Sheet names carry a month suffix, so they are
+     * matched by prefix.
+     */
+    public ImportProcessingResult importSourceListXlsxFromPath(String absolutePath, String batchId) {
+        ImportProcessingResult result = new ImportProcessingResult(DEFAULT_ERROR_SAMPLE_SIZE);
+        long startedAtNanos = System.nanoTime();
+        DataFormatter fmt = new DataFormatter();
+        try (FileInputStream fis = new FileInputStream(absolutePath);
+             XSSFWorkbook workbook = new XSSFWorkbook(fis)) {
+            Sheet serials = findSheetByPrefix(workbook, "Scopus Sources");
+            Sheet conferences = findSheetByPrefix(workbook, "Serial Conf");
+            if (serials == null && conferences == null) {
+                throw new IllegalArgumentException(
+                        "Scopus Source List missing both 'Scopus Sources' and 'Serial Conf' sheets");
+            }
+            if (serials != null) {
+                ingestSourceListSheet(serials, false, batchId, fmt, result);
+            }
+            if (conferences != null) {
+                ingestSourceListSheet(conferences, true, batchId, fmt, result);
+            }
+        } catch (IOException e) {
+            logger.error("Error reading Scopus Source List xlsx: {}", absolutePath, e);
+            throw new IllegalArgumentException("Failed to parse Scopus Source List xlsx.", e);
+        }
+        long elapsedMs = (System.nanoTime() - startedAtNanos) / 1_000_000L;
+        logger.info("Scopus Source List ingest finished: path={} processed={} imported={} updated={} skipped={} errors={} elapsedMs={} sample={}",
+                absolutePath, result.getProcessedCount(), result.getImportedCount(), result.getUpdatedCount(),
+                result.getSkippedCount(), result.getErrorCount(), elapsedMs, result.getErrorsSample());
+        return result;
+    }
+
+    private void ingestSourceListSheet(Sheet sheet, boolean isConference, String batchId, DataFormatter fmt,
+                                       ImportProcessingResult result) {
+        Row header = sheet.getRow(sheet.getFirstRowNum());
+        if (header == null) {
+            return;
+        }
+        Map<String, Integer> idx = new HashMap<>();
+        for (Cell c : header) {
+            String name = fmt.formatCellValue(c).trim();
+            if (!name.isEmpty()) {
+                idx.put(name, c.getColumnIndex());
+            }
+        }
+        Integer sourceIdCol = idx.get("Sourcerecord ID");
+        Integer titleCol = idx.get("Source Title");
+        Integer issnCol = idx.get("ISSN");
+        Integer eIssnCol = idx.get("EISSN");
+        Integer typeCol = idx.get("Source Type");
+        Integer publisherCol = idx.get("Publisher");
+        Integer asjcCol = idx.get("All Science Journal Classification Codes (ASJC)");
+        if (sourceIdCol == null) {
+            logger.warn("Scopus Source List sheet '{}' has no 'Sourcerecord ID' column; skipping", sheet.getSheetName());
+            return;
+        }
+        for (int r = sheet.getFirstRowNum() + 1; r <= sheet.getLastRowNum(); r++) {
+            Row row = sheet.getRow(r);
+            if (row == null) {
+                continue;
+            }
+            String sourceId = cellText(row, sourceIdCol, fmt);
+            if (sourceId == null) {
+                continue;
+            }
+            result.markProcessed();
+            String forumType = isConference ? "conference" : mapSourceListType(cellText(row, typeCol, fmt));
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("source_id", sourceId);
+            payload.put("publicationName", cellText(row, titleCol, fmt));
+            payload.put("issn", normalizeSourceListIssn(cellText(row, issnCol, fmt)));
+            payload.put("eIssn", normalizeSourceListIssn(cellText(row, eIssnCol, fmt)));
+            payload.put("publisher", cellText(row, publisherCol, fmt));
+            payload.put("forumType", forumType);
+            payload.put("asjc", normalizeSourceListAsjc(cellText(row, asjcCol, fmt)));
+            ScopusImportEventIngestionService.EventIngestionOutcome outcome = importEventIngestionService.ingest(
+                    ScopusImportEntityType.FORUM,
+                    SOURCE_SCOPUS_SOURCE_LIST,
+                    sourceId,
+                    batchId,
+                    "sourcelist-" + sourceId,
+                    PAYLOAD_FORMAT_JSON_OBJECT,
+                    payload
+            );
+            applyIngestionOutcome(result, outcome, "sourcelist sourceId=" + sourceId);
+            if (result.getProcessedCount() % INGEST_HEARTBEAT == 0) {
+                logger.info("Scopus Source List ingest heartbeat: processed={} imported={} skipped={} errors={}",
+                        result.getProcessedCount(), result.getImportedCount(), result.getSkippedCount(), result.getErrorCount());
+            }
+        }
+    }
+
+    private static Sheet findSheetByPrefix(XSSFWorkbook workbook, String prefix) {
+        for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
+            if (workbook.getSheetName(i).startsWith(prefix)) {
+                return workbook.getSheetAt(i);
+            }
+        }
+        return null;
+    }
+
+    private static String cellText(Row row, Integer col, DataFormatter fmt) {
+        if (col == null) {
+            return null;
+        }
+        Cell cell = row.getCell(col, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+        if (cell == null) {
+            return null;
+        }
+        String v = fmt.formatCellValue(cell).trim();
+        return v.isEmpty() ? null : v;
+    }
+
+    /** Map the Scopus Source List "Source Type" words to the canonical forumType vocabulary. */
+    private static String mapSourceListType(String raw) {
+        String t = raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
+        return switch (t) {
+            case "journal" -> "journal";
+            case "book series" -> "book-series";
+            case "conference proceeding", "conference proceedings" -> "conference";
+            case "trade journal" -> "trade";
+            default -> null;
+        };
+    }
+
+    /** ISSN cells are 8-char (often stored numeric, losing leading zeros) — strip non-ISSN chars and pad to 8. */
+    private static String normalizeSourceListIssn(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String compact = raw.replaceAll("[^0-9Xx]", "").toUpperCase(Locale.ROOT);
+        if (compact.isEmpty()) {
+            return null;
+        }
+        if (compact.length() < 8) {
+            compact = "0".repeat(8 - compact.length()) + compact; // recover leading zeros lost to numeric storage
+        }
+        return compact;
+    }
+
+    /** Normalize ASJC code list to the semicolon-separated form the fact builder splits. */
+    private static String normalizeSourceListAsjc(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String norm = raw.replaceAll("[;,]+", ";").replaceAll("\\s+", "").replaceAll("^;|;$", "");
+        return norm.isEmpty() ? null : norm;
     }
 
     /** Map the CiteScore single-letter Type to the canonical forumType vocabulary. */

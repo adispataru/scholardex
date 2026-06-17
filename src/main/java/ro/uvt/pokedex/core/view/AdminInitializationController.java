@@ -233,6 +233,29 @@ public class AdminInitializationController {
         return "redirect:/admin/initialization";
     }
 
+    /**
+     * H66 A6 — load the Scopus Source List (ext_list xlsx) as the serial forum backbone (FORUM events keyed
+     * by Sourcerecord ID). Run before buildFacts so the registry is seeded from Scopus coverage.
+     */
+    @PostMapping("/scopus/importSourceList")
+    public String runScopusImportSourceList(
+            @RequestParam(name = "path") String path,
+            @RequestParam(name = "batchId", required = false) String batchId,
+            RedirectAttributes redirectAttributes
+    ) {
+        String effectiveBatchId = (batchId == null || batchId.isBlank())
+                ? "sourcelist-" + java.time.Instant.now().toEpochMilli()
+                : batchId;
+        var result = scopusDataService.importSourceListXlsxFromPath(path, effectiveBatchId);
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Scopus Source List import complete (batchId=" + effectiveBatchId + "). processed=" + result.getProcessedCount()
+                        + ", imported=" + result.getImportedCount()
+                        + ", updated=" + result.getUpdatedCount()
+                        + ", skipped=" + result.getSkippedCount()
+                        + ", errors=" + result.getErrorCount());
+        return "redirect:/admin/initialization";
+    }
+
     @PostMapping("/scopus/importCiteScore")
     public String runScopusImportCiteScore(
             @RequestParam(name = "path") String path,

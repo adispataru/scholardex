@@ -559,10 +559,15 @@ Scopus Source List + WoS journal identity + MJL + ERIH + DOAJ + user-defined. **
 a rankings/metrics source** (like WoS metrics — attached to forums by Source ID, never creating them).
 Publications **resolve-and-link** only. Books move to their own registry (Move E).
 
-- **D1 — A6: Scopus Source List loader.** New loader (sibling of A2) emitting FORUM events keyed by
-  `Sourcerecord ID` from the *Scopus Sources* + *Serial Conf. Proc.* sheets → `scopus.forum_facts` →
-  canonical serial forums (~49,600). Carries ISSN/EISSN, source type, publisher, ASJC, active/inactive.
-  Config `scopus.source-list.file`. This is the serial forum backbone.
+- **D1 — A6: Scopus Source List loader.** — **DONE (loader + endpoint + tests).**
+  `ScopusDataService.importSourceListXlsxFromPath` reads `ext_list_*.xlsx` (POI), emitting FORUM events keyed
+  by `Sourcerecord ID` from the *Scopus Sources* sheet (45,143 Journal / 2,644 Book Series / 793 Trade) +
+  *Serial Conf. Proc.* sheet (→ forumType `conference`) into the existing FORUM-event pipeline →
+  `scopus.forum_facts` → canonical serial forums (~49,600). Carries ISSN/EISSN (normalized, leading-zero
+  safety net), source type (mapped to journal/book-series/trade/conference), publisher, ASJC (`;`-joined).
+  Admin `POST /scopus/importSourceList?path=&batchId=`; source `SCOPUS_SOURCE_LIST`. Verified column/type/
+  ISSN formats against the real file. Config key (`scopus.source-list.file`) + rebuild wiring deferred to
+  D5/D7.
 - **D2 — Reposition CiteScore (A2) as rankings, not forum creation.** CiteScore stops defining forum
   identity; its CiteScore/SJR/SNIP/quartile attach as a **forum-keyed metrics layer** (mirrors
   `wos.metric_facts` → forum views). Forum identity/type/ASJC come from the Source List.

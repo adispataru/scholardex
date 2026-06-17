@@ -1,6 +1,10 @@
 package ro.uvt.pokedex.core.service.importing;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
@@ -482,5 +486,89 @@ class ScopusDataServiceTest {
     void importCiteScore_missingFile_throwsIllegalArgument() {
         assertThrows(IllegalArgumentException.class,
                 () -> service.importCiteScoreCsvFromPath("/no/such/citescore.csv", "b"));
+    }
+
+    // --- H66 A6: Scopus Source List loader ---
+
+    private static void setCell(Row row, int col, String value) {
+        row.createCell(col).setCellValue(value);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void importSourceList_emitsForumEventsWithMappedTypeNormalizedIssnAndAsjc() throws IOException {
+        Path xlsx = tempDir.resolve("ext_list.xlsx");
+        try (XSSFWorkbook wb = new XSSFWorkbook()) {
+            Sheet src = wb.createSheet("Scopus Sources May 2026");
+            String[] h = {"Sourcerecord ID", "Source Title", "ISSN", "EISSN", "Active or Inactive",
+                    "Coverage", "x", "x", "x", "x", "x", "x", "Source Type", "x", "x", "x", "x", "x", "Publisher",
+                    "x", "All Science Journal Classification Codes (ASJC)"};
+            Row hr = src.createRow(0);
+            for (int i = 0; i < h.length; i++) setCell(hr, i, h[i]);
+            Row r1 = src.createRow(1);
+            setCell(r1, 0, "12345"); setCell(r1, 1, "Test Journal"); setCell(r1, 2, "20349130");
+            setCell(r1, 3, "22959149"); setCell(r1, 12, "Journal"); setCell(r1, 18, "Acme Press");
+            setCell(r1, 20, "1000; 1100");
+            Row r2 = src.createRow(2);
+            setCell(r2, 0, "999"); setCell(r2, 1, "Old Series"); setCell(r2, 12, "Book Series");
+            r2.createCell(2).setCellValue(280836d); // numeric ISSN → leading-zero recovery to 00280836
+            setCell(r2, 20, "2200");
+
+            Sheet conf = wb.createSheet("Serial Conf. Proc. with Profile");
+            String[] hc = {"Sourcerecord ID", "Source Title", "ISSN", "EISSN", "Titles Discontinued by Scopus",
+                    "Coverage", "All Science Journal Classification Codes (ASJC)"};
+            Row hcr = conf.createRow(0);
+            for (int i = 0; i < hc.length; i++) setCell(hcr, i, hc[i]);
+            Row c1 = conf.createRow(1);
+            setCell(c1, 0, "777"); setCell(c1, 1, "Test Conf"); setCell(c1, 2, "21612021");
+            setCell(c1, 3, "2161203X"); setCell(c1, 6, "1700");
+
+            try (var out = Files.newOutputStream(xlsx)) {
+                wb.write(out);
+            }
+        }
+
+        when(importEventIngestionService.ingest(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(ScopusImportEventIngestionService.EventIngestionOutcome.imported("evt"));
+
+        ImportProcessingResult result = service.importSourceListXlsxFromPath(xlsx.toString(), "b1");
+
+        assertEquals(3, result.getProcessedCount());
+        ArgumentCaptor<String> sourceCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> recordIdCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(importEventIngestionService, times(3)).ingest(
+                eq(ScopusImportEntityType.FORUM), sourceCaptor.capture(), recordIdCaptor.capture(),
+                any(), any(), any(), payloadCaptor.capture());
+
+        // all FORUM events tagged with the Source List source
+        assertTrue(sourceCaptor.getAllValues().stream().allMatch("SCOPUS_SOURCE_LIST"::equals));
+
+        Map<String, Map<String, Object>> bySource = new java.util.HashMap<>();
+        var ids = recordIdCaptor.getAllValues();
+        var payloads = payloadCaptor.getAllValues();
+        for (int i = 0; i < ids.size(); i++) bySource.put(ids.get(i), (Map<String, Object>) payloads.get(i));
+
+        Map<String, Object> journal = bySource.get("12345");
+        assertEquals("journal", journal.get("forumType"));
+        assertEquals("20349130", journal.get("issn"));
+        assertEquals("22959149", journal.get("eIssn"));
+        assertEquals("Acme Press", journal.get("publisher"));
+        assertEquals("1000;1100", journal.get("asjc"));
+
+        Map<String, Object> series = bySource.get("999");
+        assertEquals("book-series", series.get("forumType"));
+        assertEquals("00280836", series.get("issn")); // numeric cell padded back to 8 chars
+
+        Map<String, Object> conf = bySource.get("777");
+        assertEquals("conference", conf.get("forumType"));
+        assertEquals("21612021", conf.get("issn"));
+        assertEquals("2161203X", conf.get("eIssn"));
+    }
+
+    @Test
+    void importSourceList_missingFile_throwsIllegalArgument() {
+        assertThrows(IllegalArgumentException.class,
+                () -> service.importSourceListXlsxFromPath("/no/such/ext_list.xlsx", "b"));
     }
 }
