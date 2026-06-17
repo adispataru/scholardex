@@ -86,6 +86,10 @@ Run on a prod-equivalent snapshot first, then prod. All endpoints are under `/ad
      `POST /scopus/importCiteScore?path=<citescore.csv>`
    - MJL coverage (A3 — WoS source stream; supplies `wos.coverage_facts` → membership view):
      `POST /wos/importMjl?dir=data/wos/mjl&sourceVersion=2025`
+   - DOAJ open-access (A4 — reference data; supplies `doaj.journal_facts` → membership view `database='DOAJ'`):
+     `POST /forum/importDoaj?path=data/doaj/<doaj-dump>.csv&asOf=2026`. Note: `doaj.journal_facts` is NOT
+     wiped by the rebuild (it is an external snapshot, not source-replayed), so this only needs re-running to
+     refresh the DOAJ snapshot — but the projection re-reads it each rebuild.
 3. **Reset checkpoints so the rebuild is FULL, not incremental** (the default `useCheckpoint=true` resumes
    from the last batch and would skip already-processed events):
    - `POST /scopus/resetCanonicalCheckpoints`

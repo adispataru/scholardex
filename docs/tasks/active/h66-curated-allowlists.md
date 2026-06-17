@@ -337,9 +337,23 @@ Sub-steps:
   edition); `sourceVersion`/`asOf` = "2025" (loader param). MJL-only journals → new identities → new forums.
 - **Dep:** A1; A2 recommended first (CiteScore forums as ISSN match targets).
 
-**A4 — DOAJ loader (open-access flag).**
-- **Do:** fetch/parse DOAJ CSV → set the DOAJ indexing flag on matching forums by ISSN.
-- **Verify:** known OA journal flagged; non-OA unaffected.
+**A4 — DOAJ loader (open-access flag).** — **DONE.**
+- **Design (match-only, ISSN-resolved at projection):** DOAJ carries **no native forum id** (only ISSN),
+  so unlike CiteScore/MJL it does **not** ride the FORUM-event→canonical-merge pipeline — that would mint
+  ~20k bare ISSN-only forums for OA journals absent from Scopus/WoS. Instead it is reference data:
+  `DoajDataService.importDoajCsvFromPath` parses the DOAJ CSV → `doaj.journal_facts` (one fact per journal,
+  keyed by normalized ISSN; blank-tolerant upsert). `doaj.journal_facts` is **owned but intentionally
+  outside `MANAGED_DERIVED_COLLECTIONS`** (persists across a full rebuild — it is an external snapshot, not
+  replayed from source; re-import to refresh). Admin endpoint `POST /admin/initialization/forum/importDoaj?
+  path=&asOf=`.
+- **Projection:** `ScholardexProjectionBuilderService.buildDoajMembershipRows` matches DOAJ ISSNs to forums
+  by normalized ISSN token (issn/eIssn/aliases; collision → smallest forum id, deterministic) and emits
+  `scholardex_forum_membership_view(forum_id, database='DOAJ', member=true, as_of, source='DOAJ')`. No new
+  constructor dep — reads via the already-injected `MongoTemplate`. No migration (membership view exists).
+- **Verify:** `DoajDataServiceTest` (ISSN normalize, no-ISSN rows skipped, blank-tolerant upsert preserves
+  createdAt) + `ScholardexProjectionBuilderServiceTest.buildDoajMembershipRowsMatchesForumsByIssnAndIsMatchOnly`
+  (matches by print+e ISSN, unmatched DOAJ journals create no forum). DOAJ CSV (24MB, ~20k journals) placed
+  at `data/doaj/` (Cloudflare blocks scripted fetch — download via browser).
 - **Dep:** A1.
 
 ### Move B — fold rankings + indexing onto the forum (the bug-killer)

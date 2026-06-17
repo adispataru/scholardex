@@ -36,6 +36,7 @@ public class AdminInitializationController {
     private final ObjectProvider<PostgresMaterializedViewRefreshService> postgresMaterializedViewRefreshServiceProvider;
     private final ObjectProvider<PostgresOperationalStatusService> postgresOperationalStatusServiceProvider;
     private final ro.uvt.pokedex.core.service.application.ForumReconcileAuditService forumReconcileAuditService;
+    private final ro.uvt.pokedex.core.service.importing.DoajDataService doajDataService;
 
     @GetMapping
     public String showInitializationPage(Model model) {
@@ -242,6 +243,30 @@ public class AdminInitializationController {
         redirectAttributes.addFlashAttribute("successMessage",
                 "CiteScore import complete (batchId=" + effectiveBatchId + "). processed=" + result.getProcessedCount()
                         + ", imported=" + result.getImportedCount()
+                        + ", skipped=" + result.getSkippedCount()
+                        + ", errors=" + result.getErrorCount());
+        return "redirect:/admin/initialization";
+    }
+
+    /**
+     * H66 A4 — load the DOAJ open-access snapshot CSV into doaj.journal_facts (match-only reference data;
+     * projected to membership_view database='DOAJ' by ISSN). {@code asOf} stamps the snapshot (e.g. dump year).
+     */
+    @PostMapping("/forum/importDoaj")
+    public String runDoajImport(
+            @RequestParam(name = "path") String path,
+            @RequestParam(name = "batchId", required = false) String batchId,
+            @RequestParam(name = "asOf", required = false) String asOf,
+            RedirectAttributes redirectAttributes
+    ) {
+        String effectiveBatchId = (batchId == null || batchId.isBlank())
+                ? "doaj-" + java.time.Instant.now().toEpochMilli()
+                : batchId;
+        var result = doajDataService.importDoajCsvFromPath(path, effectiveBatchId, asOf);
+        redirectAttributes.addFlashAttribute("successMessage",
+                "DOAJ import complete (batchId=" + effectiveBatchId + ", asOf=" + asOf + "). processed=" + result.getProcessedCount()
+                        + ", imported=" + result.getImportedCount()
+                        + ", updated=" + result.getUpdatedCount()
                         + ", skipped=" + result.getSkippedCount()
                         + ", errors=" + result.getErrorCount());
         return "redirect:/admin/initialization";

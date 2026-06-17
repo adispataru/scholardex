@@ -19,6 +19,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
+import ro.uvt.pokedex.core.model.doaj.DoajJournalFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
@@ -1552,6 +1553,45 @@ class ScholardexProjectionBuilderServiceTest {
         verify(ps).setArray(26, affiliationIdsArray);
         verify(ps).setArray(28, citingIdsArray);
         verify(ps).setInt(29, 2);
+    }
+
+    @Test
+    void buildDoajMembershipRowsMatchesForumsByIssnAndIsMatchOnly() {
+        ScholardexProjectionBuilderService service = newService();
+
+        ScholardexForumFact forumA = new ScholardexForumFact();
+        forumA.setId("sforum_a");
+        forumA.setIssn("1234-5678");
+        ScholardexForumFact forumB = new ScholardexForumFact();
+        forumB.setId("sforum_b");
+        forumB.setEIssn("2345-6789");
+        ScholardexForumFact forumC = new ScholardexForumFact();
+        forumC.setId("sforum_c");
+        forumC.setIssn("9999-9999"); // not in DOAJ
+
+        DoajJournalFact d1 = new DoajJournalFact(); // matches forumA by print ISSN
+        d1.setId("doaj_12345678");
+        d1.setIssn("12345678");
+        d1.setAsOf("2026");
+        DoajJournalFact d2 = new DoajJournalFact(); // matches forumB by eISSN
+        d2.setId("doaj_23456789");
+        d2.setEIssn("23456789");
+        d2.setAsOf("2026");
+        DoajJournalFact d3 = new DoajJournalFact(); // matches no forum
+        d3.setId("doaj_00000000");
+        d3.setIssn("00000000");
+        when(mongoTemplate.findAll(DoajJournalFact.class)).thenReturn(List.of(d1, d2, d3));
+
+        List<ScholardexProjectionBuilderService.ForumMembershipRow> rows =
+                service.buildDoajMembershipRows(List.of(forumA, forumB, forumC));
+
+        assertEquals(2, rows.size());
+        Set<String> forumIds = rows.stream()
+                .map(ScholardexProjectionBuilderService.ForumMembershipRow::forumId)
+                .collect(java.util.stream.Collectors.toSet());
+        assertEquals(Set.of("sforum_a", "sforum_b"), forumIds);
+        assertTrue(rows.stream().allMatch(r -> r.database().equals("DOAJ") && r.source().equals("DOAJ")));
+        assertTrue(rows.stream().allMatch(r -> "2026".equals(r.asOf())));
     }
 
     private ScholardexProjectionBuilderService newService() {

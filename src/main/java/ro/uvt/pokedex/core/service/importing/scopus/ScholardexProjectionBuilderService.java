@@ -17,6 +17,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
+import ro.uvt.pokedex.core.model.doaj.DoajJournalFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
@@ -230,10 +231,14 @@ public class ScholardexProjectionBuilderService {
             }
 
             // --- H66 B2: forum-keyed WoS projections (metric/category/membership via wosForumIds) ---
-            Map<String, String> journalIdToForumId = buildJournalIdToForumId(canonicalForumFactRepository.findAll());
+            List<ScholardexForumFact> canonicalForumsForProjection = canonicalForumFactRepository.findAll();
+            Map<String, String> journalIdToForumId = buildJournalIdToForumId(canonicalForumsForProjection);
             List<ForumMetricRow> forumMetricRows = buildForumMetricRows(journalIdToForumId, buildVersion, buildAt);
             List<ForumCategoryRow> forumCategoryRows = buildForumCategoryRows(journalIdToForumId, buildVersion, buildAt);
-            List<ForumMembershipRow> forumMembershipRows = buildForumMembershipRows(journalIdToForumId, buildVersion, buildAt);
+            // H66 A4: DOAJ open-access membership, matched to forums by ISSN (DOAJ has no native forum id).
+            List<ForumMembershipRow> forumMembershipRows = new ArrayList<>(
+                    buildForumMembershipRows(journalIdToForumId, buildVersion, buildAt));
+            forumMembershipRows.addAll(buildDoajMembershipRows(canonicalForumsForProjection));
 
             // --- write all tables to PostgreSQL atomically ---
             long writePgNs = System.nanoTime();
@@ -1057,7 +1062,7 @@ public class ScholardexProjectionBuilderService {
     private record ForumMetricRow(String id, String forumId, int year, String metricType, Double value, String source) {}
     private record ForumCategoryRow(String id, String forumId, int year, String edition, String category,
                                     String metricType, String quarter, Integer quartileRank, Integer rank, String source) {}
-    private record ForumMembershipRow(String id, String forumId, String database, String asOf, String source) {}
+    record ForumMembershipRow(String id, String forumId, String database, String asOf, String source) {}
 
     /** Map each canonical forum's WoS journal ids to its forum id (the FK B2 joins through). */
     private Map<String, String> buildJournalIdToForumId(List<ScholardexForumFact> forums) {
@@ -1132,6 +1137,72 @@ public class ScholardexProjectionBuilderService {
             rows.putIfAbsent(key, new ForumMembershipRow(key, forumId, database, asOf, source));
         }
         return new ArrayList<>(rows.values());
+    }
+
+    /**
+     * H66 A4: DOAJ open-access membership. DOAJ carries no native forum id, so match its journals to forums
+     * by normalized ISSN token (issn/eIssn/aliases) and emit one snapshot row per matched forum
+     * ({@code database='DOAJ'}, {@code source='DOAJ'}). Match-only — never creates forums.
+     */
+    List<ForumMembershipRow> buildDoajMembershipRows(List<ScholardexForumFact> forums) {
+        // ISSN token -> forum id. On collision keep the lexicographically smallest forum id (deterministic).
+        Map<String, String> forumIdByIssnToken = new HashMap<>();
+        for (ScholardexForumFact forum : forums) {
+            if (forum.getId() == null) {
+                continue;
+            }
+            for (String token : forumIssnTokens(forum)) {
+                forumIdByIssnToken.merge(token, forum.getId(),
+                        (a, b) -> a.compareTo(b) <= 0 ? a : b);
+            }
+        }
+
+        List<DoajJournalFact> doajFacts = new ArrayList<>(mongoTemplate.findAll(DoajJournalFact.class));
+        doajFacts.sort(Comparator.comparing(DoajJournalFact::getId, Comparator.nullsLast(String::compareTo)));
+        Map<String, ForumMembershipRow> rows = new LinkedHashMap<>();
+        for (DoajJournalFact doaj : doajFacts) {
+            String issnToken = normalizeIssnToken(doaj.getIssn());
+            String forumId = issnToken == null ? null : forumIdByIssnToken.get(issnToken);
+            if (forumId == null) {
+                String eIssnToken = normalizeIssnToken(doaj.getEIssn());
+                forumId = eIssnToken == null ? null : forumIdByIssnToken.get(eIssnToken);
+            }
+            if (forumId == null) {
+                continue;
+            }
+            String key = forumId + "|DOAJ|DOAJ";
+            rows.putIfAbsent(key, new ForumMembershipRow(key, forumId, "DOAJ", doaj.getAsOf(), "DOAJ"));
+        }
+        return new ArrayList<>(rows.values());
+    }
+
+    /** Normalized ISSN tokens (issn/eIssn/aliasIssns) carried by a canonical forum. */
+    private static java.util.Set<String> forumIssnTokens(ScholardexForumFact forum) {
+        java.util.Set<String> tokens = new java.util.LinkedHashSet<>();
+        addIssnToken(tokens, forum.getIssn());
+        addIssnToken(tokens, forum.getEIssn());
+        if (forum.getAliasIssns() != null) {
+            for (String alias : forum.getAliasIssns()) {
+                addIssnToken(tokens, alias);
+            }
+        }
+        return tokens;
+    }
+
+    private static void addIssnToken(java.util.Set<String> tokens, String raw) {
+        String token = normalizeIssnToken(raw);
+        if (token != null) {
+            tokens.add(token);
+        }
+    }
+
+    /** Compact, upper-cased ISSN (hyphens/spaces stripped); null unless exactly 8 ISSN chars. */
+    private static String normalizeIssnToken(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String compact = raw.replaceAll("[^0-9Xx]", "").toUpperCase(java.util.Locale.ROOT);
+        return compact.length() == 8 ? compact : null;
     }
 
     private void executeFullReplacementWrite(
