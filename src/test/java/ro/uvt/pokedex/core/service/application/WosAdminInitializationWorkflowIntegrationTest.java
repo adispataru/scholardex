@@ -177,15 +177,22 @@ class WosAdminInitializationWorkflowIntegrationTest {
         );
         ScholardexSourceLinkService sourceLinkService =
                 new ScholardexSourceLinkService(sourceLinkRepository, scholardexIdentityConflictRepository);
-        WosScholardexOnboardingService onboardingService = new WosScholardexOnboardingService(
+        ConflictRecorder conflictRecorder = new ConflictRecorder(scholardexIdentityConflictRepository, sourceLinkService);
+        ForumMergeEngine forumMergeEngine = new ForumMergeEngine(
                 journalIdentityRepository,
                 scopusForumFactRepository,
                 scholardexForumFactRepository,
                 sourceLinkService,
                 scholardexIdentityConflictRepository,
-                scholardexPublicationFactRepository,
                 new ForumMergeSafetyRule(),
-                new ConflictRecorder(scholardexIdentityConflictRepository, sourceLinkService)
+                conflictRecorder
+        );
+        WosScholardexOnboardingService onboardingService = new WosScholardexOnboardingService(
+                journalIdentityRepository,
+                sourceLinkService,
+                scholardexPublicationFactRepository,
+                conflictRecorder,
+                forumMergeEngine
         );
         WosProjectionBuilderService projectionBuilderService = new WosProjectionBuilderService(
                 journalIdentityRepository,

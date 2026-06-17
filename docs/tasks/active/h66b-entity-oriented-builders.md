@@ -147,10 +147,24 @@ vs baseline** + reconcile audit `healthy=true`.
       `markConflictLink` extracted as a `@Service` collaborator (`ConflictRecorderTest`); the onboarding
       service delegates to it. Source-link writing already lives in `ScholardexSourceLinkService` (reused, no
       separate `SourceLinkWriter` needed).
-    - **Next:** the big one — extract `ForumMergeEngine` (`mergeForum` / `upsertForumFromWos` /
-      `mergeForumFromScopus` + the ISSN token-hygiene / cross-journal guard + `buildCanonicalForumId` + the
-      candidate/safe-merge decision). Highest-risk piece (core forum identity); do as its own focused pass.
-      Then collapse the two onboarding methods into one `ingest(ForumSourceRecord)` (M2).
+    - **ForumMergeEngine DONE:** the M1c core. `ForumMergeEngine` (`@Service`) now owns the per-record
+      find-or-create/merge (`upsertForumFromWos` / `upsertForumFromScopus` / `mergeForum` /
+      `mergeForumFromScopus`), the H57 ISSN token-hygiene + cross-journal guard (`normalizedIssnSet` /
+      `isCrossJournalToken` / `buildPrimaryIssnIndex`), `buildCanonicalForumId`, `persistForumOrRecordConflict`,
+      `resolveOpenForumAmbiguityConflict`, and the source-link command building (`linkedCommand` /
+      `conflictCommand` / `loadForumSourceLinks` / `loadOpenForumConflictKeys`). **The per-run gotcha is
+      solved:** `primaryIssnIndex` and the threaded `linkCommands` / `existingForumLinks` / canonical maps are
+      now fields of a per-invocation `ForumMergeEngine.Context` (built by `startWosRun` / `startScopusRun`),
+      not Spring-singleton state. `WosScholardexOnboardingService` shrank from 927 → 213 lines: it now only
+      builds the WoS journal-record list, drives the engine loop + `flush`, and owns the publication→WoS
+      source-link onboarding (`onboardPublicationWosLinks`, which is not forum building). New constructor:
+      `(journalIdentityRepository, sourceLinkService, scholardexPublicationFactRepository, conflictRecorder,
+      forumMergeEngine)`. White-box reflective coverage for the merge/ISSN-hygiene/id branches moved to
+      `ForumMergeEngineTest`; the end-to-end behavior net (`runWosOnboarding` / `runScopusForumCanonicalization`)
+      stays in `WosScholardexOnboardingServiceTest`, now green through the engine (19 + 5 tests, 0 failures).
+    - **Next:** M2 — collapse the two `upsertForumFrom*` methods into one `ingest(ForumSourceRecord)`. They are
+      ~90% duplicate; the remaining diff (idType/id-list, scopus already-folded shortcut, the WoS scopus-
+      enrichment in `mergeForum`) becomes branch-on-`idType` inside the unified ingest.
 - **M2 — Unify WoS + Scopus ingestion through `ForumMergeEngine.ingest(ForumSourceRecord)`.** Delete the two
   duplicate onboarding methods. ForumBuilder feeds Source List + WoS identity records through one engine.
   Gate: conflicts ≤ baseline and trending down; forum-build time ≤ baseline.

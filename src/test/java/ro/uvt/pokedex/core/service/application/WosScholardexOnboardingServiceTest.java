@@ -23,14 +23,11 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScopusForumFactRepository
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.util.ArrayList;
-import java.time.Instant;
 import java.util.List;
-import java.util.LinkedHashSet;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -56,15 +53,22 @@ class WosScholardexOnboardingServiceTest {
     @Mock private ScholardexPublicationFactRepository scholardexPublicationFactRepository;
 
     private WosScholardexOnboardingService service() {
-        return new WosScholardexOnboardingService(
+        ConflictRecorder conflictRecorder = new ConflictRecorder(scholardexIdentityConflictRepository, sourceLinkService);
+        ForumMergeEngine mergeEngine = new ForumMergeEngine(
                 journalIdentityRepository,
                 scopusForumFactRepository,
                 scholardexForumFactRepository,
                 sourceLinkService,
                 scholardexIdentityConflictRepository,
-                scholardexPublicationFactRepository,
                 new ForumMergeSafetyRule(),
-                new ConflictRecorder(scholardexIdentityConflictRepository, sourceLinkService)
+                conflictRecorder
+        );
+        return new WosScholardexOnboardingService(
+                journalIdentityRepository,
+                sourceLinkService,
+                scholardexPublicationFactRepository,
+                conflictRecorder,
+                mergeEngine
         );
     }
 
@@ -79,16 +83,6 @@ class WosScholardexOnboardingServiceTest {
         id.setAliasIssns(v.getAlternativeIssns() == null ? new ArrayList<>() : new ArrayList<>(v.getAlternativeIssns()));
         id.setAlternativeNames(v.getAlternativeNames() == null ? new ArrayList<>() : new ArrayList<>(v.getAlternativeNames()));
         return id;
-    }
-
-    // H66B M1b: ScopusForumIndex is now a top-level class — build it directly (was a reflected inner class).
-    private ScopusForumIndex scopusIndex(WosScholardexOnboardingService service, List<ScopusForumFact> forums) {
-        return new ScopusForumIndex(forums);
-    }
-
-    private List<ScopusForumFact> scopusFindCandidates(WosScholardexOnboardingService service, List<ScopusForumFact> forums,
-            java.util.Collection<String> issnTokens, String nameNormalized, String aggregationTypeNormalized) {
-        return scopusIndex(service, forums).findCandidates(issnTokens, nameNormalized, aggregationTypeNormalized);
     }
 
     @Test
@@ -350,99 +344,6 @@ class WosScholardexOnboardingServiceTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void privateHelpersCoverNormalizationAndCandidateBranches() throws Exception {
-        WosScholardexOnboardingService service = service();
-
-        assertEquals("1050-124X", ReflectionTestUtils.invokeMethod(service, "normalizeIssn", "1050 124x"));
-        assertNull(ReflectionTestUtils.invokeMethod(service, "normalizeIssn", "12"));
-        // H55: check-digit-invalid ISSNs (real source typos) are rejected as absent.
-        assertNull(ReflectionTestUtils.invokeMethod(service, "normalizeIssn", "1234-5678"));
-        assertNull(ReflectionTestUtils.invokeMethod(service, "normalizeIssn", "0030-211X"));
-        assertEquals("journal de test", ReflectionTestUtils.invokeMethod(service, "normalizeName", "Journál, de Test!"));
-        assertEquals("", ReflectionTestUtils.invokeMethod(service, "normalizeToken", "   "));
-        assertNull(ReflectionTestUtils.invokeMethod(service, "normalizeBlank", "   "));
-        assertEquals("a", ReflectionTestUtils.invokeMethod(service, "firstNonBlank", new Object[]{new String[]{" ", "a", "b"}}));
-        assertTrue((boolean) ReflectionTestUtils.invokeMethod(service, "hasAnyNonBlank", new Object[]{new String[]{" ", "x"}}));
-        assertEquals("a,b", ReflectionTestUtils.invokeMethod(service, "join", List.of("a", "b")));
-        assertEquals(List.of(), ReflectionTestUtils.invokeMethod(service, "safeList", (Object) null));
-
-        LinkedHashSet<String> normalized = ReflectionTestUtils.invokeMethod(
-                service,
-                "normalizedIssnSet",
-                "1234-5679",
-                "8765-4326",
-                List.of("12345679", "bad"),
-                null,
-                null,
-                List.of("87654326")
-        );
-        assertTrue(normalized.contains("1234-5679"));
-        assertTrue(normalized.contains("8765-4326"));
-
-        String byIssnId = ReflectionTestUtils.invokeMethod(service, "buildCanonicalForumId", "1234-5679", null, List.of(), "name", "journal");
-        String byNameId = ReflectionTestUtils.invokeMethod(service, "buildCanonicalForumId", null, null, List.of(), "name", "journal");
-        assertTrue(byIssnId.startsWith("sforum_"));
-        assertTrue(byNameId.startsWith("sforum_"));
-        assertTrue(!byIssnId.equals(byNameId));
-
-        ScopusForumFact scopus = new ScopusForumFact();
-        scopus.setSourceId("s1");
-        scopus.setIssn("1234-5679");
-        scopus.setPublicationName("Journal de Test");
-        scopus.setAggregationType("JOURNAL");
-        List<ScopusForumFact> byIssn = scopusFindCandidates(service, List.of(scopus), List.of("1234-5679"), "journal de test", "journal");
-        assertEquals(1, byIssn.size());
-        List<ScopusForumFact> byName = scopusFindCandidates(service, List.of(scopus), List.of(), "journal de test", "journal");
-        assertEquals(1, byName.size());
-    }
-
-    @Test
-    void mergeForumAppliesScopusPreferredIssnNameAggAndAliases() {
-        WosScholardexOnboardingService service = service();
-        ScholardexForumFact target = new ScholardexForumFact();
-        target.setAliasIssns(new ArrayList<>(List.of("1111-1119")));
-        target.setIssn("1111-1119");
-        target.setEIssn(null);
-        target.setName("Old Name");
-        target.setAggregationType("JOURNAL");
-
-        ScopusForumFact scopusPreferred = new ScopusForumFact();
-        scopusPreferred.setIssn("22223339");
-        scopusPreferred.setEIssn("44445555");
-        scopusPreferred.setPublicationName("Scopus Name");
-        scopusPreferred.setAggregationType("BOOK");
-
-        ReflectionTestUtils.invokeMethod(
-                service,
-                "mergeForum",
-                target,
-                "wos-id-1",
-                new LinkedHashSet<>(List.of("2222-3339", "6666-7771")),
-                "Wos Name",
-                "wos name",
-                "JOURNAL",
-                "journal",
-                scopusIndex(service, List.of(scopusPreferred)),
-                Instant.parse("2026-04-30T00:00:00Z"),
-                "batch-1",
-                "corr-1"
-        );
-
-        assertEquals("2222-3339", target.getIssn());
-        assertEquals("4444-5555", target.getEIssn());
-        assertEquals("Scopus Name", target.getName());
-        assertEquals("BOOK", target.getAggregationType());
-        assertTrue(target.getAliasIssns().contains("1111-1119"));
-        assertTrue(target.getAliasIssns().contains("6666-7771"));
-        assertEquals("WOS", target.getSource());
-        assertEquals("wos-id-1", target.getSourceRecordId());
-        assertEquals("batch-1", target.getSourceBatchId());
-        assertEquals("corr-1", target.getSourceCorrelationId());
-        assertEquals(Instant.parse("2026-04-30T00:00:00Z"), target.getUpdatedAt());
-    }
-
-    @Test
     void runWosOnboardingPublicationCollisionReusesExistingOpenConflict() {
         WosScholardexOnboardingService service = service();
 
@@ -539,52 +440,6 @@ class WosScholardexOnboardingServiceTest {
                 eq(ScholardexEntityType.PUBLICATION), eq("WOS"), eq("WOS:B"), eq("spub-b"),
                 eq("wos-publication-link"), isNull(), eq("batch-order"), eq("corr-order"), eq(false)
         );
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    void mergeForumCoversScopusPreferredAndAliasPruningBranches() {
-        WosScholardexOnboardingService service = service();
-        ScholardexForumFact target = new ScholardexForumFact();
-        target.setAliasIssns(List.of("9999-9994"));
-        target.setWosForumIds(List.of("wos-old"));
-        target.setScopusForumIds(List.of("scopus-old"));
-
-        ScopusForumFact preferred = new ScopusForumFact();
-        preferred.setSourceId("scopus-new");
-        preferred.setIssn("1234-5679");
-        preferred.setEIssn("8765-4326");
-        preferred.setPublicationName("Scopus Preferred Journal");
-        preferred.setAggregationType("JOURNAL");
-
-        LinkedHashSet<String> normalizedIssns = new LinkedHashSet<>(List.of("1234-5679", "8765-4326", "2222-2227"));
-        ReflectionTestUtils.invokeMethod(
-                service,
-                "mergeForum",
-                target,
-                "wos-new",
-                normalizedIssns,
-                "WOS Journal Name",
-                "wos journal name",
-                "JOURNAL",
-                "journal",
-                scopusIndex(service, List.of(preferred)),
-                java.time.Instant.parse("2025-01-01T00:00:00Z"),
-                "batch-m",
-                "corr-m"
-        );
-
-        assertEquals("scopus-new", target.getScopusForumIds().getLast());
-        assertTrue(target.getWosForumIds().contains("wos-new"));
-        assertEquals("1234-5679", target.getIssn());
-        assertEquals("8765-4326", target.getEIssn());
-        assertEquals("Scopus Preferred Journal", target.getName());
-        assertEquals("journal", target.getAggregationTypeNormalized());
-        assertTrue(target.getAliasIssns().contains("2222-2227"));
-        assertTrue(!target.getAliasIssns().contains("1234-5679"));
-        assertTrue(!target.getAliasIssns().contains("8765-4326"));
-        assertTrue(target.getCreatedAt() != null);
-        assertTrue(target.getUpdatedAt() != null);
     }
 
     @Test
