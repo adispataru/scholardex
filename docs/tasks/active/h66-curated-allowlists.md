@@ -464,8 +464,12 @@ rebuild + report-only residual.**
   already run inside `buildFacts`. So C2 is **not new merge code** — it is a guarded one-time full rebuild
   on prod (`reset canonical checkpoints → runFull → buildProjections`) plus verification, with the
   un-reconcilable residual surfaced as conflicts (report-only), never silently fuzzy-merged.
-- **C2.1 — migration runbook + count snapshot** *(deploy step; runbook, no new merge code):* document the
-  reset-checkpoints → runFull → buildProjections sequence and capture before/after forum counts. — TODO.
+- **C2.1 — migration runbook + count snapshot** — **DONE.** Added the "H66 release — one-time
+  forum-registry rebuild (migration)" section to [docs/rebuild-runbook.md](../../rebuild-runbook.md): ordered
+  steps (snapshot before → ingest CiteScore `/scopus/importCiteScore` + MJL `/wos/importMjl` → reset
+  checkpoints → full `PipelineRebuildService` rebuild → `buildProjections` → snapshot after) plus the C2.2
+  verification gate (block release unless `healthy:true` / `orphanedPublicationForumLinks:0`; record
+  `forumsTotal`). No new merge code — reconcile = the deterministic full rebuild.
 - **C2.2 — reconcile verification audit** — **DONE.** `ForumReconcileAuditService` + read-only admin
   endpoint `GET /admin/initialization/forum/reconcileAudit` → `ForumReconcileAuditReport`: forum
   id-composition (scopus-only / wos-only / both / none), **zero orphaned** publication→forum links

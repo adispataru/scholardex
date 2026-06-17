@@ -66,6 +66,57 @@ documents across rebuilds, excluding generated `_id` and per-build timestamps) i
 `PipelineRebuildDeterminismIntegrationTest`, which runs the real Scopus fact builder twice on a
 fixture and asserts identical output. The full multi-GB content comparison is not run in CI.
 
+## H66 release — one-time forum-registry rebuild (migration)
+
+H66 makes the canonical forum a first-class registry: rankings/indexing are forum-keyed attributes joined
+by the stored `wosForumIds`/`scopusForumIds` FK, retiring the fuzzy ISSN/name resolver (which silently
+scored ~39 forums to 0). The build is **deterministic** — a venue and its CiteScore entry share one Scopus
+Source ID, so they canonicalize to a single forum; dedup-by-ISSN and the WoS↔Scopus fold already run inside
+`buildFacts`. So the H66 migration is **not bespoke merge code** — it is one full rebuild that also ingests
+the two new source feeds, then a read-only verification gate. **Reconcile = full rebuild; do not hand-merge.**
+
+Run on a prod-equivalent snapshot first, then prod. All endpoints are under `/admin/initialization`.
+
+1. **Snapshot before** (counts incl. `scholardex.forum_facts`):
+   ```bash
+   mongosh "mongodb://localhost:27017/<db>" scripts/h54-derived-collection-snapshot.js > /tmp/h66-before.txt
+   ```
+2. **Ensure the two new source feeds are on disk and ingested** (new in H66):
+   - CiteScore (A2 — Scopus FORUM stream; supplies `forumType`/`asjc`):
+     `POST /scopus/importCiteScore?path=<citescore.csv>`
+   - MJL coverage (A3 — WoS source stream; supplies `wos.coverage_facts` → membership view):
+     `POST /wos/importMjl?dir=data/wos/mjl&sourceVersion=2025`
+3. **Reset checkpoints so the rebuild is FULL, not incremental** (the default `useCheckpoint=true` resumes
+   from the last batch and would skip already-processed events):
+   - `POST /scopus/resetCanonicalCheckpoints`
+   - `POST /wos/resetFactCheckpoint` (and `POST /wos/resetCanonicalState` if rebuilding WoS canonical state)
+4. **Full rebuild** via the guarded entry point `PipelineRebuildService.rebuildAllDerivedFromSource()` (the
+   admin flow drives the same BigBang rebuild): ingest → facts → canonical (forum dedup + WoS/Scopus fold) →
+   projections. If running per-step instead, the Scopus build-facts/canonical steps must run with
+   `useCheckpoint=false` after the reset above.
+5. **Build projections** — produces the three forum-keyed views B2/B3 read by FK
+   (`scholardex_forum_metric_view` / `_category_view` / `_membership_view`):
+   `POST /scopus/buildProjections` (and `POST /wos/rebuildProjections` for the WoS side).
+6. **Snapshot after** and diff against before (same procedure as *Verify determinism* above) — forum count
+   should be stable across a second rebuild.
+
+### Post-rebuild verification gate (C2.2)
+
+Read-only; mutates nothing. **Block the release if `healthy` is false.**
+```bash
+curl -s http://localhost:8080/admin/initialization/forum/reconcileAudit | jq
+```
+Assert in the `ForumReconcileAuditReport`:
+- **`healthy: true`** and **`orphanedPublicationForumLinks: 0`** — every publication still resolves to a live
+  canonical forum (the hard gate; a non-zero count means a merge dropped a forum without re-pointing).
+- **`wosLinkedResolvingMetricsByFk`** ≈ the WoS-linked forums that carry metric facts — proves the
+  previously-fuzzy cases now resolve by `forum_id` FK. (`wosLinkedMissingMetricsByFk` is expected non-zero:
+  MJL coverage-only journals have no AIS/IF metrics.)
+- **`fkMetricForums` / `fkCategoryForums` / `fkMembershipForums`** match the projection view distinct
+  `forum_id` counts (reference values on `core_h66`: 25,637 / 25,314 / 22,963).
+
+Record `forumsTotal` from the audit alongside the before/after snapshots as the migration's count evidence.
+
 ## Restore precious data (if needed)
 
 Config: `mongoimport --jsonArray --mode upsert` each file under `seed/precious-config/` (see that
