@@ -285,9 +285,16 @@ vs baseline** + reconcile audit `healthy=true`.
   historical/defunct WoS journals covered while the curated lists (Source List/MJL/ERIH/DOAJ) win identity by
   running first. Authority order `Source List → MJL → ERIH → DOAJ → WoS`. MJL + DOAJ promoted to identity
   sources; WoS metrics + CiteScore demoted to ranking-only. See the target-ordering block above.
-- **Intra-identity name authority (open):** when two identity sources disagree on a forum's display
-  name/aggregation, the first writer in the authority order wins (later ones enrich). Confirm Source List's
-  Scopus names should outrank MJL/WoS names at M4 (today `mergeForum` prefers the Scopus-derived name).
+- **Display-name authority:** RESOLVED (2026-06-17) — **prefer the WoS name when present** (→ Scopus →
+  Source List). WoS stores the full `journalTitle` (falls back to `abbrJournal` only if blank —
+  `OfficialWosJsonImportEventParser:43-45`), so this yields full titles, not ISO abbreviations. **Normalize
+  an all-uppercase WoS title to Title Case** before storing (a chunk of WoS `journalTitle`s are ALL-CAPS,
+  e.g. "NOISE CONTROL ENGINEERING JOURNAL"; Scopus names are uniformly Title Case). This is the one place
+  WoS is authoritative despite being identity-of-last-resort: **WoS is last for identity, first for the
+  display name.** Implement at M4: flip `mergeForum`'s name rule (today `firstNonBlank(target.getName(),
+  wosName)` makes WoS lose) to WoS-name-wins-when-present + the casing normalizer; update
+  `ForumMergeEngineTest.mergeForumAppliesScopusPreferredIssnNameAggAndAliases` (asserts Scopus name wins
+  today). `nameNormalized` (dedup key) is unaffected — only the display `name` casing changes.
 - **ERIH create-or-match:** RESOLVED (2026-06-17) — **create-or-match**. ERIH becomes a ForumBuilder source
   (`idType=ERIH`) routed through `ingest`; it mints forums for ERIH-only humanities venues (unblocks non-STEM)
   and the engine sets `erihIds` on the resolved/created forum. Done in M3.
