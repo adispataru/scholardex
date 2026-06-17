@@ -688,9 +688,19 @@ public class ForumMergeEngine {
         }
         target.setAliasIssns(new ArrayList<>(aliases));
 
-        String preferredName = scopusPreferred != null && normalizeBlank(scopusPreferred.getPublicationName()) != null
-                ? scopusPreferred.getPublicationName()
-                : firstNonBlank(target.getName(), wosName);
+        // H66B M4 — display-name authority: prefer the WoS journal title (→ Scopus → existing). WoS carries
+        // the full title; a chunk are ALL-CAPS, so title-case those for uniform display. `wosName` equals the
+        // wosForumId only when the WoS title was blank (the id-fallback in ingest) — treat that as "no title".
+        String wosTitle = wosName != null && !wosName.equals(wosForumId) ? wosName : null;
+        String wosDisplayName = normalizeDisplayCase(wosTitle);
+        String preferredName;
+        if (wosDisplayName != null) {
+            preferredName = wosDisplayName;
+        } else if (scopusPreferred != null && normalizeBlank(scopusPreferred.getPublicationName()) != null) {
+            preferredName = scopusPreferred.getPublicationName();
+        } else {
+            preferredName = firstNonBlank(target.getName(), wosName);
+        }
         target.setName(preferredName);
         target.setNameNormalized(normalizeName(preferredName));
 
@@ -849,6 +859,47 @@ public class ForumMergeEngine {
 
     private static String normalizeName(String rawName) {
         return ForumIdentityNormalization.normalizeName(rawName);
+    }
+
+    /**
+     * H66B M4 — title-case an all-uppercase display name (WoS {@code journalTitle}s are frequently ALL-CAPS,
+     * e.g. "NOISE CONTROL ENGINEERING JOURNAL"; Scopus names are uniformly Title Case). Mixed-case names are
+     * returned unchanged, so this only fires on the all-caps subset. Naive per-word casing — embedded
+     * acronyms (IEEE/ACM) are lowercased; acceptable given the alternative is ALL-CAPS. Returns null for
+     * null/blank. Only the display {@code name} is affected; {@code nameNormalized} is recomputed from it.
+     */
+    private static String normalizeDisplayCase(String name) {
+        String trimmed = normalizeBlank(name);
+        if (trimmed == null) {
+            return null;
+        }
+        boolean hasUpper = false;
+        boolean hasLower = false;
+        for (int i = 0; i < trimmed.length(); i++) {
+            char c = trimmed.charAt(i);
+            if (Character.isUpperCase(c)) {
+                hasUpper = true;
+            } else if (Character.isLowerCase(c)) {
+                hasLower = true;
+                break;
+            }
+        }
+        if (hasLower || !hasUpper) {
+            return trimmed; // already mixed-case (or no letters) — leave as the source provided it
+        }
+        StringBuilder sb = new StringBuilder(trimmed.length());
+        boolean startOfWord = true;
+        for (int i = 0; i < trimmed.length(); i++) {
+            char c = trimmed.charAt(i);
+            if (Character.isLetterOrDigit(c)) {
+                sb.append(startOfWord ? Character.toUpperCase(c) : Character.toLowerCase(c));
+                startOfWord = false;
+            } else {
+                sb.append(c);
+                startOfWord = true;
+            }
+        }
+        return sb.toString();
     }
 
     private static String normalizeToken(String rawValue) {

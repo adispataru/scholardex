@@ -75,7 +75,7 @@ class ForumMergeEngineTest {
 
         assertEquals("2222-3339", target.getIssn());
         assertEquals("4444-5555", target.getEIssn());
-        assertEquals("Scopus Name", target.getName());
+        assertEquals("Wos Name", target.getName()); // H66B M4: WoS title wins over the Scopus name
         assertEquals("BOOK", target.getAggregationType());
         assertTrue(target.getAliasIssns().contains("1111-1119"));
         assertTrue(target.getAliasIssns().contains("6666-7771"));
@@ -122,13 +122,48 @@ class ForumMergeEngineTest {
         assertTrue(target.getWosForumIds().contains("wos-new"));
         assertEquals("1234-5679", target.getIssn());
         assertEquals("8765-4326", target.getEIssn());
-        assertEquals("Scopus Preferred Journal", target.getName());
+        assertEquals("WOS Journal Name", target.getName()); // H66B M4: WoS title wins (mixed-case, left as-is)
         assertEquals("journal", target.getAggregationTypeNormalized());
         assertTrue(target.getAliasIssns().contains("2222-2227"));
         assertTrue(!target.getAliasIssns().contains("1234-5679"));
         assertTrue(!target.getAliasIssns().contains("8765-4326"));
         assertTrue(target.getCreatedAt() != null);
         assertTrue(target.getUpdatedAt() != null);
+    }
+
+    @Test
+    void mergeForumTitleCasesAllCapsWosName() {
+        ForumMergeEngine engine = engine();
+        ScholardexForumFact target = new ScholardexForumFact();
+        ReflectionTestUtils.invokeMethod(
+                engine, "mergeForum", target, "wos-tc",
+                new LinkedHashSet<>(List.of("1234-5679")),
+                "NOISE CONTROL ENGINEERING JOURNAL", "noise control engineering journal",
+                "JOURNAL", "journal",
+                new ScopusForumIndex(List.of()), // no Scopus match
+                Instant.parse("2026-06-17T00:00:00Z"), "b", "c");
+        assertEquals("Noise Control Engineering Journal", target.getName());
+    }
+
+    @Test
+    void mergeForumFallsBackToScopusNameWhenWosTitleBlank() {
+        // ingest passes name=sourceRecordId when the WoS title is blank; that id-fallback must not become
+        // the display name — fall through to the Scopus name.
+        ForumMergeEngine engine = engine();
+        ScholardexForumFact target = new ScholardexForumFact();
+        ScopusForumFact scopus = new ScopusForumFact();
+        scopus.setSourceId("s-1");
+        scopus.setIssn("1234-5679");
+        scopus.setPublicationName("Proper Scopus Title");
+        scopus.setAggregationType("JOURNAL");
+        ReflectionTestUtils.invokeMethod(
+                engine, "mergeForum", target, "wos-blank",
+                new LinkedHashSet<>(List.of("1234-5679")),
+                "wos-blank", "wos-blank", // wosName == wosForumId → title was blank
+                "JOURNAL", "journal",
+                new ScopusForumIndex(List.of(scopus)),
+                Instant.parse("2026-06-17T00:00:00Z"), "b", "c");
+        assertEquals("Proper Scopus Title", target.getName());
     }
 
     @Test
