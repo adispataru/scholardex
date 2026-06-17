@@ -78,9 +78,16 @@ Strangler pattern — introduce builders as the new orchestration entry, delegat
 first, then internalize and delete the old glue. Re-run the isolated live rebuild + reconcile audit after
 each step; compare conflicts to the 448-forum baseline.
 
-- **B66B.1 — ForumBuilder (facade first).** New `ScholardexForumBuilder.build()` that calls the existing
-  forum-building services in the correct forums-first order (Source List + CiteScore + WoS identity + MJL +
-  ERIH + user-defined → dedup). Orchestrators call it once, before publications. Behavior-preserving.
+- **B66B.1 — ForumBuilder (facade first).** — **DONE.** `ScholardexForumBuilder.buildScopusForums(batchId,
+  correlationId)` owns the Scopus-side forum build in one forums-first sequence (dedup → Scopus
+  canonicalization → ERIH onboard → conditional erih-dedup), returning a `ScopusForumBuildResult` record. The
+  three inline copies in `ScopusBigBangMigrationService` (runFull / buildFacts / incremental) now route
+  through it; the three forum services moved out of that orchestrator into the builder. As a bonus the
+  `runFull` path now runs the **whole** forum build (incl. ERIH) *before* publication/citation
+  canonicalization — true forums-first (was: dedup+canon, then pub/cit, then ERIH). buildFacts/incremental
+  gain the idempotent ERIH steps (consistency). Tests: `ScholardexForumBuilderTest` (ordered delegation +
+  conditional erih-dedup); migration test updated to mock the builder. WoS journal onboarding still runs in
+  the WoS rebuild — folded in at B66B.6.
 - **B66B.2 — internalize forum logic + remove publication forum derivation.** Move the scattered logic into
   ForumBuilder; delete `upsertForumFact`'s publication path (the `fromPublication` branch) so Scopus parsing
   emits only `ScopusPublicationFact`. Option-B venues minted by ForumBuilder from a publication-venue stream.

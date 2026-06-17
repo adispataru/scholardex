@@ -55,9 +55,7 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ScholardexAuthorCanonicalizationService authorCanonicalizationService;
     @Mock private ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
     @Mock private ScholardexCitationCanonicalizationService citationCanonicalizationService;
-    @Mock private WosScholardexOnboardingService wosScholardexOnboardingService;
-    @Mock private ScholardexForumDeduplicationService scholardexForumDeduplicationService;
-    @Mock private ErihOnboardingService erihOnboardingService;
+    @Mock private ScholardexForumBuilder forumBuilder;
     @Mock private ScopusBuildSkipGateService scopusBuildSkipGateService;
     @Mock private ScholardexCanonicalBuildCheckpointService canonicalBuildCheckpointService;
     @Mock private ScholardexSourceLinkService sourceLinkService;
@@ -87,9 +85,7 @@ class ScopusBigBangMigrationServiceTest {
                 authorCanonicalizationService,
                 publicationCanonicalizationService,
                 citationCanonicalizationService,
-                wosScholardexOnboardingService,
-                scholardexForumDeduplicationService,
-                erihOnboardingService,
+                forumBuilder,
                 scopusBuildSkipGateService,
                 canonicalBuildCheckpointService,
                 sourceLinkService,
@@ -132,8 +128,7 @@ class ScopusBigBangMigrationServiceTest {
         when(authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(any())).thenReturn(result(0, 0, 0, 0, 0));
         when(publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(any())).thenReturn(result(0, 0, 0, 0, 0));
         when(citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(any())).thenReturn(result(0, 0, 0, 0, 0));
-        when(scholardexForumDeduplicationService.deduplicateForums(any(), any())).thenReturn(result(0, 0, 0, 0, 0));
-        when(wosScholardexOnboardingService.runScopusForumCanonicalization(any(), any())).thenReturn(result(0, 0, 0, 0, 0));
+        when(forumBuilder.buildScopusForums(any(), any())).thenReturn(emptyForumBuild());
         stubVerificationSummary();
 
         service.runBuildFactsStep(null, true, null, false);
@@ -153,7 +148,7 @@ class ScopusBigBangMigrationServiceTest {
         when(scopusDataService.importScopusDataCitationsSync("/tmp/scopus.json")).thenReturn(citations);
         when(scopusFactBuilderService.buildFactsFromImportEvents()).thenReturn(facts);
         when(scopusProjectionBuilderService.rebuildViews()).thenReturn(views);
-        when(erihOnboardingService.onboardErih()).thenReturn(result(0, 0, 0, 0, 0));
+        when(forumBuilder.buildScopusForums(any(), any())).thenReturn(emptyForumBuild());
         when(indexMaintenanceService.ensureIndexes()).thenReturn(
                 new ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult(
                         List.of("c1"), List.of("p1"), List.of(), List.of()
@@ -231,8 +226,7 @@ class ScopusBigBangMigrationServiceTest {
         when(authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(any())).thenReturn(result(1, 0, 1, 0, 0));
         when(publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(any())).thenReturn(result(1, 1, 0, 0, 0));
         when(citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(any())).thenReturn(result(1, 0, 0, 1, 0));
-        when(scholardexForumDeduplicationService.deduplicateForums(any(), any())).thenReturn(result(0, 0, 0, 0, 0));
-        when(wosScholardexOnboardingService.runScopusForumCanonicalization(any(), any())).thenReturn(result(0, 0, 0, 0, 0));
+        when(forumBuilder.buildScopusForums(any(), any())).thenReturn(emptyForumBuild());
         stubVerificationSummary();
 
         ScopusBigBangMigrationService.ScopusBigBangMigrationResult out = service.runBuildFactsStep();
@@ -253,8 +247,7 @@ class ScopusBigBangMigrationServiceTest {
         when(authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(any())).thenReturn(result(0, 0, 0, 0, 0));
         when(publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(any())).thenReturn(result(0, 0, 0, 0, 0));
         when(citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(any())).thenReturn(result(0, 0, 0, 0, 0));
-        when(scholardexForumDeduplicationService.deduplicateForums(any(), any())).thenReturn(result(0, 0, 0, 0, 0));
-        when(wosScholardexOnboardingService.runScopusForumCanonicalization(any(), any())).thenReturn(result(0, 0, 0, 0, 0));
+        when(forumBuilder.buildScopusForums(any(), any())).thenReturn(emptyForumBuild());
         stubVerificationSummary();
 
         service.runBuildFactsStep(7, false, 33);
@@ -274,8 +267,7 @@ class ScopusBigBangMigrationServiceTest {
         when(authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(any())).thenReturn(result(0, 0, 0, 1, 0));
         when(publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(any())).thenReturn(result(0, 0, 0, 0, 1));
         when(citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(any())).thenReturn(result(1, 0, 0, 0, 0));
-        when(scholardexForumDeduplicationService.deduplicateForums(any(), any())).thenReturn(result(0, 0, 0, 0, 0));
-        when(wosScholardexOnboardingService.runScopusForumCanonicalization(any(), any())).thenReturn(result(0, 0, 0, 0, 0));
+        when(forumBuilder.buildScopusForums(any(), any())).thenReturn(emptyForumBuild());
         stubVerificationSummary();
 
         ScopusBigBangMigrationService.ScopusBigBangMigrationResult out = service.runIncrementalUploadBuildStep("batch-A", 9);
@@ -448,6 +440,11 @@ class ScopusBigBangMigrationServiceTest {
         assertEquals(5, base.getUpdatedCount());
         assertEquals(3, base.getSkippedCount());
         assertEquals(2, base.getErrorCount());
+    }
+
+    private ScholardexForumBuilder.ScopusForumBuildResult emptyForumBuild() {
+        return new ScholardexForumBuilder.ScopusForumBuildResult(
+                result(0, 0, 0, 0, 0), result(0, 0, 0, 0, 0), result(0, 0, 0, 0, 0), result(0, 0, 0, 0, 0));
     }
 
     private ImportProcessingResult result(int processed, int imported, int updated, int skipped, int errors) {
