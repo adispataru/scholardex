@@ -60,18 +60,37 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
         if (forum == null) {
             return List.of();
         }
+        // H66 B3: read the forum-keyed ranking views by the canonical forum id (the wosForumIds FK join built
+        // by the B2 projection). This is the stored-FK replacement for the fuzzy ISSN/name resolution below.
+        String forumId = forum.getId();
+        if (forumId != null && !forumId.isBlank()) {
+            List<WoSRanking> byForum = reportingLookupMemoization.getOrCompute(
+                    "postgres",
+                    "rankingsByForumId",
+                    forumId,
+                    () -> loadRankingsByForumId(forum)
+            );
+            if (!byForum.isEmpty()) {
+                return byForum;
+            }
+        }
+        // Fallback (logged, should trend to zero once every WoS-indexed forum is projected): the legacy fuzzy
+        // ISSN/name resolution, for forums not present in the forum-keyed views yet.
         List<WoSRanking> rankings = getRankingsByIssn(forum.getIssn());
         if (rankings.isEmpty()) {
             rankings = getRankingsByIssn(forum.getEIssn());
         }
         if (!rankings.isEmpty()) {
+            log.debug("getRankingsByForum: forum-keyed views empty, fell back to ISSN resolution forumId={} issn={}",
+                    forumId, forum.getIssn());
             return rankings;
         }
-        // Fallback to the same resolution the forum view uses (ISSN candidates + normalized name).
         String journalId = wosForumResolutionService.resolveJournalId(forum, resolutionIndex());
         if (journalId == null || journalId.isBlank()) {
             return List.of();
         }
+        log.debug("getRankingsByForum: forum-keyed views empty, fell back to name resolution forumId={} journalId={}",
+                forumId, journalId);
         return reportingLookupMemoization.getOrCompute(
                 "postgres",
                 "rankingsByJournalId",
@@ -187,6 +206,77 @@ public class PostgresReportingLookupFacade implements ReportingLookupPort {
                 this::mapRankingView
         );
         return assembleRankings(views);
+    }
+
+    /**
+     * H66 B3: assemble a single forum-level {@link WoSRanking} from the forum-keyed projection views
+     * (scholardex_forum_metric_view / scholardex_forum_category_view), keyed by the canonical forum id —
+     * the stored-FK replacement for the fuzzy ISSN/name → journalId resolution. Returns empty when the forum
+     * has no projected rankings (caller then falls back to the legacy resolution).
+     */
+    private List<WoSRanking> loadRankingsByForumId(ScholardexForumView forum) {
+        String forumId = forum.getId();
+        List<WosMetricFact> metricFacts = namedParameterJdbcTemplate.query(
+                """
+                        SELECT year, metric_type, value
+                        FROM reporting_read.scholardex_forum_metric_view
+                        WHERE forum_id = :forumId
+                        """,
+                new MapSqlParameterSource("forumId", forumId),
+                (rs, rowNum) -> {
+                    WosMetricFact fact = new WosMetricFact();
+                    fact.setJournalId(forumId);
+                    fact.setYear(rs.getObject("year", Integer.class));
+                    String metricType = rs.getString("metric_type");
+                    if (metricType != null) {
+                        fact.setMetricType(MetricType.valueOf(metricType));
+                    }
+                    fact.setValue(rs.getObject("value", Double.class));
+                    return fact;
+                }
+        );
+
+        List<WosCategoryFact> categoryFacts = namedParameterJdbcTemplate.query(
+                """
+                        SELECT year, category, edition, metric_type, quarter, quartile_rank, "rank" AS rank_value
+                        FROM reporting_read.scholardex_forum_category_view
+                        WHERE forum_id = :forumId
+                          AND edition IN ('SCIE', 'SSCI')
+                        """,
+                new MapSqlParameterSource("forumId", forumId),
+                (rs, rowNum) -> {
+                    WosCategoryFact fact = new WosCategoryFact();
+                    fact.setJournalId(forumId);
+                    fact.setYear(rs.getObject("year", Integer.class));
+                    fact.setCategoryNameCanonical(rs.getString("category"));
+                    String edition = rs.getString("edition");
+                    if (edition != null) {
+                        fact.setEditionNormalized(EditionNormalized.valueOf(edition));
+                    }
+                    String metricType = rs.getString("metric_type");
+                    if (metricType != null) {
+                        fact.setMetricType(MetricType.valueOf(metricType));
+                    }
+                    fact.setQuarter(rs.getString("quarter"));
+                    fact.setQuartileRank(rs.getObject("quartile_rank", Integer.class));
+                    fact.setRank(rs.getObject("rank_value", Integer.class));
+                    return fact;
+                }
+        );
+
+        if (metricFacts.isEmpty() && categoryFacts.isEmpty()) {
+            return List.of();
+        }
+
+        // Adapt the forum to the view shape toLegacyRanking expects (id/name/issn/eIssn carry the identity).
+        WosRankingView view = new WosRankingView();
+        view.setId(forumId);
+        view.setName(forum.getPublicationName());
+        view.setIssn(forum.getIssn());
+        view.setEIssn(forum.getEIssn());
+        view.setAlternativeIssns(List.of());
+        view.setAlternativeNames(List.of());
+        return List.of(toLegacyRanking(view, metricFacts, categoryFacts));
     }
 
     private List<WoSRanking> assembleRankings(List<WosRankingView> views) {

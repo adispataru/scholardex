@@ -30,6 +30,7 @@ class ImpactFactorJournalScoringServiceTest {
     @BeforeEach
     void stubMaxAvailableYear() {
         org.mockito.Mockito.lenient().when(lookupPort.maxAvailableYear()).thenReturn(2023);
+        ro.uvt.pokedex.core.testsupport.ReportingLookupTestSupport.delegateForumLookupToIssn(lookupPort);
     }
     @Test
     void missingIfDataReturnsEmptyScoreAndIncrementsMissingCounter() {

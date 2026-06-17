@@ -39,17 +39,13 @@ public class CNFISScoringService2025 {
 
         String subtype = PublicationSubtypeSupport.resolveSubtype(publication);
         if ("ar".equals(subtype) || "re".equals(subtype)) {
-            String issn = forum.getIssn();
-            String eIssn = forum.getEIssn();
             List<Integer> allowedYears = new ArrayList<>();
             PersistenceYearSupport.extractYear(publication.getCoverDate(), publication.getId(), log)
                     .ifPresent(allowedYears::add);
 
-            // Fetch rankings from cache or repository
-            List<WoSRanking> allByIssn = lookupPort.getRankingsByIssn(issn);
-            if (allByIssn.isEmpty()) {
-                allByIssn = lookupPort.getRankingsByIssn(eIssn);
-            }
+            // H66 B3: resolve rankings by the canonical forum (stored-FK forum-keyed views first, with the
+            // legacy fuzzy ISSN/name resolution as fallback) instead of fuzzy ISSN matching alone.
+            List<WoSRanking> allByIssn = lookupPort.getRankingsByForum(forum);
 
             for (WoSRanking ranking : allByIssn) {
                 for (Map.Entry<String, WoSRanking.Rank> entry : ranking.getWebOfScienceCategoryIndex().entrySet()) {

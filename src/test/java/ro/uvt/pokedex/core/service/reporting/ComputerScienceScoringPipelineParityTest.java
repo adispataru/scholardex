@@ -25,6 +25,7 @@ class ComputerScienceScoringPipelineParityTest {
     void scoringPipelineMatchesFrozenBaselineForMixedComputerScienceDataset() {
         ReportingLookupPort lookupPort = mock(ReportingLookupPort.class);
         org.mockito.Mockito.lenient().when(lookupPort.maxAvailableYear()).thenReturn(2023);
+        ro.uvt.pokedex.core.testsupport.ReportingLookupTestSupport.delegateForumLookupToIssn(lookupPort);
         SenseRankingRepository senseRankingRepository = mock(SenseRankingRepository.class);
         ScoringFactoryService scoringFactoryService = mock(ScoringFactoryService.class);
 

@@ -133,6 +133,47 @@ class PostgresReportingLookupFacadeTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void getRankingsByForumReadsForumKeyedViewsByIdWithoutFuzzyResolution() {
+        // H66 B3: when the forum carries a canonical id and the forum-keyed projection has rows, the facade
+        // must read scholardex_forum_metric_view / scholardex_forum_category_view by forum_id and NOT touch
+        // the fuzzy ISSN/name resolver at all.
+        ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact metric =
+                new ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact();
+        metric.setJournalId("forum-1");
+        metric.setYear(2024);
+        metric.setMetricType(ro.uvt.pokedex.core.model.reporting.wos.MetricType.AIS);
+        metric.setValue(1.377);
+
+        when(namedParameterJdbcTemplate.query(any(String.class), any(MapSqlParameterSource.class), any(org.springframework.jdbc.core.RowMapper.class)))
+                .thenAnswer(invocation -> {
+                    String sql = invocation.getArgument(0, String.class);
+                    if (sql.contains("scholardex_forum_metric_view")) {
+                        return List.of(metric);
+                    }
+                    return List.of();
+                });
+
+        ScholardexForumView forum = new ScholardexForumView();
+        forum.setId("forum-1");
+        forum.setPublicationName("Energy");
+
+        List<WoSRanking> rankings = facade.getRankingsByForum(forum);
+
+        assertFalse(rankings.isEmpty(), "forum-keyed read must produce a ranking");
+        // The fuzzy resolver must never be consulted when the forum-keyed views resolve.
+        verify(wosForumResolutionService, times(0)).resolveJournalId(any(ScholardexForumView.class), any());
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(namedParameterJdbcTemplate, atLeast(1))
+                .query(sqlCaptor.capture(), any(MapSqlParameterSource.class), any(org.springframework.jdbc.core.RowMapper.class));
+        assertTrue(sqlCaptor.getAllValues().stream().anyMatch(s -> s.contains("scholardex_forum_metric_view")),
+                "must query the forum-keyed metric view");
+        assertTrue(sqlCaptor.getAllValues().stream().anyMatch(s -> s.contains("WHERE forum_id = :forumId")),
+                "must key the forum view query by forum_id");
+    }
+
+    @Test
     void parseQuarterFallbackIsNotFoundForUnknownQuarterToken() {
         when(namedParameterJdbcTemplate.query(any(String.class), any(MapSqlParameterSource.class), any(org.springframework.jdbc.core.RowMapper.class)))
                 .thenReturn(java.util.List.of());

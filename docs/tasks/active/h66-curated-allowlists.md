@@ -407,13 +407,33 @@ join — exactly what the fuzzy resolver computed at query time. Prod untouched 
   not a flattened current value.
 - **Dep:** B1.
 
-**B3 — Rewire scoring lookup to FK; retire the fuzzy resolver.**
+**B3 — Rewire scoring lookup to FK; retire the fuzzy resolver. — DONE**
 - **Do:** change `getRankingsByForum` (and `AbstractWoSForumScoringService`) to read rankings by the forum's
   FK instead of fuzzy ISSN/name. Keep the fuzzy path only as a fallback for not-yet-seeded forums (log when
   used, so we can watch it trend to zero).
 - **Verify:** the 39-forums-scored-0 regression case now scores correctly via FK; existing scoring tests
   pass; a recompute on copied data matches or improves prior scores (no silent regressions).
 - **Dep:** B2.
+- **Done (2026-06-17):**
+  - `PostgresReportingLookupFacade.getRankingsByForum` now tries `loadRankingsByForumId(forum)` first —
+    reads `scholardex_forum_metric_view` + `scholardex_forum_category_view` (category filtered to
+    `edition IN ('SCIE','SSCI')` for parity) by `forum.getId()`, feeds the existing `toLegacyRanking`,
+    memoized under `rankingsByForumId`. Falls back to the legacy ISSN then name (`resolveJournalId`)
+    resolution, both logged at `debug` so the fuzzy path is observable and trends to zero.
+  - `CNFISScoringService2025` was the one scorer still calling `getRankingsByIssn` directly with a forum in
+    hand → routed through `getRankingsByForum(forum)` (the other scorers already go via
+    `AbstractForumScoringService.getRankingsForForum`).
+  - Test contract: scoring unit tests stubbed only `getRankingsByIssn`, but scoring resolves via the
+    `getRankingsByForum` interface default (which a Mockito `@Mock` does not run) — the forum-scoring suite
+    was committed red. Added `testsupport/ReportingLookupTestSupport.delegateForumLookupToIssn(port)` and
+    wired it into the 7 scoring tests so the mock mirrors the default (issn→e-issn, blank-skipping). Suite
+    now green (191 reporting+lookup tests), incl. the frozen-baseline `ComputerScienceScoringPipelineParityTest`.
+  - Live FK read verified against `core_h66` (B2 projection): "Energy" forum AIS by `forum_id` matches the
+    B2 baseline (2024=1.377 … 2020=1.19); category view returns SCIE rows with quartiles.
+  - **Follow-up (not B3-critical):** `UserReportFacade.resolveWosJournalId`/`buildForumWosLinkMap` still does
+    fuzzy ISSN→journalId for the display-only `forumWosLinkMap` attr (no template consumes it; the view has no
+    `wosForumIds` column). Wiring the stored FK there needs projecting `wos_forum_ids` into
+    `scholardex_forum_view` — defer to C2 reconcile.
 
 ### Move C — publication path + dedup hardening
 
