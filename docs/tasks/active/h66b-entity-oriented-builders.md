@@ -175,6 +175,57 @@ vs baseline** + reconcile audit `healthy=true`.
 - **Branch + red windows:** carry the rewrite on `codex/h66b-builders`, accepting a red pipeline between
   milestones, rather than keeping `main`-green every commit.
 
+## Session handoff (resume here — state as of commit `c686487`)
+
+**Branch:** `codex/h66b-builders` (off `codex/h66-forum-registry`). All H66 (A–E, B, C) + the H66B redesign +
+M0/M1a/M1b/M1c-part1 are committed. `WosScholardexOnboardingService` is down to **927 lines**.
+
+**Done so far (all green, behavior-equivalent moves):**
+- `ForumIdentityNormalization` (identity normalize + token extraction; service delegates to it).
+- `ForumIdentityIndex` + `ScopusForumIndex` (top-level; the O(1) token-index perf heart).
+- `ConflictRecorder` (`openConflict` + `markConflictLink`; service delegates). `SourceLinkWriter` is already
+  `ScholardexSourceLinkService` — reuse it, don't make a new one.
+
+**Immediate next step — extract `ForumMergeEngine` (the M1c core, highest risk: core forum identity).**
+The two entry methods `runWosOnboarding` / `runScopusForumCanonicalization` (in `WosScholardexOnboardingService`)
+each: build the indexes → loop source records → find-or-create-or-conflict → batch source-link flush. The
+engine to extract (current line numbers in that file):
+- `mergeForumFromScopus` (≈349), `upsertForumFromWos` (≈430) — the per-record find-or-create/merge (these are
+  the two ~90%-duplicate methods that collapse into one `ingest(ForumSourceRecord)` at **M2**).
+- `mergeForum` (≈548) — the core merge.
+- `persistForumOrRecordConflict` (≈528) — save-or-DuplicateKey→conflict.
+- `buildCanonicalForumId` (≈863), `buildPrimaryIssnIndex` (≈846), `normalizedIssnSet` (≈793),
+  `addSecondaryIssn` (≈829), `isCrossJournalToken` (≈841) — ISSN token-hygiene / cross-journal-bridge guard.
+- `loadForumSourceLinks` (≈180), `linkedCommand`/`conflictCommand` (≈205/213) — source-link command building.
+- `resolveOpenForumAmbiguityConflict` (≈763) — closes stale ambiguity conflicts (Scopus-specific).
+
+**The gotcha:** per-run shared state — `primaryIssnIndex` (field, line 80, rebuilt per run via
+`buildPrimaryIssnIndex`) and the threaded `linkCommands` list + `existingForumLinks` map. The engine must own
+these as per-invocation state (pass a context/builder object, or make the engine stateful-per-call), not as a
+Spring-singleton field. Keep the indexes + ForumMergeSafetyRule + ConflictRecorder as injected collaborators.
+Approach: move the methods into `ForumMergeEngine`, have the two onboarding methods delegate (strangler), keep
+`WosScholardexOnboardingServiceTest` green at each step (it's the behavior net — reflective white-box tests
+build `ScopusForumIndex` directly now).
+
+**Live-rebuild verification recipe (isolated; NEVER prod `test`):**
+1. Mongo isolation: connect to a **separate db** via `--spring.mongodb.uri=mongodb://localhost:27017/scholardex_h66`
+   (Boot-4 key; `spring.data.mongodb.*` is DEAD and silently hits prod `test`). Postgres: `core_h66`.
+2. Boot: `JAVA_TOOL_OPTIONS=-Xmx6g ./gradlew bootRun --args='--spring.profiles.active=agent-dev --server.port=8282 --spring.mongodb.uri=mongodb://localhost:27017/scholardex_h66 --spring.datasource.url=jdbc:postgresql://localhost:5432/core_h66'`
+3. **Confirm isolation before any write:** `GET /admin/initialization/forum/reconcileAudit` → `forumsTotal:0`
+   means scholardex_h66 (safe); `32714` means PROD — abort.
+4. Full rebuild: `POST /admin/initialization/rebuildAllDerived --data-urlencode confirmation=RESET` (re-ingests
+   Scopus JSON + WoS; does NOT ingest CiteScore/MJL/SourceList/DOAJ/ERIH — import those separately:
+   `/scopus/importSourceList`, `/scopus/importCiteScore`, `/wos/importMjl`, `/forum/importDoaj`,
+   `/forum/importErih`, then re-run `/scopus/buildFacts` to fold). Full feed paths in
+   [docs/rebuild-runbook.md](../../rebuild-runbook.md) H66 section.
+5. Conflict tally: `mongosh scholardex_h66 → db.getCollection("scholardex.identity_conflicts").aggregate([{$match:{entityType:"FORUM"}},{$group:{_id:"$reasonCode",n:{$sum:1}}}])`.
+6. Teardown: stop bootRun; `db.dropDatabase()` on scholardex_h66; verify `test` forum_facts still 32714.
+
+**2026-06-17 baseline (the bar to beat):** 448 forum conflicts = `EXTERNAL_ID_ALREADY_LINKED` **421** +
+`DEDUP_NAME_MISMATCH` 18 + `CROSS_JOURNAL_ISSN` 7 + `INVALID_ISSN` 2. Goal: → ~27 (kill the 421 churn), with
+forum-build/rebuild time ≤ baseline. 39,957 forums, healthy, 100% WoS-linked resolve by FK; DOAJ 9,294 /
+ERIH 6,261 / DOAJ-from-ERIH 2,144 membership; MJL coverage was 0 (D6 gap, fix in M7).
+
 ## Verification (per milestone)
 
 Isolated full rebuild (the H66 recipe: throwaway `scholardex_h66` + `core_h66` on port-isolated Mongo via
