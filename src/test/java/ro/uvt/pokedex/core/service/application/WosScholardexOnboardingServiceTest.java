@@ -63,7 +63,8 @@ class WosScholardexOnboardingServiceTest {
                 sourceLinkService,
                 scholardexIdentityConflictRepository,
                 scholardexPublicationFactRepository,
-                new ForumMergeSafetyRule()
+                new ForumMergeSafetyRule(),
+                new ConflictRecorder(scholardexIdentityConflictRepository, sourceLinkService)
         );
     }
 

@@ -141,9 +141,16 @@ vs baseline** + reconcile audit `healthy=true`.
   - **M1b DONE:** `ForumIdentityIndex` (from `CanonicalForumIndex`) + `ScopusForumIndex` extracted as
     top-level classes on the normalization substrate (the O(1) token-index perf heart — shared `byId` map +
     incremental `put`); inner classes removed, type refs repointed, the reflective onboarding tests updated to
-    use the top-level classes directly, `ForumIndexTest` added. **Next (M1c):** extract `ForumMergeEngine`
-    (+ `SourceLinkWriter`, `ConflictRecorder`) — the find-or-create + safe-merge + source-link + conflict
-    logic — then collapse the two onboarding methods into one `ingest(ForumSourceRecord)` (M2).
+    use the top-level classes directly, `ForumIndexTest` added.
+  - **M1c (in progress):**
+    - **ConflictRecorder DONE:** generic `openConflict` (idempotent per entity+source+record+reason+OPEN) +
+      `markConflictLink` extracted as a `@Service` collaborator (`ConflictRecorderTest`); the onboarding
+      service delegates to it. Source-link writing already lives in `ScholardexSourceLinkService` (reused, no
+      separate `SourceLinkWriter` needed).
+    - **Next:** the big one — extract `ForumMergeEngine` (`mergeForum` / `upsertForumFromWos` /
+      `mergeForumFromScopus` + the ISSN token-hygiene / cross-journal guard + `buildCanonicalForumId` + the
+      candidate/safe-merge decision). Highest-risk piece (core forum identity); do as its own focused pass.
+      Then collapse the two onboarding methods into one `ingest(ForumSourceRecord)` (M2).
 - **M2 — Unify WoS + Scopus ingestion through `ForumMergeEngine.ingest(ForumSourceRecord)`.** Delete the two
   duplicate onboarding methods. ForumBuilder feeds Source List + WoS identity records through one engine.
   Gate: conflicts ≤ baseline and trending down; forum-build time ≤ baseline.

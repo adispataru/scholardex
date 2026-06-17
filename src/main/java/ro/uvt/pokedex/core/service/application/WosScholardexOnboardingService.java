@@ -5,7 +5,6 @@ import ro.uvt.pokedex.core.service.importing.BuilderVersion;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
-import ro.uvt.pokedex.core.observability.CanonicalObservabilityMetrics;
 import ro.uvt.pokedex.core.model.reporting.CanonicalPublicationConstants;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
@@ -71,6 +70,7 @@ public class WosScholardexOnboardingService {
     private final ScholardexIdentityConflictRepository scholardexIdentityConflictRepository;
     private final ScholardexPublicationFactRepository scholardexPublicationFactRepository;
     private final ForumMergeSafetyRule mergeSafetyRule;
+    private final ConflictRecorder conflictRecorder;
 
     // H57 Layer 2 (token hygiene): the set of all primary (print) ISSNs known across sources, rebuilt at
     // the start of each onboarding/canonicalization run. An eISSN/alias that equals a *different*
@@ -751,16 +751,7 @@ public class WosScholardexOnboardingService {
             String batchId,
             String correlationId
     ) {
-        sourceLinkService.markConflict(
-                entityType,
-                source,
-                sourceRecordId,
-                reason,
-                null,
-                batchId,
-                correlationId,
-                false
-        );
+        conflictRecorder.markConflictLink(entityType, source, sourceRecordId, reason, batchId, correlationId);
     }
 
     /**
@@ -796,28 +787,7 @@ public class WosScholardexOnboardingService {
             String batchId,
             String correlationId
     ) {
-        ScholardexIdentityConflict conflict = scholardexIdentityConflictRepository
-                .findByEntityTypeAndIncomingSourceAndIncomingSourceRecordIdAndReasonCodeAndStatus(
-                        entityType,
-                        source,
-                        sourceRecordId,
-                        reasonCode,
-                        STATUS_OPEN
-                )
-                .orElseGet(ScholardexIdentityConflict::new);
-        conflict.setEntityType(entityType);
-        conflict.setIncomingSource(source);
-        conflict.setIncomingSourceRecordId(sourceRecordId);
-        conflict.setReasonCode(reasonCode);
-        conflict.setStatus(STATUS_OPEN);
-        conflict.setCandidateCanonicalIds(candidateIds == null ? List.of() : new ArrayList<>(candidateIds));
-        conflict.setSourceBatchId(batchId);
-        conflict.setSourceCorrelationId(correlationId);
-        if (conflict.getDetectedAt() == null) {
-            conflict.setDetectedAt(Instant.now());
-        }
-        scholardexIdentityConflictRepository.save(conflict);
-        CanonicalObservabilityMetrics.recordConflictCreated(entityType.name(), source, reasonCode);
+        conflictRecorder.openConflict(entityType, source, sourceRecordId, reasonCode, candidateIds, batchId, correlationId);
     }
 
     private LinkedHashSet<String> normalizedIssnSet(
