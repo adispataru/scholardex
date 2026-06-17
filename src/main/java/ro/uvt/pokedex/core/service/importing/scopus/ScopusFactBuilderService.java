@@ -32,6 +32,7 @@ import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -48,6 +49,10 @@ public class ScopusFactBuilderService {
     private static final int FACT_BUILD_CHUNK_SIZE = 1_000;
     private static final int FACT_BUILD_HEARTBEAT_INTERVAL = 10_000;
     private static final String SOURCE_USER_PUBLICATION_WIZARD = "USER_PUBLICATION_WIZARD";
+    // H66B M6: provenance for forums that exist only because a publication observed the venue (no curated
+    // source covers it — the option-B / conference-venue long tail). Distinct from SCOPUS_SOURCE_LIST /
+    // SCOPUS_CITESCORE_LIST so "seen only in publications" is queryable.
+    private static final String SOURCE_SCOPUS_OBSERVED_VENUE = "SCOPUS_OBSERVED_VENUE";
 
     private final ScopusImportEventRepository importEventRepository;
     private final ScopusPublicationFactRepository publicationFactRepository;
@@ -121,9 +126,17 @@ public class ScopusFactBuilderService {
         // H66 D3 — forums first: seed the serial registry from authoritative FORUM events (Scopus Source
         // List, CiteScore) before publications, so the publication path resolves-and-links instead of
         // defining forums from noisy venue data.
+        // H66B M6 — conference-venue source: publications are pure observers (no inline forum write). Every
+        // publication processed (publication events AND citation-backfilled citing papers, both via
+        // upsertPublicationItems) contributes its venue to this dedup accumulator (first writer per Scopus
+        // source_id wins). flushObservedVenues then mints a provenance-tagged forum only for venues no
+        // authoritative FORUM source seeded — after citations (so backfilled venues are included) and before
+        // forum canonicalization (buildScopusForums) folds them in.
+        Map<String, PublicationWorkItem> observedVenues = new LinkedHashMap<>();
         processForumChunks(forumEvents, result);
-        processPublicationChunks(publicationEvents, result);
-        processCitationChunks(citationEvents, result);
+        processPublicationChunks(publicationEvents, result, observedVenues);
+        processCitationChunks(citationEvents, result, observedVenues);
+        flushObservedVenues(observedVenues, result);
 
         log.info("Scopus fact-builder summary: processed={}, imported={}, updated={}, skipped={}, errors={}, sample={}",
                 result.getProcessedCount(), result.getImportedCount(), result.getUpdatedCount(),
@@ -131,7 +144,8 @@ public class ScopusFactBuilderService {
         return result;
     }
 
-    private void processPublicationChunks(List<PublicationWorkItem> publicationEvents, ImportProcessingResult result) {
+    private void processPublicationChunks(List<PublicationWorkItem> publicationEvents, ImportProcessingResult result,
+                                          Map<String, PublicationWorkItem> observedVenues) {
         int total = publicationEvents.size();
         int totalBatches = total == 0 ? 0 : ((total - 1) / FACT_BUILD_CHUNK_SIZE) + 1;
 
@@ -145,7 +159,7 @@ public class ScopusFactBuilderService {
             int skippedBefore = result.getSkippedCount();
             int errorsBefore = result.getErrorCount();
 
-            ChunkTimings timings = upsertPublicationItems(publicationEvents.subList(from, to), result);
+            ChunkTimings timings = upsertPublicationItems(publicationEvents.subList(from, to), result, observedVenues);
 
             log.info("Scopus fact-builder publication chunk {} complete [batch={} / totalBatches={}]: events={} imported={} updated={} skipped={} errors={} timingsMs[preload={}, process={}, save={}, total={}]",
                     chunkNo,
@@ -163,7 +177,76 @@ public class ScopusFactBuilderService {
         }
     }
 
-    private void processCitationChunks(List<CitationWorkItem> citationEvents, ImportProcessingResult result) {
+    /**
+     * H66B M6 — the conference-venue source. Publications emit only {@code ScopusPublicationFact}; this derives
+     * a deduplicated venue stream from the parsed publication events (first publication per Scopus source_id
+     * wins, matching the prior option-B first-writer behavior) and mints a {@code SCOPUS_OBSERVED_VENUE} forum
+     * fact only for venues no authoritative FORUM source already seeded. Forum canonicalization
+     * (runScopusForumCanonicalization) then folds them in as ordinary Scopus forums and creates the
+     * FORUM/SCOPUS source links publications resolve their venue against. Re-run idempotent: an observed-venue
+     * forum from a prior run is found in {@code existing} and skipped.
+     */
+    private void flushObservedVenues(Map<String, PublicationWorkItem> firstByVenue, ImportProcessingResult result) {
+        if (firstByVenue.isEmpty()) {
+            return;
+        }
+        // Skip venues an authoritative FORUM source already seeded (processForumChunks ran first). Chunk the
+        // existence query to honor the batched-IO invariant rather than one giant $in.
+        Set<String> existing = new HashSet<>();
+        List<String> venueIds = new ArrayList<>(firstByVenue.keySet());
+        for (int from = 0; from < venueIds.size(); from += FACT_BUILD_CHUNK_SIZE) {
+            List<String> idChunk = venueIds.subList(from, Math.min(venueIds.size(), from + FACT_BUILD_CHUNK_SIZE));
+            for (ScopusForumFact fact : forumFactRepository.findBySourceIdIn(idChunk)) {
+                if (fact.getSourceId() != null) {
+                    existing.add(fact.getSourceId());
+                }
+            }
+        }
+
+        Instant now = Instant.now();
+        List<ScopusForumFact> toSave = new ArrayList<>();
+        for (Map.Entry<String, PublicationWorkItem> entry : firstByVenue.entrySet()) {
+            if (existing.contains(entry.getKey())) {
+                continue; // an authoritative forum already covers this venue
+            }
+            toSave.add(buildObservedVenueFact(entry.getValue(), now));
+        }
+        for (int from = 0; from < toSave.size(); from += FACT_BUILD_CHUNK_SIZE) {
+            forumFactRepository.saveAll(toSave.subList(from, Math.min(toSave.size(), from + FACT_BUILD_CHUNK_SIZE)));
+        }
+        toSave.forEach(f -> result.markImported());
+        log.info("Observed-venue flush: distinctVenues={} authoritativeAlready={} observedForumsCreated={}",
+                firstByVenue.size(), firstByVenue.size() - toSave.size(), toSave.size());
+    }
+
+    /** Build a provenance-tagged ({@code SCOPUS_OBSERVED_VENUE}) forum fact from a publication's venue fields. */
+    private ScopusForumFact buildObservedVenueFact(PublicationWorkItem item, Instant now) {
+        JsonNode payload = item.payload;
+        String sourceId = text(payload, "source_id");
+        ScopusForumFact fact = new ScopusForumFact();
+        fact.setSourceId(sourceId);
+        fact.setPublicationName(text(payload, "publicationName"));
+        fact.setIssn(normalizeIssn(text(payload, "issn")));
+        fact.setEIssn(normalizeIssn(text(payload, "eIssn")));
+        fact.setIsbn(text(payload, "isbn"));
+        fact.setAggregationType(text(payload, "aggregationType"));
+        fact.setPublisher(text(payload, "publisher"));
+        fact.setForumType(text(payload, "forumType"));
+        fact.setAsjc(distinctNonBlank(splitSemicolon(text(payload, "asjc"))));
+        fact.setCreatedAt(now);
+        fact.setUpdatedAt(now);
+        fact.setLastMaterializedAt(now);
+        fact.setLastPayloadHash(hashKey("forum", sourceId, fact.getPublicationName(), fact.getIssn(), fact.getEIssn(),
+                fact.getIsbn(), fact.getAggregationType(), fact.getPublisher(), fact.getForumType(),
+                String.join(";", fact.getAsjc() == null ? List.of() : fact.getAsjc())));
+        applyLineage(fact, item.event);
+        fact.setSource(SOURCE_SCOPUS_OBSERVED_VENUE); // override the publication event's lineage source
+        fact.setSourceRecordId(sourceId);
+        return fact;
+    }
+
+    private void processCitationChunks(List<CitationWorkItem> citationEvents, ImportProcessingResult result,
+                                       Map<String, PublicationWorkItem> observedVenues) {
         int total = citationEvents.size();
         int totalBatches = total == 0 ? 0 : ((total - 1) / FACT_BUILD_CHUNK_SIZE) + 1;
 
@@ -177,7 +260,7 @@ public class ScopusFactBuilderService {
             int skippedBefore = result.getSkippedCount();
             int errorsBefore = result.getErrorCount();
 
-            ChunkTimings timings = upsertCitationItems(citationEvents.subList(from, to), result);
+            ChunkTimings timings = upsertCitationItems(citationEvents.subList(from, to), result, observedVenues);
 
             log.info("Scopus fact-builder citation chunk {} complete [batch={} / totalBatches={}]: events={} imported={} updated={} skipped={} errors={} timingsMs[preload={}, process={}, save={}, total={}]",
                     chunkNo,
@@ -247,7 +330,7 @@ public class ScopusFactBuilderService {
         long preloadFinishedAtNanos = System.nanoTime();
 
         for (ForumWorkItem item : items) {
-            upsertForumFact(item.event, item.payload, result, state, false);
+            upsertForumFact(item.event, item.payload, result, state);
         }
         long processFinishedAtNanos = System.nanoTime();
 
@@ -265,13 +348,19 @@ public class ScopusFactBuilderService {
         );
     }
 
-    private ChunkTimings upsertPublicationItems(List<PublicationWorkItem> items, ImportProcessingResult result) {
+    private ChunkTimings upsertPublicationItems(List<PublicationWorkItem> items, ImportProcessingResult result,
+                                                Map<String, PublicationWorkItem> observedVenues) {
         long startedAtNanos = System.nanoTime();
         PublicationChunkState state = preloadPublicationChunkState(items);
         long preloadFinishedAtNanos = System.nanoTime();
 
         for (PublicationWorkItem item : items) {
             upsertPublicationAndDimensions(item.event, item.payload, result, state);
+            // H66B M6: publication is a pure observer — record its venue for the conference-venue stream.
+            String venueId = text(item.payload, "source_id");
+            if (!isBlank(venueId)) {
+                observedVenues.putIfAbsent(venueId, item);
+            }
         }
         long processFinishedAtNanos = System.nanoTime();
 
@@ -286,7 +375,8 @@ public class ScopusFactBuilderService {
         );
     }
 
-    private ChunkTimings upsertCitationItems(List<CitationWorkItem> items, ImportProcessingResult result) {
+    private ChunkTimings upsertCitationItems(List<CitationWorkItem> items, ImportProcessingResult result,
+                                             Map<String, PublicationWorkItem> observedVenues) {
         long startedAtNanos = System.nanoTime();
 
         Set<String> citedEids = new LinkedHashSet<>();
@@ -359,7 +449,7 @@ public class ScopusFactBuilderService {
 
         ChunkTimings backfillTimings = citationBackfills.isEmpty()
                 ? new ChunkTimings(0L, 0L, 0L, 0L)
-                : upsertPublicationItems(citationBackfills, result);
+                : upsertPublicationItems(citationBackfills, result, observedVenues);
 
         long finishedAtNanos = System.nanoTime();
 
@@ -450,7 +540,6 @@ public class ScopusFactBuilderService {
                 state.pendingPublicationSaves.put(eid, fact);
             }
             result.markSkipped(sample(event, "publication payload unchanged"));
-            upsertForumFact(event, payload, result, state, true);
             upsertAuthorFacts(event, payload, result, state);
             upsertAffiliationFacts(event, payload, result, state);
             upsertFundingFact(event, payload, result, state);
@@ -501,7 +590,7 @@ public class ScopusFactBuilderService {
         state.pendingPublicationSaves.put(eid, fact);
         markImportOrUpdate(result, created);
 
-        upsertForumFact(event, payload, result, state, true);
+        // H66B M6: publications no longer write forum facts — venues are derived in flushObservedVenues.
         upsertAuthorFacts(event, payload, result, state);
         upsertAffiliationFacts(event, payload, result, state);
         upsertFundingFact(event, payload, result, state);
@@ -561,8 +650,7 @@ public class ScopusFactBuilderService {
             ScopusImportEvent event,
             JsonNode payload,
             ImportProcessingResult result,
-            PublicationChunkState state,
-            boolean fromPublication
+            PublicationChunkState state
     ) {
         String sourceId = text(payload, "source_id");
         if (isBlank(sourceId)) {
@@ -571,13 +659,9 @@ public class ScopusFactBuilderService {
 
         ScopusForumFact fact = state.forumBySourceId.get(sourceId);
         boolean created = fact == null;
-        // H66 D4 — publications resolve-and-link only: never mutate a forum already seeded by an
-        // authoritative FORUM source (Scopus Source List / CiteScore). A venue absent from every authoritative
-        // source falls through to create a minimal publication-derived forum (option B); its provenance is
-        // the publication event's lineage source, distinct from SCOPUS_SOURCE_LIST / SCOPUS_CITESCORE_LIST.
-        if (fromPublication && !created) {
-            return;
-        }
+        // H66B M6 — only authoritative FORUM events reach here (Scopus Source List / CiteScore). Publications
+        // no longer write forum facts inline; venues they observe become a deduplicated provenance-tagged
+        // stream via flushObservedVenues, so this is the curated-forum upsert only.
         if (created) {
             fact = new ScopusForumFact();
             state.forumBySourceId.put(sourceId, fact);

@@ -208,6 +208,8 @@ class ScopusFactBuilderServiceTest {
         assertEquals("1234-5678", savedForum.getIssn());
         assertEquals("8765-4321", savedForum.getEIssn());
         assertEquals("Journal", savedForum.getAggregationType());
+        // H66B M6: a venue seen only in a publication (no authoritative source) is provenance-tagged.
+        assertEquals("SCOPUS_OBSERVED_VENUE", savedForum.getSource());
         assertEquals("b1", savedForum.getSourceBatchId());
         assertEquals("c1", savedForum.getSourceCorrelationId());
         assertNotNull(savedForum.getLastPayloadHash());

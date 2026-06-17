@@ -280,10 +280,20 @@ vs baseline** + reconcile audit `healthy=true`.
   agreed "attach-by-FK + report, never mint in the ranking layer" design. Expected ~0 (WoS identity is
   create-or-match); a non-zero count is a health signal (conflict-quarantined forum / identity gap), not a
   mint trigger.
-- **M6 — PublicationBuilder + CitationBuilder (folds old M3-B).** Publications resolve venue against the
-  finished registry and emit **only** `ScopusPublicationFact` — remove the inline publication→`forum_facts`
-  write; the conference-venue option-B becomes its own deduplicated `ForumSourceRecord` stream feeding the
-  IDENTITY layer. Source-plural input shape (OpenAlex/DBLP/GS-ready).
+- **M6 — PublicationBuilder + CitationBuilder (folds old M3-B) — CODE DONE, verify rebuild HELD.**
+  Publications now emit **only** `ScopusPublicationFact` — the two inline `upsertForumFact(…,true)` calls are
+  gone and `upsertForumFact` is FORUM-stream-only (the `fromPublication` flag/guard deleted). The
+  conference-venue source is `flushObservedVenues`: every publication processed (publication events **and**
+  citation-backfilled citing papers — both flow through `upsertPublicationItems`) contributes its venue to a
+  run-level dedup accumulator (first writer per Scopus source_id wins); after publications + citations, a
+  provenance-tagged `SCOPUS_OBSERVED_VENUE` forum fact is minted only for venues no authoritative FORUM
+  source seeded, then the existing Scopus canonicalization folds them in (so publication venue resolution via
+  the FORUM/SCOPUS source link is unchanged). Citations needed no work (venue-agnostic). Batched-IO preserved
+  (chunked existence query + chunked saveAll). Behavior-equivalent at unit level (60 fact-builder tests green,
+  incl. the citation-backfill venue coverage + the new `SCOPUS_OBSERVED_VENUE` provenance assertion).
+  **Gate (held, per request):** isolated rebuild — forum count stable (~46.7k), conflicts ≤ 25,
+  `orphanedPublicationForumLinks = 0`, observed-venue provenance count sane. Source-plural input shape
+  (OpenAlex/DBLP/GS) is now the natural extension point.
 - **M7 — BookBuilder.** `scholardex.book_facts` (streamed Book List), `bookId` on publications, venue branch
   on `aggregationType`, book scoring resolves the registry. **Streaming precedent set (2026-06-17):**
   `ScopusDataService.importSourceListXlsxFromPath` was rewritten from a full in-memory `XSSFWorkbook` to the
