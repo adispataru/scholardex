@@ -211,16 +211,21 @@ vs baseline** + reconcile audit `healthy=true`.
     trigger it. `ErihOnboardingServiceTest` rewritten for create-or-match through the engine (valid-ISSN
     fixtures); 3 + the engine/service nets green. The service constructor dropped `ScholardexForumFactRepository`
     (now `(erihJournalFactRepository, forumMergeEngine)`).
-  - **M3-B (next) — conference-venue source + remove publication forum-write.** Extract the dedup'd
-    conference-venue stream (the ~2,065 mostly-unprofiled venues no curated list has) from publication facts
-    as `ForumSourceRecord`s (option-B minimal forums, provenance-tagged), and **remove the
-    publication→`scopus.forum_facts` write** (D4's `fromPublication` flag becomes structurally impossible —
-    publications emit only `ScopusPublicationFact`). These two are one change: the venue source replaces the
-    publication-derived forum write, so conference forums are minted
-    once, by the ForumBuilder, not double-minted.
+  - **M3-B — RECONSIDERED / DEMOTED (2026-06-17 diagnostic).** Its premise (removing the publication→forum
+    write collapses the 421 `EXTERNAL_ID_ALREADY_LINKED` churn) is **false against the current code.** A
+    diagnostic isolated rebuild on the M3-A state measured **25 forum conflicts total, 0
+    `EXTERNAL_ID_ALREADY_LINKED`** — i.e. already at the genuine residual (14 dedup-name-mismatch + 9
+    cross-journal ISSN + 2 invalid ISSN), `healthy:true`, 0 orphaned publication links. D3/D4 (FORUM-chunks-
+    before-PUBLICATION + the `fromPublication && !created` guard) already eliminated the churn; the 448
+    baseline was a pre-D3/D4 artifact. So "pure publications" is now **only an architectural-cleanliness
+    refactor with no metric payoff, on the riskiest code** — exactly the "demolition for its own sake" the
+    roast warned against. **Decision: don't do M3-B as a standalone milestone.** Fold "publications emit only
+    `ScopusPublicationFact`" into **M5 (PublicationBuilder)** where it's natural and lower-risk; the existing
+    publication-derived option-B forum write stays until then (it's not causing churn). Conference venues as a
+    first-class `ForumSourceRecord` stream remains a nice-to-have for M5/M7, not urgent.
   - **(later/optional) user-defined** — same shape (`idType=USER`).
-  - Gate: `EXTERNAL_ID_ALREADY_LINKED` → ~0; total forum conflicts → the genuine residual; null-forumId count
-    tiny; ERIH-only venues now have forums (non-STEM unblocked). Measured on the isolated rebuild.
+  - Net: the M3 *conflict* goal (`EXTERNAL_ID_ALREADY_LINKED` → ~0, total → residual) **is already met**;
+    ERIH-only venues now have forums (M3-A). M3 is effectively complete bar the M5 fold.
 - **M4 — RankingBuilder + membership feeds.** CiteScore scores (D2) + WoS metrics/category + WoS
   score-only→quartile enrichment → forum-keyed rankings; CiteScore stops being a forum-identity feed. **Plus
   the attach-to-existing-forum feeds split out of the old M3:** DOAJ membership + ERIH membership (both already
@@ -229,7 +234,12 @@ vs baseline** + reconcile audit `healthy=true`.
 - **M5 — PublicationBuilder + CitationBuilder.** Clean builders resolving against the registry; source-plural
   input shape (OpenAlex/DBLP/GS-ready).
 - **M6 — BookBuilder.** `scholardex.book_facts` (streamed Book List), `bookId` on publications, venue branch
-  on `aggregationType`, book scoring resolves the registry.
+  on `aggregationType`, book scoring resolves the registry. **Streaming precedent set (2026-06-17):**
+  `ScopusDataService.importSourceListXlsxFromPath` was rewritten from a full in-memory `XSSFWorkbook` to the
+  POI SAX event reader (`OPCPackage`/`XSSFReader`/`XSSFSheetXMLHandler` + `ReadOnlySharedStringsTable`) — the
+  May-2026 Source List (49,599 rows) has a part exceeding POI's 100 MB byte-array ceiling, which the full
+  load tripped (`RecordFormatException`, the live-rebuild blocker). Parses in ~4s now. The Book List
+  (475k rows) reuses this exact streaming pattern.
 - **M7 — DAG orchestrator.** One orchestrator: parse → ForumBuilder → RankingBuilder → PublicationBuilder →
   CitationBuilder → projections. Retire `runFull`/`wosRebuild`/`PipelineRebuild` orchestration (their parsing
   survives as parser components). Folds in H66 D5/D6/D7 (one forums-first pass, MJL coverage, feed config).

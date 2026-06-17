@@ -5,11 +5,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvException;
-import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.openxml4j.opc.OPCPackage;
+import org.apache.poi.openxml4j.opc.PackageAccess;
 import org.apache.poi.ss.usermodel.DataFormatter;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.ss.util.CellReference;
+import org.apache.poi.util.XMLHelper;
+import org.apache.poi.xssf.eventusermodel.ReadOnlySharedStringsTable;
+import org.apache.poi.xssf.eventusermodel.XSSFReader;
+import org.apache.poi.xssf.eventusermodel.XSSFSheetXMLHandler;
+import org.apache.poi.xssf.model.SharedStrings;
+import org.apache.poi.xssf.model.StylesTable;
+import org.apache.poi.xssf.usermodel.XSSFComment;
+import org.xml.sax.InputSource;
+import org.xml.sax.XMLReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +36,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -343,23 +352,40 @@ public class ScopusDataService {
         ImportProcessingResult result = new ImportProcessingResult(DEFAULT_ERROR_SAMPLE_SIZE);
         long startedAtNanos = System.nanoTime();
         DataFormatter fmt = new DataFormatter();
-        try (FileInputStream fis = new FileInputStream(absolutePath);
-             XSSFWorkbook workbook = new XSSFWorkbook(fis)) {
-            Sheet serials = findSheetByPrefix(workbook, "Scopus Sources");
-            Sheet conferences = findSheetByPrefix(workbook, "Serial Conf");
-            if (serials == null && conferences == null) {
-                throw new IllegalArgumentException(
-                        "Scopus Source List missing both 'Scopus Sources' and 'Serial Conf' sheets");
+        // H66B M3 — stream the sheets via the POI event (SAX) reader instead of a full in-memory
+        // XSSFWorkbook: the May-2026 Source List has a part exceeding POI's 100 MB byte-array ceiling, which
+        // a full load trips (RecordFormatException). SAX reads each sheet incrementally (perf invariant:
+        // stream large xlsx). Sheet names carry a month suffix, so match by prefix.
+        boolean matchedAnySheet = false;
+        try (OPCPackage pkg = OPCPackage.open(new File(absolutePath), PackageAccess.READ)) {
+            ReadOnlySharedStringsTable sharedStrings = new ReadOnlySharedStringsTable(pkg);
+            XSSFReader reader = new XSSFReader(pkg);
+            StylesTable styles = reader.getStylesTable();
+            XSSFReader.SheetIterator sheets = (XSSFReader.SheetIterator) reader.getSheetsData();
+            while (sheets.hasNext()) {
+                try (InputStream sheetStream = sheets.next()) {
+                    String sheetName = sheets.getSheetName();
+                    Boolean isConference = sheetName.startsWith("Scopus Sources") ? Boolean.FALSE
+                            : sheetName.startsWith("Serial Conf") ? Boolean.TRUE
+                            : null;
+                    if (isConference == null) {
+                        continue;
+                    }
+                    matchedAnySheet = true;
+                    parseSourceListSheet(sheetStream, styles, sharedStrings, fmt, isConference, sheetName, batchId, result);
+                }
             }
-            if (serials != null) {
-                ingestSourceListSheet(serials, false, batchId, fmt, result);
-            }
-            if (conferences != null) {
-                ingestSourceListSheet(conferences, true, batchId, fmt, result);
-            }
-        } catch (IOException e) {
+        } catch (IOException | org.apache.poi.openxml4j.exceptions.OpenXML4JException
+                 | org.xml.sax.SAXException | javax.xml.parsers.ParserConfigurationException
+                 | RuntimeException e) {
+            // RuntimeException covers POI's unchecked bad-file errors (InvalidOperationException for a
+            // missing/unreadable package, NotOfficeXmlFileException, etc.) — all mean "not a usable xlsx".
             logger.error("Error reading Scopus Source List xlsx: {}", absolutePath, e);
             throw new IllegalArgumentException("Failed to parse Scopus Source List xlsx.", e);
+        }
+        if (!matchedAnySheet) {
+            throw new IllegalArgumentException(
+                    "Scopus Source List missing both 'Scopus Sources' and 'Serial Conf' sheets");
         }
         long elapsedMs = (System.nanoTime() - startedAtNanos) / 1_000_000L;
         logger.info("Scopus Source List ingest finished: path={} processed={} imported={} updated={} skipped={} errors={} elapsedMs={} sample={}",
@@ -368,85 +394,114 @@ public class ScopusDataService {
         return result;
     }
 
-    private void ingestSourceListSheet(Sheet sheet, boolean isConference, String batchId, DataFormatter fmt,
-                                       ImportProcessingResult result) {
-        Row header = sheet.getRow(sheet.getFirstRowNum());
-        if (header == null) {
-            return;
+    private void parseSourceListSheet(InputStream sheetStream, StylesTable styles, SharedStrings sharedStrings,
+                                      DataFormatter fmt, boolean isConference, String sheetName, String batchId,
+                                      ImportProcessingResult result)
+            throws IOException, org.xml.sax.SAXException, javax.xml.parsers.ParserConfigurationException {
+        XMLReader xmlReader = XMLHelper.newXMLReader();
+        xmlReader.setContentHandler(new XSSFSheetXMLHandler(styles, sharedStrings,
+                new SourceListSheetHandler(isConference, sheetName, batchId, result), fmt, false));
+        xmlReader.parse(new InputSource(sheetStream));
+    }
+
+    /**
+     * SAX row handler for one Source List sheet: the first non-empty row defines the header (column name →
+     * index), subsequent rows emit a FORUM event keyed by Sourcerecord ID. Blank cells never fire a callback,
+     * so cells are collected by column index (parsed from the cell reference) and looked up by header name —
+     * positionally sparse rows resolve to null exactly as the prior RETURN_BLANK_AS_NULL path did.
+     */
+    private final class SourceListSheetHandler implements XSSFSheetXMLHandler.SheetContentsHandler {
+        private final boolean isConference;
+        private final String sheetName;
+        private final String batchId;
+        private final ImportProcessingResult result;
+        private final Map<String, Integer> headerIdx = new HashMap<>();
+        private final Map<Integer, String> rowCells = new HashMap<>();
+        private boolean headerParsed = false;
+        private boolean currentRowIsHeader;
+
+        SourceListSheetHandler(boolean isConference, String sheetName, String batchId, ImportProcessingResult result) {
+            this.isConference = isConference;
+            this.sheetName = sheetName;
+            this.batchId = batchId;
+            this.result = result;
         }
-        Map<String, Integer> idx = new HashMap<>();
-        for (Cell c : header) {
-            String name = fmt.formatCellValue(c).trim();
-            if (!name.isEmpty()) {
-                idx.put(name, c.getColumnIndex());
-            }
+
+        @Override
+        public void startRow(int rowNum) {
+            rowCells.clear();
+            currentRowIsHeader = !headerParsed;
         }
-        Integer sourceIdCol = idx.get("Sourcerecord ID");
-        Integer titleCol = idx.get("Source Title");
-        Integer issnCol = idx.get("ISSN");
-        Integer eIssnCol = idx.get("EISSN");
-        Integer typeCol = idx.get("Source Type");
-        Integer publisherCol = idx.get("Publisher");
-        Integer asjcCol = idx.get("All Science Journal Classification Codes (ASJC)");
-        if (sourceIdCol == null) {
-            logger.warn("Scopus Source List sheet '{}' has no 'Sourcerecord ID' column; skipping", sheet.getSheetName());
-            return;
+
+        @Override
+        public void cell(String cellReference, String formattedValue, XSSFComment comment) {
+            if (cellReference == null || formattedValue == null) {
+                return;
+            }
+            String value = formattedValue.trim();
+            if (value.isEmpty()) {
+                return;
+            }
+            rowCells.put((int) new CellReference(cellReference).getCol(), value);
         }
-        for (int r = sheet.getFirstRowNum() + 1; r <= sheet.getLastRowNum(); r++) {
-            Row row = sheet.getRow(r);
-            if (row == null) {
-                continue;
+
+        @Override
+        public void endRow(int rowNum) {
+            if (currentRowIsHeader) {
+                if (rowCells.isEmpty()) {
+                    return; // leading blank row before the header
+                }
+                for (Map.Entry<Integer, String> e : rowCells.entrySet()) {
+                    headerIdx.put(e.getValue(), e.getKey());
+                }
+                headerParsed = true;
+                if (!headerIdx.containsKey("Sourcerecord ID")) {
+                    logger.warn("Scopus Source List sheet '{}' has no 'Sourcerecord ID' column; skipping", sheetName);
+                }
+                return;
             }
-            String sourceId = cellText(row, sourceIdCol, fmt);
-            if (sourceId == null) {
-                continue;
+            if (!headerIdx.containsKey("Sourcerecord ID")) {
+                return;
             }
-            result.markProcessed();
-            String forumType = isConference ? "conference" : mapSourceListType(cellText(row, typeCol, fmt));
-            Map<String, Object> payload = new LinkedHashMap<>();
-            payload.put("source_id", sourceId);
-            payload.put("publicationName", cellText(row, titleCol, fmt));
-            payload.put("issn", normalizeSourceListIssn(cellText(row, issnCol, fmt)));
-            payload.put("eIssn", normalizeSourceListIssn(cellText(row, eIssnCol, fmt)));
-            payload.put("publisher", cellText(row, publisherCol, fmt));
-            payload.put("forumType", forumType);
-            payload.put("asjc", normalizeSourceListAsjc(cellText(row, asjcCol, fmt)));
-            ScopusImportEventIngestionService.EventIngestionOutcome outcome = importEventIngestionService.ingest(
-                    ScopusImportEntityType.FORUM,
-                    SOURCE_SCOPUS_SOURCE_LIST,
-                    sourceId,
-                    batchId,
-                    "sourcelist-" + sourceId,
-                    PAYLOAD_FORMAT_JSON_OBJECT,
-                    payload
-            );
-            applyIngestionOutcome(result, outcome, "sourcelist sourceId=" + sourceId);
-            if (result.getProcessedCount() % INGEST_HEARTBEAT == 0) {
-                logger.info("Scopus Source List ingest heartbeat: processed={} imported={} skipped={} errors={}",
-                        result.getProcessedCount(), result.getImportedCount(), result.getSkippedCount(), result.getErrorCount());
-            }
+            ingestSourceListRow(headerIdx, rowCells, isConference, batchId, result);
         }
     }
 
-    private static Sheet findSheetByPrefix(XSSFWorkbook workbook, String prefix) {
-        for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
-            if (workbook.getSheetName(i).startsWith(prefix)) {
-                return workbook.getSheetAt(i);
-            }
+    private void ingestSourceListRow(Map<String, Integer> idx, Map<Integer, String> cells, boolean isConference,
+                                     String batchId, ImportProcessingResult result) {
+        String sourceId = cellValue(cells, idx.get("Sourcerecord ID"));
+        if (sourceId == null) {
+            return;
         }
-        return null;
+        result.markProcessed();
+        String forumType = isConference ? "conference" : mapSourceListType(cellValue(cells, idx.get("Source Type")));
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("source_id", sourceId);
+        payload.put("publicationName", cellValue(cells, idx.get("Source Title")));
+        payload.put("issn", normalizeSourceListIssn(cellValue(cells, idx.get("ISSN"))));
+        payload.put("eIssn", normalizeSourceListIssn(cellValue(cells, idx.get("EISSN"))));
+        payload.put("publisher", cellValue(cells, idx.get("Publisher")));
+        payload.put("forumType", forumType);
+        payload.put("asjc", normalizeSourceListAsjc(cellValue(cells, idx.get("All Science Journal Classification Codes (ASJC)"))));
+        ScopusImportEventIngestionService.EventIngestionOutcome outcome = importEventIngestionService.ingest(
+                ScopusImportEntityType.FORUM,
+                SOURCE_SCOPUS_SOURCE_LIST,
+                sourceId,
+                batchId,
+                "sourcelist-" + sourceId,
+                PAYLOAD_FORMAT_JSON_OBJECT,
+                payload
+        );
+        applyIngestionOutcome(result, outcome, "sourcelist sourceId=" + sourceId);
+        if (result.getProcessedCount() % INGEST_HEARTBEAT == 0) {
+            logger.info("Scopus Source List ingest heartbeat: processed={} imported={} skipped={} errors={}",
+                    result.getProcessedCount(), result.getImportedCount(), result.getSkippedCount(), result.getErrorCount());
+        }
     }
 
-    private static String cellText(Row row, Integer col, DataFormatter fmt) {
-        if (col == null) {
-            return null;
-        }
-        Cell cell = row.getCell(col, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
-        if (cell == null) {
-            return null;
-        }
-        String v = fmt.formatCellValue(cell).trim();
-        return v.isEmpty() ? null : v;
+    /** Cell value for a header-resolved column index (already trimmed, blanks absent) — null when missing. */
+    private static String cellValue(Map<Integer, String> cells, Integer col) {
+        return col == null ? null : cells.get(col);
     }
 
     /** Map the Scopus Source List "Source Type" words to the canonical forumType vocabulary. */
