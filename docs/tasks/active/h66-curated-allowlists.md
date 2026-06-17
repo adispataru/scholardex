@@ -477,9 +477,18 @@ rebuild + report-only residual.**
   metric/category/membership views; WoS-linked forums resolving metrics by FK). Postgres SQL verified live
   vs `core_h66` (metric=25,637 / category=25,314 / membership=22,963); Mongo composition/orphan logic
   unit-tested in `ForumReconcileAuditServiceTest`. Live full run is a deploy-time activity.
-- **C2.3 — residual report → conflicts** *(report-only):* detect same-journal WoS-only + Scopus-only pairs
-  the deterministic pass left split and open FORUM identity conflicts for `/admin/conflicts`; no auto-merge.
-  May find ~nothing if the onboarding fold already applies `namesMatch` — confirm fold coverage first. — TODO.
+- **C2.3 — residual report → conflicts** — **DONE (closed as confirmation; no new code).** The onboarding
+  fold matches on ISSN-token OR **exact** normalized-name+agg; `ForumMergeSafetyRule.namesMatch`
+  (abbreviation/expansion) is only a *safety gate* on an already-found ISSN candidate, never a detector. The
+  existing machinery already opens `/admin/conflicts` entries for every residual with a reliable signal:
+  ambiguous ISSN/name (`REASON_AMBIGUOUS_ISSN` / `REASON_AMBIGUOUS_NAME_AGG`), cross-journal eISSN bridge
+  (`REASON_FORUM_CROSS_JOURNAL_ISSN`, both Scopus + WoS paths), and dedup ISSN-cluster name-mismatch
+  (`FORUM_DEDUP_NAME_MISMATCH`). The **only** un-surfaced residual is same-journal forums with *disjoint*
+  ISSNs and non-exact names (`candidates.isEmpty()` → new forum, silent). Detecting it requires fuzzy name
+  matching — exactly what H66 retired — and `namesMatch` is an abbreviation-prefix matcher noisy enough to
+  conflate distinct journals ("J. Phys." ⇒ both *Physics* and *Physiology*). Decision: do **not** build a
+  noisy report-only detector; leave this residual to organic discovery (a wrong score is reported → manual
+  merge via the existing conflict-resolution UI).
 - **Verify:** count of forums before/after; no orphaned publication→forum links (C2.2 `healthy`); rankings
   now resolve by FK for previously-fuzzy cases (C2.2 `wosLinkedResolvingMetricsByFk`).
 - **Dep:** B3, C1 (both done).
