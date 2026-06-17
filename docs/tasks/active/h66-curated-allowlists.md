@@ -539,6 +539,12 @@ rebuild + report-only residual.**
 
 ### Move D — forums-first serial registry from the Scopus Source List
 
+> **Pivoted (2026-06-17):** D1/A6 + D3/D4 landed in-place. The remaining items (D2 CiteScore-as-rankings,
+> D5 rebuild orchestration, D6 MJL coverage, D7 config) and **Move E (books)** are folded into the
+> entity-oriented builder re-architecture — see [H66B](h66b-entity-oriented-builders.md). The live rebuild
+> showed the by-source pipeline scatters forum-building; H66B reorganizes it into ForumBuilder →
+> RankingBuilder → PublicationBuilder → CitationBuilder (+ BookBuilder).
+
 **Why (proven by the 2026-06-17 live multi-source rebuild on `scholardex_h66`/`core_h66`).** Two findings:
 1. The current pipeline derives a `ScopusForumFact` from *every* publication venue (`upsertForumFact` at
    the publication path, `ScopusFactBuilderService:501`), so publications **define and mutate** forums —

@@ -27,6 +27,22 @@ Done history moved to `TASKS-done.md`.
   (Typesense, pinned); CNCSIS/SENSE/CORE (DB). Still: ERIH+ pull, CNCS A/B/C tiers, embedded prestige lists
   (transcribe from `data/standards/`), vendor title-lists for "≥N DBs". MBL no longer downloadable
   (substitute SENSE/CNCSIS/admin). Planning doc at `docs/tasks/active/h66-curated-allowlists.md`.
+  **Status (2026-06-17):** Moves A (CiteScore/MJL/DOAJ/ERIH loaders), B (forum-keyed FK projection +
+  scoring, bug-killer), C (resolve-or-enrich confirm + dedup) **DONE**. Move D (forums-first from the Scopus
+  Source List) partly done (A6 loader, forums-first ordering, publication resolve-and-link). A live
+  multi-source rebuild proved the registry but surfaced that the pipeline is organized **by source**
+  (`ScopusFactBuilder`/`WosOnboarding`), scattering forum-building across 5 services → ordering bugs + churn.
+  **Pivoting the remaining Move D/E + the architecture cleanup into H66B.**
+
+- [ ] `H66B` Entity-oriented canonical builders (re-architecture of H66's pipeline). Reorganize the
+  canonicalization layer from **by-source** to **by-entity** in a clean dependency DAG: **ForumBuilder**
+  (all forum sources → registry, dedup inside) → **RankingBuilder** (CiteScore + WoS scores + WoS
+  score-only→quartile enrichment, forum-keyed) → **PublicationBuilder** (resolve venue against the registry;
+  Scopus now, OpenAlex/DBLP/Google-Scholar later) → **CitationBuilder**; plus **BookBuilder** (books as a
+  separate `book_facts` entity, not forums). Source parsers stay per-source (formats differ); only the entity
+  layer is reorganized. Subsumes H66 Move D (D5 orchestration, D6 MJL coverage, D7 config) + Move E (book
+  registry) + D2 (CiteScore-as-rankings). Verified against the 448-conflict 2026-06-17 baseline + the
+  reconcile-audit harness. Planning doc at `docs/tasks/active/h66b-entity-oriented-builders.md`.
 
 - [ ] `H67` h-index (Hirsch) computation (foundational, from the standards assessment).
   Goal: compute the candidate's Hirsch index from our citation data + expose it as a scoring/threshold input
