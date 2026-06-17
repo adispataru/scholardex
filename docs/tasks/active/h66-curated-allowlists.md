@@ -130,18 +130,21 @@ selection of the mode (+ the reference year for mode 2) is config, wired per dom
 
 ## Sources (all in hand)
 
-| source | native id → forum field | adds | form |
+| source | native id → field | role | form |
 |---|---|---|---|
-| **Scopus CiteScore** (`data/scopus/CiteScore 2023 per Nov 2024.csv`) | Scopus Source ID → `scopusForumIds` | ISSN/eISSN, title, publisher, ASJC, **type**, CiteScore/SNIP/SJR/quartile | CSV ✅ |
+| **Scopus Source List** (`data/scopus/ext_list_May_2026.xlsx`) | Sourcerecord ID → `scopusForumIds` | **serial forum backbone** — 48,580 serials + 1,019 conf-proc; ISSN/EISSN, type, publisher, ASJC, active | XLSX ✅ (Move D / A6) |
+| **Scopus Book List** (`data/scopus/Scopus_Books_list_February.xlsx`) | Scopus book ID / ISBN → `bookId` | **book registry** — 475,453 books; ISBN, publisher, ASJC, year (separate `book_facts`, not forums) | XLSX ✅ (Move E) |
+| **Scopus CiteScore** (`data/scopus/CiteScore 2023 per Nov 2024.csv`) | Scopus Source ID → forum metrics | **rankings layer** (like WoS metrics) — CiteScore/SNIP/SJR/quartile; does NOT create forums | CSV ✅ |
 | **WoS MJL** (`data/wos/mjl/`) | ISSN → match (no journalId in MJL) | **current** edition membership + publisher → membership view (snapshot) | CSV ✅ |
-| **WoS metrics/categories** (Mongo `wos.metric_facts`/`wos.category_facts`) | journalId → `wosForumIds` FK | **AIS/IF/RIS + edition + category + quartile, BY YEAR** (already ingested; today joined fuzzily) | in DB ✅ |
+| **WoS metrics/categories** (Mongo `wos.metric_facts`/`wos.category_facts`) | journalId → `wosForumIds` FK | **AIS/IF/RIS + edition + category + quartile, BY YEAR** | in DB ✅ |
 | **ERIH+** (Typesense `erihplus_tidsskrift_cache`) | ERIH id → `erihIds` | disciplines, DOAJ flag | API pinned ✅ |
-| **DOAJ** (`https://doaj.org/csv`) | ISSN → match | open-access | CSV ✅ |
+| **DOAJ** (`https://doaj.org/csv`) | ISSN → match | open-access membership | CSV ✅ |
 | **CNCSIS / SENSE / CORE** (DB) | ISSN/name → match | publisher tiers / book / conference rankings | in DB ✅ |
 
-The CiteScore scores themselves aren't used by any domain (all standards use Clarivate AIS/IF) — its
-**Source ID + ISSN/eISSN + ASJC + type** are the identity/classification backbone. CiteScore/SJR/SNIP/
-quartile stored opportunistically.
+**Coverage vs metrics (refined 2026-06-17):** the **Scopus Source List** (`ext_list`) is the authoritative
+*coverage* backbone that creates serial forums; **CiteScore** is a *metrics* subset (29,777 scored vs
+48,580 indexed) repositioned as a rankings layer keyed by Source ID — it no longer defines forum identity.
+The **Book List** populates a separate `book_facts` registry (Move E), not forums.
 
 ## Pipeline (mapped to existing stages)
 
@@ -534,49 +537,85 @@ rebuild + report-only residual.**
   persists across the wipe). The standalone `/forum/onboardErih` + `/forum/dedup` endpoints remain for the
   step-wise admin path and re-runs.
 
-### Move D — forums-first ingestion (registry is authority; publications resolve-and-link)
+### Move D — forums-first serial registry from the Scopus Source List
 
-**Why (proven by the 2026-06-17 live multi-source rebuild on `scholardex_h66`/`core_h66`).** The current
-pipeline derives a `ScopusForumFact` from *every* publication venue, so publications **define and mutate**
-forums. That inverts H66's "forums first, resolve-or-enrich" thesis and was measurably costly:
-- a full `PipelineRebuildService` rebuild re-ingests only Scopus JSON + WoS — it does **not** ingest
-  CiteScore/MJL and **wipes** their event ledgers, so the curated feeds had to be bolted on afterward and
-  `buildFacts` run a **second** time;
-- folding CiteScore after publications added **~7,490** forums and required re-resolving ids already
-  attached to publication-derived forums → **421 `FORUM_EXTERNAL_ID_ALREADY_LINKED`** conflicts (of 448
-  total forum conflicts) — almost entirely churn, not real ambiguity;
-- the step-wise `/wos/buildFacts` path left `wos.coverage_facts=0` (MJL editions absent from membership).
+**Why (proven by the 2026-06-17 live multi-source rebuild on `scholardex_h66`/`core_h66`).** Two findings:
+1. The current pipeline derives a `ScopusForumFact` from *every* publication venue (`upsertForumFact` at
+   the publication path, `ScopusFactBuilderService:501`), so publications **define and mutate** forums —
+   inverting H66's "forums first" thesis. Measured cost: the full `PipelineRebuildService` rebuild re-ingests
+   only Scopus JSON + WoS (not CiteScore/MJL) and **wipes** their ledgers, forcing a manual bolt-on + a
+   second `buildFacts`; folding CiteScore after publications added ~7,490 forums and produced **421
+   `FORUM_EXTERNAL_ID_ALREADY_LINKED`** conflicts (of 448) — almost all churn; and `/wos/buildFacts` left
+   `wos.coverage_facts=0` (no MJL membership).
+2. **CiteScore is not Scopus coverage — it's a metrics *subset*** (29,777 scored sources; 5,149 publication
+   venues were absent from it). The authoritative coverage list is the **Scopus Source List**
+   (`data/scopus/ext_list_May_2026.xlsx`): sheet *Scopus Sources* = **48,580** serials + *Serial Conf. Proc.
+   with Profile* = **1,019**, keyed by `Sourcerecord ID` with `ISSN`/`EISSN`/`Source Type`/`Active`/
+   `Publisher`/`ASJC`. It carries the e-ISSNs publications were gap-filling (754 cases), so seeding from it
+   makes strict link-only viable.
 
-Target model: forums are built from the **authoritative** streams only (CiteScore Source IDs, WoS journal
-identity, MJL, ERIH+, DOAJ, user-defined); the Scopus publication importer **resolves** each venue and
-stores the forum FK on the publication, mutating no forum when it resolves.
+**Target model:** the **serial** forum registry (journals / conf-series / book-series) is built from the
+Scopus Source List + WoS journal identity + MJL + ERIH + DOAJ + user-defined. **CiteScore is repositioned as
+a rankings/metrics source** (like WoS metrics — attached to forums by Source ID, never creating them).
+Publications **resolve-and-link** only. Books move to their own registry (Move E).
 
-- **D1 — Build forums before publications.** In `ScopusFactBuilderService.buildFactsFromImportEvents`,
-  process FORUM chunks (CiteScore) **before** PUBLICATION chunks (today the order is
-  publications→citations→forums). Seed the canonical registry from the authoritative forum facts first.
-- **D2 — Publication importer = resolve-and-link, no forum mutation for existing venues.** Resolve the
-  venue (Scopus Source ID → ISSN → name) against the seeded registry and store `forumId` on the publication.
-  Venue **resolves** → link only, emit no forum event / no `ScopusForumFact` create-or-mutate. Venue in
-  **no** authoritative source → **(option B, chosen)** create a *minimal* publication-derived forum,
-  provenance-tagged (e.g. `origin=SCOPUS_PUBLICATION_DERIVED`), which never overrides curated attributes.
-  This removes the publication-driven churn (the 421 conflicts).
-- **D3 — Adapt `PipelineRebuildService`/`runFull` to forums-first + fold the curated feeds in.** The full
-  rebuild ingests the authoritative forum feeds (CiteScore CSV, MJL dir) into the ledgers as part of the
-  rebuild (config-driven paths), in order: wipe → ingest authoritative feeds + WoS + Scopus → `buildFacts`
-  (forums-first) → publication resolve-and-link → ERIH onboard → dedup → projections. One rebuild = complete
-  registry; no manual afterthought, no double build.
-- **D4 — Fix MJL coverage in the rebuild.** Ensure the rebuild's WoS path builds `wos.coverage_facts` from
-  MJL events (the full WoS rebuild route did in B2; the step-wise `/wos/buildFacts` did not — `coverage=0`),
-  so SCIE/SSCI/AHCI/ESCI membership lands.
-- **D5 — Config** keys for the curated feed paths (`scopus.citescore.file`, `wos.mjl.dir`) so the rebuild
-  re-ingests them deterministically.
-- **Subsumes the deferred "ERIH-only-journal forum creation":** with ERIH as an authoritative forum source
-  (not match-only), the ~6,457 ERIH journals that matched no existing forum in the live run become real
-  forums.
-- **Verify:** a single full rebuild yields the complete registry (forums-first), **~0**
-  `FORUM_EXTERNAL_ID_ALREADY_LINKED` conflicts, MJL coverage present, publications linked by FK, reconcile
-  audit `healthy=true`. Compare conflict counts against the 2026-06-17 baseline (448 forum conflicts).
+- **D1 — A6: Scopus Source List loader.** New loader (sibling of A2) emitting FORUM events keyed by
+  `Sourcerecord ID` from the *Scopus Sources* + *Serial Conf. Proc.* sheets → `scopus.forum_facts` →
+  canonical serial forums (~49,600). Carries ISSN/EISSN, source type, publisher, ASJC, active/inactive.
+  Config `scopus.source-list.file`. This is the serial forum backbone.
+- **D2 — Reposition CiteScore (A2) as rankings, not forum creation.** CiteScore stops defining forum
+  identity; its CiteScore/SJR/SNIP/quartile attach as a **forum-keyed metrics layer** (mirrors
+  `wos.metric_facts` → forum views). Forum identity/type/ASJC come from the Source List.
+- **D3 — Build forums before publications.** In `buildFactsFromImportEvents`, process FORUM chunks before
+  PUBLICATION chunks (today: publications → citations → forums). Seed the registry from the authoritative
+  forum facts first.
+- **D4 — Publication importer = resolve-and-link (strict (i)).** Resolve the venue (Source ID → ISSN → name)
+  against the seeded registry and store `forumId`; **no forum mutation when it resolves** (link only). With
+  the Source List as backbone the e-ISSN gap closes (754→~0), so strict link-only is the chosen semantics —
+  publications contribute nothing the Source List lacks (name/publisher gap-fills were already 0). A venue in
+  **no** authoritative source → a vestigial provenance-tagged publication-derived forum
+  (`origin=SCOPUS_PUBLICATION_DERIVED`), expected to be rare once the Source List seeds.
+- **D5 — Adapt `PipelineRebuildService`/`runFull` to forums-first + fold the feeds in.** One rebuild: wipe →
+  ingest Source List + CiteScore + MJL + WoS + Scopus → `buildFacts` (forums-first) → publication
+  resolve-and-link → ERIH onboard → dedup → projections. No manual afterthought, no double build.
+- **D6 — Fix MJL coverage in the rebuild.** Ensure the rebuild's WoS path builds `wos.coverage_facts` from
+  MJL events (the full WoS rebuild did in B2; step-wise `/wos/buildFacts` did not), so SCIE/SSCI/AHCI/ESCI
+  membership lands.
+- **D7 — Config** keys for the feed paths (`scopus.source-list.file`, `scopus.citescore.file`, `wos.mjl.dir`).
+- **Subsumes the deferred "ERIH-only-journal forum creation":** with ERIH (and the Source List) as
+  authoritative sources, venues that matched no existing forum become real forums.
+- **Verify:** one full rebuild yields the complete serial registry, **~0** `FORUM_EXTERNAL_ID_ALREADY_LINKED`
+  conflicts (vs 448 baseline 2026-06-17), MJL coverage present, publications linked by FK, reconcile audit
+  `healthy=true`.
 - **Dep:** A–C (done).
+
+### Move E — book registry (books as a first-class entity, separate from forums)
+
+**Why.** Books are a different *kind* of venue than serials: one-off monographs/edited volumes keyed by
+ISBN + Scopus book ID, with publisher/ASJC/year but **no ISSN, no serial rankings, no indexing membership**.
+Today `ScholardexPublicationFact` has only `forumId`, so book chapters are mis-modeled as forums; yet the
+scoring layer already branches book vs journal (`FeaaBookScoringService`, `ComputerScienceBookService`, on
+`aggregationType`). The Scopus Book List (`data/scopus/Scopus_Books_list_February.xlsx`, sheet
+`Scopus_Books`) is **475,453** books: `TITLE, PRINT ISBN, ELECTRONIC ISBN, PUBLISHER, PUBLICATION YEAR,
+ASJC, SCOPUS ID`. Folding 475k books into `forum_facts` would pollute the serial forum-keyed views and bury
+the ~50k real serial forums; they belong in their own collection.
+
+- **E1 — `ScholardexBookFact` (`scholardex.book_facts`).** New canonical entity keyed by Scopus book ID /
+  ISBN, from the Book List: title, print/electronic ISBN, publisher, publication year, ASJC. No
+  metric/category/membership views (books carry no serial rankings). Config `scopus.book-list.file`.
+  **Open: pre-create all 475k (isolated reference registry, acceptable now that it's separate) vs
+  resolve-on-demand (load as an ISBN/Scopus-book-id lookup; create the book fact only when a publication
+  resolves to it).** Lean resolve-on-demand unless complete-registry value is needed.
+- **E2 — Publication venue polymorphism.** Add `bookId` to `ScholardexPublicationFact`; venue resolution
+  branches on `aggregationType` — Journal / Conference Proceeding / Book Series → `forumId` (serial
+  registry); **Book → `bookId`** (book registry, by ISBN / Scopus book ID).
+- **E3 — Point book scoring at the registry.** Book-scoring services resolve `bookId` against `book_facts`
+  instead of treating the book as a forum.
+- **E4 — Rebuild integration.** Book List ingest + book resolution slot into the forums-first rebuild
+  (after the serial registry, before/with publication resolution).
+- **Verify:** book-chapter publications resolve to `book_facts` by ISBN/Scopus book id; the forum-keyed
+  views stay serial-only; book scoring resolves the book registry; serial forum count unaffected by books.
+- **Dep:** D (reuses the loader + resolve-and-link patterns).
 
 ### Deferred (after the in-hand lists prove out)
 - CNCS A/B/C tiers (transcribe/UEFISCDI), embedded prestige publisher lists (`data/standards/`), vendor
