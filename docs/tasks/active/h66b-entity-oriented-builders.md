@@ -181,11 +181,40 @@ vs baseline** + reconcile audit `healthy=true`.
 - **M2 follow-on (deferred to M3+):** ForumBuilder will feed Source List + WoS identity + conference-venue +
   ERIH records through this one engine — the unified `ingest(ForumSourceRecord)` is the seam that makes those
   just more `idType`s / more record streams.
-- **M3 — Pure publications + conference-venue source.** Remove the publication→forum-fact write; ForumBuilder
-  ingests the dedup'd conference-venue stream + ERIH (now create-or-match) + user-defined. Gate:
-  `EXTERNAL_ID_ALREADY_LINKED` → ~0; total forum conflicts → residual; null-forumId count tiny.
-- **M4 — RankingBuilder.** CiteScore scores (D2) + WoS metrics/category + WoS score-only→quartile enrichment
-  → forum-keyed rankings. CiteScore stops being a forum-identity feed.
+
+> **Resequencing (2026-06-17, after M2).** The old M3 lumped two unrelated things under "pure publications":
+> a publication-pipeline change (stop writing forum facts) and *forum-source* work (conference venues, ERIH).
+> Clarified by reading the code: **DOAJ is not a forum source** — `buildDoajMembershipRows` runs at stage-4
+> projection time and only matches DOAJ journals to forums that already exist (membership rows), so it is
+> structurally downstream of forum identity. **ERIH today is match-only** (`ErihOnboardingService` writes
+> `erihIds` to existing forums, never creates). So neither was ever "after" the publication work in a
+> dependency sense; the old ordering was a *metric* front-load (the 421 churn lives in the publication
+> forum-write). **Decisions:** (1) ERIH becomes **create-or-match** — a genuine ForumBuilder source routed
+> through `ingest` (new `idType=ERIH`), minting forums for ERIH-only humanities venues. (2) Split the old M3:
+> M3 completes the ForumBuilder (forum *sources* through the seam); the "attach-to-existing-forum" feeds
+> (DOAJ membership, ERIH membership, CiteScore-as-ranking) move to M4. "Pure publications" stays *inside* M3
+> only because the conference-venue forum source requires it (else conference forums double-mint).
+
+- **M3 — Complete the ForumBuilder (forum sources through `ingest`).** Route the remaining forum-*creating*
+  sources through `ForumMergeEngine.ingest(ForumSourceRecord)`:
+  - **ERIH create-or-match** — `ErihOnboardingService` stops being a bespoke match-only `erihIds` writer;
+    ERIH journals become `ForumSourceRecord`s (`idType=ERIH`) that the engine matches *or creates*. The
+    `erihIds` FK is set by the engine on the resolved/created forum (so the existing ERIH membership
+    projection still reads it). Add `ERIH` to `ForumIdType` + the forum id-list it lands in.
+  - **Conference-venue source** — extract the dedup'd conference-venue stream (the ~2,065 mostly-unprofiled
+    venues no curated list has) from publication facts as `ForumSourceRecord`s (option-B minimal forums,
+    provenance-tagged), and **remove the publication→`scopus.forum_facts` write** (D4's `fromPublication`
+    flag becomes structurally impossible — publications emit only `ScopusPublicationFact`). These two are one
+    change: the venue source replaces the publication-derived forum write, so conference forums are minted
+    once, by the ForumBuilder, not double-minted.
+  - **(later/optional) user-defined** — same shape (`idType=USER`).
+  - Gate: `EXTERNAL_ID_ALREADY_LINKED` → ~0; total forum conflicts → the genuine residual; null-forumId count
+    tiny; ERIH-only venues now have forums (non-STEM unblocked). Measured on the isolated rebuild.
+- **M4 — RankingBuilder + membership feeds.** CiteScore scores (D2) + WoS metrics/category + WoS
+  score-only→quartile enrichment → forum-keyed rankings; CiteScore stops being a forum-identity feed. **Plus
+  the attach-to-existing-forum feeds split out of the old M3:** DOAJ membership + ERIH membership (both already
+  stage-4 projections keyed on the resolved forum / its `erihIds` FK). All resolve against the finished
+  registry.
 - **M5 — PublicationBuilder + CitationBuilder.** Clean builders resolving against the registry; source-plural
   input shape (OpenAlex/DBLP/GS-ready).
 - **M6 — BookBuilder.** `scholardex.book_facts` (streamed Book List), `bookId` on publications, venue branch
@@ -197,8 +226,9 @@ vs baseline** + reconcile audit `healthy=true`.
 
 ### Open design choices
 
-- **ERIH create-or-match:** the unified engine naturally lets ERIH *create* forums (the deferred ERIH-only
-  humanities venues), not just match. Lean **create** (unblocks non-STEM; clean) — confirm at M3.
+- **ERIH create-or-match:** RESOLVED (2026-06-17) — **create-or-match**. ERIH becomes a ForumBuilder source
+  (`idType=ERIH`) routed through `ingest`; it mints forums for ERIH-only humanities venues (unblocks non-STEM)
+  and the engine sets `erihIds` on the resolved/created forum. Done in M3.
 - **Branch + red windows:** carry the rewrite on `codex/h66b-builders`, accepting a red pipeline between
   milestones, rather than keeping `main`-green every commit.
 
