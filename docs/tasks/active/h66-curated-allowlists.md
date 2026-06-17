@@ -534,11 +534,53 @@ rebuild + report-only residual.**
   persists across the wipe). The standalone `/forum/onboardErih` + `/forum/dedup` endpoints remain for the
   step-wise admin path and re-runs.
 
+### Move D — forums-first ingestion (registry is authority; publications resolve-and-link)
+
+**Why (proven by the 2026-06-17 live multi-source rebuild on `scholardex_h66`/`core_h66`).** The current
+pipeline derives a `ScopusForumFact` from *every* publication venue, so publications **define and mutate**
+forums. That inverts H66's "forums first, resolve-or-enrich" thesis and was measurably costly:
+- a full `PipelineRebuildService` rebuild re-ingests only Scopus JSON + WoS — it does **not** ingest
+  CiteScore/MJL and **wipes** their event ledgers, so the curated feeds had to be bolted on afterward and
+  `buildFacts` run a **second** time;
+- folding CiteScore after publications added **~7,490** forums and required re-resolving ids already
+  attached to publication-derived forums → **421 `FORUM_EXTERNAL_ID_ALREADY_LINKED`** conflicts (of 448
+  total forum conflicts) — almost entirely churn, not real ambiguity;
+- the step-wise `/wos/buildFacts` path left `wos.coverage_facts=0` (MJL editions absent from membership).
+
+Target model: forums are built from the **authoritative** streams only (CiteScore Source IDs, WoS journal
+identity, MJL, ERIH+, DOAJ, user-defined); the Scopus publication importer **resolves** each venue and
+stores the forum FK on the publication, mutating no forum when it resolves.
+
+- **D1 — Build forums before publications.** In `ScopusFactBuilderService.buildFactsFromImportEvents`,
+  process FORUM chunks (CiteScore) **before** PUBLICATION chunks (today the order is
+  publications→citations→forums). Seed the canonical registry from the authoritative forum facts first.
+- **D2 — Publication importer = resolve-and-link, no forum mutation for existing venues.** Resolve the
+  venue (Scopus Source ID → ISSN → name) against the seeded registry and store `forumId` on the publication.
+  Venue **resolves** → link only, emit no forum event / no `ScopusForumFact` create-or-mutate. Venue in
+  **no** authoritative source → **(option B, chosen)** create a *minimal* publication-derived forum,
+  provenance-tagged (e.g. `origin=SCOPUS_PUBLICATION_DERIVED`), which never overrides curated attributes.
+  This removes the publication-driven churn (the 421 conflicts).
+- **D3 — Adapt `PipelineRebuildService`/`runFull` to forums-first + fold the curated feeds in.** The full
+  rebuild ingests the authoritative forum feeds (CiteScore CSV, MJL dir) into the ledgers as part of the
+  rebuild (config-driven paths), in order: wipe → ingest authoritative feeds + WoS + Scopus → `buildFacts`
+  (forums-first) → publication resolve-and-link → ERIH onboard → dedup → projections. One rebuild = complete
+  registry; no manual afterthought, no double build.
+- **D4 — Fix MJL coverage in the rebuild.** Ensure the rebuild's WoS path builds `wos.coverage_facts` from
+  MJL events (the full WoS rebuild route did in B2; the step-wise `/wos/buildFacts` did not — `coverage=0`),
+  so SCIE/SSCI/AHCI/ESCI membership lands.
+- **D5 — Config** keys for the curated feed paths (`scopus.citescore.file`, `wos.mjl.dir`) so the rebuild
+  re-ingests them deterministically.
+- **Subsumes the deferred "ERIH-only-journal forum creation":** with ERIH as an authoritative forum source
+  (not match-only), the ~6,457 ERIH journals that matched no existing forum in the live run become real
+  forums.
+- **Verify:** a single full rebuild yields the complete registry (forums-first), **~0**
+  `FORUM_EXTERNAL_ID_ALREADY_LINKED` conflicts, MJL coverage present, publications linked by FK, reconcile
+  audit `healthy=true`. Compare conflict counts against the 2026-06-17 baseline (448 forum conflicts).
+- **Dep:** A–C (done).
+
 ### Deferred (after the in-hand lists prove out)
 - CNCS A/B/C tiers (transcribe/UEFISCDI), embedded prestige publisher lists (`data/standards/`), vendor
   title-lists for the "≥N DBs" predicate — pulled in by the first non-STEM report that needs them.
-- **ERIH-only-journal forum creation** (registry expansion for humanities venues absent from Scopus/WoS) —
-  A5 is match-only; creating forums for the ~ERIH-only subset is tied to a humanities-scoring consumer.
 
 ## Consumers
 
