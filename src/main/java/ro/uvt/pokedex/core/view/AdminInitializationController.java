@@ -35,6 +35,7 @@ public class AdminInitializationController {
     private final ObjectProvider<PostgresReportingProjectionService> postgresReportingProjectionServiceProvider;
     private final ObjectProvider<PostgresMaterializedViewRefreshService> postgresMaterializedViewRefreshServiceProvider;
     private final ObjectProvider<PostgresOperationalStatusService> postgresOperationalStatusServiceProvider;
+    private final ro.uvt.pokedex.core.service.application.ForumReconcileAuditService forumReconcileAuditService;
 
     @GetMapping
     public String showInitializationPage(Model model) {
@@ -170,6 +171,16 @@ public class AdminInitializationController {
     @ResponseBody
     public WosEnrichmentRunSummaryDto getLastWosCategoryEnrichmentSummaryApi() {
         return rankingMaintenanceFacade.latestWosCategoryRankingEnrichmentSummary();
+    }
+
+    /**
+     * H66 C2.2 — read-only verification of the canonical forum registry after the one-time full rebuild
+     * (no orphaned publication→forum links; WoS-linked forums resolve metrics by FK). Mutates nothing.
+     */
+    @GetMapping("/forum/reconcileAudit")
+    @ResponseBody
+    public ro.uvt.pokedex.core.service.application.model.ForumReconcileAuditReport forumReconcileAudit() {
+        return forumReconcileAuditService.audit();
     }
 
     @PostMapping("/wos/resetFactCheckpoint")

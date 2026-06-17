@@ -456,12 +456,29 @@ join — exactly what the fuzzy resolver computed at query time. Prod untouched 
   when `erihIds` lands and actually needs it.
 - **Dep:** A2/A3 (part 1 done); part 2 → A5.
 
-**C2 — Backfill/reconcile existing forums against the seeded registry.**
-- **Do:** one-time reconcile of pre-existing (publication-derived) forums into the seeded registry by ISSN/
-  Source ID; re-point publication links to the canonical winner.
-- **Verify:** count of forums before/after; no orphaned publication→forum links; rankings now resolve by FK
-  for previously-fuzzy cases.
-- **Dep:** B3, C1.
+**C2 — Backfill/reconcile existing forums against the seeded registry.** — **decided: one-time full
+rebuild + report-only residual.**
+- **Decision (the reframe):** the canonical build is *deterministic and auto-reconciles* on a full rebuild —
+  a paper's venue and its CiteScore entry share the same Scopus Source ID, so they canonicalize to ONE
+  forum (there is no separate "publication-derived forum" to merge); dedup-by-ISSN + the WoS↔Scopus fold
+  already run inside `buildFacts`. So C2 is **not new merge code** — it is a guarded one-time full rebuild
+  on prod (`reset canonical checkpoints → runFull → buildProjections`) plus verification, with the
+  un-reconcilable residual surfaced as conflicts (report-only), never silently fuzzy-merged.
+- **C2.1 — migration runbook + count snapshot** *(deploy step; runbook, no new merge code):* document the
+  reset-checkpoints → runFull → buildProjections sequence and capture before/after forum counts. — TODO.
+- **C2.2 — reconcile verification audit** — **DONE.** `ForumReconcileAuditService` + read-only admin
+  endpoint `GET /admin/initialization/forum/reconcileAudit` → `ForumReconcileAuditReport`: forum
+  id-composition (scopus-only / wos-only / both / none), **zero orphaned** publication→forum links
+  (`healthy` gate), and FK coverage of the B2/B3 forum-keyed views (distinct forum_id in
+  metric/category/membership views; WoS-linked forums resolving metrics by FK). Postgres SQL verified live
+  vs `core_h66` (metric=25,637 / category=25,314 / membership=22,963); Mongo composition/orphan logic
+  unit-tested in `ForumReconcileAuditServiceTest`. Live full run is a deploy-time activity.
+- **C2.3 — residual report → conflicts** *(report-only):* detect same-journal WoS-only + Scopus-only pairs
+  the deterministic pass left split and open FORUM identity conflicts for `/admin/conflicts`; no auto-merge.
+  May find ~nothing if the onboarding fold already applies `namesMatch` — confirm fold coverage first. — TODO.
+- **Verify:** count of forums before/after; no orphaned publication→forum links (C2.2 `healthy`); rankings
+  now resolve by FK for previously-fuzzy cases (C2.2 `wosLinkedResolvingMetricsByFk`).
+- **Dep:** B3, C1 (both done).
 
 ### Deferred (after the in-hand lists prove out)
 - **A5 — ERIH+ Typesense fetcher** → `erihIds` + disciplines (pinned endpoint; needs the pull). **Folds in
