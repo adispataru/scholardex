@@ -56,7 +56,7 @@ public class WosScholardexOnboardingService {
         Instant now = Instant.now();
         for (WosRankingView journal : journals) {
             result.markProcessed();
-            forumMergeEngine.upsertForumFromWos(journal, ctx, batchId, correlationId, now, result);
+            forumMergeEngine.ingest(ForumSourceRecord.ofWos(journal), ctx, batchId, correlationId, now, result);
         }
         forumMergeEngine.flush(ctx);
 
@@ -82,7 +82,7 @@ public class WosScholardexOnboardingService {
         Instant now = Instant.now();
         for (var scopusForum : ctx.scopusForums()) {
             result.markProcessed();
-            forumMergeEngine.upsertForumFromScopus(scopusForum, ctx, batchId, correlationId, now, result);
+            forumMergeEngine.ingest(ForumSourceRecord.ofScopus(scopusForum), ctx, batchId, correlationId, now, result);
         }
         forumMergeEngine.flush(ctx);
         return result;

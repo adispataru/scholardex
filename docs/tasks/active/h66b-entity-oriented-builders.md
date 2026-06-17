@@ -162,12 +162,25 @@ vs baseline** + reconcile audit `healthy=true`.
       forumMergeEngine)`. White-box reflective coverage for the merge/ISSN-hygiene/id branches moved to
       `ForumMergeEngineTest`; the end-to-end behavior net (`runWosOnboarding` / `runScopusForumCanonicalization`)
       stays in `WosScholardexOnboardingServiceTest`, now green through the engine (19 + 5 tests, 0 failures).
-    - **Next:** M2 — collapse the two `upsertForumFrom*` methods into one `ingest(ForumSourceRecord)`. They are
-      ~90% duplicate; the remaining diff (idType/id-list, scopus already-folded shortcut, the WoS scopus-
-      enrichment in `mergeForum`) becomes branch-on-`idType` inside the unified ingest.
-- **M2 — Unify WoS + Scopus ingestion through `ForumMergeEngine.ingest(ForumSourceRecord)`.** Delete the two
-  duplicate onboarding methods. ForumBuilder feeds Source List + WoS identity records through one engine.
-  Gate: conflicts ≤ baseline and trending down; forum-build time ≤ baseline.
+- **M2 DONE (code) — Unify WoS + Scopus ingestion through `ForumMergeEngine.ingest(ForumSourceRecord)`.**
+  New `ForumSourceRecord {idType, externalId, name, issn, eIssn, aliasIssns, aggregationType, forumType, asjc}`
+  with a nested `ForumIdType` enum (SCOPUS/WOS) carrying the source string + diagnostic reason strings
+  (`missingIdReason` / `onboardingReason` / `ambiguousSkipPrefix`), plus static mappers `ofScopus`
+  (applies SIAM eISSN correction; no alias ISSNs) / `ofWos` (null aggregation → engine default; no C-scalars).
+  The two `upsertForumFrom*` methods collapsed into one `ingest(record, ctx, …)`; source-specific behavior
+  keys off `idType` (Scopus-only: already-folded shortcut, H55.6 primary-ISSN tie-break, `scopusForumId→
+  canonical` tracking, stale-ambiguity resolution; WoS-only: Scopus enrichment inside `mergeForum`). The
+  merge bodies stay split (`mergeForumFromScopus` now takes the record; `mergeForum` keeps its scalar
+  signature for the white-box test) and dispatch via `applyMerge`. The service just maps `ofScopus`/`ofWos`
+  and drives the loop. Behavior-equivalent: the end-to-end net (19 + 5 tests) is green unchanged through the
+  unified path; added `ForumSourceRecordTest` (2) for the mapper contract.
+  - **Gate still open (live rebuild):** conflicts ≤ baseline + trending down and forum-build time ≤ baseline
+    must be confirmed on the isolated `scholardex_h66` rebuild (recipe below). The code is structurally
+    behavior-equivalent, but the 448→~27 conflict collapse is really delivered by **M3** (pure publications /
+    no publication→forum-fact write), so M2's live gate is "no regression," not "the collapse."
+- **M2 follow-on (deferred to M3+):** ForumBuilder will feed Source List + WoS identity + conference-venue +
+  ERIH records through this one engine — the unified `ingest(ForumSourceRecord)` is the seam that makes those
+  just more `idType`s / more record streams.
 - **M3 — Pure publications + conference-venue source.** Remove the publication→forum-fact write; ForumBuilder
   ingests the dedup'd conference-venue stream + ERIH (now create-or-match) + user-defined. Gate:
   `EXTERNAL_ID_ALREADY_LINKED` → ~0; total forum conflicts → residual; null-forumId count tiny.
