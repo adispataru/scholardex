@@ -358,7 +358,44 @@ Sub-steps:
   `WosForumResolutionService`, `WosScholardexOnboardingService`, `WosParityReconciliationService`, the WoS
   read ports) and the transitional fuzzy fallback. The forum views are an *addition*, not a replacement.
 
-**B2 — Project year-true metrics + edition/category/quartile keyed by forum id.**
+**A3/B perf — `findScopusCandidates` O(n²) fix. — ✅ DONE 2026-06-17.** The full A2→A3 rebuild's wos/buildFacts
+ran ~16 min in onboarding because `mergeForum` → `findScopusCandidates` linear-scanned all 29,777 scopus
+forums per WoS journal (≈26.9k×29.8k ≈ 800M comparisons) — the same O(n²) class as the original
+`findCanonicalCandidates`, but in a sibling method, invisible until CiteScore+MJL ran together (MJL-only tests
+had an empty scopus-forum list). Fixed with a `ScopusForumIndex` (ISSN-token + name|agg, mirrors
+`CanonicalForumIndex`), threaded `runWosOnboarding → upsertForumFromWos → mergeForum`. Byte-identical by
+construction (same candidate set; only `size()==1` affects merge). **wos/buildFacts (CiteScore+MJL) ~16 min →
+~27s.** Onboarding tests green (reflective white-box tests updated to build the index). Aside: the earlier
+"17,531 merged" merge-check number was a *partial* mid-onboarding snapshot; the complete merge is 19,850.
+(NOTE: the separate ~20-min full-rebuild figure was also inflated by laptop sleep — HikariPool clock-leap
+warnings — and the ~6.5-min event re-parse, which the incremental/checkpoint path avoids.)
+
+**B2 routing (settled 2026-06-16):** place the projection in `ScholardexProjectionBuilderService.rebuildViews`
+(it already iterates canonical forums; by projection time onboarding has set `wosForumIds`; reads WoS Mongo
+facts via injected repos). Build `Map<journalId → forumId>` from `wosForumIds`, then:
+`wos.metric_facts → scholardex_forum_metric_view` (AIS/IF/RIS; collapse **max** per (forum,year,metric) —
+only 9 prod forums carry >1 wosForumId so this is a non-issue); `wos.category_facts → scholardex_forum_category_view`
+(JCR, year-true, has metricType + quartile); `wos.coverage_facts → scholardex_forum_membership_view`
+(`database=<edition>`, `member=true`, `as_of=year`, `source=MJL`, deduped to (forum, edition) — MJL category
+deferred). NOTE: coverage goes to membership, NOT category — `forum_category_view.metric_type` is NOT NULL
+(mirrors `wos_category_fact`), and MJL coverage is metric-less; this is the original A/B/C snapshot split.
+Verified prerequisite: a real A2→A3 run merges by ISSN — 17,531 forums carry both scopus + wos ids (only 9
+forums have >1 wosForumId). Tested by **rebuilding from files** (`data/loaded` AIS/IF + `data/wos-json-1997-2019`
+official JSON) so real `wos.metric_facts` exist in the isolated DB.
+
+**B2 — Project year-true metrics + edition/category + MJL coverage keyed by forum id. — ✅ DONE 2026-06-16 (incl. A3.4)**
+Shipped in `ScholardexProjectionBuilderService.rebuildViews`: inject the 3 WoS fact repos; build
+`Map<journalId → forumId>` from `wosForumIds`; project `wos.metric_facts → scholardex_forum_metric_view`
+(collapse max), `wos.category_facts → scholardex_forum_category_view` (JCR, year-true), `wos.coverage_facts →
+scholardex_forum_membership_view` (MJL edition, deduped to (forum,edition), source=MJL) — **A3.4 folded in**;
+all three added to the TRUNCATE + batched inserts. Updated 19 test construction sites + the integration test.
+Projection-builder unit tests green. **Verified e2e by rebuild-from-files** (CiteScore + MJL + the full
+`data/loaded` AIS/IF + official JSON → 596,601 metric / 797,827 category / 33,193 coverage facts): projection
+(~75s) produced **596,211 `forum_metric_view`** rows (AIS 291,937 / IF 209,257 / RIS 95,017), **797,456
+`forum_category_view`**, **24,112 `forum_membership_view`**. **Bug-killer spot-check:** the "Energy" forum
+(merges Scopus 29348 + a WoS journalId) now carries its AIS by `forum_id` (2024=1.377 … 2020=1.19) via the FK
+join — exactly what the fuzzy resolver computed at query time. Prod untouched (V13 + B2 only on `core_h66`).
+
 - **Do:** add a **new projection step** reading the **Mongo canonical facts directly** (`wos.metric_facts`,
   `wos.category_facts`) joined through `forum.wosForumIds` — NOT routed through the journalId Postgres views
   (sibling projections from the same source of truth). Emit `scholardex_forum_metric_view` (AIS/IF/RIS-by-year)

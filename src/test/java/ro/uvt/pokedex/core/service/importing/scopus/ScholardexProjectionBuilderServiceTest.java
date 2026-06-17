@@ -79,6 +79,12 @@ class ScholardexProjectionBuilderServiceTest {
     @Mock
     private ScholardexAuthorAffiliationFactRepository authorAffiliationFactRepository;
     @Mock
+    private ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository wosMetricFactRepository;
+    @Mock
+    private ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository wosCategoryFactRepository;
+    @Mock
+    private ro.uvt.pokedex.core.repository.reporting.WosCoverageFactRepository wosCoverageFactRepository;
+    @Mock
     private MongoTemplate mongoTemplate;
     @Mock
     private JdbcTemplate jdbcTemplate;
@@ -267,6 +273,9 @@ class ScholardexProjectionBuilderServiceTest {
                 citationFactRepository,
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                wosMetricFactRepository,
+                wosCategoryFactRepository,
+                wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
                 transactionManager
@@ -315,6 +324,9 @@ class ScholardexProjectionBuilderServiceTest {
                 citationFactRepository,
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                wosMetricFactRepository,
+                wosCategoryFactRepository,
+                wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
                 transactionManager
@@ -392,6 +404,9 @@ class ScholardexProjectionBuilderServiceTest {
                 citationFactRepository,
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                wosMetricFactRepository,
+                wosCategoryFactRepository,
+                wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
                 transactionManager
@@ -426,6 +441,9 @@ class ScholardexProjectionBuilderServiceTest {
                 citationFactRepository,
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                wosMetricFactRepository,
+                wosCategoryFactRepository,
+                wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
                 transactionManager
@@ -471,6 +489,9 @@ class ScholardexProjectionBuilderServiceTest {
                 citationFactRepository,
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                wosMetricFactRepository,
+                wosCategoryFactRepository,
+                wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
                 transactionManager
@@ -517,6 +538,9 @@ class ScholardexProjectionBuilderServiceTest {
                 citationFactRepository,
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                wosMetricFactRepository,
+                wosCategoryFactRepository,
+                wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
                 transactionManager
@@ -549,6 +573,9 @@ class ScholardexProjectionBuilderServiceTest {
                 citationFactRepository,
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                wosMetricFactRepository,
+                wosCategoryFactRepository,
+                wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
                 transactionManager
@@ -608,6 +635,9 @@ class ScholardexProjectionBuilderServiceTest {
                 citationFactRepository,
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                wosMetricFactRepository,
+                wosCategoryFactRepository,
+                wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
                 transactionManager
@@ -671,6 +701,9 @@ class ScholardexProjectionBuilderServiceTest {
                 citationFactRepository,
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                wosMetricFactRepository,
+                wosCategoryFactRepository,
+                wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
                 transactionManager
@@ -729,6 +762,9 @@ class ScholardexProjectionBuilderServiceTest {
                 citationFactRepository,
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                wosMetricFactRepository,
+                wosCategoryFactRepository,
+                wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
                 transactionManager
@@ -822,6 +858,9 @@ class ScholardexProjectionBuilderServiceTest {
                 citationFactRepository,
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                wosMetricFactRepository,
+                wosCategoryFactRepository,
+                wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
                 transactionManager
@@ -893,6 +932,9 @@ class ScholardexProjectionBuilderServiceTest {
                 citationFactRepository,
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                wosMetricFactRepository,
+                wosCategoryFactRepository,
+                wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
                 transactionManager
@@ -940,6 +982,9 @@ class ScholardexProjectionBuilderServiceTest {
                 citationFactRepository,
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                wosMetricFactRepository,
+                wosCategoryFactRepository,
+                wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
                 transactionManager
@@ -1007,6 +1052,9 @@ class ScholardexProjectionBuilderServiceTest {
                 citationFactRepository,
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                wosMetricFactRepository,
+                wosCategoryFactRepository,
+                wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
                 transactionManager
@@ -1143,6 +1191,9 @@ class ScholardexProjectionBuilderServiceTest {
                 citationFactRepository,
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                wosMetricFactRepository,
+                wosCategoryFactRepository,
+                wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
                 transactionManager
@@ -1319,6 +1370,9 @@ class ScholardexProjectionBuilderServiceTest {
                 citationFactRepository,
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                wosMetricFactRepository,
+                wosCategoryFactRepository,
+                wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
                 transactionManager
@@ -1415,6 +1469,9 @@ class ScholardexProjectionBuilderServiceTest {
                 citationFactRepository,
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                wosMetricFactRepository,
+                wosCategoryFactRepository,
+                wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
                 transactionManager
@@ -1506,6 +1563,9 @@ class ScholardexProjectionBuilderServiceTest {
                 citationFactRepository,
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                wosMetricFactRepository,
+                wosCategoryFactRepository,
+                wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
                 transactionManager

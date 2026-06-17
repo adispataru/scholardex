@@ -28,6 +28,12 @@ import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorshipFactR
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexCitationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexPublicationFactRepository;
+import ro.uvt.pokedex.core.model.reporting.wos.WosMetricFact;
+import ro.uvt.pokedex.core.model.reporting.wos.WosCategoryFact;
+import ro.uvt.pokedex.core.model.reporting.wos.WosCoverageFact;
+import ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository;
+import ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository;
+import ro.uvt.pokedex.core.repository.reporting.WosCoverageFactRepository;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 
 import java.sql.Array;
@@ -38,6 +44,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -65,6 +72,10 @@ public class ScholardexProjectionBuilderService {
     private final ScholardexCitationFactRepository citationFactRepository;
     private final ScholardexAuthorshipFactRepository authorshipFactRepository;
     private final ScholardexAuthorAffiliationFactRepository authorAffiliationFactRepository;
+    // H66 B2: WoS facts projected onto the forum-keyed views through canonical forum wosForumIds.
+    private final WosMetricFactRepository wosMetricFactRepository;
+    private final WosCategoryFactRepository wosCategoryFactRepository;
+    private final WosCoverageFactRepository wosCoverageFactRepository;
     private final MongoTemplate mongoTemplate;
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactionTemplate;
@@ -77,6 +88,9 @@ public class ScholardexProjectionBuilderService {
             ScholardexCitationFactRepository citationFactRepository,
             ScholardexAuthorshipFactRepository authorshipFactRepository,
             ScholardexAuthorAffiliationFactRepository authorAffiliationFactRepository,
+            WosMetricFactRepository wosMetricFactRepository,
+            WosCategoryFactRepository wosCategoryFactRepository,
+            WosCoverageFactRepository wosCoverageFactRepository,
             MongoTemplate mongoTemplate,
             JdbcTemplate jdbcTemplate,
             PlatformTransactionManager transactionManager
@@ -88,6 +102,9 @@ public class ScholardexProjectionBuilderService {
         this.citationFactRepository = citationFactRepository;
         this.authorshipFactRepository = authorshipFactRepository;
         this.authorAffiliationFactRepository = authorAffiliationFactRepository;
+        this.wosMetricFactRepository = wosMetricFactRepository;
+        this.wosCategoryFactRepository = wosCategoryFactRepository;
+        this.wosCoverageFactRepository = wosCoverageFactRepository;
         this.mongoTemplate = mongoTemplate;
         this.jdbcTemplate = jdbcTemplate;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
@@ -212,7 +229,13 @@ public class ScholardexProjectionBuilderService {
                         droppedCitations, droppedAuthorship, droppedAuthorAffiliation);
             }
 
-            // --- write all 7 tables to PostgreSQL atomically ---
+            // --- H66 B2: forum-keyed WoS projections (metric/category/membership via wosForumIds) ---
+            Map<String, String> journalIdToForumId = buildJournalIdToForumId(canonicalForumFactRepository.findAll());
+            List<ForumMetricRow> forumMetricRows = buildForumMetricRows(journalIdToForumId, buildVersion, buildAt);
+            List<ForumCategoryRow> forumCategoryRows = buildForumCategoryRows(journalIdToForumId, buildVersion, buildAt);
+            List<ForumMembershipRow> forumMembershipRows = buildForumMembershipRows(journalIdToForumId, buildVersion, buildAt);
+
+            // --- write all tables to PostgreSQL atomically ---
             long writePgNs = System.nanoTime();
             executeFullReplacementWrite(
                     forumViews,
@@ -221,7 +244,12 @@ public class ScholardexProjectionBuilderService {
                     publicationViews,
                     validCitationFacts,
                     validAuthorshipFacts,
-                    validAuthorAffiliationFacts
+                    validAuthorAffiliationFacts,
+                    forumMetricRows,
+                    forumCategoryRows,
+                    forumMembershipRows,
+                    buildVersion,
+                    buildAt
             );
             long writePgMs = nanosToMillis(System.nanoTime() - writePgNs);
 
@@ -492,6 +520,106 @@ public class ScholardexProjectionBuilderService {
                 setInstant(ps, 11, row.getBuildAt());
                 setInstant(ps, 12, row.getUpdatedAt());
                 ps.setString(13, row.getSourceEventId());
+            }
+
+            @Override
+            public int getBatchSize() {
+                return chunk.size();
+            }
+        }));
+    }
+
+    private void insertForumMetricRows(List<ForumMetricRow> rows, String buildVersion, Instant buildAt) {
+        String sql = """
+                INSERT INTO reporting_read.scholardex_forum_metric_view
+                    (id, forum_id, year, metric_type, value, source, build_version, build_at, updated_at)
+                VALUES (?, ?, ?, ?::reporting_read.metric_type_enum, ?, ?, ?, ?, ?)
+                """;
+        batchInChunks(rows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                ForumMetricRow row = chunk.get(i);
+                ps.setString(1, row.id());
+                ps.setString(2, row.forumId());
+                ps.setInt(3, row.year());
+                ps.setString(4, row.metricType());
+                if (row.value() == null) {
+                    ps.setNull(5, java.sql.Types.DOUBLE);
+                } else {
+                    ps.setDouble(5, row.value());
+                }
+                ps.setString(6, row.source());
+                ps.setString(7, buildVersion);
+                setInstant(ps, 8, buildAt);
+                setInstant(ps, 9, buildAt);
+            }
+
+            @Override
+            public int getBatchSize() {
+                return chunk.size();
+            }
+        }));
+    }
+
+    private void insertForumCategoryRows(List<ForumCategoryRow> rows, String buildVersion, Instant buildAt) {
+        String sql = """
+                INSERT INTO reporting_read.scholardex_forum_category_view
+                    (id, forum_id, year, edition, category, metric_type, quarter, quartile_rank, "rank", source, build_version, build_at, updated_at)
+                VALUES (?, ?, ?, ?::reporting_read.edition_normalized_enum, ?, ?::reporting_read.metric_type_enum, ?, ?, ?, ?, ?, ?, ?)
+                """;
+        batchInChunks(rows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                ForumCategoryRow row = chunk.get(i);
+                ps.setString(1, row.id());
+                ps.setString(2, row.forumId());
+                ps.setInt(3, row.year());
+                ps.setString(4, row.edition());
+                ps.setString(5, row.category());
+                ps.setString(6, row.metricType());
+                ps.setString(7, row.quarter());
+                if (row.quartileRank() == null) {
+                    ps.setNull(8, java.sql.Types.INTEGER);
+                } else {
+                    ps.setInt(8, row.quartileRank());
+                }
+                if (row.rank() == null) {
+                    ps.setNull(9, java.sql.Types.INTEGER);
+                } else {
+                    ps.setInt(9, row.rank());
+                }
+                ps.setString(10, row.source());
+                ps.setString(11, buildVersion);
+                setInstant(ps, 12, buildAt);
+                setInstant(ps, 13, buildAt);
+            }
+
+            @Override
+            public int getBatchSize() {
+                return chunk.size();
+            }
+        }));
+    }
+
+    private void insertForumMembershipRows(List<ForumMembershipRow> rows, String buildVersion, Instant buildAt) {
+        String sql = """
+                INSERT INTO reporting_read.scholardex_forum_membership_view
+                    (id, forum_id, database, member, as_of, source, build_version, build_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+        batchInChunks(rows, chunk -> jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                ForumMembershipRow row = chunk.get(i);
+                ps.setString(1, row.id());
+                ps.setString(2, row.forumId());
+                ps.setString(3, row.database());
+                ps.setBoolean(4, true);
+                ps.setString(5, row.asOf());
+                ps.setString(6, row.source());
+                ps.setString(7, buildVersion);
+                setInstant(ps, 8, buildAt);
+                setInstant(ps, 9, buildAt);
             }
 
             @Override
@@ -924,6 +1052,88 @@ public class ScholardexProjectionBuilderService {
         );
     }
 
+    // ---- H66 B2: forum-keyed WoS projection rows (canonical forum wosForumIds ⋈ WoS facts) ----
+
+    private record ForumMetricRow(String id, String forumId, int year, String metricType, Double value, String source) {}
+    private record ForumCategoryRow(String id, String forumId, int year, String edition, String category,
+                                    String metricType, String quarter, Integer quartileRank, Integer rank, String source) {}
+    private record ForumMembershipRow(String id, String forumId, String database, String asOf, String source) {}
+
+    /** Map each canonical forum's WoS journal ids to its forum id (the FK B2 joins through). */
+    private Map<String, String> buildJournalIdToForumId(List<ScholardexForumFact> forums) {
+        Map<String, String> map = new HashMap<>();
+        for (ScholardexForumFact forum : forums) {
+            if (forum.getWosForumIds() == null) {
+                continue;
+            }
+            for (String journalId : forum.getWosForumIds()) {
+                if (journalId != null && !journalId.isBlank()) {
+                    map.put(journalId, forum.getId());
+                }
+            }
+        }
+        return map;
+    }
+
+    /** AIS/IF/RIS per (forum, year, metric); collapse by max value when a forum carries >1 journal id. */
+    private List<ForumMetricRow> buildForumMetricRows(Map<String, String> journalIdToForumId, String buildVersion, Instant buildAt) {
+        Map<String, ForumMetricRow> best = new LinkedHashMap<>();
+        for (WosMetricFact fact : wosMetricFactRepository.findAll()) {
+            String forumId = journalIdToForumId.get(fact.getJournalId());
+            if (forumId == null || fact.getYear() == null || fact.getMetricType() == null) {
+                continue;
+            }
+            String metricType = fact.getMetricType().name();
+            String key = forumId + "|" + fact.getYear() + "|" + metricType;
+            ForumMetricRow existing = best.get(key);
+            if (existing == null || compareNullableMax(fact.getValue(), existing.value()) > 0) {
+                best.put(key, new ForumMetricRow(key, forumId, fact.getYear(), metricType, fact.getValue(), "JCR"));
+            }
+        }
+        return new ArrayList<>(best.values());
+    }
+
+    private static int compareNullableMax(Double incoming, Double existing) {
+        double i = incoming == null ? Double.NEGATIVE_INFINITY : incoming;
+        double e = existing == null ? Double.NEGATIVE_INFINITY : existing;
+        return Double.compare(i, e);
+    }
+
+    /** JCR edition+category+quartile per (forum, year, edition, category, metric); dedup by key. */
+    private List<ForumCategoryRow> buildForumCategoryRows(Map<String, String> journalIdToForumId, String buildVersion, Instant buildAt) {
+        Map<String, ForumCategoryRow> rows = new LinkedHashMap<>();
+        for (WosCategoryFact fact : wosCategoryFactRepository.findAll()) {
+            String forumId = journalIdToForumId.get(fact.getJournalId());
+            if (forumId == null || fact.getYear() == null || fact.getEditionNormalized() == null
+                    || fact.getCategoryNameCanonical() == null || fact.getMetricType() == null) {
+                continue;
+            }
+            String edition = fact.getEditionNormalized().name();
+            String metricType = fact.getMetricType().name();
+            String key = forumId + "|" + fact.getYear() + "|" + edition + "|" + fact.getCategoryNameCanonical() + "|" + metricType;
+            rows.putIfAbsent(key, new ForumCategoryRow(key, forumId, fact.getYear(), edition,
+                    fact.getCategoryNameCanonical(), metricType, fact.getQuarter(), fact.getQuartileRank(), fact.getRank(), "JCR"));
+        }
+        return new ArrayList<>(rows.values());
+    }
+
+    /** MJL current edition coverage → snapshot membership per (forum, edition); category deferred. */
+    private List<ForumMembershipRow> buildForumMembershipRows(Map<String, String> journalIdToForumId, String buildVersion, Instant buildAt) {
+        Map<String, ForumMembershipRow> rows = new LinkedHashMap<>();
+        for (WosCoverageFact fact : wosCoverageFactRepository.findAll()) {
+            String forumId = journalIdToForumId.get(fact.getJournalId());
+            if (forumId == null || fact.getEditionNormalized() == null) {
+                continue;
+            }
+            String database = fact.getEditionNormalized().name();
+            String source = fact.getSourceType() == null ? "MJL" : fact.getSourceType().name();
+            String asOf = fact.getYear() == null ? null : String.valueOf(fact.getYear());
+            String key = forumId + "|" + database + "|" + source;
+            rows.putIfAbsent(key, new ForumMembershipRow(key, forumId, database, asOf, source));
+        }
+        return new ArrayList<>(rows.values());
+    }
+
     private void executeFullReplacementWrite(
             List<ScholardexForumView> forumViews,
             List<ScholardexAuthorView> authorViews,
@@ -931,7 +1141,12 @@ public class ScholardexProjectionBuilderService {
             List<ScholardexPublicationView> publicationViews,
             List<ScholardexCitationFact> citationFacts,
             List<ScholardexAuthorshipFact> authorshipFacts,
-            List<ScholardexAuthorAffiliationFact> authorAffiliationFacts
+            List<ScholardexAuthorAffiliationFact> authorAffiliationFacts,
+            List<ForumMetricRow> forumMetricRows,
+            List<ForumCategoryRow> forumCategoryRows,
+            List<ForumMembershipRow> forumMembershipRows,
+            String buildVersion,
+            Instant buildAt
     ) {
         transactionTemplate.executeWithoutResult(status -> {
             jdbcTemplate.execute("""
@@ -942,7 +1157,10 @@ public class ScholardexProjectionBuilderService {
                         reporting_read.scholardex_publication_view,
                         reporting_read.scholardex_affiliation_view,
                         reporting_read.scholardex_author_view,
-                        reporting_read.scholardex_forum_view
+                        reporting_read.scholardex_forum_view,
+                        reporting_read.scholardex_forum_metric_view,
+                        reporting_read.scholardex_forum_category_view,
+                        reporting_read.scholardex_forum_membership_view
                     """);
             insertForumRows(forumViews);
             insertAuthorRows(authorViews);
@@ -951,6 +1169,9 @@ public class ScholardexProjectionBuilderService {
             insertCitationRows(citationFacts);
             insertAuthorshipRows(authorshipFacts);
             insertAuthorAffiliationRows(authorAffiliationFacts);
+            insertForumMetricRows(forumMetricRows, buildVersion, buildAt);
+            insertForumCategoryRows(forumCategoryRows, buildVersion, buildAt);
+            insertForumMembershipRows(forumMembershipRows, buildVersion, buildAt);
         });
     }
 

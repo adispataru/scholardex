@@ -98,6 +98,9 @@ class PostgresReportingProjectionServiceIntegrationTest {
         ScholardexCitationFactRepository citationFactRepository = mongoRepoFactory.getRepository(ScholardexCitationFactRepository.class);
         ScholardexAuthorshipFactRepository authorshipFactRepository = mongoRepoFactory.getRepository(ScholardexAuthorshipFactRepository.class);
         ScholardexAuthorAffiliationFactRepository authorAffiliationFactRepository = mongoRepoFactory.getRepository(ScholardexAuthorAffiliationFactRepository.class);
+        ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository wosMetricFactRepository = mongoRepoFactory.getRepository(ro.uvt.pokedex.core.repository.reporting.WosMetricFactRepository.class);
+        ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository wosCategoryFactRepository = mongoRepoFactory.getRepository(ro.uvt.pokedex.core.repository.reporting.WosCategoryFactRepository.class);
+        ro.uvt.pokedex.core.repository.reporting.WosCoverageFactRepository wosCoverageFactRepository = mongoRepoFactory.getRepository(ro.uvt.pokedex.core.repository.reporting.WosCoverageFactRepository.class);
 
         WosOptimizationProperties optimizationProperties = new WosOptimizationProperties();
         optimizationProperties.setPreflightIndexesEnabled(false);
@@ -120,6 +123,9 @@ class PostgresReportingProjectionServiceIntegrationTest {
                 citationFactRepository,
                 authorshipFactRepository,
                 authorAffiliationFactRepository,
+                wosMetricFactRepository,
+                wosCategoryFactRepository,
+                wosCoverageFactRepository,
                 mongoTemplate,
                 jdbcTemplate,
                 txManager

@@ -116,6 +116,7 @@ public class WosScholardexOnboardingService {
             canonicalById.put(canonicalForum.getId(), canonicalForum);
         }
         CanonicalForumIndex forumIndex = new CanonicalForumIndex(canonicalById);
+        ScopusForumIndex scopusForumIndex = new ScopusForumIndex(scopusForums);
         // H66: same preload + batch as the Scopus path — preload existing FORUM/WOS source links (in-memory
         // re-run-idempotency check instead of per-row findByKey) and accumulate link writes for one flush.
         Map<ScholardexSourceLinkService.SourceLinkKey, ScholardexSourceLink> existingForumLinks = loadForumSourceLinks(
@@ -125,7 +126,7 @@ public class WosScholardexOnboardingService {
         Instant now = Instant.now();
         for (WosRankingView journal : journals) {
             result.markProcessed();
-            upsertForumFromWos(journal, scopusForums, canonicalById, forumIndex, existingForumLinks, linkCommands, batchId, correlationId, now, result);
+            upsertForumFromWos(journal, scopusForumIndex, canonicalById, forumIndex, existingForumLinks, linkCommands, batchId, correlationId, now, result);
         }
         sourceLinkService.batchUpsertWithState(linkCommands, existingForumLinks);
 
@@ -444,7 +445,7 @@ public class WosScholardexOnboardingService {
 
     private void upsertForumFromWos(
             WosRankingView rankingView,
-            List<ScopusForumFact> scopusForums,
+            ScopusForumIndex scopusForumIndex,
             Map<String, ScholardexForumFact> canonicalById,
             CanonicalForumIndex forumIndex,
             Map<ScholardexSourceLinkService.SourceLinkKey, ScholardexSourceLink> existingForumLinks,
@@ -484,7 +485,7 @@ public class WosScholardexOnboardingService {
             String canonicalId = normalizeBlank(existingLink.get().getCanonicalEntityId());
             if (canonicalId != null && canonicalById.containsKey(canonicalId)) {
                 ScholardexForumFact target = canonicalById.get(canonicalId);
-                mergeForum(target, sourceRecordId, normalizedIssns, name, nameNormalized, aggregationType, aggregationTypeNormalized, scopusForums, now, batchId, correlationId);
+                mergeForum(target, sourceRecordId, normalizedIssns, name, nameNormalized, aggregationType, aggregationTypeNormalized, scopusForumIndex, now, batchId, correlationId);
                 target.setBuilderVersion(BuilderVersion.SCHOLARDEX_FORUM);
                 if (persistForumOrRecordConflict(target, sourceRecordId, batchId, correlationId, result)) {
                     forumIndex.put(target); // re-index: the merge may have added ISSN tokens/aliases
@@ -518,7 +519,7 @@ public class WosScholardexOnboardingService {
             target = new ScholardexForumFact();
         }
         boolean created = target.getId() == null;
-        mergeForum(target, sourceRecordId, normalizedIssns, name, nameNormalized, aggregationType, aggregationTypeNormalized, scopusForums, now, batchId, correlationId);
+        mergeForum(target, sourceRecordId, normalizedIssns, name, nameNormalized, aggregationType, aggregationTypeNormalized, scopusForumIndex, now, batchId, correlationId);
         target.setBuilderVersion(BuilderVersion.SCHOLARDEX_FORUM);
         if (!persistForumOrRecordConflict(target, sourceRecordId, batchId, correlationId, result)) {
             return;
@@ -568,7 +569,7 @@ public class WosScholardexOnboardingService {
             String wosNameNormalized,
             String defaultAggregationType,
             String defaultAggregationTypeNormalized,
-            List<ScopusForumFact> scopusForums,
+            ScopusForumIndex scopusForumIndex,
             Instant now,
             String batchId,
             String correlationId
@@ -577,7 +578,7 @@ public class WosScholardexOnboardingService {
             target.setCreatedAt(now);
         }
 
-        List<ScopusForumFact> scopusCandidates = findScopusCandidates(scopusForums, normalizedIssns, wosNameNormalized, defaultAggregationTypeNormalized);
+        List<ScopusForumFact> scopusCandidates = scopusForumIndex.findCandidates(normalizedIssns, wosNameNormalized, defaultAggregationTypeNormalized);
         ScopusForumFact scopusPreferred = scopusCandidates.size() == 1 ? scopusCandidates.getFirst() : null;
 
         LinkedHashSet<String> scopusIds = new LinkedHashSet<>(safeList(target.getScopusForumIds()));
@@ -644,29 +645,57 @@ public class WosScholardexOnboardingService {
         target.setUpdatedAt(now);
     }
 
-    private List<ScopusForumFact> findScopusCandidates(
-            List<ScopusForumFact> scopusForums,
-            Collection<String> issnTokens,
-            String nameNormalized,
-            String aggregationTypeNormalized
-    ) {
-        List<ScopusForumFact> candidates = new ArrayList<>();
-        for (ScopusForumFact scopusForum : scopusForums) {
-            if (matchesIssn(scopusForum, issnTokens)) {
-                candidates.add(scopusForum);
+    /**
+     * H66 perf: ISSN-token + name|agg index over Scopus forums for O(1) candidate lookup during WoS
+     * onboarding. Mirrors {@link CanonicalForumIndex}; replaces the prior linear scan over all scopus forums
+     * per WoS journal — which was O(n²) (≈26.9k journals × 29.8k scopus forums ≈ 800M comparisons, ~16 min),
+     * invisible until a real CiteScore+MJL run (the scopus-forum list is empty in MJL-only tests).
+     */
+    private final class ScopusForumIndex {
+        private final Map<String, List<ScopusForumFact>> byIssnToken = new HashMap<>();
+        private final Map<String, List<ScopusForumFact>> byNameAgg = new HashMap<>();
+
+        ScopusForumIndex(List<ScopusForumFact> scopusForums) {
+            for (ScopusForumFact scopusForum : scopusForums) {
+                for (String token : scopusIssnTokens(scopusForum)) {
+                    byIssnToken.computeIfAbsent(token, k -> new ArrayList<>()).add(scopusForum);
+                }
+                byNameAgg.computeIfAbsent(scopusNameAggKey(scopusForum), k -> new ArrayList<>()).add(scopusForum);
             }
         }
-        if (!candidates.isEmpty() || nameNormalized == null) {
-            return candidates;
-        }
-        for (ScopusForumFact scopusForum : scopusForums) {
-            String scopusName = normalizeName(scopusForum.getPublicationName());
-            String scopusAgg = normalizeToken(scopusForum.getAggregationType());
-            if (nameNormalized.equals(scopusName) && normalizeToken(aggregationTypeNormalized).equals(scopusAgg)) {
-                candidates.add(scopusForum);
+
+        /** Same result as the old linear scan + matchesIssn: ISSN-token matches, falling back to name|agg. */
+        List<ScopusForumFact> findCandidates(Collection<String> issnTokens, String nameNormalized, String aggregationTypeNormalized) {
+            LinkedHashSet<ScopusForumFact> issnMatches = new LinkedHashSet<>();
+            if (issnTokens != null) {
+                for (String token : issnTokens) {
+                    List<ScopusForumFact> hits = byIssnToken.get(token);
+                    if (hits != null) {
+                        for (ScopusForumFact scopusForum : hits) {
+                            if (matchesIssn(scopusForum, issnTokens)) {
+                                issnMatches.add(scopusForum);
+                            }
+                        }
+                    }
+                }
             }
+            if (!issnMatches.isEmpty() || nameNormalized == null) {
+                return new ArrayList<>(issnMatches);
+            }
+            List<ScopusForumFact> nameHits = byNameAgg.get(nameNormalized + "|" + normalizeToken(aggregationTypeNormalized));
+            return nameHits == null ? new ArrayList<>() : new ArrayList<>(nameHits);
         }
-        return candidates;
+    }
+
+    private List<String> scopusIssnTokens(ScopusForumFact scopusForum) {
+        List<String> tokens = new ArrayList<>();
+        addIssnToken(tokens, normalizeIssn(scopusForum.getIssn()));
+        addIssnToken(tokens, normalizeIssn(correctedScopusEIssn(scopusForum)));
+        return tokens;
+    }
+
+    private String scopusNameAggKey(ScopusForumFact scopusForum) {
+        return normalizeName(scopusForum.getPublicationName()) + "|" + normalizeToken(scopusForum.getAggregationType());
     }
 
     /**

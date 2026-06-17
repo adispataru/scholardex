@@ -80,6 +80,31 @@ class WosScholardexOnboardingServiceTest {
         return id;
     }
 
+    // H66: reflectively build the private ScopusForumIndex (replaces the old findScopusCandidates list scan).
+    private Object scopusIndex(WosScholardexOnboardingService service, List<ScopusForumFact> forums) {
+        try {
+            Class<?> idxClass = Class.forName("ro.uvt.pokedex.core.service.application.WosScholardexOnboardingService$ScopusForumIndex");
+            var ctor = idxClass.getDeclaredConstructor(WosScholardexOnboardingService.class, List.class);
+            ctor.setAccessible(true);
+            return ctor.newInstance(service, forums);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<ScopusForumFact> scopusFindCandidates(WosScholardexOnboardingService service, List<ScopusForumFact> forums,
+            java.util.Collection<String> issnTokens, String nameNormalized, String aggregationTypeNormalized) {
+        try {
+            Object idx = scopusIndex(service, forums);
+            var m = idx.getClass().getDeclaredMethod("findCandidates", java.util.Collection.class, String.class, String.class);
+            m.setAccessible(true);
+            return (List<ScopusForumFact>) m.invoke(idx, issnTokens, nameNormalized, aggregationTypeNormalized);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Test
     void runWosOnboardingCreatesCanonicalForumForWosOnlyJournal() {
         WosScholardexOnboardingService service = service();
@@ -380,13 +405,9 @@ class WosScholardexOnboardingServiceTest {
         scopus.setIssn("1234-5679");
         scopus.setPublicationName("Journal de Test");
         scopus.setAggregationType("JOURNAL");
-        List<ScopusForumFact> byIssn = ReflectionTestUtils.invokeMethod(
-                service, "findScopusCandidates", List.of(scopus), List.of("1234-5679"), "journal de test", "journal"
-        );
+        List<ScopusForumFact> byIssn = scopusFindCandidates(service, List.of(scopus), List.of("1234-5679"), "journal de test", "journal");
         assertEquals(1, byIssn.size());
-        List<ScopusForumFact> byName = ReflectionTestUtils.invokeMethod(
-                service, "findScopusCandidates", List.of(scopus), List.of(), "journal de test", "journal"
-        );
+        List<ScopusForumFact> byName = scopusFindCandidates(service, List.of(scopus), List.of(), "journal de test", "journal");
         assertEquals(1, byName.size());
     }
 
@@ -416,7 +437,7 @@ class WosScholardexOnboardingServiceTest {
                 "wos name",
                 "JOURNAL",
                 "journal",
-                List.of(scopusPreferred),
+                scopusIndex(service, List.of(scopusPreferred)),
                 Instant.parse("2026-04-30T00:00:00Z"),
                 "batch-1",
                 "corr-1"
@@ -561,7 +582,7 @@ class WosScholardexOnboardingServiceTest {
                 "wos journal name",
                 "JOURNAL",
                 "journal",
-                List.of(preferred),
+                scopusIndex(service, List.of(preferred)),
                 java.time.Instant.parse("2025-01-01T00:00:00Z"),
                 "batch-m",
                 "corr-m"
