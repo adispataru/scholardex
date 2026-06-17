@@ -53,8 +53,17 @@ public class ForumMergeSafetyRule {
         return true;
     }
 
-    /** Cluster rule (dedup): every member shares one non-null primary print ISSN, or all names match. */
+    /**
+     * Cluster rule (dedup): safe when the members share a common external id (ERIH+, H66 C1 part 2 — a
+     * definitive same-journal signal), OR every member shares one non-null primary print ISSN, OR all names
+     * match.
+     */
     public boolean isSafeToMergeCluster(List<ScholardexForumFact> cluster) {
+        // H66 C1 part 2: an external id (ERIH+) shared by every member proves they are the same journal,
+        // regardless of ISSN/name divergence (e.g. a journal split across a renamed-era continuation).
+        if (sharesCommonExternalId(cluster)) {
+            return true;
+        }
         Set<String> primaries = new LinkedHashSet<>();
         for (ScholardexForumFact f : cluster) {
             String pi = normalizeIssn(f.getIssn());
@@ -73,6 +82,26 @@ public class ForumMergeSafetyRule {
             }
         }
         return true;
+    }
+
+    /** True when one external id (currently ERIH+) is present on every member of the cluster. */
+    boolean sharesCommonExternalId(List<ScholardexForumFact> cluster) {
+        if (cluster.size() < 2) {
+            return false;
+        }
+        Set<String> common = null;
+        for (ScholardexForumFact f : cluster) {
+            Set<String> ids = new LinkedHashSet<>(f.getErihIds() == null ? List.of() : f.getErihIds());
+            if (ids.isEmpty()) {
+                return false; // a member with no external id cannot be vouched for by this rule
+            }
+            if (common == null) {
+                common = ids;
+            } else {
+                common.retainAll(ids);
+            }
+        }
+        return common != null && !common.isEmpty();
     }
 
     /** Compact, upper-cased ISSN (hyphens/spaces stripped); null when blank. */

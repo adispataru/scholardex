@@ -460,7 +460,8 @@ join — exactly what the fuzzy resolver computed at query time. Prod untouched 
   whose venue is already seeded → one forum saved, eIssn enriched, all other CiteScore attrs preserved).
   Canonicalization-path link is already covered by `WosScholardexOnboardingServiceTest
   .runScopusForumCanonicalizationOnlyLinksScopusForumAlreadyFoldedIntoCanonical`.
-- **Part 2 deferred to A5 (extend dedup keys):** `ScholardexForumFact` carries **unique partial indexes on
+- **Part 2 DONE in A5 (extend dedup keys):** the erihId safe-merge key + `erih:`-token clustering landed
+  with A5 (see the A5 entry). Original rationale retained below. `ScholardexForumFact` carries **unique partial indexes on
   `scopusForumIds` and `wosForumIds`** (`uniq_scholardex_forum_scopus_id` / `_wos_id`), so two canonical
   forums physically cannot share a Scopus/WoS id — the collision is resolved at *write* time
   (`DuplicateKeyException` → conflict opened in `WosScholardexOnboardingService`), not at dedup time.
@@ -507,13 +508,33 @@ rebuild + report-only residual.**
   now resolve by FK for previously-fuzzy cases (C2.2 `wosLinkedResolvingMetricsByFk`).
 - **Dep:** B3, C1 (both done).
 
+**A5 — ERIH+ loader (erihIds FK + membership + DOAJ flag).** — **DONE (incl. C1 part 2).**
+- **Data:** ERIH PLUS Typesense (`erihplus_tidsskrift_cache` @ `5tv6sfnzrjemi3h2p.a1.typesense.net`, public
+  search-only key) — 12,768 journals pulled to `data/erih/erihplus.jsonl` (all carry ≥1 ISSN; 5,012 OA).
+- **A5.1 ingest:** `ErihJournalFact` (`erih.journal_facts`, reference data, outside
+  `MANAGED_DERIVED_COLLECTIONS`) + `ErihDataService.importErihJsonlFromPath` (erihId, normalized ISSNs,
+  title, `discipline_ids`, `oa_doaj`). Admin `POST /forum/importErih`.
+- **A5.2 onboarding (full erihIds population):** `ErihOnboardingService.onboardErih` matches ERIH journals
+  to **existing** forums by ISSN and writes `erihIds` (match-only — never mints forums; ERIH-only-journal
+  forum creation is a separate registry-expansion decision). Admin `POST /forum/onboardErih`.
+- **A5.3 / C1 part 2 DONE:** `ScholardexForumDeduplicationService` now clusters by ISSN **+ `erih:` token**
+  and folds `erihIds` on merge; `ForumMergeSafetyRule.isSafeToMergeCluster` treats a shared erihId as a
+  definitive same-journal safe-merge key. Standalone `POST /forum/dedup` so the pass can run after
+  onboarding. (scopus/wos stay write-time-unique, so no dedup-key handling needed for them — A5 only adds
+  erih.)
+- **A5.4 projection:** `buildErihMembershipRows` emits `membership_view database='ERIH'` from the stored
+  `erihIds`, plus `database='DOAJ', source='ERIH'` for OA-flagged forums (coexists with A4's `source='DOAJ'`).
+- **Verify:** `ErihDataServiceTest`, `ErihOnboardingServiceTest` (ISSN match, split-journal double-tag,
+  no-match), `ForumMergeSafetyRuleTest` + `ScholardexForumDeduplicationServiceTest` (shared-erihId
+  safe-merge), projection test (ERIH + DOAJ-from-ERIH). Live ingest is a deploy step.
+- **Rebuild ordering:** forums get wiped/rebuilt from Scopus/WoS, so erihIds must be re-onboarded after:
+  rebuild → `importErih` (persists) → `onboardErih` → `dedup` → `buildProjections`.
+
 ### Deferred (after the in-hand lists prove out)
-- **A5 — ERIH+ Typesense fetcher** → `erihIds` + disciplines (pinned endpoint; needs the pull). **Folds in
-  C1 part 2:** once `erihIds` is populated, extend `ScholardexForumDeduplicationService` clustering +
-  `ForumMergeSafetyRule` to treat a shared external id (erih, and gs if onboarded) as a safe-merge key —
-  scopus/wos are already write-time-unique so they need no dedup-key handling.
 - CNCS A/B/C tiers (transcribe/UEFISCDI), embedded prestige publisher lists (`data/standards/`), vendor
   title-lists for the "≥N DBs" predicate — pulled in by the first non-STEM report that needs them.
+- **ERIH-only-journal forum creation** (registry expansion for humanities venues absent from Scopus/WoS) —
+  A5 is match-only; creating forums for the ~ERIH-only subset is tied to a humanities-scoring consumer.
 
 ## Consumers
 

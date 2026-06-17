@@ -18,6 +18,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
 import ro.uvt.pokedex.core.model.doaj.DoajJournalFact;
+import ro.uvt.pokedex.core.model.erih.ErihJournalFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
@@ -235,10 +236,11 @@ public class ScholardexProjectionBuilderService {
             Map<String, String> journalIdToForumId = buildJournalIdToForumId(canonicalForumsForProjection);
             List<ForumMetricRow> forumMetricRows = buildForumMetricRows(journalIdToForumId, buildVersion, buildAt);
             List<ForumCategoryRow> forumCategoryRows = buildForumCategoryRows(journalIdToForumId, buildVersion, buildAt);
-            // H66 A4: DOAJ open-access membership, matched to forums by ISSN (DOAJ has no native forum id).
+            // H66 A4/A5: DOAJ membership (by ISSN) + ERIH membership (by stored erihIds FK) + DOAJ-from-ERIH.
             List<ForumMembershipRow> forumMembershipRows = new ArrayList<>(
                     buildForumMembershipRows(journalIdToForumId, buildVersion, buildAt));
             forumMembershipRows.addAll(buildDoajMembershipRows(canonicalForumsForProjection));
+            forumMembershipRows.addAll(buildErihMembershipRows(canonicalForumsForProjection));
 
             // --- write all tables to PostgreSQL atomically ---
             long writePgNs = System.nanoTime();
@@ -1172,6 +1174,49 @@ public class ScholardexProjectionBuilderService {
             }
             String key = forumId + "|DOAJ|DOAJ";
             rows.putIfAbsent(key, new ForumMembershipRow(key, forumId, "DOAJ", doaj.getAsOf(), "DOAJ"));
+        }
+        return new ArrayList<>(rows.values());
+    }
+
+    /**
+     * H66 A5: ERIH+ membership from the forum's stored {@code erihIds} FK (database='ERIH'), plus a
+     * DOAJ membership from ERIH's own open-access flag (database='DOAJ', source='ERIH' — coexists with
+     * A4's source='DOAJ' under the unique key forum_id+database+source).
+     */
+    List<ForumMembershipRow> buildErihMembershipRows(List<ScholardexForumFact> forums) {
+        // erihId -> its ERIH fact (for the oa_doaj flag + as_of stamp).
+        Map<String, ErihJournalFact> erihById = new HashMap<>();
+        for (ErihJournalFact fact : mongoTemplate.findAll(ErihJournalFact.class)) {
+            if (fact.getId() != null) {
+                erihById.put(fact.getId(), fact);
+            }
+        }
+
+        Map<String, ForumMembershipRow> rows = new LinkedHashMap<>();
+        for (ScholardexForumFact forum : forums) {
+            if (forum.getId() == null || forum.getErihIds() == null || forum.getErihIds().isEmpty()) {
+                continue;
+            }
+            List<String> erihIds = new ArrayList<>(forum.getErihIds());
+            erihIds.sort(Comparator.nullsLast(String::compareTo));
+            String asOf = null;
+            boolean openAccess = false;
+            for (String erihId : erihIds) {
+                ErihJournalFact fact = erihById.get(erihId);
+                if (fact == null) {
+                    continue;
+                }
+                if (asOf == null) {
+                    asOf = fact.getAsOf();
+                }
+                openAccess = openAccess || fact.isOaDoaj();
+            }
+            String erihKey = forum.getId() + "|ERIH|ERIH";
+            rows.putIfAbsent(erihKey, new ForumMembershipRow(erihKey, forum.getId(), "ERIH", asOf, "ERIH"));
+            if (openAccess) {
+                String doajKey = forum.getId() + "|DOAJ|ERIH";
+                rows.putIfAbsent(doajKey, new ForumMembershipRow(doajKey, forum.getId(), "DOAJ", asOf, "ERIH"));
+            }
         }
         return new ArrayList<>(rows.values());
     }

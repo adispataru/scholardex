@@ -90,6 +90,12 @@ Run on a prod-equivalent snapshot first, then prod. All endpoints are under `/ad
      `POST /forum/importDoaj?path=data/doaj/<doaj-dump>.csv&asOf=2026`. Note: `doaj.journal_facts` is NOT
      wiped by the rebuild (it is an external snapshot, not source-replayed), so this only needs re-running to
      refresh the DOAJ snapshot — but the projection re-reads it each rebuild.
+   - ERIH PLUS (A5 — reference data; supplies `erih.journal_facts` → `erihIds` FK + membership `database='ERIH'`):
+     `POST /forum/importErih?path=data/erih/erihplus.jsonl&asOf=2026`. Also NOT wiped by the rebuild. To
+     refresh the snapshot, re-pull from the ERIH PLUS Typesense export (`erihplus_tidsskrift_cache`) — see
+     [docs/tasks/active/h66-curated-allowlists.md](tasks/active/h66-curated-allowlists.md) for host/key/pull.
+     Unlike DOAJ, ERIH **writes `erihIds` onto forums** (next step), so it must be re-onboarded after the
+     rebuild reconstructs forums.
 3. **Reset checkpoints so the rebuild is FULL, not incremental** (the default `useCheckpoint=true` resumes
    from the last batch and would skip already-processed events):
    - `POST /scopus/resetCanonicalCheckpoints`
@@ -98,10 +104,15 @@ Run on a prod-equivalent snapshot first, then prod. All endpoints are under `/ad
    admin flow drives the same BigBang rebuild): ingest → facts → canonical (forum dedup + WoS/Scopus fold) →
    projections. If running per-step instead, the Scopus build-facts/canonical steps must run with
    `useCheckpoint=false` after the reset above.
-5. **Build projections** — produces the three forum-keyed views B2/B3 read by FK
-   (`scholardex_forum_metric_view` / `_category_view` / `_membership_view`):
-   `POST /scopus/buildProjections` (and `POST /wos/rebuildProjections` for the WoS side).
-6. **Snapshot after** and diff against before (same procedure as *Verify determinism* above) — forum count
+5. **Onboard ERIH + re-dedup** (A5 / C1 part 2) — the rebuild reconstructed forums from Scopus/WoS, so the
+   `erihIds` FK must be written now, before projection:
+   - `POST /forum/onboardErih` — match ERIH journals to forums by ISSN, write `erihIds` (match-only).
+   - `POST /forum/dedup` — clusters by ISSN **+ shared erihId** and safe-merges the split-journal pairs ERIH
+     just surfaced (quarantining unsafe ones as conflicts).
+6. **Build projections** — produces the three forum-keyed views B2/B3 read by FK
+   (`scholardex_forum_metric_view` / `_category_view` / `_membership_view`); membership now includes DOAJ +
+   ERIH rows: `POST /scopus/buildProjections` (and `POST /wos/rebuildProjections` for the WoS side).
+7. **Snapshot after** and diff against before (same procedure as *Verify determinism* above) — forum count
    should be stable across a second rebuild.
 
 ### Post-rebuild verification gate (C2.2)

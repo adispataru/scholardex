@@ -37,6 +37,9 @@ public class AdminInitializationController {
     private final ObjectProvider<PostgresOperationalStatusService> postgresOperationalStatusServiceProvider;
     private final ro.uvt.pokedex.core.service.application.ForumReconcileAuditService forumReconcileAuditService;
     private final ro.uvt.pokedex.core.service.importing.DoajDataService doajDataService;
+    private final ro.uvt.pokedex.core.service.importing.ErihDataService erihDataService;
+    private final ro.uvt.pokedex.core.service.application.ErihOnboardingService erihOnboardingService;
+    private final ro.uvt.pokedex.core.service.application.ScholardexForumDeduplicationService scholardexForumDeduplicationService;
 
     @GetMapping
     public String showInitializationPage(Model model) {
@@ -269,6 +272,59 @@ public class AdminInitializationController {
                         + ", updated=" + result.getUpdatedCount()
                         + ", skipped=" + result.getSkippedCount()
                         + ", errors=" + result.getErrorCount());
+        return "redirect:/admin/initialization";
+    }
+
+    /**
+     * H66 A5 — load the ERIH PLUS snapshot JSONL into erih.journal_facts (reference data).
+     */
+    @PostMapping("/forum/importErih")
+    public String runErihImport(
+            @RequestParam(name = "path") String path,
+            @RequestParam(name = "batchId", required = false) String batchId,
+            @RequestParam(name = "asOf", required = false) String asOf,
+            RedirectAttributes redirectAttributes
+    ) {
+        String effectiveBatchId = (batchId == null || batchId.isBlank())
+                ? "erih-" + java.time.Instant.now().toEpochMilli()
+                : batchId;
+        var result = erihDataService.importErihJsonlFromPath(path, effectiveBatchId, asOf);
+        redirectAttributes.addFlashAttribute("successMessage",
+                "ERIH import complete (batchId=" + effectiveBatchId + ", asOf=" + asOf + "). processed=" + result.getProcessedCount()
+                        + ", imported=" + result.getImportedCount()
+                        + ", updated=" + result.getUpdatedCount()
+                        + ", skipped=" + result.getSkippedCount()
+                        + ", errors=" + result.getErrorCount());
+        return "redirect:/admin/initialization";
+    }
+
+    /**
+     * H66 A5 — populate canonical forums with erihIds by ISSN match (match-only). Run after a forum rebuild
+     * and before {@code /forum/dedup} so the C1-part-2 shared-erihId merge composes.
+     */
+    @PostMapping("/forum/onboardErih")
+    public String runErihOnboarding(RedirectAttributes redirectAttributes) {
+        var result = erihOnboardingService.onboardErih();
+        redirectAttributes.addFlashAttribute("successMessage",
+                "ERIH onboarding complete. processed=" + result.getProcessedCount()
+                        + ", forumsUpdated=" + result.getUpdatedCount()
+                        + ", unmatched=" + result.getSkippedCount());
+        return "redirect:/admin/initialization";
+    }
+
+    /**
+     * H66 C1 part 2 — standalone forum dedup (clusters by shared ISSN + erihId, safe-merge or quarantine).
+     * Lets a dedup pass run after ERIH onboarding without re-running the whole Scopus build.
+     */
+    @PostMapping("/forum/dedup")
+    public String runForumDedup(RedirectAttributes redirectAttributes) {
+        var result = scholardexForumDeduplicationService.deduplicateForums(
+                "forum-dedup-" + java.time.Instant.now().toEpochMilli(), "manual");
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Forum dedup complete. clusters=" + result.getProcessedCount()
+                        + ", merged(updated)=" + result.getUpdatedCount()
+                        + ", quarantined(skipped)=" + result.getSkippedCount()
+                        + ", forumsRemoved=" + result.getImportedCount());
         return "redirect:/admin/initialization";
     }
 

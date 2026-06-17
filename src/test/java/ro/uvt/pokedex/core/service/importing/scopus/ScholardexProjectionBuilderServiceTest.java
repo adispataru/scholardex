@@ -20,6 +20,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexCitationFact;
 import ro.uvt.pokedex.core.model.doaj.DoajJournalFact;
+import ro.uvt.pokedex.core.model.erih.ErihJournalFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
@@ -1591,6 +1592,43 @@ class ScholardexProjectionBuilderServiceTest {
                 .collect(java.util.stream.Collectors.toSet());
         assertEquals(Set.of("sforum_a", "sforum_b"), forumIds);
         assertTrue(rows.stream().allMatch(r -> r.database().equals("DOAJ") && r.source().equals("DOAJ")));
+        assertTrue(rows.stream().allMatch(r -> "2026".equals(r.asOf())));
+    }
+
+    @Test
+    void buildErihMembershipRowsProjectsErihAndDoajFromErihByStoredErihIds() {
+        ScholardexProjectionBuilderService service = newService();
+
+        ScholardexForumFact forumA = new ScholardexForumFact();
+        forumA.setId("sforum_a");
+        forumA.setErihIds(List.of("E1")); // open access
+        ScholardexForumFact forumB = new ScholardexForumFact();
+        forumB.setId("sforum_b");
+        forumB.setErihIds(List.of("E2")); // not OA
+        ScholardexForumFact forumC = new ScholardexForumFact();
+        forumC.setId("sforum_c"); // no erihIds -> no rows
+
+        ErihJournalFact e1 = new ErihJournalFact();
+        e1.setId("E1");
+        e1.setOaDoaj(true);
+        e1.setAsOf("2026");
+        ErihJournalFact e2 = new ErihJournalFact();
+        e2.setId("E2");
+        e2.setOaDoaj(false);
+        e2.setAsOf("2026");
+        when(mongoTemplate.findAll(ErihJournalFact.class)).thenReturn(List.of(e1, e2));
+
+        List<ScholardexProjectionBuilderService.ForumMembershipRow> rows =
+                service.buildErihMembershipRows(List.of(forumA, forumB, forumC));
+
+        // forumA -> ERIH + DOAJ(source=ERIH); forumB -> ERIH only; forumC -> none
+        assertEquals(3, rows.size());
+        Set<String> keys = rows.stream()
+                .map(r -> r.forumId() + "|" + r.database() + "|" + r.source())
+                .collect(java.util.stream.Collectors.toSet());
+        assertTrue(keys.contains("sforum_a|ERIH|ERIH"));
+        assertTrue(keys.contains("sforum_a|DOAJ|ERIH"));
+        assertTrue(keys.contains("sforum_b|ERIH|ERIH"));
         assertTrue(rows.stream().allMatch(r -> "2026".equals(r.asOf())));
     }
 

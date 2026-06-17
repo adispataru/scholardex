@@ -59,6 +59,26 @@ class ForumMergeSafetyRuleTest {
                 forum("0960-0760", "Journal of Steroid Biochemistry"))));
     }
 
+    @Test
+    void clusterSharingErihIdIsSafeDespiteDifferentPrimariesAndUnrelatedNames() {
+        // H66 C1 part 2: a shared ERIH+ id overrides the ISSN/name divergence — definitive same journal.
+        ScholardexForumFact a = forum("0022-474X", "Revista de Filosofie");
+        a.setErihIds(List.of("509624"));
+        ScholardexForumFact b = forum("0960-0760", "Journal of Philosophy");
+        b.setErihIds(List.of("509624"));
+        assertTrue(rule.isSafeToMergeCluster(List.of(a, b)));
+    }
+
+    @Test
+    void clusterWithDisjointErihIdsFallsThroughToIssnNameRule() {
+        ScholardexForumFact a = forum("0022-474X", "J Stored Prod Res");
+        a.setErihIds(List.of("111"));
+        ScholardexForumFact b = forum("0960-0760", "Journal of Steroid Biochemistry");
+        b.setErihIds(List.of("222"));
+        // No common erih id, different primaries, unrelated names -> unsafe.
+        assertFalse(rule.isSafeToMergeCluster(List.of(a, b)));
+    }
+
     private static ScholardexForumFact forum(String issn, String name) {
         ScholardexForumFact f = new ScholardexForumFact();
         f.setIssn(issn);

@@ -88,7 +88,7 @@ public class ScholardexForumDeduplicationService {
         }
         Map<String, String> tokenOwner = new LinkedHashMap<>();
         for (ScholardexForumFact f : forums) {
-            for (String token : issnTokens(f)) {
+            for (String token : identityTokens(f)) {
                 String prior = tokenOwner.get(token);
                 if (prior != null) {
                     union(parent, prior, f.getId());
@@ -141,6 +141,7 @@ public class ScholardexForumDeduplicationService {
         LinkedHashSet<String> wosIds = new LinkedHashSet<>(safe(winner.getWosForumIds()));
         LinkedHashSet<String> gsIds = new LinkedHashSet<>(safe(winner.getGoogleScholarForumIds()));
         LinkedHashSet<String> userIds = new LinkedHashSet<>(safe(winner.getUserSourceForumIds()));
+        LinkedHashSet<String> erihIds = new LinkedHashSet<>(safe(winner.getErihIds()));
         // alias ISSNs retain their original (hyphenated) string; we de-duplicate by normalized form so
         // we never store the same ISSN twice or drop the winner's own primary/eISSN.
         Map<String, String> aliasByNorm = new LinkedHashMap<>();
@@ -153,6 +154,7 @@ public class ScholardexForumDeduplicationService {
             wosIds.addAll(safe(loser.getWosForumIds()));
             gsIds.addAll(safe(loser.getGoogleScholarForumIds()));
             userIds.addAll(safe(loser.getUserSourceForumIds()));
+            erihIds.addAll(safe(loser.getErihIds()));
             // fold the loser's ISSNs (the user-requested alias retention) into the winner aliases
             putAlias(aliasByNorm, loser.getIssn());
             putAlias(aliasByNorm, loser.getEIssn());
@@ -172,6 +174,7 @@ public class ScholardexForumDeduplicationService {
         winner.setWosForumIds(sorted(wosIds));
         winner.setGoogleScholarForumIds(sorted(gsIds));
         winner.setUserSourceForumIds(sorted(userIds));
+        winner.setErihIds(sorted(erihIds));
         winner.setAliasIssns(sorted(aliasByNorm.values()));
         winner.setBuilderVersion(BuilderVersion.SCHOLARDEX_FORUM);
         winner.setUpdatedAt(now);
@@ -245,6 +248,24 @@ public class ScholardexForumDeduplicationService {
     }
 
     // ---- helpers ----------------------------------------------------------------------------------
+
+    /**
+     * Identity tokens that bind forums into a dedup cluster: normalized ISSN tokens plus prefixed external
+     * ids (ERIH+, H66 C1 part 2). Two forums sharing an erihId — the split-journal signal written by
+     * {@code ErihOnboardingService} — are clustered and then safe-merged via {@link ForumMergeSafetyRule}.
+     * The {@code erih:} prefix keeps the namespaces disjoint from ISSN tokens.
+     */
+    private LinkedHashSet<String> identityTokens(ScholardexForumFact f) {
+        LinkedHashSet<String> out = issnTokens(f);
+        if (f.getErihIds() != null) {
+            for (String erihId : f.getErihIds()) {
+                if (erihId != null && !erihId.isBlank()) {
+                    out.add("erih:" + erihId.trim());
+                }
+            }
+        }
+        return out;
+    }
 
     private LinkedHashSet<String> issnTokens(ScholardexForumFact f) {
         LinkedHashSet<String> out = new LinkedHashSet<>();

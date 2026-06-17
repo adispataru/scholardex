@@ -41,6 +41,32 @@ class ScholardexForumDeduplicationServiceTest {
                 new ForumMergeSafetyRule());
     }
 
+    @Test
+    void forumsSharingErihIdAreClusteredAndMergedDespiteDisjointIssnsAndNames() {
+        // H66 C1 part 2: ERIH onboarding tagged both forums with the same erihId (the split-journal signal);
+        // dedup clusters them by the shared erih token and the safe-merge rule allows the merge.
+        ScholardexForumFact a = forum("sforum_a", "Revista de Filosofie", "1111-1111", null, List.of(), List.of("jw"));
+        a.setErihIds(new ArrayList<>(List.of("509624")));
+        ScholardexForumFact b = forum("sforum_b", "Journal of Philosophy", "2222-2222", null, List.of(), List.of("jx"));
+        b.setErihIds(new ArrayList<>(List.of("509624")));
+
+        when(forumRepository.findAll()).thenReturn(List.of(a, b));
+        when(sourceLinkRepository.findByEntityTypeAndCanonicalEntityId(ScholardexEntityType.FORUM, "sforum_b"))
+                .thenReturn(List.of());
+        when(publicationRepository.findByForumId("sforum_b")).thenReturn(List.of());
+
+        ImportProcessingResult result = service().deduplicateForums("batch", "corr");
+
+        assertEquals(1, result.getUpdatedCount());
+        verify(forumRepository).deleteById("sforum_b"); // sforum_a wins (lexicographically smallest id)
+        ArgumentCaptor<ScholardexForumFact> saved = ArgumentCaptor.forClass(ScholardexForumFact.class);
+        verify(forumRepository).save(saved.capture());
+        assertEquals("sforum_a", saved.getValue().getId());
+        assertEquals(List.of("509624"), saved.getValue().getErihIds());
+        assertTrue(saved.getValue().getWosForumIds().containsAll(List.of("jw", "jx")));
+        verify(identityConflictRepository, never()).save(any());
+    }
+
     private ScholardexForumFact forum(String id, String name, String issn, String eIssn, List<String> scopusIds, List<String> wosIds) {
         ScholardexForumFact f = new ScholardexForumFact();
         f.setId(id);
