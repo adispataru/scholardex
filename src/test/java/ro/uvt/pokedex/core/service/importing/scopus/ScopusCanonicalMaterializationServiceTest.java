@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -65,6 +66,27 @@ class ScopusCanonicalMaterializationServiceTest {
         verify(citationCanonicalizationService).rebuildCanonicalCitationFactsFromScopusFacts(any());
         verify(projectionBuilderService).rebuildViewsForBatch("batch-1");
         verify(projectionBuilderService, never()).rebuildViews();
+        // H66B Phase 1: a Scopus-only incremental batch (no user-defined facts) skips the global user-defined canon.
+        verify(userDefinedCanonicalizationService, never()).rebuildCanonicalFacts();
+    }
+
+    @Test
+    void incrementalBatchThatProducedUserDefinedFactsStillRunsUserDefinedCanon() {
+        ImportProcessingResult empty = new ImportProcessingResult(0);
+        ImportProcessingResult userDefinedFacts = new ImportProcessingResult(0);
+        userDefinedFacts.markProcessed(); // the batch contained user-defined records
+        when(factBuilderService.buildFactsFromImportEvents("ud-batch")).thenReturn(empty);
+        when(userDefinedFactBuilderService.buildFactsFromImportEvents("ud-batch")).thenReturn(userDefinedFacts);
+        when(affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(any())).thenReturn(empty);
+        when(authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(any())).thenReturn(empty);
+        when(publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(any())).thenReturn(empty);
+        when(citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(any())).thenReturn(empty);
+        when(userDefinedCanonicalizationService.rebuildCanonicalFacts()).thenReturn(empty);
+        when(projectionBuilderService.rebuildViewsForBatch("ud-batch")).thenReturn(empty);
+
+        bareService().rebuildFactsAndViews("user-defined-upload", "ud-batch");
+
+        verify(userDefinedCanonicalizationService).rebuildCanonicalFacts();
     }
 
     @Test
@@ -79,6 +101,8 @@ class ScopusCanonicalMaterializationServiceTest {
         assertNull(optionsCaptor.getValue().sourceBatchIdFilter());
         verify(projectionBuilderService).rebuildViews();
         verify(projectionBuilderService, never()).rebuildViewsForBatch(any());
+        // full maintenance always runs the global user-defined canon
+        verify(userDefinedCanonicalizationService).rebuildCanonicalFacts();
     }
 
     @Test
@@ -99,6 +123,8 @@ class ScopusCanonicalMaterializationServiceTest {
         assertEquals(false, options.useCheckpoint());
         verify(projectionBuilderService).rebuildViewsForBatch("batch-2");
         verify(projectionBuilderService, never()).rebuildViews();
+        // incremental batch with no user-defined facts skips the global user-defined canon
+        verify(userDefinedCanonicalizationService, never()).rebuildCanonicalFacts();
     }
 
     @Test
@@ -235,7 +261,9 @@ class ScopusCanonicalMaterializationServiceTest {
         when(affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(any())).thenReturn(empty);
         when(authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(any())).thenReturn(empty);
         when(publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(any())).thenReturn(empty);
-        when(userDefinedCanonicalizationService.rebuildCanonicalFacts()).thenReturn(empty);
+        // H66B Phase 1: user-defined canon is now skipped on an incremental batch that produced no user-defined
+        // facts, so this stub is only exercised on the full-maintenance paths — make it lenient.
+        lenient().when(userDefinedCanonicalizationService.rebuildCanonicalFacts()).thenReturn(empty);
         when(citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(any())).thenReturn(empty);
         return new ScopusCanonicalMaterializationService(
                 factBuilderService,

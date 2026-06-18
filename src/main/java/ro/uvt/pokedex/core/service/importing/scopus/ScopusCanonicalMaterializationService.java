@@ -38,7 +38,8 @@ public class ScopusCanonicalMaterializationService {
     public void rebuildFactsAndViews(String trigger, String batchId, CanonicalBuildOptions canonicalOptions) {
         String runId = java.util.UUID.randomUUID().toString();
         long startedAtNanos = System.nanoTime();
-        CanonicalBuildInputs buildInputs = isIncrementalBatchRun(batchId, canonicalOptions)
+        boolean incrementalBatchRun = isIncrementalBatchRun(batchId, canonicalOptions);
+        CanonicalBuildInputs buildInputs = incrementalBatchRun
                 ? runIncrementalBatchMaintenance(batchId, canonicalOptions)
                 : runFullMaintenance(canonicalOptions);
         ImportProcessingResult factResult = buildInputs.factResult();
@@ -47,7 +48,15 @@ public class ScopusCanonicalMaterializationService {
         ImportProcessingResult canonicalAffiliationResult = buildInputs.canonicalAffiliationResult();
         ImportProcessingResult canonicalAuthorResult = buildInputs.canonicalAuthorResult();
         ImportProcessingResult canonicalPublicationResult = buildInputs.canonicalPublicationResult();
-        ImportProcessingResult canonicalUserDefinedResult = userDefinedCanonicalizationService.rebuildCanonicalFacts();
+        // H66B two-tier (Phase 1): user-defined canonicalization is a global recompute with no delta support.
+        // This service has no ForumBuilder dependency, so it never mutates the forum registry — a user-defined
+        // publication's forum resolution can only change when user-defined facts themselves change. So on an
+        // incremental batch that produced no user-defined facts (e.g. a Scopus author refresh), skip the global
+        // pass; it would only redo identical work. Full maintenance still always runs it.
+        boolean userDefinedTouchedByBatch = userDefinedFactResult.getProcessedCount() > 0;
+        ImportProcessingResult canonicalUserDefinedResult = (incrementalBatchRun && !userDefinedTouchedByBatch)
+                ? new ImportProcessingResult(0)
+                : userDefinedCanonicalizationService.rebuildCanonicalFacts();
         ImportProcessingResult canonicalCitationResult = buildInputs.canonicalCitationResult();
         ScholardexSourceLinkService.ImportRepairSummary sourceLinkRepair = effectiveOptions.reconcileSourceLinks()
                 ? sourceLinkService.reconcileLinks()

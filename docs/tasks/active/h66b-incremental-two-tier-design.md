@@ -1,0 +1,108 @@
+# H66B — Initialization Build + Fast/Correct Incremental Updates (Two-Tier Builder Design)
+
+Status: **design + phase-1 started**. Companion to [h66b-entity-oriented-builders.md](h66b-entity-oriented-builders.md)
+(M1–M10 + M8-B, full-feed validation PASS). This doc defines how the *same* canonical pipeline serves both the
+one-time initialization build and ongoing incremental updates without rebuilding the whole registry.
+
+## Problem
+
+The full rebuild is validated, but the live system mutates continuously:
+- a user requests fresh info from Scopus for an author (on-demand fetch),
+- a user adds a paper manually (user-defined),
+- a batch upload arrives (Scopus / publisher CSV),
+- (planned) Publish-or-Perish / Google Scholar data is imported as a new source.
+
+Each must be **fast** (sub-second per item, not a 60–90 min rebuild) and **correct** (the new data resolves to the
+right canonical forum/author/citation and the reporting views update). Today four fold paths exist and diverge in
+what they scope vs. recompute globally.
+
+## Core principle: **Resolve vs. Reconcile**
+
+The forum registry is expensive to *mutate* (every `ForumMergeEngine` context loads the whole registry; dedup is
+inherently global union-find). But it is cheap to *resolve against*. So split every entity builder into two modes:
+
+- **Resolve(delta)** — Tier 2, per update. Ingest the new records (batch-scoped), canonicalize them scoped to the
+  batch, and resolve each item's forum/author/etc. against the **already-built, stable** registry by lookup;
+  *optimistically mint* a canonical entity only when none exists. Cheap, runs on every update.
+- **Reconcile()** — Tier 1, global. Dedup, ERIH/DOAJ/WoS onboarding, M9 identity dedup, membership dedup, M10
+  relink. Makes the registry globally consistent. Runs at **init** and **periodically / on curated-feed change** —
+  *not* per user update.
+
+**Init build = `reconcile()` over everything. Incremental update = `resolve(delta)` + a *deferred* `reconcile()`.**
+
+### Why this is correct (not just fast)
+
+The correctness guarantee is the convergence property already **proven by the full-feed validation**: the reconcile
+pass (dedup → M9 → M10) deterministically collapses transient duplicate forums and re-links stranded journals. So:
+- Tier 2 is *optimistic resolve + mint*: a new paper binds to its venue if it exists; if not, it mints one forum
+  (possibly a transient duplicate). Correct for the common case, cheap always.
+- Tier 1 reconcile makes it globally consistent: any duplicate/ambiguity a Tier-2 mint introduced is exactly what
+  dedup/M9/M10 already resolve.
+
+This is eventual consistency **via the mechanism the rebuild already uses** — not a new correctness model.
+
+## Current state (mapped against the model)
+
+| path | entry point | canon | forum | projections | verdict |
+|---|---|---|---|---|---|
+| **Scopus on-demand / scheduler** | `ScopusUpdateScheduler` → `ScopusCanonicalMaterializationService.rebuildFactsAndViews(trigger, batchId)` | **scoped** (`sourceBatchIdFilter=batchId`) | **none** — resolves venue by source-link lookup in publication canon; service has *no* `ForumBuilder` dep | **scoped** (`rebuildViewsForBatch`) | ✅ **already Tier-2, and unit-tested** (`ScopusCanonicalMaterializationServiceTest`) — the proven reference |
+| **Batch upload** | `IncrementalUpdateUploadFacade` → `ScopusBigBangMigrationService.runIncrementalUploadBuildStep(batchId)` | **scoped** | ⚠️ runs the **global** `buildScopusForums` (dedup + ERIH/DOAJ onboarding + membership dedup + M10) every upload | scoped (`rebuildViewsForBatch`) | ⚠️ **Tier-1 leaking into Tier-2** — the primary divergence |
+| **User-added paper** | `UserDefinedCanonicalizationService.rebuildCanonicalFacts()` | **global, no delta** | global compare vs all forums | via materialization | ⚠️ fully global; also called *unconditionally* on every materialization (below) |
+| **Full rebuild (init)** | `PipelineRebuildService.rebuildAllDerived` → `runFull` | full rescan | full `buildScopusForums` | full `rebuildViews` | ✅ this **is** Tier-1 reconcile-all |
+
+Correction worth recording: an earlier read claimed the scheduler path ran canon *globally*. It does **not** — 
+`runIncrementalBatchMaintenance` injects `batchId` as `sourceBatchIdFilter` (`buildIncrementalOptions`), so canon is
+batch-scoped; only `runFullMaintenance` is global. The scheduler path is the working Tier-2 template.
+
+### What's already built (reusable seams)
+- Delta canon via `sourceBatchIdFilter` on all four canonicalization services (`findBySourceBatchId`).
+- Per-batch projection refresh (`rebuildViewsForBatch`: upsert affected entities + delete/reinsert affected edges).
+- Per-item venue lookup in publication canon (`resolveCanonicalForumId`); per-record `ForumMergeEngine.ingest`;
+  scoped M10 (`relinkAmbiguousWosForums`).
+
+### Gaps (the work)
+1. **Upload path runs global `buildScopusForums`** — should resolve+mint only the batch's new venues, deferring the
+   global reconcile. (Biggest win; needs the resolve/reconcile carve — Phase 2.)
+2. **No explicit `reconcile()` entry** distinct from wipe-and-rebuild — needed so reconcile can run periodically /
+   on curated-feed change without a full source re-ingest. (Phase 3.)
+3. **User-defined canon is global + unconditional** on every materialization (re-canonicalizes *all* user-defined
+   data even on a Scopus-only poll). (Phase 1 — scope it; safe because this service never rebuilds forums, so
+   user-defined forum resolution can only change when user-defined facts change.)
+4. ERIH/DOAJ/WoS onboarding always scan *all* source rows — fine for Tier-1; would need new/changed-only scoping if
+   ever pulled into Tier-2 (not planned).
+
+## The contract (target)
+
+```
+interface EntityBuilder {
+    ResolveResult  resolve(Delta delta);   // Tier 2: scoped to new/changed records, resolves against stable registry
+    ReconcileResult reconcile();           // Tier 1: global consistency pass
+}
+```
+- `ForumBuilder.resolve(venues)` = per-item find-or-mint against the registry (no global dedup/onboarding).
+  `ForumBuilder.reconcile()` = today's `buildScopusForums` (dedup → onboarding → M9 → membership dedup → M10).
+- Ranking/Publication/Citation builders' `resolve` = the existing scoped canon; `reconcile` = full rescan.
+- Every update path (scheduler, upload, user-add, PoP) calls `resolve`; a scheduler/threshold/feed-change trigger
+  calls `reconcile`.
+
+## Phased plan (low-risk, incremental)
+
+1. **Phase 1 (this change): scope the user-defined canon out of the incremental path.** Skip the global
+   `rebuildCanonicalFacts()` in incremental-batch materialization when the batch produced no user-defined facts
+   (correct because the materialization service has no `ForumBuilder` dep → forums are stable across the run → a
+   user-defined publication's forum resolution can only change when user-defined facts change). Keeps full
+   maintenance unchanged. Proves the "scope global steps out of incremental" principle on the proven path.
+2. **Phase 2: carve `resolve` vs `reconcile` on `ForumBuilder`; route the upload path through `resolve`** (mint only
+   the batch's new venues; stop running the global build per upload). The expensive global ops become deferred.
+3. **Phase 3: explicit periodic `reconcile()` entry** (separate from wipe-and-rebuild), triggered nightly / on a
+   threshold of unreconciled mints / on curated-feed change.
+4. **Phase 4: PoP / Google Scholar as a Tier-2 source** — `ForumSourceRecord.ofPoP` + an ingest adapter; new papers
+   resolve/mint against the registry, reconcile cleans up. No orchestrator surgery.
+
+## Open questions
+- **Reconcile trigger policy** — nightly? after N unreconciled mints? on curated-feed import? (Phase 3 decides.)
+- **Registry index warmth** — Tier-2 resolve still pays an O(registry) context load unless we keep a warm
+  ISSN→forum index or resolve purely by indexed Mongo lookup (the scheduler path already does the latter via
+  source-links). Prefer indexed lookup over an in-memory warm index (multi-instance coherence).
+- **PoP identity quality** — Google Scholar venue strings are noisy; minting from them risks duplicate forums that
+  lean hard on reconcile. May need a stricter mint gate for low-confidence sources.
