@@ -301,11 +301,31 @@ vs baseline** + reconcile audit `healthy=true`.
     1,000 so the 475k rows never materialize at once) + `/scopus/importBookList` admin endpoint. Reference
     data (persists across rebuild, outside MANAGED_DERIVED_COLLECTIONS, like DOAJ/ERIH). Verified on the real
     file: **475,453 books parsed in ~5.9s under a 2 GB heap**, no ceiling/OOM. Unit-tested (fixture + missing-file).
-  - **M7-B (next, decision needed) — publication venue branch on `aggregationType`.** A book-typed venue sets
-    `bookId` (resolving the book registry) and is NOT minted as a serial forum.
-  - **M7-C (next, decision needed) — book scoring resolves the book registry.** `FeaaBookScoringService` today
-    reads `forum.getPublisher()` via `publication.getForumId()`; point it at `scholardex.book_facts` (publisher
-    for Anexa-1 prestige membership) via the lookup port.
+  - **M7-B.1 venue branch (Mongo side) — DONE.** Decisions confirmed: book = `aggregationType=="Book"`
+    (Book Series stays a forum); book venue → `bookId=source_id`, `forumId=null`; un-listed book venues mint
+    an observed `SCOPUS_OBSERVED_BOOK` (option-B for books). `ScopusPublicationFact`/`ScholardexPublicationFact`
+    gained `bookId`; `upsertPublicationAndDimensions` branches; `flushObservedVenues` partitions venues into
+    forums (observed forum) vs books (observed book, via `bookFactRepository`); canonicalization carries
+    `bookId` directly (no source-link resolution — books aren't merged). Unit-tested.
+  - **M7-B.2 Postgres plumbing (NEXT — sprawling, hold for a focused pass + the rebuild).** `bookId` must reach
+    scoring through, in lockstep:
+    1. `V13__…` Flyway migration: `ALTER TABLE reporting_read.scholardex_publication_view ADD COLUMN book_id text`.
+    2. `ScholardexProjectionBuilderService`: **append** `book_id` as the **last** column in both publication-view
+       INSERTs (`writePublicationRows` ~line 737 + `upsertPublicationRows` ~line 753) → one new `?` at index 44,
+       `ps.setString(44, row.getBookId())` after the `auth_keywords` bind (~line 857), and `book_id =
+       EXCLUDED.book_id` in the ON CONFLICT. Append-at-end avoids shifting the other 43 indices.
+    3. View-row builder (`fact → ScholardexPublicationView`, ~line 417 next to `setForumId`): `view.setBookId(fact.getBookId())`.
+    4. `ScholardexPublicationView`: add `bookId` field; pass it in `toScoringPublication()` (~line 113).
+    5. Both read mappers add `book_id` to the SELECT + a `setBookId`/constructor arg:
+       `ScholardexProjectionReadService` (SELECT ~215, mapper ~255) and `PostgresScholardexProjectionReadPort`
+       (SELECT, view mapper ~280, **and** the `ScoringPublication` construction ~299).
+    6. `ScoringPublicationReadModel` interface: add `getBookId()`. `ScoringPublication` record: add `bookId`.
+  - **M7-C book scoring (after B.2).** `FeaaBookScoringService.isPrestige` → `lookupPort.getBook(publication.getBookId()).getPublisher()`
+    (Anexa-1 prestige) instead of `getForum(...)`. Add `ReportingLookupPort.getBook(bookId)` returning a book
+    view (Mongo `scholardex.book_facts`), implemented in `PostgresReportingLookupFacade` + `ReportingLookupFacade`.
+    With observed-book minting (B.1), `getBook` always resolves for book publications → no forum fallback.
+    Re-point the FEAA scoring test. Gate (held rebuild): book count loaded, book publications resolve `bookId`,
+    forum count drops by the no-longer-minted book venues, FEAA book scores unchanged for listed publishers.
   - **Streaming precedent set (2026-06-17):**
   `ScopusDataService.importSourceListXlsxFromPath` was rewritten from a full in-memory `XSSFWorkbook` to the
   POI SAX event reader (`OPCPackage`/`XSSFReader`/`XSSFSheetXMLHandler` + `ReadOnlySharedStringsTable`) — the
