@@ -62,16 +62,32 @@ public class PipelineRebuildService {
     private final WosBigBangMigrationService wosRebuild;
     private final OwnedCollectionRegistry ownedCollectionRegistry;
     private final org.springframework.data.mongodb.core.MongoTemplate mongoTemplate;
+    private final ro.uvt.pokedex.core.service.importing.DoajDataService doajDataService;
+    private final ro.uvt.pokedex.core.service.importing.ErihDataService erihDataService;
+
+    // H66B M8-B: the DOAJ/ERIH reference snapshots are match-only inputs to the forum build (read by the
+    // ERIH/DOAJ onboarding inside the Scopus forum build). Folding their import into the unified DAG means one
+    // rebuild produces the complete full-feed registry. Blank path skips (reference data persists the wipe).
+    @org.springframework.beans.factory.annotation.Value("${h66.doaj.file:}")
+    private String doajFile;
+    @org.springframework.beans.factory.annotation.Value("${h66.erih.file:}")
+    private String erihFile;
+    @org.springframework.beans.factory.annotation.Value("${h66.reference.as-of:2026}")
+    private String referenceAsOf;
 
     public PipelineRebuildService(
             ScopusBigBangMigrationService scopusRebuild,
             WosBigBangMigrationService wosRebuild,
             OwnedCollectionRegistry ownedCollectionRegistry,
-            org.springframework.data.mongodb.core.MongoTemplate mongoTemplate) {
+            org.springframework.data.mongodb.core.MongoTemplate mongoTemplate,
+            ro.uvt.pokedex.core.service.importing.DoajDataService doajDataService,
+            ro.uvt.pokedex.core.service.importing.ErihDataService erihDataService) {
         this.scopusRebuild = scopusRebuild;
         this.wosRebuild = wosRebuild;
         this.ownedCollectionRegistry = ownedCollectionRegistry;
         this.mongoTemplate = mongoTemplate;
+        this.doajDataService = doajDataService;
+        this.erihDataService = erihDataService;
     }
 
     /**
@@ -112,10 +128,36 @@ public class PipelineRebuildService {
                 wiped, MANAGED_DERIVED_COLLECTIONS.size());
 
         WosBigBangMigrationService.WosBigBangMigrationResult wos = wosRebuild.run(false, null);
+        // H66B M8-B: refresh the DOAJ/ERIH reference snapshots before the Scopus forum build (its ERIH/DOAJ
+        // onboarding reads them). These collections are not source-replayed (not in the managed wipe set), so
+        // re-importing here keeps the unified rebuild's registry complete and current.
+        ingestReferenceFeedsIfConfigured();
         ScopusBigBangMigrationService.ScopusBigBangMigrationResult scopus = scopusRebuild.runFull();
 
         LOG.info("Pipeline rebuild complete.");
         return new PipelineRebuildResult(wos, scopus);
+    }
+
+    private void ingestReferenceFeedsIfConfigured() {
+        long now = System.currentTimeMillis();
+        if (isReadableFile(doajFile)) {
+            var r = doajDataService.importDoajCsvFromPath(doajFile, "doaj-" + now, referenceAsOf);
+            LOG.info("Unified rebuild DOAJ ingest ({}): processed={} imported={} updated={} errors={}",
+                    doajFile, r.getProcessedCount(), r.getImportedCount(), r.getUpdatedCount(), r.getErrorCount());
+        } else if (doajFile != null && !doajFile.isBlank()) {
+            LOG.warn("Unified rebuild DOAJ ingest skipped: file not found ({})", doajFile);
+        }
+        if (isReadableFile(erihFile)) {
+            var r = erihDataService.importErihJsonlFromPath(erihFile, "erih-" + now, referenceAsOf);
+            LOG.info("Unified rebuild ERIH ingest ({}): processed={} imported={} updated={} errors={}",
+                    erihFile, r.getProcessedCount(), r.getImportedCount(), r.getUpdatedCount(), r.getErrorCount());
+        } else if (erihFile != null && !erihFile.isBlank()) {
+            LOG.warn("Unified rebuild ERIH ingest skipped: file not found ({})", erihFile);
+        }
+    }
+
+    private boolean isReadableFile(String path) {
+        return path != null && !path.isBlank() && java.nio.file.Files.isRegularFile(java.nio.file.Path.of(path));
     }
 
     public record PipelineRebuildResult(

@@ -498,14 +498,28 @@ vs baseline** + reconcile audit `healthy=true`.
     Correctness is a *data* outcome — unit tests verify call order, but the **isolated rebuild validates the
     registry** (forum count, conflicts ≤ residual, WoS-name wins display, 0 orphaned publication links). Per
     plan, run that rebuild right after M8-A.2 — it doubles as the held M4–M7 validation.
-  - **M8-B collapse the three orchestrators (structural, after A.2).** One orchestrator:
-  parse all sources → **ForumBuilder over the curated identity sources in authority order
-  (`Source List → MJL → ERIH → DOAJ → WoS` create-or-match)** → RankingBuilder (WoS metrics + CiteScore,
-  attach-only) → PublicationBuilder + CitationBuilder (resolve + option-B) → projections. Retire
-  `runFull`/`wosRebuild`/`PipelineRebuild` (their parsing survives as parser components). This is where the
-  current "WoS rebuild first, then Scopus runFull, feeds as side imports" structure is replaced by the strict
-  layered order. Folds in H66 D5/D6/D7. `runWosOnboarding`'s standalone caller dies here — no more "WoS
-  rebuild that onboards forums."
+  - **M8-B unify the rebuild into one full-feed DAG — DONE (functional unification; deeper structural retire
+    deferred).** Surfaced while scoping full-feed validation: `PipelineRebuildService.rebuildAllDerived` was
+    the single entry but only ingested Scopus JSON + WoS — the curated feeds (Source List / CiteScore / Book
+    list / MJL / DOAJ / ERIH) had to be hand-imported via separate admin endpoints, and M9 dedup was reachable
+    only inside `WosBigBang.run`. So no single call produced the full-feed registry, blocking a clean
+    validation. Fix: fold every source into the unified rebuild's ingest phase, dependency-ordered —
+    - MJL (WoS source stream) → `WosBigBangMigrationService.run`, after the WoS-dir ingest, before buildFacts
+      (so coverage facts + the M9 dedup fold in);
+    - Source List / CiteScore / Book list (Scopus source streams) → `ScopusBigBangMigrationService.runFull`,
+      after the Scopus JSON import, before `buildFactsFromImportEvents` (so the curated FORUM backbone is
+      present when the registry canonicalizes + M10 relink runs in `buildScopusForums`);
+    - DOAJ / ERIH (match-only reference snapshots) → `PipelineRebuildService`, between the WoS build and the
+      Scopus forum build (their onboarding reads the reference).
+    All config-driven (`h66.*` paths in `application.properties`); a blank path or missing file logs a warning
+    and skips, so Scopus-JSON-only rebuilds and unit tests are unaffected. Tests:
+    `PipelineRebuildServiceTest` asserts reference ingest fires between WoS and Scopus builds + skips when
+    unset. App + importing suites green (1317). **One `rebuildAllDerived` now produces the complete full-feed
+    registry** — the prerequisite for full-feed validation.
+    - **Deferred (not required for validation):** the deeper structural retire of `runFull`/`wosRebuild` into
+      explicit named builder stages (ForumBuilder → RankingBuilder → Publication/CitationBuilder) and killing
+      `runWosOnboarding`'s standalone caller. The orchestration is now *functionally* one DAG; the class-level
+      consolidation can follow once full-feed numbers are validated.
 
 ### Open design choices
 

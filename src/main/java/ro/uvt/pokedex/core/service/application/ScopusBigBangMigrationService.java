@@ -57,6 +57,18 @@ public class ScopusBigBangMigrationService {
     @Value("${scopus.data.file}")
     private String scopusDataFile;
 
+    // H66B M8-B: the curated Scopus source feeds (Source List backbone, CiteScore forum stream, Book list) are
+    // folded into the unified rebuild's ingest phase so a single rebuild builds the full-feed forum registry.
+    // Blank path skips the feed (keeps Scopus-JSON-only rebuilds and unit tests unaffected).
+    @Value("${h66.scopus.source-list-file:}")
+    private String sourceListFile;
+    @Value("${h66.scopus.citescore-file:}")
+    private String citeScoreFile;
+    @Value("${h66.scopus.book-list-file:}")
+    private String bookListFile;
+    @Value("${h66.scopus.book-list-as-of:2026}")
+    private String bookListAsOf;
+
     private final ScopusDataService scopusDataService;
     private final ScopusFactBuilderService scopusFactBuilderService;
     private final ScholardexProjectionBuilderService scopusProjectionBuilderService;
@@ -317,10 +329,48 @@ public class ScopusBigBangMigrationService {
         );
     }
 
+    /**
+     * H66B M8-B — ingest the curated Scopus source feeds during the unified rebuild. Each feed is skipped when
+     * its path is unset (blank @Value default) or the file is missing, so Scopus-JSON-only rebuilds and unit
+     * tests (which leave the paths null) are unaffected. Runs after the Scopus JSON import and before
+     * {@code buildFactsFromImportEvents}, so all FORUM events are present when the registry canonicalizes.
+     */
+    private void ingestCuratedScopusFeedsIfConfigured() {
+        long now = Instant.now().toEpochMilli();
+        if (isReadableFile(sourceListFile)) {
+            ImportProcessingResult r = scopusDataService.importSourceListXlsxFromPath(sourceListFile, "sourcelist-" + now);
+            log.info("Unified rebuild Source List ingest ({}): processed={} imported={} updated={} errors={}",
+                    sourceListFile, r.getProcessedCount(), r.getImportedCount(), r.getUpdatedCount(), r.getErrorCount());
+        } else if (sourceListFile != null && !sourceListFile.isBlank()) {
+            log.warn("Unified rebuild Source List ingest skipped: file not found ({})", sourceListFile);
+        }
+        if (isReadableFile(citeScoreFile)) {
+            ImportProcessingResult r = scopusDataService.importCiteScoreCsvFromPath(citeScoreFile, "citescore-" + now);
+            log.info("Unified rebuild CiteScore ingest ({}): processed={} imported={} skipped={} errors={}",
+                    citeScoreFile, r.getProcessedCount(), r.getImportedCount(), r.getSkippedCount(), r.getErrorCount());
+        } else if (citeScoreFile != null && !citeScoreFile.isBlank()) {
+            log.warn("Unified rebuild CiteScore ingest skipped: file not found ({})", citeScoreFile);
+        }
+        if (isReadableFile(bookListFile)) {
+            ImportProcessingResult r = scopusDataService.importBookListXlsxFromPath(bookListFile, "booklist-" + now, bookListAsOf);
+            log.info("Unified rebuild Book List ingest ({}): processed={} imported={} errors={}",
+                    bookListFile, r.getProcessedCount(), r.getImportedCount(), r.getErrorCount());
+        } else if (bookListFile != null && !bookListFile.isBlank()) {
+            log.warn("Unified rebuild Book List ingest skipped: file not found ({})", bookListFile);
+        }
+    }
+
+    private boolean isReadableFile(String path) {
+        return path != null && !path.isBlank() && java.nio.file.Files.isRegularFile(java.nio.file.Path.of(path));
+    }
+
     public ScopusBigBangMigrationResult runFull() {
         Instant startedAt = Instant.now();
         ImportProcessingResult publicationImport = scopusDataService.importScopusDataSync(scopusDataFile, 0, false);
         ImportProcessingResult citationImport = scopusDataService.importScopusDataCitationsSync(scopusDataFile);
+        // H66B M8-B: fold the curated Scopus feeds (Source List / CiteScore / Book list) into the same ingest
+        // phase so buildFactsFromImportEvents canonicalizes the full-feed forum registry, not Scopus JSON alone.
+        ingestCuratedScopusFeedsIfConfigured();
         ImportProcessingResult facts = scopusFactBuilderService.buildFactsFromImportEvents();
         CanonicalBuildOptions options = CanonicalBuildOptions.defaults();
         ImportProcessingResult canonicalAffiliations = affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(options);

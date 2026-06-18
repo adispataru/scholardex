@@ -49,8 +49,17 @@ public class WosBigBangMigrationService {
     private final JdbcTemplate jdbcTemplate;
     private final MongoTemplate mongoTemplate;
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(WosBigBangMigrationService.class);
+
     @Value("${h14.wos.migration.data-dir:data/loaded}")
     private String migrationDataDirectory;
+
+    // H66B M8-B: the MJL coverage feed (a WoS source stream) is folded into the unified rebuild's ingest phase
+    // instead of a separate manual import, so a single rebuild produces the full-feed WoS facts. Blank dir skips.
+    @Value("${h66.wos.mjl-dir:}")
+    private String mjlDirectory;
+    @Value("${h66.wos.mjl-source-version:2025}")
+    private String mjlSourceVersion;
 
     public WosBigBangMigrationResult run(boolean dryRun, String sourceVersionOverride) {
         return run(dryRun, sourceVersionOverride, null, true);
@@ -127,6 +136,16 @@ public class WosBigBangMigrationService {
                     migrationDataDirectory,
                     normalizedSourceVersion
             );
+            // H66B M8-B: fold the MJL coverage feed (membership view source) into the same ingest phase.
+            if (mjlDirectory != null && !mjlDirectory.isBlank()
+                    && java.nio.file.Files.isDirectory(java.nio.file.Path.of(mjlDirectory))) {
+                ImportProcessingResult mjl = ingestionService.ingestMjlDirectory(mjlDirectory, mjlSourceVersion);
+                log.info("Unified rebuild MJL ingest (dir={}): processed={} imported={} skipped={} errors={}",
+                        mjlDirectory, mjl.getProcessedCount(), mjl.getImportedCount(),
+                        mjl.getSkippedCount(), mjl.getErrorCount());
+            } else if (mjlDirectory != null && !mjlDirectory.isBlank()) {
+                log.warn("Unified rebuild MJL ingest skipped: dir not found ({})", mjlDirectory);
+            }
             String runId = "wos-fact-build-" + startedAt.toEpochMilli();
             WosFactBuilderService.FactBuildRunResult factRun = factBuilderService.buildFactsFromImportEventsWithCheckpoint(
                     startBatchOverride,

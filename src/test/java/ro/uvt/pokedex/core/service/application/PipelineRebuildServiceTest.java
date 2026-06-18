@@ -34,12 +34,16 @@ class PipelineRebuildServiceTest {
     private OwnedCollectionRegistry ownedCollectionRegistry;
     @Mock
     private MongoTemplate mongoTemplate;
+    @Mock
+    private ro.uvt.pokedex.core.service.importing.DoajDataService doajDataService;
+    @Mock
+    private ro.uvt.pokedex.core.service.importing.ErihDataService erihDataService;
 
     @Test
     void rebuildAssertsOwnershipThenResetsWipesAndRebuilds() {
         when(mongoTemplate.remove(any(Query.class), anyString())).thenReturn(DeleteResult.acknowledged(0));
         PipelineRebuildService service =
-                new PipelineRebuildService(scopusRebuild, wosRebuild, ownedCollectionRegistry, mongoTemplate);
+                new PipelineRebuildService(scopusRebuild, wosRebuild, ownedCollectionRegistry, mongoTemplate, doajDataService, erihDataService);
 
         PipelineRebuildService.PipelineRebuildResult result = service.rebuildAllDerivedFromSource();
 
@@ -54,11 +58,52 @@ class PipelineRebuildServiceTest {
     }
 
     @Test
+    void rebuildIngestsConfiguredReferenceFeedsBetweenWosAndScopusBuilds() throws Exception {
+        when(mongoTemplate.remove(any(Query.class), anyString())).thenReturn(DeleteResult.acknowledged(0));
+        java.nio.file.Path doaj = java.nio.file.Files.createTempFile("doaj", ".csv");
+        java.nio.file.Path erih = java.nio.file.Files.createTempFile("erih", ".jsonl");
+        try {
+            PipelineRebuildService service =
+                    new PipelineRebuildService(scopusRebuild, wosRebuild, ownedCollectionRegistry, mongoTemplate, doajDataService, erihDataService);
+            org.springframework.test.util.ReflectionTestUtils.setField(service, "doajFile", doaj.toString());
+            org.springframework.test.util.ReflectionTestUtils.setField(service, "erihFile", erih.toString());
+            org.springframework.test.util.ReflectionTestUtils.setField(service, "referenceAsOf", "2026");
+            when(doajDataService.importDoajCsvFromPath(any(), any(), any()))
+                    .thenReturn(new ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult(0));
+            when(erihDataService.importErihJsonlFromPath(any(), any(), any()))
+                    .thenReturn(new ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult(0));
+
+            service.rebuildAllDerivedFromSource();
+
+            // reference snapshots refresh after the WoS build and before the Scopus forum build reads them
+            InOrder order = inOrder(wosRebuild, doajDataService, erihDataService, scopusRebuild);
+            order.verify(wosRebuild).run(false, null);
+            order.verify(doajDataService).importDoajCsvFromPath(any(), any(), any());
+            order.verify(erihDataService).importErihJsonlFromPath(any(), any(), any());
+            order.verify(scopusRebuild).runFull();
+        } finally {
+            java.nio.file.Files.deleteIfExists(doaj);
+            java.nio.file.Files.deleteIfExists(erih);
+        }
+    }
+
+    @Test
+    void rebuildSkipsReferenceFeedsWhenPathsUnset() {
+        when(mongoTemplate.remove(any(Query.class), anyString())).thenReturn(DeleteResult.acknowledged(0));
+        PipelineRebuildService service =
+                new PipelineRebuildService(scopusRebuild, wosRebuild, ownedCollectionRegistry, mongoTemplate, doajDataService, erihDataService);
+
+        service.rebuildAllDerivedFromSource();
+
+        verifyNoInteractions(doajDataService, erihDataService);
+    }
+
+    @Test
     void rebuildAbortsBeforeWipingWhenGuardRejects() {
         doThrow(new IllegalArgumentException("foreign collection"))
                 .when(ownedCollectionRegistry).assertAllWipeable(any());
         PipelineRebuildService service =
-                new PipelineRebuildService(scopusRebuild, wosRebuild, ownedCollectionRegistry, mongoTemplate);
+                new PipelineRebuildService(scopusRebuild, wosRebuild, ownedCollectionRegistry, mongoTemplate, doajDataService, erihDataService);
 
         assertThatThrownBy(service::rebuildAllDerivedFromSource)
                 .isInstanceOf(IllegalArgumentException.class);
@@ -70,7 +115,7 @@ class PipelineRebuildServiceTest {
         OwnedCollectionRegistry allOwned =
                 new OwnedCollectionRegistry(PipelineRebuildService.MANAGED_DERIVED_COLLECTIONS);
         PipelineRebuildService service =
-                new PipelineRebuildService(scopusRebuild, wosRebuild, allOwned, mongoTemplate);
+                new PipelineRebuildService(scopusRebuild, wosRebuild, allOwned, mongoTemplate, doajDataService, erihDataService);
 
         assertThatCode(service::validateManagedCollectionsAreOwned).doesNotThrowAnyException();
     }
@@ -80,7 +125,7 @@ class PipelineRebuildServiceTest {
         Set<String> missingOne = new HashSet<>(PipelineRebuildService.MANAGED_DERIVED_COLLECTIONS);
         missingOne.remove("scholardex.source_links");
         PipelineRebuildService service =
-                new PipelineRebuildService(scopusRebuild, wosRebuild, new OwnedCollectionRegistry(missingOne), mongoTemplate);
+                new PipelineRebuildService(scopusRebuild, wosRebuild, new OwnedCollectionRegistry(missingOne), mongoTemplate, doajDataService, erihDataService);
 
         assertThatThrownBy(service::validateManagedCollectionsAreOwned)
                 .isInstanceOf(IllegalArgumentException.class)
