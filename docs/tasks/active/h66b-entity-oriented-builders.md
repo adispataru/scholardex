@@ -353,6 +353,23 @@ vs baseline** + reconcile audit `healthy=true`.
     re-pointed: `ScholardexForumBuilderTest` (WoS-last order), `ScopusBigBangMigrationServiceTest` (+inject,
     +record field, stub links), `WosBigBangMigrationServiceTest` (no longer onboards). All app + index + scopus
     suites green incl. Testcontainers integration. **Rebuild now validates the M4–M8 stack on real data.**
+  - **VALIDATION REBUILD (2026-06-18, isolated `scholardex_h66`, Scopus+WoS, no feeds yet):**
+    - ✅ **M7 books validated on real data.** `scholardex.book_facts`=2,185, publications with `bookId`=2,714,
+      with `forumId`=89,844; forum count **30,358** — down ~2,356 = the book venues no longer minted as forums.
+      Books are cleanly a distinct entity. prod `test` untouched (32,714).
+    - ❌ **M8-A.2 (WoS-last) regression — 198 `WOS/FORUM_EXTERNAL_ID_ALREADY_LINKED`** (total 224 vs ~10 at the
+      same Scopus+WoS stage with WoS-first). **Root cause (confirmed):** `ForumMergeEngine.mergeForum`'s
+      scopus-enrichment (`scopusForumIndex.findCandidates`) claims a Scopus source id onto the WoS journal's
+      forum. Harmless no-op under WoS-first (Scopus forums didn't exist yet); under WoS-last, Scopus canon
+      already owns that id, so a WoS journal resolving (by ISSN) to a *different* forum but claiming an
+      already-owned scopus id → DuplicateKey → conflict + skipped journal. (7,875 forums correctly carry both
+      scopus+wos ids; 198 collided.)
+    - **FIX (decide before re-running):** remove the scopus-id claiming from `mergeForum`'s scopus-enrichment
+      (redundant under WoS-last — `forumIndex` already merges a WoS journal into the Scopus-canonical forum by
+      ISSN, which already carries the scopus id; the enrichment only adds collisions + risky name-only links;
+      dedup catches genuine ISSN-shared duplicates). *Or* make the enrichment ownership-aware (skip a scopus id
+      already owned, merge into the owner). Either needs a confirming rebuild. Decision deferred (paused
+      2026-06-18). Until fixed, **M8-A.2 is not release-ready** despite green unit tests.
   - **M8-A.2 original plan (for reference):** The substantive change:
     1. `ScholardexForumBuilder.buildScopusForums` → add `runWosForumOnboarding` as the **last** forum step
        (dedup → Scopus canon → ERIH → DOAJ → **WoS** → final dedup); extend the result record + the re-dedup
