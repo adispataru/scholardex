@@ -379,6 +379,20 @@ vs baseline** + reconcile audit `healthy=true`.
       builder + app + scopus suites green). **Still needs the confirming rebuild** to show
       `EXTERNAL_ID_ALREADY_LINKED` drops 198 → ~0 and total → the ~26 residual (9 ambiguous + 10 cross-journal
       + 5 dedup + 2 invalid). Until that rebuild runs, M8-A.2 remains "code-fixed, data-unverified."
+    - **CONFIRMING REBUILD (2026-06-18, isolated, Scopus+WoS):** ✅ **`EXTERNAL_ID_ALREADY_LINKED` 198 → 0** —
+      the scopus-id-claim churn is eliminated. Total forum conflicts **224 → 103**. Books still separated
+      (2,185 book_facts, 2,714 bookId pubs); WoS-name-wins + ALL-CAPS title-casing confirmed on real data
+      ("Zeitschrift Fur Germanistische Linguistik", only 9 all-caps names left); prod `test` safe. Rebuild
+      completed the forum build + canon + projections (laptop slept and killed the app at the tail, after the
+      numbers were written — so they're trustworthy).
+    - **NEW residual surfaced: `WOS/AMBIGUOUS_ISSN_MATCH` 9 → 83** (the M5 orphan-metric report flagged the
+      same 83 — "83 WoS journals have metric facts but resolve to no forum"). **Diagnosed:** the fix onboards
+      the ~198 journals that previously collided+skipped, densifying the registry, so more WoS journals' ISSN
+      now matches multiple forums and the H55.6 primary-ISSN tiebreak can't resolve them → quarantined
+      ambiguous (honest, not churn). Net: 224→103, the *dangerous* EXTERNAL_ID churn gone + ~115 more journals
+      onboarded. **Open follow-up:** the 83 ambiguous (above the ~27 target) — investigate whether the
+      primary-ISSN tiebreak can be extended, and re-check under the full feed set (SourceList may resolve some
+      by name). Scopus+WoS-only here; full-feed validation still pending.
   - **M8-A.2 original plan (for reference):** The substantive change:
     1. `ScholardexForumBuilder.buildScopusForums` → add `runWosForumOnboarding` as the **last** forum step
        (dedup → Scopus canon → ERIH → DOAJ → **WoS** → final dedup); extend the result record + the re-dedup
