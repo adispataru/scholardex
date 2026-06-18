@@ -294,6 +294,46 @@ class WosScholardexOnboardingServiceTest {
     }
 
     @Test
+    void runScopusForumCanonicalizationForBatchIngestsOnlyBatchVenues() {
+        // H66B Phase 2: the batch-scoped resolve loads the full registry index (to find-or-match) but ingests
+        // ONLY venues whose ScopusForumFact carries the upload batch id; other venues are left untouched.
+        WosScholardexOnboardingService service = service();
+
+        ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact inBatch =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact();
+        inBatch.setSourceId("s-in");
+        inBatch.setIssn("1234-5679");
+        inBatch.setPublicationName("In Batch Journal");
+        inBatch.setSourceBatchId("up-batch");
+        ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact otherBatch =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScopusForumFact();
+        otherBatch.setSourceId("s-out");
+        otherBatch.setIssn("4444-5555");
+        otherBatch.setPublicationName("Other Journal");
+        otherBatch.setSourceBatchId("different-batch");
+
+        when(scopusForumFactRepository.findAll()).thenReturn(List.of(inBatch, otherBatch));
+        when(scholardexForumFactRepository.findAll()).thenReturn(List.of());
+        when(scholardexForumFactRepository.save(any(ScholardexForumFact.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ImportProcessingResult result = service.runScopusForumCanonicalizationForBatch("up-batch", "incremental");
+
+        // only the in-batch venue was processed + minted
+        assertEquals(1, result.getProcessedCount());
+        verify(scholardexForumFactRepository, times(1)).save(any(ScholardexForumFact.class));
+        verify(scholardexForumFactRepository).save(argThat(f -> "In Batch Journal".equals(f.getName())));
+    }
+
+    @Test
+    void runScopusForumCanonicalizationForBatchIsNoOpForBlankBatch() {
+        WosScholardexOnboardingService service = service();
+        ImportProcessingResult result = service.runScopusForumCanonicalizationForBatch("  ", "incremental");
+        assertEquals(0, result.getProcessedCount());
+        verify(scopusForumFactRepository, org.mockito.Mockito.never()).findAll();
+    }
+
+    @Test
     void relinkAmbiguousWosForumsIsNoOpWhenNoOpenWosAmbiguity() {
         WosScholardexOnboardingService service = service();
         when(scholardexIdentityConflictRepository.findByEntityTypeAndStatus(ScholardexEntityType.FORUM, "OPEN"))

@@ -36,6 +36,9 @@ public class WosScholardexOnboardingService {
     private static final String STATUS_OPEN = "OPEN";
     private static final String REASON_AMBIGUOUS_ISSN = "AMBIGUOUS_ISSN_MATCH";
     private static final String REASON_AMBIGUOUS_NAME_AGG = "AMBIGUOUS_NAME_AGG_MATCH";
+    // Mirrors ScopusBigBangMigrationService.SCOPUS_FORUM_CANON_BATCH so FORUM/SCOPUS source links written by the
+    // incremental resolve carry the same provenance label as the full build (uniform re-point / dedup behavior).
+    private static final String SOURCE_SCOPUS_FORUM_CANON_BATCH = "scopus-forum-canonicalization";
 
     private final WosJournalIdentityRepository journalIdentityRepository;
     private final ScholardexSourceLinkService sourceLinkService;
@@ -146,6 +149,33 @@ public class WosScholardexOnboardingService {
         for (var scopusForum : ctx.scopusForums()) {
             result.markProcessed();
             forumMergeEngine.ingest(ForumSourceRecord.ofScopus(scopusForum), ctx, batchId, correlationId, now, result);
+        }
+        forumMergeEngine.flush(ctx);
+        return result;
+    }
+
+    /**
+     * H66B Phase 2 (two-tier resolve): the incremental-resolve counterpart of
+     * {@link #runScopusForumCanonicalization}. Builds the same full-registry index (so find-or-match resolves
+     * a new venue against every existing forum) but ingests <b>only the venues belonging to {@code uploadBatchId}</b>
+     * — the observed-venue / curated forum facts that {@code buildFactsFromImportEvents} stamped with this batch.
+     * It find-or-mints each batch venue and writes its FORUM/SCOPUS source link, deferring the global reconcile
+     * (dedup / ERIH-DOAJ onboarding / M9 / M10) to a later pass. Provenance on minted/merged forums stays the
+     * stable canon batch label (not the upload batch) so re-points and dedup behave identically to the full build.
+     */
+    public ImportProcessingResult runScopusForumCanonicalizationForBatch(String uploadBatchId, String correlationId) {
+        ImportProcessingResult result = new ImportProcessingResult(20);
+        if (uploadBatchId == null || uploadBatchId.isBlank()) {
+            return result;
+        }
+        ForumMergeEngine.Context ctx = forumMergeEngine.startScopusRun();
+        Instant now = Instant.now();
+        for (var scopusForum : ctx.scopusForums()) {
+            if (!uploadBatchId.equals(scopusForum.getSourceBatchId())) {
+                continue;
+            }
+            result.markProcessed();
+            forumMergeEngine.ingest(ForumSourceRecord.ofScopus(scopusForum), ctx, SOURCE_SCOPUS_FORUM_CANON_BATCH, correlationId, now, result);
         }
         forumMergeEngine.flush(ctx);
         return result;

@@ -92,8 +92,20 @@ interface EntityBuilder {
    (correct because the materialization service has no `ForumBuilder` dep → forums are stable across the run → a
    user-defined publication's forum resolution can only change when user-defined facts change). Keeps full
    maintenance unchanged. Proves the "scope global steps out of incremental" principle on the proven path.
-2. **Phase 2: carve `resolve` vs `reconcile` on `ForumBuilder`; route the upload path through `resolve`** (mint only
-   the batch's new venues; stop running the global build per upload). The expensive global ops become deferred.
+2. **Phase 2 — DONE.** Carved `ForumBuilder.resolve(uploadBatchId, corr)` (Tier-2): builds the full-registry
+   index once, then find-or-mints **only the batch's venues** (`runScopusForumCanonicalizationForBatch` filters
+   `ScopusForumFact.sourceBatchId == uploadBatchId`), deferring dedup / ERIH-DOAJ onboarding / M9 / M10. Routed
+   `runIncrementalUploadBuildStep` off the global `buildScopusForums` onto `resolve`. Minted + deferred-conflict
+   counts are metered (`core.h66b.forum.unreconciled_mints` / `.deferred_conflicts`) — the Phase-3 trigger
+   signal. `buildScopusForums` stays as the `reconcile()` entry (init + periodic). Tests: scoped canon ingests
+   only batch venues; `resolve` never invokes dedup/ERIH/DOAJ/WoS; upload path calls `resolve` not the global
+   build. App + scopus suites green (1018).
+   - **Scoping confirmed:** books are unaffected (no book step in either path — they flow through `buildFacts` +
+     `bookId` routing); deferred items are bounded and self-healing (forum dedup re-points publications +
+     source-links on merge → no orphans, proven by the full-feed run's 0-orphan result after 188 merges).
+   - **Still index-bound:** `resolve` still loads the whole registry once per upload for the find-or-match index
+     (the chosen "index-load" option). If per-upload latency matters, the lighter per-venue indexed-lookup +
+     mint-on-miss variant is the follow-up. **Not yet validated against a live upload** — unit-tested only.
 3. **Phase 3: explicit periodic `reconcile()` entry** (separate from wipe-and-rebuild), triggered nightly / on a
    threshold of unreconciled mints / on curated-feed change.
 4. **Phase 4: PoP / Google Scholar as a Tier-2 source** — `ForumSourceRecord.ofPoP` + an ingest adapter; new papers

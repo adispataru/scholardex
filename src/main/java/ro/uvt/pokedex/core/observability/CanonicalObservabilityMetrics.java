@@ -63,6 +63,21 @@ public final class CanonicalObservabilityMetrics {
                 .increment();
     }
 
+    /**
+     * H66B Phase 2: signal for the (future, Phase 3) periodic reconcile trigger. Incremental forum resolve
+     * mints canonical forums and may defer ambiguity conflicts without running the global reconcile (dedup /
+     * ERIH-DOAJ onboarding / M9 / M10). These counters track how much has accumulated since the last reconcile
+     * so the trigger can fire on a threshold.
+     */
+    public static void recordIncrementalForumResolve(long minted, long deferredConflicts) {
+        if (minted > 0) {
+            Metrics.counter("core.h66b.forum.unreconciled_mints").increment(minted);
+        }
+        if (deferredConflicts > 0) {
+            Metrics.counter("core.h66b.forum.deferred_conflicts").increment(deferredConflicts);
+        }
+    }
+
     private static String safe(String value) {
         if (value == null || value.isBlank()) {
             return "unknown";

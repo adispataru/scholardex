@@ -28,6 +28,35 @@ public class ScholardexForumBuilder {
     private final ErihOnboardingService erihOnboardingService;
     private final DoajOnboardingService doajOnboardingService;
 
+    /**
+     * H66B Phase 2 (two-tier resolve): the result of an incremental forum {@link #resolve}. {@code minted} are
+     * newly-created canonical forums, {@code matched} bound to an existing forum, {@code deferredConflicts} are
+     * records the engine quarantined (ambiguous/invalid) that a later reconcile must clear. {@code minted} +
+     * {@code deferredConflicts} are the signal the Phase-3 periodic reconcile trigger reads.
+     */
+    public record ForumResolveResult(int processed, int minted, int matched, int deferredConflicts) {
+    }
+
+    /**
+     * H66B Phase 2 — <b>Tier 2 (resolve)</b>: bind the venues of a single upload batch to the canonical forum
+     * registry without running the global reconcile. Find-or-mints only the batch's venues against the existing
+     * registry (the M8 primary-ISSN tiebreak + H57 safe-merge still apply per record), and defers dedup /
+     * ERIH-DOAJ onboarding / M9 / M10 to a later {@link #buildScopusForums} reconcile. Safe because forum dedup
+     * re-points publications + source links when it later merges a transient duplicate (no orphans); the
+     * minted/deferred counts are metered so the reconcile trigger can fire on a threshold.
+     */
+    public ForumResolveResult resolve(String uploadBatchId, String correlationId) {
+        ImportProcessingResult canon =
+                wosScholardexOnboardingService.runScopusForumCanonicalizationForBatch(uploadBatchId, correlationId);
+        int minted = canon.getImportedCount();
+        int deferredConflicts = canon.getSkippedCount();
+        ro.uvt.pokedex.core.observability.CanonicalObservabilityMetrics
+                .recordIncrementalForumResolve(minted, deferredConflicts);
+        log.info("Forum resolve (incremental, batch={}): processed={} minted={} matched={} deferredConflicts={}",
+                uploadBatchId, canon.getProcessedCount(), minted, canon.getUpdatedCount(), deferredConflicts);
+        return new ForumResolveResult(canon.getProcessedCount(), minted, canon.getUpdatedCount(), deferredConflicts);
+    }
+
     /** The per-step results of a forum build, kept separate so callers can aggregate them. */
     public record ScopusForumBuildResult(
             ImportProcessingResult dedup,

@@ -67,6 +67,26 @@ class ScholardexForumBuilderTest {
     }
 
     @Test
+    void resolveDelegatesToBatchScopedCanonAndSkipsGlobalReconcile() {
+        // H66B Phase 2: Tier-2 resolve binds only the batch's venues (find-or-mint) and defers the global
+        // reconcile — it must NOT run dedup / ERIH / DOAJ / WoS onboarding.
+        when(wosScholardexOnboardingService.runScopusForumCanonicalizationForBatch("up-batch", "incremental"))
+                .thenReturn(result(5, 2, 3, 1, 0)); // processed5, minted(imported)2, matched(updated)3, deferred(skipped)1
+
+        ScholardexForumBuilder.ForumResolveResult out = builder().resolve("up-batch", "incremental");
+
+        assertEquals(5, out.processed());
+        assertEquals(2, out.minted());
+        assertEquals(3, out.matched());
+        assertEquals(1, out.deferredConflicts());
+        verify(wosScholardexOnboardingService).runScopusForumCanonicalizationForBatch("up-batch", "incremental");
+        verify(deduplicationService, never()).deduplicateForums(any(), any());
+        verify(erihOnboardingService, never()).onboardErih();
+        verify(doajOnboardingService, never()).onboardDoaj();
+        verify(wosScholardexOnboardingService, never()).runWosForumOnboarding(any(), any());
+    }
+
+    @Test
     void skipsMembershipDedupWhenNeitherSourceTagged() {
         when(deduplicationService.deduplicateForums("batch", "run")).thenReturn(result(0, 0, 0, 0, 0));
         when(wosScholardexOnboardingService.runScopusForumCanonicalization("batch", "run")).thenReturn(result(0, 0, 0, 0, 0));

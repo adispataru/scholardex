@@ -273,13 +273,17 @@ class ScopusBigBangMigrationServiceTest {
         when(authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(any())).thenReturn(result(0, 0, 0, 1, 0));
         when(publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(any())).thenReturn(result(0, 0, 0, 0, 1));
         when(citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(any())).thenReturn(result(1, 0, 0, 0, 0));
-        when(forumBuilder.buildScopusForums(any(), any())).thenReturn(emptyForumBuild());
+        // H66B Phase 2: the incremental upload now does a batch-scoped forum RESOLVE, not the global build.
+        when(forumBuilder.resolve("batch-A", "incremental"))
+                .thenReturn(new ScholardexForumBuilder.ForumResolveResult(3, 1, 2, 0));
         stubVerificationSummary();
 
         ScopusBigBangMigrationService.ScopusBigBangMigrationResult out = service.runIncrementalUploadBuildStep("batch-A", 9);
         assertEquals(2, out.buildFacts().processed());
         assertEquals(1, out.buildFacts().errors());
         verify(scopusFactBuilderService).buildFactsFromImportEvents("batch-A");
+        verify(forumBuilder).resolve("batch-A", "incremental");
+        verify(forumBuilder, never()).buildScopusForums(any(), any());
     }
 
     @Test

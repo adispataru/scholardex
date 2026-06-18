@@ -232,9 +232,12 @@ public class ScopusBigBangMigrationService {
         ImportProcessingResult canonicalAuthors = runStepWithTiming(
                 "scholardex-author-canonicalization",
                 () -> authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options));
-        log.info("Scopus incremental upload next step: scholardex-forum-build (forums-first)");
-        ScholardexForumBuilder.ScopusForumBuildResult forumBuild =
-                forumBuilder.buildScopusForums(SCOPUS_FORUM_CANON_BATCH, "incremental");
+        // H66B Phase 2 — Tier-2 resolve: bind only this upload's venues to the registry (find-or-mint), deferring
+        // the global reconcile (dedup / ERIH-DOAJ onboarding / M9 / M10) instead of rebuilding the whole forum
+        // registry per upload. A later reconcile cleans up + re-points any transient duplicate (no orphans).
+        log.info("Scopus incremental upload next step: scholardex-forum-resolve (batch-scoped)");
+        ScholardexForumBuilder.ForumResolveResult forumResolve =
+                forumBuilder.resolve(sourceBatchIdFilter, "incremental");
         log.info("Scopus incremental upload next step: scholardex-publication-canonicalization");
         ImportProcessingResult canonicalPublications = runStepWithTiming(
                 "scholardex-publication-canonicalization",
@@ -246,17 +249,18 @@ public class ScopusBigBangMigrationService {
                 "scholardex-citation-canonicalization",
                 () -> citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options));
         ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors,
-                forumBuild.dedup(), forumBuild.canonicalization(), forumBuild.erihOnboarding(),
-                forumBuild.doajOnboarding(), forumBuild.wosOnboarding(), forumBuild.membershipDedup(),
                 wosPublicationLinks,
                 canonicalPublications, canonicalCitations));
-        log.info("Scopus incremental upload build orchestration completed: sourceBatchIdFilter={} processed={} imported={} updated={} skipped={} errors={}",
+        log.info("Scopus incremental upload build orchestration completed: sourceBatchIdFilter={} processed={} imported={} updated={} skipped={} errors={} forumResolve[minted={} matched={} deferredConflicts={}]",
                 sourceBatchIdFilter,
                 buildFactsCombined.getProcessedCount(),
                 buildFactsCombined.getImportedCount(),
                 buildFactsCombined.getUpdatedCount(),
                 buildFactsCombined.getSkippedCount(),
-                buildFactsCombined.getErrorCount());
+                buildFactsCombined.getErrorCount(),
+                forumResolve.minted(),
+                forumResolve.matched(),
+                forumResolve.deferredConflicts());
         return new ScopusBigBangMigrationResult(
                 scopusDataFile,
                 startedAt,
