@@ -203,6 +203,51 @@ class WosScholardexOnboardingServiceTest {
     }
 
     @Test
+    void runWosOnboardingDisambiguatesByPrimaryIssnInsteadOfConflicting() {
+        // H66B M8: WoS-last hits the same multi-candidate matches Scopus does (a journal sharing only an
+        // eISSN with a sibling). The primary-ISSN tiebreak, now applied to WoS too, resolves to the one
+        // candidate carrying the WoS journal's primary print ISSN instead of opening an ambiguity conflict.
+        WosScholardexOnboardingService service = service();
+
+        WosRankingView rankingView = new WosRankingView();
+        rankingView.setId("wos-epjc");
+        rankingView.setName("European Physical Journal C");
+        rankingView.setIssn("1434-6044");
+        rankingView.setEIssn("1434-6052");
+
+        ScholardexForumFact primaryMatch = new ScholardexForumFact();
+        primaryMatch.setId("cf_eurphysjc");
+        primaryMatch.setName("EUR PHYS J C");
+        primaryMatch.setIssn("1434-6044");
+
+        ScholardexForumFact eIssnSibling = new ScholardexForumFact();
+        eIssnSibling.setId("cf_zeitschrift");
+        eIssnSibling.setName("Zeitschrift fuer Physik C");
+        eIssnSibling.setIssn("0170-9739");
+        eIssnSibling.setEIssn("1434-6052");
+
+        when(journalIdentityRepository.findAll()).thenReturn(List.of(identity(rankingView)));
+        when(scopusForumFactRepository.findAll()).thenReturn(List.of());
+        when(scholardexForumFactRepository.findAll()).thenReturn(List.of(primaryMatch, eIssnSibling));
+        when(scholardexPublicationFactRepository.findAll()).thenReturn(List.of());
+        when(scholardexForumFactRepository.save(any(ScholardexForumFact.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ImportProcessingResult result = service.runWosOnboarding("batch-1", "corr-1");
+
+        assertEquals(0, result.getSkippedCount());
+        assertEquals(1, result.getUpdatedCount());
+        verify(scholardexForumFactRepository).save(argThat(f ->
+                "cf_eurphysjc".equals(f.getId()) && f.getWosForumIds().contains("wos-epjc")));
+        verify(sourceLinkService).batchUpsertWithState(
+                argThat(cmds -> cmds.stream().anyMatch(c ->
+                        c.entityType() == ScholardexEntityType.FORUM && "WOS".equals(c.source())
+                                && "wos-epjc".equals(c.sourceRecordId()) && "cf_eurphysjc".equals(c.canonicalEntityId())
+                                && "LINKED".equals(c.targetState()))),
+                any());
+    }
+
+    @Test
     void runWosOnboardingMarksConflictForAmbiguousCanonicalForumCandidatesByIssn() {
         WosScholardexOnboardingService service = service();
 

@@ -376,12 +376,14 @@ public class ForumMergeEngine {
         }
 
         List<ScholardexForumFact> candidates = forumIndex.findCandidates(normalizedIssns, nameAggKey);
-        if (scopus && candidates.size() > 1) {
-            // H55.6: an ISSN-token match against several canonical forums is usually a forum that shares
-            // only an eISSN with a sibling/continuation (e.g. European Physical Journal C vs Zeitschrift
-            // für Physik C, or the mislabeled-eISSN SIAM pair). The primary (print) ISSN is the strongest
-            // journal identity: if exactly one candidate carries this Scopus forum's primary ISSN, that is
-            // the unambiguous match. Only fall back to a conflict when the primary ISSN cannot break the tie.
+        if (candidates.size() > 1) {
+            // H55.6 / H66B M8: an ISSN-token match against several canonical forums is usually a forum that
+            // shares only an eISSN with a sibling/continuation (e.g. European Physical Journal C vs
+            // Zeitschrift für Physik C, or the mislabeled-eISSN SIAM pair). The primary (print) ISSN is the
+            // strongest journal identity: if exactly one candidate carries this record's primary ISSN, that is
+            // the unambiguous match. Applies to every source — originally Scopus-only, but WoS-last (denser
+            // registry) made WoS journals hit the same multi-candidate matches; the tiebreak resolves them
+            // (all 83 of the WoS-last ambiguous residual had exactly one candidate on the primary ISSN).
             String primaryIssn = normalizeIssn(record.issn());
             if (primaryIssn != null) {
                 List<ScholardexForumFact> byPrimary = candidates.stream()
