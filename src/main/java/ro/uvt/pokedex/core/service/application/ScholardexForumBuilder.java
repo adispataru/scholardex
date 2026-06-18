@@ -28,24 +28,28 @@ public class ScholardexForumBuilder {
     private final ErihOnboardingService erihOnboardingService;
     private final DoajOnboardingService doajOnboardingService;
 
-    /** The per-step results of a Scopus-side forum build, kept separate so callers can aggregate them. */
+    /** The per-step results of a forum build, kept separate so callers can aggregate them. */
     public record ScopusForumBuildResult(
             ImportProcessingResult dedup,
             ImportProcessingResult canonicalization,
             ImportProcessingResult erihOnboarding,
             ImportProcessingResult doajOnboarding,
+            ImportProcessingResult wosOnboarding,
             ImportProcessingResult membershipDedup
     ) {
     }
 
     /**
-     * Build/refresh the canonical forum registry from the Scopus-side forum facts, forums-first:
+     * Build/refresh the canonical forum registry, identity-first and in authority order:
      * <ol>
      *   <li>dedup pre-existing canonical forums (ISSN + erihId clusters, safe-merge),</li>
-     *   <li>canonicalize the stage-2 Scopus forum facts (Source List / CiteScore) into the registry,</li>
-     *   <li>onboard ERIH then DOAJ as create-or-match identity sources (tag matches / mint source-only venues),</li>
-     *   <li>a conditional dedup to merge the shared-id split-journals ERIH/DOAJ just surfaced (C1 part 2).</li>
+     *   <li>canonicalize the stage-2 Scopus forum facts (Source List / CiteScore / observed venues),</li>
+     *   <li>ERIH then DOAJ as create-or-match identity sources (tag matches / mint source-only venues),</li>
+     *   <li><b>WoS create-or-match LAST</b> — identity-of-last-resort, so the curated lists win identity and
+     *       WoS folds in (the M4-A display-name rule still makes the WoS title win the display name),</li>
+     *   <li>a conditional dedup to merge the shared-id split-journals the create-or-match sources surfaced.</li>
      * </ol>
+     * Requires {@code wos.journal_identity} to already be built (the WoS fact phase) — no-ops if absent.
      */
     public ScopusForumBuildResult buildScopusForums(String batchId, String correlationId) {
         ImportProcessingResult dedup = deduplicationService.deduplicateForums(batchId, correlationId);
@@ -53,16 +57,19 @@ public class ScholardexForumBuilder {
                 wosScholardexOnboardingService.runScopusForumCanonicalization(batchId, correlationId);
         ImportProcessingResult erihOnboarding = erihOnboardingService.onboardErih();
         ImportProcessingResult doajOnboarding = doajOnboardingService.onboardDoaj();
-        // Re-dedup only when a create-or-match source tagged existing forums (shared-id clusters worth
-        // merging); source-only creates don't share ISSNs with existing forums, so they don't trigger it.
-        boolean membershipTagged = erihOnboarding.getUpdatedCount() > 0 || doajOnboarding.getUpdatedCount() > 0;
-        ImportProcessingResult membershipDedup = membershipTagged
+        ImportProcessingResult wosOnboarding =
+                wosScholardexOnboardingService.runWosForumOnboarding(batchId, correlationId);
+        // Re-dedup when any create-or-match source touched the registry (shared-id clusters worth merging).
+        boolean registryChanged = erihOnboarding.getUpdatedCount() > 0 || doajOnboarding.getUpdatedCount() > 0
+                || wosOnboarding.getUpdatedCount() > 0 || wosOnboarding.getImportedCount() > 0;
+        ImportProcessingResult membershipDedup = registryChanged
                 ? deduplicationService.deduplicateForums(batchId, correlationId + "-membership")
                 : new ImportProcessingResult(0);
         log.info("Forum build complete (correlationId={}): dedupMerged={} canonProcessed={} "
-                        + "erihForumsUpdated={} doajForumsUpdated={} membershipDedupMerged={}",
+                        + "erihForumsUpdated={} doajForumsUpdated={} wosForumsImported={} wosForumsUpdated={} membershipDedupMerged={}",
                 correlationId, dedup.getUpdatedCount(), canonicalization.getProcessedCount(),
-                erihOnboarding.getUpdatedCount(), doajOnboarding.getUpdatedCount(), membershipDedup.getUpdatedCount());
-        return new ScopusForumBuildResult(dedup, canonicalization, erihOnboarding, doajOnboarding, membershipDedup);
+                erihOnboarding.getUpdatedCount(), doajOnboarding.getUpdatedCount(),
+                wosOnboarding.getImportedCount(), wosOnboarding.getUpdatedCount(), membershipDedup.getUpdatedCount());
+        return new ScopusForumBuildResult(dedup, canonicalization, erihOnboarding, doajOnboarding, wosOnboarding, membershipDedup);
     }
 }

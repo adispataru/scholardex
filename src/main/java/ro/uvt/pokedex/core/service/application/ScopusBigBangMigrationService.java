@@ -68,6 +68,7 @@ public class ScopusBigBangMigrationService {
     // H66B B66B.1 — forum building (dedup + Scopus canonicalization + ERIH onboard + erih-dedup) is now a
     // single forums-first step behind ScholardexForumBuilder, instead of inline across three orchestrator paths.
     private final ScholardexForumBuilder forumBuilder;
+    private final WosScholardexOnboardingService wosScholardexOnboardingService;
     private final ScopusBuildSkipGateService scopusBuildSkipGateService;
     private final ScholardexCanonicalBuildCheckpointService canonicalBuildCheckpointService;
     private final ScholardexSourceLinkService sourceLinkService;
@@ -157,13 +158,18 @@ public class ScopusBigBangMigrationService {
         ImportProcessingResult canonicalPublications = runStepWithTiming(
                 "scholardex-publication-canonicalization",
                 () -> publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(options));
+        // H66B M8: link publications to their WoS source ids now that the publications exist (moved out of
+        // the WoS rebuild, which ran before any publications were built).
+        ImportProcessingResult wosPublicationLinks =
+                wosScholardexOnboardingService.linkPublicationsToWos(SCOPUS_FORUM_CANON_BATCH, "build-facts");
         log.info("Scopus build-facts next step: scholardex-citation-canonicalization");
         ImportProcessingResult canonicalCitations = runStepWithTiming(
                 "scholardex-citation-canonicalization",
                 () -> citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options));
         ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors,
                 forumBuild.dedup(), forumBuild.canonicalization(), forumBuild.erihOnboarding(),
-                forumBuild.doajOnboarding(), forumBuild.membershipDedup(),
+                forumBuild.doajOnboarding(), forumBuild.wosOnboarding(), forumBuild.membershipDedup(),
+                wosPublicationLinks,
                 canonicalPublications, canonicalCitations));
         log.info("Scopus build-facts orchestration completed: processed={} imported={} updated={} skipped={} errors={}",
                 buildFactsCombined.getProcessedCount(),
@@ -221,13 +227,16 @@ public class ScopusBigBangMigrationService {
         ImportProcessingResult canonicalPublications = runStepWithTiming(
                 "scholardex-publication-canonicalization",
                 () -> publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(options));
+        ImportProcessingResult wosPublicationLinks =
+                wosScholardexOnboardingService.linkPublicationsToWos(SCOPUS_FORUM_CANON_BATCH, "incremental");
         log.info("Scopus incremental upload next step: scholardex-citation-canonicalization");
         ImportProcessingResult canonicalCitations = runStepWithTiming(
                 "scholardex-citation-canonicalization",
                 () -> citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options));
         ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors,
                 forumBuild.dedup(), forumBuild.canonicalization(), forumBuild.erihOnboarding(),
-                forumBuild.doajOnboarding(), forumBuild.membershipDedup(),
+                forumBuild.doajOnboarding(), forumBuild.wosOnboarding(), forumBuild.membershipDedup(),
+                wosPublicationLinks,
                 canonicalPublications, canonicalCitations));
         log.info("Scopus incremental upload build orchestration completed: sourceBatchIdFilter={} processed={} imported={} updated={} skipped={} errors={}",
                 sourceBatchIdFilter,
@@ -316,19 +325,22 @@ public class ScopusBigBangMigrationService {
         CanonicalBuildOptions options = CanonicalBuildOptions.defaults();
         ImportProcessingResult canonicalAffiliations = affiliationCanonicalizationService.rebuildCanonicalAffiliationFactsFromScopusFacts(options);
         ImportProcessingResult canonicalAuthors = authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(options);
-        // H66B B66B.1 — forums first: build the full forum registry (dedup + Scopus canonicalization + ERIH
-        // erihIds onboarding + erih-dedup) before publication/citation canonicalization resolves venues
-        // against it. ERIH no-ops when not loaded. (WoS journal onboarding still runs in the WoS rebuild.)
+        // H66B M8 — forums first, identity-first: the registry is built from curated sources then WoS
+        // create-or-match LAST inside buildScopusForums, before publication/citation canonicalization resolves
+        // venues against it. (WoS journal_identity comes from the WoS fact phase, which ran before this.)
         ScholardexForumBuilder.ScopusForumBuildResult forumBuild =
                 forumBuilder.buildScopusForums(SCOPUS_FORUM_CANON_BATCH, "run-full");
         ImportProcessingResult canonicalPublications = publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(options);
+        ImportProcessingResult wosPublicationLinks =
+                wosScholardexOnboardingService.linkPublicationsToWos(SCOPUS_FORUM_CANON_BATCH, "run-full");
         ImportProcessingResult canonicalCitations = citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options);
         ImportProcessingResult projections = scopusProjectionBuilderService.rebuildViews();
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult indexResult =
                 scopusCanonicalIndexMaintenanceService.ensureIndexes();
         ImportProcessingResult buildFactsCombined = combine(facts, combine(canonicalAffiliations, canonicalAuthors,
                 forumBuild.dedup(), forumBuild.canonicalization(), forumBuild.erihOnboarding(),
-                forumBuild.doajOnboarding(), forumBuild.membershipDedup(),
+                forumBuild.doajOnboarding(), forumBuild.wosOnboarding(), forumBuild.membershipDedup(),
+                wosPublicationLinks,
                 canonicalPublications, canonicalCitations));
         return new ScopusBigBangMigrationResult(
                 scopusDataFile,

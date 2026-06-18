@@ -44,19 +44,22 @@ class ScholardexForumBuilderTest {
         when(wosScholardexOnboardingService.runScopusForumCanonicalization("batch", "run")).thenReturn(result(5, 5, 0, 0, 0));
         when(erihOnboardingService.onboardErih()).thenReturn(result(10, 0, 3, 0, 0)); // tagged forums -> dedup again
         when(doajOnboardingService.onboardDoaj()).thenReturn(result(8, 1, 0, 0, 0));
+        when(wosScholardexOnboardingService.runWosForumOnboarding("batch", "run")).thenReturn(result(30, 20, 5, 0, 0));
 
         ScholardexForumBuilder.ScopusForumBuildResult out = builder().buildScopusForums("batch", "run");
 
-        // forums-first order: dedup -> canonicalization -> ERIH -> DOAJ -> membership dedup
+        // identity-first order: dedup -> Scopus canon -> ERIH -> DOAJ -> WoS (last) -> membership dedup
         InOrder order = inOrder(deduplicationService, wosScholardexOnboardingService, erihOnboardingService, doajOnboardingService);
         order.verify(deduplicationService).deduplicateForums("batch", "run");
         order.verify(wosScholardexOnboardingService).runScopusForumCanonicalization("batch", "run");
         order.verify(erihOnboardingService).onboardErih();
         order.verify(doajOnboardingService).onboardDoaj();
+        order.verify(wosScholardexOnboardingService).runWosForumOnboarding("batch", "run");
         order.verify(deduplicationService).deduplicateForums("batch", "run-membership");
 
         assertEquals(3, out.erihOnboarding().getUpdatedCount());
         assertEquals(1, out.doajOnboarding().getImportedCount());
+        assertEquals(20, out.wosOnboarding().getImportedCount());
         assertEquals(5, out.canonicalization().getProcessedCount());
     }
 
@@ -66,6 +69,7 @@ class ScholardexForumBuilderTest {
         when(wosScholardexOnboardingService.runScopusForumCanonicalization("batch", "run")).thenReturn(result(0, 0, 0, 0, 0));
         when(erihOnboardingService.onboardErih()).thenReturn(result(0, 0, 0, 0, 0)); // no tags
         when(doajOnboardingService.onboardDoaj()).thenReturn(result(2, 1, 0, 0, 0)); // only a create, no tag
+        when(wosScholardexOnboardingService.runWosForumOnboarding("batch", "run")).thenReturn(result(0, 0, 0, 0, 0)); // no change
 
         builder().buildScopusForums("batch", "run");
 

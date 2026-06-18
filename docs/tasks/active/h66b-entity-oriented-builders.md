@@ -344,7 +344,16 @@ vs baseline** + reconcile audit `healthy=true`.
     `runWosForumOnboarding` (forum half — needs `wos.journal_identity`) + `linkPublicationsToWos` (publication
     half — needs `scholardex.publication_facts`); `runWosOnboarding` still calls both in order, so behavior is
     unchanged (19 tests green). This decomposition is the prerequisite for the reorder.
-  - **M8-A.2 reorder to WoS-last — NEXT, pair with the held rebuild (do NOT do blind).** The substantive change:
+  - **M8-A.2 reorder to WoS-last — CODE DONE (rebuild validates).** WoS forum onboarding now runs LAST in
+    `ScholardexForumBuilder.buildScopusForums` (dedup → Scopus canon → ERIH → DOAJ → **WoS** → final dedup;
+    result record gains `wosOnboarding`, re-dedup fires when WoS touched the registry). `linkPublicationsToWos`
+    runs after publication canon in all three `ScopusBigBangMigrationService` paths (build-facts / incremental
+    / run-full). The WoS rebuild (`WosBigBangMigrationService`) no longer onboards forums — both
+    `runWosOnboarding` calls + the `mergeResults` helper removed; it builds WoS facts + projections only. Tests
+    re-pointed: `ScholardexForumBuilderTest` (WoS-last order), `ScopusBigBangMigrationServiceTest` (+inject,
+    +record field, stub links), `WosBigBangMigrationServiceTest` (no longer onboards). All app + index + scopus
+    suites green incl. Testcontainers integration. **Rebuild now validates the M4–M8 stack on real data.**
+  - **M8-A.2 original plan (for reference):** The substantive change:
     1. `ScholardexForumBuilder.buildScopusForums` → add `runWosForumOnboarding` as the **last** forum step
        (dedup → Scopus canon → ERIH → DOAJ → **WoS** → final dedup); extend the result record + the re-dedup
        trigger to include WoS.

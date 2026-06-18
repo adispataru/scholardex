@@ -40,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -56,6 +57,7 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
     @Mock private ScholardexCitationCanonicalizationService citationCanonicalizationService;
     @Mock private ScholardexForumBuilder forumBuilder;
+    @Mock private WosScholardexOnboardingService wosScholardexOnboardingService;
     @Mock private ScopusBuildSkipGateService scopusBuildSkipGateService;
     @Mock private ScholardexCanonicalBuildCheckpointService canonicalBuildCheckpointService;
     @Mock private ScholardexSourceLinkService sourceLinkService;
@@ -86,6 +88,7 @@ class ScopusBigBangMigrationServiceTest {
                 publicationCanonicalizationService,
                 citationCanonicalizationService,
                 forumBuilder,
+                wosScholardexOnboardingService,
                 scopusBuildSkipGateService,
                 canonicalBuildCheckpointService,
                 sourceLinkService,
@@ -103,6 +106,9 @@ class ScopusBigBangMigrationServiceTest {
                 mongoTemplate
         );
         ReflectionTestUtils.setField(service, "scopusDataFile", "/tmp/scopus.json");
+        // H66B M8: publication→WoS links run after publication canon in the Scopus paths; empty by default.
+        lenient().when(wosScholardexOnboardingService.linkPublicationsToWos(any(), any()))
+                .thenReturn(result(0, 0, 0, 0, 0));
     }
 
     @Test
@@ -445,7 +451,7 @@ class ScopusBigBangMigrationServiceTest {
     private ScholardexForumBuilder.ScopusForumBuildResult emptyForumBuild() {
         return new ScholardexForumBuilder.ScopusForumBuildResult(
                 result(0, 0, 0, 0, 0), result(0, 0, 0, 0, 0), result(0, 0, 0, 0, 0),
-                result(0, 0, 0, 0, 0), result(0, 0, 0, 0, 0));
+                result(0, 0, 0, 0, 0), result(0, 0, 0, 0, 0), result(0, 0, 0, 0, 0));
     }
 
     private ImportProcessingResult result(int processed, int imported, int updated, int skipped, int errors) {

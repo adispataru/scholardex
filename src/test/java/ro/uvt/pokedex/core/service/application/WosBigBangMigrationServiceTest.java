@@ -145,7 +145,10 @@ class WosBigBangMigrationServiceTest {
         assertTrue(result.enrichCategoryRankings().executed());
         assertTrue(result.buildProjections().executed());
         assertTrue(result.verification().parityPassed());
-        verify(wosScholardexOnboardingService).runWosOnboarding(any(), eq("v2026"));
+        // H66B M8 — the WoS rebuild no longer onboards forums (that moved to the identity-first ForumBuilder,
+        // WoS last); it builds WoS facts + projections only.
+        verify(wosScholardexOnboardingService, never()).runWosOnboarding(any(), any());
+        verify(wosScholardexOnboardingService, never()).runWosForumOnboarding(any(), any());
         verify(factBuilderService).enrichMissingCategoryRankingFields();
         verify(parityReconciliationService).runFullParity();
     }

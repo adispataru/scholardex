@@ -133,10 +133,11 @@ public class WosBigBangMigrationService {
                     normalizedSourceVersion
             );
             ImportProcessingResult factResult = factRun.result();
-            ImportProcessingResult wosOnboardingResult = wosScholardexOnboardingService.runWosOnboarding(runId, normalizedSourceVersion);
+            // H66B M8 — WoS forum onboarding moved to the identity-first ForumBuilder (WoS create-or-match,
+            // last). The WoS rebuild now builds WoS facts (journal identity + metrics) + projections only;
+            // forums + publication→WoS links are produced by the Scopus-side build after the curated sources.
             ImportProcessingResult enrichmentResult = factBuilderService.enrichMissingCategoryRankingFields();
             ImportProcessingResult projectionResult = projectionBuilderService.rebuildWosProjections();
-            mergeResults(factResult, wosOnboardingResult);
 
             ingestStep = MigrationStepResult.executed("ingest", ingestionResult);
             factStep = MigrationStepResult.executed(
@@ -287,8 +288,7 @@ public class WosBigBangMigrationService {
                 runId,
                 normalizedSourceVersion
         );
-        ImportProcessingResult wosOnboardingResult = wosScholardexOnboardingService.runWosOnboarding(runId, normalizedSourceVersion);
-        mergeResults(run.result(), wosOnboardingResult);
+        // H66B M8 — WoS forum onboarding moved to the ForumBuilder (WoS last); WoS rebuild builds facts only.
         return MigrationStepResult.executed(
                 "build-facts",
                 run.result(),
@@ -303,27 +303,6 @@ public class WosBigBangMigrationService {
     public MigrationStepResult runEnrichCategoryRankingsStep() {
         ImportProcessingResult result = factBuilderService.enrichMissingCategoryRankingFields();
         return MigrationStepResult.executed("enrich-category-rankings", result);
-    }
-
-    private void mergeResults(ImportProcessingResult target, ImportProcessingResult addition) {
-        if (target == null || addition == null) {
-            return;
-        }
-        for (int i = 0; i < addition.getProcessedCount(); i++) {
-            target.markProcessed();
-        }
-        for (int i = 0; i < addition.getImportedCount(); i++) {
-            target.markImported();
-        }
-        for (int i = 0; i < addition.getUpdatedCount(); i++) {
-            target.markUpdated();
-        }
-        for (int i = 0; i < addition.getSkippedCount(); i++) {
-            target.markSkipped("h19.6-wos-onboarding-skipped");
-        }
-        for (int i = 0; i < addition.getErrorCount(); i++) {
-            target.markError("h19.6-wos-onboarding-error");
-        }
     }
 
     public record WosBigBangMigrationResult(
