@@ -132,13 +132,80 @@ interface EntityBuilder {
      conflicts unchanged at 57, projection errors 0, prod `test` safe at 32,714. **End-to-end two-tier loop
      proven:** Tier-2 resolve mints fast on the hot path → Tier-1 reconcile merges + re-points on the cold path,
      0 orphans throughout — the convergence the design promised, demonstrated on real data.
-4. **Phase 4: PoP / Google Scholar as a Tier-2 source** — `ForumSourceRecord.ofPoP` + an ingest adapter; new papers
-   resolve/mint against the registry, reconcile cleans up. No orchestrator surgery.
+4. **Phase 4: two purpose-built multi-source ingests — OpenAlex (citations) + DBLP (CS venue identity).**
+   Originally scoped as "PoP / Google Scholar as a Tier-2 source," **dropped after empirical evaluation** (below).
+   Both new sources slot into the Tier-2 `resolve(delta)` hot path via a `ForumSourceRecord.ofX` mapper + an
+   ingest adapter; new venues mint, reconcile cleans up. No orchestrator surgery.
+
+   **Why PoP / Google Scholar was dropped (evidence, 2026-06-18).** Evaluated a real Google-Scholar export of
+   one author (25 pubs + 114 citing works) against the OpenAlex API for the same corpus:
+   - **No citation edges.** The GS bulk "retrieve citing works" merges every paper's citers into one flat,
+     untagged list — you cannot recover *which* citing paper cites *which* of yours. The only per-paper
+     grouping (the `cites=<clusterId>` in the pub export) is dropped. Edges are unrecoverable without a
+     per-cluster re-scrape.
+   - **Inflated + unverifiable.** The 114 GS citing records contained ~13+ near-duplicate pairs (preprint+
+     published, mirror copies, encoding-glitch variants) and only **30/114 carried a DOI**. Distinct ≈ 95–100.
+   - **OpenAlex is the cleaner, *more correct* picture** despite a smaller headline number (95 distinct citers,
+     all DOI-backed): it agreed with **25/30** of GS's verifiable citers and added ~70 more verifiable ones;
+     the GS "extra" is duplication + DOI-less noise (GS keeps a tiny ~5-paper fresh/grey-lit tail OpenAlex
+     lacks — real but not worth the noise). GS is fragile to scrape (CAPTCHA/ToS) on top.
+
+   **Phase 4a — OpenAlex as the on-demand citation + coverage source.** Free API, no key (~271M works). Mirrors
+   the proven Scopus on-demand shape (`ScopusUpdateScheduler` → fetch → ingest with a batch id → Tier-2
+   materialize): an OpenAlex fetch task (by ORCID / author / DOI) → ingest works with `referenced_works`
+   (outgoing edges) + `cited_by` (incoming edges) → publication/citation canon → `resolve` the venues
+   (DOI/ISSN = a *tight* mint gate, unlike GS) → reconcile on the cold path.
+   - **Validated on a real corpus (2026-06-18):** all 25 of the test author's works present; **22/25** carried
+     `referenced_works` (the 3 zeros are 2025 preprints); incoming `cites:` resolves to DOI-bearing citers;
+     **24/25 DOI**, 13/25 venue ISSN (the rest are conferences — correctly no ISSN, match by DOI); venues clean.
+   - **Build notes:** new `ofOpenAlex` source-record (OpenAlex work id + DOI as the match keys); citation edges
+     flow into the existing citation canon (OpenAlex IDs/DOIs → resolve cited/citing pubs). **Caveat:** OpenAlex
+     author disambiguation is fragmented (the test author split across 4 author entities) — key the request on
+     **ORCID** and/or resolve by **work DOI/ID**, not OpenAlex's author clustering.
+   - **OpenAlex does NOT recover CS conference identity** (tested): it files LNCS conference papers (Euro-Par,
+     ESOCC, ICA3PP) as `type=book-chapter` under "Lecture Notes in Computer Science" (`source.type=book series`),
+     the same blind spot as Scopus, with no DBLP link. → that job is Phase 4b.
+
+   **Phase 4b — DBLP as a first-class CS venue-identity source (retire the band-aid).** Today
+   `DblpPublicationEnrichmentService` (777 LOC) streams the *entire* gzipped DBLP dump every run — to enrich
+   only `subtype∈{ch,cp}` pubs in "Lecture Notes in …" forums — after disabling the JVM's XML-bomb limits
+   (`jdk.xml.maxGeneralEntitySizeLimit`/`totalEntitySizeLimit`/`entityExpansionLimit`=0) and hand-rolling a
+   77-entry HTML-entity sanitizer, then writes the result to a side `scholardex.publication_dblp_evidence`
+   collection read by exactly one consumer (`ComputerScienceConferenceScoringService`). It is a write-only
+   oracle bolted on sideways. **But DBLP is not redundant** — it is the *only* source in the stack that knows
+   the real conference behind an LNCS DOI (Scopus and OpenAlex both bury it under the series). So promote it,
+   don't delete it:
+   - **Detect candidates without DBLP** — the "hidden conference" signal is already in Scopus/OpenAlex:
+     `book-chapter` + `source.type=book series` + ISSN `0302-9743` (LNCS/LNAI/CCIS family).
+   - **Resolve via the DBLP API per paper** (`dblp.org/search/publ/api?q=<doi|title>`, JSON) — the matching
+     `inproceedings` record carries the real `booktitle`/conference + proceedings crossref. Same Tier-2 shape;
+     no 4 GB dump, no XML wrestling.
+   - **`ForumSourceRecord.ofDblp`** mints/matches the real **conference forum** (keyed by DBLP venue stream
+     `conf/X` + ISSN); the LNCS paper resolves to it; CS conference scoring reads the **resolved forum**, not an
+     evidence note. **Retire** `publication_dblp_evidence`, the XML-bomb switch, the 77-entity sanitizer, and the
+     `/general/dblpLnChapterEnrichment` batch.
+   - **Modeling decision:** a DBLP `conf/X` stream is a conference *series* — make the forum the series (year
+     editions become a publication attribute), mirroring how journal series are already handled.
+   - **Scope honesty:** DBLP is **CS-only** and has **no citation edges** — it is the CS venue-identity
+     authority, complementary to OpenAlex, not a replacement. Keep the full dump only for an optional one-time
+     CS venue-catalog seed; make the live path the API.
+
+   **Division of labor (zero overlap):** OpenAlex = citation edges + dedup + broad coverage; DBLP = CS
+   conference identity; Scopus + WoS = the metadata/metrics backbone; ERIH/DOAJ/MJL/SourceList/CiteScore = the
+   curated identity/membership feeds.
 
 ## Open questions
 - **Reconcile trigger policy** — nightly? after N unreconciled mints? on curated-feed import? (Phase 3 decides.)
 - **Registry index warmth** — Tier-2 resolve still pays an O(registry) context load unless we keep a warm
   ISSN→forum index or resolve purely by indexed Mongo lookup (the scheduler path already does the latter via
   source-links). Prefer indexed lookup over an in-memory warm index (multi-instance coherence).
-- **PoP identity quality** — Google Scholar venue strings are noisy; minting from them risks duplicate forums that
-  lean hard on reconcile. May need a stricter mint gate for low-confidence sources.
+- **~~PoP identity quality~~ — RESOLVED: dropped Google Scholar/PoP** (no edges, inflated/duplicated, fragile).
+  Replaced by OpenAlex (Phase 4a) + DBLP (Phase 4b). See Phase 4.
+- **OpenAlex author fragmentation** — one real author maps to several OpenAlex author entities; an on-demand
+  "update by author" must key on ORCID and/or resolve by work DOI/ID, not OpenAlex's author clustering.
+- **DBLP venue-stream → forum modeling** — confirm conference *series* (`conf/X`) is the forum grain (year
+  editions as a pub attribute), and how DBLP `conf/X` keys reconcile with existing Scopus/SourceList conference
+  forums (shared ISSN where present; name+series otherwise).
+- **Per-source mint-confidence gate** — OpenAlex/DBLP are DOI/stable-ID-backed (tight gate OK). The general
+  question of how strict the Tier-2 mint should be per source (and whether low-confidence sources defer minting
+  to reconcile) is now scoped to *high-confidence* sources only.
