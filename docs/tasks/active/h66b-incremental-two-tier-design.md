@@ -194,6 +194,52 @@ interface EntityBuilder {
    conference identity; Scopus + WoS = the metadata/metrics backbone; ERIH/DOAJ/MJL/SourceList/CiteScore = the
    curated identity/membership feeds.
 
+   ### Phase 4 — design adjustments after code inspection (2026-06-18, decisions locked)
+
+   **Code seams found:** `ForumSourceRecord` (enum + `ofX` mapper + `addExternalId` FK-list switch) extends
+   cleanly → add `OPENALEX`/`DBLP` id types + `openAlexIds`/`dblpIds` forum FK lists. The canonical publication
+   id is a **priority cascade** `eid → wos → gs → user → doi → title+date+creator+forum` (DOI is first-class; a
+   vestigial `googleScholarId` slot remains from the dropped GS plan — clean it up). Cross-source bridging by DOI
+   **already exists**: `PublicationEnrichmentLinkerService` resolves an external pub onto the canonical one by
+   EID then DOI (`findAllByDoiNormalized`; 1→link, >1→`AMBIGUOUS_DOI_MATCH`). **But citation linking is
+   EID-keyed** (`ScholardexCitationFact` is canonical-id-keyed, yet source resolution is `citedEid`/`citingEid`
+   only) — OpenAlex DOI/ID edges need a DOI-resolution path. The on-demand trigger is
+   `ResearcherWorkspaceController` → researcher-profile `scopusId` → `ScopusPublicationUpdate` →
+   `UserScopusTaskFacade` → `ScopusUpdateScheduler`; **the profile has no ORCID**.
+
+   **Decision 1 — OpenAlex = FULL source (enrich + mint).** This makes **publications a multi-source
+   resolve/reconcile entity**, mirroring the forum two-tier (the headline new surface). Precedent:
+   `UserDefinedCanonicalizationService` already mints non-Scopus canonical pubs, so the pipeline/projections
+   handle non-EID pubs.
+   - **Publication resolve (Tier-2):** for each OpenAlex work, find-or-mint by EID/DOI — reuse
+     `PublicationEnrichmentLinkerService` to *link* by DOI to an existing canonical pub, else *mint* a new pub
+     keyed on `doi|…`. So OpenAlex never duplicates a Scopus pub; it links or adds.
+   - **Citation edges:** resolve each edge endpoint's DOI/OpenAlex-id → canonical pub via the linker → write the
+     canonical `ScholardexCitationFact` (a new **DOI-keyed citation path** beside the EID one).
+   - **Venue:** `ofOpenAlex` forum resolve (Tier-2) for each work's host venue (DOI/ISSN = tight mint gate).
+   - **Publication reconcile (Tier-1, NEW):** a publication dedup-by-DOI on the cold path, mirroring the forum
+     dedup (collapse transient same-paper duplicates, re-point citation edges/authorship). This is the main new
+     build beyond the forum work already done.
+
+   **Decision 2 — add ORCID to the researcher profile.** New `orcid` field on the profile; a new
+   `OpenAlexAuthorUpdate` task (mirror of `ScopusPublicationUpdate`) keyed on ORCID drives the on-demand fetch
+   (ORCID consolidates OpenAlex's fragmented author entities — verified the test author splits across 4). DBLP
+   author queries can reuse the same identity. Scopus-author-id stays for the existing Scopus flow.
+
+   **Decision 3 — DBLP = batch + on-demand.**
+   - **Batch (back-catalog):** one pass over existing pubs flagged `type=book-chapter` under an LNCS-family ISSN
+     (`0302-9743` etc.) → DBLP API by DOI → real conference → `ofDblp` forum resolve (mint/match the conference
+     forum) → **re-point the pub's `forumId`** from the LNCS-series forum to the conference forum (the existing
+     dedup re-point machinery). Keeps the LNCS-series forum for genuine book chapters.
+   - **On-demand:** the same resolution for LNCS pubs arriving in an incremental upload.
+   - **Retire** `publication_dblp_evidence`, the disabled XML-bomb limits, the 77-entity sanitizer, and
+     `/general/dblpLnChapterEnrichment`; `ComputerScienceConferenceScoringService` reads the re-pointed forum.
+
+   **Net new surface (ordered):** (1) publication Tier-2 resolve (find-or-mint by EID/DOI) + Tier-1 dedup-by-DOI
+   — the big one; (2) DOI-keyed citation path; (3) `ofOpenAlex`/`ofDblp` + FK lists (small); (4) ORCID field +
+   `OpenAlexAuthorUpdate` task + scheduler (mirrors Scopus); (5) DBLP API adapter + retire the band-aid. Suggest
+   building in that order, OpenAlex first (DBLP reuses the venue-resolve seam).
+
 ## Open questions
 - **Reconcile trigger policy** — nightly? after N unreconciled mints? on curated-feed import? (Phase 3 decides.)
 - **Registry index warmth** — Tier-2 resolve still pays an O(registry) context load unless we keep a warm
