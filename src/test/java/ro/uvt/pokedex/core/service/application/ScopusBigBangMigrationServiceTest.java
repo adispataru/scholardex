@@ -451,7 +451,7 @@ class ScopusBigBangMigrationServiceTest {
     private ScholardexForumBuilder.ScopusForumBuildResult emptyForumBuild() {
         return new ScholardexForumBuilder.ScopusForumBuildResult(
                 result(0, 0, 0, 0, 0), result(0, 0, 0, 0, 0), result(0, 0, 0, 0, 0),
-                result(0, 0, 0, 0, 0), result(0, 0, 0, 0, 0), result(0, 0, 0, 0, 0));
+                result(0, 0, 0, 0, 0), result(0, 0, 0, 0, 0), result(0, 0, 0, 0, 0), result(0, 0, 0, 0, 0));
     }
 
     private ImportProcessingResult result(int processed, int imported, int updated, int skipped, int errors) {

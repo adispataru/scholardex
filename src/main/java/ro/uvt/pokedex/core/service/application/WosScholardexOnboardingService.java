@@ -33,11 +33,16 @@ public class WosScholardexOnboardingService {
     private static final String REASON_SOURCE_ID_COLLISION = "SOURCE_ID_COLLISION";
     private static final String REASON_WOS_PUBLICATION_LINK = "wos-publication-link";
 
+    private static final String STATUS_OPEN = "OPEN";
+    private static final String REASON_AMBIGUOUS_ISSN = "AMBIGUOUS_ISSN_MATCH";
+    private static final String REASON_AMBIGUOUS_NAME_AGG = "AMBIGUOUS_NAME_AGG_MATCH";
+
     private final WosJournalIdentityRepository journalIdentityRepository;
     private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexPublicationFactRepository scholardexPublicationFactRepository;
     private final ConflictRecorder conflictRecorder;
     private final ForumMergeEngine forumMergeEngine;
+    private final ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexIdentityConflictRepository identityConflictRepository;
 
     /**
      * Legacy combined entry: WoS forum onboarding then publication→WoS links. H66B M8 splits these — the DAG
@@ -65,6 +70,42 @@ public class WosScholardexOnboardingService {
                 .map(WosScholardexOnboardingService::toRankingView)
                 .toList();
 
+        ForumMergeEngine.Context ctx = forumMergeEngine.startWosRun(journals);
+        Instant now = Instant.now();
+        for (WosRankingView journal : journals) {
+            result.markProcessed();
+            forumMergeEngine.ingest(ForumSourceRecord.ofWos(journal), ctx, batchId, correlationId, now, result);
+        }
+        forumMergeEngine.flush(ctx);
+        return result;
+    }
+
+    /**
+     * H66B M10 — re-resolve WoS journals that quarantined as {@code AMBIGUOUS_ISSN_MATCH}/
+     * {@code AMBIGUOUS_NAME_AGG_MATCH} during forum onboarding. They were ambiguous because a transient
+     * duplicate forum (later collapsed by the membership dedup) was a second candidate at onboard time; with
+     * that duplicate now gone, re-driving the journal through the engine resolves it to the single surviving
+     * forum and closes the stale conflict (via {@code resolveOpenForumAmbiguityConflict}). Run after the
+     * membership dedup. Targets only the still-open ambiguous WoS journals, so it is cheap.
+     */
+    public ImportProcessingResult relinkAmbiguousWosForums(String batchId, String correlationId) {
+        List<String> ambiguousJournalIds = identityConflictRepository
+                .findByEntityTypeAndStatus(ScholardexEntityType.FORUM, STATUS_OPEN).stream()
+                .filter(c -> SOURCE_WOS.equals(c.getIncomingSource()))
+                .filter(c -> REASON_AMBIGUOUS_ISSN.equals(c.getReasonCode()) || REASON_AMBIGUOUS_NAME_AGG.equals(c.getReasonCode()))
+                .map(c -> c.getIncomingSourceRecordId())
+                .distinct()
+                .toList();
+        if (ambiguousJournalIds.isEmpty()) {
+            return new ImportProcessingResult(0);
+        }
+
+        List<WosRankingView> journals = new ArrayList<>();
+        journalIdentityRepository.findAllById(ambiguousJournalIds)
+                .forEach(identity -> journals.add(toRankingView(identity)));
+        journals.sort(Comparator.comparing(WosRankingView::getId));
+
+        ImportProcessingResult result = new ImportProcessingResult(Math.max(1, journals.size()));
         ForumMergeEngine.Context ctx = forumMergeEngine.startWosRun(journals);
         Instant now = Instant.now();
         for (WosRankingView journal : journals) {

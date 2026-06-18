@@ -448,6 +448,30 @@ vs baseline** + reconcile audit `healthy=true`.
     Doaj/Erih data+onboarding, ForumReconcileAudit, WosImportEventIngestion, ScholardexForumDedup); unrelated to
     M9, broken since the controller's DOAJ/ERIH churn. **Confirming rebuild pending** (predict unlinked WoS
     identities 73→~0, forum AMBIGUOUS 73→~0).
+  - **M9 CONFIRMING REBUILD (2026-06-18, isolated `scholardex_h66`):** dedup ran — `groupsMerged=82
+    identitiesMerged=82 metric[repointed=964 dropped=44] category[repointed=1472 dropped=24]`. Forum
+    AMBIGUOUS **73 → 55**, unlinked WoS **73 → 55** (resolved 18), EXTERNAL_ID still **0**. Not ~0: the 55
+    remaining are duplicate journals whose two WoS identity records share **no clean key** (disjoint ISSN sets
+    and abbreviated-vs-full titles), so identity-layer dedup can't catch them. Diagnosed deeper: **all 55 (like
+    the 73) have one candidate forum that vanished** — the final membership dedup (`forumsDeleted~=188`, runs
+    *after* WoS onboarding) removes a transient duplicate forum the WoS journal was ambiguous against, stranding
+    it. A forum-ordering problem, not an identity one.
+
+- **M10 — post-dedup WoS re-link (resolves the transient-duplicate-forum residual). IMPLEMENTED, rebuild
+  pending.** After the membership dedup collapses duplicate forums, re-drive the still-OPEN
+  `AMBIGUOUS_ISSN_MATCH`/`AMBIGUOUS_NAME_AGG_MATCH` WoS journals back through the engine; with the duplicate
+  candidate gone each resolves to the single survivor and links.
+  - `WosScholardexOnboardingService.relinkAmbiguousWosForums` — loads the open WoS forum-ambiguity conflicts,
+    re-ingests only those journals (cheap, ~55) via `ForumMergeEngine.startWosRun` against the deduped registry.
+  - `ForumMergeEngine`: generalized `resolveOpenForumAmbiguityConflict` from Scopus-only to **source-aware**
+    (closes the WoS conflict on a now-unambiguous link, resolver `wos-forum-onboarding`), and `startWosRun` now
+    loads `openForumConflictKeys` so the re-link can close them. The three ingest success-paths call resolve for
+    every source (was gated `if (scopus)`).
+  - `ScholardexForumBuilder.buildScopusForums` runs the re-link **after** membership dedup, only when the dedup
+    merged something; added `wosRelink` to `ScopusForumBuildResult` + the build log line.
+  - Tests: `relinkAmbiguousWosForumsResolvesNowUnambiguousJournalAndClosesConflict` + no-op guard;
+    `ScholardexForumBuilderTest` asserts order (…→ membership dedup → relink) and skip-when-no-dedup. Application
+    + WoS suites green (978). **Confirming rebuild pending** (predict AMBIGUOUS 55→~0).
   - **Still pending regardless:** full-feed validation (SourceList/CiteScore/ERIH/DOAJ/MJL/Books) — Scopus+WoS-only
     so far.
   - **M8-A.2 original plan (for reference):** The substantive change:

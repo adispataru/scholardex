@@ -68,7 +68,8 @@ class WosScholardexOnboardingServiceTest {
                 sourceLinkService,
                 scholardexPublicationFactRepository,
                 conflictRecorder,
-                mergeEngine
+                mergeEngine,
+                scholardexIdentityConflictRepository
         );
     }
 
@@ -245,6 +246,63 @@ class WosScholardexOnboardingServiceTest {
                                 && "wos-epjc".equals(c.sourceRecordId()) && "cf_eurphysjc".equals(c.canonicalEntityId())
                                 && "LINKED".equals(c.targetState()))),
                 any());
+    }
+
+    @Test
+    void relinkAmbiguousWosForumsResolvesNowUnambiguousJournalAndClosesConflict() {
+        // H66B M10: a WoS journal that quarantined as ambiguous (its duplicate forum candidate has since been
+        // collapsed by the membership dedup) is re-driven; with a single surviving candidate it links and the
+        // stale OPEN conflict is marked RESOLVED.
+        WosScholardexOnboardingService service = service();
+
+        ScholardexIdentityConflict open = new ScholardexIdentityConflict();
+        open.setEntityType(ScholardexEntityType.FORUM);
+        open.setIncomingSource("WOS");
+        open.setIncomingSourceRecordId("wos-relink");
+        open.setReasonCode("AMBIGUOUS_ISSN_MATCH");
+        open.setStatus("OPEN");
+
+        WosJournalIdentity journal = new WosJournalIdentity();
+        journal.setId("wos-relink");
+        journal.setTitle("Journal Relink");
+        journal.setPrimaryIssn("12345679");
+
+        ScholardexForumFact survivor = new ScholardexForumFact();
+        survivor.setId("cf-survivor");
+        survivor.setName("Journal Relink");
+        survivor.setIssn("1234-5679");
+
+        when(scholardexIdentityConflictRepository.findByEntityTypeAndStatus(ScholardexEntityType.FORUM, "OPEN"))
+                .thenReturn(List.of(open));
+        when(journalIdentityRepository.findAllById(List.of("wos-relink"))).thenReturn(List.of(journal));
+        when(scopusForumFactRepository.findAll()).thenReturn(List.of());
+        when(scholardexForumFactRepository.findAll()).thenReturn(List.of(survivor));
+        when(scholardexForumFactRepository.save(any(ScholardexForumFact.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(scholardexIdentityConflictRepository.findByEntityTypeAndIncomingSourceAndIncomingSourceRecordIdAndReasonCodeAndStatus(
+                eq(ScholardexEntityType.FORUM), eq("WOS"), eq("wos-relink"), eq("AMBIGUOUS_ISSN_MATCH"), eq("OPEN")
+        )).thenReturn(Optional.of(open));
+
+        ImportProcessingResult result = service.relinkAmbiguousWosForums("batch-1", "corr-1-relink");
+
+        assertEquals(0, result.getSkippedCount());
+        assertEquals(1, result.getUpdatedCount());
+        verify(scholardexForumFactRepository).save(argThat(f ->
+                "cf-survivor".equals(f.getId()) && f.getWosForumIds() != null && f.getWosForumIds().contains("wos-relink")));
+        verify(scholardexIdentityConflictRepository).save(argThat(c ->
+                "RESOLVED".equals(c.getStatus()) && "wos-forum-onboarding".equals(c.getResolvedBy())));
+    }
+
+    @Test
+    void relinkAmbiguousWosForumsIsNoOpWhenNoOpenWosAmbiguity() {
+        WosScholardexOnboardingService service = service();
+        when(scholardexIdentityConflictRepository.findByEntityTypeAndStatus(ScholardexEntityType.FORUM, "OPEN"))
+                .thenReturn(List.of());
+
+        ImportProcessingResult result = service.relinkAmbiguousWosForums("batch-1", "corr-1-relink");
+
+        assertEquals(0, result.getProcessedCount());
+        verify(journalIdentityRepository, org.mockito.Mockito.never()).findAllById(org.mockito.ArgumentMatchers.<Iterable<String>>any());
     }
 
     @Test

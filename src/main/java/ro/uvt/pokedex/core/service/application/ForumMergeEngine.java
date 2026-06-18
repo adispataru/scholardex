@@ -58,6 +58,7 @@ public class ForumMergeEngine {
     private static final String STATUS_OPEN = "OPEN";
     private static final String STATUS_RESOLVED = "RESOLVED";
     private static final String CONFLICT_RESOLVER_SCOPUS_FORUM = "scopus-forum-canonicalization";
+    private static final String CONFLICT_RESOLVER_WOS_FORUM = "wos-forum-onboarding";
 
     private static final String REASON_WOS_FORUM_ONBOARDING = "wos-forum-onboarding";
     private static final String REASON_SCOPUS_FORUM_ONBOARDING = "scopus-forum-onboarding";
@@ -121,6 +122,10 @@ public class ForumMergeEngine {
         ctx.forumIndex = new ForumIdentityIndex(ctx.canonicalById);
         ctx.scopusForumIndex = new ScopusForumIndex(scopusForums);
         ctx.existingForumLinks = loadForumSourceLinks(SOURCE_WOS, journals.stream().map(WosRankingView::getId).toList());
+        // H66B M10: load OPEN forum-ambiguity conflict keys so a re-driven WoS journal that now resolves to a
+        // single candidate (after the membership dedup removed the duplicate forum it was ambiguous against)
+        // closes its stale conflict, the same way the Scopus canonicalization run already does.
+        ctx.openForumConflictKeys = loadOpenForumConflictKeys();
         return ctx;
     }
 
@@ -344,7 +349,7 @@ public class ForumMergeEngine {
             String linkedCanonicalId = ctx.canonicalIdByScopusForumId.get(sourceRecordId);
             if (linkedCanonicalId != null && canonicalById.containsKey(linkedCanonicalId)) {
                 linkCommands.add(linkedCommand(source, sourceRecordId, linkedCanonicalId, idType.onboardingReason(), batchId, correlationId));
-                resolveOpenForumAmbiguityConflict(sourceRecordId, ctx.openForumConflictKeys);
+                resolveOpenForumAmbiguityConflict(source, sourceRecordId, ctx.openForumConflictKeys);
                 result.markSkipped("scopus-forum-already-canonical sourceRecordId=" + sourceRecordId);
                 return;
             }
@@ -366,9 +371,7 @@ public class ForumMergeEngine {
                         ctx.canonicalIdByScopusForumId.put(sourceRecordId, target.getId());
                     }
                     linkCommands.add(linkedCommand(source, sourceRecordId, target.getId(), idType.onboardingReason(), batchId, correlationId));
-                    if (scopus) {
-                        resolveOpenForumAmbiguityConflict(sourceRecordId, ctx.openForumConflictKeys);
-                    }
+                    resolveOpenForumAmbiguityConflict(source, sourceRecordId, ctx.openForumConflictKeys);
                     result.markUpdated();
                 }
                 return;
@@ -427,9 +430,7 @@ public class ForumMergeEngine {
             ctx.canonicalIdByScopusForumId.put(sourceRecordId, target.getId());
         }
         linkCommands.add(linkedCommand(source, sourceRecordId, target.getId(), idType.onboardingReason(), batchId, correlationId));
-        if (scopus) {
-            resolveOpenForumAmbiguityConflict(sourceRecordId, ctx.openForumConflictKeys);
-        }
+        resolveOpenForumAmbiguityConflict(source, sourceRecordId, ctx.openForumConflictKeys);
         if (created) {
             result.markImported();
         } else {
@@ -742,19 +743,20 @@ public class ForumMergeEngine {
      * disambiguation, or because a prior run folded its id into a canonical forum). Without this the
      * conflict lingers on {@code /admin/conflicts} even though the forum is resolved.
      */
-    private void resolveOpenForumAmbiguityConflict(String sourceRecordId, Set<String> openForumConflictKeys) {
+    private void resolveOpenForumAmbiguityConflict(String source, String sourceRecordId, Set<String> openForumConflictKeys) {
+        String resolver = SOURCE_SCOPUS.equals(source) ? CONFLICT_RESOLVER_SCOPUS_FORUM : CONFLICT_RESOLVER_WOS_FORUM;
         for (String reason : List.of(REASON_AMBIGUOUS_ISSN, REASON_AMBIGUOUS_NAME_AGG)) {
             // H66: skip the DB lookup unless a matching OPEN conflict was preloaded for this record.
-            if (!openForumConflictKeys.contains(openConflictKey(SOURCE_SCOPUS, sourceRecordId, reason))) {
+            if (!openForumConflictKeys.contains(openConflictKey(source, sourceRecordId, reason))) {
                 continue;
             }
             scholardexIdentityConflictRepository
                     .findByEntityTypeAndIncomingSourceAndIncomingSourceRecordIdAndReasonCodeAndStatus(
-                            ScholardexEntityType.FORUM, SOURCE_SCOPUS, sourceRecordId, reason, STATUS_OPEN)
+                            ScholardexEntityType.FORUM, source, sourceRecordId, reason, STATUS_OPEN)
                     .ifPresent(conflict -> {
                         conflict.setStatus(STATUS_RESOLVED);
                         conflict.setResolvedAt(Instant.now());
-                        conflict.setResolvedBy(CONFLICT_RESOLVER_SCOPUS_FORUM);
+                        conflict.setResolvedBy(resolver);
                         scholardexIdentityConflictRepository.save(conflict);
                     });
         }

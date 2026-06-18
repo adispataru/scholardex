@@ -45,10 +45,11 @@ class ScholardexForumBuilderTest {
         when(erihOnboardingService.onboardErih()).thenReturn(result(10, 0, 3, 0, 0)); // tagged forums -> dedup again
         when(doajOnboardingService.onboardDoaj()).thenReturn(result(8, 1, 0, 0, 0));
         when(wosScholardexOnboardingService.runWosForumOnboarding("batch", "run")).thenReturn(result(30, 20, 5, 0, 0));
+        when(wosScholardexOnboardingService.relinkAmbiguousWosForums("batch", "run-relink")).thenReturn(result(2, 0, 2, 0, 0));
 
         ScholardexForumBuilder.ScopusForumBuildResult out = builder().buildScopusForums("batch", "run");
 
-        // identity-first order: dedup -> Scopus canon -> ERIH -> DOAJ -> WoS (last) -> membership dedup
+        // identity-first order: dedup -> Scopus canon -> ERIH -> DOAJ -> WoS (last) -> membership dedup -> relink
         InOrder order = inOrder(deduplicationService, wosScholardexOnboardingService, erihOnboardingService, doajOnboardingService);
         order.verify(deduplicationService).deduplicateForums("batch", "run");
         order.verify(wosScholardexOnboardingService).runScopusForumCanonicalization("batch", "run");
@@ -56,7 +57,9 @@ class ScholardexForumBuilderTest {
         order.verify(doajOnboardingService).onboardDoaj();
         order.verify(wosScholardexOnboardingService).runWosForumOnboarding("batch", "run");
         order.verify(deduplicationService).deduplicateForums("batch", "run-membership");
+        order.verify(wosScholardexOnboardingService).relinkAmbiguousWosForums("batch", "run-relink");
 
+        assertEquals(2, out.wosRelink().getUpdatedCount());
         assertEquals(3, out.erihOnboarding().getUpdatedCount());
         assertEquals(1, out.doajOnboarding().getImportedCount());
         assertEquals(20, out.wosOnboarding().getImportedCount());
@@ -76,5 +79,7 @@ class ScholardexForumBuilderTest {
         // only the first dedup runs; creates (imported) alone don't trigger the membership dedup
         verify(deduplicationService).deduplicateForums("batch", "run");
         verify(deduplicationService, never()).deduplicateForums("batch", "run-membership");
+        // no membership dedup -> no forums removed -> nothing to re-link
+        verify(wosScholardexOnboardingService, never()).relinkAmbiguousWosForums(any(), any());
     }
 }

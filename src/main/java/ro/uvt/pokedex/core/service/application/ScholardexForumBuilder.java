@@ -35,7 +35,8 @@ public class ScholardexForumBuilder {
             ImportProcessingResult erihOnboarding,
             ImportProcessingResult doajOnboarding,
             ImportProcessingResult wosOnboarding,
-            ImportProcessingResult membershipDedup
+            ImportProcessingResult membershipDedup,
+            ImportProcessingResult wosRelink
     ) {
     }
 
@@ -47,7 +48,9 @@ public class ScholardexForumBuilder {
      *   <li>ERIH then DOAJ as create-or-match identity sources (tag matches / mint source-only venues),</li>
      *   <li><b>WoS create-or-match LAST</b> — identity-of-last-resort, so the curated lists win identity and
      *       WoS folds in (the M4-A display-name rule still makes the WoS title win the display name),</li>
-     *   <li>a conditional dedup to merge the shared-id split-journals the create-or-match sources surfaced.</li>
+     *   <li>a conditional dedup to merge the shared-id split-journals the create-or-match sources surfaced,</li>
+     *   <li>a re-link pass (H66B M10) that re-resolves WoS journals which quarantined as ambiguous against a
+     *       forum the dedup has now collapsed, so they bind to the single surviving forum.</li>
      * </ol>
      * Requires {@code wos.journal_identity} to already be built (the WoS fact phase) — no-ops if absent.
      */
@@ -65,11 +68,19 @@ public class ScholardexForumBuilder {
         ImportProcessingResult membershipDedup = registryChanged
                 ? deduplicationService.deduplicateForums(batchId, correlationId + "-membership")
                 : new ImportProcessingResult(0);
+        // H66B M10: the membership dedup may have removed a duplicate forum that a WoS journal was ambiguous
+        // against — re-resolve those now-unblocked WoS journals so they bind to the surviving forum and their
+        // stale conflicts close. Only runs when the dedup actually merged something (else nothing changed).
+        ImportProcessingResult wosRelink = membershipDedup.getUpdatedCount() > 0
+                ? wosScholardexOnboardingService.relinkAmbiguousWosForums(batchId, correlationId + "-relink")
+                : new ImportProcessingResult(0);
         log.info("Forum build complete (correlationId={}): dedupMerged={} canonProcessed={} "
-                        + "erihForumsUpdated={} doajForumsUpdated={} wosForumsImported={} wosForumsUpdated={} membershipDedupMerged={}",
+                        + "erihForumsUpdated={} doajForumsUpdated={} wosForumsImported={} wosForumsUpdated={} "
+                        + "membershipDedupMerged={} wosRelinked={}",
                 correlationId, dedup.getUpdatedCount(), canonicalization.getProcessedCount(),
                 erihOnboarding.getUpdatedCount(), doajOnboarding.getUpdatedCount(),
-                wosOnboarding.getImportedCount(), wosOnboarding.getUpdatedCount(), membershipDedup.getUpdatedCount());
-        return new ScopusForumBuildResult(dedup, canonicalization, erihOnboarding, doajOnboarding, wosOnboarding, membershipDedup);
+                wosOnboarding.getImportedCount(), wosOnboarding.getUpdatedCount(), membershipDedup.getUpdatedCount(),
+                wosRelink.getUpdatedCount() + wosRelink.getImportedCount());
+        return new ScopusForumBuildResult(dedup, canonicalization, erihOnboarding, doajOnboarding, wosOnboarding, membershipDedup, wosRelink);
     }
 }

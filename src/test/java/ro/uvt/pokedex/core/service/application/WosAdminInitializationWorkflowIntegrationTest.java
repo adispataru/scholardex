@@ -192,7 +192,8 @@ class WosAdminInitializationWorkflowIntegrationTest {
                 sourceLinkService,
                 scholardexPublicationFactRepository,
                 conflictRecorder,
-                forumMergeEngine
+                forumMergeEngine,
+                scholardexIdentityConflictRepository
         );
         WosProjectionBuilderService projectionBuilderService = new WosProjectionBuilderService(
                 journalIdentityRepository,
