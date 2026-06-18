@@ -36,6 +36,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.atLeastOnce;
@@ -51,6 +52,7 @@ class ScopusFactBuilderServiceTest {
     @Mock private ScopusPublicationFactRepository publicationFactRepository;
     @Mock private ScopusCitationFactRepository citationFactRepository;
     @Mock private ScopusForumFactRepository forumFactRepository;
+    @Mock private ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository bookFactRepository;
     @Mock private ScopusAuthorFactRepository authorFactRepository;
     @Mock private ScopusAffiliationFactRepository affiliationFactRepository;
     @Mock private ScopusFundingFactRepository fundingFactRepository;
@@ -67,6 +69,7 @@ class ScopusFactBuilderServiceTest {
                 publicationFactRepository,
                 citationFactRepository,
                 forumFactRepository,
+                bookFactRepository,
                 authorFactRepository,
                 affiliationFactRepository,
                 fundingFactRepository,
@@ -84,6 +87,58 @@ class ScopusFactBuilderServiceTest {
             serviceLogger.detachAppender(logAppender);
             logAppender.stop();
         }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void bookVenuePublicationSetsBookIdAndMintsObservedBookNotForum() throws Exception {
+        ScopusImportEvent pub = new ScopusImportEvent();
+        pub.setId("evb");
+        pub.setEntityType(ScopusImportEntityType.PUBLICATION);
+        pub.setSource("SCOPUS_JSON_BOOTSTRAP");
+        pub.setSourceRecordId("2-s2.0-b1");
+        pub.setBatchId("b1");
+        pub.setCorrelationId("c1");
+        pub.setPayloadHash("h-b1");
+        pub.setPayload(mapper.writeValueAsString(java.util.Map.ofEntries(
+                java.util.Map.entry("eid", "2-s2.0-b1"),
+                java.util.Map.entry("title", "A Book Chapter"),
+                java.util.Map.entry("subtype", "ch"),
+                java.util.Map.entry("source_id", "bk-1"),
+                java.util.Map.entry("publicationName", "Handbook of Things"),
+                java.util.Map.entry("isbn", "9781234567890"),
+                java.util.Map.entry("publisher", "Springer"),
+                java.util.Map.entry("aggregationType", "Book"),
+                java.util.Map.entry("asjc", "1200")
+        )));
+
+        when(importEventRepository.findAll()).thenReturn(List.of(pub));
+        when(publicationFactRepository.findByEidIn(anyCollection())).thenReturn(List.of());
+        when(forumFactRepository.findBySourceIdIn(anyCollection())).thenReturn(List.of());
+        when(bookFactRepository.findByIdIn(anyCollection())).thenReturn(List.of());
+        when(authorFactRepository.findByAuthorIdIn(anyCollection())).thenReturn(List.of());
+        when(affiliationFactRepository.findByAfidIn(anyCollection())).thenReturn(List.of());
+
+        service.buildFactsFromImportEvents();
+
+        // Publication routes its venue to bookId, not forumId.
+        ArgumentCaptor<java.util.Collection<ScopusPublicationFact>> pubCaptor =
+                ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(publicationFactRepository, atLeastOnce()).saveAll(pubCaptor.capture());
+        ScopusPublicationFact savedPub = pubCaptor.getValue().iterator().next();
+        assertEquals("bk-1", savedPub.getBookId());
+        assertNull(savedPub.getForumId());
+
+        // The book venue mints an observed book, never a forum.
+        ArgumentCaptor<java.util.List<ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact>> bookCaptor =
+                ArgumentCaptor.forClass(java.util.List.class);
+        verify(bookFactRepository, atLeastOnce()).saveAll(bookCaptor.capture());
+        var book = bookCaptor.getValue().get(0);
+        assertEquals("bk-1", book.getId());
+        assertEquals("Handbook of Things", book.getTitle());
+        assertEquals("Springer", book.getPublisher());
+        assertEquals("SCOPUS_OBSERVED_BOOK", book.getSource());
+        verify(forumFactRepository, never()).saveAll(anyCollection());
     }
 
     @Test

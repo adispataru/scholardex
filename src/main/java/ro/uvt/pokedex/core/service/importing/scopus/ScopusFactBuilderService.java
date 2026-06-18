@@ -53,11 +53,17 @@ public class ScopusFactBuilderService {
     // source covers it — the option-B / conference-venue long tail). Distinct from SCOPUS_SOURCE_LIST /
     // SCOPUS_CITESCORE_LIST so "seen only in publications" is queryable.
     private static final String SOURCE_SCOPUS_OBSERVED_VENUE = "SCOPUS_OBSERVED_VENUE";
+    // H66B M7: a publication whose venue aggregationType is "Book" resolves to the book registry
+    // (scholardex.book_facts) via bookId, not a serial forum. "Book Series" stays a forum (serial). An
+    // observed book is minted from the publication payload when the Book List didn't list the venue.
+    private static final String AGGREGATION_TYPE_BOOK = "Book";
+    private static final String SOURCE_SCOPUS_OBSERVED_BOOK = "SCOPUS_OBSERVED_BOOK";
 
     private final ScopusImportEventRepository importEventRepository;
     private final ScopusPublicationFactRepository publicationFactRepository;
     private final ScopusCitationFactRepository citationFactRepository;
     private final ScopusForumFactRepository forumFactRepository;
+    private final ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository bookFactRepository;
     private final ScopusAuthorFactRepository authorFactRepository;
     private final ScopusAffiliationFactRepository affiliationFactRepository;
     private final ScopusFundingFactRepository fundingFactRepository;
@@ -190,33 +196,81 @@ public class ScopusFactBuilderService {
         if (firstByVenue.isEmpty()) {
             return;
         }
-        // Skip venues an authoritative FORUM source already seeded (processForumChunks ran first). Chunk the
-        // existence query to honor the batched-IO invariant rather than one giant $in.
+        // H66B M7 — branch each observed venue on aggregationType: book-typed venues feed the book registry,
+        // the rest feed forums. Books are a distinct entity; they are never minted as serial forums.
+        Map<String, PublicationWorkItem> forumVenues = new LinkedHashMap<>();
+        Map<String, PublicationWorkItem> bookVenues = new LinkedHashMap<>();
+        for (Map.Entry<String, PublicationWorkItem> entry : firstByVenue.entrySet()) {
+            if (isBookAggregation(text(entry.getValue().payload, "aggregationType"))) {
+                bookVenues.put(entry.getKey(), entry.getValue());
+            } else {
+                forumVenues.put(entry.getKey(), entry.getValue());
+            }
+        }
+        Instant now = Instant.now();
+        int observedForums = flushObservedForumVenues(forumVenues, now, result);
+        int observedBooks = flushObservedBookVenues(bookVenues, now, result);
+        log.info("Observed-venue flush: distinctVenues={} (forumVenues={}, bookVenues={}) observedForumsCreated={} observedBooksCreated={}",
+                firstByVenue.size(), forumVenues.size(), bookVenues.size(), observedForums, observedBooks);
+    }
+
+    /** Mint a provenance-tagged forum for each non-book venue no authoritative FORUM source seeded. */
+    private int flushObservedForumVenues(Map<String, PublicationWorkItem> venues, Instant now, ImportProcessingResult result) {
+        if (venues.isEmpty()) {
+            return 0;
+        }
         Set<String> existing = new HashSet<>();
-        List<String> venueIds = new ArrayList<>(firstByVenue.keySet());
-        for (int from = 0; from < venueIds.size(); from += FACT_BUILD_CHUNK_SIZE) {
-            List<String> idChunk = venueIds.subList(from, Math.min(venueIds.size(), from + FACT_BUILD_CHUNK_SIZE));
-            for (ScopusForumFact fact : forumFactRepository.findBySourceIdIn(idChunk)) {
+        List<String> ids = new ArrayList<>(venues.keySet());
+        for (int from = 0; from < ids.size(); from += FACT_BUILD_CHUNK_SIZE) {
+            for (ScopusForumFact fact : forumFactRepository.findBySourceIdIn(ids.subList(from, Math.min(ids.size(), from + FACT_BUILD_CHUNK_SIZE)))) {
                 if (fact.getSourceId() != null) {
                     existing.add(fact.getSourceId());
                 }
             }
         }
-
-        Instant now = Instant.now();
         List<ScopusForumFact> toSave = new ArrayList<>();
-        for (Map.Entry<String, PublicationWorkItem> entry : firstByVenue.entrySet()) {
-            if (existing.contains(entry.getKey())) {
-                continue; // an authoritative forum already covers this venue
+        for (Map.Entry<String, PublicationWorkItem> entry : venues.entrySet()) {
+            if (!existing.contains(entry.getKey())) {
+                toSave.add(buildObservedVenueFact(entry.getValue(), now));
             }
-            toSave.add(buildObservedVenueFact(entry.getValue(), now));
         }
         for (int from = 0; from < toSave.size(); from += FACT_BUILD_CHUNK_SIZE) {
             forumFactRepository.saveAll(toSave.subList(from, Math.min(toSave.size(), from + FACT_BUILD_CHUNK_SIZE)));
         }
         toSave.forEach(f -> result.markImported());
-        log.info("Observed-venue flush: distinctVenues={} authoritativeAlready={} observedForumsCreated={}",
-                firstByVenue.size(), firstByVenue.size() - toSave.size(), toSave.size());
+        return toSave.size();
+    }
+
+    /** Mint a provenance-tagged observed book for each book venue the Book List didn't already list. */
+    private int flushObservedBookVenues(Map<String, PublicationWorkItem> venues, Instant now, ImportProcessingResult result) {
+        if (venues.isEmpty()) {
+            return 0;
+        }
+        Set<String> existing = new HashSet<>();
+        List<String> ids = new ArrayList<>(venues.keySet());
+        for (int from = 0; from < ids.size(); from += FACT_BUILD_CHUNK_SIZE) {
+            for (ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact book
+                    : bookFactRepository.findByIdIn(ids.subList(from, Math.min(ids.size(), from + FACT_BUILD_CHUNK_SIZE)))) {
+                if (book.getId() != null) {
+                    existing.add(book.getId());
+                }
+            }
+        }
+        List<ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact> toSave = new ArrayList<>();
+        for (Map.Entry<String, PublicationWorkItem> entry : venues.entrySet()) {
+            if (!existing.contains(entry.getKey())) {
+                toSave.add(buildObservedBookFact(entry.getValue(), now));
+            }
+        }
+        for (int from = 0; from < toSave.size(); from += FACT_BUILD_CHUNK_SIZE) {
+            bookFactRepository.saveAll(new ArrayList<>(toSave.subList(from, Math.min(toSave.size(), from + FACT_BUILD_CHUNK_SIZE))));
+        }
+        toSave.forEach(b -> result.markImported());
+        return toSave.size();
+    }
+
+    private static boolean isBookAggregation(String aggregationType) {
+        return aggregationType != null && AGGREGATION_TYPE_BOOK.equalsIgnoreCase(aggregationType.trim());
     }
 
     /** Build a provenance-tagged ({@code SCOPUS_OBSERVED_VENUE}) forum fact from a publication's venue fields. */
@@ -243,6 +297,24 @@ public class ScopusFactBuilderService {
         fact.setSource(SOURCE_SCOPUS_OBSERVED_VENUE); // override the publication event's lineage source
         fact.setSourceRecordId(sourceId);
         return fact;
+    }
+
+    /** Build a provenance-tagged ({@code SCOPUS_OBSERVED_BOOK}) book fact for a book venue the Book List missed. */
+    private ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact buildObservedBookFact(PublicationWorkItem item, Instant now) {
+        JsonNode payload = item.payload;
+        String sourceId = text(payload, "source_id");
+        var book = new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact();
+        book.setId(sourceId);
+        book.setScopusId(sourceId);
+        book.setTitle(text(payload, "publicationName"));
+        book.setPrintIsbn(text(payload, "isbn"));
+        book.setPublisher(text(payload, "publisher"));
+        book.setAsjc(distinctNonBlank(splitSemicolon(text(payload, "asjc"))));
+        book.setSource(SOURCE_SCOPUS_OBSERVED_BOOK);
+        book.setSourceBatchId(item.event.getBatchId());
+        book.setCreatedAt(now);
+        book.setUpdatedAt(now);
+        return book;
     }
 
     private void processCitationChunks(List<CitationWorkItem> citationEvents, ImportProcessingResult result,
@@ -568,7 +640,15 @@ public class ScopusFactBuilderService {
         fact.setAuthorAffiliationSourceIds(splitSemicolon(text(payload, "author_afids")));
         fact.setCorrespondingAuthors(distinctNonBlank(splitSemicolon(text(payload, "correspondingAuthors"))));
         fact.setAffiliations(distinctNonBlank(splitSemicolon(text(payload, "afid"))));
-        fact.setForumId(text(payload, "source_id"));
+        // H66B M7 — venue branch: a book-typed venue resolves to the book registry (bookId), not a forum.
+        String venueSourceId = text(payload, "source_id");
+        if (isBookAggregation(text(payload, "aggregationType"))) {
+            fact.setBookId(venueSourceId);
+            fact.setForumId(null);
+        } else {
+            fact.setForumId(venueSourceId);
+            fact.setBookId(null);
+        }
         fact.setVolume(text(payload, "volume"));
         fact.setIssueIdentifier(text(payload, "issueIdentifier"));
         fact.setCoverDate(text(payload, "coverDate"));

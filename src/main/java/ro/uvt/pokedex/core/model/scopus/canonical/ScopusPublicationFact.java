@@ -31,6 +31,8 @@ public class ScopusPublicationFact implements HasLineageFields {
     private List<String> correspondingAuthors = new ArrayList<>();
     private List<String> affiliations = new ArrayList<>();
     private String forumId;
+    /** H66B M7: Scopus Source ID of the book venue when {@code aggregationType=Book} (mutually exclusive with forumId). */
+    private String bookId;
     private String volume;
     private String issueIdentifier;
     private String coverDate;

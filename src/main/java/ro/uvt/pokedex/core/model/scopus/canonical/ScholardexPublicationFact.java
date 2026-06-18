@@ -41,6 +41,8 @@ public class ScholardexPublicationFact {
     private List<String> correspondingAuthors = new ArrayList<>();
     private List<String> affiliationIds = new ArrayList<>();
     private String forumId;
+    /** H66B M7: book venue Scopus Source ID (aggregationType=Book); mutually exclusive with forumId. */
+    private String bookId;
     private String volume;
     private String issueIdentifier;
     private String coverDate;

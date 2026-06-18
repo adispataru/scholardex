@@ -529,6 +529,9 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         fact.setCorrespondingAuthors(scopusFact.getCorrespondingAuthors() == null ? List.of() : new ArrayList<>(scopusFact.getCorrespondingAuthors()));
         fact.setAffiliationIds(resolveCanonicalPublicationAffiliationIds(scopusFact, context));
         fact.setForumId(resolveCanonicalForumId(scopusFact.getSource(), scopusFact.getForumId(), context));
+        // H66B M7: bookId is the book's Scopus Source ID — resolves directly to scholardex.book_facts (books
+        // aren't merged across sources), so carry it through without source-link canonicalization.
+        fact.setBookId(scopusFact.getBookId());
         fact.setVolume(scopusFact.getVolume());
         fact.setIssueIdentifier(scopusFact.getIssueIdentifier());
         fact.setCoverDate(scopusFact.getCoverDate());
