@@ -396,9 +396,45 @@ vs baseline** + reconcile audit `healthy=true`.
       0). Dropped the `scopus &&` gate so the primary-ISSN tiebreak applies to **every source** in
       `ForumMergeEngine.ingest`; a genuine multi-candidate tie (all candidates carry the primary) still
       conflicts. Locked with `runWosOnboardingDisambiguatesByPrimaryIssnInsteadOfConflicting` (mirrors the
-      Scopus equivalent). Full suite green (1010 tests). **Predicts AMBIGUOUS 83→~0** — confirming rebuild
-      still pending; full-feed validation (SourceList/CiteScore/ERIH/DOAJ/MJL/Books) also still pending
-      (Scopus+WoS-only validated so far).
+      Scopus equivalent). Full suite green (1010 tests).
+    - **CONFIRMING REBUILD (2026-06-18, isolated `scholardex_h66`):** AMBIGUOUS **83 → 73** (not the predicted
+      ~0). The pre-fix diagnostic that claimed "all 83 resolvable" was **wrong** — it read `wos.issn` when the
+      field is `wos.primaryIssn`, so its premise was bogus. The fix is still correct and kept: it resolved 10
+      genuine single-primary forum-dup cases, and `EXTERNAL_ID_ALREADY_LINKED` stays **0** (the M8-A.2 churn
+      regression stays dead). Final forum-conflict tally: AMBIGUOUS 73 + DEDUP_NAME_MISMATCH 11 +
+      CROSS_JOURNAL_ISSN 10 + INVALID_ISSN 2. Prod `test` safe at 32,714.
+
+- **M9 — WoS journal-identity duplication (the real cause of the 73 ambiguous). SCOPED, not yet built.**
+  - **Definitive root cause (mongosh-proven on `scholardex_h66`):** exactly **73 of 25,871** `wos.journal_identity`
+    records are unlinked to any forum, and they are *precisely* the 73 `FORUM/AMBIGUOUS_ISSN_MATCH` orphans. Each
+    is a **duplicate identity for a journal already represented by a linked record** — same normalized title
+    (73/73 identical), with the **print/eISSN roles swapped** between the two records. Example (IJCIS): linked
+    `jid_073a` primary `1875-6883`; orphan `jid_1a01` primary `1875-6891` + eIssn `1875-6883`. The orphan then
+    matches *two* forum candidates at WoS-onboard → ambiguous → never links; its metrics still reach reporting
+    via the linked sibling, so impact is **cosmetic quarantine, not data loss**.
+  - **Why the duplicate is minted** (`WosIdentityResolutionService` + `WosFactBuilderService`): all 73 were
+    created via the **clean create path** (no `conflictType`; the WoS identity layer's own conflict count is 1),
+    i.e. `findCandidates` returned **zero** at creation. Because the two source rows for one journal carry
+    *different* ISSN-token sets (print-only vs print+eISSN), they (a) hash to different `identityKey`s — miss the
+    `identityKey` cache; (b) sit in different `tokenSetResolutionCache` buckets — miss the token cache; (c) and
+    `prefetchedCandidatesByTokenSet` is a **chunk-start DB snapshot never updated with mid-chunk creates**
+    (`WosFactBuilderService` ~L435/759). Two same-journal rows in one chunk (≥34/73 provably created within 5 s)
+    both prefetch empty → both call `createIdentity` → duplicate. `fact-chunk-size=1000`.
+  - **Fix options:**
+    - **(A) Post-build identity dedup pass (RECOMMENDED — robust, deterministic, independently testable):** after
+      fact-building, group `wos.journal_identity` by connected ISSN component **and** matching `normalizedTitle`;
+      merge each group into one canonical jid (union ISSN tokens/aliases/alt-names), repoint the duplicates'
+      metric/category/coverage facts' `journalId` to the winner, delete the losers. Catches *every* creation path
+      (stale prefetch, cross-chunk, future conflict-create). Only touches the ~73 duplicates' facts, so cheap.
+      Add a focused service + unit test; validate by the unlinked-identity count dropping 73→~0 on rebuild.
+    - **(B) Live in-chunk candidate index (prevention, complementary):** seed the prefetch pool as a mutable
+      token→identity index and register newly-created identities into it during the chunk so a sibling row later
+      in the same chunk merges instead of creating. Fixes only the within-chunk subset; racier; doesn't retro-fix
+      cross-chunk. Good as a follow-up hardening, not the primary.
+    - **Recommendation:** ship **(A)** as M9; optionally fold in **(B)** later. (A) alone is predicted to take
+      unlinked WoS identities 73→~0 and forum AMBIGUOUS 73→~0.
+  - **Still pending regardless:** full-feed validation (SourceList/CiteScore/ERIH/DOAJ/MJL/Books) — Scopus+WoS-only
+    so far.
   - **M8-A.2 original plan (for reference):** The substantive change:
     1. `ScholardexForumBuilder.buildScopusForums` → add `runWosForumOnboarding` as the **last** forum step
        (dedup → Scopus canon → ERIH → DOAJ → **WoS** → final dedup); extend the result record + the re-dedup
