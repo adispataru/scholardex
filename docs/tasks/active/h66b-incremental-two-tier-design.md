@@ -207,19 +207,52 @@ interface EntityBuilder {
    `ResearcherWorkspaceController` → researcher-profile `scopusId` → `ScopusPublicationUpdate` →
    `UserScopusTaskFacade` → `ScopusUpdateScheduler`; **the profile has no ORCID**.
 
-   **Decision 1 — OpenAlex = FULL source (enrich + mint).** This makes **publications a multi-source
-   resolve/reconcile entity**, mirroring the forum two-tier (the headline new surface). Precedent:
-   `UserDefinedCanonicalizationService` already mints non-Scopus canonical pubs, so the pipeline/projections
-   handle non-EID pubs.
+   **Decision 0 — DOI-primary publication identity (do FIRST, before OpenAlex).** Reorder the
+   `buildCanonicalPublicationId` cascade from the legacy Scopus-first `eid → wos → gs → user → doi → title+date`
+   to **`doi → eid → wos → user → title+date`**. Single derivation point, two callers (publication +
+   user-defined canon) — a tiny code change with a large architectural payoff: a paper with a DOI gets the **same
+   canonical id across every source**, so Scopus/WoS/OpenAlex/DBLP records of one paper unify *intrinsically* at
+   canonicalization — **this collapses most of the "publication dedup-by-DOI" surface** Decision 1 would
+   otherwise need. DOI-less papers keep the `eid → title+date` fallback (still source-fragmented — the unaffected
+   tail).
+   - **Why now:** the blast radius is *tiny today and huge later*. Pre-change diagnostic on `scholardex_h66`:
+     94,171 canonical pubs (87,098 with DOI re-key; 7,073 DOI-less unaffected); only **88 DOIs map to >1 canonical
+     pub (≈91 pubs, 0.1%)** — flip the identity now while that's the merge volume, not after OpenAlex/DBLP make it
+     tens of thousands of cross-source duplicates.
+   - **False-merge guard (the one genuinely-new piece) — must be FUZZY-title, not exact.** A naive
+     "different normalized title → block" would wrongly quarantine legitimate same-paper records (big-collaboration
+     papers have subtitle/record variants). Empirical acceptance test from the 88 groups: **70 share one title +
+     9 are fuzzy-similar variants → MERGE; 9 are truly different papers sharing a DOI → QUARANTINE.** The 9 real
+     cases are overwhelmingly **container DOIs** — a book/proceedings DOI (ISBN-pattern, e.g. `10.1201/b13111`,
+     `10.1007/978-3-319-11728-7`) applied to both a "preface"/"introduction" *and* a chapter, or to multiple
+     chapters. So the guard = "merge on shared DOI only if titles are fuzzy-similar (token Jaccard ≥ ~0.5) and
+     years agree; else open a `PUBLICATION_SHARED_DOI` conflict." Analogous to the forum `CROSS_JOURNAL_ISSN`
+     guard.
+   - **Migration = one full rebuild.** Every DOI'd canonical pub id changes, but only the canonical + edge models
+     carry `publicationId` (verified) and the rebuild regenerates them deterministically (citations still resolve
+     by EID → the pub fact → its new doi-keyed `.id`; OpenAlex DOI-edges then land on the *same* ids → cross-source
+     citation merge becomes automatic). **One pre-flight check:** confirm reports/user-collections don't *store* a
+     canonical pub id (they likely query at read-time).
+   - **Diagnostic to run on the validation rebuild:** assert (a) pub count drops by ≈ the predicted merges minus
+     the ~9 the guard blocks, (b) `orphanedPublicationForumLinks`/edge orphans = 0, (c) the guard quarantined only
+     the genuine container-DOI cases (the physics title-variants passed). Same rigor as the 448→24 forum collapse.
+   - **Cleanup rides along:** drop the vestigial `gs|`/`googleScholarId` slot; the `PublicationEnrichmentLinkerService`
+     DOI-bridge becomes redundant for DOI'd pubs (keep it for the DOI-less tail + the guard's quarantine surface).
+
+   **Decision 1 — OpenAlex = FULL source (enrich + mint), on a DOI-primary identity.** With Decision 0 done,
+   publications are a multi-source entity *cheaply*: DOI'd works unify by identity (no dedup pass); only the
+   **DOI-less tail** + venue-resolve remain. Precedent: `UserDefinedCanonicalizationService` already mints
+   non-Scopus canonical pubs, so the pipeline/projections handle non-EID pubs.
    - **Publication resolve (Tier-2):** for each OpenAlex work, find-or-mint by EID/DOI — reuse
      `PublicationEnrichmentLinkerService` to *link* by DOI to an existing canonical pub, else *mint* a new pub
      keyed on `doi|…`. So OpenAlex never duplicates a Scopus pub; it links or adds.
    - **Citation edges:** resolve each edge endpoint's DOI/OpenAlex-id → canonical pub via the linker → write the
      canonical `ScholardexCitationFact` (a new **DOI-keyed citation path** beside the EID one).
    - **Venue:** `ofOpenAlex` forum resolve (Tier-2) for each work's host venue (DOI/ISSN = tight mint gate).
-   - **Publication reconcile (Tier-1, NEW):** a publication dedup-by-DOI on the cold path, mirroring the forum
-     dedup (collapse transient same-paper duplicates, re-point citation edges/authorship). This is the main new
-     build beyond the forum work already done.
+   - **Publication reconcile (Tier-1):** with DOI-primary (Decision 0), DOI'd duplicates can't form (same DOI →
+     same id), so the cold-path publication reconcile shrinks to the **DOI-less tail** (fuzzy title+year+author
+     dedup) + clearing the guard's `PUBLICATION_SHARED_DOI` quarantine — a much smaller job than a full
+     dedup-by-DOI pass.
 
    **Decision 2 — add ORCID to the researcher profile.** New `orcid` field on the profile; a new
    `OpenAlexAuthorUpdate` task (mirror of `ScopusPublicationUpdate`) keyed on ORCID drives the on-demand fetch
@@ -235,10 +268,12 @@ interface EntityBuilder {
    - **Retire** `publication_dblp_evidence`, the disabled XML-bomb limits, the 77-entity sanitizer, and
      `/general/dblpLnChapterEnrichment`; `ComputerScienceConferenceScoringService` reads the re-pointed forum.
 
-   **Net new surface (ordered):** (1) publication Tier-2 resolve (find-or-mint by EID/DOI) + Tier-1 dedup-by-DOI
-   — the big one; (2) DOI-keyed citation path; (3) `ofOpenAlex`/`ofDblp` + FK lists (small); (4) ORCID field +
-   `OpenAlexAuthorUpdate` task + scheduler (mirrors Scopus); (5) DBLP API adapter + retire the band-aid. Suggest
-   building in that order, OpenAlex first (DBLP reuses the venue-resolve seam).
+   **Net new surface (ordered):** (0) **DOI-primary identity** — cascade reorder + fuzzy-title false-merge guard
+   + validation rebuild (do first; it shrinks everything below); (1) publication Tier-2 resolve (find-or-mint by
+   DOI/EID) — now mostly just the DOI-less tail + venue-resolve; (2) DOI-keyed citation path (largely free once
+   pubs unify by DOI); (3) `ofOpenAlex`/`ofDblp` + FK lists (small); (4) ORCID field + `OpenAlexAuthorUpdate` task
+   + scheduler (mirrors Scopus); (5) DBLP API adapter + retire the band-aid. Build order: **Decision 0 →
+   OpenAlex → DBLP** (DBLP reuses the venue-resolve seam).
 
 ## Open questions
 - **Reconcile trigger policy** — nightly? after N unreconciled mints? on curated-feed import? (Phase 3 decides.)
