@@ -388,11 +388,17 @@ vs baseline** + reconcile audit `healthy=true`.
     - **NEW residual surfaced: `WOS/AMBIGUOUS_ISSN_MATCH` 9 → 83** (the M5 orphan-metric report flagged the
       same 83 — "83 WoS journals have metric facts but resolve to no forum"). **Diagnosed:** the fix onboards
       the ~198 journals that previously collided+skipped, densifying the registry, so more WoS journals' ISSN
-      now matches multiple forums and the H55.6 primary-ISSN tiebreak can't resolve them → quarantined
-      ambiguous (honest, not churn). Net: 224→103, the *dangerous* EXTERNAL_ID churn gone + ~115 more journals
-      onboarded. **Open follow-up:** the 83 ambiguous (above the ~27 target) — investigate whether the
-      primary-ISSN tiebreak can be extended, and re-check under the full feed set (SourceList may resolve some
-      by name). Scopus+WoS-only here; full-feed validation still pending.
+      now matches multiple forums and the H55.6 primary-ISSN tiebreak couldn't resolve them — *because the
+      tiebreak was gated on `scopus` and never ran for WoS at all*. Net: 224→103, the *dangerous* EXTERNAL_ID
+      churn gone + ~115 more journals onboarded.
+    - **RESOLVED (commit `288b545`):** a mongosh diagnostic against `scholardex_h66` proved all 83 had exactly
+      one candidate carrying the journal's primary print ISSN (resolvable: 83 / not-resolvable: 0 / no-primary:
+      0). Dropped the `scopus &&` gate so the primary-ISSN tiebreak applies to **every source** in
+      `ForumMergeEngine.ingest`; a genuine multi-candidate tie (all candidates carry the primary) still
+      conflicts. Locked with `runWosOnboardingDisambiguatesByPrimaryIssnInsteadOfConflicting` (mirrors the
+      Scopus equivalent). Full suite green (1010 tests). **Predicts AMBIGUOUS 83→~0** — confirming rebuild
+      still pending; full-feed validation (SourceList/CiteScore/ERIH/DOAJ/MJL/Books) also still pending
+      (Scopus+WoS-only validated so far).
   - **M8-A.2 original plan (for reference):** The substantive change:
     1. `ScholardexForumBuilder.buildScopusForums` → add `runWosForumOnboarding` as the **last** forum step
        (dedup → Scopus canon → ERIH → DOAJ → **WoS** → final dedup); extend the result record + the re-dedup
