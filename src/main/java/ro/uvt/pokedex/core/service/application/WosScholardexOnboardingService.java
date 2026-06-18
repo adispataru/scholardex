@@ -39,14 +39,27 @@ public class WosScholardexOnboardingService {
     private final ConflictRecorder conflictRecorder;
     private final ForumMergeEngine forumMergeEngine;
 
+    /**
+     * Legacy combined entry: WoS forum onboarding then publication→WoS links. H66B M8 splits these — the DAG
+     * runs {@link #runWosForumOnboarding} last in the forum-build sequence (WoS as identity-of-last-resort,
+     * after the curated lists) and {@link #linkPublicationsToWos} after publication canonicalization (when the
+     * publications it links actually exist). Kept for callers that want the original single-call behavior.
+     */
     public ImportProcessingResult runWosOnboarding(String batchId, String correlationId) {
+        ImportProcessingResult result = runWosForumOnboarding(batchId, correlationId);
+        onboardPublicationWosLinks(batchId, correlationId, result);
+        return result;
+    }
+
+    /**
+     * Onboard WoS journal identities into the canonical forum registry (create-or-match through the engine).
+     * Reads the stage-3 WoS journal-identity facts directly (the same source rebuildWosProjections projects
+     * 1:1 into reporting_read.wos_ranking_view) — stage-3 must not depend on the stage-4 projection. Sorted by
+     * id for deterministic order. In the identity-first DAG this runs last, so the curated lists win identity
+     * and WoS folds in (the M4-A display-name rule still makes the WoS title win the display name).
+     */
+    public ImportProcessingResult runWosForumOnboarding(String batchId, String correlationId) {
         ImportProcessingResult result = new ImportProcessingResult(20);
-        // Read the stage-3 WoS journal-identity facts directly (the same source rebuildWosProjections
-        // projects 1:1 into reporting_read.wos_ranking_view). Forum canonicalization is stage-3, so it
-        // must not depend on the stage-4 projection: doing so created a backwards dependency that ran
-        // onboarding before the view it read was built — leaving WoS canonical forums unrebuildable
-        // (immortal/stale). Mapping mirrors WosProjectionBuilderService.toRankingView. Sorted by id for
-        // deterministic processing order (was ORDER BY journal_id).
         List<WosRankingView> journals = journalIdentityRepository.findAll().stream()
                 .sorted(Comparator.comparing(WosJournalIdentity::getId))
                 .map(WosScholardexOnboardingService::toRankingView)
@@ -59,7 +72,16 @@ public class WosScholardexOnboardingService {
             forumMergeEngine.ingest(ForumSourceRecord.ofWos(journal), ctx, batchId, correlationId, now, result);
         }
         forumMergeEngine.flush(ctx);
+        return result;
+    }
 
+    /**
+     * Link canonical publications to their WoS source ids (PUBLICATION/WOS source links). Must run after
+     * publication canonicalization — it reads {@code scholardex.publication_facts}, which don't exist until
+     * then; running it in the WoS-rebuild-first slot (pre-H66B-M8) found zero publications.
+     */
+    public ImportProcessingResult linkPublicationsToWos(String batchId, String correlationId) {
+        ImportProcessingResult result = new ImportProcessingResult(20);
         onboardPublicationWosLinks(batchId, correlationId, result);
         return result;
     }

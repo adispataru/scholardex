@@ -339,7 +339,27 @@ vs baseline** + reconcile audit `healthy=true`.
   May-2026 Source List (49,599 rows) has a part exceeding POI's 100 MB byte-array ceiling, which the full
   load tripped (`RecordFormatException`, the live-rebuild blocker). Parses in ~4s now. The Book List
   (475k rows) reuses this exact streaming pattern.
-- **M8 — DAG orchestrator (enforces the identity → ranking → observation ordering).** One orchestrator:
+- **M8 — DAG orchestrator (enforces the identity → ranking → observation ordering).**
+  - **M8-A.1 split WoS onboarding — DONE (behavior-equivalent).** `runWosOnboarding` split into
+    `runWosForumOnboarding` (forum half — needs `wos.journal_identity`) + `linkPublicationsToWos` (publication
+    half — needs `scholardex.publication_facts`); `runWosOnboarding` still calls both in order, so behavior is
+    unchanged (19 tests green). This decomposition is the prerequisite for the reorder.
+  - **M8-A.2 reorder to WoS-last — NEXT, pair with the held rebuild (do NOT do blind).** The substantive change:
+    1. `ScholardexForumBuilder.buildScopusForums` → add `runWosForumOnboarding` as the **last** forum step
+       (dedup → Scopus canon → ERIH → DOAJ → **WoS** → final dedup); extend the result record + the re-dedup
+       trigger to include WoS.
+    2. `ScopusBigBangMigrationService.runFull` → call `linkPublicationsToWos` **after** publication
+       canonicalization (where the publications exist).
+    3. **Stop the WoS rebuild from onboarding forums** — remove the two `runWosOnboarding` calls in
+       `WosBigBangMigrationService` (lines ~136, ~290) so it builds WoS *facts* only and forums aren't
+       double-onboarded. **Blast radius:** `WosBigBangMigrationService.run` has a standalone caller
+       (`RankingMaintenanceFacade.runWosBigBangMigration`, the admin "rebuild WoS" flow) + integration tests
+       (`WosAdminInitializationWorkflowIntegrationTest`) that expect WoS forums after a WoS rebuild — those
+       must be re-pointed (forums now come from the unified ForumBuilder, not the WoS rebuild).
+    Correctness is a *data* outcome — unit tests verify call order, but the **isolated rebuild validates the
+    registry** (forum count, conflicts ≤ residual, WoS-name wins display, 0 orphaned publication links). Per
+    plan, run that rebuild right after M8-A.2 — it doubles as the held M4–M7 validation.
+  - **M8-B collapse the three orchestrators (structural, after A.2).** One orchestrator:
   parse all sources → **ForumBuilder over the curated identity sources in authority order
   (`Source List → MJL → ERIH → DOAJ → WoS` create-or-match)** → RankingBuilder (WoS metrics + CiteScore,
   attach-only) → PublicationBuilder + CitationBuilder (resolve + option-B) → projections. Retire
