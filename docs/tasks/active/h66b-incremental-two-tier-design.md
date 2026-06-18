@@ -105,7 +105,15 @@ interface EntityBuilder {
      source-links on merge → no orphans, proven by the full-feed run's 0-orphan result after 188 merges).
    - **Still index-bound:** `resolve` still loads the whole registry once per upload for the find-or-match index
      (the chosen "index-load" option). If per-upload latency matters, the lighter per-venue indexed-lookup +
-     mint-on-miss variant is the follow-up. **Not yet validated against a live upload** — unit-tested only.
+     mint-on-miss variant is the follow-up.
+   - **LIVE-UPLOAD VALIDATION (2026-06-18, isolated `scholardex_h66`) — PASS.** Uploaded a real incremental
+     Scopus file (798 papers + citing works = 1,620 pub facts) via `POST /admin/incremental-updates/scopus`,
+     30 s end-to-end. `Forum resolve (incremental): processed=10 minted=10 matched=0 deferredConflicts=0` —
+     and the log window confirmed **no ERIH/DOAJ onboarding, no global/membership dedup, no M9/M10 ran**. Health
+     gate held: `healthy=true`, orphans **0**; forum_facts 69,933→69,943 (+10 = the mints); publications +1,613
+     with **0** unresolved venues; OPEN forum conflicts unchanged at 57; prod `test` safe at 32,714. The 10
+     mints are the deferred-reconcile backlog (the `unreconciled_mints` signal) and are harmless until the
+     Phase-3 reconcile (0 orphans confirms resolve+mint is correct standalone).
 3. **Phase 3: explicit periodic `reconcile()` entry** (separate from wipe-and-rebuild), triggered nightly / on a
    threshold of unreconciled mints / on curated-feed change.
 4. **Phase 4: PoP / Google Scholar as a Tier-2 source** — `ForumSourceRecord.ofPoP` + an ingest adapter; new papers
