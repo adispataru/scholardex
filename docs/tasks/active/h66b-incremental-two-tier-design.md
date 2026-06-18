@@ -124,6 +124,14 @@ interface EntityBuilder {
    tick (reconcile is idempotent) rather than gating on the monotonic `unreconciled_mints` counter (which can't
    reset) — a resettable/durable threshold gate is a future refinement. Tests: reconcile runs forum-build then
    projection in order; scheduler runs when enabled / skips when disabled. App + scheduler suites green (851).
+   - **MANUAL-RECONCILE VALIDATION (2026-06-18, isolated `scholardex_h66`) — PASS.** Triggered `POST
+     /admin/initialization/forum/reconcile` against the registry still carrying the 10 Phase-2 mints. ~228 s
+     (forum pass + full projection rebuild). `membershipDedupMerged=12` — collapsed the transient duplicate
+     forums the upload minted and re-onboarded ERIH (11) / DOAJ (114) membership; forum_facts 69,943→69,932,
+     `healthy=true`, orphans **0** (merges re-pointed publications), upload-batch pubs **0** unresolved, OPEN
+     conflicts unchanged at 57, projection errors 0, prod `test` safe at 32,714. **End-to-end two-tier loop
+     proven:** Tier-2 resolve mints fast on the hot path → Tier-1 reconcile merges + re-points on the cold path,
+     0 orphans throughout — the convergence the design promised, demonstrated on real data.
 4. **Phase 4: PoP / Google Scholar as a Tier-2 source** — `ForumSourceRecord.ofPoP` + an ingest adapter; new papers
    resolve/mint against the registry, reconcile cleans up. No orchestrator surgery.
 
