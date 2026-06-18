@@ -19,6 +19,7 @@ import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexSourceLink;
 import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import ro.uvt.pokedex.core.service.importing.model.MigrationStepResult;
 import ro.uvt.pokedex.core.service.importing.wos.WosFactBuilderService;
+import ro.uvt.pokedex.core.service.importing.wos.WosJournalIdentityDeduplicationService;
 import ro.uvt.pokedex.core.service.importing.wos.WosImportEventIngestionService;
 import ro.uvt.pokedex.core.service.importing.wos.WosImportEventParserOrchestrator;
 import ro.uvt.pokedex.core.service.importing.wos.WosProjectionBuilderService;
@@ -34,6 +35,7 @@ public class WosBigBangMigrationService {
 
     private final WosImportEventIngestionService ingestionService;
     private final WosFactBuilderService factBuilderService;
+    private final WosJournalIdentityDeduplicationService journalIdentityDeduplicationService;
     private final WosScholardexOnboardingService wosScholardexOnboardingService;
     private final WosProjectionBuilderService projectionBuilderService;
     private final WosParityReconciliationService parityReconciliationService;
@@ -133,6 +135,11 @@ public class WosBigBangMigrationService {
                     normalizedSourceVersion
             );
             ImportProcessingResult factResult = factRun.result();
+            // H66B M9 — collapse duplicate WoS journal-identity records (same journal split across rows with
+            // print-only vs print+eISSN tokens) into one canonical identity before projections/forum
+            // onboarding read them, so each journal presents a single ISSN-complete candidate and links
+            // cleanly instead of quarantining as AMBIGUOUS_ISSN_MATCH at the forum layer.
+            journalIdentityDeduplicationService.deduplicate();
             // H66B M8 — WoS forum onboarding moved to the identity-first ForumBuilder (WoS create-or-match,
             // last). The WoS rebuild now builds WoS facts (journal identity + metrics) + projections only;
             // forums + publication→WoS links are produced by the Scopus-side build after the curated sources.

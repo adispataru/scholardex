@@ -42,6 +42,7 @@ class WosBigBangMigrationServiceTest {
 
     @Mock private WosImportEventIngestionService ingestionService;
     @Mock private WosFactBuilderService factBuilderService;
+    @Mock private ro.uvt.pokedex.core.service.importing.wos.WosJournalIdentityDeduplicationService journalIdentityDeduplicationService;
     @Mock private WosScholardexOnboardingService wosScholardexOnboardingService;
     @Mock private WosProjectionBuilderService projectionBuilderService;
     @Mock private WosParityReconciliationService parityReconciliationService;
@@ -62,6 +63,7 @@ class WosBigBangMigrationServiceTest {
         service = new WosBigBangMigrationService(
                 ingestionService,
                 factBuilderService,
+                journalIdentityDeduplicationService,
                 wosScholardexOnboardingService,
                 projectionBuilderService,
                 parityReconciliationService,
@@ -111,6 +113,7 @@ class WosBigBangMigrationServiceTest {
         verify(ingestionService, never()).ingestDirectory(anyString(), anyString());
         verify(factBuilderService, never()).buildFactsFromImportEventsWithCheckpoint(any(), anyBoolean(), any(), any());
         verify(factBuilderService, never()).enrichMissingCategoryRankingFields();
+        verify(journalIdentityDeduplicationService, never()).deduplicate();
         verify(wosScholardexOnboardingService, never()).runWosOnboarding(any(), any());
         verify(parityReconciliationService).runEligibilityCheck();
     }
@@ -149,6 +152,8 @@ class WosBigBangMigrationServiceTest {
         // WoS last); it builds WoS facts + projections only.
         verify(wosScholardexOnboardingService, never()).runWosOnboarding(any(), any());
         verify(wosScholardexOnboardingService, never()).runWosForumOnboarding(any(), any());
+        // H66B M9 — the WoS rebuild deduplicates journal identities after fact-build, before projections.
+        verify(journalIdentityDeduplicationService).deduplicate();
         verify(factBuilderService).enrichMissingCategoryRankingFields();
         verify(parityReconciliationService).runFullParity();
     }

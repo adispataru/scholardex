@@ -433,6 +433,21 @@ vs baseline** + reconcile audit `healthy=true`.
       cross-chunk. Good as a follow-up hardening, not the primary.
     - **Recommendation:** ship **(A)** as M9; optionally fold in **(B)** later. (A) alone is predicted to take
       unlinked WoS identities 73→~0 and forum AMBIGUOUS 73→~0.
+  - **M9 IMPLEMENTED (option A) — code done, rebuild pending.** New `WosJournalIdentityDeduplicationService`
+    (`service/importing/wos/`): loads all `wos.journal_identity`, union-finds groups that share an ISSN token
+    **and** the same `normalizedTitle` (title guard keeps eISSN-sharing siblings apart), picks the most
+    ISSN-complete record as winner (tie → earliest createdAt → smallest id), folds the losers' tokens/aliases/
+    alt-names into the winner, repoints the losers' metric/category/coverage facts to the winner (dropping any
+    that would collide on the winner's unique key — the duplicates describe one journal), and deletes the
+    losers. Wired into `WosBigBangMigrationService.run` **after fact-build, before projections/forum
+    onboarding** (so each journal presents one ISSN-complete candidate and links cleanly). Unit tests:
+    `WosJournalIdentityDeduplicationServiceTest` (merge + collision-drop, title-guard non-merge, no-op) +
+    migration test verifies it runs on full-run / skips on dry-run. Full suite green except **2 pre-existing
+    `@WebMvcTest` contract tests** (`AdminInitializationController{,Security}ContractTest`, 41 cases) that fail
+    on a context-load — the controller has ~16 `final` deps but the tests mock only 8 (missing ScopusDataService,
+    Doaj/Erih data+onboarding, ForumReconcileAudit, WosImportEventIngestion, ScholardexForumDedup); unrelated to
+    M9, broken since the controller's DOAJ/ERIH churn. **Confirming rebuild pending** (predict unlinked WoS
+    identities 73→~0, forum AMBIGUOUS 73→~0).
   - **Still pending regardless:** full-feed validation (SourceList/CiteScore/ERIH/DOAJ/MJL/Books) — Scopus+WoS-only
     so far.
   - **M8-A.2 original plan (for reference):** The substantive change:

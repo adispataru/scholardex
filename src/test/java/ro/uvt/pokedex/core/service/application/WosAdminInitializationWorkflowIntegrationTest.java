@@ -210,9 +210,17 @@ class WosAdminInitializationWorkflowIntegrationTest {
                 categoryFactRepository,
                 jdbcTemplate
         );
+        ro.uvt.pokedex.core.service.importing.wos.WosJournalIdentityDeduplicationService journalIdentityDeduplicationService =
+                new ro.uvt.pokedex.core.service.importing.wos.WosJournalIdentityDeduplicationService(
+                        journalIdentityRepository,
+                        metricFactRepository,
+                        categoryFactRepository,
+                        coverageFactRepository
+                );
         WosBigBangMigrationService migrationService = new WosBigBangMigrationService(
                 ingestionService,
                 factBuilderService,
+                journalIdentityDeduplicationService,
                 onboardingService,
                 projectionBuilderService,
                 parityReconciliationService,
