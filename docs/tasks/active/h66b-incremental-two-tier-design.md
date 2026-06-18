@@ -114,8 +114,16 @@ interface EntityBuilder {
      with **0** unresolved venues; OPEN forum conflicts unchanged at 57; prod `test` safe at 32,714. The 10
      mints are the deferred-reconcile backlog (the `unreconciled_mints` signal) and are harmless until the
      Phase-3 reconcile (0 orphans confirms resolve+mint is correct standalone).
-3. **Phase 3: explicit periodic `reconcile()` entry** (separate from wipe-and-rebuild), triggered nightly / on a
-   threshold of unreconciled mints / on curated-feed change.
+3. **Phase 3 — DONE.** `ForumReconcileService.reconcile(reason)` is the single named Tier-1 op: the full
+   `buildScopusForums` (dedup → canon → ERIH/DOAJ onboarding → WoS onboarding → membership dedup → M10) +
+   `rebuildViews()` projection refresh (one call covers the forum metric/category/membership views, incl.
+   DOAJ/ERIH). Invoked by **both** the admin manual trigger (`POST /admin/initialization/forum/reconcile`) **and**
+   the nightly scheduler (`ForumReconcileScheduler`, `@Scheduled` cron `0 0 3 * * *`, `enabled` flag + in-flight
+   guard) — identical code path. Measured cost on the 70k-forum registry: ~70 s forum pass + ~187 s full
+   projection rebuild; cold-path, so full (not scoped) projections are acceptable. Runs **unconditionally** each
+   tick (reconcile is idempotent) rather than gating on the monotonic `unreconciled_mints` counter (which can't
+   reset) — a resettable/durable threshold gate is a future refinement. Tests: reconcile runs forum-build then
+   projection in order; scheduler runs when enabled / skips when disabled. App + scheduler suites green (851).
 4. **Phase 4: PoP / Google Scholar as a Tier-2 source** — `ForumSourceRecord.ofPoP` + an ingest adapter; new papers
    resolve/mint against the registry, reconcile cleans up. No orchestrator surgery.
 

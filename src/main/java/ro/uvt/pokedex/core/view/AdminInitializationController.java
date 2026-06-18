@@ -41,6 +41,7 @@ public class AdminInitializationController {
     private final ro.uvt.pokedex.core.service.application.ErihOnboardingService erihOnboardingService;
     private final ro.uvt.pokedex.core.service.application.DoajOnboardingService doajOnboardingService;
     private final ro.uvt.pokedex.core.service.application.ScholardexForumDeduplicationService scholardexForumDeduplicationService;
+    private final ro.uvt.pokedex.core.service.application.ForumReconcileService forumReconcileService;
 
     @GetMapping
     public String showInitializationPage(Model model) {
@@ -381,6 +382,24 @@ public class AdminInitializationController {
                         + ", merged(updated)=" + result.getUpdatedCount()
                         + ", quarantined(skipped)=" + result.getSkippedCount()
                         + ", forumsRemoved=" + result.getImportedCount());
+        return "redirect:/admin/initialization";
+    }
+
+    /**
+     * H66B Phase 3 — manual trigger for the Tier-1 forum reconcile (the cold-path partner of the incremental
+     * resolve): full forum build (dedup → canon → ERIH/DOAJ onboarding → WoS onboarding → membership dedup →
+     * M10 relink) + projection refresh. Collapses transient duplicates that incremental uploads minted. The
+     * nightly scheduler runs the same {@code ForumReconcileService.reconcile}; this is the on-demand path.
+     */
+    @PostMapping("/forum/reconcile")
+    public String runForumReconcile(RedirectAttributes redirectAttributes) {
+        var result = forumReconcileService.reconcile("admin-manual");
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Forum reconcile complete. membershipDedupMerged=" + result.forumBuild().membershipDedup().getUpdatedCount()
+                        + ", wosRelinked=" + (result.forumBuild().wosRelink().getUpdatedCount()
+                                + result.forumBuild().wosRelink().getImportedCount())
+                        + ", projectionRows=" + result.projection().getProcessedCount()
+                        + ", projectionErrors=" + result.projection().getErrorCount());
         return "redirect:/admin/initialization";
     }
 
