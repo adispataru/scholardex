@@ -228,11 +228,56 @@ interface EntityBuilder {
      chapters. So the guard = "merge on shared DOI only if titles are fuzzy-similar (token Jaccard ≥ ~0.5) and
      years agree; else open a `PUBLICATION_SHARED_DOI` conflict." Analogous to the forum `CROSS_JOURNAL_ISSN`
      guard.
-   - **Migration = one full rebuild.** Every DOI'd canonical pub id changes, but only the canonical + edge models
-     carry `publicationId` (verified) and the rebuild regenerates them deterministically (citations still resolve
-     by EID → the pub fact → its new doi-keyed `.id`; OpenAlex DOI-edges then land on the *same* ids → cross-source
-     citation merge becomes automatic). **One pre-flight check:** confirm reports/user-collections don't *store* a
-     canonical pub id (they likely query at read-time).
+   - **Implemented as a blocklist-to-EID pre-pass (cleaner than a merge-time guard).** Code inspection
+     surfaced that *every* Scopus fact has an EID (`upsertFromScopusFactInternal` hard-skips blank EIDs), so today
+     the DOI slot is never reached for Scopus pubs — they are all `eid|`, which is *why* same-DOI papers don't
+     merge. The guard therefore lives at id-derivation, not at merge: a build-scoped pre-pass
+     (`computeSharedDoiBlocklist`, run once in `loadSourceFacts`) groups the source facts by normalized DOI,
+     single-link-clusters each ≥2-record group's titles (token Jaccard ≥ `0.5`, year agreement when both present),
+     and blocklists any DOI forming >1 cluster (opening one `PUBLICATION_SHARED_DOI` conflict per DOI with the group
+     EIDs as candidates). `buildCanonicalPublicationId` consults the blocklist: a **blocklisted DOI falls through to
+     the `eid|` slot** — i.e. exactly today's separation for the 9 container groups, so the quarantine path is a
+     *no-op vs. legacy* and carries zero regression risk; the 79 clean groups collapse onto `doi|…`. The cascade
+     now reads `doi(non-blocklisted) → eid → wos → user → title+date`.
+   - **Validation rebuild (2026-06-18, `scholardex_h66`) — title-only clustering, year check dropped.** A
+     full from-scratch unified rebuild surfaced a guard-tuning bug: the first cut (Jaccard ≥0.5 **+ year agreement**)
+     blocklisted **35** of 91 source-level multi-record DOI groups, but ~16 were **false quarantines** — same paper,
+     two source records differing only in `coverDate` (Scopus online-first vs print year), e.g. `10.1300/j002v41n03_09`
+     "Family strengths in Romania" 2007/2013, `10.1016/b978-0-08-096513-0.00001-7` "Crystal Growth and Surfaces"
+     2010/2009. Since a DOI is globally unique to one work, same-title-under-shared-DOI is the same paper regardless
+     of year. **Fix: drop the year gate, cluster on token-Jaccard alone → 35 → 19 blocked**, all genuine containers
+     (`10.1142/9878` 9 papers, `10.1201/b13111` 12, book+preface pairs, plus a data-error journal DOI carrying two
+     unrelated papers `10.1103/physrevd.97.055001`) except 2–3 residual subset/garbled-title same-paper pairs
+     (`…2013-198` "…Proceedings of the Conference" suffix; `…2013-185` "[InlineEquation not available]") that stay
+     separate — the *safe* failure mode (a conservative miss = legacy behavior, never a false merge; an
+     overlap-coefficient would catch them but risk corrupting false merges, so rejected).
+   - **The "count drop" is mostly a baseline artifact, not Decision 0.** Post-rebuild canonical pubs = **92,507** vs
+     a pre-rebuild **94,171** — but the 94,171 was the *Phase 2/3-mutated* state (upload + reconcile artifacts). The
+     clean from-scratch canonical (92,507) ≈ source facts (92,600) − ~93 genuine DOI merges (≤120 theoretical max
+     across the 91 groups). **No over-merging**: DOI-keying's true isolated effect is ~93–120 collapsed
+     cross-source/duplicate records, *not* 1,664.
+   - **The guard must be enforced in BOTH the id-derivation AND the load-merge path (orphan-check finding).** The
+     2nd rebuild's orphan check (run against Mongo `_id`, not the non-existent `id` field) found 0 publication→forum
+     orphans but **68 authorship + 86 affiliation edge orphans** — all from blocked container-DOI records
+     (e.g. `10.4324/9780203431115` "Introduction"+"Foreword"). Root cause: `loadExistingByEidOrDoi` *still merged by
+     DOI* (via the preloaded `publicationByDoi` index / `findSingleByDoi`) even for blocklisted DOIs, so the two
+     records aliased onto one fact object while id derivation kept them on distinct `eid|` ids — stranding a pub
+     write and orphaning its edges. **Fix:** the load-merge path now consults the same `sharedDoiBlocklist` — a
+     blocklisted DOI merges by EID only. Lesson: a publication-identity guard has to hold at *every* place two
+     records can be declared "the same pub," not just where the id string is minted.
+   - **Migration = one full rebuild + ONE user-state remap (pre-flight finding).** Every DOI'd canonical pub id
+     changes. The pre-flight swept every `@Document` carrying a `publicationId`: three are **derived** and regenerated
+     by the rebuild — `scholardex.authorship_facts`, `scholardex.publication_author_affiliation_facts`,
+     `scholardex.publication_dblp_evidence` (the last is retired in 4b anyway). Exactly **one is user-persisted state
+     that the rebuild does NOT touch**: `scholardex.publication_authorship_decisions` (a user's CONFIRMED/REJECTED
+     authorship reviews, keyed `(userEmail, publicationId)`). On a DOI-primary cutover its `publicationId` values go
+     stale and would silently strand the user's decisions. **Counts:** isolated `scholardex_h66` = 0 (validation
+     rebuild is safe to run as-is); prod `test` = 76 decisions, 75 DOI-bearing. **Remap is mechanical** — each row's
+     `snapshot.publication` carries both `eid` and `doi`, so the prod cutover must run a one-shot migration that
+     recomputes the new canonical id (snapshot DOI if not blocklisted, else EID → look up the rebuilt pub fact) and
+     rewrites `publicationId`. This is a **required prod pre-step**, not an isolated-validation blocker. Citations
+     still resolve by EID → the pub fact → its new doi-keyed `.id`; OpenAlex DOI-edges then land on the *same* ids →
+     cross-source citation merge becomes automatic.
    - **Diagnostic to run on the validation rebuild:** assert (a) pub count drops by ≈ the predicted merges minus
      the ~9 the guard blocks, (b) `orphanedPublicationForumLinks`/edge orphans = 0, (c) the guard quarantined only
      the genuine container-DOI cases (the physics title-variants passed). Same rigor as the 448→24 forum collapse.

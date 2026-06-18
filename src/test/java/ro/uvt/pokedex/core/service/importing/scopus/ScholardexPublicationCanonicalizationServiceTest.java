@@ -31,6 +31,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -122,8 +123,10 @@ class ScholardexPublicationCanonicalizationServiceTest {
     }
 
     @Test
-    void canonicalIdIsDeterministicAndUsesEidPrecedence() {
-        String withEid = service.buildCanonicalPublicationId(
+    void canonicalIdIsDeterministicAndUsesDoiPrecedence() {
+        // H66B Decision 0: DOI is the primary identity. Two records sharing a DOI collapse to the same
+        // canonical id regardless of differing EID/WoS/user/title — that is the cross-source merge win.
+        String withDoi = service.buildCanonicalPublicationId(
                 "2-s2.0-123",
                 "WOS:1",
                 "GS:1",
@@ -134,48 +137,106 @@ class ScholardexPublicationCanonicalizationServiceTest {
                 "creator",
                 "forum-1"
         );
-        String sameEidDifferentOthers = service.buildCanonicalPublicationId(
-                "2-s2.0-123",
+        String sameDoiDifferentOthers = service.buildCanonicalPublicationId(
+                "2-s2.0-999",
                 "WOS:2",
                 "GS:2",
                 "U:2",
-                "10.1000/xyz",
+                "10.1000/abc",
                 "other",
                 "1999-01-01",
                 "other",
                 "forum-2"
         );
-        String withoutEid = service.buildCanonicalPublicationId(
-                null,
+        String differentDoi = service.buildCanonicalPublicationId(
+                "2-s2.0-123",
                 "WOS:1",
                 "GS:1",
                 "U:1",
-                "10.1000/abc",
+                "10.1000/xyz",
                 "paper",
                 "2024-01-01",
                 "creator",
                 "forum-1"
         );
 
-        assertEquals(withEid, sameEidDifferentOthers);
-        assertNotEquals(withEid, withoutEid);
+        assertEquals(withDoi, sameDoiDifferentOthers);
+        assertNotEquals(withDoi, differentDoi);
     }
 
     @Test
-    void canonicalIdFallsBackThroughWosGsUserDoiAndTitleBranches() {
+    void canonicalIdFallsBackThroughEidWosUserAndTitleBranchesWhenNoDoi() {
+        // Cascade order: doi -> eid -> wos -> user -> title+date. The legacy gs| slot is retired.
+        String eid = service.buildCanonicalPublicationId("2-s2.0-1", "WOS:1", "GS:1", "U:1", null, "t", "2024", "c", "f");
+        String sameEid = service.buildCanonicalPublicationId(" 2-s2.0-1 ", "WOS:9", "GS:9", "U:9", null, "x", "1999", "z", "g");
         String wos = service.buildCanonicalPublicationId(null, "WOS:1", null, null, null, null, null, null, null);
-        String sameWos = service.buildCanonicalPublicationId(null, " wos:1 ", "GS:2", "U:2", "10.1/x", "title", "2024", "creator", "forum");
-        String gs = service.buildCanonicalPublicationId(null, null, "GS:1", null, null, null, null, null, null);
+        String sameWos = service.buildCanonicalPublicationId(null, " wos:1 ", "GS:2", "U:2", null, "title", "2024", "creator", "forum");
         String user = service.buildCanonicalPublicationId(null, null, null, "U:1", null, null, null, null, null);
         String doi = service.buildCanonicalPublicationId(null, null, null, null, "10.1000/abc", null, null, null, null);
         String title = service.buildCanonicalPublicationId(null, null, null, null, null, "title", "2024", "creator", "forum");
         String sameTitle = service.buildCanonicalPublicationId(null, null, null, null, null, " title ", " 2024 ", " creator ", " forum ");
 
+        assertEquals(eid, sameEid);
         assertEquals(wos, sameWos);
-        assertNotEquals(wos, gs);
-        assertNotEquals(gs, user);
+        assertNotEquals(eid, wos);
+        assertNotEquals(wos, user);
         assertNotEquals(user, doi);
         assertEquals(title, sameTitle);
+    }
+
+    @Test
+    void googleScholarIdIsNoLongerAnIdentitySource() {
+        // gs| slot retired: a record whose only identifier is a Google Scholar id falls through to the
+        // title+date branch rather than minting a gs-keyed id.
+        String gsOnly = service.buildCanonicalPublicationId(null, null, "GS:1", null, null, "shared title", "2024", "creator", "forum");
+        String noGs = service.buildCanonicalPublicationId(null, null, null, null, null, "shared title", "2024", "creator", "forum");
+
+        assertEquals(noGs, gsOnly);
+    }
+
+    // ── H66B Decision 0: shared-DOI false-merge guard ───────────────────────────
+
+    @Test
+    void sharedDoiGuardBlocklistsContainerDoisButNotSamePaperVariants() {
+        when(identityConflictRepository.findByEntityTypeAndIncomingSourceAndIncomingSourceRecordIdAndReasonCodeAndStatus(
+                any(), anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(java.util.Optional.empty());
+
+        // DOI A — a container/proceedings DOI: a "Preface" and a real chapter share almost no title tokens → BLOCK.
+        // DOI B — same paper imported twice, identical title but different cover years → must NOT block (a DOI is
+        //         globally unique to one work; the year difference is a Scopus online-first/print artifact).
+        // DOI C — single record → never a candidate.
+        List<ScopusPublicationFact> facts = List.of(
+                sourceFact("2-s2.0-A1", "10.1007/978-3-319-11728-7", "Preface", "2015-01-01"),
+                sourceFact("2-s2.0-A2", "10.1007/978-3-319-11728-7", "Nanoparticles promises and risks characterization and potential hazards", "2015-01-01"),
+                sourceFact("2-s2.0-B1", "10.1016/b978-0-08-096513-0.00001-7", "Crystal Growth and Surfaces", "2010-01-01"),
+                sourceFact("2-s2.0-B2", "10.1016/b978-0-08-096513-0.00001-7", "Crystal Growth and Surfaces", "2009-01-01"),
+                sourceFact("2-s2.0-C1", "10.1000/solo", "A lonely paper with no DOI siblings", "2021-01-01")
+        );
+
+        Set<String> blocklist = service.computeSharedDoiBlocklist(facts);
+
+        assertTrue(blocklist.contains("10.1007/978-3-319-11728-7"), "container DOI must be blocklisted");
+        assertFalse(blocklist.contains("10.1016/b978-0-08-096513-0.00001-7"),
+                "same-title/different-year pair must NOT be blocklisted (no year gate)");
+        assertFalse(blocklist.contains("10.1000/solo"), "single-record DOI is never a candidate");
+        assertEquals(1, blocklist.size());
+
+        // A blocklisted DOI falls through to the eid| slot — exactly the pre-Decision-0 separation.
+        String blockedDoiId = service.buildCanonicalPublicationId(
+                "2-s2.0-A1", null, null, null, "10.1007/978-3-319-11728-7", "Preface", "2015", "c", "f", blocklist);
+        String eidOnlyId = service.buildCanonicalPublicationId(
+                "2-s2.0-A1", null, null, null, null, "Preface", "2015", "c", "f");
+        assertEquals(eidOnlyId, blockedDoiId, "blocklisted DOI must derive identity from the EID slot");
+    }
+
+    private ScopusPublicationFact sourceFact(String eid, String doi, String title, String coverDate) {
+        ScopusPublicationFact fact = new ScopusPublicationFact();
+        fact.setEid(eid);
+        fact.setDoi(doi);
+        fact.setTitle(title);
+        fact.setCoverDate(coverDate);
+        return fact;
     }
 
     @Test

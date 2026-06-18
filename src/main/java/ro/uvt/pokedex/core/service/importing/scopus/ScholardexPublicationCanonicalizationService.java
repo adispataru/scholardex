@@ -29,6 +29,7 @@ import ro.uvt.pokedex.core.service.importing.model.ImportProcessingResult;
 import java.text.Normalizer;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -61,11 +62,24 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
     private static final Pattern DOI_PREFIX = Pattern.compile("^doi:", Pattern.CASE_INSENSITIVE);
     private static final String NULL_CACHE_KEY = "\u0000";
 
+    // H66B Decision 0: DOIs shared across dissimilar-title publications (book/proceedings container
+    // DOIs stamped on a preface + chapters) must NOT collapse those distinct papers into one canonical
+    // id. Such DOIs are quarantined into this conflict reason and excluded from identity derivation.
+    private static final String REASON_PUBLICATION_SHARED_DOI = "PUBLICATION_SHARED_DOI";
+    // Token-Jaccard threshold at/above which two titles under the same DOI are treated as the same paper.
+    private static final double SHARED_DOI_TITLE_SIMILARITY_THRESHOLD = 0.5;
+
     private final ScopusPublicationFactRepository scopusPublicationFactRepository;
     private final ScholardexPublicationFactRepository scholardexPublicationFactRepository;
     private final ScholardexAuthorshipFactRepository scholardexAuthorshipFactRepository;
     private final ScholardexPublicationAuthorAffiliationFactRepository scholardexPublicationAuthorAffiliationFactRepository;
     private final ScholardexEdgeWriterService edgeWriterService;
+
+    // H66B Decision 0: build-scoped set of normalized DOIs that must NOT be used as publication
+    // identity (container/shared DOIs). Recomputed at the start of every source load (loadSourceFacts)
+    // and consulted by buildCanonicalPublicationId. Defaults to empty so standalone/test callers and
+    // the user-defined canon path retain pure DOI-primary behavior with no blocklist.
+    private volatile Set<String> sharedDoiBlocklist = Set.of();
 
     @Value("${scopus.canonical.telemetry.heartbeat-seconds:10}")
     private long heartbeatSeconds;
@@ -128,17 +142,40 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
             String creator,
             String forumId
     ) {
+        return buildCanonicalPublicationId(
+                eid, wosId, googleScholarId, userSourceId, doiNormalized,
+                titleNormalized, coverDate, creator, forumId, sharedDoiBlocklist);
+    }
+
+    // Package-private overload taking an explicit blocklist — keeps id derivation a pure function of its inputs
+    // (the public method binds the build-scoped field) and makes the Decision-0 guard directly unit-testable.
+    String buildCanonicalPublicationId(
+            String eid,
+            String wosId,
+            String googleScholarId,
+            String userSourceId,
+            String doiNormalized,
+            String titleNormalized,
+            String coverDate,
+            String creator,
+            String forumId,
+            Set<String> doiBlocklist
+    ) {
+        // H66B Decision 0: DOI is the primary publication identity. A DOI is used as identity
+        // only when it is NOT flagged as a shared/container DOI by the build-scoped pre-pass
+        // (sharedDoiBlocklist). Blocklisted DOIs fall through to the EID slot, which preserves the
+        // pre-Decision-0 separation for the container-DOI groups (preface+chapters under one
+        // book/proceedings ISBN DOI) — a no-op vs. legacy, so zero regression risk on those.
+        // The legacy `gs|` slot is retired (Google Scholar is no longer an identity source).
         String material;
-        if (!isBlank(eid)) {
+        if (!isBlank(doiNormalized) && !doiBlocklist.contains(doiNormalized)) {
+            material = "doi|" + normalizeToken(doiNormalized);
+        } else if (!isBlank(eid)) {
             material = "eid|" + normalizeToken(eid);
         } else if (!isBlank(wosId)) {
             material = "wos|" + normalizeToken(wosId);
-        } else if (!isBlank(googleScholarId)) {
-            material = "gs|" + normalizeToken(googleScholarId);
         } else if (!isBlank(userSourceId)) {
             material = "user|" + normalizeToken(userSourceId);
-        } else if (!isBlank(doiNormalized)) {
-            material = "doi|" + normalizeToken(doiNormalized);
         } else {
             material = "title|" + normalizeToken(titleNormalized)
                     + "|date|" + normalizeToken(coverDate)
@@ -194,6 +231,7 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
                     sourceBatchIdFilter,
                     facts.size(),
                     nanosToMillis(System.nanoTime() - startedAtNanos));
+            this.sharedDoiBlocklist = computeSharedDoiBlocklist(facts);
             return facts;
         }
         long totalRecords = scopusPublicationFactRepository.count();
@@ -225,7 +263,136 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         log.info("Scholardex publication canonicalization source load completed: mode=full-rescan records={} elapsedMs={}",
                 out.size(),
                 nanosToMillis(System.nanoTime() - startedAtNanos));
+        this.sharedDoiBlocklist = computeSharedDoiBlocklist(out);
         return out;
+    }
+
+    /**
+     * H66B Decision 0 — DOI-primary false-merge guard.
+     *
+     * <p>Groups the build's source facts by normalized DOI and, for any DOI carried by ≥2 records,
+     * clusters their normalized titles (token-Jaccard ≥ {@link #SHARED_DOI_TITLE_SIMILARITY_THRESHOLD}
+     * with year agreement when both years are present). A DOI whose records form more than one title
+     * cluster is a shared/container DOI (e.g. a book/proceedings ISBN DOI stamped on a preface and its
+     * chapters); such DOIs are returned so {@link #buildCanonicalPublicationId} excludes them from
+     * identity derivation, and a single {@code PUBLICATION_SHARED_DOI} conflict is opened per DOI.
+     *
+     * <p>DOIs whose records all share one title cluster (the common Scopus/WoS same-paper variant) are
+     * NOT blocked — they collapse cleanly onto a single {@code doi|} canonical id, which is the win.
+     */
+    Set<String> computeSharedDoiBlocklist(List<ScopusPublicationFact> facts) {
+        if (facts == null || facts.isEmpty()) {
+            return Set.of();
+        }
+        Map<String, List<ScopusPublicationFact>> byDoi = new LinkedHashMap<>();
+        for (ScopusPublicationFact fact : facts) {
+            String doi = normalizeDoi(fact.getDoi());
+            if (doi != null) {
+                byDoi.computeIfAbsent(doi, ignored -> new ArrayList<>()).add(fact);
+            }
+        }
+        Set<String> blocklist = new LinkedHashSet<>();
+        List<ScholardexIdentityConflict> conflicts = new ArrayList<>();
+        for (Map.Entry<String, List<ScopusPublicationFact>> entry : byDoi.entrySet()) {
+            List<ScopusPublicationFact> group = entry.getValue();
+            if (group.size() < 2) {
+                continue;
+            }
+            if (titleClusterCount(group) > 1) {
+                String doi = entry.getKey();
+                blocklist.add(doi);
+                conflicts.add(buildSharedDoiConflict(doi, group));
+            }
+        }
+        if (!conflicts.isEmpty()) {
+            identityConflictRepository.saveAll(conflicts);
+            for (ScholardexIdentityConflict conflict : conflicts) {
+                CanonicalObservabilityMetrics.recordConflictCreated(
+                        conflict.getEntityType().name(),
+                        conflict.getIncomingSource(),
+                        conflict.getReasonCode());
+            }
+        }
+        log.info("H66B Decision 0 DOI-primary guard: sharedDois(blocklisted)={} from doisWithMultipleRecords={} totalDistinctDois={}",
+                blocklist.size(),
+                byDoi.values().stream().filter(g -> g.size() >= 2).count(),
+                byDoi.size());
+        return Set.copyOf(blocklist);
+    }
+
+    /** Greedy single-link clustering of a DOI group's titles; returns the number of distinct clusters. */
+    private int titleClusterCount(List<ScopusPublicationFact> group) {
+        List<Set<String>> clusterTokenReps = new ArrayList<>();
+        for (ScopusPublicationFact fact : group) {
+            Set<String> tokens = titleTokens(fact.getTitle());
+            boolean placed = false;
+            for (Set<String> rep : clusterTokenReps) {
+                if (titlesSamePaper(rep, tokens)) {
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) {
+                clusterTokenReps.add(tokens);
+            }
+        }
+        return Math.max(1, clusterTokenReps.size());
+    }
+
+    /**
+     * Two titles under a shared DOI are treated as the same paper purely by token-Jaccard ≥
+     * {@link #SHARED_DOI_TITLE_SIMILARITY_THRESHOLD}. We deliberately do NOT compare publication years: a DOI is
+     * globally unique to one work, so same-title records that differ only in {@code coverDate} (e.g. Scopus
+     * online-first vs print year) are the same paper — an early year-agreement gate quarantined ~16 such pairs as
+     * false positives (empirically validated on `scholardex_h66`). Genuine container/proceedings DOIs are separated
+     * by title alone (a "Preface" or a distinct chapter shares almost no tokens with its siblings).
+     */
+    private boolean titlesSamePaper(Set<String> aTokens, Set<String> bTokens) {
+        if (aTokens.isEmpty() || bTokens.isEmpty()) {
+            // No usable title on one side — cannot establish they differ; treat as same to avoid spurious blocks.
+            return true;
+        }
+        Set<String> intersection = new LinkedHashSet<>(aTokens);
+        intersection.retainAll(bTokens);
+        Set<String> union = new LinkedHashSet<>(aTokens);
+        union.addAll(bTokens);
+        double jaccard = (double) intersection.size() / (double) union.size();
+        return jaccard >= SHARED_DOI_TITLE_SIMILARITY_THRESHOLD;
+    }
+
+    private Set<String> titleTokens(String title) {
+        String normalized = normalizeTitle(title);
+        if (normalized == null) {
+            return Set.of();
+        }
+        return new LinkedHashSet<>(Arrays.asList(normalized.split(" ")));
+    }
+
+    private ScholardexIdentityConflict buildSharedDoiConflict(String doi, List<ScopusPublicationFact> group) {
+        String recordId = "doi:" + doi;
+        ScholardexIdentityConflict conflict = identityConflictRepository
+                .findByEntityTypeAndIncomingSourceAndIncomingSourceRecordIdAndReasonCodeAndStatus(
+                        ScholardexEntityType.PUBLICATION,
+                        SOURCE_SCOPUS,
+                        recordId,
+                        REASON_PUBLICATION_SHARED_DOI,
+                        CanonicalizationSupport.STATUS_OPEN)
+                .orElseGet(ScholardexIdentityConflict::new);
+        conflict.setEntityType(ScholardexEntityType.PUBLICATION);
+        conflict.setIncomingSource(SOURCE_SCOPUS);
+        conflict.setIncomingSourceRecordId(recordId);
+        conflict.setReasonCode(REASON_PUBLICATION_SHARED_DOI);
+        conflict.setStatus(CanonicalizationSupport.STATUS_OPEN);
+        List<String> candidateEids = group.stream()
+                .map(ScopusPublicationFact::getEid)
+                .filter(eid -> !isBlank(eid))
+                .sorted()
+                .toList();
+        conflict.setCandidateCanonicalIds(candidateEids);
+        if (conflict.getDetectedAt() == null) {
+            conflict.setDetectedAt(Instant.now());
+        }
+        return conflict;
     }
 
     @Override
@@ -951,7 +1118,11 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
                     return byEid;
                 }
             }
-            if (!isBlank(doiNormalized)) {
+            // H66B Decision 0: the load-merge path MUST honor the same DOI blocklist as id derivation. A
+            // blocklisted (container/shared) DOI is NOT an identity, so two records sharing it must not be merged
+            // here — otherwise the records alias onto one fact while id derivation keeps them on distinct eid ids,
+            // stranding a pub write and orphaning its edges. For blocklisted DOIs, merge by EID only.
+            if (!isBlank(doiNormalized) && !sharedDoiBlocklist.contains(doiNormalized)) {
                 ScholardexPublicationFact byDoi = context.publicationByDoi.get(doiNormalized);
                 if (byDoi != null) {
                     return byDoi;
@@ -962,6 +1133,10 @@ public class ScholardexPublicationCanonicalizationService extends AbstractCanoni
         Optional<ScholardexPublicationFact> existingByEid = scholardexPublicationFactRepository.findByEid(eid);
         if (existingByEid.isPresent()) {
             return existingByEid.get();
+        }
+        if (!isBlank(doiNormalized) && sharedDoiBlocklist.contains(doiNormalized)) {
+            // Blocklisted DOI: no EID match above means this is a distinct (container/chapter) publication.
+            return new ScholardexPublicationFact();
         }
         int skippedBefore = result == null ? -1 : result.getSkippedCount();
         Optional<ScholardexPublicationFact> existingByDoi = findSingleByDoi(doiNormalized, result);
