@@ -415,6 +415,7 @@ public class ScholardexProjectionBuilderService {
         view.setAuthorCount(fact.getAuthorCount() == null ? view.getAuthorIds().size() : fact.getAuthorCount());
         view.setAffiliationIds(fact.getAffiliationIds() == null ? List.of() : new ArrayList<>(fact.getAffiliationIds()));
         view.setForumId(fact.getForumId());
+        view.setBookId(fact.getBookId());
         List<String> citingPublicationIds = citingByCited.getOrDefault(fact.getId(), List.of());
         view.setCitingPublicationIds(new LinkedHashSet<>(citingPublicationIds));
         view.setCitedByCount(fact.getCitedByCount() == null ? citingPublicationIds.size() : fact.getCitedByCount());
@@ -742,8 +743,8 @@ public class ScholardexProjectionBuilderService {
                     approved, author_ids, affiliation_ids, forum_id, citing_publication_ids, cited_by_count,
                     wos_id, google_scholar_id, build_version, build_at, updated_at,
                     scopus_lineage, wos_lineage, scholar_lineage, linker_version, linker_run_id, linked_at,
-                    pii, pubmed_id, auth_keywords
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    pii, pubmed_id, auth_keywords, book_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         writePublicationRows(rows, sql);
     }
@@ -758,8 +759,8 @@ public class ScholardexProjectionBuilderService {
                     approved, author_ids, affiliation_ids, forum_id, citing_publication_ids, cited_by_count,
                     wos_id, google_scholar_id, build_version, build_at, updated_at,
                     scopus_lineage, wos_lineage, scholar_lineage, linker_version, linker_run_id, linked_at,
-                    pii, pubmed_id, auth_keywords
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    pii, pubmed_id, auth_keywords, book_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (id) DO UPDATE SET
                     doi = EXCLUDED.doi,
                     doi_normalized = EXCLUDED.doi_normalized,
@@ -802,7 +803,8 @@ public class ScholardexProjectionBuilderService {
                     linked_at = EXCLUDED.linked_at,
                     pii = EXCLUDED.pii,
                     pubmed_id = EXCLUDED.pubmed_id,
-                    auth_keywords = EXCLUDED.auth_keywords
+                    auth_keywords = EXCLUDED.auth_keywords,
+                    book_id = EXCLUDED.book_id
                 """;
         writePublicationRows(rows, sql);
     }
@@ -855,6 +857,7 @@ public class ScholardexProjectionBuilderService {
                 ps.setString(41, row.getPii());
                 ps.setString(42, row.getPubmedId());
                 ps.setArray(43, textArray(ps.getConnection(), row.getAuthKeywords()));
+                ps.setString(44, row.getBookId());
             }
 
             @Override

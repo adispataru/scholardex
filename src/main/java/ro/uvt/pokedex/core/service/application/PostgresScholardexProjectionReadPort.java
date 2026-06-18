@@ -278,6 +278,7 @@ public class PostgresScholardexProjectionReadPort {
         publication.setAuthors(toStringList(rs.getArray("author_ids")));
         publication.setAffiliations(toStringList(rs.getArray("affiliation_ids")));
         publication.setForum(rs.getString("forum_id"));
+        publication.setBookId(rs.getString("book_id"));
         publication.setCitingPublicationIds(new LinkedHashSet<>(toStringList(rs.getArray("citing_publication_ids"))));
         publication.setCitedbyCount(readIntOrDefault(rs, "cited_by_count"));
         publication.setBuildVersion(rs.getString("build_version"));
@@ -297,6 +298,7 @@ public class PostgresScholardexProjectionReadPort {
                 rs.getString("id"),
                 rs.getString("eid"),
                 rs.getString("forum_id"),
+                rs.getString("book_id"),
                 rs.getString("cover_date"),
                 rs.getString("subtype"),
                 rs.getString("scopus_subtype"),

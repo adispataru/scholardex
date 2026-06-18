@@ -212,7 +212,7 @@ public class ScholardexProjectionReadService {
 
     public Optional<ScholardexPublicationView> findPublicationViewById(String id) {
         List<ScholardexPublicationView> rows = jdbcTemplate.query(
-                "SELECT id, doi, doi_normalized, eid, title, subtype, subtype_description, scopus_subtype, scopus_subtype_description, creator, cover_date, cover_display_date, volume, issue_identifier, description, author_count, corresponding_authors, open_access, freetoread, freetoread_label, funding_id, article_number, page_range, approved, author_ids, affiliation_ids, forum_id, citing_publication_ids, cited_by_count, wos_id, google_scholar_id, build_version, build_at, updated_at, scopus_lineage, wos_lineage, scholar_lineage, linker_version, linker_run_id, linked_at FROM reporting_read.scholardex_publication_view WHERE id = ?",
+                "SELECT id, doi, doi_normalized, eid, title, subtype, subtype_description, scopus_subtype, scopus_subtype_description, creator, cover_date, cover_display_date, volume, issue_identifier, description, author_count, corresponding_authors, open_access, freetoread, freetoread_label, funding_id, article_number, page_range, approved, author_ids, affiliation_ids, forum_id, book_id, citing_publication_ids, cited_by_count, wos_id, google_scholar_id, build_version, build_at, updated_at, scopus_lineage, wos_lineage, scholar_lineage, linker_version, linker_run_id, linked_at FROM reporting_read.scholardex_publication_view WHERE id = ?",
                 (rs, rowNum) -> mapPublicationViewRow(rs),
                 id);
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
@@ -253,6 +253,7 @@ public class ScholardexProjectionReadService {
         v.setAuthorIds(toStringList(rs.getArray("author_ids")));
         v.setAffiliationIds(toStringList(rs.getArray("affiliation_ids")));
         v.setForumId(rs.getString("forum_id"));
+        v.setBookId(rs.getString("book_id"));
         v.setCitingPublicationIds(new LinkedHashSet<>(toStringList(rs.getArray("citing_publication_ids"))));
         v.setCitedByCount(rs.getObject("cited_by_count", Integer.class));
         v.setWosId(rs.getString("wos_id"));

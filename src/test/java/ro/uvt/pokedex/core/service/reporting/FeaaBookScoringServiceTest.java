@@ -4,11 +4,14 @@ import org.junit.jupiter.api.Test;
 import ro.uvt.pokedex.core.model.reporting.Indicator;
 import ro.uvt.pokedex.core.model.reporting.ScoringPublicationReadModel;
 import ro.uvt.pokedex.core.model.reporting.scoring.ScoringStrategy;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class FeaaBookScoringServiceTest {
@@ -57,6 +60,22 @@ class FeaaBookScoringServiceTest {
     @Test
     void isiProceedingsScorePointOne() {
         assertEquals(0.1, service.getScore(pub("cp", "Some Conf", false), indicator).getScore());
+    }
+
+    @Test
+    void bookScoreResolvesPublisherFromBookRegistryNotForum() {
+        // H66B M7-C: a book publication carries a bookId; its publisher comes from the book registry,
+        // and the forum is never consulted (book venues set forumId=null).
+        ScholardexBookFact book = new ScholardexBookFact();
+        book.setPublisher("Springer");
+        when(lookupPort.getBook("bk-1")).thenReturn(book);
+        when(anexa1.isPrestigePublisher("Springer")).thenReturn(true);
+        ScoringPublicationReadModel p = mock(ScoringPublicationReadModel.class);
+        when(p.getBookId()).thenReturn("bk-1");
+        when(p.getScopusSubtype()).thenReturn("bk");
+
+        assertEquals(0.5, service.getScore(p, indicator).getScore());
+        verify(lookupPort, never()).getForum(any());
     }
 
     @Test

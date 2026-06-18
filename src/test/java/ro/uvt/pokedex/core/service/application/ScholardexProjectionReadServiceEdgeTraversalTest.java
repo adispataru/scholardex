@@ -543,6 +543,7 @@ class ScholardexProjectionReadServiceEdgeTraversalTest {
         when(rs.getArray("corresponding_authors")).thenReturn(arrCorr);
         when(rs.getArray("citing_publication_ids")).thenReturn(arrCiting);
         when(rs.getString("forum_id")).thenReturn("sforum_77");
+        when(rs.getString("book_id")).thenReturn(null);
 
         when(jdbcTemplate.query(any(String.class), any(org.springframework.jdbc.core.RowMapper.class), eq("spub_77")))
                 .thenAnswer(invocation -> {

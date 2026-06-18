@@ -7,6 +7,7 @@ public record ScoringPublication(
         String id,
         String eid,
         String forumId,
+        String bookId,
         String coverDate,
         String subtype,
         String scopusSubtype,
@@ -19,6 +20,14 @@ public record ScoringPublication(
         Set<String> citingPublicationIds
 ) implements ScoringPublicationReadModel {
 
+    /** H66B M7: convenience constructor for book-less (forum/journal) publications — bookId defaults to null. */
+    public ScoringPublication(String id, String eid, String forumId, String coverDate, String subtype,
+            String scopusSubtype, List<String> authorIds, int authorCount, String doi, String wosId,
+            String title, int citedByCount, Set<String> citingPublicationIds) {
+        this(id, eid, forumId, null, coverDate, subtype, scopusSubtype, authorIds, authorCount, doi, wosId,
+                title, citedByCount, citingPublicationIds);
+    }
+
     @Override
     public String getId() { return id; }
 
@@ -27,6 +36,9 @@ public record ScoringPublication(
 
     @Override
     public String getForumId() { return forumId; }
+
+    @Override
+    public String getBookId() { return bookId; }
 
     @Override
     public String getCoverDate() { return coverDate; }

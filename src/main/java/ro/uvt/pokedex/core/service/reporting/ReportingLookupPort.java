@@ -2,6 +2,7 @@ package ro.uvt.pokedex.core.service.reporting;
 
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.WoSRanking;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
 
 import java.util.List;
@@ -28,6 +29,14 @@ public interface ReportingLookupPort {
             rankings = getRankingsByIssn(forum.getEIssn());
         }
         return rankings;
+    }
+
+    /**
+     * H66B M7: the book registry entry (scholardex.book_facts) for a book-typed publication's bookId, or null.
+     * Book scoring reads its publisher (Anexa-1 prestige). Default null for impls that don't serve books.
+     */
+    default ScholardexBookFact getBook(String bookId) {
+        return null;
     }
 
     List<CoreConferenceRanking> getConferenceRankings(String acronym);

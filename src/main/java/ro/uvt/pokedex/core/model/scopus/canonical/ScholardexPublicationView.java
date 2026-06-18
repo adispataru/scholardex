@@ -42,6 +42,8 @@ public class ScholardexPublicationView {
     private List<String> authorIds = new ArrayList<>();
     private List<String> affiliationIds = new ArrayList<>();
     private String forumId;
+    /** H66B M7: book venue Scopus Source ID (set instead of forumId for book-typed publications). */
+    private String bookId;
     private Set<String> citingPublicationIds = new LinkedHashSet<>();
     private int citedByCount;
     private String wosId;
@@ -115,6 +117,7 @@ public class ScholardexPublicationView {
                 id,
                 eid,
                 forumId,
+                bookId,
                 coverDate,
                 subtype,
                 scopusSubtype,

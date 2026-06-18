@@ -307,8 +307,14 @@ vs baseline** + reconcile audit `healthy=true`.
     gained `bookId`; `upsertPublicationAndDimensions` branches; `flushObservedVenues` partitions venues into
     forums (observed forum) vs books (observed book, via `bookFactRepository`); canonicalization carries
     `bookId` directly (no source-link resolution — books aren't merged). Unit-tested.
-  - **M7-B.2 Postgres plumbing (NEXT — sprawling, hold for a focused pass + the rebuild).** `bookId` must reach
-    scoring through, in lockstep:
+  - **M7-B.2 Postgres plumbing — DONE.** `bookId` reaches scoring end-to-end: `V14` migration adds
+    `scholardex_publication_view.book_id`; the projection appends `book_id` as the last (44th) INSERT column
+    + bind + ON CONFLICT (append-at-end, no index shift); the view-row builder sets it; both read mappers
+    surface it (`ScholardexProjectionReadService` explicit SELECT + setter, `PostgresScholardexProjectionReadPort`
+    via `SELECT *` + the two mappers); `ScoringPublicationReadModel.getBookId()` + `ScoringPublication.bookId`
+    (with a 13-arg convenience ctor so the 14 existing fixtures compile unchanged). All green incl. the
+    Testcontainers projection integration tests.
+  - **M7-B.2 original plumbing map (for reference):** `bookId` must reach scoring through, in lockstep:
     1. `V13__…` Flyway migration: `ALTER TABLE reporting_read.scholardex_publication_view ADD COLUMN book_id text`.
     2. `ScholardexProjectionBuilderService`: **append** `book_id` as the **last** column in both publication-view
        INSERTs (`writePublicationRows` ~line 737 + `upsertPublicationRows` ~line 753) → one new `?` at index 44,
@@ -320,12 +326,13 @@ vs baseline** + reconcile audit `healthy=true`.
        `ScholardexProjectionReadService` (SELECT ~215, mapper ~255) and `PostgresScholardexProjectionReadPort`
        (SELECT, view mapper ~280, **and** the `ScoringPublication` construction ~299).
     6. `ScoringPublicationReadModel` interface: add `getBookId()`. `ScoringPublication` record: add `bookId`.
-  - **M7-C book scoring (after B.2).** `FeaaBookScoringService.isPrestige` → `lookupPort.getBook(publication.getBookId()).getPublisher()`
-    (Anexa-1 prestige) instead of `getForum(...)`. Add `ReportingLookupPort.getBook(bookId)` returning a book
-    view (Mongo `scholardex.book_facts`), implemented in `PostgresReportingLookupFacade` + `ReportingLookupFacade`.
-    With observed-book minting (B.1), `getBook` always resolves for book publications → no forum fallback.
-    Re-point the FEAA scoring test. Gate (held rebuild): book count loaded, book publications resolve `bookId`,
-    forum count drops by the no-longer-minted book venues, FEAA book scores unchanged for listed publishers.
+  - **M7-C book scoring — DONE.** `FeaaBookScoringService` resolves the publisher from the book registry via
+    `bookId` (forum fallback for the unlisted/edge case), through a new `ReportingLookupPort.getBook(bookId)`
+    (`default` null; overridden in the `@Primary` `ReportingLookupFacade` to query Mongo `scholardex.book_facts`).
+    FEAA test added (book publication → book-registry publisher, forum never consulted); the existing
+    forum/journal fixtures (bookId=null) fall back to the forum unchanged. **M7 is code-complete** bar the
+    held rebuild gate (book count loaded, book pubs resolve `bookId`, forum count drops by the no-longer-minted
+    book venues, FEAA book scores unchanged for listed publishers) — to run after M8 with the rest of the stack.
   - **Streaming precedent set (2026-06-17):**
   `ScopusDataService.importSourceListXlsxFromPath` was rewritten from a full in-memory `XSSFWorkbook` to the
   POI SAX event reader (`OPCPackage`/`XSSFReader`/`XSSFSheetXMLHandler` + `ReadOnlySharedStringsTable`) — the

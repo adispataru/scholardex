@@ -5,7 +5,9 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import ro.uvt.pokedex.core.model.CoreConferenceRanking;
 import ro.uvt.pokedex.core.model.WoSRanking;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexBookFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumView;
+import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexBookFactRepository;
 import ro.uvt.pokedex.core.service.reporting.ReportingLookupPort;
 
 import java.util.List;
@@ -17,10 +19,19 @@ import java.util.Set;
 public class ReportingLookupFacade implements ReportingLookupPort {
 
     private final PostgresReportingLookupFacade postgresFacade;
+    private final ScholardexBookFactRepository bookFactRepository;
 
     @Override
     public ScholardexForumView getForum(String forumId) {
         return postgresFacade.getForum(forumId);
+    }
+
+    @Override
+    public ScholardexBookFact getBook(String bookId) {
+        if (bookId == null || bookId.isBlank()) {
+            return null;
+        }
+        return bookFactRepository.findById(bookId).orElse(null);
     }
 
     @Override

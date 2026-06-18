@@ -7,6 +7,8 @@ public interface ScoringPublicationReadModel {
     String getId();
     String getEid();
     String getForumId();
+    /** H66B M7: book venue Scopus Source ID (set instead of forumId for book-typed publications). */
+    String getBookId();
     String getCoverDate();
     String getSubtype();
     String getScopusSubtype();
