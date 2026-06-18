@@ -471,7 +471,16 @@ vs baseline** + reconcile audit `healthy=true`.
     merged something; added `wosRelink` to `ScopusForumBuildResult` + the build log line.
   - Tests: `relinkAmbiguousWosForumsResolvesNowUnambiguousJournalAndClosesConflict` + no-op guard;
     `ScholardexForumBuilderTest` asserts order (…→ membership dedup → relink) and skip-when-no-dedup. Application
-    + WoS suites green (978). **Confirming rebuild pending** (predict AMBIGUOUS 55→~0).
+    + WoS suites green (978).
+  - **M10 CONFIRMING REBUILD (2026-06-18, isolated `scholardex_h66`) — SUCCESS.** `Forum build complete: …
+    membershipDedupMerged=188 wosRelinked=55`. Forum **AMBIGUOUS_ISSN_MATCH 55 → 0 OPEN** (all 55 flipped to
+    RESOLVED by the `wos-forum-onboarding` resolver); **unlinked WoS identities 55 → 0 / 25,788** (every WoS
+    journal now resolves to a forum); EXTERNAL_ID still **0**. Prod `test` safe at 32,714.
+  - **Final forum-conflict residual = 24, all genuine** (no churn, no orphans): `FORUM_DEDUP_NAME_MISMATCH` 12
+    (same-ISSN, conflicting names — human review), `FORUM_CROSS_JOURNAL_ISSN` 10 (H57 eISSN-bridge guard firing
+    correctly on distinct journals), `NORMALIZATION_INVALID_ISSN` 2 (malformed source ISSNs). North-star met:
+    **448 baseline → 24 genuine**, with the 421 EXTERNAL_ID churn eliminated and the entire ambiguous-orphan
+    class (M8→M9→M10) resolved.
   - **Still pending regardless:** full-feed validation (SourceList/CiteScore/ERIH/DOAJ/MJL/Books) — Scopus+WoS-only
     so far.
   - **M8-A.2 original plan (for reference):** The substantive change:
