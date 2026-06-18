@@ -521,6 +521,26 @@ vs baseline** + reconcile audit `healthy=true`.
       `runWosOnboarding`'s standalone caller. The orchestration is now *functionally* one DAG; the class-level
       consolidation can follow once full-feed numbers are validated.
 
+- **FULL-FEED VALIDATION (2026-06-18, isolated `scholardex_h66`) — PASS.** First rebuild of the entire feed set
+  through the post-M8/M9/M10 pipeline, one unified `rebuildAllDerived`. All six feeds ingested via M8-B
+  (MJL 24,123 / DOAJ 22,915 / ERIH 12,768 / Source List 49,599 / CiteScore 29,777 / Book list 475,453).
+  Forum build: canonProcessed=51,671, **erihForumsUpdated=6,040 + doajForumsUpdated=12,430** (were 0 in every
+  Scopus+WoS run — onboarding now live), M9 groupsMerged=217, membershipDedupMerged=419, **wosRelinked=97**.
+  - **Health gate PASS:** `healthy=true`, `orphanedPublicationForumLinks=0`. forumsTotal=69,933 (incl. book
+    venues + DOAJ/ERIH-minted + Source List backbone). Prod `test` safe at 32,714.
+  - **fkMetric 25,599 / fkCategory 25,276** ≈ runbook reference (25,637 / 25,314; −38, negligible).
+  - **fkMembership 43,607** vs reference 22,963 — **explained, not a regression:** the reference ≈ the
+    DOAJ-only slice (22,927 here); full membership now aggregates DOAJ 22,927 + ERIH 12,766 + MJL coverage
+    SCIE 9,428 / ESCI 9,356 / SSCI 3,538 / AHCI 1,799. The reference value predated the WoS-coverage editions
+    in the membership view.
+  - **Forum conflicts: 0 OPEN AMBIGUOUS (97 RESOLVED by M10); 57 genuine OPEN residual** —
+    FORUM_DEDUP_NAME_MISMATCH 40, FORUM_CROSS_JOURNAL_ISSN 15, NORMALIZATION_INVALID_ISSN 2. Grew from 24
+    (Scopus+WoS) proportionally with feed density; sampled name-mismatches are real renames/continuations
+    (Geološki Vjesnik→Geologia Croatica, Gartenbauwissenschaft→Eur J Hortic Sci) and a correct cross-journal
+    eISSN-bridge guard — the honest human-review class, not churn.
+  - **Verdict:** the full H66B pipeline (M1–M10 + M8-B) produces a healthy, complete full-feed registry. The
+    only follow-up is curating the 57 genuine conflicts (human review) — no structural defect.
+
 ### Open design choices
 
 - **WoS role + identity ordering:** RESOLVED (2026-06-17). WoS is **create-or-match, last in the identity
