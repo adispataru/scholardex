@@ -370,6 +370,15 @@ vs baseline** + reconcile audit `healthy=true`.
       dedup catches genuine ISSN-shared duplicates). *Or* make the enrichment ownership-aware (skip a scopus id
       already owned, merge into the owner). Either needs a confirming rebuild. Decision deferred (paused
       2026-06-18). Until fixed, **M8-A.2 is not release-ready** despite green unit tests.
+    - **FIX APPLIED (2026-06-18):** removed the scopus-id claim from `mergeForum` — the one block that mutated
+      the uniquely-indexed `scopusForumIds` via the enrichment (`scopusIds.add(scopusPreferred.getSourceId())`).
+      `scopusForumIds` now stays whatever Scopus canon set; a WoS journal that shares an ISSN merges into the
+      Scopus-canonical forum (via `forumIndex` in `ingest`) and gains the id naturally, one that doesn't no
+      longer staples an owned id onto a different forum. The non-colliding issn/name/agg enrichment is kept.
+      Unit-equivalent (only the white-box `mergeForumCovers…` scopus-id assertion updated; engine/onboarding/
+      builder + app + scopus suites green). **Still needs the confirming rebuild** to show
+      `EXTERNAL_ID_ALREADY_LINKED` drops 198 → ~0 and total → the ~26 residual (9 ambiguous + 10 cross-journal
+      + 5 dedup + 2 invalid). Until that rebuild runs, M8-A.2 remains "code-fixed, data-unverified."
   - **M8-A.2 original plan (for reference):** The substantive change:
     1. `ScholardexForumBuilder.buildScopusForums` → add `runWosForumOnboarding` as the **last** forum step
        (dedup → Scopus canon → ERIH → DOAJ → **WoS** → final dedup); extend the result record + the re-dedup

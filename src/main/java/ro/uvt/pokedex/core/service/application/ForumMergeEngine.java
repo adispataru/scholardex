@@ -661,12 +661,11 @@ public class ForumMergeEngine {
         List<ScopusForumFact> scopusCandidates = scopusForumIndex.findCandidates(normalizedIssns, wosNameNormalized, defaultAggregationTypeNormalized);
         ScopusForumFact scopusPreferred = scopusCandidates.size() == 1 ? scopusCandidates.getFirst() : null;
 
-        LinkedHashSet<String> scopusIds = new LinkedHashSet<>(safeList(target.getScopusForumIds()));
-        if (scopusPreferred != null && normalizeBlank(scopusPreferred.getSourceId()) != null) {
-            scopusIds.add(scopusPreferred.getSourceId());
-        }
-        target.setScopusForumIds(new ArrayList<>(scopusIds));
-
+        // H66B M8 — do NOT claim the scopus-enrichment's source id here. Under the identity-first order WoS
+        // runs after Scopus canonicalization, which already owns every scopus forum id; a WoS journal that
+        // resolves (by ISSN, in ingest) to the same Scopus-canonical forum gets that id by merging into it,
+        // while one that resolves elsewhere must not staple an already-owned id onto a different forum (that
+        // was the WoS-last EXTERNAL_ID_ALREADY_LINKED churn). scopusForumIds stays whatever Scopus canon set.
         LinkedHashSet<String> wosIds = new LinkedHashSet<>(safeList(target.getWosForumIds()));
         wosIds.add(wosForumId);
         target.setWosForumIds(new ArrayList<>(wosIds));

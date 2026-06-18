@@ -118,7 +118,9 @@ class ForumMergeEngineTest {
                 "corr-m"
         );
 
-        assertEquals("scopus-new", target.getScopusForumIds().getLast());
+        // H66B M8: the WoS merge no longer claims the scopus-enrichment's source id (that caused the WoS-last
+        // EXTERNAL_ID churn); scopusForumIds stays what Scopus canon set, here the pre-existing "scopus-old".
+        assertEquals(List.of("scopus-old"), target.getScopusForumIds());
         assertTrue(target.getWosForumIds().contains("wos-new"));
         assertEquals("1234-5679", target.getIssn());
         assertEquals("8765-4326", target.getEIssn());
