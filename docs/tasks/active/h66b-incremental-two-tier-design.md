@@ -547,6 +547,26 @@ interface EntityBuilder {
    - **⬜ Remaining:** a researcher in-corpus h-index / citation-network view is still unbuilt (the data is all present
      in `scholardex_citation_fact` + `citedByWorkIds`).
 
+   **Stage 3 — `ofOpenAlex` venue resolve, ISSN-gated (2026-06-19, commit `50ed3e9`).** OpenAlex-minted/refreshed pubs
+   carried `forumId=null`; Stage 3 resolves each publication's host venue to a canonical forum by reusing the
+   source-agnostic `ForumMergeEngine` create-or-match seam (the ERIH/DOAJ path) — and stands up the exact venue seam
+   **DBLP (Phase 4b) plugs into next**.
+   - **Plumbing:** `ForumIdType.OPENALEX` + `ForumSourceRecord.ofOpenAlex`; `ScholardexForumFact.openAlexIds`
+     (+ partial-unique index) + `findByOpenAlexIdsContaining`; `ForumMergeEngine.addExternalId` OPENALEX case;
+     `OpenAlexPublicationFact.hostVenueOpenAlexId` captured at import.
+   - **Flow:** `OpenAlexForumOnboardingService.onboard` runs inside `canonicalize()` (so both the scheduler and the
+     `runFull` replay are covered): per distinct venue, match existing forums by ISSN (tagging `openAlexIds` —
+     unifying cross-source journal identity) or mint an OpenAlex-only journal; `canonicalizeOne` then stamps `forumId`
+     via the venue's `openAlexIds` tag (mint + refresh only — a Scopus-linked pub keeps its own forum).
+   - **ISSN-gated by design:** a no-ISSN venue (most conferences) is skipped, never minted name-only — CS conference
+     identity is DBLP's job, not a display-name duplicate factory.
+   - **Validated:** 10 venues → 9 matched existing forums by ISSN (cross-source tags: *Scalable Computing*,
+     *Electronics*, …), 1 OpenAlex-only journal minted (ChemRxiv); total forums 69922→**69923** (no explosion); 6 of 8
+     OpenAlex-minted researcher pubs now carry `forumId`, the 2 without are ISSN-less conferences (deferred to DBLP).
+   - **⬜ Note:** the onboarder's `startCreateOrTagRun()` loads the full forum index per sync (O(registry) warm-load) —
+     fine for a background task; revisit if Tier-2 sync latency matters. **Phase 4a (OpenAlex) is now functionally
+     complete** — citations, authors, cited-by, and venue identity all resolved.
+
 ## Phase 4a — prod-readiness / cutover checklist (2026-06-19)
 
 All of Phase 4a is validated only against the isolated `scholardex_h66` Mongo / `core_h66` Postgres. Full test
