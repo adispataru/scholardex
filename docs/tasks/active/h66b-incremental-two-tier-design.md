@@ -380,10 +380,17 @@ interface EntityBuilder {
      works now visible under the researcher) + **0 ambiguous-DOI quarantines**. Orphan gate: **0** across
      pub→forum, authorship→pub, authorship→author, source-link→pub. Minted pubs carry `forumId=null` (venue is
      Stage 3) — not orphans.
+   - **Durability — PROVEN (after a fix).** First durability rebuild FAILED: the full-rebuild endpoint
+     (`rebuildAllDerivedFromSource` → `ScopusBigBangMigrationService.runFull`) calls the canonicalization builders
+     *directly* and bypasses `rebuildFactsAndViews`, where the replay was first wired — so the wipe dropped the 10
+     mints + 16 links + 26 edges while the durable `openalex.publication_facts` (26) survived but was never
+     replayed. (Notably `runFull` doesn't run user-defined canonicalization either.) Fix: add
+     `openAlexCanonicalizationService.rebuildCanonicalFacts()` into `runFull` after Scopus publication canon, before
+     projections. Re-validated: a full rebuild now re-derives **exactly 10 minted + 26 source-links + 26 authorship
+     edges** from the durable table, total pubs back to 92,536, **0 orphans**. (Commits `913ea67` + `55843e8`.)
    - **Known Stage-1 cost / follow-ups:** the on-demand scheduler calls a full `projectionBuilderService.rebuildViews()`
      per sync (heavy; a batch/incremental refresh is a later optimization). Co-author bridging against OpenAlex's
-     fragmented author entities is deferred. Full-rebuild durability (OpenAlex pubs re-derived from the durable
-     source table) is wired + unit-covered; a live rebuild is the remaining end-to-end durability proof.
+     fragmented author entities is deferred.
 
 ## Open questions
 - **Reconcile trigger policy** — nightly? after N unreconciled mints? on curated-feed import? (Phase 3 decides.)
