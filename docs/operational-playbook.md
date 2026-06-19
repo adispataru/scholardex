@@ -29,6 +29,7 @@ Normal entrypoints:
 - Use `/admin/incremental-updates` for one uploaded Scopus file plus batch follow-up actions tied to that uploaded batch.
 - Use `/admin/initialization` for full rebuild, recovery, global maintenance, or any situation where state is uncertain beyond one batch.
 - Do not use full initialization as the default retry path for a single uploaded Scopus file or a single scheduler task.
+- **Building the whole dataset from scratch** is a single self-contained call (`POST /admin/initialization/rebuildAllDerived?confirmation=RESET`) that imports every feed from config and ingests both sources — do **not** pre-import feeds by hand. See [rebuild-runbook.md](rebuild-runbook.md) for the full procedure, config-key table, and post-rebuild admin/DBLP/OpenAlex steps.
 
 Scopus replay/update invariants:
 - Repeating the same Scopus upload or scheduler batch must reuse existing canonical facts, source links, edges, and OPEN conflicts rather than inserting duplicates.
