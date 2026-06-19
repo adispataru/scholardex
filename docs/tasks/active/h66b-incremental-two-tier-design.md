@@ -522,11 +522,26 @@ interface EntityBuilder {
      cache was retired (neighbors are durable source-facts now).
    - **Validated live:** 95 citing + 471 referenced works minted (+498 pubs); **26 → 734 edges** = 522 outgoing + 56
      incoming + 5 self + 151 neighbor-neighbor; 0 orphans, 0 self-loops.
-   - **⬜ Follow-up — incoming completeness:** incoming is conservative (56 edges vs 95 `cites:` hits) because ~40% of
-     citers' own `referenced_works` don't name the paper (OpenAlex cites-index ⊋ stored reference lists, often via
-     duplicate work ids). Recovering them durably needs per-paper `cites:` attribution stored on our side (e.g. a
-     `citedByWorkIds` field on the synced fact) so the edge re-derives on rebuild. Also: surface the citation count /
-     graph in PG projections + reporting.
+   **Stage 2 — incoming-completeness + cited-by surfacing (2026-06-19, commit `1772cad`).** Two follow-ups, with one
+   honest correction to the prior note.
+   - **Incoming attribution (`citedByWorkIds`):** a per-paper `cites:` query (`fetchCitingWorks` one synced work at a
+     time) gives EXACT attribution, stored durably on the synced fact as `citedByWorkIds`; the edge build emits
+     incoming edges from it so they re-derive on a full rebuild independent of whether each citer's `referenced_works`
+     names us. This makes incoming the *authoritative* inverse of outgoing. **Correction:** the earlier "56 vs 95 =
+     ~40% asymmetry" framing was wrong for this researcher — investigation showed all 97 attributed incoming edges
+     were ALREADY present (the citer neighbors' reference lists agreed), so `citedByWorkIds` added **0 edges** here.
+     Its value is correctness/durability + robustness to the asymmetry where it *does* occur, not new edges on this
+     dataset.
+   - **Cited-by surfacing:** the citation *graph* already flows to PG (`scholardex_citation_fact` +
+     `citing_publication_ids[]`) and the `/user/publications/citations` page already renders it — the 734 edges now
+     populate it (researcher papers show their in-corpus citers). The gap was the **"Times cited" metric**: OpenAlex's
+     `citedByCount` only reached minted/refreshed pubs, never the 25-of-26 papers LINKED to Scopus, so the displayed
+     count stayed the lower Scopus number. `OpenAlexCanonicalizationService.bumpCitedByCount` now surfaces OpenAlex's
+     broader count onto a linked foreign pub as a **monotonic max** — never clobbering richer content, never
+     regressing. Validated: researcher's reported citations rose 13→15 papers, sum 50→68.
+   - **⬜ Remaining:** the per-paper `cites:` adds ~N API calls/sync (one per synced work) — fine for a background
+     task but worth a batched-discovery + per-paper-attribution optimization if sync latency matters. A researcher
+     in-corpus h-index / citation-network view is still unbuilt (data is all present in `scholardex_citation_fact`).
 
 ## Phase 4a — prod-readiness / cutover checklist (2026-06-19)
 
