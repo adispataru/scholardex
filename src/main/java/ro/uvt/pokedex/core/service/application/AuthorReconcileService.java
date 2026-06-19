@@ -51,6 +51,7 @@ public class AuthorReconcileService {
 
     static final String SOURCE_SCHOLARDEX = "SCHOLARDEX";
     static final String REASON_SHARED_ORCID_NAME_MISMATCH = "AUTHOR_SHARED_ORCID_NAME_MISMATCH";
+    static final String REASON_FUZZY_MERGE_CANDIDATE = "AUTHOR_FUZZY_MERGE_CANDIDATE";
     private static final String STATUS_OPEN = "OPEN";
 
     private final ScholardexAuthorFactRepository authorRepository;
@@ -62,6 +63,14 @@ public class AuthorReconcileService {
     private final UserRepository userRepository;
     private final OpenAlexPublicationFactRepository openAlexPublicationFactRepository;
     private final ScholardexIdentityConflictRepository identityConflictRepository;
+
+    /**
+     * Fuzzy pass: when {@code true} actually merge corroborated same-name clusters; when {@code false} (default)
+     * run in dry-run mode — only emit {@code AUTHOR_FUZZY_MERGE_CANDIDATE} conflicts so the merges can be inspected
+     * on real data before auto-merge is enabled (the false-merge risk at 216k authors warrants this).
+     */
+    @org.springframework.beans.factory.annotation.Value("${core.author-reconcile.fuzzy-apply:false}")
+    private boolean fuzzyApply;
 
     /** ORCID pass: merge canonical authors that share an ORCID (name-compatible), quarantine the rest. */
     public ImportProcessingResult reconcileByOrcid(String batchId, String correlationId) {
@@ -96,6 +105,134 @@ public class AuthorReconcileService {
         log.info("Author reconcile (ORCID pass) complete: orcidClusters={} merged~={} quarantined={}",
                 result.getProcessedCount(), result.getImportedCount(), result.getSkippedCount());
         return result;
+    }
+
+    /**
+     * Fuzzy pass: cluster authors by normalized full name (order-insensitive), and within each cluster merge the
+     * subgroups that <b>corroborate</b> (share ≥1 affiliation) and pass the <b>hard block</b> (no two members
+     * co-appear on the same publication — that proves they are different people). Same-name authors with no
+     * corroboration are left alone. Dry-run unless {@code core.author-reconcile.fuzzy-apply=true}: candidates are
+     * reported as {@code AUTHOR_FUZZY_MERGE_CANDIDATE} conflicts instead of merged.
+     */
+    public ImportProcessingResult reconcileByName(String batchId, String correlationId) {
+        ImportProcessingResult result = new ImportProcessingResult(20);
+        Instant now = Instant.now();
+
+        Map<String, List<ScholardexAuthorFact>> byName = new TreeMap<>();
+        for (ScholardexAuthorFact author : authorRepository.findAll()) {
+            String key = nameKey(author.getDisplayName());
+            if (!key.isEmpty()) {
+                byName.computeIfAbsent(key, k -> new ArrayList<>()).add(author);
+            }
+        }
+
+        int mergeGroups = 0;
+        for (List<ScholardexAuthorFact> cluster : byName.values()) {
+            List<ScholardexAuthorFact> members = dedupById(cluster);
+            if (members.size() < 2) {
+                continue;
+            }
+            for (List<ScholardexAuthorFact> group : corroboratedSubgroups(members)) {
+                if (group.size() < 2) {
+                    continue;
+                }
+                result.markProcessed();
+                mergeGroups++;
+                if (fuzzyApply) {
+                    mergeCluster(group, now, result);
+                } else {
+                    quarantine(group, REASON_FUZZY_MERGE_CANDIDATE, batchId, correlationId, now, result);
+                }
+            }
+        }
+        log.info("Author reconcile (fuzzy name pass, apply={}) complete: nameClusters={} mergeGroups={} merged~={} reported={}",
+                fuzzyApply, byName.size(), mergeGroups, result.getImportedCount(), result.getSkippedCount());
+        return result;
+    }
+
+    /**
+     * Partition a same-name cluster into mergeable subgroups via union-find on the relation "share an affiliation AND
+     * do not co-appear on a publication". A connected component is emitted only if the hard block holds across ALL
+     * its pairs (transitivity could otherwise pull two co-appearing members into one group).
+     */
+    private List<List<ScholardexAuthorFact>> corroboratedSubgroups(List<ScholardexAuthorFact> members) {
+        int n = members.size();
+        Map<String, java.util.Set<String>> pubsByAuthor = new java.util.HashMap<>();
+        for (ScholardexAuthorFact a : members) {
+            java.util.Set<String> pubs = new java.util.HashSet<>();
+            for (ScholardexPublicationFact pub : publicationRepository.findByAuthorIdsContains(a.getId())) {
+                pubs.add(pub.getId());
+            }
+            pubsByAuthor.put(a.getId(), pubs);
+        }
+        int[] parent = new int[n];
+        for (int i = 0; i < n; i++) {
+            parent[i] = i;
+        }
+        for (int i = 0; i < n; i++) {
+            for (int j = i + 1; j < n; j++) {
+                if (sharesAffiliation(members.get(i), members.get(j)) && !coAppear(members.get(i), members.get(j), pubsByAuthor)) {
+                    union(parent, i, j);
+                }
+            }
+        }
+        Map<Integer, List<ScholardexAuthorFact>> components = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < n; i++) {
+            components.computeIfAbsent(find(parent, i), k -> new ArrayList<>()).add(members.get(i));
+        }
+        List<List<ScholardexAuthorFact>> safe = new ArrayList<>();
+        for (List<ScholardexAuthorFact> component : components.values()) {
+            if (component.size() >= 2 && componentRespectsHardBlock(component, pubsByAuthor)) {
+                safe.add(component);
+            }
+        }
+        return safe;
+    }
+
+    private boolean componentRespectsHardBlock(List<ScholardexAuthorFact> component, Map<String, java.util.Set<String>> pubsByAuthor) {
+        for (int i = 0; i < component.size(); i++) {
+            for (int j = i + 1; j < component.size(); j++) {
+                if (coAppear(component.get(i), component.get(j), pubsByAuthor)) {
+                    return false; // two members on the same paper => different people => don't merge this group
+                }
+            }
+        }
+        return true;
+    }
+
+    private boolean sharesAffiliation(ScholardexAuthorFact a, ScholardexAuthorFact b) {
+        java.util.Set<String> aff = new java.util.HashSet<>(safe(a.getAffiliationIds()));
+        aff.retainAll(safe(b.getAffiliationIds()));
+        return !aff.isEmpty();
+    }
+
+    private boolean coAppear(ScholardexAuthorFact a, ScholardexAuthorFact b, Map<String, java.util.Set<String>> pubsByAuthor) {
+        java.util.Set<String> pubs = new java.util.HashSet<>(pubsByAuthor.getOrDefault(a.getId(), java.util.Set.of()));
+        pubs.retainAll(pubsByAuthor.getOrDefault(b.getId(), java.util.Set.of()));
+        return !pubs.isEmpty();
+    }
+
+    private static int find(int[] parent, int i) {
+        while (parent[i] != i) {
+            parent[i] = parent[parent[i]];
+            i = parent[i];
+        }
+        return i;
+    }
+
+    private static void union(int[] parent, int i, int j) {
+        parent[find(parent, i)] = find(parent, j);
+    }
+
+    /** Order-insensitive cluster key: normalized name tokens, sorted (so "Last, First" and "First Last" agree). */
+    private static String nameKey(String displayName) {
+        if (displayName == null) {
+            return "";
+        }
+        String normalized = Normalizer.normalize(displayName, Normalizer.Form.NFKD).replaceAll("\\p{M}+", "");
+        String[] tokens = normalized.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", " ").trim().split("\\s+");
+        java.util.Arrays.sort(tokens);
+        return String.join(" ", tokens).trim();
     }
 
     // ── merge ──────────────────────────────────────────────────────────────

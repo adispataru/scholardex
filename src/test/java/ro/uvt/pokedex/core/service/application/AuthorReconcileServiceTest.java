@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexAuthorshipFact;
 import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexEntityType;
+import ro.uvt.pokedex.core.model.scopus.canonical.ScholardexPublicationFact;
 import ro.uvt.pokedex.core.repository.UserRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.OpenAlexPublicationFactRepository;
 import ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexAuthorAffiliationFactRepository;
@@ -140,6 +141,74 @@ class AuthorReconcileServiceTest {
         // Collision → drop the loser edge, OR its corresponding flag onto the surviving winner edge.
         verify(authorshipRepository).deleteById("edge_loser");
         verify(authorshipRepository).save(argThat(e -> "edge_winner".equals(e.getId()) && Boolean.TRUE.equals(e.getCorresponding())));
+    }
+
+    @Test
+    void fuzzyDryRunReportsCorroboratedSameNameAuthorsWithoutMerging() {
+        ScholardexAuthorFact a = sameName("sauth_a", "aff_uvt");
+        ScholardexAuthorFact b = sameName("sauth_b", "aff_uvt"); // shared affiliation, no shared pub
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "fuzzyApply", false);
+        when(authorRepository.findAll()).thenReturn(List.of(a, b));
+        when(publicationRepository.findByAuthorIdsContains(anyString())).thenReturn(List.of());
+
+        service.reconcileByName("batch", "corr");
+
+        verify(authorRepository, never()).deleteById(anyString());
+        verify(identityConflictRepository).save(argThat(c -> "AUTHOR_FUZZY_MERGE_CANDIDATE".equals(c.getReasonCode())
+                && c.getCandidateCanonicalIds().contains("sauth_a") && c.getCandidateCanonicalIds().contains("sauth_b")));
+    }
+
+    @Test
+    void fuzzyApplyMergesCorroboratedSameNameAuthors() {
+        ScholardexAuthorFact a = sameName("sauth_a", "aff_uvt");
+        a.setScopusAuthorIds(new ArrayList<>(List.of("111")));
+        ScholardexAuthorFact b = sameName("sauth_b", "aff_uvt");
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "fuzzyApply", true);
+        when(authorRepository.findAll()).thenReturn(List.of(a, b));
+        when(publicationRepository.findByAuthorIdsContains(anyString())).thenReturn(List.of());
+
+        service.reconcileByName("batch", "corr");
+
+        verify(authorRepository).deleteById("sauth_b"); // 'a' wins (has a scopus id)
+        verify(identityConflictRepository, never()).save(any());
+    }
+
+    @Test
+    void fuzzyHardBlocksWhenSameNameAuthorsCoAppearOnAPublication() {
+        ScholardexAuthorFact a = sameName("sauth_a", "aff_uvt");
+        ScholardexAuthorFact b = sameName("sauth_b", "aff_uvt");
+        ScholardexPublicationFact shared = new ScholardexPublicationFact();
+        shared.setId("spub_shared");
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "fuzzyApply", true);
+        when(authorRepository.findAll()).thenReturn(List.of(a, b));
+        when(publicationRepository.findByAuthorIdsContains("sauth_a")).thenReturn(List.of(shared));
+        when(publicationRepository.findByAuthorIdsContains("sauth_b")).thenReturn(List.of(shared));
+
+        service.reconcileByName("batch", "corr");
+
+        // Co-author on the same paper => provably different people => never merged.
+        verify(authorRepository, never()).deleteById(anyString());
+        verify(identityConflictRepository, never()).save(any());
+    }
+
+    @Test
+    void fuzzyDoesNotMergeSameNameAuthorsWithoutSharedAffiliation() {
+        ScholardexAuthorFact a = sameName("sauth_a", "aff_uvt");
+        ScholardexAuthorFact b = sameName("sauth_b", "aff_mit"); // different affiliation
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "fuzzyApply", true);
+        when(authorRepository.findAll()).thenReturn(List.of(a, b));
+        when(publicationRepository.findByAuthorIdsContains(anyString())).thenReturn(List.of());
+
+        service.reconcileByName("batch", "corr");
+
+        verify(authorRepository, never()).deleteById(anyString());
+        verify(identityConflictRepository, never()).save(any());
+    }
+
+    private ScholardexAuthorFact sameName(String id, String affiliationId) {
+        ScholardexAuthorFact a = author(id, "Dragan, Ioan", null);
+        a.setAffiliationIds(new ArrayList<>(List.of(affiliationId)));
+        return a;
     }
 
     private ScholardexAuthorFact author(String id, String displayName, String orcid) {

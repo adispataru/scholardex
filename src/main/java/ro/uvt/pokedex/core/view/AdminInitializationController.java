@@ -414,6 +414,17 @@ public class AdminInitializationController {
         return "redirect:/admin/initialization";
     }
 
+    @PostMapping("/author/reconcile/fuzzy")
+    public String runAuthorFuzzyReconcile(RedirectAttributes redirectAttributes) {
+        var result = authorReconcileService.reconcileByName("admin-manual", "admin-manual");
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Author reconcile (fuzzy name pass) complete. mergeGroups=" + result.getProcessedCount()
+                        + ", authorsMerged=" + result.getImportedCount()
+                        + ", reportedCandidates=" + result.getSkippedCount()
+                        + " (dry-run unless core.author-reconcile.fuzzy-apply=true).");
+        return "redirect:/admin/initialization";
+    }
+
     @PostMapping("/wos/importMjl")
     public String runWosImportMjl(
             @RequestParam(name = "dir", defaultValue = "data/wos/mjl") String dir,
