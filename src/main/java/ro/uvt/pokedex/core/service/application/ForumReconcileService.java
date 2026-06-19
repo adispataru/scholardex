@@ -30,6 +30,7 @@ public class ForumReconcileService {
     private static final String RECONCILE_BATCH = "scopus-forum-canonicalization";
 
     private final ScholardexForumBuilder forumBuilder;
+    private final AuthorReconcileService authorReconcileService;
     private final ScholardexProjectionBuilderService projectionBuilderService;
 
     public ForumReconcileResult reconcile(String reason) {
@@ -38,6 +39,13 @@ public class ForumReconcileService {
 
         ScholardexForumBuilder.ScopusForumBuildResult forumBuild =
                 forumBuilder.buildScopusForums(RECONCILE_BATCH, "reconcile-" + reason);
+        // Author reconcile rides the same Tier-1 cadence, before the projection rebuild so the merges/re-points are
+        // reflected in reporting. ORCID pass merges (idempotent); the fuzzy pass is dry-run unless flagged on.
+        ImportProcessingResult authorOrcid = authorReconcileService.reconcileByOrcid(RECONCILE_BATCH, "reconcile-" + reason);
+        ImportProcessingResult authorFuzzy = authorReconcileService.reconcileByName(RECONCILE_BATCH, "reconcile-" + reason);
+        log.info("Author reconcile within forum reconcile: orcidMerged={} orcidQuarantined={} fuzzyMerged={} fuzzyReported={}",
+                authorOrcid.getImportedCount(), authorOrcid.getSkippedCount(),
+                authorFuzzy.getImportedCount(), authorFuzzy.getSkippedCount());
         ImportProcessingResult projection = projectionBuilderService.rebuildViews();
 
         long durationNanos = System.nanoTime() - startedAtNanos;

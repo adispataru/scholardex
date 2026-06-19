@@ -18,6 +18,7 @@ import static org.mockito.Mockito.when;
 class ForumReconcileServiceTest {
 
     @Mock private ScholardexForumBuilder forumBuilder;
+    @Mock private AuthorReconcileService authorReconcileService;
     @Mock private ScholardexProjectionBuilderService projectionBuilderService;
 
     private ImportProcessingResult res(int processed, int imported, int updated, int skipped, int errors) {
@@ -39,14 +40,17 @@ class ForumReconcileServiceTest {
     @Test
     void reconcileRunsForumBuildThenProjectionRefreshInOrder() {
         when(forumBuilder.buildScopusForums(any(), any())).thenReturn(forumBuild());
+        when(authorReconcileService.reconcileByOrcid(any(), any())).thenReturn(res(0, 0, 0, 0, 0));
+        when(authorReconcileService.reconcileByName(any(), any())).thenReturn(res(0, 0, 0, 0, 0));
         when(projectionBuilderService.rebuildViews()).thenReturn(res(100, 0, 0, 0, 0));
 
         ForumReconcileService.ForumReconcileResult out =
-                new ForumReconcileService(forumBuilder, projectionBuilderService).reconcile("admin-manual");
+                new ForumReconcileService(forumBuilder, authorReconcileService, projectionBuilderService).reconcile("admin-manual");
 
-        // Tier-1 reconcile: the global forum build first, then the projection refresh so the merges/re-points show.
-        InOrder order = inOrder(forumBuilder, projectionBuilderService);
+        // Tier-1 reconcile: global forum build, then author reconcile, then the projection refresh so the merges show.
+        InOrder order = inOrder(forumBuilder, authorReconcileService, projectionBuilderService);
         order.verify(forumBuilder).buildScopusForums(any(), any());
+        order.verify(authorReconcileService).reconcileByOrcid(any(), any());
         order.verify(projectionBuilderService).rebuildViews();
         assertNotNull(out.forumBuild());
         assertEquals(100, out.projection().getProcessedCount());
