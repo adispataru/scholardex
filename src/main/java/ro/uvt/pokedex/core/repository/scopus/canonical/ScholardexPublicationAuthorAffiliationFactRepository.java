@@ -23,4 +23,6 @@ public interface ScholardexPublicationAuthorAffiliationFactRepository
             String publicationId,
             Collection<String> authorIds
     );
+
+    List<ScholardexPublicationAuthorAffiliationFact> findByAuthorIdIn(Collection<String> authorIds);
 }

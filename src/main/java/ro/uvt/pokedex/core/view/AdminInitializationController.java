@@ -42,6 +42,7 @@ public class AdminInitializationController {
     private final ro.uvt.pokedex.core.service.application.DoajOnboardingService doajOnboardingService;
     private final ro.uvt.pokedex.core.service.application.ScholardexForumDeduplicationService scholardexForumDeduplicationService;
     private final ro.uvt.pokedex.core.service.application.ForumReconcileService forumReconcileService;
+    private final ro.uvt.pokedex.core.service.application.AuthorReconcileService authorReconcileService;
 
     @GetMapping
     public String showInitializationPage(Model model) {
@@ -400,6 +401,16 @@ public class AdminInitializationController {
                                 + result.forumBuild().wosRelink().getImportedCount())
                         + ", projectionRows=" + result.projection().getProcessedCount()
                         + ", projectionErrors=" + result.projection().getErrorCount());
+        return "redirect:/admin/initialization";
+    }
+
+    @PostMapping("/author/reconcile")
+    public String runAuthorReconcile(RedirectAttributes redirectAttributes) {
+        var result = authorReconcileService.reconcileByOrcid("admin-manual", "admin-manual");
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Author reconcile (ORCID pass) complete. clusters=" + result.getProcessedCount()
+                        + ", authorsMerged=" + result.getImportedCount()
+                        + ", quarantined=" + result.getSkippedCount() + ".");
         return "redirect:/admin/initialization";
     }
 

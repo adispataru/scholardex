@@ -10,4 +10,7 @@ import java.util.Optional;
 public interface OpenAlexPublicationFactRepository extends MongoRepository<OpenAlexPublicationFact, String> {
     Optional<OpenAlexPublicationFact> findBySourceRecordId(String sourceRecordId);
     List<OpenAlexPublicationFact> findBySourceRecordIdIn(Collection<String> sourceRecordIds);
+
+    /** Source-facts whose syncedResearchers reference the given canonical author (re-point target on author merge). */
+    List<OpenAlexPublicationFact> findBySyncedResearchersCanonicalAuthorId(String canonicalAuthorId);
 }

@@ -23,4 +23,7 @@ public interface UserRepository extends MongoRepository<User, String> {
            "  { 'researcherProfile.lastName':  { $regex: ?0, $options: 'i' } } " +
            "] }")
     List<User> findByResearcherProfileNameContainingIgnoreCase(String namePart);
+
+    /** Researchers whose canonical author id points at the given author (re-point target on author merge). */
+    List<User> findByResearcherProfilePrimaryScholardexAuthorId(String primaryScholardexAuthorId);
 }

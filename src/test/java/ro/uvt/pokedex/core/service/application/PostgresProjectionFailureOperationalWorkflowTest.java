@@ -90,7 +90,8 @@ class PostgresProjectionFailureOperationalWorkflowTest {
                 mock(ro.uvt.pokedex.core.service.application.ErihOnboardingService.class),
                 mock(ro.uvt.pokedex.core.service.application.DoajOnboardingService.class),
                 mock(ro.uvt.pokedex.core.service.application.ScholardexForumDeduplicationService.class),
-                mock(ro.uvt.pokedex.core.service.application.ForumReconcileService.class)
+                mock(ro.uvt.pokedex.core.service.application.ForumReconcileService.class),
+                mock(ro.uvt.pokedex.core.service.application.AuthorReconcileService.class)
         );
 
         PostgresOperationalStatusService.PostgresOperationalStatusSnapshot operational = controller.postgresOperationalStatusApi();
