@@ -60,6 +60,7 @@ public class ResearcherWorkspaceController {
     private final UserPublicationFacade userPublicationFacade;
     private final UserActivityInstanceFacade userActivityInstanceFacade;
     private final UserScopusTaskFacade userScopusTaskFacade;
+    private final ro.uvt.pokedex.core.service.application.UserOpenAlexTaskFacade userOpenAlexTaskFacade;
     private final UserReportFacade userReportFacade;
     private final WorkspacePreferencesRepository workspacePreferencesRepository;
     private final PublicationWizardFacade publicationWizardFacade;
@@ -454,6 +455,7 @@ public class ResearcherWorkspaceController {
                 ? new ArrayList<>(request.scopusId()) : new ArrayList<>());
         profile.setWosId(request.wosId() != null
                 ? new ArrayList<>(request.wosId()) : new ArrayList<>());
+        profile.setOrcid(ro.uvt.pokedex.core.service.openalex.OrcidSupport.normalize(request.orcid()));
         List<String> currentAffiliationIds = normalizeAffiliationIds(request.currentAffiliationIds());
         List<String> pastAffiliationIds = normalizeAffiliationIds(request.pastAffiliationIds());
         pastAffiliationIds.removeIf(currentAffiliationIds::contains);
@@ -505,6 +507,30 @@ public class ResearcherWorkspaceController {
         draft.setEndYear(request.endYear());
         ScopusCitationsUpdate saved =
                 userScopusTaskFacade.createCitationTask(userOpt.get().getEmail(), draft);
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+    }
+
+    // ── JSON: trigger OpenAlex author sync (H66B Phase 4a) ────────────────
+    @PostMapping("/profile/sync/openalex-authors")
+    @ResponseBody
+    public ResponseEntity<ro.uvt.pokedex.core.model.tasks.OpenAlexAuthorUpdate> triggerSyncOpenAlexAuthors(
+            Authentication authentication) {
+        Optional<User> userOpt = currentUser(authentication);
+        if (userOpt.isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        User user = userRepository.findById(userOpt.get().getEmail()).orElse(userOpt.get());
+        User.ResearcherProfile profile = user.getResearcherProfile();
+        String orcid = profile == null ? null
+                : ro.uvt.pokedex.core.service.openalex.OrcidSupport.normalize(profile.getOrcid());
+        if (orcid == null) {
+            // No (valid) ORCID on the profile — nothing to sync against.
+            return ResponseEntity.unprocessableEntity().build();
+        }
+        ro.uvt.pokedex.core.model.tasks.OpenAlexAuthorUpdate draft =
+                new ro.uvt.pokedex.core.model.tasks.OpenAlexAuthorUpdate();
+        draft.setOrcid(orcid);
+        draft.setResearcherAuthorId(profile.getPrimaryScholardexAuthorId());
+        ro.uvt.pokedex.core.model.tasks.OpenAlexAuthorUpdate saved =
+                userOpenAlexTaskFacade.createAuthorTask(user.getEmail(), draft);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
@@ -944,6 +970,7 @@ public class ResearcherWorkspaceController {
             String scholarId,
             List<String> scopusId,
             List<String> wosId,
+            String orcid,
             List<String> currentAffiliationIds,
             List<String> pastAffiliationIds,
             Boolean confirmAffiliationScope) {}

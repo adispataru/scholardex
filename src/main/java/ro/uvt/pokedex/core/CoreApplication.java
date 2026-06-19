@@ -16,6 +16,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class CoreApplication {
     @Value("${scopus.python.base-url}")
     private String scopusServiceURL;
+    @Value("${openalex.api.base-url:https://api.openalex.org}")
+    private String openAlexBaseUrl;
     public static void main(String[] args) {
         SpringApplication.run(CoreApplication.class, args);
     }
@@ -29,6 +31,20 @@ public class CoreApplication {
         return WebClient.builder()
                 .exchangeStrategies(strategies)
                 .baseUrl("http://"+scopusServiceURL)
+                .build();
+    }
+
+    @Bean
+    public WebClient openAlexWebClient() {
+        // OpenAlex is a keyless public REST API; a 200-result /works page can be large, so allow a
+        // generous in-memory buffer (H66B Phase 4a).
+        final int size = (int) DataSize.ofMegabytes(32).toBytes();
+        final ExchangeStrategies strategies = ExchangeStrategies.builder()
+                .codecs(codecs -> codecs.defaultCodecs().maxInMemorySize(size))
+                .build();
+        return WebClient.builder()
+                .exchangeStrategies(strategies)
+                .baseUrl(openAlexBaseUrl)
                 .build();
     }
 

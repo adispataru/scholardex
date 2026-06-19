@@ -65,6 +65,8 @@ class ResearcherWorkspaceSecurityContractTest {
     @MockitoBean
     private UserScopusTaskFacade userScopusTaskFacade;
     @MockitoBean
+    private ro.uvt.pokedex.core.service.application.UserOpenAlexTaskFacade userOpenAlexTaskFacade;
+    @MockitoBean
     private UserReportFacade userReportFacade;
     @MockitoBean
     private WorkspacePreferencesRepository workspacePreferencesRepository;

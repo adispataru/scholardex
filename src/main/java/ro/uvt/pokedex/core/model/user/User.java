@@ -91,6 +91,8 @@ public class User implements UserDetails {
         private String scholarId;
         private List<String> scopusId = new ArrayList<>();
         private List<String> wosId = new ArrayList<>();
+        /** ORCID iD (bare 16-digit form, e.g. 0000-0002-1825-0097). 1:1 per researcher; drives the OpenAlex author sync (H66B Phase 4a). */
+        private String orcid;
         private String primaryScholardexAuthorId;
         private List<String> currentAffiliationIds = new ArrayList<>();
         private List<String> pastAffiliationIds = new ArrayList<>();

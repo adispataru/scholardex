@@ -22,6 +22,7 @@ public class ScopusCanonicalMaterializationService {
     private final ScholardexAuthorCanonicalizationService authorCanonicalizationService;
     private final ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
     private final UserDefinedCanonicalizationService userDefinedCanonicalizationService;
+    private final OpenAlexCanonicalizationService openAlexCanonicalizationService;
     private final ScholardexCitationCanonicalizationService citationCanonicalizationService;
     private final ScholardexSourceLinkService sourceLinkService;
     private final ScholardexEdgeReconciliationService edgeReconciliationService;
@@ -57,6 +58,12 @@ public class ScopusCanonicalMaterializationService {
         ImportProcessingResult canonicalUserDefinedResult = (incrementalBatchRun && !userDefinedTouchedByBatch)
                 ? new ImportProcessingResult(0)
                 : userDefinedCanonicalizationService.rebuildCanonicalFacts();
+        // H66B Phase 4a: replay the durable OpenAlex source-facts onto the freshly-rebuilt canonical layer so
+        // OpenAlex-origin pubs (and their links onto Scopus/user-defined pubs by DOI) survive a full rebuild.
+        // The incremental on-demand path runs its own Tier-2 resolve, so this global replay is full-maintenance only.
+        ImportProcessingResult canonicalOpenAlexResult = incrementalBatchRun
+                ? new ImportProcessingResult(0)
+                : openAlexCanonicalizationService.rebuildCanonicalFacts();
         ImportProcessingResult canonicalCitationResult = buildInputs.canonicalCitationResult();
         ScholardexSourceLinkService.ImportRepairSummary sourceLinkRepair = effectiveOptions.reconcileSourceLinks()
                 ? sourceLinkService.reconcileLinks()
@@ -71,6 +78,7 @@ public class ScopusCanonicalMaterializationService {
                 + canonicalAuthorResult.getErrorCount()
                 + canonicalPublicationResult.getErrorCount()
                 + canonicalUserDefinedResult.getErrorCount()
+                + canonicalOpenAlexResult.getErrorCount()
                 + canonicalCitationResult.getErrorCount()
                 + projectionResult.getErrorCount()) > 0 ? "failure" : "success";
         long durationNanos = System.nanoTime() - startedAtNanos;

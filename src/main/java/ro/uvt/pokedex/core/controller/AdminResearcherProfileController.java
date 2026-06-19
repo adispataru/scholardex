@@ -65,6 +65,7 @@ public class AdminResearcherProfileController {
         profile.setScholarId(request.scholarId());
         profile.setScopusId(request.normalizedScopusId());
         profile.setWosId(request.normalizedWosId());
+        profile.setOrcid(request.normalizedOrcid());
         profile.setPrimaryScholardexAuthorId(request.primaryScholardexAuthorId());
         profile.setPosition(request.position());
         return profile;

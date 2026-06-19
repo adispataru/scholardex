@@ -320,6 +320,71 @@ interface EntityBuilder {
    + scheduler (mirrors Scopus); (5) DBLP API adapter + retire the band-aid. Build order: **Decision 0 →
    OpenAlex → DBLP** (DBLP reuses the venue-resolve seam).
 
+   ### Phase 4a — OpenAlex, architecture resolved (2026-06-19, decisions locked, build started)
+
+   **Decisions:** (a) **fetch = Java-direct WebClient** — OpenAlex is keyless/simple JSON, so no Python-bridge
+   coupling (the `scopus-python` bridge exists only for Scopus's pybliometrics/key complexity); (b) **entry point =
+   on-demand by ORCID first** — build the per-researcher author-update slice before any mass DOI backfill (smaller
+   blast radius, immediately testable on a real ORCID).
+
+   **Architecture (mirrors the user-defined source pattern — the proven template for a non-Scopus pub source).**
+   Code inspection settled this: `scopus.publication_facts` is **Scopus-only** (many Scopus channels, one source
+   table); WoS is a separate reporting tier and never a publication source (it only *links* + populates the `wosId`
+   cascade slot); `user_defined.publication_facts` is a **separate source-fact table** whose
+   `UserDefinedCanonicalizationService` reads it and writes canonical via `publicationWriter.upsertAndLinkSource(...)`,
+   replayed on every full rebuild. So OpenAlex gets the same shape: a durable `openalex.publication_facts` source
+   table + an `OpenAlexCanonicalizationService`, NOT rows in `scopus.publication_facts`.
+   - **Decision 0 makes "link" free.** An OpenAlex work with DOI `D` derives the *same* `spub_doi(D)` canonical id,
+     so `upsertAndLinkSource` **merges onto an existing Scopus pub** (adds the `OPENALEX` source-link + enriches) with
+     no explicit `PublicationEnrichmentLinkerService` call. The linker (EID→DOI, link-only, `>1 DOI → CONFLICT`) is
+     reserved for the EID-bridge edge cases; its `CONFLICT` path is consistent with Decision 0's blocklisted
+     container DOIs (mint-distinct, never link). Minting happens only for genuinely new / DOI-less works.
+
+   **Stage 1 deliverables (on-demand ORCID slice):**
+   1. `orcid` (single `String`, 1:1 per researcher) on `User.ResearcherProfile` + `ProfileSaveRequest`/admin DTOs +
+      both save paths (mirrors `scopusId`).
+   2. `OpenAlexClient` (Java `WebClient`) — `GET https://api.openalex.org/works?filter=author.orcid:<id>&per-page=200&cursor=*`,
+      polite-pool `mailto` from config; cursor pagination; work DTO (id, doi, title, publication_year, authorships,
+      primary_location/host_venue ISSN, referenced_works, cited_by_count).
+   3. `OpenAlexPublicationFact` → `openalex.publication_facts` (durable, idempotent upsert on OpenAlex work id;
+      mirrors `UserDefinedPublicationFact`).
+   4. `OpenAlexCanonicalizationService` — read facts → `buildCanonicalPublicationId` (DOI-first) →
+      `upsertAndLinkSource(source=OPENALEX)`; DOI-collision auto-merges, else mints (mirrors
+      `UserDefinedCanonicalizationService`).
+   5. `OpenAlexAuthorUpdate` task + repo + `UserOpenAlexTaskFacade` + `OpenAlexUpdateScheduler` (poll/retry/claim;
+      mirrors `ScopusPublicationUpdate` + `ScopusUpdateScheduler`); task captures `orcid` at creation.
+   6. `POST /user/workspace/profile/sync/openalex-authors` controller endpoint (mirrors `sync/publications`).
+   7. Full-rebuild replay of `openalex.publication_facts` (mirrors the user-defined orchestration in the canonical
+      materialization).
+   - **Deferred to later stages:** Stage 2 = DOI-keyed citations (`referenced_works`/`cited_by`); Stage 3 =
+     `ofOpenAlex` venue resolve. **Validation:** enter ORCID → sync → DOI'd works link onto existing canonical pubs,
+     DOI-less/new ones mint, 0 orphans.
+   - **Not OpenAlex:** the untracked `scopus-python/brainmap_test.py` + `.env.example` are a separate brainmap.ro
+     experiment — out of scope here.
+
+   **Stage 1 — built + validated (2026-06-19).** Files: `User.ResearcherProfile.orcid` + DTOs +
+   `OrcidSupport`; `openalex.publication_facts` + `OpenAlexPublicationFact` (durable — NOT in
+   `MANAGED_DERIVED_COLLECTIONS`, so it survives the full wipe; auto-owned via `@Document`); `OpenAlexClient`
+   (cursor-paged `works?filter=author.orcid:`); `OpenAlexImportService` (work→source-fact upsert);
+   `OpenAlexCanonicalizationService` (DOI link / mint + self-authorship edge); `OpenAlexAuthorUpdate` task +
+   repo + `UserOpenAlexTaskFacade` + `OpenAlexUpdateScheduler` + `POST /profile/sync/openalex-authors`;
+   full-rebuild replay wired into `ScopusCanonicalMaterializationService` (full-maintenance only).
+   - **Design refinement vs. the plan:** the writer (`upsertAndLinkSource`) stamps `source`/provenance
+     unconditionally, so a *link* onto a richer Scopus pub would clobber it. So link = **source-link only, no
+     canonical-fact mutation**; mint = full write. And the authorship edge key is `(publicationId, authorId,
+     source)`, so one `OPENALEX` self-authorship edge per syncing researcher coexists with any Scopus edge — added
+     in **both** link and mint, making works visible even when Scopus never attributed them.
+   - **Live validation on `scholardex_h66`** (ORCID `0000-0002-0702-6276`, Adrian Spătaru / UVT, 26 works):
+     26 source-facts → **16 linked** onto existing Scopus pubs (enriched, not duplicated — Decision 0's
+     DOI-collision-link) + **10 minted** (OpenAlex-only works, 92,526→92,536) + **26 self-authorship edges** (all
+     works now visible under the researcher) + **0 ambiguous-DOI quarantines**. Orphan gate: **0** across
+     pub→forum, authorship→pub, authorship→author, source-link→pub. Minted pubs carry `forumId=null` (venue is
+     Stage 3) — not orphans.
+   - **Known Stage-1 cost / follow-ups:** the on-demand scheduler calls a full `projectionBuilderService.rebuildViews()`
+     per sync (heavy; a batch/incremental refresh is a later optimization). Co-author bridging against OpenAlex's
+     fragmented author entities is deferred. Full-rebuild durability (OpenAlex pubs re-derived from the durable
+     source table) is wired + unit-covered; a live rebuild is the remaining end-to-end durability proof.
+
 ## Open questions
 - **Reconcile trigger policy** — nightly? after N unreconciled mints? on curated-feed import? (Phase 3 decides.)
 - **Registry index warmth** — Tier-2 resolve still pays an O(registry) context load unless we keep a warm

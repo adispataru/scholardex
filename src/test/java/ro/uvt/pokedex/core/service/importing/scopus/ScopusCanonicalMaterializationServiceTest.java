@@ -40,6 +40,8 @@ class ScopusCanonicalMaterializationServiceTest {
     @Mock
     private UserDefinedCanonicalizationService userDefinedCanonicalizationService;
     @Mock
+    private OpenAlexCanonicalizationService openAlexCanonicalizationService;
+    @Mock
     private ScholardexCitationCanonicalizationService citationCanonicalizationService;
     @Mock
     private ScholardexSourceLinkService sourceLinkService;
@@ -220,6 +222,7 @@ class ScopusCanonicalMaterializationServiceTest {
         when(authorCanonicalizationService.rebuildCanonicalAuthorFactsFromScopusFacts(any())).thenReturn(new ImportProcessingResult(0));
         when(publicationCanonicalizationService.rebuildCanonicalPublicationFactsFromScopusFacts(any())).thenReturn(new ImportProcessingResult(0));
         when(userDefinedCanonicalizationService.rebuildCanonicalFacts()).thenReturn(new ImportProcessingResult(0));
+        when(openAlexCanonicalizationService.rebuildCanonicalFacts()).thenReturn(new ImportProcessingResult(0));
         when(citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(any())).thenReturn(new ImportProcessingResult(0));
         when(projectionBuilderService.rebuildViews()).thenReturn(new ImportProcessingResult(0));
         ScopusCanonicalMaterializationService service = bareService();
@@ -264,6 +267,8 @@ class ScopusCanonicalMaterializationServiceTest {
         // H66B Phase 1: user-defined canon is now skipped on an incremental batch that produced no user-defined
         // facts, so this stub is only exercised on the full-maintenance paths — make it lenient.
         lenient().when(userDefinedCanonicalizationService.rebuildCanonicalFacts()).thenReturn(empty);
+        // H66B Phase 4a: OpenAlex replay runs only on full maintenance, like user-defined — lenient stub.
+        lenient().when(openAlexCanonicalizationService.rebuildCanonicalFacts()).thenReturn(empty);
         when(citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(any())).thenReturn(empty);
         return new ScopusCanonicalMaterializationService(
                 factBuilderService,
@@ -272,6 +277,7 @@ class ScopusCanonicalMaterializationServiceTest {
                 authorCanonicalizationService,
                 publicationCanonicalizationService,
                 userDefinedCanonicalizationService,
+                openAlexCanonicalizationService,
                 citationCanonicalizationService,
                 sourceLinkService,
                 edgeReconciliationService,
@@ -287,6 +293,7 @@ class ScopusCanonicalMaterializationServiceTest {
                 authorCanonicalizationService,
                 publicationCanonicalizationService,
                 userDefinedCanonicalizationService,
+                openAlexCanonicalizationService,
                 citationCanonicalizationService,
                 sourceLinkService,
                 edgeReconciliationService,

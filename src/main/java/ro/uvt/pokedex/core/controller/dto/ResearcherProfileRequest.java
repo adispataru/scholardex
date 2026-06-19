@@ -14,11 +14,16 @@ public record ResearcherProfileRequest(
         String scholarId,
         List<String> scopusId,
         List<String> wosId,
+        String orcid,
         String primaryScholardexAuthorId,
         Position position
 ) {
     public List<String> normalizedScopusId() {
         return scopusId == null ? new ArrayList<>() : scopusId;
+    }
+
+    public String normalizedOrcid() {
+        return ro.uvt.pokedex.core.service.openalex.OrcidSupport.normalize(orcid);
     }
 
     public List<String> normalizedWosId() {
