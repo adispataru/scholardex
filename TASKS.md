@@ -57,9 +57,9 @@ Done history moved to `TASKS-done.md`.
   - ✅ **author-reconcile wired into `runFull`** + **`fuzzy-apply` flipped on** after a 30/30 STRONG spot-check
     (commit `1f8a77c`): 951 duplicate authors merged live (216,258 → 215,307); MEDIUM pairs still review-gated.
   - ✅ **Decision-0 authorship-decision remap — MOOT** (the wipe removed the old user-state; fresh db starts clean).
+  - ✅ **OpenAlex `mailto` set** to the admin email (`${admin.email}`, commit `e7c44ee`) — polite-pool ready.
   - **Still open (low priority):** **user-defined data-loss bug** on full rebuild (chipped `task_cccc209c`, latent —
-    no user data yet); OpenAlex `mailto` blank (set before bulk sync); corresponding-flag / reconcile-conflict read
-    surface; ~6 seed-data orphan authorships.
+    no user data yet); corresponding-flag / reconcile-conflict read surface; ~6 seed-data orphan authorships.
   - **Feature follow-ups:** scoring rework → **`H69`**; researcher in-corpus h-index / citation-network view → **`H67`**;
     DBLP↔Scopus conference forum dedup (Tier-1 reconcile); DBLP dump sweep into the full-rebuild path; DBLP rate-limit
     tuning; Stage-3 warm-load if Tier-2 latency matters; optional lean dump-derived fast index (scoped, deferred).
