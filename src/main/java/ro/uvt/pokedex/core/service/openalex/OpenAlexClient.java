@@ -74,4 +74,34 @@ public class OpenAlexClient {
         log.info("OpenAlex fetch by ORCID {} completed: works={} pages={}", orcid, works.size(), page);
         return works;
     }
+
+    /**
+     * Batch-fetch works by OpenAlex id (≤100 per request via the {@code ids.openalex:W1|W2|…} OR-filter), returning
+     * the id→work for each — used to resolve referenced/citing works' DOIs (H66B Phase 4a Stage 2). Ids must be the
+     * bare {@code W…} form; the caller is responsible for caching the results.
+     */
+    public List<OpenAlexWorksResponse.OpenAlexWork> fetchWorksByIds(java.util.Collection<String> openAlexWorkIds) {
+        List<OpenAlexWorksResponse.OpenAlexWork> works = new ArrayList<>();
+        List<String> distinct = openAlexWorkIds.stream().filter(id -> id != null && !id.isBlank()).distinct().toList();
+        for (int from = 0; from < distinct.size(); from += 100) {
+            List<String> batch = distinct.subList(from, Math.min(from + 100, distinct.size()));
+            String filter = "ids.openalex:" + String.join("|", batch);
+            OpenAlexWorksResponse response = openAlexWebClient.get()
+                    .uri(builder -> {
+                        builder.path("/works").queryParam("filter", filter).queryParam("per-page", 100);
+                        if (mailto != null && !mailto.isBlank()) {
+                            builder.queryParam("mailto", mailto);
+                        }
+                        return builder.build();
+                    })
+                    .retrieve()
+                    .bodyToMono(OpenAlexWorksResponse.class)
+                    .block();
+            if (response != null && response.getResults() != null) {
+                works.addAll(response.getResults());
+            }
+        }
+        log.info("OpenAlex batch fetch by id: requested={} returned={}", distinct.size(), works.size());
+        return works;
+    }
 }

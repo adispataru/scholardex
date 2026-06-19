@@ -77,6 +77,7 @@ public class ScopusBigBangMigrationService {
     private final ScholardexAuthorCanonicalizationService authorCanonicalizationService;
     private final ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
     private final ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCanonicalizationService openAlexCanonicalizationService;
+    private final ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCitationCanonicalizationService openAlexCitationCanonicalizationService;
     private final ScholardexCitationCanonicalizationService citationCanonicalizationService;
     // H66B B66B.1 — forum building (dedup + Scopus canonicalization + ERIH onboard + erih-dedup) is now a
     // single forums-first step behind ScholardexForumBuilder, instead of inline across three orchestrator paths.
@@ -393,6 +394,8 @@ public class ScopusBigBangMigrationService {
         // publication canonicalization (so DOI-collision links resolve) and before projections (so they include
         // OpenAlex pubs). The on-demand Tier-2 path resolves its own deltas; this is the full-rebuild replay.
         ImportProcessingResult canonicalOpenAlex = openAlexCanonicalizationService.rebuildCanonicalFacts();
+        // H66B Phase 4a Stage 2: replay DOI-keyed OpenAlex citation edges (after OpenAlex pubs exist so endpoints resolve).
+        ImportProcessingResult canonicalOpenAlexCitations = openAlexCitationCanonicalizationService.rebuildCitationFacts();
         ImportProcessingResult canonicalCitations = citationCanonicalizationService.rebuildCanonicalCitationFactsFromScopusFacts(options);
         ImportProcessingResult projections = scopusProjectionBuilderService.rebuildViews();
         ScopusCanonicalIndexMaintenanceService.ScopusCanonicalIndexEnsureResult indexResult =
@@ -401,7 +404,7 @@ public class ScopusBigBangMigrationService {
                 forumBuild.dedup(), forumBuild.canonicalization(), forumBuild.erihOnboarding(),
                 forumBuild.doajOnboarding(), forumBuild.wosOnboarding(), forumBuild.membershipDedup(),
                 wosPublicationLinks,
-                canonicalPublications, canonicalOpenAlex, canonicalCitations));
+                canonicalPublications, canonicalOpenAlex, canonicalOpenAlexCitations, canonicalCitations));
         return new ScopusBigBangMigrationResult(
                 scopusDataFile,
                 startedAt,

@@ -56,6 +56,7 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ScholardexAuthorCanonicalizationService authorCanonicalizationService;
     @Mock private ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
     @Mock private ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCanonicalizationService openAlexCanonicalizationService;
+    @Mock private ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCitationCanonicalizationService openAlexCitationCanonicalizationService;
     @Mock private ScholardexCitationCanonicalizationService citationCanonicalizationService;
     @Mock private ScholardexForumBuilder forumBuilder;
     @Mock private WosScholardexOnboardingService wosScholardexOnboardingService;
@@ -88,6 +89,7 @@ class ScopusBigBangMigrationServiceTest {
                 authorCanonicalizationService,
                 publicationCanonicalizationService,
                 openAlexCanonicalizationService,
+                openAlexCitationCanonicalizationService,
                 citationCanonicalizationService,
                 forumBuilder,
                 wosScholardexOnboardingService,
@@ -113,6 +115,8 @@ class ScopusBigBangMigrationServiceTest {
                 .thenReturn(result(0, 0, 0, 0, 0));
         // H66B Phase 4a: runFull replays OpenAlex source-facts after publication canon; empty by default.
         lenient().when(openAlexCanonicalizationService.rebuildCanonicalFacts())
+                .thenReturn(result(0, 0, 0, 0, 0));
+        lenient().when(openAlexCitationCanonicalizationService.rebuildCitationFacts())
                 .thenReturn(result(0, 0, 0, 0, 0));
     }
 
