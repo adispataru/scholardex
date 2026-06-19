@@ -41,6 +41,7 @@ class OpenAlexCanonicalizationServiceTest {
         OpenAlexPublicationFact source = source("W1", "10.1/known", "A paper", "author-1");
         ScholardexPublicationFact existing = new ScholardexPublicationFact();
         existing.setId("spub_existing");
+        existing.setSource("SCOPUS"); // foreign pub — must not be mutated
         when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
         when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/known")).thenReturn(List.of(existing));
 
@@ -56,6 +57,32 @@ class OpenAlexCanonicalizationServiceTest {
                 "spub_existing".equals(cmd.leftId())
                         && "author-1".equals(cmd.rightId())
                         && "OPENALEX".equals(cmd.source())));
+    }
+
+    @Test
+    void doiMatchingAnOpenAlexOwnedPublicationRefreshesItInPlace() {
+        // A re-sync of a DOI'd work OpenAlex previously minted must UPDATE that pub (refresh citedByCount,
+        // corresponding authors, title) rather than link-to-self and freeze the data.
+        OpenAlexPublicationFact source = source("W9", "10.1/owned", "Updated title", "author-1");
+        source.setCitedByCount(42);
+        source.setCorrespondingAuthorNames(List.of("Corr Author"));
+        ScholardexPublicationFact owned = new ScholardexPublicationFact();
+        owned.setId("spub_owned");
+        owned.setSource("OPENALEX"); // we minted it
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/owned")).thenReturn(List.of(owned));
+
+        service.rebuildCanonicalFacts();
+
+        verify(publicationWriter).upsertAndLinkSource(
+                argThat(fact -> "spub_owned".equals(fact.getId())
+                        && Integer.valueOf(42).equals(fact.getCitedByCount())
+                        && "Updated title".equals(fact.getTitle())
+                        && fact.getCorrespondingAuthors().equals(List.of("Corr Author"))),
+                argThat(prov -> "OPENALEX".equals(prov.source()) && "W9".equals(prov.sourceRecordId())),
+                eq("openalex-fact-bridge"));
+        // Not a link-to-self.
+        verify(sourceLinkService, never()).link(any(), anyString(), anyString(), anyString(), anyString(), any(), any(), any(), eq(false));
     }
 
     @Test

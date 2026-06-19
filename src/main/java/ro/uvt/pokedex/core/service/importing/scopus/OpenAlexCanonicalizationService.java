@@ -99,60 +99,76 @@ public class OpenAlexCanonicalizationService {
             result.markSkipped("openalex publication ambiguous doi workId=" + workId);
             return;
         } else if (byDoi.size() == 1) {
-            // LINK: enrich provenance only, never overwrite the canonical fact's (richer) content.
             ScholardexPublicationFact target = byDoi.getFirst();
             canonicalPublicationId = target.getId();
-            sourceLinkService.link(
-                    ScholardexEntityType.PUBLICATION,
-                    SOURCE_OPENALEX,
-                    workId,
-                    canonicalPublicationId,
-                    LINK_REASON_OPENALEX_PUBLICATION,
-                    source.getSourceEventId(),
-                    source.getSourceBatchId(),
-                    source.getSourceCorrelationId(),
-                    false);
-            result.markUpdated();
+            if (SOURCE_OPENALEX.equals(target.getSource())) {
+                // We own this pub (OpenAlex minted it). OpenAlex is its authority, so REFRESH it in place
+                // (citedByCount, corresponding authors, title…) rather than link-to-self and freeze the data.
+                applyOpenAlexFields(target, source, doiNormalized, canonicalPublicationId);
+                result.markUpdated();
+            } else {
+                // Foreign (Scopus/user-defined) pub: enrich provenance only, never overwrite its richer content.
+                sourceLinkService.link(
+                        ScholardexEntityType.PUBLICATION,
+                        SOURCE_OPENALEX,
+                        workId,
+                        canonicalPublicationId,
+                        LINK_REASON_OPENALEX_PUBLICATION,
+                        source.getSourceEventId(),
+                        source.getSourceBatchId(),
+                        source.getSourceCorrelationId(),
+                        false);
+                result.markUpdated();
+            }
         } else {
             // MINT: a genuinely new (or DOI-less) publication OpenAlex contributes.
-            ScholardexPublicationFact fact = new ScholardexPublicationFact();
             String titleNormalized = ScholardexPublicationCanonicalizationService.normalizeTitle(source.getTitle());
             canonicalPublicationId = publicationCanonicalizationService.buildCanonicalPublicationId(
                     null, null, null, null, doiNormalized, titleNormalized,
                     source.getCoverDate(), source.getCreator(), null);
-            Instant now = Instant.now();
-            fact.setId(canonicalPublicationId);
-            fact.setCreatedAt(now);
-            fact.setDoi(source.getDoi());
-            fact.setDoiNormalized(doiNormalized);
-            fact.setTitle(source.getTitle());
-            fact.setTitleNormalized(titleNormalized);
-            fact.setCreator(source.getCreator());
-            fact.setAuthorCount(source.getAuthorCount());
-            // Corresponding authors are name strings (same shape as the Scopus field); only populate on MINT —
-            // linked Scopus pubs keep their own (richer, denser) corresponding-author data, never clobbered.
-            if (source.getCorrespondingAuthorNames() != null && !source.getCorrespondingAuthorNames().isEmpty()) {
-                fact.setCorrespondingAuthors(new ArrayList<>(source.getCorrespondingAuthorNames()));
-            }
-            fact.setCoverDate(source.getCoverDate());
-            fact.setCitedByCount(source.getCitedByCount());
-            fact.setOpenAccess(source.getOpenAccess());
-            fact.setSubtype(source.getType());
-            fact.setSubtypeDescription(source.getType());
-            fact.setSourceEventId(source.getSourceEventId());
-            publicationWriter.upsertAndLinkSource(
-                    fact,
-                    new CanonicalWriteProvenance(
-                            SOURCE_OPENALEX,
-                            workId,
-                            source.getSourceBatchId(),
-                            source.getSourceCorrelationId(),
-                            source.getSourceEventId()),
-                    LINK_REASON_OPENALEX_PUBLICATION);
+            applyOpenAlexFields(new ScholardexPublicationFact(), source, doiNormalized, canonicalPublicationId);
             result.markImported();
         }
 
         writeSelfAuthorshipEdges(source, canonicalPublicationId);
+    }
+
+    /**
+     * Apply OpenAlex bibliographic content onto a canonical pub and persist it. Used for both a fresh MINT and an
+     * in-place REFRESH of an OpenAlex-owned pub. Corresponding authors are name strings (same shape as the Scopus
+     * field) and are written only when OpenAlex actually flagged one (so a now-empty payload never wipes a prior
+     * capture); {@code citedByCount} and the rest always reflect the latest OpenAlex state.
+     */
+    private void applyOpenAlexFields(
+            ScholardexPublicationFact fact, OpenAlexPublicationFact source, String doiNormalized, String canonicalId) {
+        if (fact.getCreatedAt() == null) {
+            fact.setCreatedAt(Instant.now());
+        }
+        fact.setId(canonicalId);
+        fact.setDoi(source.getDoi());
+        fact.setDoiNormalized(doiNormalized);
+        fact.setTitle(source.getTitle());
+        fact.setTitleNormalized(ScholardexPublicationCanonicalizationService.normalizeTitle(source.getTitle()));
+        fact.setCreator(source.getCreator());
+        fact.setAuthorCount(source.getAuthorCount());
+        if (source.getCorrespondingAuthorNames() != null && !source.getCorrespondingAuthorNames().isEmpty()) {
+            fact.setCorrespondingAuthors(new ArrayList<>(source.getCorrespondingAuthorNames()));
+        }
+        fact.setCoverDate(source.getCoverDate());
+        fact.setCitedByCount(source.getCitedByCount());
+        fact.setOpenAccess(source.getOpenAccess());
+        fact.setSubtype(source.getType());
+        fact.setSubtypeDescription(source.getType());
+        fact.setSourceEventId(source.getSourceEventId());
+        publicationWriter.upsertAndLinkSource(
+                fact,
+                new CanonicalWriteProvenance(
+                        SOURCE_OPENALEX,
+                        source.getSourceRecordId(),
+                        source.getSourceBatchId(),
+                        source.getSourceCorrelationId(),
+                        source.getSourceEventId()),
+                LINK_REASON_OPENALEX_PUBLICATION);
     }
 
     /**
