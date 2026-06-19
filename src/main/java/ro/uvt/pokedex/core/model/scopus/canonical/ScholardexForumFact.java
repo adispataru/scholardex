@@ -18,6 +18,7 @@ import java.util.List;
 // not permitted in partialFilterExpression.) See H54.2 / docs/data-ownership-inventory.md.
 @CompoundIndex(name = "uniq_scholardex_forum_scopus_id", def = "{'scopusForumIds': 1}", unique = true, partialFilter = "{'scopusForumIds': {'$type': 'string'}}")
 @CompoundIndex(name = "uniq_scholardex_forum_wos_id", def = "{'wosForumIds': 1}", unique = true, partialFilter = "{'wosForumIds': {'$type': 'string'}}")
+@CompoundIndex(name = "uniq_scholardex_forum_openalex_id", def = "{'openAlexIds': 1}", unique = true, partialFilter = "{'openAlexIds': {'$type': 'string'}}")
 public class ScholardexForumFact {
     @Id
     private String id;
@@ -30,6 +31,8 @@ public class ScholardexForumFact {
     private List<String> erihIds = new ArrayList<>();
     /** H66B M4-B: DOAJ native ids (DOAJ promoted to a create-or-match identity source). */
     private List<String> doajIds = new ArrayList<>();
+    /** H66B Phase 4a Stage 3: OpenAlex venue ids (S…) — create-or-match identity source, ISSN-gated. */
+    private List<String> openAlexIds = new ArrayList<>();
 
     /** H66 A1: C-scalar — normalized venue kind (journal/book-series/conference/trade), from CiteScore (A2). */
     private String forumType;

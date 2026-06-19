@@ -49,6 +49,8 @@ public class OpenAlexCanonicalizationService {
     private final ScholardexEdgeWriterService edgeWriterService;
     private final ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
     private final ro.uvt.pokedex.core.service.openalex.OpenAlexAuthorResolver authorResolver;
+    private final ro.uvt.pokedex.core.service.application.OpenAlexForumOnboardingService forumOnboardingService;
+    private final ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository forumFactRepository;
 
     /** Full-rebuild replay: canonicalize every OpenAlex source-fact. */
     public ImportProcessingResult rebuildCanonicalFacts() {
@@ -65,11 +67,22 @@ public class OpenAlexCanonicalizationService {
 
     private ImportProcessingResult canonicalize(List<OpenAlexPublicationFact> sources) {
         ImportProcessingResult result = new ImportProcessingResult(20);
+        // Stage 3: resolve/mint the host-venue forums first (ISSN-gated, flushed) so canonicalizeOne can stamp forumId.
+        forumOnboardingService.onboard(sources);
         sources.sort(Comparator.comparing(OpenAlexPublicationFact::getSourceRecordId, Comparator.nullsLast(String::compareTo)));
         for (OpenAlexPublicationFact source : sources) {
             canonicalizeOne(source, result);
         }
         return result;
+    }
+
+    /** Stage 3: resolve a publication's host venue to its canonical forum via the venue's openAlexIds tag. */
+    private String resolveForumId(String hostVenueOpenAlexId) {
+        if (hostVenueOpenAlexId == null || hostVenueOpenAlexId.isBlank()) {
+            return null;
+        }
+        return forumFactRepository.findByOpenAlexIdsContaining(hostVenueOpenAlexId)
+                .map(ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact::getId).orElse(null);
     }
 
     private void canonicalizeOne(OpenAlexPublicationFact source, ImportProcessingResult result) {
@@ -174,6 +187,7 @@ public class OpenAlexCanonicalizationService {
         // Corresponding authors are no longer denormalized as name strings here — they are modeled id-based as
         // `corresponding=true` authorship edges to canonical authors (writeAuthorshipEdges).
         fact.setCoverDate(source.getCoverDate());
+        fact.setForumId(resolveForumId(source.getHostVenueOpenAlexId())); // Stage 3: ISSN-resolved venue, else null
         fact.setCitedByCount(source.getCitedByCount());
         fact.setOpenAccess(source.getOpenAccess());
         fact.setSubtype(source.getType());

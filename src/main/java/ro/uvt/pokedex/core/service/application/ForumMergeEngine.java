@@ -606,6 +606,12 @@ public class ForumMergeEngine {
                 }
                 yield forum.getDoajIds();
             }
+            case OPENALEX -> {
+                if (forum.getOpenAlexIds() == null) {
+                    forum.setOpenAlexIds(new ArrayList<>());
+                }
+                yield forum.getOpenAlexIds();
+            }
             default -> throw new IllegalArgumentException("create-or-tag id list undefined for idType=" + idType);
         };
         if (ids.contains(externalId)) {

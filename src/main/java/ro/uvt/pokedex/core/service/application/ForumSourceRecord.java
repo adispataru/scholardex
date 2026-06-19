@@ -34,7 +34,8 @@ public record ForumSourceRecord(
         SCOPUS("SCOPUS", "scopus-forum-missing-id", "scopus-forum-onboarding", "scopus-forum-ambiguous-candidates"),
         WOS("WOS", "wos-journal-missing-id", "wos-forum-onboarding", "wos-forum-ambiguous-candidates"),
         ERIH("ERIH", "erih-missing-id", "erih-forum-onboarding", "erih-forum-ambiguous-candidates"),
-        DOAJ("DOAJ", "doaj-missing-id", "doaj-forum-onboarding", "doaj-forum-ambiguous-candidates");
+        DOAJ("DOAJ", "doaj-missing-id", "doaj-forum-onboarding", "doaj-forum-ambiguous-candidates"),
+        OPENALEX("OPENALEX", "openalex-forum-missing-id", "openalex-forum-onboarding", "openalex-forum-ambiguous-candidates");
 
         private final String source;
         private final String missingIdReason;
@@ -133,6 +134,30 @@ public record ForumSourceRecord(
                 doaj.getIssn(),
                 doaj.getEIssn(),
                 List.of(),
+                null,
+                null,
+                null
+        );
+    }
+
+    /**
+     * H66B Phase 4a Stage 3 — an OpenAlex host venue (from a publication's primary_location.source).
+     * {@code externalId} is the bare OpenAlex venue id (S…); OpenAlex doesn't separate print/electronic ISSN
+     * (it carries an {@code issn} list + linking {@code issn_l}), so the first token is the primary and the
+     * rest are aliases — the engine folds them all into one normalized token set anyway. The OpenAlex onboarder
+     * ISSN-gates this (no-ISSN conference venues are skipped, not minted name-only — that is DBLP's job).
+     */
+    public static ForumSourceRecord ofOpenAlex(String venueOpenAlexId, String name, List<String> issns) {
+        List<String> tokens = issns == null ? List.of() : issns;
+        String primary = tokens.isEmpty() ? null : tokens.getFirst();
+        List<String> aliases = tokens.size() <= 1 ? List.of() : tokens.subList(1, tokens.size());
+        return new ForumSourceRecord(
+                ForumIdType.OPENALEX,
+                venueOpenAlexId,
+                name,
+                primary,
+                null,
+                aliases,
                 null,
                 null,
                 null

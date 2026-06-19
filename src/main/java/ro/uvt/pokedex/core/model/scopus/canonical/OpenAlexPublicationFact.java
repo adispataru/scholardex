@@ -51,6 +51,7 @@ public class OpenAlexPublicationFact {
 
     // Venue (Stage 3 — ofOpenAlex forum resolve)
     private String hostVenueName;
+    private String hostVenueOpenAlexId; // bare OpenAlex source id (S…) of the host venue — Stage 3 forum resolve key
     private List<String> hostVenueIssns = new ArrayList<>();
 
     // Citations (Stage 2 — DOI/OpenAlex-id edges)

@@ -35,6 +35,8 @@ class OpenAlexCanonicalizationServiceTest {
     @Mock private ScholardexEdgeWriterService edgeWriterService;
     @Mock private ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
     @Mock private OpenAlexAuthorResolver authorResolver;
+    @Mock private ro.uvt.pokedex.core.service.application.OpenAlexForumOnboardingService forumOnboardingService;
+    @Mock private ro.uvt.pokedex.core.repository.scopus.canonical.ScholardexForumFactRepository forumFactRepository;
 
     @InjectMocks private OpenAlexCanonicalizationService service;
 
@@ -119,6 +121,27 @@ class OpenAlexCanonicalizationServiceTest {
                 argThat(prov -> "OPENALEX".equals(prov.source()) && "W9".equals(prov.sourceRecordId())),
                 eq("openalex-fact-bridge"));
         verify(sourceLinkService, never()).link(any(), anyString(), anyString(), anyString(), anyString(), any(), any(), any(), eq(false));
+    }
+
+    @Test
+    void mintResolvesHostVenueForumByOpenAlexId() {
+        OpenAlexPublicationFact source = source("W3", "10.1/venue", "Venue paper", "sauth_self");
+        source.setHostVenueOpenAlexId("S123");
+        when(openAlexPublicationFactRepository.findAll()).thenReturn(List.of(source));
+        when(scholardexPublicationFactRepository.findAllByDoiNormalized("10.1/venue")).thenReturn(List.of());
+        when(publicationCanonicalizationService.buildCanonicalPublicationId(
+                any(), any(), any(), any(), eq("10.1/venue"), any(), any(), any(), any()))
+                .thenReturn("spub_venue");
+        ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact forum =
+                new ro.uvt.pokedex.core.model.scopus.canonical.ScholardexForumFact();
+        forum.setId("sforum_venue");
+        when(forumFactRepository.findByOpenAlexIdsContaining("S123")).thenReturn(java.util.Optional.of(forum));
+
+        service.rebuildCanonicalFacts();
+
+        verify(publicationWriter).upsertAndLinkSource(
+                argThat(fact -> "spub_venue".equals(fact.getId()) && "sforum_venue".equals(fact.getForumId())),
+                any(), any());
     }
 
     @Test
