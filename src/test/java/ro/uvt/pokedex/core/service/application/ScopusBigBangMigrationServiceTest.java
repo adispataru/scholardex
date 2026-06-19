@@ -55,6 +55,7 @@ class ScopusBigBangMigrationServiceTest {
     @Mock private ScholardexAffiliationCanonicalizationService affiliationCanonicalizationService;
     @Mock private ScholardexAuthorCanonicalizationService authorCanonicalizationService;
     @Mock private ScholardexPublicationCanonicalizationService publicationCanonicalizationService;
+    @Mock private ro.uvt.pokedex.core.service.importing.scopus.OpenAlexCanonicalizationService openAlexCanonicalizationService;
     @Mock private ScholardexCitationCanonicalizationService citationCanonicalizationService;
     @Mock private ScholardexForumBuilder forumBuilder;
     @Mock private WosScholardexOnboardingService wosScholardexOnboardingService;
@@ -86,6 +87,7 @@ class ScopusBigBangMigrationServiceTest {
                 affiliationCanonicalizationService,
                 authorCanonicalizationService,
                 publicationCanonicalizationService,
+                openAlexCanonicalizationService,
                 citationCanonicalizationService,
                 forumBuilder,
                 wosScholardexOnboardingService,
@@ -108,6 +110,9 @@ class ScopusBigBangMigrationServiceTest {
         ReflectionTestUtils.setField(service, "scopusDataFile", "/tmp/scopus.json");
         // H66B M8: publication→WoS links run after publication canon in the Scopus paths; empty by default.
         lenient().when(wosScholardexOnboardingService.linkPublicationsToWos(any(), any()))
+                .thenReturn(result(0, 0, 0, 0, 0));
+        // H66B Phase 4a: runFull replays OpenAlex source-facts after publication canon; empty by default.
+        lenient().when(openAlexCanonicalizationService.rebuildCanonicalFacts())
                 .thenReturn(result(0, 0, 0, 0, 0));
     }
 
