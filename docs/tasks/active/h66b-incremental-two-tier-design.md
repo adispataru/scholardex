@@ -420,6 +420,27 @@ interface EntityBuilder {
      minted pubs carrying corresponding authors went 1→3 with no re-mint, split unchanged (10 minted), 0 orphans.
      (Minor cosmetic: a refresh is counted in the scheduler's `linked` bucket via `markUpdated`, not split out.)
 
+   **Stage 1.2 — corresponding authors made id-based (2026-06-19, commit `31bf751`).** The name-string field
+   was a dead-end join key; replaced with the proper model — corresponding-author is a `corresponding=true` flag on
+   a canonical **authorship edge**, resolving to a `ScholardexAuthor` that aggregates ids across sources.
+   - `ScholardexAuthorFact` += `orcidIds`, `openAlexAuthorIds` (+ finders); `ScholardexAuthorshipFact` +=
+     `corresponding`; edge writer gains a `(command, corresponding)` overload (existing callers untouched).
+   - Source-fact now stores corresponding authors as `{name, orcid, openAlexAuthorId}` refs and syncing researchers
+     as `{canonicalAuthorId, orcid}` — durable, so the full-rebuild replay re-resolves + re-seeds.
+   - `OpenAlexAuthorResolver`: find-or-mint by **ORCID → OpenAlex id → mint** (mint+reconcile policy, OpenAlex
+     becomes an author source); `attachOrcid` seeds the syncing researcher's ORCID onto their existing (Scopus)
+     author so they dedup instead of duplicating. `writeAuthorshipEdges` seeds, resolves, and writes one edge per
+     (syncing researcher ∪ corresponding author) with the flag on the corresponding ones.
+   - **Validated live:** 9 `corresponding=true` edges; the syncing researcher's Scopus author ORCID-seeded + deduped
+     (not minted); 4 corresponding co-authors minted as canonical authors keyed by ORCID + OpenAlex id; **0 orphans**.
+   - **⬜ Follow-ups:** (a) **author-reconcile** — the 4 minted authors (`scopusIds=0`) are likely duplicates of
+     existing Scopus authors (UVT co-authors); a Tier-1 author reconcile (merge by ORCID once Scopus authors carry
+     one, else fuzzy name+affiliation) collapses them — same eventual-consistency pattern as forums/pubs.
+     (b) **Seed ORCID from researcher profiles** on full rebuild (currently seeded only via the per-work
+     `syncedResearchers`; a profile sweep would seed all researchers up front). (c) Surface `corresponding` in the
+     read projection/reports. (d) Full-rebuild durability of the author model is wired (rides `rebuildCanonicalFacts`)
+     + unit-covered, but not yet re-proven live.
+
 ## Open questions
 - **Reconcile trigger policy** — nightly? after N unreconciled mints? on curated-feed import? (Phase 3 decides.)
 - **Registry index warmth** — Tier-2 resolve still pays an O(registry) context load unless we keep a warm
