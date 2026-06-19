@@ -401,6 +401,24 @@ interface EntityBuilder {
      per sync (heavy; a batch/incremental refresh is a later optimization). Co-author bridging against OpenAlex's
      fragmented author entities is deferred.
 
+   **Stage 1.1 — corresponding authors (2026-06-19, built + validated).** OpenAlex authorships carry
+   `is_corresponding`; read it while parsing authorships → `OpenAlexPublicationFact.correspondingAuthorNames`
+   (durable, lossless, like `authorOrcids`/`hostVenueIssns`). On **MINT**, populate the canonical
+   `correspondingAuthors` (name-string list — same shape as the Scopus field, surfaced in `ScholardexPublicationView`);
+   **LINK** never touches it (Scopus's denser data wins). Commit `e7810d0`.
+   - **Validated live** (ORCID `0000-0002-0702-6276`): **9/26** source-facts captured a corresponding author
+     (Spătaru, Talia, Frîncu, Chondrogiannis…) — matches the API exactly; 0 orphans, no regression.
+   - **Manifestation caveat (not a bug):** only the **DOI-less** minted work showed `correspondingAuthors` populated
+     on re-sync, because DOI'd works minted by a *prior* run re-LINK (resolve finds them by DOI) rather than re-mint,
+     and LINK doesn't mutate. A fresh full rebuild re-mints all OpenAlex pubs and would populate them; the unit test
+     covers the mint-population logic directly.
+   - **⬜ Follow-up surfaced — OpenAlex-owned pubs never refresh on re-sync.** `resolve()` link branch treats an
+     existing match as foreign (no mutation) even when `target.source == OPENALEX` (a pub OpenAlex itself minted).
+     So a re-sync of a DOI'd OpenAlex work links it to itself and never refreshes `citedByCount`,
+     `correspondingAuthors`, etc. (frozen at first mint). Proper fix: in the link branch, if the matched pub is
+     OPENALEX-sourced, UPDATE it (re-apply mint fields) instead of link-only; keep link-only for foreign (Scopus)
+     pubs. This is also where corresponding-author data would reach pre-existing DOI'd mints without a full rebuild.
+
 ## Open questions
 - **Reconcile trigger policy** — nightly? after N unreconciled mints? on curated-feed import? (Phase 3 decides.)
 - **Registry index warmth** — Tier-2 resolve still pays an O(registry) context load unless we keep a warm
