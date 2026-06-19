@@ -472,11 +472,25 @@ interface EntityBuilder {
    - **Stage C — wiring:** both passes run inside `ForumReconcileService.reconcile` (nightly scheduler + manual
      `POST /forum/reconcile`), before the projection rebuild. Idempotent → safe on the reconcile cadence and after a
      full rebuild. Manual triggers also exposed: `POST /author/reconcile` (ORCID) and `/author/reconcile/fuzzy`.
-   - **⬜ Follow-ups:** inspect the 1,815 fuzzy candidates (esp. initials-only names — higher false-merge risk) then
-     flip `fuzzy-apply=true`; the residual `AUTHOR_SHARED_ORCID_NAME_MISMATCH` quarantines need a review surface;
-     the author reconcile isn't inside `runFull` (relies on the next reconcile cadence — eventual-consistency, same
-     as the forum reconcile). Pre-existing finding: ~6 bootstrap `authorship_facts` reference non-existent authors
-     (a seed-data integrity gap, independent of this work).
+   **Stage 1.5 — fuzzy dedup driven by co-author overlap (2026-06-19, commit `1f32365`).** Mining the 1,815
+   affiliation-only candidates exposed that **affiliation is too weak a gate**: ~595 (33%) had ZERO shared
+   co-authors — same name + same institution but never collaborated ⇒ different people (e.g. "Chen, Xi" ×7), which
+   affiliation-only would have false-merged. Conversely strong matches hid behind initials ("Bickley, A. A." shares
+   127 co-authors ⇒ same person). So `reconcileByName` now tiers same-name clusters by **shared co-author overlap**
+   (the decisive corroborator), affiliation dropped as the gate:
+   - **STRONG** (≥ `coauthor-strong-threshold`, default 3): union-find merge group → auto-merge / reported.
+   - **MEDIUM** (1..threshold-1): `AUTHOR_FUZZY_MERGE_REVIEW` — never auto-merged.
+   - **REJECT** (0): dropped. Same-publication hard block retained; oversized clusters (> `max-cluster-size`, default
+     50) flagged for review rather than O(k²)-scored; co-author sets computed only for same-name candidates.
+   - **Validated live (dry-run):** 200,204 name clusters → **896 STRONG + 637 medium + 1 oversized** in ~26s, 0
+     merged. STRONG *rose* from the affiliation-subset's 779 to 896 (caught institution-changers — high overlap, no
+     shared affiliation), while the ~595 zero-overlap false-positives are no longer candidates. Strictly better than
+     affiliation: more precise AND higher recall.
+   - **⬜ Follow-ups:** spot-check the 896 STRONG candidates then flip `fuzzy-apply=true`; build a review surface for
+     `AUTHOR_FUZZY_MERGE_REVIEW` + `AUTHOR_SHARED_ORCID_NAME_MISMATCH` conflicts; author reconcile isn't inside
+     `runFull` (relies on the next reconcile cadence — eventual-consistency, same as the forum reconcile).
+     Pre-existing finding: ~6 bootstrap `authorship_facts` reference non-existent authors (seed-data integrity gap,
+     independent of this work).
 
 ## Open questions
 - **Reconcile trigger policy** — nightly? after N unreconciled mints? on curated-feed import? (Phase 3 decides.)
